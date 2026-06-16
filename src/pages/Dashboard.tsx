@@ -63,19 +63,20 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   const isLoading = accountsQuery.isLoading || invoicesQuery.isLoading || billsQuery.isLoading;
 
   // 2. Perform live calculations on database metrics
-  const activeAccounts = accountsQuery.data || [];
+  const activeAccounts = Array.isArray(accountsQuery.data) ? accountsQuery.data : (accountsQuery.data?.accounts || accountsQuery.data?.data || []);
+
   
   // Total Bank Balances (sum of active cash accounts)
   const totalCashKobo = activeAccounts.reduce((sum: number, acc: any) => sum + (acc.balance || 0), 0) || 12825602500; // fallbacks to seed data if empty
 
   // Total Receivables (sum of unpaid invoices)
-  const totalInvoicesList = invoicesQuery.data || [];
+  const totalInvoicesList = Array.isArray(invoicesQuery.data) ? invoicesQuery.data : (invoicesQuery.data?.invoices || invoicesQuery.data?.data || []);
   const receivablesKobo = totalInvoicesList
     .filter((inv: any) => inv.status === 'Unpaid' || inv.status === 'Overdue')
     .reduce((sum: number, inv: any) => sum + (inv.total || inv.amount || 0), 0) || 452900000;
 
   // Total Payables (sum of unpaid bills)
-  const totalBillsList = billsQuery.data || [];
+  const totalBillsList = Array.isArray(billsQuery.data) ? billsQuery.data : (billsQuery.data?.bills || billsQuery.data?.data || []);
   const payablesKobo = totalBillsList
     .filter((b: any) => b.status === 'Unpaid' || b.status === 'Overdue' || b.status === 'Pending')
     .reduce((sum: number, b: any) => sum + (b.total || b.amount || 0), 0) || 284050000;
