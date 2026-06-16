@@ -24,7 +24,6 @@ import aiRouter from '../routes/ai';
 
 import { runMigration } from '../db/migrate';
 
-// Initialize Winston Logger
 const logger = winston.createLogger({
   level: 'info',
   format: winston.format.combine(
@@ -42,56 +41,44 @@ const logger = winston.createLogger({
 });
 
 async function startServer() {
-  // Execute database migrations on startup
   await runMigration();
 
   const app = express();
   const PORT = Number(process.env.PORT) || 3000;
 
-  // Trust Render's proxy so rate-limiter reads real client IPs correctly
+  // Trust Render's proxy for correct IP detection
   app.set('trust proxy', 1);
 
-  // --- STATIC FILES FIRST (before CORS/Helmet so assets are never blocked) ---
-  if (process.env.NODE_ENV === 'production') {
-    const distPath = path.join(process.cwd(), 'dist');
-    app.use(compression());
-    app.use(express.static(distPath));
-  }
+  // Compression
+  app.use(compression());
 
-  // Security headers with Helmet (after static so assets skip it too)
+  // Security headers
   app.use(helmet({
     contentSecurityPolicy: false,
     crossOriginEmbedderPolicy: false
   }));
 
-  // CORS configuration (API routes only — static assets already served above)
+  // CORS — allow same-origin (no Origin header) and whitelisted origins
   const allowedOrigins = process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',')
     : ['http://localhost:5173', 'http://localhost:3000'];
 
   app.use(cors({
     origin: (origin, callback) => {
-  // Allow same-origin requests (no origin header) and whitelisted origins
-  if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-    callback(null, true);
-  } else {
-    callback(new Error('Blocked by CORS policy'));
-  }
-},
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Blocked by CORS policy'));
+      }
+    },
     credentials: true
   }));
 
-  // Response compression for API responses
-  if (process.env.NODE_ENV !== 'production') {
-    app.use(compression());
-  }
-
-  // JSON and URL-encoded body parser with 10mb limit
+  // Body parsers
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-  // General rate limiter: 100 requests per minute
-  // keyGenerator uses req.ip which is now correct thanks to trust proxy above
+  // Rate limiters
   const generalLimiter = rateLimit({
     windowMs: 1 * 60 * 1000,
     max: 100,
@@ -101,7 +88,6 @@ async function startServer() {
     skip: () => process.env.NODE_ENV !== 'production'
   });
 
-  // Auth rate limiter: 10 requests per minute
   const authLimiter = rateLimit({
     windowMs: 1 * 60 * 1000,
     max: 10,
@@ -111,11 +97,12 @@ async function startServer() {
     skip: () => process.env.NODE_ENV !== 'production'
   });
 
-  // Apply rate limiting to API routes only
   app.use('/api/', generalLimiter);
-  app.use('/api/auth', authLimiter);
+  app.use('/api/auth/', authLimiter);
 
-  // Mount API modules
+  // ==========================================
+  // API ROUTES (must be before static files)
+  // ==========================================
   app.use('/api/auth', authRouter);
   app.use('/api/org', organisationsRouter);
   app.use('/api/sales', salesRouter);
@@ -126,30 +113,26 @@ async function startServer() {
   app.use('/api/inventory', inventoryRouter);
   app.use('/api/ai', aiRouter);
 
-  // Root level API health check
   app.get('/api/health', (req, res) => {
     res.json({ status: 'healthy', timestamp: new Date().toISOString() });
   });
 
-  // 404 handler for API routes
-  app.use('/api/*', (req, res) => {
+  // API 404 — catches unmatched /api/* routes
+  app.use('/api', (req, res) => {
     res.status(404).json({ error: `API route ${req.originalUrl} not found.` });
   });
 
-  // Global Express error handler
+  // Global error handler
   app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
     const status = err.statusCode || err.status || 500;
-    const message = err.message || 'An unexpected error occurred building the double-entry records.';
-
-    logger.error(`[REST API ERROR] Status ${status} on ${req.method} ${req.url}:`, err);
-
-    res.status(status).json({
-      error: message,
-      status
-    });
+    const message = err.message || 'An unexpected error occurred.';
+    logger.error(`[ERROR] ${status} ${req.method} ${req.url}`, err);
+    res.status(status).json({ error: message, status });
   });
 
-  // Dev mode: delegate to Vite middleware
+  // ==========================================
+  // STATIC FILES (after API routes)
+  // ==========================================
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -157,8 +140,9 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    // SPA fallback: all non-API, non-asset routes serve index.html
     const distPath = path.join(process.cwd(), 'dist');
+    app.use(express.static(distPath));
+    // SPA fallback
     app.get('*', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });
