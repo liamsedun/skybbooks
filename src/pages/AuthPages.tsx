@@ -52,7 +52,7 @@ export function LoginPage() {
       localStorage.setItem('refreshToken', data.refreshToken);
       localStorage.setItem('user', JSON.stringify(data.user));
       localStorage.setItem('organisation', JSON.stringify(data.organisation));
-      navigate('/dashboard');
+      window.location.href = '/dashboard';
     } catch (err: any) {
       setError(err?.response?.data?.error || 'Invalid email or password.');
     } finally {
@@ -145,7 +145,7 @@ export function RegisterPage() {
       localStorage.setItem('refreshToken', data.refreshToken);
       localStorage.setItem('user', JSON.stringify(data.user));
       localStorage.setItem('organisation', JSON.stringify(data.organisation));
-      navigate('/dashboard');
+      window.location.href = '/dashboard';
     } catch (err: any) {
       setError(err?.response?.data?.error || 'Registration failed. Please try again.');
     } finally {
