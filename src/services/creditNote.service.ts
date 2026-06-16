@@ -1,0 +1,278 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import { eq, and, sql } from 'drizzle-orm';
+import {
+  db,
+  accounts,
+  invoices,
+  creditNotes,
+  journalEntries
+} from '../db/schema';
+import { AppError } from '../lib/errors';
+import { createJournalEntry, reverseJournalEntry } from './ledger.service';
+
+// ==========================================
+// HELPER FUNCTIONS
+// ==========================================
+
+async function resolveAccountsReceivable(orgId: string, tx: any): Promise<string> {
+  const [arAccount] = await tx
+    .select()
+    .from(accounts)
+    .where(
+      and(
+        eq(accounts.orgId, orgId),
+        eq(accounts.type, 'asset'),
+        sql`lower(${accounts.name}) like '%receivable%'`
+      )
+    )
+    .limit(1);
+
+  if (arAccount) return arAccount.id;
+
+  const [fallbackAsset] = await tx
+    .select()
+    .from(accounts)
+    .where(and(eq(accounts.orgId, orgId), eq(accounts.type, 'asset')))
+    .limit(1);
+
+  if (fallbackAsset) return fallbackAsset.id;
+
+  throw new AppError(
+    "Accounts Receivable account not configured. Please create an asset account with 'Receivable' in its name.",
+    400
+  );
+}
+
+async function resolveVatPayable(orgId: string, tx: any): Promise<string> {
+  const [vatAccount] = await tx
+    .select()
+    .from(accounts)
+    .where(
+      and(
+        eq(accounts.orgId, orgId),
+        eq(accounts.type, 'liability'),
+        sql`lower(${accounts.name}) like '%vat%' or lower(${accounts.name}) like '%tax%' or lower(${accounts.name}) like '%payable%'`
+      )
+    )
+    .limit(1);
+
+  if (vatAccount) return vatAccount.id;
+
+  const [fallbackLiability] = await tx
+    .select()
+    .from(accounts)
+    .where(and(eq(accounts.orgId, orgId), eq(accounts.type, 'liability')))
+    .limit(1);
+
+  if (fallbackLiability) return fallbackLiability.id;
+
+  throw new AppError(
+    "VAT Payable or Tax Liability account not found. Please create a liability account styled 'VAT Payable'.",
+    400
+  );
+}
+
+async function resolveRevenueAccount(orgId: string, tx: any): Promise<string> {
+  const [revAccount] = await tx
+    .select()
+    .from(accounts)
+    .where(and(eq(accounts.orgId, orgId), eq(accounts.type, 'revenue')))
+    .limit(1);
+
+  if (revAccount) return revAccount.id;
+
+  throw new AppError("A valid Sales/Revenue general ledger account is required.", 400);
+}
+
+// ==========================================
+// CORE SERVICES
+// ==========================================
+
+export async function createCreditNote(input: any, createdBy: string): Promise<any> {
+  return await db.transaction(async (tx) => {
+    const orgId = input.orgId;
+    const subtotal = Number(input.subtotal || 0);
+    const tax = Number(input.tax || 0);
+    const total = subtotal + tax;
+
+    if (total <= 0) {
+      throw new AppError('Credit note total must be greater than zero.', 400);
+    }
+
+    // 1. Generate sequential Credit Note number
+    const [countResult] = await tx
+      .select({ count: sql<number>`count(*)` })
+      .from(creditNotes)
+      .where(eq(creditNotes.orgId, orgId));
+
+    const cnCount = Number(countResult?.count || 0) + 1;
+    const cnNumber = `CN-${String(cnCount).padStart(6, '0')}`;
+
+    // 2. Insert Credit Note in database
+    const [creditNote] = await tx
+      .insert(creditNotes)
+      .values({
+        orgId,
+        cnNumber,
+        customerId: input.customerId,
+        invoiceId: input.invoiceId || null,
+        date: new Date(input.date || new Date()),
+        status: 'issued', // defaults directly to issued for bookkeeping
+        subtotal,
+        tax,
+        total,
+        remainingCredit: total,
+        createdBy
+      })
+      .returning();
+
+    // 3. Create General Ledger Journal Entry
+    // DR Revenue Account
+    // DR VAT Payable (if taxes present)
+    // CR Accounts Receivable
+    const arAccountId = await resolveAccountsReceivable(orgId, tx);
+    const vatAccountId = await resolveVatPayable(orgId, tx);
+    const revAccountId = await resolveRevenueAccount(orgId, tx);
+
+    const journalLines: any[] = [];
+
+    // DR Revenue
+    journalLines.push({
+      accountId: revAccountId,
+      debit: subtotal,
+      description: `Sales revenue reversal for credit note ${cnNumber}`
+    });
+
+    // DR VAT Payable portion
+    if (tax > 0) {
+      journalLines.push({
+        accountId: vatAccountId,
+        debit: tax,
+        description: `VAT adjustment portion of credit note ${cnNumber}`
+      });
+    }
+
+    // CR Accounts Receivable
+    journalLines.push({
+      accountId: arAccountId,
+      credit: total,
+      description: `AR offset application for credit note ${cnNumber}`
+    });
+
+    const journalEntry = await createJournalEntry({
+      orgId,
+      date: creditNote.date,
+      description: `Journal posting of Credit Note ${cnNumber}`,
+      reference: cnNumber,
+      source: 'manual', // standard general ledger
+      sourceId: creditNote.id,
+      createdBy,
+      lines: journalLines
+    }, tx);
+
+    // 4. Update credit note linked journal
+    const [finalCreditNote] = await tx
+      .update(creditNotes)
+      .set({ journalEntryId: journalEntry.id })
+      .where(eq(creditNotes.id, creditNote.id))
+      .returning();
+
+    return finalCreditNote;
+  });
+}
+
+export async function applyCreditNote(cnId: string, invoiceId: string, amount: number, userId: string): Promise<any> {
+  return await db.transaction(async (tx) => {
+    // 1. Fetch credit note
+    const [creditNote] = await tx
+      .select()
+      .from(creditNotes)
+      .where(eq(creditNotes.id, cnId))
+      .limit(1);
+
+    if (!creditNote) throw new AppError('Credit note not found.', 404);
+    if (creditNote.status === 'void') throw new AppError('Cannot apply a void credit note.', 400);
+    if (creditNote.remainingCredit < amount) {
+      throw new AppError(`Applied amount (${amount} kobo) exceeds remaining credit balance (${creditNote.remainingCredit} kobo).`, 400);
+    }
+
+    // 2. Fetch invoice
+    const [invoice] = await tx
+      .select()
+      .from(invoices)
+      .where(eq(invoices.id, invoiceId))
+      .limit(1);
+
+    if (!invoice) throw new AppError('Invoice not found.', 404);
+    if (invoice.status === 'draft' || invoice.status === 'void') {
+      throw new AppError('Invoice is not in an active open state to receive credits.', 400);
+    }
+    if (invoice.balanceDue < amount) {
+      throw new AppError(`Applied credit (${amount} kobo) exceeds invoice outstanding balance due (${invoice.balanceDue} kobo).`, 400);
+    }
+
+    // 3. Update invoice
+    const nextAmountPaid = invoice.amountPaid + amount;
+    const nextBalanceDue = invoice.total - nextAmountPaid;
+    const nextInvoiceStatus = nextBalanceDue <= 0 ? 'paid' : 'partial';
+
+    await tx
+      .update(invoices)
+      .set({
+        amountPaid: nextAmountPaid,
+        balanceDue: nextBalanceDue,
+        status: nextInvoiceStatus
+      })
+      .where(eq(invoices.id, invoice.id));
+
+    // 4. Update Credit Note
+    const nextRemainingCredit = creditNote.remainingCredit - amount;
+    const nextCnStatus = nextRemainingCredit <= 0 ? 'applied' : 'issued';
+
+    await tx
+      .update(creditNotes)
+      .set({
+        remainingCredit: nextRemainingCredit,
+        status: nextCnStatus
+      })
+      .where(eq(creditNotes.id, creditNote.id));
+
+    // 5. Create matching offsetting ledger entry
+    // DR Accounts Receivable (credit note allocation offset)
+    // CR Accounts Receivable (invoice offset allocation)
+    const arAccountId = await resolveAccountsReceivable(creditNote.orgId, tx);
+
+    await createJournalEntry({
+      orgId: creditNote.orgId,
+      date: new Date(),
+      description: `Cross-link offset application: Credit Note ${creditNote.cnNumber} to Invoice ${invoice.invoiceNumber}`,
+      reference: creditNote.cnNumber,
+      source: 'manual',
+      sourceId: creditNote.id,
+      createdBy: userId,
+      lines: [
+        {
+          accountId: arAccountId,
+          debit: amount,
+          description: `Credit application offset references ${creditNote.cnNumber}`
+        },
+        {
+          accountId: arAccountId,
+          credit: amount,
+          description: `Receivable reduction offset references ${invoice.invoiceNumber}`
+        }
+      ]
+    }, tx);
+
+    return {
+      message: `Successfully applied credit note ${creditNote.cnNumber} to invoice ${invoice.invoiceNumber}.`,
+      appliedAmount: amount,
+      remainingCredit: nextRemainingCredit,
+      invoiceBalanceDue: nextBalanceDue
+    };
+  });
+}
