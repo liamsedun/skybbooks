@@ -24,9 +24,8 @@ import { Reconciliation } from './pages/banking/Reconciliation';
 import { BankRules } from './pages/banking/BankRules';
 
 // Public & Protected Route Component Placeholders
+import { LoginPage, RegisterPage, ForgotPasswordPage } from './pages/AuthPages';
 import {
-  import { LoginPage, RegisterPage, ForgotPasswordPage } from './pages/AuthPages';
-,
   NotFoundPage,
   CustomersPage,
   QuotesPage,
