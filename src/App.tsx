@@ -25,9 +25,8 @@ import { BankRules } from './pages/banking/BankRules';
 
 // Public & Protected Route Component Placeholders
 import {
-  LoginPage,
-  RegisterPage,
-  ForgotPasswordPage,
+  import { LoginPage, RegisterPage, ForgotPasswordPage } from './pages/AuthPages';
+,
   NotFoundPage,
   CustomersPage,
   QuotesPage,
