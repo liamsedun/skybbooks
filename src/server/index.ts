@@ -71,12 +71,13 @@ async function startServer() {
 
   app.use(cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
-        callback(null, true);
-      } else {
-        callback(new Error('Blocked by CORS policy'));
-      }
-    },
+  // Allow same-origin requests (no origin header) and whitelisted origins
+  if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+    callback(null, true);
+  } else {
+    callback(new Error('Blocked by CORS policy'));
+  }
+},
     credentials: true
   }));
 
