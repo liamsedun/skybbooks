@@ -106,8 +106,3 @@ router.delete('/accounts/:id', async (req: AuthenticatedRequest, res: Response, 
 
 export default router;
 
-
-git add src\routes\accountant.ts src\server\index.ts src\pages\accountant\ChartOfAccounts.tsx src\pages\ModulePlaceholders.tsx
-git commit -m "Add Chart of Accounts route and full management UI"
-git push
-
