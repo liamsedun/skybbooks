@@ -850,7 +850,7 @@ export function PayrollRunsPage() {
   );
 }
 
-export function ChartOfAccountsPage() {
+export function export { ChartOfAccountsPage } from './accountant/ChartOfAccounts';() {
   return (
     <PageShell title="General Ledger Chart of Accounts" description="Fully customizable double-entry registry for tracking cash, assets, equities, and liabilities." badge="Continuous Ledger">
       <div className="bg-white border border-slate-150 rounded-2xl p-5 shadow-3xs">
