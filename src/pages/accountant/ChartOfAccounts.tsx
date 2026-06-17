@@ -1,3 +1,5 @@
+
+cat > /home/claude/ChartOfAccounts_clean.tsx << 'ENDOFFILE'
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -8,10 +10,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import {
   Plus, Search, Pencil, Trash2, ChevronRight, ChevronDown,
-  X, Check, AlertCircle, Loader2, BookOpen, Filter
+  X, Check, AlertCircle, Loader2, BookOpen
 } from 'lucide-react';
-
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Account {
   id: string;
@@ -29,15 +29,13 @@ interface Account {
 
 const ACCOUNT_TYPES = ['asset', 'liability', 'equity', 'revenue', 'expense'] as const;
 
-const TYPE_META: Record<string, { label: string; color: string; bg: string; range: string }> = {
-  asset:     { label: 'Asset',     color: 'text-emerald-700', bg: 'bg-emerald-50',  range: '1000–1999' },
-  liability: { label: 'Liability', color: 'text-rose-700',    bg: 'bg-rose-50',     range: '2000–2999' },
-  equity:    { label: 'Equity',    color: 'text-violet-700',  bg: 'bg-violet-50',   range: '3000–3999' },
-  revenue:   { label: 'Revenue',   color: 'text-blue-700',    bg: 'bg-blue-50',     range: '4000–4999' },
-  expense:   { label: 'Expense',   color: 'text-amber-700',   bg: 'bg-amber-50',    range: '5000–5999' },
+const TYPE_META: Record<string, { label: string; plural: string; color: string; bg: string }> = {
+  asset:     { label: 'Asset',     plural: 'Assets',      color: 'text-emerald-700', bg: 'bg-emerald-50' },
+  liability: { label: 'Liability', plural: 'Liabilities', color: 'text-rose-700',    bg: 'bg-rose-50'    },
+  equity:    { label: 'Equity',    plural: 'Equity',      color: 'text-violet-700',  bg: 'bg-violet-50'  },
+  revenue:   { label: 'Revenue',   plural: 'Revenue',     color: 'text-blue-700',    bg: 'bg-blue-50'    },
+  expense:   { label: 'Expense',   plural: 'Expenses',    color: 'text-amber-700',   bg: 'bg-amber-50'   },
 };
-
-// ─── API helpers ───────────────────────────────────────────────────────────────
 
 const coaApi = {
   list: () => api.get('/accountant/accounts').then(r => r.data),
@@ -45,8 +43,6 @@ const coaApi = {
   update: (id: string, data: any) => api.patch(`/accountant/accounts/${id}`, data).then(r => r.data),
   delete: (id: string) => api.delete(`/accountant/accounts/${id}`).then(r => r.data),
 };
-
-// ─── Build tree ────────────────────────────────────────────────────────────────
 
 function buildTree(accounts: Account[]): Account[] {
   const map = new Map<string, Account>();
@@ -59,7 +55,6 @@ function buildTree(accounts: Account[]): Account[] {
       roots.push(a);
     }
   });
-  // Sort by code
   const sort = (arr: Account[]) => {
     arr.sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }));
     arr.forEach(a => sort(a.children || []));
@@ -68,15 +63,7 @@ function buildTree(accounts: Account[]): Account[] {
   return roots;
 }
 
-// ─── Account Form Modal ────────────────────────────────────────────────────────
-
-function AccountModal({
-  account,
-  accounts,
-  onClose,
-  onSave,
-  saving,
-}: {
+function AccountModal({ account, accounts, onClose, onSave, saving }: {
   account: Partial<Account> | null;
   accounts: Account[];
   onClose: () => void;
@@ -96,9 +83,7 @@ function AccountModal({
   const [error, setError] = useState('');
 
   const parentOptions = accounts.filter(a =>
-    a.id !== account?.id &&
-    a.type === form.type &&
-    !a.parentId // only top-level parents
+    a.id !== account?.id && a.type === form.type && !a.parentId
   );
 
   function handleSubmit(e: React.FormEvent) {
@@ -121,21 +106,17 @@ function AccountModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-          <h2 className="text-sm font-bold text-slate-800">
-            {isEdit ? 'Edit Account' : 'New Account'}
-          </h2>
+          <h2 className="text-sm font-bold text-slate-800">{isEdit ? 'Edit Account' : 'New Account'}</h2>
           <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-lg">
             <X className="w-4 h-4 text-slate-500" />
           </button>
         </div>
-
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {error && (
             <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-xs">
               <AlertCircle className="w-4 h-4 shrink-0" /> {error}
             </div>
           )}
-
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={labelCls}>Account Code *</label>
@@ -147,18 +128,16 @@ function AccountModal({
               <select className={inputCls} value={form.type}
                 onChange={e => setForm(p => ({ ...p, type: e.target.value as any, parentId: '' }))}>
                 {ACCOUNT_TYPES.map(t => (
-                  <option key={t} value={t}>{TYPE_META[t].label}</option>
+                  <option key={t} value={t}>{TYPE_META[t].plural}</option>
                 ))}
               </select>
             </div>
           </div>
-
           <div>
             <label className={labelCls}>Account Name *</label>
             <input className={inputCls} placeholder="e.g. GTBank Current Account" value={form.name}
               onChange={e => setForm(p => ({ ...p, name: e.target.value }))} required />
           </div>
-
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={labelCls}>Sub-type</label>
@@ -176,7 +155,6 @@ function AccountModal({
               </select>
             </div>
           </div>
-
           <div>
             <label className={labelCls}>Description</label>
             <textarea className={inputCls + ' resize-none'} rows={2}
@@ -184,14 +162,12 @@ function AccountModal({
               value={form.description}
               onChange={e => setForm(p => ({ ...p, description: e.target.value }))} />
           </div>
-
           <div className="flex items-center gap-2">
             <input type="checkbox" id="isActive" checked={form.isActive}
               onChange={e => setForm(p => ({ ...p, isActive: e.target.checked }))}
               className="rounded border-slate-300" />
             <label htmlFor="isActive" className="text-xs font-medium text-slate-600">Active account</label>
           </div>
-
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={onClose}
               className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition">
@@ -209,14 +185,7 @@ function AccountModal({
   );
 }
 
-// ─── Account Row ───────────────────────────────────────────────────────────────
-
-function AccountRow({
-  account,
-  depth,
-  onEdit,
-  onDelete,
-}: {
+function AccountRow({ account, depth, onEdit, onDelete }: {
   account: Account;
   depth: number;
   onEdit: (a: Account) => void;
@@ -285,8 +254,6 @@ function AccountRow({
   );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
-
 export function ChartOfAccountsPage() {
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
@@ -299,9 +266,7 @@ export function ChartOfAccountsPage() {
     queryFn: coaApi.list,
   });
 
-  const accounts: Account[] = Array.isArray(rawAccounts)
-    ? rawAccounts
-    : rawAccounts.accounts || [];
+  const accounts: Account[] = Array.isArray(rawAccounts) ? rawAccounts : (rawAccounts as any).accounts || [];
 
   const createMut = useMutation({
     mutationFn: coaApi.create,
@@ -353,10 +318,19 @@ export function ChartOfAccountsPage() {
 
   const saving = createMut.isPending || updateMut.isPending;
 
+  const filterPills = [
+    { key: 'all', label: 'All Accounts', color: 'bg-slate-100 text-slate-700 hover:bg-slate-200' },
+    ...ACCOUNT_TYPES.map(t => ({
+      key: t,
+      label: TYPE_META[t].plural,
+      color: filterType === t
+        ? `${TYPE_META[t].bg} ${TYPE_META[t].color}`
+        : 'bg-slate-100 text-slate-600 hover:bg-slate-200',
+    })),
+  ];
+
   return (
     <div className="space-y-6">
-
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2">
@@ -374,15 +348,8 @@ export function ChartOfAccountsPage() {
         </button>
       </div>
 
-      {/* Type filter pills */}
       <div className="flex flex-wrap gap-2">
-        {[{ key: 'all', label: 'All Accounts', color: 'bg-slate-100 text-slate-700 hover:bg-slate-200' },
-          ...ACCOUNT_TYPES.map(t => ({
-  key: t,
-  label: TYPE_META[t].label + (t === 'liability' ? 'ies' : t === 'equity' ? 'ies' : t === 'revenue' ? 's' : t === 'expense' ? 's' : 's'),
-            color: filterType === t ? `${TYPE_META[t].bg} ${TYPE_META[t].color}` : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-          }))
-        ].map(({ key, label, color }) => (
+        {filterPills.map(({ key, label, color }) => (
           <button key={key} onClick={() => setFilterType(key)}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${filterType === key && key === 'all' ? 'bg-slate-800 text-white' : color}`}>
             {label}
@@ -391,7 +358,6 @@ export function ChartOfAccountsPage() {
         ))}
       </div>
 
-      {/* Search */}
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
         <input
@@ -402,7 +368,6 @@ export function ChartOfAccountsPage() {
         />
       </div>
 
-      {/* Table */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center py-20 text-slate-400 text-sm gap-2">
@@ -445,7 +410,6 @@ export function ChartOfAccountsPage() {
         )}
       </div>
 
-      {/* Account form modal */}
       {modal.open && (
         <AccountModal
           account={modal.account}
@@ -456,7 +420,6 @@ export function ChartOfAccountsPage() {
         />
       )}
 
-      {/* Delete confirm */}
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
@@ -493,3 +456,5 @@ export function ChartOfAccountsPage() {
 }
 
 export default ChartOfAccountsPage;
+ENDOFFILE
+echo "Done"
