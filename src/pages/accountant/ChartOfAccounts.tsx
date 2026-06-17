@@ -1,451 +1,531 @@
-
-cat > /home/claude/ChartOfAccounts_clean.tsx << 'ENDOFFILE'
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
-
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import {
-  Plus, Search, Pencil, Trash2, ChevronRight, ChevronDown,
-  X, Check, AlertCircle, Loader2, BookOpen
+  Plus,
+  Search,
+  Pencil,
+  Trash2,
+  ChevronRight,
+  ChevronDown,
+  X,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
 
 interface Account {
   id: string;
+  orgId: string;
   code: string;
   name: string;
   type: 'asset' | 'liability' | 'equity' | 'revenue' | 'expense';
-  subType: string | null;
-  parentId: string | null;
-  isSystem: boolean;
+  subType?: string | null;
+  parentId?: string | null;
+  description?: string | null;
   isActive: boolean;
-  description: string | null;
-  createdAt: string;
-  children?: Account[];
+  isSystem: boolean;
 }
 
-const ACCOUNT_TYPES = ['asset', 'liability', 'equity', 'revenue', 'expense'] as const;
-
-const TYPE_META: Record<string, { label: string; plural: string; color: string; bg: string }> = {
-  asset:     { label: 'Asset',     plural: 'Assets',      color: 'text-emerald-700', bg: 'bg-emerald-50' },
-  liability: { label: 'Liability', plural: 'Liabilities', color: 'text-rose-700',    bg: 'bg-rose-50'    },
-  equity:    { label: 'Equity',    plural: 'Equity',      color: 'text-violet-700',  bg: 'bg-violet-50'  },
-  revenue:   { label: 'Revenue',   plural: 'Revenue',     color: 'text-blue-700',    bg: 'bg-blue-50'    },
-  expense:   { label: 'Expense',   plural: 'Expenses',    color: 'text-amber-700',   bg: 'bg-amber-50'   },
+type AccountFormState = {
+  code: string;
+  name: string;
+  type: Account['type'];
+  subType: string;
+  parentId: string;
+  description: string;
+  isActive: boolean;
 };
 
-const coaApi = {
-  list: () => api.get('/accountant/accounts').then(r => r.data),
-  create: (data: any) => api.post('/accountant/accounts', data).then(r => r.data),
-  update: (id: string, data: any) => api.patch(`/accountant/accounts/${id}`, data).then(r => r.data),
-  delete: (id: string) => api.delete(`/accountant/accounts/${id}`).then(r => r.data),
+const ACCOUNT_TYPES: Account['type'][] = ['asset', 'liability', 'equity', 'revenue', 'expense'];
+
+const TYPE_META: Record<
+  Account['type'],
+  { label: string; plural: string; color: string; bg: string; dot: string; range: string }
+> = {
+  asset: { label: 'Asset', plural: 'Assets', color: 'text-emerald-700', bg: 'bg-emerald-50', dot: 'bg-emerald-500', range: '1000–1999' },
+  liability: { label: 'Liability', plural: 'Liabilities', color: 'text-rose-700', bg: 'bg-rose-50', dot: 'bg-rose-500', range: '2000–2999' },
+  equity: { label: 'Equity', plural: 'Equity', color: 'text-violet-700', bg: 'bg-violet-50', dot: 'bg-violet-500', range: '3000–3999' },
+  revenue: { label: 'Revenue', plural: 'Revenue', color: 'text-blue-700', bg: 'bg-blue-50', dot: 'bg-blue-500', range: '4000–4999' },
+  expense: { label: 'Expense', plural: 'Expenses', color: 'text-amber-700', bg: 'bg-amber-50', dot: 'bg-amber-500', range: '5000–5999' },
 };
 
-function buildTree(accounts: Account[]): Account[] {
-  const map = new Map<string, Account>();
-  accounts.forEach(a => map.set(a.id, { ...a, children: [] }));
-  const roots: Account[] = [];
-  map.forEach(a => {
-    if (a.parentId && map.has(a.parentId)) {
-      map.get(a.parentId)!.children!.push(a);
+const EMPTY_FORM: AccountFormState = {
+  code: '',
+  name: '',
+  type: 'asset',
+  subType: '',
+  parentId: '',
+  description: '',
+  isActive: true,
+};
+
+interface TreeNode extends Account {
+  children: TreeNode[];
+}
+
+function buildTree(accounts: Account[]): TreeNode[] {
+  const nodeMap = new Map<string, TreeNode>();
+  accounts.forEach((a) => nodeMap.set(a.id, { ...a, children: [] }));
+
+  const roots: TreeNode[] = [];
+  nodeMap.forEach((node) => {
+    if (node.parentId && nodeMap.has(node.parentId)) {
+      nodeMap.get(node.parentId)!.children.push(node);
     } else {
-      roots.push(a);
+      roots.push(node);
     }
   });
-  const sort = (arr: Account[]) => {
-    arr.sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }));
-    arr.forEach(a => sort(a.children || []));
+
+  const sortFn = (a: TreeNode, b: TreeNode) => a.code.localeCompare(b.code, undefined, { numeric: true });
+  const sortRecursive = (nodes: TreeNode[]) => {
+    nodes.sort(sortFn);
+    nodes.forEach((n) => sortRecursive(n.children));
   };
-  sort(roots);
+  sortRecursive(roots);
   return roots;
 }
 
-function AccountModal({ account, accounts, onClose, onSave, saving }: {
-  account: Partial<Account> | null;
-  accounts: Account[];
-  onClose: () => void;
-  onSave: (data: any) => void;
-  saving: boolean;
-}) {
-  const isEdit = !!account?.id;
-  const [form, setForm] = useState({
-    code: account?.code || '',
-    name: account?.name || '',
-    type: account?.type || 'asset',
-    subType: account?.subType || '',
-    parentId: account?.parentId || '',
-    description: account?.description || '',
-    isActive: account?.isActive ?? true,
-  });
-  const [error, setError] = useState('');
+function visibleNodeIds(nodes: TreeNode[], term: string, typeFilter: string): Set<string> {
+  const matches = new Set<string>();
+  const lower = term.toLowerCase();
 
-  const parentOptions = accounts.filter(a =>
-    a.id !== account?.id && a.type === form.type && !a.parentId
-  );
+  const matchesNode = (n: TreeNode) =>
+    (typeFilter === 'all' || n.type === typeFilter) &&
+    (!term ||
+      n.name.toLowerCase().includes(lower) ||
+      n.code.toLowerCase().includes(lower) ||
+      (n.subType || '').toLowerCase().includes(lower));
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!form.code.trim()) return setError('Account code is required.');
-    if (!form.name.trim()) return setError('Account name is required.');
-    setError('');
-    onSave({
-      ...form,
-      parentId: form.parentId || null,
-      subType: form.subType || null,
-      description: form.description || null,
-    });
-  }
+  const visit = (n: TreeNode): boolean => {
+    const childMatches = n.children.map(visit);
+    const selfMatch = matchesNode(n);
+    if (selfMatch || childMatches.some(Boolean)) {
+      matches.add(n.id);
+      return true;
+    }
+    return false;
+  };
 
-  const inputCls = 'w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-slate-400';
-  const labelCls = 'block text-xs font-semibold text-slate-600 mb-1';
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-          <h2 className="text-sm font-bold text-slate-800">{isEdit ? 'Edit Account' : 'New Account'}</h2>
-          <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-lg">
-            <X className="w-4 h-4 text-slate-500" />
-          </button>
-        </div>
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {error && (
-            <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-xs">
-              <AlertCircle className="w-4 h-4 shrink-0" /> {error}
-            </div>
-          )}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>Account Code *</label>
-              <input className={inputCls} placeholder="e.g. 1010" value={form.code}
-                onChange={e => setForm(p => ({ ...p, code: e.target.value }))} required />
-            </div>
-            <div>
-              <label className={labelCls}>Type *</label>
-              <select className={inputCls} value={form.type}
-                onChange={e => setForm(p => ({ ...p, type: e.target.value as any, parentId: '' }))}>
-                {ACCOUNT_TYPES.map(t => (
-                  <option key={t} value={t}>{TYPE_META[t].plural}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div>
-            <label className={labelCls}>Account Name *</label>
-            <input className={inputCls} placeholder="e.g. GTBank Current Account" value={form.name}
-              onChange={e => setForm(p => ({ ...p, name: e.target.value }))} required />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>Sub-type</label>
-              <input className={inputCls} placeholder="e.g. bank, payable" value={form.subType}
-                onChange={e => setForm(p => ({ ...p, subType: e.target.value }))} />
-            </div>
-            <div>
-              <label className={labelCls}>Parent Account</label>
-              <select className={inputCls} value={form.parentId}
-                onChange={e => setForm(p => ({ ...p, parentId: e.target.value }))}>
-                <option value="">— None (top level) —</option>
-                {parentOptions.map(a => (
-                  <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div>
-            <label className={labelCls}>Description</label>
-            <textarea className={inputCls + ' resize-none'} rows={2}
-              placeholder="Optional notes about this account"
-              value={form.description}
-              onChange={e => setForm(p => ({ ...p, description: e.target.value }))} />
-          </div>
-          <div className="flex items-center gap-2">
-            <input type="checkbox" id="isActive" checked={form.isActive}
-              onChange={e => setForm(p => ({ ...p, isActive: e.target.checked }))}
-              className="rounded border-slate-300" />
-            <label htmlFor="isActive" className="text-xs font-medium text-slate-600">Active account</label>
-          </div>
-          <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition">
-              Cancel
-            </button>
-            <button type="submit" disabled={saving}
-              className="px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition disabled:opacity-60 flex items-center gap-2">
-              {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-              {isEdit ? 'Save Changes' : 'Create Account'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-function AccountRow({ account, depth, onEdit, onDelete }: {
-  account: Account;
-  depth: number;
-  onEdit: (a: Account) => void;
-  onDelete: (a: Account) => void;
-}) {
-  const [expanded, setExpanded] = useState(depth === 0);
-  const hasChildren = (account.children?.length || 0) > 0;
-  const meta = TYPE_META[account.type];
-
-  return (
-    <>
-      <tr className={`group border-b border-slate-50 hover:bg-slate-50/60 transition ${!account.isActive ? 'opacity-50' : ''}`}>
-        <td className="py-2.5 px-4">
-          <div className="flex items-center" style={{ paddingLeft: depth * 20 }}>
-            {hasChildren ? (
-              <button onClick={() => setExpanded(!expanded)}
-                className="mr-1.5 p-0.5 hover:bg-slate-200 rounded text-slate-400">
-                {expanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-              </button>
-            ) : (
-              <span className="mr-1.5 w-5" />
-            )}
-            <span className="font-mono text-xs font-bold text-slate-500 w-14 shrink-0">{account.code}</span>
-          </div>
-        </td>
-        <td className="py-2.5 px-3">
-          <span className={`text-xs font-semibold ${depth === 0 ? 'text-slate-800' : 'text-slate-700'}`}>
-            {account.name}
-          </span>
-          {account.description && (
-            <p className="text-[10px] text-slate-400 mt-0.5">{account.description}</p>
-          )}
-        </td>
-        <td className="py-2.5 px-3 hidden md:table-cell">
-          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide ${meta.bg} ${meta.color}`}>
-            {meta.label}
-          </span>
-        </td>
-        <td className="py-2.5 px-3 hidden lg:table-cell">
-          <span className="text-[10px] text-slate-400 font-mono">{account.subType || '—'}</span>
-        </td>
-        <td className="py-2.5 px-3 hidden sm:table-cell">
-          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${account.isActive ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-400'}`}>
-            {account.isActive ? 'Active' : 'Inactive'}
-          </span>
-        </td>
-        <td className="py-2.5 px-4 text-right">
-          <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition">
-            <button onClick={() => onEdit(account)}
-              className="p-1.5 hover:bg-blue-50 text-slate-400 hover:text-blue-600 rounded-lg transition">
-              <Pencil className="w-3.5 h-3.5" />
-            </button>
-            {!account.isSystem && (
-              <button onClick={() => onDelete(account)}
-                className="p-1.5 hover:bg-red-50 text-slate-400 hover:text-red-600 rounded-lg transition">
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-        </td>
-      </tr>
-      {expanded && hasChildren && account.children!.map(child => (
-        <AccountRow key={child.id} account={child} depth={depth + 1} onEdit={onEdit} onDelete={onDelete} />
-      ))}
-    </>
-  );
+  nodes.forEach(visit);
+  return matches;
 }
 
 export function ChartOfAccountsPage() {
-  const qc = useQueryClient();
-  const [search, setSearch] = useState('');
-  const [filterType, setFilterType] = useState<string>('all');
-  const [modal, setModal] = useState<{ open: boolean; account: Partial<Account> | null }>({ open: false, account: null });
-  const [deleteConfirm, setDeleteConfirm] = useState<Account | null>(null);
+  const queryClient = useQueryClient();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [activeFilter, setActiveFilter] = useState<'all' | Account['type']>('all');
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<AccountFormState>(EMPTY_FORM);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Account | null>(null);
 
-  const { data: rawAccounts = [], isLoading, error } = useQuery({
-    queryKey: ['accounts'],
-    queryFn: coaApi.list,
+  const { data: accounts, isLoading, isError } = useQuery<Account[]>({
+    queryKey: ['accountant', 'accounts'],
+    queryFn: async () => {
+      const res = await api.get('/accountant/accounts');
+      return res.data;
+    },
   });
 
-  const accounts: Account[] = Array.isArray(rawAccounts) ? rawAccounts : (rawAccounts as any).accounts || [];
-
-  const createMut = useMutation({
-    mutationFn: coaApi.create,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['accounts'] }); setModal({ open: false, account: null }); },
+  const createMutation = useMutation({
+    mutationFn: (payload: Partial<Account>) => api.post('/accountant/accounts', payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['accountant', 'accounts'] });
+      closeModal();
+    },
+    onError: (err: any) => setFormError(err?.response?.data?.error || 'Failed to create account.'),
   });
 
-  const updateMut = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => coaApi.update(id, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['accounts'] }); setModal({ open: false, account: null }); },
+  const updateMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: Partial<Account> }) =>
+      api.patch(`/accountant/accounts/${id}`, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['accountant', 'accounts'] });
+      closeModal();
+    },
+    onError: (err: any) => setFormError(err?.response?.data?.error || 'Failed to update account.'),
   });
 
-  const deleteMut = useMutation({
-    mutationFn: coaApi.delete,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['accounts'] }); setDeleteConfirm(null); },
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api.delete(`/accountant/accounts/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['accountant', 'accounts'] });
+      setDeleteTarget(null);
+    },
   });
 
-  const filtered = useMemo(() => {
-    let list = accounts;
-    if (filterType !== 'all') list = list.filter(a => a.type === filterType);
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter(a =>
-        a.name.toLowerCase().includes(q) ||
-        a.code.toLowerCase().includes(q) ||
-        (a.subType || '').toLowerCase().includes(q)
-      );
-    }
-    return list;
-  }, [accounts, filterType, search]);
-
-  const tree = useMemo(() =>
-    search || filterType !== 'all' ? filtered : buildTree(filtered),
-    [filtered, search, filterType]
+  const tree = useMemo(() => buildTree(accounts || []), [accounts]);
+  const visibleIds = useMemo(
+    () => visibleNodeIds(tree, searchTerm, activeFilter),
+    [tree, searchTerm, activeFilter]
   );
 
   const counts = useMemo(() => {
-    const c: Record<string, number> = { all: accounts.length };
-    ACCOUNT_TYPES.forEach(t => { c[t] = accounts.filter(a => a.type === t).length; });
+    const c: Record<string, number> = { all: accounts?.length || 0 };
+    ACCOUNT_TYPES.forEach((t) => {
+      c[t] = (accounts || []).filter((a) => a.type === t).length;
+    });
     return c;
   }, [accounts]);
 
-  function handleSave(data: any) {
-    if (modal.account?.id) {
-      updateMut.mutate({ id: modal.account.id, data });
-    } else {
-      createMut.mutate(data);
+  function toggleExpand(id: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function openAddModal() {
+    setForm(EMPTY_FORM);
+    setModalMode('add');
+    setEditingId(null);
+    setFormError(null);
+    setModalOpen(true);
+  }
+
+  function openEditModal(account: Account) {
+    setForm({
+      code: account.code,
+      name: account.name,
+      type: account.type,
+      subType: account.subType || '',
+      parentId: account.parentId || '',
+      description: account.description || '',
+      isActive: account.isActive,
+    });
+    setModalMode('edit');
+    setEditingId(account.id);
+    setFormError(null);
+    setModalOpen(true);
+  }
+
+  function closeModal() {
+    setModalOpen(false);
+    setEditingId(null);
+    setFormError(null);
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.code.trim() || !form.name.trim()) {
+      setFormError('Account code and name are required.');
+      return;
+    }
+    const payload = {
+      code: form.code.trim(),
+      name: form.name.trim(),
+      type: form.type,
+      subType: form.subType.trim() || null,
+      parentId: form.parentId || null,
+      description: form.description.trim() || null,
+      isActive: form.isActive,
+    };
+    if (modalMode === 'add') {
+      createMutation.mutate(payload);
+    } else if (editingId) {
+      updateMutation.mutate({ id: editingId, payload });
     }
   }
 
-  const saving = createMut.isPending || updateMut.isPending;
+  const isSaving = createMutation.isPending || updateMutation.isPending;
 
-  const filterPills = [
-    { key: 'all', label: 'All Accounts', color: 'bg-slate-100 text-slate-700 hover:bg-slate-200' },
-    ...ACCOUNT_TYPES.map(t => ({
-      key: t,
-      label: TYPE_META[t].plural,
-      color: filterType === t
-        ? `${TYPE_META[t].bg} ${TYPE_META[t].color}`
-        : 'bg-slate-100 text-slate-600 hover:bg-slate-200',
-    })),
-  ];
+  function renderNode(node: TreeNode, depth: number): React.ReactNode {
+    if (!visibleIds.has(node.id)) return null;
+    const meta = TYPE_META[node.type];
+    const hasChildren = node.children.length > 0;
+    const isExpanded = expanded.has(node.id);
+
+    return (
+      <React.Fragment key={node.id}>
+        <tr className="group hover:bg-slate-50 transition-colors">
+          <td className="py-2.5 pr-3">
+            <div className="flex items-center" style={{ paddingLeft: `${depth * 20}px` }}>
+              {hasChildren ? (
+                <button
+                  onClick={() => toggleExpand(node.id)}
+                  className="mr-1.5 text-slate-400 hover:text-slate-600"
+                  aria-label={isExpanded ? 'Collapse' : 'Expand'}
+                >
+                  {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                </button>
+              ) : (
+                <span className="mr-1.5 w-4 inline-block" />
+              )}
+              <span className="font-mono text-sm text-slate-500">{node.code}</span>
+            </div>
+          </td>
+          <td className="py-2.5 pr-3">
+            <span className={`text-sm ${depth === 0 ? 'font-semibold text-slate-900' : 'text-slate-700'}`}>
+              {node.name}
+            </span>
+          </td>
+          <td className="py-2.5 pr-3">
+            <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${meta.bg} ${meta.color}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
+              {meta.label}
+            </span>
+          </td>
+          <td className="py-2.5 pr-3">
+            <span className="text-sm text-slate-500">{node.subType || '—'}</span>
+          </td>
+          <td className="py-2.5 pr-3">
+            <span className={`text-xs font-medium ${node.isActive ? 'text-emerald-600' : 'text-slate-400'}`}>
+              {node.isActive ? 'Active' : 'Inactive'}
+            </span>
+          </td>
+          <td className="py-2.5 pr-2 text-right">
+            <div className="opacity-0 group-hover:opacity-100 flex items-center justify-end gap-1 transition-opacity">
+              <button
+                onClick={() => openEditModal(node)}
+                className="p-1.5 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                aria-label="Edit account"
+              >
+                <Pencil size={14} />
+              </button>
+              {!node.isSystem && (
+                <button
+                  onClick={() => setDeleteTarget(node)}
+                  className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                  aria-label="Delete account"
+                >
+                  <Trash2 size={14} />
+                </button>
+              )}
+            </div>
+          </td>
+        </tr>
+        {isExpanded && node.children.map((child) => renderNode(child, depth + 1))}
+      </React.Fragment>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="max-w-6xl mx-auto px-6 py-8">
+      <div className="flex items-start justify-between mb-6">
         <div>
-          <h2 className="text-xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2">
-            <BookOpen className="w-5 h-5 text-blue-600" /> Chart of Accounts
-          </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            {accounts.length} accounts · Double-entry general ledger structure
+          <h1 className="text-2xl font-bold text-slate-900">Chart of Accounts</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            {counts.all} accounts · Double-entry general ledger structure
           </p>
         </div>
         <button
-          onClick={() => setModal({ open: true, account: null })}
-          className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition"
+          onClick={openAddModal}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors"
         >
-          <Plus className="w-4 h-4" /> Add Account
+          <Plus size={16} />
+          Add Account
         </button>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {filterPills.map(({ key, label, color }) => (
-          <button key={key} onClick={() => setFilterType(key)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${filterType === key && key === 'all' ? 'bg-slate-800 text-white' : color}`}>
-            {label}
-            <span className="ml-1.5 opacity-60">({counts[key] || 0})</span>
+      <div className="flex flex-wrap gap-2 mb-4">
+        <button
+          onClick={() => setActiveFilter('all')}
+          className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+            activeFilter === 'all' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+          }`}
+        >
+          All Accounts ({counts.all})
+        </button>
+        {ACCOUNT_TYPES.map((t) => (
+          <button
+            key={t}
+            onClick={() => setActiveFilter(t)}
+            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              activeFilter === t ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            {TYPE_META[t].plural} ({counts[t]})
           </button>
         ))}
       </div>
 
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+      <div className="relative mb-4">
+        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
         <input
-          className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          type="text"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
           placeholder="Search by name, code, or sub-type..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
+          className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300"
         />
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
         {isLoading ? (
-          <div className="flex items-center justify-center py-20 text-slate-400 text-sm gap-2">
-            <Loader2 className="w-5 h-5 animate-spin" /> Loading accounts...
+          <div className="flex items-center justify-center py-16 text-slate-400">
+            <Loader2 size={20} className="animate-spin mr-2" />
+            Loading accounts...
           </div>
-        ) : error ? (
-          <div className="flex items-center justify-center py-20 text-red-500 text-sm gap-2">
-            <AlertCircle className="w-5 h-5" /> Failed to load accounts. Check the API route.
-          </div>
-        ) : tree.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-            <BookOpen className="w-10 h-10 mb-3 opacity-30" />
-            <p className="text-sm font-semibold">No accounts found</p>
-            <p className="text-xs mt-1">Run the COA seed SQL in Neon, or add an account above.</p>
+        ) : isError ? (
+          <div className="flex items-center justify-center gap-2 py-16 text-rose-500 text-sm">
+            <AlertCircle size={16} />
+            Failed to load accounts. Check the API route.
           </div>
         ) : (
           <table className="w-full">
             <thead>
-              <tr className="border-b border-slate-100 bg-slate-50/60">
-                <th className="text-left py-3 px-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 w-28">Code</th>
-                <th className="text-left py-3 px-3 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Account Name</th>
-                <th className="text-left py-3 px-3 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 hidden md:table-cell">Type</th>
-                <th className="text-left py-3 px-3 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 hidden lg:table-cell">Sub-type</th>
-                <th className="text-left py-3 px-3 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 hidden sm:table-cell">Status</th>
-                <th className="py-3 px-4 w-20" />
+              <tr className="border-b border-slate-100 text-left text-xs font-medium text-slate-400 uppercase tracking-wide">
+                <th className="py-2.5 pl-4 pr-3">Code</th>
+                <th className="py-2.5 pr-3">Account Name</th>
+                <th className="py-2.5 pr-3">Type</th>
+                <th className="py-2.5 pr-3">Sub-type</th>
+                <th className="py-2.5 pr-3">Status</th>
+                <th className="py-2.5 pr-2"></th>
               </tr>
             </thead>
-            <tbody>
-              {(search || filterType !== 'all' ? filtered : tree).map(account => (
-                <AccountRow
-                  key={account.id}
-                  account={account}
-                  depth={0}
-                  onEdit={a => setModal({ open: true, account: a })}
-                  onDelete={a => setDeleteConfirm(a)}
-                />
-              ))}
-            </tbody>
+            <tbody className="divide-y divide-slate-50">{tree.map((node) => renderNode(node, 0))}</tbody>
           </table>
         )}
       </div>
 
-      {modal.open && (
-        <AccountModal
-          account={modal.account}
-          accounts={accounts}
-          onClose={() => setModal({ open: false, account: null })}
-          onSave={handleSave}
-          saving={saving}
-        />
-      )}
-
-      {deleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-red-50 rounded-xl">
-                <Trash2 className="w-5 h-5 text-red-600" />
+      {modalOpen && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <h2 className="text-base font-semibold text-slate-900">
+                {modalMode === 'add' ? 'Add Account' : 'Edit Account'}
+              </h2>
+              <button onClick={closeModal} className="text-slate-400 hover:text-slate-600">
+                <X size={18} />
+              </button>
+            </div>
+            <form onSubmit={handleSubmit} className="px-5 py-4 space-y-3">
+              {formError && (
+                <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2">
+                  {formError}
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Code</label>
+                  <input
+                    value={form.code}
+                    onChange={(e) => setForm({ ...form, code: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Type</label>
+                  <select
+                    value={form.type}
+                    onChange={(e) => setForm({ ...form, type: e.target.value as Account['type'] })}
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                  >
+                    {ACCOUNT_TYPES.map((t) => (
+                      <option key={t} value={t}>
+                        {TYPE_META[t].plural}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
               <div>
-                <h3 className="text-sm font-bold text-slate-800">Delete Account?</h3>
-                <p className="text-xs text-slate-500 mt-0.5">{deleteConfirm.code} — {deleteConfirm.name}</p>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Account Name</label>
+                <input
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                />
               </div>
-            </div>
-            <p className="text-xs text-slate-500 mb-5">
-              This will permanently delete the account. It cannot be undone, and will fail if the account has journal entries.
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Sub-type</label>
+                  <input
+                    value={form.subType}
+                    onChange={(e) => setForm({ ...form, subType: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Parent Account</label>
+                  <select
+                    value={form.parentId}
+                    onChange={(e) => setForm({ ...form, parentId: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                  >
+                    <option value="">None (top-level)</option>
+                    {(accounts || [])
+                      .filter((a) => a.id !== editingId)
+                      .map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.code} — {a.name}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Description</label>
+                <textarea
+                  value={form.description}
+                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  rows={2}
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                />
+              </div>
+              <label className="flex items-center gap-2 text-sm text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={form.isActive}
+                  onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
+                  className="rounded border-slate-300"
+                />
+                Active
+              </label>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="px-4 py-2 text-sm font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 disabled:opacity-50"
+                >
+                  {isSaving ? 'Saving...' : modalMode === 'add' ? 'Add Account' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {deleteTarget && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-5">
+            <h2 className="text-base font-semibold text-slate-900 mb-2">Delete Account</h2>
+            <p className="text-sm text-slate-500 mb-4">
+              Are you sure you want to delete{' '}
+              <span className="font-medium text-slate-700">
+                {deleteTarget.code} — {deleteTarget.name}
+              </span>
+              ? This cannot be undone.
             </p>
-            <div className="flex justify-end gap-3">
-              <button onClick={() => setDeleteConfirm(null)}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition">
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg"
+              >
                 Cancel
               </button>
               <button
-                onClick={() => deleteMut.mutate(deleteConfirm.id)}
-                disabled={deleteMut.isPending}
-                className="px-4 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-lg transition disabled:opacity-60 flex items-center gap-2">
-                {deleteMut.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                Delete
+                onClick={() => deleteMutation.mutate(deleteTarget.id)}
+                disabled={deleteMutation.isPending}
+                className="px-4 py-2 text-sm font-medium text-white bg-rose-600 rounded-lg hover:bg-rose-700 disabled:opacity-50"
+              >
+                {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
               </button>
             </div>
           </div>
@@ -454,7 +534,3 @@ export function ChartOfAccountsPage() {
     </div>
   );
 }
-
-export default ChartOfAccountsPage;
-ENDOFFILE
-echo "Done"
