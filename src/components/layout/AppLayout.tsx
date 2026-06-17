@@ -29,7 +29,8 @@ import {
   HelpCircle,
   FileInput,
   BookOpen,
-  Sparkles
+  Sparkles,
+  Package
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -116,6 +117,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     'purchase_orders': '/purchases/purchase-orders',
     'bills': '/purchases/bills',
     'payments_made': '/purchases/payments-made',
+    'items': '/inventory/items',
     'employees': '/payroll/employees',
     'payroll_runs': '/payroll/runs',
     'paye_schedules': '/payroll/paye-schedules',
@@ -148,6 +150,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     'OVERVIEW': false,
     'SALES': false,
     'PURCHASES': false,
+    'INVENTORY': false,
     'PAYROLL': true,
     'BANKING': true,
     'Accounting Ledgers': true,
@@ -185,6 +188,12 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
         { name: 'Purchase Orders', id: 'purchase_orders', icon: FileText },
         { name: 'Bills', id: 'bills', icon: FileText },
         { name: 'Payments Made', id: 'payments_made', icon: DollarSign },
+      ],
+    },
+    {
+      title: 'INVENTORY',
+      items: [
+        { name: 'Items & Services', id: 'items', icon: Package },
       ],
     },
     {
@@ -264,6 +273,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
         'OVERVIEW': true,
         'SALES': true,
         'PURCHASES': true,
+        'INVENTORY': true,
         'PAYROLL': true,
         'BANKING': true,
         'Accounting Ledgers': true,
