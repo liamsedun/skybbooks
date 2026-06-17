@@ -811,24 +811,7 @@ export function PaymentsMadePage() {
   );
 }
 
-export function InventoryPage() {
-  return (
-    <PageShell title="Materials & Inventory Central" description="Real-time stock ledger with FIFO lot mapping and cost of sales valuation." badge="Cost of Sales Ready">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="bg-white p-5 border border-slate-100 rounded-2xl shadow-3xs">
-          <h4 className="text-xs font-mono font-extrabold text-slate-400 uppercase">Valuation Ledger (FIFO)</h4>
-          <span className="font-mono text-xl font-black text-slate-950 mt-1 block">₦18,245,600.00</span>
-          <span className="text-[10px] text-indigo-600 font-bold block mt-0.5">Asset Accrual Code #1200</span>
-        </div>
-        <div className="bg-white p-5 border border-slate-100 rounded-2xl shadow-3xs">
-          <h4 className="text-xs font-mono font-extrabold text-slate-400 uppercase">Active Stock SKU Lots</h4>
-          <span className="font-sans text-xl font-black text-slate-950 mt-1 block">1,820 Units</span>
-          <span className="text-[10px] text-emerald-600 font-bold block mt-0.5">Healthy stock capacity levels</span>
-        </div>
-      </div>
-    </PageShell>
-  );
-}
+export { ItemsPage as InventoryPage } from './inventory/Items';
 
 export function EmployeesPage() {
   return (
