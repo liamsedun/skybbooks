@@ -377,9 +377,9 @@ export function ChartOfAccountsPage() {
       {/* Type filter pills */}
       <div className="flex flex-wrap gap-2">
         {[{ key: 'all', label: 'All Accounts', color: 'bg-slate-100 text-slate-700 hover:bg-slate-200' },
-          ...ACCOUNT_TYPES.map(t => ({
-            key: t,
-            label: `${TYPE_META[t].label}s`,
+          ......ACCOUNT_TYPES.map(t => ({
+  key: t,
+  label: TYPE_META[t].label + (t === 'liability' ? 'ies' : t === 'equity' ? 'ies' : t === 'revenue' ? 's' : t === 'expense' ? 's' : 's'),
             color: filterType === t ? `${TYPE_META[t].bg} ${TYPE_META[t].color}` : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
           }))
         ].map(({ key, label, color }) => (
