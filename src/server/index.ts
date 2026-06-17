@@ -21,6 +21,7 @@ import reportsRouter from '../routes/reports';
 import bankingRouter from '../routes/banking';
 import inventoryRouter from '../routes/inventory';
 import aiRouter from '../routes/ai';
+import accountantRouter from '../routes/accountant';
 
 import { runMigration } from '../db/migrate';
 
@@ -112,6 +113,7 @@ async function startServer() {
   app.use('/api/reports', reportsRouter);
   app.use('/api/inventory', inventoryRouter);
   app.use('/api/ai', aiRouter);
+  app.use('/api/accountant', accountantRouter);
 
   app.get('/api/health', (req, res) => {
     res.json({ status: 'healthy', timestamp: new Date().toISOString() });
