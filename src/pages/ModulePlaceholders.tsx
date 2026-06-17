@@ -850,46 +850,7 @@ export function PayrollRunsPage() {
   );
 }
 
-export function export { ChartOfAccountsPage } from './accountant/ChartOfAccounts';() {
-  return (
-    <PageShell title="General Ledger Chart of Accounts" description="Fully customizable double-entry registry for tracking cash, assets, equities, and liabilities." badge="Continuous Ledger">
-      <div className="bg-white border border-slate-150 rounded-2xl p-5 shadow-3xs">
-        <table className="w-full text-left text-xs text-slate-600 border-collapse">
-          <thead>
-            <tr className="border-b border-slate-100 text-[10px] text-slate-400 font-black uppercase">
-              <th className="pb-3">Account Code</th>
-              <th className="pb-3">Legal Name</th>
-              <th className="pb-3">Accrual Class</th>
-              <th className="pb-3 text-right">Total Balance</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-50 font-mono">
-            <tr>
-              <td className="py-2.5 font-bold">#1000</td>
-              <td className="py-2.5 font-sans font-semibold text-slate-800">CBN Bank Clearing Account</td>
-              <td className="py-2.5 uppercase text-indigo-600 font-bold">Asset (Cash)</td>
-              <td className="py-2.5 text-right font-bold text-slate-900">₦24,582,100.50</td>
-            </tr>
-            <tr>
-              <td className="py-2.5 font-bold">#1200</td>
-              <td className="py-2.5 font-sans font-semibold text-slate-800">Finished Stock Inventory</td>
-              <td className="py-2.5 uppercase text-indigo-600 font-bold">Asset (Stock)</td>
-              <td className="py-2.5 text-right font-bold text-slate-900">₦18,245,600.00</td>
-            </tr>
-            <tr>
-              <td className="py-2.5 font-bold">#2000</td>
-              <td className="py-2.5 font-sans font-semibold text-slate-800">VAT (Output 7.5% Accrual)</td>
-              <td className="py-2.5 uppercase text-red-500 font-bold">Liability</td>
-              <td className="py-2.5 text-right font-bold text-slate-900">₦1,120,400.00</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </PageShell>
-  );
-}
-
-export function JournalsPage() {
+export { ChartOfAccountsPage } from './accountant/ChartOfAccounts';export function JournalsPage() {
   return (
     <PageShell title="Manual General Ledger Journals" description="Direct capital adjustments, reserve transfers, and depreciation entries." badge="Master Accountant Privileges">
       <p className="text-xs text-slate-500 text-center py-10 bg-white border border-slate-100 rounded-2xl">
