@@ -26,7 +26,7 @@ import {
   ArrowUp,
   ArrowDown
 } from 'lucide-react';
-import { salesApi, bankingApi } from '../../lib/api';
+import { salesApi, bankingApi, api } from '../../lib/api';
 import { useCurrency } from '../../hooks/useCurrency';
 import { AmountDisplay } from '../../components/ui/AmountDisplay';
 import { useAuth } from '../../hooks/useAuth';
@@ -60,13 +60,6 @@ const invoiceFormZodSchema = z.object({
 
 type InvoiceFormValues = z.infer<typeof invoiceFormZodSchema>;
 
-// Seed options for service items dropdown catalog
-const SERVICE_CATALOG = [
-  { id: '1', name: 'Software Development & Integration Consulting', price: 950000.0, accountId: 'revenue-01' },
-  { id: '2', name: 'Broadband Core Fiber Subscriptions', price: 120000.0, accountId: 'revenue-02' },
-  { id: '3', name: 'Server Deployment & Cloud Provisioning', price: 450000.0, accountId: 'revenue-03' },
-  { id: '4', name: 'Database Maintenance Advisory', price: 250000.0, accountId: 'revenue-04' },
-];
 
 export function InvoiceForm({ invoiceId, onNavigate }: InvoiceFormProps) {
   const queryClient = useQueryClient();
@@ -97,6 +90,14 @@ export function InvoiceForm({ invoiceId, onNavigate }: InvoiceFormProps) {
     enabled: !!token,
   });
 
+  const { data: itemsCatalog = [] } = useQuery({
+    queryKey: ['inventory', 'items'],
+    queryFn: async () => {
+      const res = await api.get('/inventory/items');
+      return res.data;
+    },
+    enabled: !!token,
+  });
   // 3. Edit mode load data query
   const { data: editingInvoice, isLoading: isLoadingInvoiceData } = useQuery({
     queryKey: ['invoice', invoiceId],
@@ -359,10 +360,14 @@ export function InvoiceForm({ invoiceId, onNavigate }: InvoiceFormProps) {
   // Handle service/catalog selection auto fills
   const handleCatalogSelect = (index: number, itemId: string) => {
     if (!itemId) return;
-    const match = SERVICE_CATALOG.find((i) => i.id === itemId);
+    const match = itemsCatalog.find((i: any) => i.id === itemId);
     if (match) {
       setValue(`lines.${index}.description`, match.name);
-      setValue(`lines.${index}.unitPrice`, match.price);
+      setValue(`lines.${index}.unitPrice`, match.salesPrice != null ? match.salesPrice / 100 : 0);
+      setValue(`lines.${index}.itemId`, match.id);
+      if (match.salesAccountId) {
+        setValue(`lines.${index}.accountId`, match.salesAccountId);
+      }
     }
   };
 
@@ -627,9 +632,9 @@ export function InvoiceForm({ invoiceId, onNavigate }: InvoiceFormProps) {
                             className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-lg text-xs font-semibold focus:bg-white outline-none"
                           >
                             <option value="">-- Choose Template --</option>
-                            {SERVICE_CATALOG.map((item) => (
+                            {itemsCatalog.map((item: any) => (
                               <option key={item.id} value={item.id}>
-                                {item.name.substring(0, 24)}...
+                                {item.name.length > 24 ? item.name.substring(0, 24) + '...' : item.name}
                               </option>
                             ))}
                           </select>
