@@ -48,7 +48,7 @@ import {
   CashFlowPage,
   AgedReceivablesPage,
   AgedPayablesPage,
-  OrganisationSettingsPage,
+
   UsersSettingsPage,
   SalesOrdersPage,
   ReceiptsPage,
@@ -64,6 +64,7 @@ import {
   InvitesSettingsPage,
   IntegrationsSettingsPage
 } from './pages/ModulePlaceholders';
+import { OrganisationSettingsPage as OrganisationSettingsPageReal } from './pages/settings/OrganisationSettings';
 
 import { useAuth } from './hooks/useAuth';
 
@@ -259,7 +260,7 @@ function AppRoutes() {
           <Route path="/reports/custom" element={<CustomReportsPage />} />
 
           {/* System metadata & account preferences */}
-          <Route path="/settings/organisation" element={<OrganisationSettingsPage />} />
+          <Route path="/settings/organisation" element={<OrganisationSettingsPageReal />} />
           <Route path="/settings/users" element={<UsersSettingsPage />} />
           <Route path="/settings/invites" element={<InvitesSettingsPage />} />
           <Route path="/settings/integrations" element={<IntegrationsSettingsPage />} />
