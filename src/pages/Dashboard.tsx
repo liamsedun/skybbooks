@@ -72,13 +72,13 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   // Total Receivables (sum of unpaid invoices)
   const totalInvoicesList = Array.isArray(invoicesQuery.data) ? invoicesQuery.data : (invoicesQuery.data?.invoices || invoicesQuery.data?.data || []);
   const receivablesKobo = totalInvoicesList
-    .filter((inv: any) => inv.status === 'Unpaid' || inv.status === 'Overdue')
+    .filter((inv: any) => { const s = (inv.status || '').toLowerCase(); return s === 'sent' || s === 'unpaid' || s === 'overdue'; })
     .reduce((sum: number, inv: any) => sum + (inv.total || inv.amount || 0), 0) || 452900000;
 
   // Total Payables (sum of unpaid bills)
   const totalBillsList = Array.isArray(billsQuery.data) ? billsQuery.data : (billsQuery.data?.bills || billsQuery.data?.data || []);
   const payablesKobo = totalBillsList
-    .filter((b: any) => b.status === 'Unpaid' || b.status === 'Overdue' || b.status === 'Pending')
+    .filter((b: any) => { const s = (b.status || '').toLowerCase(); return s === 'unpaid' || s === 'overdue' || s === 'pending'; })
     .reduce((sum: number, b: any) => sum + (b.total || b.amount || 0), 0) || 284050000;
 
   // Net Profit Margin or dynamic PnL
@@ -86,12 +86,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   const pnlPercent = totalCashKobo > 0 ? Math.min(Math.round((netPnLKobo / totalCashKobo) * 100), 100) : 15.4;
 
   // Mock bank transaction list if there's no synchronized data yet
-  const recentTransactions = [
-    { id: '1', date: '2026-06-14', description: 'Apex Retail Svc Payout', amount: 32500000, type: 'debit', category: 'Strategic Revenue' },
-    { id: '2', date: '2026-06-14', description: 'Federal Inland Revenue Corp Tax', amount: -15000000, type: 'credit', category: 'Tax Liability' },
-    { id: '3', date: '2026-06-13', description: 'Julius Berger Invoicing Wire', amount: 75200000, type: 'debit', category: 'Strategic Revenue' },
-    { id: '4', date: '2026-06-13', description: 'MainOne Broadband Fiber Subscription', amount: -350000, type: 'credit', category: 'Operating Expenses' },
-  ];
+  const recentTransactions = Array.isArray(accountsQuery.data?.transactions) ? accountsQuery.data.transactions : (accountsQuery.data?.recentTransactions || []);
 
   // Visual chart datasets
   const cashForecastData = [
@@ -385,3 +380,4 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   );
 }
 export default Dashboard;
+
