@@ -193,7 +193,7 @@ export const orgApi = {
     return res.data;
   },
   updateOrg: async (data: any) => {
-    const res = await api.patch('/organisations', data);
+    const res = await api.patch('/org', data);
     return res.data;
   },
   uploadLogo: async (formData: FormData) => {
