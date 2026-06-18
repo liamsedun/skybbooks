@@ -8,6 +8,13 @@ import { z } from 'zod';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import { v2 as cloudinary } from 'cloudinary';
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 import { eq, and } from 'drizzle-orm';
 import { db, organisations, users } from '../db/schema';
 import { AppError } from '../lib/errors';
@@ -107,20 +114,8 @@ router.patch('/', requireRole('owner', 'accountant'), async (req: AuthenticatedR
 // 3. POST /org/logo — Upload logo (Multer, Max 2MB, JPEG/PNG only)
 // ==========================================
 
-const uploadDir = 'uploads';
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
+const storage = multer.memoryStorage();
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, `logo-${uniqueSuffix}${path.extname(file.originalname)}`);
-  }
-});
 
 const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
   const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/jpg'];
@@ -154,7 +149,14 @@ router.post('/logo', requireRole('owner', 'accountant'), (req: AuthenticatedRequ
       }
 
       const orgId = req.user!.orgId!;
-      const logoUrl = `/uploads/${req.file.filename}`;
+      const uploadResult = await new Promise<any>((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          { folder: 'skybooks/logos', resource_type: 'image' },
+          (error, result) => error ? reject(error) : resolve(result)
+        );
+        stream.end(req.file!.buffer);
+      });
+      const logoUrl = uploadResult.secure_url;
 
       const [updatedOrg] = await db
         .update(organisations)
@@ -313,3 +315,6 @@ router.patch('/users/:userId', requireRole('owner'), async (req: AuthenticatedRe
 });
 
 export default router;
+
+
+
