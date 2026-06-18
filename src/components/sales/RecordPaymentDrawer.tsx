@@ -399,7 +399,7 @@ export function RecordPaymentDrawer({
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-700 focus:bg-white focus:border-purple-600 outline-none transition"
                   >
                     {bankAccounts.map((acc: any) => (
-                      <option key={acc.id} value={acc.id}>
+                      <option key={acc.id} value={acc.accountId}>
                         {acc.name} ({formatNaira(acc.currentBalance || acc.balance || 0)})
                       </option>
                     ))}
@@ -556,4 +556,5 @@ export function RecordPaymentDrawer({
   );
 }
 export default RecordPaymentDrawer;
+
 
