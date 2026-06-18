@@ -60,6 +60,18 @@ export function Dashboard({ onNavigate }: DashboardProps) {
     enabled: !!token,
   });
 
+  const paymentsReceivedQuery = useQuery({
+    queryKey: ['paymentsReceived'],
+    queryFn: () => salesApi.getPaymentsReceived({ limit: 500 }),
+    staleTime: 10 * 1000,
+    enabled: !!token,
+  });
+  const paymentsMadeQuery = useQuery({
+    queryKey: ['paymentsMade'],
+    queryFn: () => purchasesApi.getPaymentsMade(),
+    staleTime: 10 * 1000,
+    enabled: !!token,
+  });
   const isLoading = accountsQuery.isLoading || invoicesQuery.isLoading || billsQuery.isLoading;
 
   // 2. Perform live calculations on database metrics
@@ -89,14 +101,25 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   const recentTransactions = Array.isArray(accountsQuery.data?.transactions) ? accountsQuery.data.transactions : (accountsQuery.data?.recentTransactions || []);
 
   // Visual chart datasets
-  const cashForecastData = [
-    { name: 'Jan', inflows: 1200000, outflows: 800000 },
-    { name: 'Feb', inflows: 1540000, outflows: 950000 },
-    { name: 'Mar', inflows: 1890000, outflows: 1100000 },
-    { name: 'Apr', inflows: 2100000, outflows: 1320000 },
-    { name: 'May', inflows: 2450000, outflows: 1400000 },
-    { name: 'Jun', inflows: 3100000, outflows: 1650000 },
-  ];
+  const cashForecastData = (() => {
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const now = new Date();
+    const last6 = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - 5 + i, 1);
+      return { month: d.getMonth(), year: d.getFullYear(), name: months[d.getMonth()] };
+    });
+    const inList = Array.isArray(paymentsReceivedQuery.data) ? paymentsReceivedQuery.data : (paymentsReceivedQuery.data?.payments || []);
+    const outList = Array.isArray(paymentsMadeQuery.data) ? paymentsMadeQuery.data : (paymentsMadeQuery.data?.payments || []);
+    return last6.map(({ month, year, name }) => {
+      const inflows = inList.filter((p: any) => {
+        const d = new Date(p.date); return d.getMonth() === month && d.getFullYear() === year;
+      }).reduce((s: number, p: any) => s + (p.amount || 0), 0);
+      const outflows = outList.filter((p: any) => {
+        const d = new Date(p.date); return d.getMonth() === month && d.getFullYear() === year;
+      }).reduce((s: number, p: any) => s + (p.amount || 0), 0);
+      return { name, inflows, outflows };
+    });
+  })();
 
   const pnlBreakdownData = [
     { name: 'Operating Revenue', value: 3100000 / 100 },
