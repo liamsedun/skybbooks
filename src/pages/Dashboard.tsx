@@ -4,6 +4,7 @@
  */
 
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   TrendingUp,
@@ -35,6 +36,7 @@ interface DashboardProps {
 }
 
 export function Dashboard({ onNavigate }: DashboardProps) {
+  const navigate = useNavigate();
   const { formatNaira } = useCurrency();
   const { token } = useAuth();
 
@@ -167,7 +169,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
           </button>
           
           <button
-            onClick={() => onNavigate('invoice-form')}
+            onClick={() => navigate('/sales/invoices/new')}
             className="px-3.5 py-2 text-xs font-bold text-white bg-primary hover:bg-primary-hover outline-none rounded-lg shadow-sm cursor-pointer transition flex items-center"
           >
             <PlusCircle className="w-4 h-4 mr-2" /> Issue Invoice
@@ -333,7 +335,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
               <p className="text-[11px] text-slate-400 mt-0.5">Real-time cleared transaction imports</p>
             </div>
             <button 
-              onClick={() => onNavigate('bank_feed')}
+              onClick={() => navigate('/banking')}
               className="text-xs font-bold text-primary hover:text-primary-hover outline-none flex items-center"
             >
               Reconcile All <ChevronRight className="w-4 h-4 ml-0.5" />
@@ -370,7 +372,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
 
             <div className="space-y-3 mt-5" id="dashboard-shortcuts-stack">
               <button 
-                onClick={() => onNavigate('invoices')}
+                onClick={() => navigate('/sales/invoices/new')}
                 className="w-full text-left p-3 border border-slate-150 rounded-xl hover:border-primary-light hover:bg-primary-light/10 transition flex items-center justify-between group cursor-pointer"
               >
                 <div className="min-w-0">
@@ -381,7 +383,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
               </button>
 
               <button 
-                onClick={() => onNavigate('bills')}
+                onClick={() => navigate('/purchases/bills/new')}
                 className="w-full text-left p-3 border border-slate-150 rounded-xl hover:border-primary-light hover:bg-primary-light/10 transition flex items-center justify-between group cursor-pointer"
               >
                 <div className="min-w-0">
@@ -392,7 +394,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
               </button>
 
               <button 
-                onClick={() => onNavigate('banking')}
+                onClick={() => navigate('/banking')}
                 className="w-full text-left p-3 border border-slate-150 rounded-xl hover:border-primary-light hover:bg-primary-light/10 transition flex items-center justify-between group cursor-pointer"
               >
                 <div className="min-w-0">
@@ -418,6 +420,9 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   );
 }
 export default Dashboard;
+
+
+
 
 
 
