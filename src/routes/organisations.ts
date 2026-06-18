@@ -2,292 +2,314 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
-import React, { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { orgApi } from '../../lib/api';
-import { useAuth } from '../../hooks/useAuth';
-import {
-  Building2,
-  Mail,
-  Phone,
-  MapPin,
-  Hash,
-  Calendar,
-  Receipt,
-  Save,
-  Loader2,
-  CheckCircle2,
-  AlertCircle,
-  Users,
-  Shield,
-} from 'lucide-react';
 
-interface OrgData {
-  id: string;
-  name: string;
-  address: string | null;
-  phone: string | null;
-  email: string | null;
-  logoUrl: string | null;
-  baseCurrency: string;
-  fiscalYearStart: string | null;
-  vatNumber: string | null;
-  rcNumber: string | null;
-  createdAt: string;
+import { Router, Response, NextFunction } from 'express';
+import { z } from 'zod';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+import { eq, and } from 'drizzle-orm';
+import { db, organisations, users } from '../db/schema';
+import { AppError } from '../lib/errors';
+import { authenticate, requireOrg, requireRole, AuthenticatedRequest } from '../middleware/auth';
+
+const router = Router();
+
+// ==========================================
+// ZOD SCHEMAS FOR VALIDATING CONFIG PAYLOADS
+// ==========================================
+
+const updateOrgSchema = z.object({
+  name: z.string().min(1, 'Organisation name cannot be empty.').optional(),
+  address: z.string().optional(),
+  phone: z.string().optional(),
+  email: z.string().email('Invalid email format.').optional(),
+  fiscalYearStart: z.string().optional(),
+  vatNumber: z.string().optional(),
+  rcNumber: z.string().optional()
+});
+
+const inviteUserSchema = z.object({
+  email: z.string().email('Invalid email address format.'),
+  fullName: z.string().min(1, 'Full name is required.'),
+  role: z.enum(['owner', 'accountant', 'staff'])
+});
+
+const updateUserSchema = z.object({
+  role: z.enum(['owner', 'accountant', 'staff']).optional(),
+  isActive: z.boolean().optional()
+});
+
+// Apply core authenticated and organisation filters for safety across all routes
+router.use(authenticate);
+router.use(requireOrg);
+
+// ==========================================
+// 1. GET /org — Get current organisation details
+// ==========================================
+router.get('/', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+
+    const orgList = await db
+      .select()
+      .from(organisations)
+      .where(eq(organisations.id, orgId))
+      .limit(1);
+
+    const org = orgList[0];
+    if (!org) {
+      throw new AppError('The active organisation profile could not be found.', 404);
+    }
+
+    return res.status(200).json(org);
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// ==========================================
+// 2. PATCH /org — Update organisation settings
+// ==========================================
+router.patch('/', requireRole('owner', 'accountant'), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const body = updateOrgSchema.parse(req.body);
+
+    const [updatedOrg] = await db
+      .update(organisations)
+      .set({
+        ...(body.name !== undefined && { name: body.name }),
+        ...(body.address !== undefined && { address: body.address }),
+        ...(body.phone !== undefined && { phone: body.phone }),
+        ...(body.email !== undefined && { email: body.email }),
+        ...(body.fiscalYearStart !== undefined && { fiscalYearStart: body.fiscalYearStart }),
+        ...(body.vatNumber !== undefined && { vatNumber: body.vatNumber }),
+        ...(body.rcNumber !== undefined && { rcNumber: body.rcNumber })
+      })
+      .where(eq(organisations.id, orgId))
+      .returning();
+
+    if (!updatedOrg) {
+      throw new AppError('Organisation could not be updated or was not found.', 404);
+    }
+
+    return res.status(200).json(updatedOrg);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return next(new AppError(error.issues[0]?.message || 'Validation failed', 400));
+    }
+    return next(error);
+  }
+});
+
+// ==========================================
+// 3. POST /org/logo — Upload logo (Multer, Max 2MB, JPEG/PNG only)
+// ==========================================
+
+const uploadDir = 'uploads';
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-type OrgFormState = {
-  name: string;
-  address: string;
-  phone: string;
-  email: string;
-  fiscalYearStart: string;
-  vatNumber: string;
-  rcNumber: string;
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, `logo-${uniqueSuffix}${path.extname(file.originalname)}`);
+  }
+});
+
+const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+  const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+  if (!allowedMimeTypes.includes(file.mimetype)) {
+    return cb(new Error('Only JPEG and PNG formats are allowed.') as any, false);
+  }
+  return cb(null, true);
 };
 
-function fromOrg(org: OrgData): OrgFormState {
-  return {
-    name: org.name || '',
-    address: org.address || '',
-    phone: org.phone || '',
-    email: org.email || '',
-    fiscalYearStart: org.fiscalYearStart || '',
-    vatNumber: org.vatNumber || '',
-    rcNumber: org.rcNumber || '',
-  };
-}
+const upload = multer({
+  storage,
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB Limit
+  fileFilter
+}).single('logo');
 
-function Field({
-  icon: Icon,
-  label,
-  hint,
-  ...props
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  hint?: string;
-} & React.InputHTMLAttributes<HTMLInputElement>) {
-  return (
-    <div>
-      <label className="block text-xs font-medium text-slate-600 mb-1.5">{label}</label>
-      <div className="relative">
-        <Icon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-        <input
-          {...props}
-          className="w-full pl-10 pr-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400 transition-shadow"
-        />
-      </div>
-      {hint && <p className="text-xs text-slate-400 mt-1">{hint}</p>}
-    </div>
-  );
-}
+router.post('/logo', requireRole('owner', 'accountant'), (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  upload(req, res, async (err) => {
+    try {
+      if (err) {
+        if (err instanceof multer.MulterError) {
+          if (err.code === 'LIMIT_FILE_SIZE') {
+            throw new AppError('File size limit exceeded. Maximum upload size allowed is 2MB.', 400);
+          }
+          throw new AppError(`Multer file upload error: ${err.message}`, 400);
+        }
+        throw new AppError(err.message || 'File upload failed.', 400);
+      }
 
-export function OrganisationSettingsPage() {
-  const queryClient = useQueryClient();
-  const { user } = useAuth();
-  const [form, setForm] = useState<OrgFormState>({
-    name: '', address: '', phone: '', email: '',
-    fiscalYearStart: '', vatNumber: '', rcNumber: '',
+      if (!req.file) {
+        throw new AppError('No logo file was provided in the upload request.', 400);
+      }
+
+      const orgId = req.user!.orgId!;
+      const logoUrl = `/uploads/${req.file.filename}`;
+
+      const [updatedOrg] = await db
+        .update(organisations)
+        .set({ logoUrl })
+        .where(eq(organisations.id, orgId))
+        .returning();
+
+      if (!updatedOrg) {
+        throw new AppError('Could not link uploaded logo to the specified organisation.', 404);
+      }
+
+      return res.status(200).json({
+        message: 'Organisation logo uploaded and updated successfully.',
+        logoUrl: updatedOrg.logoUrl,
+        organisation: updatedOrg
+      });
+    } catch (uploadError) {
+      return next(uploadError);
+    }
   });
-  const [saveSuccess, setSaveSuccess] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
+});
 
-  const { data: org, isLoading } = useQuery<OrgData>({
-    queryKey: ['org'],
-    queryFn: orgApi.getOrg,
-  });
+// ==========================================
+// 4. GET /org/users — List all users in org
+// ==========================================
+router.get('/users', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
 
-  useEffect(() => {
-    if (org) setForm(fromOrg(org));
-  }, [org]);
+    const userList = await db
+      .select()
+      .from(users)
+      .where(eq(users.organisationId, orgId));
 
-  const updateMutation = useMutation({
-    mutationFn: (data: Partial<OrgFormState>) => orgApi.updateOrg(data),
-    onSuccess: (updated) => {
-      queryClient.setQueryData(['org'], updated);
-      queryClient.invalidateQueries({ queryKey: ['org'] });
-      setSaveSuccess(true);
-      setSaveError(null);
-      setTimeout(() => setSaveSuccess(false), 3000);
-    },
-    onError: (err: any) => {
-      setSaveError(err?.response?.data?.error || 'Failed to save changes.');
-      setSaveSuccess(false);
-    },
-  });
+    // Exclude security hashed passwords from the response list
+    const safeUserResponse = userList.map(({ passwordHash: _, ...rest }) => rest);
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setSaveError(null);
-    const payload: Partial<OrgFormState> = {};
-    if (form.name.trim()) payload.name = form.name.trim();
-    payload.address = form.address.trim() || '';
-    payload.phone = form.phone.trim() || '';
-    payload.email = form.email.trim() || '';
-    payload.fiscalYearStart = form.fiscalYearStart.trim() || '';
-    payload.vatNumber = form.vatNumber.trim() || '';
-    payload.rcNumber = form.rcNumber.trim() || '';
-    updateMutation.mutate(payload);
+    return res.status(200).json(safeUserResponse);
+  } catch (error) {
+    return next(error);
   }
+});
 
-  function f(key: keyof OrgFormState) {
-    return (e: React.ChangeEvent<HTMLInputElement>) =>
-      setForm((prev) => ({ ...prev, [key]: e.target.value }));
+// ==========================================
+// 5. POST /org/users/invite — Invite a user
+// ==========================================
+router.post('/users/invite', requireRole('owner', 'accountant'), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const body = inviteUserSchema.parse(req.body);
+
+    const emailNorm = body.email.toLowerCase();
+
+    // Verify if email is already taken
+    const existingUserList = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, emailNorm))
+      .limit(1);
+
+    if (existingUserList.length > 0) {
+      throw new AppError('A user with this email is already registered or invited.', 400);
+    }
+
+    // Insert user with pending state (isActive = false, wait till registration completes)
+    const [newUser] = await db
+      .insert(users)
+      .values({
+        email: emailNorm,
+        fullName: body.fullName,
+        role: body.role,
+        organisationId: orgId,
+        isActive: false // Invitation is pending, inactive by default until login or onboarding
+      })
+      .returning();
+
+    if (!newUser) {
+      throw new AppError('Failed to create invitation record.', 500);
+    }
+
+    // Stub for email dispatch mechanism
+    console.log(`[EMAIL STUB] dispatching invitation notification to ${emailNorm} for role of ${body.role}. Open URL: http://localhost:3000/auth/register?email=${encodeURIComponent(emailNorm)}`);
+
+    const { passwordHash: _, ...userResponse } = newUser;
+
+    return res.status(201).json({
+      message: `User ${body.fullName} has been successfully invited.`,
+      user: userResponse
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return next(new AppError(error.issues[0]?.message || 'Validation failed', 400));
+    }
+    return next(error);
   }
+});
 
-  if (isLoading) {
-    return (
-      <div className="max-w-3xl mx-auto px-6 py-16 flex items-center justify-center text-slate-400">
-        <Loader2 size={20} className="animate-spin mr-2" />
-        Loading organisation details...
-      </div>
-    );
+// ==========================================
+// 6. PATCH /org/users/:userId — Update user configurations (roles or statuses)
+// ==========================================
+router.patch('/users/:userId', requireRole('owner'), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const currentUserId = req.user!.userId;
+    const { userId } = req.params;
+
+    const body = updateUserSchema.parse(req.body);
+
+    // Verify the target user belongs in the same organisation context
+    const targetUserList = await db
+      .select()
+      .from(users)
+      .where(and(eq(users.id, userId), eq(users.organisationId, orgId)))
+      .limit(1);
+
+    const targetUser = targetUserList[0];
+    if (!targetUser) {
+      throw new AppError('The requested user is not a member of your organisation profile.', 404);
+    }
+
+    // Protection check to prevent lockout of sole owner deactivating or demoting themselves
+    if (userId === currentUserId) {
+      if (body.isActive === false) {
+        throw new AppError('For security constraints, you are not allowed to deactivate your own account.', 400);
+      }
+      if (body.role && body.role !== 'owner') {
+        throw new AppError('For security/lockout constraints, you cannot demote yourself from the owner role.', 400);
+      }
+    }
+
+    const [updatedUser] = await db
+      .update(users)
+      .set({
+        ...(body.role !== undefined && { role: body.role }),
+        ...(body.isActive !== undefined && { isActive: body.isActive })
+      })
+      .where(eq(users.id, userId))
+      .returning();
+
+    if (!updatedUser) {
+      throw new AppError('Failed to apply update settings on the user.', 500);
+    }
+
+    const { passwordHash: _, ...safeUser } = updatedUser;
+
+    return res.status(200).json({
+      message: 'User profile updated successfully.',
+      user: safeUser
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return next(new AppError(error.issues[0]?.message || 'Validation failed', 400));
+    }
+    return next(error);
   }
+});
 
-  return (
-    <div className="max-w-3xl mx-auto px-6 py-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-900">Organisation Settings</h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Update your company profile, tax identifiers, and fiscal configuration.
-        </p>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Core identity */}
-        <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-4">
-          <h2 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-            <Building2 size={16} className="text-slate-400" />
-            Company Identity
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="sm:col-span-2">
-              <Field
-                icon={Building2}
-                label="Legal Business Name"
-                value={form.name}
-                onChange={f('name')}
-                placeholder="Skyhouse Technologies Ltd"
-                required
-              />
-            </div>
-            <Field
-              icon={Mail}
-              label="Business Email"
-              type="email"
-              value={form.email}
-              onChange={f('email')}
-              placeholder="hello@company.ng"
-            />
-            <Field
-              icon={Phone}
-              label="Phone Number"
-              value={form.phone}
-              onChange={f('phone')}
-              placeholder="+234 801 234 5678"
-            />
-            <div className="sm:col-span-2">
-              <Field
-                icon={MapPin}
-                label="Registered Address"
-                value={form.address}
-                onChange={f('address')}
-                placeholder="12 Bode Thomas Road, Surulere, Lagos State, Nigeria"
-                hint="This appears on invoices and official documents."
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Nigerian tax & compliance */}
-        <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-4">
-          <h2 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-            <Receipt size={16} className="text-slate-400" />
-            Tax & Compliance (FIRS / CAC)
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field
-              icon={Hash}
-              label="RC Number (CAC)"
-              value={form.rcNumber}
-              onChange={f('rcNumber')}
-              placeholder="RC-1234567"
-              hint="Companies and Allied Matters Act registration number."
-            />
-            <Field
-              icon={Receipt}
-              label="VAT / TIN Number (FIRS)"
-              value={form.vatNumber}
-              onChange={f('vatNumber')}
-              placeholder="TIN-00000000-0001"
-              hint="Federal Inland Revenue Service tax identification."
-            />
-            <Field
-              icon={Calendar}
-              label="Fiscal Year Start"
-              value={form.fiscalYearStart}
-              onChange={f('fiscalYearStart')}
-              placeholder="01-01 (DD-MM)"
-              hint="Day and month your financial year begins."
-            />
-          </div>
-        </div>
-
-        {/* Read-only info */}
-        <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
-          <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3 flex items-center gap-2">
-            <Shield size={14} />
-            Account Info
-          </h2>
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="text-xs text-slate-400 block mb-0.5">Administrator</span>
-              <span className="font-medium text-slate-700">{user?.fullName || '—'}</span>
-            </div>
-            <div>
-              <span className="text-xs text-slate-400 block mb-0.5">Role</span>
-              <span className="font-medium text-slate-700 capitalize">{user?.role || '—'}</span>
-            </div>
-            <div>
-              <span className="text-xs text-slate-400 block mb-0.5">Base Currency</span>
-              <span className="font-medium text-slate-700">{org?.baseCurrency || 'NGN'}</span>
-            </div>
-            <div>
-              <span className="text-xs text-slate-400 block mb-0.5">Organisation ID</span>
-              <span className="font-mono text-xs text-slate-500">{org?.id?.substring(0, 8)}…</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Feedback */}
-        {saveError && (
-          <div className="flex items-center gap-2 text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-4 py-3">
-            <AlertCircle size={16} className="shrink-0" />
-            {saveError}
-          </div>
-        )}
-        {saveSuccess && (
-          <div className="flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-4 py-3">
-            <CheckCircle2 size={16} className="shrink-0" />
-            Organisation profile saved successfully.
-          </div>
-        )}
-
-        <div className="flex justify-end">
-          <button
-            type="submit"
-            disabled={updateMutation.isPending}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 disabled:opacity-50 transition-colors"
-          >
-            {updateMutation.isPending ? (
-              <><Loader2 size={16} className="animate-spin" />Saving…</>
-            ) : (
-              <><Save size={16} />Save Changes</>
-            )}
-          </button>
-        </div>
-      </form>
-    </div>
-  );
-}
+export default router;
