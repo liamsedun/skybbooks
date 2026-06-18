@@ -133,6 +133,9 @@ async function startServer() {
   });
 
   // ==========================================
+  // Serve uploaded files (logos etc)
+  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
   // STATIC FILES (after API routes)
   // ==========================================
   if (process.env.NODE_ENV !== 'production') {
@@ -158,3 +161,4 @@ async function startServer() {
 startServer().catch((err) => {
   logger.error('Failed to start server:', err);
 });
+
