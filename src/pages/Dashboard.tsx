@@ -63,11 +63,11 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   const isLoading = accountsQuery.isLoading || invoicesQuery.isLoading || billsQuery.isLoading;
 
   // 2. Perform live calculations on database metrics
-  const activeAccounts = Array.isArray(accountsQuery.data) ? accountsQuery.data : (accountsQuery.data?.accounts || accountsQuery.data?.data || []);
+  const activeAccounts = Array.isArray(accountsQuery.data) ? accountsQuery.data : (accountsQuery.data ?? []);
 
   
   // Total Bank Balances (sum of active cash accounts)
-  const totalCashKobo = activeAccounts.reduce((sum: number, acc: any) => sum + (acc.balance || 0), 0);
+  const totalCashKobo = activeAccounts.reduce((sum: number, acc: any) => sum + (acc.currentBalance || acc.balance || 0), 0);
 
   // Total Receivables (sum of unpaid invoices)
   const totalInvoicesList = Array.isArray(invoicesQuery.data) ? invoicesQuery.data : (invoicesQuery.data?.invoices || invoicesQuery.data?.data || []);
@@ -380,5 +380,6 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   );
 }
 export default Dashboard;
+
 
 
