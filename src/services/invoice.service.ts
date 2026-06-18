@@ -620,6 +620,9 @@ export async function listInvoices(
     conditions.push(sql`lower(${invoices.invoiceNumber}) like ${'%' + filters.search.toLowerCase() + '%'}`);
   }
 
+  const allContacts = await db.select({ id: contacts.id, name: contacts.name }).from(contacts).where(eq(contacts.orgId, orgId));
+  const custMap = new Map(allContacts.map((c: any) => [c.id, c.name]));
+
   const itemsList = await db
     .select()
     .from(invoices)
@@ -636,7 +639,7 @@ export async function listInvoices(
   const totalItems = Number(countResult?.count || 0);
 
   return {
-    invoices: itemsList,
+    invoices: itemsList.map((inv: any) => ({ ...inv, clientName: custMap.get(inv.customerId) || null })),
     pagination: {
       page,
       limit,
@@ -759,3 +762,5 @@ export async function getInvoiceAgingReport(orgId: string): Promise<any> {
 
   return report;
 }
+
+
