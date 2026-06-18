@@ -307,6 +307,21 @@ export function OrganisationSettingsPage() {
   });
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [logoError, setLogoError] = useState<string | null>(null);
+
+  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { setLogoError("Logo must be under 2MB"); return; }
+    setLogoUploading(true); setLogoError(null);
+    try {
+      const fd = new FormData(); fd.append("logo", file);
+      await orgApi.uploadLogo(fd);
+      queryClient.invalidateQueries({ queryKey: ["org"] });
+    } catch { setLogoError("Upload failed. Try again."); }
+    finally { setLogoUploading(false); }
+  }
 
   const { data: org, isLoading } = useQuery<OrgData>({
     queryKey: ['org'],
@@ -379,6 +394,22 @@ export function OrganisationSettingsPage() {
               <Building2 size={16} className="text-slate-400" />
               Company Identity
             </h2>
+            <div className="flex items-center gap-5 pb-4 border-b border-slate-100">
+              <div className="w-20 h-20 rounded-xl border-2 border-dashed border-slate-200 flex items-center justify-center bg-slate-50 overflow-hidden shrink-0">
+                {org?.logoUrl
+                  ? <img src={org.logoUrl} alt="Logo" className="w-full h-full object-contain" />
+                  : <Building2 size={28} className="text-slate-300" />}
+              </div>
+              <div>
+                <p className="text-sm font-medium text-slate-700">Company Logo</p>
+                <p className="text-xs text-slate-400 mt-0.5 mb-2">PNG or JPG, max 2MB. Appears on invoices.</p>
+                <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg transition">
+                  {logoUploading ? "Uploading..." : "Upload Logo"}
+                  <input type="file" accept="image/png,image/jpeg" className="hidden" onChange={handleLogoUpload} disabled={logoUploading} />
+                </label>
+                {logoError && <p className="text-xs text-red-500 mt-1">{logoError}</p>}
+              </div>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
                 <Field
@@ -510,3 +541,5 @@ export function OrganisationSettingsPage() {
     </div>
   );
 }
+
+
