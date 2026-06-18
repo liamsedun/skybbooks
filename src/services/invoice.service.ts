@@ -575,23 +575,14 @@ export async function getInvoice(id: string, orgId: string): Promise<any> {
     .limit(1);
 
   // Fetch payment/allocations history
-  const paymentHistory = await db
-    .select({
-      allocationId: sql`payment_allocations.id`,
-      amountAllocated: sql`payment_allocations.amount`,
-      paymentId: sql`payments_received.id`,
-      paymentNumber: sql`payments_received.payment_number`,
-      date: sql`payments_received.date`,
-      paymentMethod: sql`payments_received.payment_method`,
-      reference: sql`payments_received.reference`,
-      notes: sql`payments_received.notes`
-    })
-    .from(db.select().from(sql`payment_allocations`).as('payment_allocations') as any)
-    .innerJoin(
-      db.select().from(sql`payments_received`).as('payments_received') as any,
-      sql`payment_allocations.payment_id = payments_received.id`
-    )
-    .where(sql`payment_allocations.invoice_id = ${id}`);
+  const paymentHistory = await db.execute(sql`
+    SELECT pa.id as "allocationId", pa.amount as "amountAllocated",
+           pr.id as "paymentId", pr.payment_number as "paymentNumber",
+           pr.date, pr.payment_method as "paymentMethod", pr.reference, pr.notes
+    FROM payment_allocations pa
+    INNER JOIN payments_received pr ON pa.payment_id = pr.id
+    WHERE pa.invoice_id = ${id}
+  `);
 
   return {
     ...invoice,
@@ -762,5 +753,6 @@ export async function getInvoiceAgingReport(orgId: string): Promise<any> {
 
   return report;
 }
+
 
 
