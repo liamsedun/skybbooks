@@ -630,17 +630,17 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
 
                       {/* Customer Info */}
                       <td className="px-4 align-middle h-12">
-                        <div className="font-semibold text-ink-900 text-[13px]">{invoice.clientName}</div>
-                        <div className="text-[10px] text-ink-400 mt-0.5 font-bold">{invoice.clientEmail}</div>
+                        <div className="font-semibold text-ink-900 text-[13px]">{invoice.clientName || invoice.customerId || "—"}</div>
+                        <div className="text-[10px] text-ink-400 mt-0.5 font-bold">{invoice.clientEmail || ""}</div>
                       </td>
 
                       {/* Issue date */}
-                      <td className="px-4 align-middle h-12 font-mono text-ink-600 font-medium text-[13px]">{invoice.date}</td>
+                      <td className="px-4 align-middle h-12 font-mono text-ink-600 font-medium text-[13px]">{invoice.date ? new Date(invoice.date).toLocaleDateString("en-GB", { day:"2-digit", month:"short", year:"numeric" }) : "—"}</td>
 
                       {/* Due Date */}
                       <td className="px-4 align-middle h-12 font-mono text-ink-650 font-medium text-[13px]">
                         <span className={(invoice.status || '').toLowerCase() === 'overdue' ? 'text-danger-custom font-bold' : 'text-slate-500'}>
-                          {invoice.dueDate}
+                          {invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString("en-GB", { day:"2-digit", month:"short", year:"numeric" }) : "—"}
                         </span>
                       </td>
 
