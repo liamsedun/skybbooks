@@ -197,7 +197,7 @@ export const orgApi = {
     return res.data;
   },
   uploadLogo: async (formData: FormData) => {
-    const res = await api.post('/organisations/logo', formData, {
+    const res = await api.post('/org/logo', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return res.data;
@@ -591,4 +591,5 @@ export const reportsApi = {
     return res.data;
   },
 };
+
 
