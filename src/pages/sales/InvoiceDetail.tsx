@@ -56,7 +56,7 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
 
   // 2. Mock fallback invoice details for the local previewer/demo mode
   const invoiceData = useMemo(() => {
-    if (invoice) return invoice;
+    if (invoice) return { ...invoice, clientName: invoice.clientName || invoice.customer?.name || null, clientEmail: invoice.clientEmail || invoice.customer?.email || null };
 
     // Default static fallback mockup to guarantee seamless offline navigation
     const mockDb: Record<string, any> = {
@@ -660,3 +660,4 @@ Reference Authentication Token: SECURE_SHA-256_STAMP
   );
 }
 export default InvoiceDetail;
+
