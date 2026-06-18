@@ -331,21 +331,16 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
 
               {/* Branding row */}
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6">
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold text-sm">
-                      {org?.name?.[0] ?? 'S'}
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-semibold text-slate-800">{org?.name || 'Your Company'}</h3>
-                      {org?.address && <p className="text-xs text-slate-400 mt-0.5">{org.address}</p>}
-                    </div>
-                  </div>
-                  {(org?.phone || org?.email) && (
-                    <p className="text-xs text-slate-400">
-                      {[org?.phone, org?.email].filter(Boolean).join(' · ')}
-                    </p>
-                  )}
+                <div className="space-y-1">
+                  {org?.logoUrl
+                    ? <img src={org.logoUrl} alt="Logo" className="h-12 w-auto object-contain mb-2" />
+                    : <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold text-sm mb-2">{org?.name?.[0] ?? 'S'}</div>
+                  }
+                  <p className="text-sm font-bold text-slate-800">{org?.name || 'Your Company'}</p>
+                  {org?.address && <p className="text-xs text-slate-500">{org.address}</p>}
+                  {org?.phone && <p className="text-xs text-slate-500">{org.phone}</p>}
+                  {org?.email && <p className="text-xs text-slate-500">{org.email}</p>}
+                  {org?.website && <p className="text-xs text-slate-500">{org.website}</p>}
                 </div>
 
                 <div className="text-right">
@@ -535,5 +530,6 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
 }
 
 export default InvoiceDetail;
+
 
 
