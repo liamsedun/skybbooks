@@ -642,67 +642,7 @@ function PageShell({ title, description, badge, children }: { title: string, des
 // 3. SECURE PROTECTED MODULES (RICH GRAPHICS & FULL-COMPLIANCE INTERFACES)
 // =========================================================================
 
-export function CustomersPage() {
-  const [customers, setCustomers] = useState([
-    { id: '1', name: 'Alhaji Dangote Group', email: 'billing@dangote.com', phone: '08031112222', balanceKobo: 520000000, active: true },
-    { id: '2', name: 'Mainasara Logistics', email: 'mainasara@logistics.ng', phone: '08097778888', balanceKobo: 15450000, active: true },
-    { id: '3', name: 'Jumia Nigeria HQ', email: 'jumia@jumia.com', phone: '09015556666', balanceKobo: -2900000, active: true }
-  ]);
-  const [search, setSearch] = useState('');
-  const filtered = customers.filter(c => c.name.toLowerCase().includes(search.toLowerCase()));
-
-  const formatMoney = (kobo: number) => {
-    return '₦' + (kobo / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 });
-  };
-
-  return (
-    <PageShell title="Client & Receivables Registry" description="Secure directory mapping of all buyers, corporate clients and credit logs." badge="Double-Entry Integrated">
-      <div className="flex justify-between items-center bg-white p-4 border border-slate-100 rounded-2xl shadow-3xs gap-4">
-        <div className="relative max-w-xs w-full">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-          <input 
-            type="text" 
-            placeholder="Search buyers profile..." 
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 text-xs border border-slate-200 rounded-xl outline-none focus:border-purple-600 bg-slate-50/50"
-          />
-        </div>
-        <button className="py-2 px-3.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition">
-          <Plus className="w-3.5 h-3.5" />
-          Onboard Client
-        </button>
-      </div>
-
-      <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-2xs">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-slate-50/75 border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-wider">
-              <th className="p-4">Customer Name</th>
-              <th className="p-4">Billing Email</th>
-              <th className="p-4">Logistics Contact</th>
-              <th className="p-4 text-right">Amortized Ledger Balance</th>
-              <th className="p-4 text-center">Status</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-50 text-xs">
-            {filtered.map(c => (
-              <tr key={c.id} className="hover:bg-slate-50/40">
-                <td className="p-4 font-bold text-slate-800">{c.name}</td>
-                <td className="p-4 font-mono font-medium text-slate-500">{c.email}</td>
-                <td className="p-4 text-slate-600">{c.phone}</td>
-                <td className={`p-4 text-right font-mono font-bold ${c.balanceKobo > 0 ? 'text-slate-950' : 'text-emerald-600'}`}>{formatMoney(c.balanceKobo)}</td>
-                <td className="p-4 text-center">
-                  <span className="px-2 py-0.5 bg-emerald-50 border border-emerald-100 text-emerald-700 font-extrabold text-[9px] rounded-full uppercase">Active</span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </PageShell>
-  );
-}
+export { CustomersPage } from './sales/Customers';
 
 export function QuotesPage() {
   const [quotes, setQuotes] = useState([
