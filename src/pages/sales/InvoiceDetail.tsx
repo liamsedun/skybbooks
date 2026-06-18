@@ -253,7 +253,7 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
         id: 'step-3-overdue',
         title: 'Overdue Collecting Flag',
         description: 'Past corporate due dates threshold. Multi-level dunning notice initiated.',
-        timestamp: `${invoiceData.dueDate} Midnight`,
+        timestamp: `${invoiceData.dueDate ? new Date(invoiceData.dueDate).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'}) : '-'} Midnight`,
         icon: Clock,
         color: 'bg-rose-600 text-white',
       });
@@ -310,8 +310,8 @@ FinanceOS certified GAAP Receipts
 ===============================
 Invoice #: ${invoiceData.invoiceNumber || 'INV-MOCK'}
 Client Business: ${invoiceData.clientName}
-Issue Date: ${invoiceData.date}
-Due Date: ${invoiceData.dueDate}
+Issue Date: ${invoiceData.date ? new Date(invoiceData.date).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'}) : '-'}
+Due Date: ${invoiceData.dueDate ? new Date(invoiceData.dueDate).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'}) : '-'}
 Subtotal: ${formatNaira(computedPricing.subtotalKobo)}
 Tax (Nigerian VAT 7.5%): ${formatNaira(computedPricing.vatKobo)}
 Total Billing due Naira: ${formatNaira(computedPricing.totalKobo)}
@@ -451,7 +451,7 @@ Reference Authentication Token: SECURE_SHA-256_STAMP
                   </div>
                 </div>
                 <div className="text-[10px] text-slate-400 font-medium leading-relaxed font-mono">
-                  {org?.address || org?.name || ""}
+                  {[org?.address, [org?.phone, org?.email].filter(Boolean).join(' · ')].filter(Boolean).join(', ')}
                 </div>
               </div>
 
@@ -477,9 +477,9 @@ Reference Authentication Token: SECURE_SHA-256_STAMP
 
               <div className="space-y-1.5 sm:text-right font-mono">
                 <h5 className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest">Core Ledger Covenants</h5>
-                <p className="text-slate-500">Date Issued: <strong className="text-slate-800">{invoiceData.date}</strong></p>
+                <p className="text-slate-500">Date Issued: <strong className="text-slate-800">{invoiceData.date ? new Date(invoiceData.date).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'}) : '-'}</strong></p>
                 <p className="text-slate-500">Payment Terms: <strong className="text-slate-800">{invoiceData.paymentTerms || '30'} Days</strong></p>
-                <p className="text-slate-500">Invoice Due Date: <strong className="text-slate-800 font-black">{invoiceData.dueDate}</strong></p>
+                <p className="text-slate-500">Invoice Due Date: <strong className="text-slate-800 font-black">{invoiceData.dueDate ? new Date(invoiceData.dueDate).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'}) : '-'}</strong></p>
               </div>
 
             </div>
@@ -514,7 +514,7 @@ Reference Authentication Token: SECURE_SHA-256_STAMP
                         <td className="py-3 px-3 font-mono text-slate-400">{index + 1}</td>
                         <td className="py-3 px-3">
                           <div className="font-extrabold text-slate-800 leading-relaxed">{line.description}</div>
-                          {line.itemId && <div className="text-[9px] text-slate-400 mt-0.5 font-bold font-mono">CODE: {line.itemId}</div>}
+                          {line.itemId && <div className="text-[9px] text-slate-400 mt-0.5 font-bold font-mono">SKU: {line.sku || line.itemId?.substring(0,8).toUpperCase() || '-'}</div>}
                         </td>
                         <td className="py-3 px-3 text-center font-sans">{qDetails}</td>
                         <td className="py-3 px-3 text-right font-mono">{formatNaira(pKobo)}</td>
@@ -662,6 +662,10 @@ Reference Authentication Token: SECURE_SHA-256_STAMP
   );
 }
 export default InvoiceDetail;
+
+
+
+
 
 
 
