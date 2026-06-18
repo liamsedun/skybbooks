@@ -201,7 +201,16 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
   const handlePdfDownload = async () => {
     try {
       const printArea = document.getElementById('invoice-pdf-mock-container');
-      if (printArea) { window.print(); return; }
+      if (printArea) {
+        const w = window.open("", "_blank", "width=900,height=700");
+        w!.document.write(`<!DOCTYPE html><html><head><title>${invoiceData.invoiceNumber || "Invoice"}</title><style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: Inter, system-ui, sans-serif; font-size: 14px; color: #1e293b; background: white; padding: 40px; }
+          @media print { body { padding: 20px; } @page { margin: 1cm; size: A4; } }
+        </style></head><body>${printArea.innerHTML}<script>window.onload=function(){window.print();window.onafterprint=function(){window.close();}}<\/script></body></html>`);
+        w!.document.close();
+        return;
+      }
       const blob = await salesApi.getInvoicePdf(invoiceId);
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -526,3 +535,4 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
 }
 
 export default InvoiceDetail;
+
