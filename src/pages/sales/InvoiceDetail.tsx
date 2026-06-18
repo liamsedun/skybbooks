@@ -205,9 +205,9 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
         const w = window.open("", "_blank", "width=900,height=700");
         w!.document.write(`<!DOCTYPE html><html><head><title>${invoiceData.invoiceNumber || "Invoice"}</title><style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: Inter, system-ui, sans-serif; font-size: 14px; color: #1e293b; background: white; padding: 40px; }
-          @media print { body { padding: 20px; } @page { margin: 1cm; size: A4; } }
-        </style></head><body>${printArea.innerHTML}<script>window.onload=function(){window.print();window.onafterprint=function(){window.close();}}<\/script></body></html>`);
+          body { font-family: Inter, system-ui, -apple-system, sans-serif; font-size: 14px; color: #1e293b; background: white; padding: 40px; }
+          @media print { body { padding: 20px; } @page { margin: 1.5cm; size: A4; } }
+        </style><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.1/base.css"><script src="https://cdn.tailwindcss.com"><\/script></head><body>${printArea.innerHTML}<script>window.onload=function(){window.print();window.onafterprint=function(){window.close();}}<\/script></body></html>`);
         w!.document.close();
         return;
       }
@@ -535,4 +535,5 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
 }
 
 export default InvoiceDetail;
+
 
