@@ -26,7 +26,7 @@ import {
   Percent,
   TrendingDown
 } from 'lucide-react';
-import { salesApi } from '../../lib/api';
+import { salesApi, orgApi } from '../../lib/api';
 import { useCurrency } from '../../hooks/useCurrency';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { AmountDisplay } from '../../components/ui/AmountDisplay';
@@ -42,6 +42,7 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
   const queryClient = useQueryClient();
   const { formatNaira } = useCurrency();
   const { token } = useAuth();
+  const { data: org } = useQuery({ queryKey: ['org'], queryFn: orgApi.getOrg, staleTime: 60000, enabled: !!token });
 
   // Dialog and payments drawer state handlers
   const [paymentDrawerOpen, setPaymentDrawerOpen] = useState(false);
@@ -291,6 +292,9 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
   // Handle single dynamic PDF receipt download
   const handlePdfDownload = async () => {
     try {
+// PDF: print instead
+      const printArea = document.getElementById("invoice-pdf-mock-container");
+      if (printArea) { window.print(); return; }
       const blob = await salesApi.getInvoicePdf(invoiceId);
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -439,17 +443,15 @@ Reference Authentication Token: SECURE_SHA-256_STAMP
               <div className="space-y-2">
                 <div className="flex items-center space-x-2">
                   <div className="w-8 h-8 rounded-xl bg-purple-600 flex items-center justify-center text-white font-black text-sm uppercase tracking-wide">
-                    F
+                    S
                   </div>
                   <div>
-                    <h3 className="text-xs font-black text-slate-800 tracking-widest uppercase">FinanceOS Cloud Ledger</h3>
+                    <h3 className="text-xs font-black text-slate-800 tracking-widest uppercase">SkyBooks Ledger</h3>
                     <p className="text-[9px] text-slate-400 font-extrabold uppercase font-mono tracking-widest leading-none mt-0.5">Dual Entry Certified</p>
                   </div>
                 </div>
                 <div className="text-[10px] text-slate-400 font-medium leading-relaxed font-mono">
-                  FinanceOS Systems Inc.<br />
-                  12 Bode Thomas Road, Surulere<br />
-                  Lagos State, Nigeria
+                  {org?.address || org?.name || ""}
                 </div>
               </div>
 
@@ -660,4 +662,12 @@ Reference Authentication Token: SECURE_SHA-256_STAMP
   );
 }
 export default InvoiceDetail;
+
+
+
+
+
+
+
+
 
