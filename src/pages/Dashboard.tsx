@@ -98,7 +98,16 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   const pnlPercent = totalCashKobo > 0 ? Math.min(Math.round((netPnLKobo / totalCashKobo) * 100), 100) : 15.4;
 
   // Mock bank transaction list if there's no synchronized data yet
-  const recentTransactions = Array.isArray(accountsQuery.data?.transactions) ? accountsQuery.data.transactions : (accountsQuery.data?.recentTransactions || []);
+  const recentTransactions = (() => {
+    const inList = Array.isArray(paymentsReceivedQuery.data) ? paymentsReceivedQuery.data : (paymentsReceivedQuery.data?.payments || []);
+    return inList.slice(0, 5).map((p: any) => ({
+      id: p.id,
+      description: p.reference || p.paymentNumber || 'Payment Received',
+      amount: p.amount || 0,
+      date: p.date ? new Date(p.date).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '',
+      category: p.paymentMethod || 'bank_transfer',
+    }));
+  })();
 
   // Visual chart datasets
   const cashForecastData = (() => {
@@ -121,12 +130,18 @@ export function Dashboard({ onNavigate }: DashboardProps) {
     });
   })();
 
-  const pnlBreakdownData = [
-    { name: 'Operating Revenue', value: 3100000 / 100 },
-    { name: 'Cost of Goods Sol', value: 920000 / 100 },
-    { name: 'Payroll & Allowances', value: 750000 / 100 },
-    { name: 'Interest/Taxes Paid', value: 320000 / 100 },
-  ];
+  const pnlBreakdownData = (() => {
+    const inList = Array.isArray(paymentsReceivedQuery.data) ? paymentsReceivedQuery.data : (paymentsReceivedQuery.data?.payments || []);
+    const outList = Array.isArray(paymentsMadeQuery.data) ? paymentsMadeQuery.data : (paymentsMadeQuery.data?.payments || []);
+    const totalRevenue = inList.reduce((s: number, p: any) => s + (p.amount || 0), 0);
+    const totalExpenses = outList.reduce((s: number, p: any) => s + (p.amount || 0), 0);
+    const totalBills = totalBillsList.reduce((s: number, b: any) => s + (b.total || 0), 0);
+    return [
+      { name: 'Revenue Received', value: Math.round(totalRevenue / 100) },
+      { name: 'Bills & Payables', value: Math.round(totalBills / 100) },
+      { name: 'Payments Made', value: Math.round(totalExpenses / 100) },
+    ].filter(d => d.value > 0);
+  })();
 
   return (
     <div className="space-y-8 animate-fade-in" id="dashboard-viewport-box">
@@ -152,7 +167,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
           </button>
           
           <button
-            onClick={() => onNavigate('invoices')}
+            onClick={() => onNavigate('invoice-form')}
             className="px-3.5 py-2 text-xs font-bold text-white bg-primary hover:bg-primary-hover outline-none rounded-lg shadow-sm cursor-pointer transition flex items-center"
           >
             <PlusCircle className="w-4 h-4 mr-2" /> Issue Invoice
@@ -276,7 +291,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" opacity={0.5} />
                 <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} stroke="#94A3B8" />
-                <YAxis fontSize={10} axisLine={false} tickLine={false} stroke="#94A3B8" />
+                <YAxis fontSize={10} axisLine={false} tickLine={false} stroke="#94A3B8" tickFormatter={(v) => `N${(v/100000000).toFixed(1)}M`} width={60} />
                 <Tooltip />
                 <Area type="monotone" dataKey="inflows" stroke="#2e7d32" strokeWidth={2.5} fillOpacity={1} fill="url(#colorIn)" name="Cash Inflow" />
                 <Area type="monotone" dataKey="outflows" stroke="#dc2626" strokeWidth={2.5} fillOpacity={1} fill="url(#colorOut)" name="Cash Outflow" />
@@ -366,7 +381,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
               </button>
 
               <button 
-                onClick={() => onNavigate('expenses')}
+                onClick={() => onNavigate('bills')}
                 className="w-full text-left p-3 border border-slate-150 rounded-xl hover:border-primary-light hover:bg-primary-light/10 transition flex items-center justify-between group cursor-pointer"
               >
                 <div className="min-w-0">
@@ -377,7 +392,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
               </button>
 
               <button 
-                onClick={() => onNavigate('payroll_runs')}
+                onClick={() => onNavigate('banking')}
                 className="w-full text-left p-3 border border-slate-150 rounded-xl hover:border-primary-light hover:bg-primary-light/10 transition flex items-center justify-between group cursor-pointer"
               >
                 <div className="min-w-0">
@@ -403,6 +418,8 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   );
 }
 export default Dashboard;
+
+
 
 
 
