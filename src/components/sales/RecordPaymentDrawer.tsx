@@ -74,7 +74,7 @@ export function RecordPaymentDrawer({
   const allInvoices = useMemo(() => {
     if (!invoicesData) return [];
     // Can be an array directly or an object { data: [...] }
-    return Array.isArray(invoicesData) ? invoicesData : (invoicesData.data || []);
+    return Array.isArray(invoicesData) ? invoicesData : (invoicesData.invoices || invoicesData.data || []);
   }, [invoicesData]);
 
   // Form Setup
@@ -400,7 +400,7 @@ export function RecordPaymentDrawer({
                   >
                     {bankAccounts.map((acc: any) => (
                       <option key={acc.id} value={acc.id}>
-                        {acc.name} ({formatNaira(acc.balance)})
+                        {acc.name} ({formatNaira(acc.currentBalance || acc.balance || 0)})
                       </option>
                     ))}
                   </select>
@@ -556,3 +556,4 @@ export function RecordPaymentDrawer({
   );
 }
 export default RecordPaymentDrawer;
+
