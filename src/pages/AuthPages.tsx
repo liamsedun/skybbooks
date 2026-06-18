@@ -6,27 +6,333 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { authApi } from '../lib/api';
+import {
+  Mail,
+  Lock,
+  Building2,
+  User,
+  Eye,
+  EyeOff,
+  Phone,
+  Globe,
+  Facebook,
+  Linkedin,
+  CheckCircle2,
+  Loader2,
+  ArrowRight,
+} from 'lucide-react';
 
 // =========================================================================
-// SHARED STYLES & COMPONENTS
+// CONTACT & SOCIAL LINKS — Skyhouse Accountants & Technologies
 // =========================================================================
 
-const inputClass =
-  'w-full px-4 py-3 rounded-lg border border-slate-300 bg-white text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-slate-400';
+const CONTACT = {
+  phone: '+2348157377000',
+  email: 'hello@skyaccounting.com.ng',
+  website: 'https://skyaccounting.com.ng',
+  facebook: 'https://web.facebook.com/skyhouseaccountants',
+  x: 'https://x.com/SkyhouseAccount',
+  linkedin: 'https://ng.linkedin.com/company/skyhouse-accounting-bookkeepers',
+};
 
-const btnClass =
-  'w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-sm transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed';
+const FEATURES = [
+  'Live bank feeds via Flutterwave & Paystack',
+  'Nigerian chart of accounts, seeded on day one',
+  'FIRS, SEC & IFRS-ready trial balances and audit logs',
+];
+
+// =========================================================================
+// SHARED VISUAL PIECES
+// =========================================================================
+
+function XGlyph({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <path d="M4 4l16 16M20 4L4 20" />
+    </svg>
+  );
+}
+
+function SkyhouseMark({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 28 28" fill="none" className={className}>
+      <path
+        d="M5 13.5L14 6l9 7.5"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M8 12v9.5h12V12"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+// Signature element: a skyline that reads equally as a bar chart —
+// the dual visual nods to "Sky[house]" and the ledgers the product runs on.
+const SKYLINE_BARS = [34, 56, 42, 72, 50, 86, 62, 46];
+
+function SkylineSignature() {
+  return (
+    <div className="flex items-end gap-2 h-24" aria-hidden="true">
+      {SKYLINE_BARS.map((h, i) => (
+        <div
+          key={i}
+          className="auth-skyline-bar flex-1 rounded-t-sm bg-gradient-to-t from-indigo-400/40 to-amber-300/70"
+          style={{ height: `${h}%`, animationDelay: `${i * 70}ms` }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function ContactRow({ tone = 'dark' }: { tone?: 'dark' | 'light' }) {
+  const base =
+    tone === 'dark'
+      ? 'text-indigo-200/70 hover:text-white'
+      : 'text-slate-400 hover:text-slate-700';
+  const divider = tone === 'dark' ? 'bg-indigo-700/60' : 'bg-slate-200';
+
+  return (
+    <div className="flex items-center gap-3">
+      <a href={`tel:${CONTACT.phone}`} aria-label="Call Skyhouse Accountants & Technologies" className={base}>
+        <Phone className="w-4 h-4" />
+      </a>
+      <a href={`mailto:${CONTACT.email}`} aria-label="Email Skyhouse Accountants & Technologies" className={base}>
+        <Mail className="w-4 h-4" />
+      </a>
+      <a
+        href={CONTACT.website}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Visit Skyhouse Accountants & Technologies website"
+        className={base}
+      >
+        <Globe className="w-4 h-4" />
+      </a>
+      <span className={`w-px h-4 ${divider}`} />
+      <a
+        href={CONTACT.facebook}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Skyhouse Accountants & Technologies on Facebook"
+        className={base}
+      >
+        <Facebook className="w-4 h-4" />
+      </a>
+      <a
+        href={CONTACT.x}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Skyhouse Accountants & Technologies on X"
+        className={base}
+      >
+        <XGlyph className="w-4 h-4" />
+      </a>
+      <a
+        href={CONTACT.linkedin}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Skyhouse Accountants & Technologies on LinkedIn"
+        className={base}
+      >
+        <Linkedin className="w-4 h-4" />
+      </a>
+    </div>
+  );
+}
+
+// =========================================================================
+// AUTH SHELL — two-panel layout shared by Login, Register & Forgot Password
+// =========================================================================
 
 function AuthShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white tracking-tight">SkyBooks</h1>
-          <p className="text-blue-300 text-sm mt-1">Cloud Accounting for Nigerian Businesses</p>
+    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 lg:p-8">
+      <style>{`
+        @keyframes auth-grow-bar {
+          from { transform: scaleY(0); }
+          to { transform: scaleY(1); }
+        }
+        @media (prefers-reduced-motion: no-preference) {
+          .auth-skyline-bar {
+            transform-origin: bottom;
+            animation: auth-grow-bar 0.6s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+          }
+        }
+        @media (prefers-reduced-motion: no-preference) {
+          .auth-card-enter {
+            animation: auth-fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+          }
+        }
+        @keyframes auth-fade-up {
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+
+      <div className="auth-card-enter w-full max-w-5xl bg-white rounded-3xl shadow-xl overflow-hidden grid lg:grid-cols-[1.05fr_1fr]">
+        {/* Brand panel */}
+        <div className="hidden lg:flex relative flex-col justify-between bg-gradient-to-br from-indigo-950 via-indigo-900 to-violet-900 p-10 text-white overflow-hidden">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <span className="w-9 h-9 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center">
+                <SkyhouseMark className="w-5 h-5 text-amber-300" />
+              </span>
+              <div>
+                <h1 className="text-lg font-bold tracking-tight leading-none">SkyBooks</h1>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-indigo-300/80 mt-0.5">
+                  Accounting Ledgers
+                </p>
+              </div>
+            </div>
+
+            <h2 className="text-3xl font-bold leading-tight mt-10 max-w-sm">
+              Double-entry accounting, built for Nigeria's SMEs.
+            </h2>
+            <p className="text-indigo-200/80 text-sm mt-3 max-w-sm leading-relaxed">
+              Connect your bank, automate reconciliation, and stay ready for FIRS, SEC and IFRS —
+              without hiring a forensic accountant.
+            </p>
+
+            <ul className="mt-8 space-y-3">
+              {FEATURES.map((f) => (
+                <li key={f} className="flex items-start gap-2.5 text-sm text-indigo-100/90">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
+                  <span>{f}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <SkylineSignature />
+            <div className="mt-6 pt-5 border-t border-white/10 flex items-center justify-between">
+              <p className="text-[11px] text-indigo-300/70">
+                A product of Skyhouse Accountants &amp; Technologies
+              </p>
+              <ContactRow tone="dark" />
+            </div>
+          </div>
         </div>
-        <div className="bg-white rounded-2xl shadow-2xl p-8">{children}</div>
+
+        {/* Form panel */}
+        <div className="flex flex-col p-6 sm:p-10 lg:p-12">
+          {/* Mobile-only compact header */}
+          <div className="flex lg:hidden items-center gap-2.5 mb-8">
+            <span className="w-8 h-8 rounded-lg bg-indigo-950 flex items-center justify-center">
+              <SkyhouseMark className="w-4.5 h-4.5 text-amber-300" />
+            </span>
+            <h1 className="text-base font-bold text-slate-900 tracking-tight">SkyBooks</h1>
+          </div>
+
+          <div className="flex-1 flex flex-col justify-center max-w-sm w-full mx-auto">
+            {children}
+          </div>
+
+          {/* Mobile-only footer contact row */}
+          <div className="flex lg:hidden items-center justify-between mt-10 pt-5 border-t border-slate-100">
+            <p className="text-[11px] text-slate-400">Skyhouse Accountants &amp; Technologies</p>
+            <ContactRow tone="light" />
+          </div>
+        </div>
       </div>
+    </div>
+  );
+}
+
+// =========================================================================
+// SHARED FORM FIELDS
+// =========================================================================
+
+function TextField({
+  icon: Icon,
+  label,
+  ...props
+}: { icon: React.ComponentType<{ className?: string }>; label: string } & React.InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <div>
+      <label className="block text-xs font-medium text-slate-600 mb-1.5">{label}</label>
+      <div className="relative">
+        <Icon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        <input
+          {...props}
+          className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 bg-white text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent placeholder-slate-400 transition-shadow"
+        />
+      </div>
+    </div>
+  );
+}
+
+function PasswordField({
+  label,
+  ...props
+}: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) {
+  const [show, setShow] = useState(false);
+  return (
+    <div>
+      <label className="block text-xs font-medium text-slate-600 mb-1.5">{label}</label>
+      <div className="relative">
+        <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        <input
+          {...props}
+          type={show ? 'text' : 'password'}
+          className="w-full pl-11 pr-11 py-3 rounded-xl border border-slate-200 bg-white text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent placeholder-slate-400 transition-shadow"
+        />
+        <button
+          type="button"
+          onClick={() => setShow((s) => !s)}
+          aria-label={show ? 'Hide password' : 'Show password'}
+          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded"
+        >
+          {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function SubmitButton({ loading, idleLabel, loadingLabel }: { loading: boolean; idleLabel: string; loadingLabel: string }) {
+  return (
+    <button
+      type="submit"
+      disabled={loading}
+      className="w-full inline-flex items-center justify-center gap-2 py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-sm transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed group"
+    >
+      {loading ? (
+        <>
+          <Loader2 className="w-4 h-4 animate-spin" />
+          {loadingLabel}
+        </>
+      ) : (
+        <>
+          {idleLabel}
+          <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+        </>
+      )}
+    </button>
+  );
+}
+
+function ErrorBanner({ message }: { message: string }) {
+  if (!message) return null;
+  return (
+    <div className="mb-5 p-3 bg-rose-50 border border-rose-100 rounded-xl text-rose-600 text-sm">
+      {message}
     </div>
   );
 }
@@ -62,54 +368,42 @@ export function LoginPage() {
 
   return (
     <AuthShell>
-      <h2 className="text-xl font-bold text-slate-800 mb-1">Sign In</h2>
-      <p className="text-slate-500 text-sm mb-6">Access your accounting books</p>
+      <h2 className="text-2xl font-bold text-slate-900 mb-1">Sign in</h2>
+      <p className="text-slate-500 text-sm mb-7">Access your accounting books</p>
 
-      {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-          {error}
-        </div>
-      )}
+      <ErrorBanner message={error} />
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-xs font-medium text-slate-600 mb-1">Work Email</label>
-          <input
-            type="email"
-            className={inputClass}
-            placeholder="you@company.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            autoComplete="email"
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-slate-600 mb-1">Password</label>
-          <input
-            type="password"
-            className={inputClass}
-            placeholder="••••••••"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            autoComplete="current-password"
-          />
-        </div>
-        <div className="flex justify-end">
-          <Link to="/forgot-password" className="text-xs text-blue-600 hover:underline">
+        <TextField
+          icon={Mail}
+          label="Work email"
+          type="email"
+          placeholder="you@company.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          autoComplete="email"
+        />
+        <PasswordField
+          label="Password"
+          placeholder="Enter your password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          autoComplete="current-password"
+        />
+        <div className="flex justify-end -mt-1">
+          <Link to="/forgot-password" className="text-xs font-medium text-indigo-600 hover:text-indigo-700 hover:underline">
             Forgot password?
           </Link>
         </div>
-        <button type="submit" className={btnClass} disabled={loading}>
-          {loading ? 'Signing in...' : 'Sign In'}
-        </button>
+        <SubmitButton loading={loading} idleLabel="Sign in" loadingLabel="Signing in..." />
       </form>
 
-      <p className="text-center text-sm text-slate-500 mt-6">
-        No account?{' '}
-        <Link to="/register" className="text-blue-600 font-medium hover:underline">
-          Create one
+      <p className="text-center text-sm text-slate-500 mt-7">
+        New to SkyBooks?{' '}
+        <Link to="/register" className="text-indigo-600 font-medium hover:underline">
+          Set up your company
         </Link>
       </p>
     </AuthShell>
@@ -155,76 +449,60 @@ export function RegisterPage() {
 
   return (
     <AuthShell>
-      <h2 className="text-xl font-bold text-slate-800 mb-1">Create Account</h2>
-      <p className="text-slate-500 text-sm mb-6">Set up your cloud accounting books</p>
+      <h2 className="text-2xl font-bold text-slate-900 mb-1">Set up your company</h2>
+      <p className="text-slate-500 text-sm mb-7">Build your double-entry ledger in minutes</p>
 
-      {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-          {error}
-        </div>
-      )}
+      <ErrorBanner message={error} />
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-xs font-medium text-slate-600 mb-1">Organisation Legal Name</label>
-          <input
-            type="text"
-            name="orgName"
-            className={inputClass}
-            placeholder="Acme Nigeria Ltd"
-            value={form.orgName}
-            onChange={handleChange}
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-slate-600 mb-1">Administrator Full Name</label>
-          <input
-            type="text"
-            name="fullName"
-            className={inputClass}
-            placeholder="Olalekan Edun"
-            value={form.fullName}
-            onChange={handleChange}
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-slate-600 mb-1">Work Email</label>
-          <input
-            type="email"
-            name="email"
-            className={inputClass}
-            placeholder="you@company.com"
-            value={form.email}
-            onChange={handleChange}
-            required
-            autoComplete="email"
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-slate-600 mb-1">Password</label>
-          <input
-            type="password"
-            name="password"
-            className={inputClass}
-            placeholder="Min. 6 characters"
-            value={form.password}
-            onChange={handleChange}
-            required
-            minLength={6}
-            autoComplete="new-password"
-          />
-        </div>
-        <button type="submit" className={btnClass} disabled={loading}>
-          {loading ? 'Creating account...' : 'Initialize New Ledger'}
-        </button>
+        <TextField
+          icon={Building2}
+          label="Organisation legal name"
+          type="text"
+          name="orgName"
+          placeholder="Acme Nigeria Ltd"
+          value={form.orgName}
+          onChange={handleChange}
+          required
+        />
+        <TextField
+          icon={User}
+          label="Administrator full name"
+          type="text"
+          name="fullName"
+          placeholder="Olalekan Edun"
+          value={form.fullName}
+          onChange={handleChange}
+          required
+        />
+        <TextField
+          icon={Mail}
+          label="Work email"
+          type="email"
+          name="email"
+          placeholder="you@company.com"
+          value={form.email}
+          onChange={handleChange}
+          required
+          autoComplete="email"
+        />
+        <PasswordField
+          label="Password"
+          name="password"
+          placeholder="Min. 6 characters"
+          value={form.password}
+          onChange={handleChange}
+          required
+          minLength={6}
+          autoComplete="new-password"
+        />
+        <SubmitButton loading={loading} idleLabel="Initialize new ledger" loadingLabel="Creating account..." />
       </form>
 
-      <p className="text-center text-sm text-slate-500 mt-6">
+      <p className="text-center text-sm text-slate-500 mt-7">
         Already have an account?{' '}
-        <Link to="/login" className="text-blue-600 font-medium hover:underline">
-          Sign In
+        <Link to="/login" className="text-indigo-600 font-medium hover:underline">
+          Sign in
         </Link>
       </p>
     </AuthShell>
@@ -232,7 +510,7 @@ export function RegisterPage() {
 }
 
 // =========================================================================
-// FORGOT PASSWORD PAGE (placeholder)
+// FORGOT PASSWORD PAGE
 // =========================================================================
 
 export function ForgotPasswordPage() {
@@ -241,11 +519,11 @@ export function ForgotPasswordPage() {
 
   return (
     <AuthShell>
-      <h2 className="text-xl font-bold text-slate-800 mb-1">Reset Password</h2>
-      <p className="text-slate-500 text-sm mb-6">We'll send reset instructions to your email</p>
+      <h2 className="text-2xl font-bold text-slate-900 mb-1">Reset password</h2>
+      <p className="text-slate-500 text-sm mb-7">We'll send reset instructions to your email</p>
 
       {sent ? (
-        <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm text-center">
+        <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-700 text-sm text-center">
           If that email exists, you'll receive reset instructions shortly.
         </div>
       ) : (
@@ -256,26 +534,22 @@ export function ForgotPasswordPage() {
           }}
           className="space-y-4"
         >
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Work Email</label>
-            <input
-              type="email"
-              className={inputClass}
-              placeholder="you@company.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
-          <button type="submit" className={btnClass}>
-            Send Reset Link
-          </button>
+          <TextField
+            icon={Mail}
+            label="Work email"
+            type="email"
+            placeholder="you@company.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          <SubmitButton loading={false} idleLabel="Send reset link" loadingLabel="Sending..." />
         </form>
       )}
 
-      <p className="text-center text-sm text-slate-500 mt-6">
-        <Link to="/login" className="text-blue-600 font-medium hover:underline">
-          Back to Sign In
+      <p className="text-center text-sm text-slate-500 mt-7">
+        <Link to="/login" className="text-indigo-600 font-medium hover:underline">
+          Back to sign in
         </Link>
       </p>
     </AuthShell>
