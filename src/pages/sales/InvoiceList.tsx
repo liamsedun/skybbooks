@@ -68,7 +68,7 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
   // Safe destructure invoices list
   const invoicesList = useMemo(() => {
     if (!invoicesResult) return [];
-    const array = Array.isArray(invoicesResult) ? invoicesResult : (invoicesResult.data || []);
+    const array = Array.isArray(invoicesResult) ? invoicesResult : (invoicesResult.invoices || invoicesResult.data || []);
     
     // In case there is no databases yet or empty records list, let's provide a magnificent set of core demo seed invoices 
     if (array.length === 0) {
