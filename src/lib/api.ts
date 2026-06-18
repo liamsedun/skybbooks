@@ -189,7 +189,7 @@ export const authApi = {
 // 2. Organisation Management
 export const orgApi = {
   getOrg: async () => {
-    const res = await api.get('/organisations');
+    const res = await api.get('/org');
     return res.data;
   },
   updateOrg: async (data: any) => {
@@ -591,3 +591,4 @@ export const reportsApi = {
     return res.data;
   },
 };
+

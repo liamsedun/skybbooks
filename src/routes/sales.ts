@@ -517,7 +517,12 @@ router.get('/customers/:id', async (req: AuthenticatedRequest, res: Response, ne
       .limit(1);
 
     if (!customer) throw new AppError('Customer profile not found.', 404);
-    return res.status(200).json(customer);
+    // Compute outstanding balance from unpaid invoices
+    const [balResult] = await db
+      .select({ total: sql`COALESCE(SUM(balance_due), 0)` })
+      .from(invoices)
+      .where(and(eq(invoices.customerId, id), eq(invoices.orgId, orgId), sql`status NOT IN ('paid', 'void')`));
+    return res.status(200).json({ ...customer, balance: Number(balResult?.total || 0) });
   } catch (err) {
     return next(err);
   }
@@ -649,3 +654,5 @@ router.get('/customers/:id/statement', async (req: AuthenticatedRequest, res: Re
 });
 
 export default router;
+
+
