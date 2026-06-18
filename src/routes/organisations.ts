@@ -33,7 +33,8 @@ const updateOrgSchema = z.object({
   email: z.string().email('Invalid email format.').optional(),
   fiscalYearStart: z.string().optional(),
   vatNumber: z.string().optional(),
-  rcNumber: z.string().optional()
+  rcNumber: z.string().optional(),
+  website: z.string().optional()
 });
 
 const inviteUserSchema = z.object({
@@ -92,7 +93,8 @@ router.patch('/', requireRole('owner', 'accountant'), async (req: AuthenticatedR
         ...(body.email !== undefined && { email: body.email }),
         ...(body.fiscalYearStart !== undefined && { fiscalYearStart: body.fiscalYearStart }),
         ...(body.vatNumber !== undefined && { vatNumber: body.vatNumber }),
-        ...(body.rcNumber !== undefined && { rcNumber: body.rcNumber })
+        ...(body.rcNumber !== undefined && { rcNumber: body.rcNumber }),
+        ...(body.website !== undefined && { website: body.website })
       })
       .where(eq(organisations.id, orgId))
       .returning();
@@ -315,6 +317,7 @@ router.patch('/users/:userId', requireRole('owner'), async (req: AuthenticatedRe
 });
 
 export default router;
+
 
 
 

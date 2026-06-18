@@ -181,6 +181,7 @@ export const organisations = pgTable('organisations', {
   fiscalYearStart: text('fiscal_year_start'),
   vatNumber: text('vat_number'),
   rcNumber: text('rc_number'),
+  website: text('website'),
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
@@ -1538,3 +1539,4 @@ export const schema = {
   auditLog,
   currencyRates
 };
+

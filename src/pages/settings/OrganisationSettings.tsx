@@ -70,6 +70,7 @@ interface OrgData {
   fiscalYearStart: string | null;
   vatNumber: string | null;
   rcNumber: string | null;
+  website: string | null;
   createdAt: string;
 }
 
@@ -81,6 +82,7 @@ type OrgFormState = {
   fiscalYearStart: string;
   vatNumber: string;
   rcNumber: string;
+  website: string;
 };
 
 function fromOrg(org: OrgData): OrgFormState {
@@ -92,6 +94,7 @@ function fromOrg(org: OrgData): OrgFormState {
     fiscalYearStart: org.fiscalYearStart || '',
     vatNumber: org.vatNumber || '',
     rcNumber: org.rcNumber || '',
+    website: org.website || '',
   };
 }
 
@@ -358,6 +361,7 @@ export function OrganisationSettingsPage() {
     payload.fiscalYearStart = form.fiscalYearStart.trim() || '';
     payload.vatNumber = form.vatNumber.trim() || '';
     payload.rcNumber = form.rcNumber.trim() || '';
+    payload.website = form.website.trim() || '';
     updateMutation.mutate(payload);
   }
 
@@ -444,6 +448,16 @@ export function OrganisationSettingsPage() {
                   onChange={f('address')}
                   placeholder="12 Bode Thomas Road, Surulere, Lagos State, Nigeria"
                   hint="This appears on invoices and official documents."
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <Field
+                  icon={Globe}
+                  label="Website"
+                  value={form.website}
+                  onChange={f('website')}
+                  placeholder="https://www.yourcompany.com"
+                  hint="Shown on invoices and client documents."
                 />
               </div>
             </div>
@@ -541,5 +555,9 @@ export function OrganisationSettingsPage() {
     </div>
   );
 }
+
+
+
+
 
 
