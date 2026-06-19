@@ -194,7 +194,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
             </h3>
             <div className="inline-flex items-center text-[11px] font-semibold px-2 py-0.5 mt-2 rounded bg-success-bg text-success-custom">
               <TrendingUp className="w-3.5 h-3.5 mr-1" />
-              +14.2% inflows this month
+              {(() => { const inList = Array.isArray(paymentsReceivedQuery.data) ? paymentsReceivedQuery.data : (paymentsReceivedQuery.data?.payments || []); const now = new Date(); const thisMonth = inList.filter((p: any) => { const d = new Date(p.date); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }).reduce((s: number, p: any) => s + (p.amount || 0), 0); const lastMonth = inList.filter((p: any) => { const d = new Date(p.date); const lm = new Date(now.getFullYear(), now.getMonth() - 1, 1); return d.getMonth() === lm.getMonth() && d.getFullYear() === lm.getFullYear(); }).reduce((s: number, p: any) => s + (p.amount || 0), 0); if (thisMonth === 0) return 'No inflows this month'; if (lastMonth === 0) return `₦${(thisMonth/100).toLocaleString()} received this month`; const pct = Math.round(((thisMonth - lastMonth) / lastMonth) * 100); return `${pct >= 0 ? '+' : ''}${pct}% vs last month`; })()}
             </div>
           </div>
         </div>
@@ -213,7 +213,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
             </h3>
             <div className="inline-flex items-center text-[11px] font-semibold px-2 py-0.5 mt-2 rounded bg-info-bg text-info-custom">
               <Activity className="w-3.5 h-3.5 mr-1" />
-              {totalInvoicesList.filter((inv: any) => inv.status === 'Unpaid').length || 4} pending collections
+              {totalInvoicesList.filter((inv: any) => { const s = (inv.status || '').toLowerCase(); return s === 'sent' || s === 'unpaid' || s === 'overdue'; }).length} pending collections
             </div>
           </div>
         </div>
@@ -232,7 +232,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
             </h3>
             <div className="inline-flex items-center text-[11px] font-semibold px-2 py-0.5 mt-2 rounded bg-warning-bg text-warning-custom">
               <Layers className="w-3.5 h-3.5 mr-1" />
-              {totalBillsList.filter((b: any) => b.status === 'Unpaid').length || 2} upcoming disbursements
+              {totalBillsList.filter((b: any) => { const s = (b.status || '').toLowerCase(); return s === 'unpaid' || s === 'overdue' || s === 'pending'; }).length} upcoming disbursements
             </div>
           </div>
         </div>
@@ -251,7 +251,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
             </h3>
             <div className="inline-flex items-center text-[11px] font-semibold px-2 py-0.5 mt-2 rounded bg-primary-light text-primary">
               <TrendingUp className="w-3.5 h-3.5 mr-1" />
-              +2.5% profitability optimization
+              {totalCashKobo > payablesKobo ? `Net positive: ₦${((totalCashKobo - payablesKobo) / 100).toLocaleString('en-NG', {notation:'compact'})}` : 'Net negative position'}
             </div>
           </div>
         </div>
