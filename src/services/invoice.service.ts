@@ -11,6 +11,7 @@ import {
   journalLines,
   invoices,
   invoiceLines,
+  items,
   contacts,
   salesOrders
 } from '../db/schema';
@@ -563,10 +564,18 @@ export async function getInvoice(id: string, orgId: string): Promise<any> {
 
   if (!invoice) throw new AppError('Invoice not found.', 404);
 
-  const lines = await db
+  const rawLines = await db
     .select()
     .from(invoiceLines)
     .where(eq(invoiceLines.invoiceId, id));
+  // Join SKU from items table
+  const itemIds = [...new Set(rawLines.map((l: any) => l.itemId).filter(Boolean))];
+  const itemSkuMap = new Map<string, string>();
+  if (itemIds.length > 0) {
+    const itemRows = await db.select({ id: items.id, sku: items.sku }).from(items).where(sql`${items.id} = ANY(${itemIds})`);
+    itemRows.forEach((i: any) => itemSkuMap.set(i.id, i.sku || ''));
+  }
+  const lines = rawLines.map((l: any) => ({ ...l, sku: itemSkuMap.get(l.itemId) || null }));
 
   const [customer] = await db
     .select()
@@ -753,6 +762,8 @@ export async function getInvoiceAgingReport(orgId: string): Promise<any> {
 
   return report;
 }
+
+
 
 
 
