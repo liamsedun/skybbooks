@@ -455,7 +455,7 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
                 </div>
 
                 {/* Totals */}
-                <div className="shrink-0 min-w-[220px] space-y-2">
+                <div className="shrink-0 w-[280px] space-y-2">
                   <div className="flex justify-between text-sm text-slate-500">
                     <span>Subtotal</span>
                     <span className="font-medium text-slate-700">{formatNaira(computedPricing.subtotalKobo)}</span>
