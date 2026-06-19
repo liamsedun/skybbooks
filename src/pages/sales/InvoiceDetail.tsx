@@ -474,7 +474,7 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
                     <span className="text-sm font-semibold text-slate-800">Total</span>
                     <span className="text-base font-bold text-slate-900">{formatNaira(computedPricing.totalKobo)}</span>
                   </div>
-                  <div className={isPaid ? "flex w-full justify-between text-sm px-3 py-2 rounded-lg border bg-green-50 border-green-100" : "flex w-full justify-between text-sm px-3 py-2 rounded-lg border bg-rose-50 border-rose-100"}>
+                  <div className={isPaid ? "text-sm px-3 py-2 rounded-lg border bg-green-50 border-green-100" : "text-sm px-3 py-2 rounded-lg border bg-rose-50 border-rose-100"} style={{display:"flex", justifyContent:"space-between", width:"100%"}}>
                     <span className={isPaid ? "font-medium text-green-700" : "font-medium text-rose-700"}>Balance Due</span>
                     <span className={isPaid ? "font-bold text-green-700" : "font-bold text-rose-700"}>{formatNaira(invoiceData.balanceDue ?? 0)}</span>
                   </div>
