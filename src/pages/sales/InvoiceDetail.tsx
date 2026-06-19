@@ -322,8 +322,14 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
 
         {/* Invoice document */}
         <div className="lg:col-span-2">
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden" id="invoice-pdf-mock-container">
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden relative" id="invoice-pdf-mock-container">
 
+            {/* PAID watermark */}
+            {isPaid && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 rotate-[-35deg] opacity-10">
+                <span className="text-green-600 text-[120px] font-black border-[12px] border-green-600 rounded-2xl px-8 leading-none select-none">PAID</span>
+              </div>
+            )}
             {/* Top accent */}
             <div className="h-1 bg-gradient-to-r from-indigo-500 to-purple-500" />
 
@@ -530,6 +536,8 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
 }
 
 export default InvoiceDetail;
+
+
 
 
 
