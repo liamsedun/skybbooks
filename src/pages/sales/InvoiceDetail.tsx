@@ -332,28 +332,39 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-8">
 
                 {/* Company identity */}
-                <div className="flex items-start gap-4">
+                <div className="flex items-start gap-3">
                   {org?.logoUrl ? (
-                    <img src={org.logoUrl} alt={org?.name || 'Logo'} className="w-14 h-14 rounded-xl object-contain border border-slate-100 bg-white p-1 shrink-0" />
+                    <img src={org.logoUrl} alt={org?.name || 'Logo'} className="w-12 h-12 rounded-lg object-contain border border-slate-100 bg-white p-1 shrink-0" />
                   ) : (
-                    <div className="w-14 h-14 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-xl font-bold shrink-0">
+                    <div className="w-12 h-12 rounded-lg bg-indigo-600 flex items-center justify-center text-white text-lg font-bold shrink-0">
                       {org?.name?.[0]?.toUpperCase() ?? 'S'}
                     </div>
                   )}
                   <div className="space-y-0.5">
-                    <h2 className="text-base font-bold text-slate-900 leading-tight">{org?.name || 'Your Company'}</h2>
-                    {org?.address && (
-                      <p className="text-sm text-slate-500 leading-snug max-w-xs">{org.address}</p>
-                    )}
-                    <div className="flex flex-col gap-y-0.5 mt-1">
+                    <h2 className="text-sm font-bold text-slate-900 leading-tight tracking-tight">{org?.name || 'Your Company'}</h2>
+                    <div className="flex flex-col gap-y-0 mt-0.5">
+                      {org?.address && (
+                        <span className="text-[11px] text-slate-500 leading-snug">{org.address}</span>
+                      )}
+                      {(org as any)?.city && (
+                        <span className="text-[11px] text-slate-500 leading-snug">{(org as any).city}</span>
+                      )}
+                      {(org as any)?.state && (
+                        <span className="text-[11px] text-slate-500 leading-snug">{(org as any).state}</span>
+                      )}
+                      {(org as any)?.country && (
+                        <span className="text-[11px] text-slate-500 leading-snug">{(org as any).country}</span>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-y-0 mt-1.5">
                       {org?.phone && (
-                        <span className="text-sm text-slate-500">{org.phone}</span>
+                        <span className="text-[11px] text-slate-500">{org.phone}</span>
                       )}
                       {org?.email && (
-                        <span className="text-sm text-slate-500">&middot; {org.email}</span>
+                        <span className="text-[11px] text-slate-500">&middot; {org.email}</span>
                       )}
                       {(org as any)?.website && (
-                        <span className="text-sm text-indigo-500">&middot; {(org as any).website}</span>
+                        <span className="text-[11px] text-indigo-500">&middot; {(org as any).website}</span>
                       )}
                     </div>
                   </div>
