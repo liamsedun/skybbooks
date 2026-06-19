@@ -522,7 +522,6 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
 
             </div>
           </div>
-          </div>
         </div>
 
         {/* Timeline sidebar */}
