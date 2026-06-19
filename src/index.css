@@ -54,3 +54,19 @@
 @utility tabular-nums {
   font-variant-numeric: tabular-nums;
 }
+
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #invoice-pdf-mock-container, #invoice-pdf-mock-container * {
+    visibility: visible;
+  }
+  #invoice-pdf-mock-container {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+}
