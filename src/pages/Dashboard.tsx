@@ -87,13 +87,13 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   const totalInvoicesList = Array.isArray(invoicesQuery.data) ? invoicesQuery.data : (invoicesQuery.data?.invoices || invoicesQuery.data?.data || []);
   const receivablesKobo = totalInvoicesList
     .filter((inv: any) => { const s = (inv.status || '').toLowerCase(); return s === 'sent' || s === 'unpaid' || s === 'overdue'; })
-    .reduce((sum: number, inv: any) => sum + (inv.total || inv.amount || 0), 0) || 452900000;
+    .reduce((sum: number, inv: any) => sum + (inv.total || inv.amount || 0), 0);
 
   // Total Payables (sum of unpaid bills)
   const totalBillsList = Array.isArray(billsQuery.data) ? billsQuery.data : (billsQuery.data?.bills || billsQuery.data?.data || []);
   const payablesKobo = totalBillsList
     .filter((b: any) => { const s = (b.status || '').toLowerCase(); return s === 'unpaid' || s === 'overdue' || s === 'pending'; })
-    .reduce((sum: number, b: any) => sum + (b.total || b.amount || 0), 0) || 284050000;
+    .reduce((sum: number, b: any) => sum + (b.total || b.amount || 0), 0);
 
   // Net Profit Margin or dynamic PnL
   const netPnLKobo = totalCashKobo - payablesKobo;
@@ -420,6 +420,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   );
 }
 export default Dashboard;
+
 
 
 
