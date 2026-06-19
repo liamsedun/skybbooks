@@ -201,16 +201,7 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
   const handlePdfDownload = async () => {
     try {
       const printArea = document.getElementById('invoice-pdf-mock-container');
-      if (printArea) {
-        const w = window.open("", "_blank", "width=900,height=700");
-        w!.document.write(`<!DOCTYPE html><html><head><title>${invoiceData.invoiceNumber || "Invoice"}</title><style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: Inter, system-ui, -apple-system, sans-serif; font-size: 14px; color: #1e293b; background: white; padding: 40px; }
-          @media print { body { padding: 20px; } @page { margin: 1.5cm; size: A4; } }
-        </style><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.1/base.css"><script src="https://cdn.tailwindcss.com"><\/script></head><body>${printArea.innerHTML}<script>window.onload=function(){window.print();window.onafterprint=function(){window.close();}}<\/script></body></html>`);
-        w!.document.close();
-        return;
-      }
+      if (printArea) { window.print(); return; }
       const blob = await salesApi.getInvoicePdf(invoiceId);
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -330,6 +321,7 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
                 <span className="text-green-600 text-[120px] font-black border-[12px] border-green-600 rounded-2xl px-8 leading-none select-none">PAID</span>
               </div>
             )}
+
             {/* Top accent */}
             <div className="h-1 bg-gradient-to-r from-indigo-500 to-purple-500" />
 
@@ -337,16 +329,21 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
 
               {/* Branding row */}
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6">
-                <div className="space-y-1">
-                  {org?.logoUrl
-                    ? <img src={org.logoUrl} alt="Logo" className="h-12 w-auto object-contain mb-2" />
-                    : <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold text-sm mb-2">{org?.name?.[0] ?? 'S'}</div>
-                  }
-                  <p className="text-sm font-bold text-slate-800">{org?.name || 'Your Company'}</p>
-                  {org?.address && <p className="text-xs text-slate-500">{org.address}</p>}
-                  {org?.phone && <p className="text-xs text-slate-500">{org.phone}</p>}
-                  {org?.email && <p className="text-xs text-slate-500">{org.email}</p>}
-                  {org?.website && <p className="text-xs text-slate-500">{org.website}</p>}
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold text-sm">
+                      {org?.name?.[0] ?? 'S'}
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-slate-800">{org?.name || 'Your Company'}</h3>
+                      {org?.address && <p className="text-xs text-slate-400 mt-0.5">{org.address}</p>}
+                    </div>
+                  </div>
+                  {(org?.phone || org?.email) && (
+                    <p className="text-xs text-slate-400">
+                      {[org?.phone, org?.email].filter(Boolean).join(' · ')}
+                    </p>
+                  )}
                 </div>
 
                 <div className="text-right">
@@ -477,10 +474,42 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
                     <span className="text-sm font-semibold text-slate-800">Total</span>
                     <span className="text-base font-bold text-slate-900">{formatNaira(computedPricing.totalKobo)}</span>
                   </div>
-                  <div className={`flex justify-between text-sm px-3 py-2 rounded-lg border ${isPaid ? "bg-green-50 border-green-100" : "bg-rose-50 border-rose-100"}`}>
-                    <span className={`font-medium ${isPaid ? "text-green-700" : "text-rose-700"}`}>Balance Due</span>
-                    <span className={`font-bold ${isPaid ? "text-green-700" : "text-rose-700"}`}>{formatNaira(invoiceData.balanceDue ?? 0)}</span>
+                  <div className={`flex justify-between text-sm px-3 py-2 rounded-lg border ${isPaid ? 'bg-green-50 border-green-100' : 'bg-rose-50 border-rose-100'}`}>
+                    <span className={`font-medium ${isPaid ? 'text-green-700' : 'text-rose-700'}`}>Balance Due</span>
+                    <span className={`font-bold ${isPaid ? 'text-green-700' : 'text-rose-700'}`}>{formatNaira(invoiceData.balanceDue ?? 0)}</span>
                   </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Timeline sidebar */}
+        <div className="space-y-6">
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+            <div className="border-b border-slate-100 pb-4 mb-5">
+              <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-slate-400" /> Activity
+              </h3>
+            </div>
+
+            <div className="relative pl-6 space-y-5 border-l border-slate-100">
+              {auditTimeline.map((step) => {
+                const Icon = step.icon;
+                return (
+                  <div key={step.id} className="relative">
+                    <div className={`p-1.5 rounded-lg absolute -left-[34px] top-0 border-2 border-white ${step.color}`}>
+                      <Icon className="w-2.5 h-2.5" />
+                    </div>
+                    <div className="space-y-0.5">
+                      <p className="text-sm font-medium text-slate-800">{step.title}</p>
+                      <p className="text-xs text-slate-500 leading-relaxed">{step.description}</p>
+                      <p className="text-xs text-slate-400 mt-1">{step.timestamp}</p>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -502,9 +531,3 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
 }
 
 export default InvoiceDetail;
-
-
-
-
-
-
