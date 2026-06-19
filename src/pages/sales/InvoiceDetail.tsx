@@ -345,7 +345,7 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
                     {org?.address && (
                       <p className="text-sm text-slate-500 leading-snug max-w-xs">{org.address}</p>
                     )}
-                    <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
+                    <div className="flex flex-col gap-y-0.5 mt-1">
                       {org?.phone && (
                         <span className="text-sm text-slate-500">{org.phone}</span>
                       )}
