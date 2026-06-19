@@ -332,11 +332,12 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-8">
 
                 {/* Company identity */}
-                <div className="flex items-start gap-3">
+                <div className="flex flex-col items-start gap-2">
+                  {/* Logo above company name */}
                   {org?.logoUrl ? (
-                    <img src={org.logoUrl} alt={org?.name || 'Logo'} className="w-12 h-12 rounded-lg object-contain border border-slate-100 bg-white p-1 shrink-0" />
+                    <img src={org.logoUrl} alt={org?.name || 'Logo'} className="w-14 h-14 rounded-xl object-contain border border-slate-100 bg-white p-1" />
                   ) : (
-                    <div className="w-12 h-12 rounded-lg bg-indigo-600 flex items-center justify-center text-white text-lg font-bold shrink-0">
+                    <div className="w-14 h-14 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-xl font-bold">
                       {org?.name?.[0]?.toUpperCase() ?? 'S'}
                     </div>
                   )}
@@ -356,20 +357,19 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
                         <span className="text-[11px] text-slate-500 leading-snug">{(org as any).country}</span>
                       )}
                     </div>
-                    <div className="flex flex-col gap-y-0 mt-1.5">
+                    <div className="flex flex-col gap-y-0 mt-1">
                       {org?.phone && (
                         <span className="text-[11px] text-slate-500">{org.phone}</span>
                       )}
                       {org?.email && (
-                        <span className="text-[11px] text-slate-500">&middot; {org.email}</span>
+                        <span className="text-[11px] text-slate-500">{org.email}</span>
                       )}
                       {(org as any)?.website && (
-                        <span className="text-[11px] text-indigo-500">&middot; {(org as any).website}</span>
+                        <span className="text-[11px] text-slate-500">{(org as any).website}</span>
                       )}
                     </div>
                   </div>
                 </div>
-
                 {/* Invoice badge */}
                 <div className="sm:text-right shrink-0 space-y-1">
                   <p className="text-xs font-semibold text-indigo-500 uppercase tracking-widest">Invoice</p>
