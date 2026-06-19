@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useState, useMemo } from 'react';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm, useFieldArray, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -149,7 +149,7 @@ export function InvoiceForm({ invoiceId, onNavigate }: InvoiceFormProps) {
   const watchedCustomerId = watch('customerId');
   const watchedInvoiceDate = watch('date');
   const watchedPaymentTerms = watch('paymentTerms');
-  const watchedLines = watch('lines') || [];
+  const watchedLines = useWatch({ control, name: 'lines' }) || [];
 
   // 5. Automatic terms date calculation helper
   useEffect(() => {
