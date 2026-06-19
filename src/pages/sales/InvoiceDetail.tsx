@@ -477,44 +477,10 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
                     <span className="text-sm font-semibold text-slate-800">Total</span>
                     <span className="text-base font-bold text-slate-900">{formatNaira(computedPricing.totalKobo)}</span>
                   </div>
-                  {(invoiceData.balanceDue !== undefined && invoiceData.balanceDue > 0) && (
-                    <div className="flex justify-between text-sm bg-rose-50 px-3 py-2 rounded-lg border border-rose-100">
-                      <span className="font-medium text-rose-700">Balance Due</span>
-                      <span className="font-bold text-rose-700">{formatNaira(invoiceData.balanceDue)}</span>
-                    </div>
-                  )}
-                </div>
-
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Timeline sidebar */}
-        <div className="space-y-6">
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-            <div className="border-b border-slate-100 pb-4 mb-5">
-              <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
-                <Clock className="w-4 h-4 text-slate-400" /> Activity
-              </h3>
-            </div>
-
-            <div className="relative pl-6 space-y-5 border-l border-slate-100">
-              {auditTimeline.map((step) => {
-                const Icon = step.icon;
-                return (
-                  <div key={step.id} className="relative">
-                    <div className={`p-1.5 rounded-lg absolute -left-[34px] top-0 border-2 border-white ${step.color}`}>
-                      <Icon className="w-2.5 h-2.5" />
-                    </div>
-                    <div className="space-y-0.5">
-                      <p className="text-sm font-medium text-slate-800">{step.title}</p>
-                      <p className="text-xs text-slate-500 leading-relaxed">{step.description}</p>
-                      <p className="text-xs text-slate-400 mt-1">{step.timestamp}</p>
-                    </div>
+                  <div className={`flex justify-between text-sm px-3 py-2 rounded-lg border ${isPaid ? "bg-green-50 border-green-100" : "bg-rose-50 border-rose-100"}`}>
+                    <span className={`font-medium ${isPaid ? "text-green-700" : "text-rose-700"}`}>Balance Due</span>
+                    <span className={`font-bold ${isPaid ? "text-green-700" : "text-rose-700"}`}>{formatNaira(invoiceData.balanceDue ?? 0)}</span>
                   </div>
-                );
-              })}
             </div>
           </div>
         </div>
@@ -536,6 +502,7 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
 }
 
 export default InvoiceDetail;
+
 
 
 
