@@ -588,7 +588,7 @@ export async function getInvoice(id: string, orgId: string): Promise<any> {
     ...invoice,
     lines,
     customer,
-    paymentHistory: paymentHistory || []
+    paymentHistory: paymentHistory?.rows || []
   };
 }
 
