@@ -706,27 +706,40 @@ function CustomerDetail({ id }: { id: string }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {statement.ledgerStatement.map((line) => (
-                <tr key={line.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="py-2.5 pl-4 pr-3 text-sm text-slate-600">
-                    {new Date(line.date).toLocaleDateString('en-GB')}
-                  </td>
-                  <td className="py-2.5 pr-3">
-                    <span className="text-xs font-medium text-slate-500 capitalize">{line.type.replace('_', ' ')}</span>
-                  </td>
-                  <td className="py-2.5 pr-3 text-sm font-mono text-slate-600">{line.number}</td>
-                  <td className="py-2.5 pr-3 text-sm text-slate-500">{line.reference}</td>
-                  <td className="py-2.5 pr-3 text-sm text-right text-slate-700">
-                    {line.debit > 0 ? formatNaira(line.debit) : '—'}
-                  </td>
-                  <td className="py-2.5 pr-3 text-sm text-right text-slate-700">
-                    {line.credit > 0 ? formatNaira(line.credit) : '—'}
-                  </td>
-                  <td className="py-2.5 pr-4 text-sm text-right font-medium text-slate-900">
-                    {formatNaira(line.balance)}
-                  </td>
-                </tr>
-              ))}
+              {statement.ledgerStatement.map((line) => {
+                const isInvoice = line.type === 'invoice';
+                return (
+                  <tr
+                    key={line.id}
+                    onClick={() => isInvoice && navigate(`/sales/invoices/${line.id}`)}
+                    className={`hover:bg-slate-50 transition-colors ${isInvoice ? "cursor-pointer hover:bg-indigo-50/60" : ""}`}
+                  >
+                    <td className="py-2.5 pl-4 pr-3 text-sm text-slate-600">
+                      {new Date(line.date).toLocaleDateString('en-GB')}
+                    </td>
+                    <td className="py-2.5 pr-3">
+                      <span className={`text-xs font-medium capitalize ${isInvoice ? "text-indigo-600" : "text-slate-500"}`}>{line.type.replace('_', ' ')}</span>
+                    </td>
+                    <td className="py-2.5 pr-3 text-sm font-mono">
+                      {isInvoice ? (
+                        <span className="text-indigo-600 hover:underline font-medium">{line.number}</span>
+                      ) : (
+                        <span className="text-slate-600">{line.number}</span>
+                      )}
+                    </td>
+                    <td className="py-2.5 pr-3 text-sm text-slate-500">{line.reference}</td>
+                    <td className="py-2.5 pr-3 text-sm text-right text-slate-700">
+                      {line.debit > 0 ? formatNaira(line.debit) : '—'}
+                    </td>
+                    <td className="py-2.5 pr-3 text-sm text-right text-slate-700">
+                      {line.credit > 0 ? formatNaira(line.credit) : '—'}
+                    </td>
+                    <td className="py-2.5 pr-4 text-sm text-right font-medium text-slate-900">
+                      {formatNaira(line.balance)}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
