@@ -817,7 +817,7 @@ router.post('/quotes/:id/convert', async (req: AuthenticatedRequest, res: Respon
     if (quoteLines.length > 0) {
       for (const ql of quoteLines) {
         const qty = Number(ql.quantity || 1);
-        const price = Number(ql.unitPrice || 0);
+        const price = Math.round(Number(ql.unitPrice || 0) * 100); // stored in naira, convert to kobo
         const discPct = Number(ql.discountPct || 0);
         const taxRate = Number(ql.taxRate ?? 7.5);
         const base = qty * price;
@@ -997,7 +997,7 @@ router.post('/sales-orders/:id/convert', async (req: AuthenticatedRequest, res: 
     const soLines = (so as any).lines || [];
     for (const ql of soLines) {
       const qty = Number(ql.quantity || 1);
-      const price = Number(ql.unitPrice || 0);
+        const price = Math.round(Number(ql.unitPrice || 0) * 100); // stored in naira, convert to kobo
       const discPct = Number(ql.discountPct || 0);
       const taxRate = Number(ql.taxRate ?? 7.5);
       const base = qty * price;
