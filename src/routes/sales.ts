@@ -47,6 +47,7 @@ const createInvoiceSchema = z.object({
   paymentTerms: z.number().optional(),
   notes: z.string().optional().nullable(),
   terms: z.string().optional().nullable(),
+  lines: z.array(z.any()).optional().nullable(),
   recurringId: z.string().uuid().optional().nullable(),
   lines: z.array(
     z.object({
@@ -686,6 +687,7 @@ const createQuoteSchema = z.object({
   total: z.number().int().nonnegative().default(0),
   notes: z.string().optional().nullable(),
   terms: z.string().optional().nullable(),
+  lines: z.array(z.any()).optional().nullable(),
 });
 
 const updateQuoteSchema = createQuoteSchema.partial();
@@ -737,6 +739,7 @@ router.post('/quotes', async (req: AuthenticatedRequest, res: Response, next: Ne
       total: body.total,
       notes: body.notes || null,
       terms: body.terms || null,
+      lines: body.lines || [],
       createdBy: userId,
     }).returning();
     return res.status(201).json(quote);
