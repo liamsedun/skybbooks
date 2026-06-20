@@ -62,7 +62,7 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
       clientName: invoice.customer?.name || invoice.clientName || null,
       clientEmail: invoice.customer?.email || invoice.clientEmail || null,
       lines: invoice.lines || invoice.items || [],
-      payments: invoice.paymentHistory || invoice.payments || [],
+      payments: (invoice.paymentHistory?.rows || invoice.paymentHistory || invoice.payments || []),
     };
   }, [invoice, invoiceId]);
 
