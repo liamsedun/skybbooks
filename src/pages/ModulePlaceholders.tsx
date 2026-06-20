@@ -644,42 +644,7 @@ function PageShell({ title, description, badge, children }: { title: string, des
 
 export { CustomersPage } from './sales/Customers';
 
-export function QuotesPage() {
-  const [quotes, setQuotes] = useState([
-    { id: 'Q-1049', client: 'Mainasara Logistics', date: '2026-06-12', amountKobo: 43200000, status: 'sent', expires: '2026-07-12' },
-    { id: 'Q-1048', client: 'Dangote Group', date: '2026-06-08', amountKobo: 250000000, status: 'accepted', expires: '2026-07-08' }
-  ]);
-
-  return (
-    <PageShell title="Proforma Invoices & Quotes" description="Create legal corporate scopes with itemized cost sheets." badge="Quotes Centric">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {quotes.map(q => (
-          <div key={q.id} className="bg-white border border-slate-150 p-5 rounded-2xl space-y-3 shadow-3xs">
-            <div className="flex justify-between items-start">
-              <div>
-                <span className="text-[10px] uppercase font-mono font-extrabold text-slate-400">{q.id}</span>
-                <h4 className="font-bold text-slate-800 text-sm mt-0.5">{q.client}</h4>
-              </div>
-              <span className={`px-2 py-0.5 font-extrabold text-[9px] border rounded-full uppercase ${
-                q.status === 'accepted' ? 'bg-emerald-50 border-emerald-150 text-emerald-700' : 'bg-blue-50 border-blue-150 text-blue-700'
-              }`}>{q.status}</span>
-            </div>
-            <div className="pt-2 border-t border-slate-50 flex justify-between items-center">
-              <div>
-                <span className="text-[9px] text-slate-400 font-bold block uppercase font-mono">Quoted Amount</span>
-                <span className="font-mono text-xs font-black text-slate-950">₦{(q.amountKobo/100).toLocaleString()}</span>
-              </div>
-              <div className="text-right">
-                <span className="text-[9px] text-slate-400 font-bold block uppercase font-mono">Expires On</span>
-                <span className="text-slate-500 text-xs font-semibold">{q.expires}</span>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </PageShell>
-  );
-}
+export { QuotesPage } from './sales/Quotes';
 
 export function PaymentsPage() {
   return (

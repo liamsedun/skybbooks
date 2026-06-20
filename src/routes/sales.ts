@@ -5,7 +5,7 @@
 
 import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { db, contacts, invoices, paymentsReceived, paymentAllocations, creditNotes, accounts, paymentsMade, paymentMadeAllocations } from '../db/schema';
+import { db, contacts, invoices, quotes, paymentsReceived, paymentAllocations, creditNotes, accounts, paymentsMade, paymentMadeAllocations } from '../db/schema';
 import { eq, and, desc, asc, sql } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
@@ -667,6 +667,151 @@ router.get('/customers/:id/statement', async (req: AuthenticatedRequest, res: Re
   } catch (err) {
     return next(err);
   }
+});
+
+
+// =========================================================================
+// QUOTES ENDPOINTS
+// =========================================================================
+
+const createQuoteSchema = z.object({
+  customerId: z.string().uuid('Invalid customer ID.'),
+  date: z.string().optional(),
+  expiryDate: z.string().optional().nullable(),
+  status: z.enum(['draft', 'sent', 'accepted', 'declined', 'expired', 'converted']).default('draft'),
+  currency: z.string().default('NGN'),
+  subtotal: z.number().int().nonnegative().default(0),
+  discount: z.number().int().nonnegative().default(0),
+  tax: z.number().int().nonnegative().default(0),
+  total: z.number().int().nonnegative().default(0),
+  notes: z.string().optional().nullable(),
+  terms: z.string().optional().nullable(),
+});
+
+const updateQuoteSchema = createQuoteSchema.partial();
+
+// GET /api/sales/quotes
+router.get('/quotes', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const list = await db
+      .select()
+      .from(quotes)
+      .where(eq(quotes.orgId, orgId))
+      .orderBy(desc(quotes.createdAt));
+    return res.status(200).json(list);
+  } catch (err) { return next(err); }
+});
+
+// GET /api/sales/quotes/:id
+router.get('/quotes/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { id } = req.params;
+    const [quote] = await db.select().from(quotes)
+      .where(and(eq(quotes.id, id), eq(quotes.orgId, orgId))).limit(1);
+    if (!quote) throw new AppError('Quote not found.', 404);
+    return res.status(200).json(quote);
+  } catch (err) { return next(err); }
+});
+
+// POST /api/sales/quotes
+router.post('/quotes', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const userId = req.user!.userId!;
+    const body = createQuoteSchema.parse(req.body);
+    const count = await db.select({ c: sql`count(*)` }).from(quotes).where(eq(quotes.orgId, orgId));
+    const seq = (Number((count[0] as any).c) + 1).toString().padStart(4, '0');
+    const quoteNumber = `Q-${seq}`;
+    const [quote] = await db.insert(quotes).values({
+      orgId, quoteNumber,
+      customerId: body.customerId,
+      date: body.date ? new Date(body.date) : new Date(),
+      expiryDate: body.expiryDate ? new Date(body.expiryDate) : null,
+      status: body.status,
+      currency: body.currency,
+      subtotal: body.subtotal,
+      discount: body.discount,
+      tax: body.tax,
+      total: body.total,
+      notes: body.notes || null,
+      terms: body.terms || null,
+      createdBy: userId,
+    }).returning();
+    return res.status(201).json(quote);
+  } catch (err) {
+    if (err instanceof z.ZodError) return next(new AppError(err.issues[0]?.message || 'Validation failed', 400));
+    return next(err);
+  }
+});
+
+// PATCH /api/sales/quotes/:id
+router.patch('/quotes/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { id } = req.params;
+    const body = updateQuoteSchema.parse(req.body);
+    const updateData: any = { ...body };
+    if (body.date) updateData.date = new Date(body.date);
+    if (body.expiryDate) updateData.expiryDate = new Date(body.expiryDate);
+    const [quote] = await db.update(quotes).set(updateData)
+      .where(and(eq(quotes.id, id), eq(quotes.orgId, orgId))).returning();
+    if (!quote) throw new AppError('Quote not found.', 404);
+    return res.status(200).json(quote);
+  } catch (err) {
+    if (err instanceof z.ZodError) return next(new AppError(err.issues[0]?.message || 'Validation failed', 400));
+    return next(err);
+  }
+});
+
+// DELETE /api/sales/quotes/:id
+router.delete('/quotes/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { id } = req.params;
+    const [existing] = await db.select().from(quotes)
+      .where(and(eq(quotes.id, id), eq(quotes.orgId, orgId))).limit(1);
+    if (!existing) throw new AppError('Quote not found.', 404);
+    if (existing.status === 'converted') throw new AppError('Converted quotes cannot be deleted.', 400);
+    await db.delete(quotes).where(eq(quotes.id, id));
+    return res.status(200).json({ message: 'Quote deleted.' });
+  } catch (err) { return next(err); }
+});
+
+// POST /api/sales/quotes/:id/convert
+router.post('/quotes/:id/convert', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const userId = req.user!.userId!;
+    const { id } = req.params;
+    const [quote] = await db.select().from(quotes)
+      .where(and(eq(quotes.id, id), eq(quotes.orgId, orgId))).limit(1);
+    if (!quote) throw new AppError('Quote not found.', 404);
+    if (quote.status === 'converted') throw new AppError('Quote already converted.', 400);
+    const count = await db.select({ c: sql`count(*)` }).from(invoices).where(eq(invoices.orgId, orgId));
+    const seq = (Number((count[0] as any).c) + 1).toString().padStart(4, '0');
+    const invoiceNumber = `INV-${seq}`;
+    const [invoice] = await db.insert(invoices).values({
+      orgId, invoiceNumber,
+      customerId: quote.customerId,
+      date: new Date(),
+      dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      status: 'draft',
+      currency: quote.currency,
+      subtotal: quote.subtotal,
+      discountAmount: quote.discount,
+      taxAmount: quote.tax,
+      total: quote.total,
+      amountPaid: 0,
+      balanceDue: quote.total,
+      notes: quote.notes || null,
+      terms: quote.terms || null,
+      createdBy: userId,
+    }).returning();
+    await db.update(quotes).set({ status: 'converted', convertedToId: invoice.id }).where(eq(quotes.id, id));
+    return res.status(201).json({ invoice, message: 'Quote converted to invoice successfully.' });
+  } catch (err) { return next(err); }
 });
 
 export default router;
