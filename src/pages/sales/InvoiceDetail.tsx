@@ -58,8 +58,10 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
   const invoiceData = useMemo(() => {
     if (invoice) return {
       ...invoice,
-      clientName: invoice.clientName || invoice.customer?.name || null,
-      clientEmail: invoice.clientEmail || invoice.customer?.email || null
+      clientName: invoice.customer?.name || invoice.clientName || null,
+      clientEmail: invoice.customer?.email || invoice.clientEmail || null,
+      lines: invoice.lines || invoice.items || [],
+      payments: invoice.paymentHistory || invoice.payments || [],
     };
   }, [invoice, invoiceId]);
 
