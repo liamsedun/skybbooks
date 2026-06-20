@@ -473,7 +473,22 @@ router.get('/customers', async (req: AuthenticatedRequest, res: Response, next: 
       )
       .orderBy(contacts.name);
 
-    return res.status(200).json(list);
+    // Calculate live balance from unpaid invoices
+    const balances = await db
+      .select({
+        customerId: invoices.customerId,
+        totalBalance: sql`coalesce(sum(${invoices.balanceDue}), 0)`
+      .from(invoices)
+      .where(
+        and(
+          eq(invoices.orgId, orgId),
+          sql`${invoices.status} in ('sent', 'partial', 'overdue')`
+      )
+      .groupBy(invoices.customerId);
+
+    const balanceMap = new Map(balances.map((b: any) => [b.customerId, Number(b.totalBalance)]));
+    const listWithBalance = list.map((c: any) => ({ ...c, balance: balanceMap.get(c.id) || 0 }));
+    return res.status(200).json(listWithBalance);
   } catch (err) {
     return next(err);
   }
