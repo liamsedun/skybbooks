@@ -85,6 +85,7 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
   });
 
   const computedPricing = useMemo(() => {
+    if (!invoiceData) return { subtotalKobo: 0, discountKobo: 0, vatKobo: 0, totalKobo: 0 };
     const lines = invoiceData.lines || invoiceData.items || [];
     let subtotalKobo = 0, discountKobo = 0, vatKobo = 0;
     lines.forEach((line: any) => {
@@ -105,6 +106,7 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
 
   const auditTimeline = useMemo(() => {
     const steps = [];
+    if (!invoiceData) return [];
     const status = (invoiceData.status || '').toLowerCase();
     const fmt = (d: string) => d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
 
