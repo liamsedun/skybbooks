@@ -37,15 +37,6 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
   const { token } = useAuth();
   const { data: org } = useQuery({ queryKey: ['org'], queryFn: orgApi.getOrg, staleTime: 60000, enabled: !!token });
 
-  // Fetch full customer for Bill To
-  const customerId = (invoice as any)?.customerId;
-  const { data: customer } = useQuery({
-    queryKey: ['customer', customerId],
-    queryFn: () => salesApi.getCustomer(customerId),
-    enabled: !!customerId && !!token,
-    staleTime: 60000,
-  });
-
   const [paymentDrawerOpen, setPaymentDrawerOpen] = useState(false);
 
   const { data: invoice, isLoading, refetch } = useQuery({
@@ -53,6 +44,16 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
     queryFn: () => salesApi.getInvoice(invoiceId),
     staleTime: 5000,
     enabled: !!invoiceId && !!token,
+  });
+
+
+  // Fetch full customer for Bill To
+  const customerId = (invoice as any)?.customerId;
+  const { data: customer } = useQuery({
+    queryKey: ['customer', customerId],
+    queryFn: () => salesApi.getCustomer(customerId),
+    enabled: !!customerId && !!token,
+    staleTime: 60000,
   });
 
   const invoiceData = useMemo(() => {
