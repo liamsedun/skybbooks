@@ -687,6 +687,7 @@ const createQuoteSchema = z.object({
   total: z.number().int().nonnegative().default(0),
   notes: z.string().optional().nullable(),
   terms: z.string().optional().nullable(),
+  lines: z.array(z.object({ itemId: z.string().uuid().optional().nullable(), description: z.string().min(1), quantity: z.number().positive(), unitPrice: z.number().nonnegative(), discountPct: z.number().min(0).max(100).optional(), taxRate: z.number().nonnegative().optional() })).optional(),
   lines: z.array(z.any()).optional().nullable(),
 });
 
