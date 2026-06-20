@@ -5,7 +5,7 @@
 
 import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { db, contacts, invoices, invoiceLines, quotes, paymentsReceived, paymentAllocations, creditNotes, accounts, paymentsMade, paymentMadeAllocations } from '../db/schema';
+import { db, contacts, invoices, invoiceLines, quotes, salesOrders, paymentsReceived, paymentAllocations, creditNotes, accounts, paymentsMade, paymentMadeAllocations } from '../db/schema';
 import { eq, and, desc, asc, sql } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
@@ -841,6 +841,184 @@ router.post('/quotes/:id/convert', async (req: AuthenticatedRequest, res: Respon
     }
     await db.update(quotes).set({ status: 'converted', convertedToId: invoice.id }).where(eq(quotes.id, id));
     return res.status(201).json({ invoice, message: 'Quote converted to invoice successfully.' });
+  } catch (err) { return next(err); }
+});
+
+
+// =========================================================================
+// SALES ORDERS ENDPOINTS
+// =========================================================================
+
+const createSalesOrderSchema = z.object({
+  customerId: z.string().uuid('Invalid customer ID.'),
+  quoteId: z.string().uuid().optional().nullable(),
+  date: z.string().optional(),
+  expectedDelivery: z.string().optional().nullable(),
+  status: z.enum(['draft', 'confirmed', 'partial', 'fulfilled', 'cancelled']).default('draft'),
+  currency: z.string().default('NGN'),
+  subtotal: z.number().int().nonnegative().default(0),
+  discount: z.number().int().nonnegative().default(0),
+  tax: z.number().int().nonnegative().default(0),
+  total: z.number().int().nonnegative().default(0),
+  notes: z.string().optional().nullable(),
+  lines: z.array(z.object({
+    itemId: z.string().uuid().optional().nullable(),
+    description: z.string().min(1),
+    quantity: z.number().positive(),
+    unitPrice: z.number().nonnegative(),
+    discountPct: z.number().min(0).max(100).optional(),
+    taxRate: z.number().nonnegative().optional(),
+  })).optional(),
+});
+
+const updateSalesOrderSchema = createSalesOrderSchema.partial();
+
+// GET /api/sales/sales-orders
+router.get('/sales-orders', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const list = await db
+      .select()
+      .from(salesOrders)
+      .where(eq(salesOrders.orgId, orgId))
+      .orderBy(desc(salesOrders.createdAt));
+    return res.status(200).json(list);
+  } catch (err) { return next(err); }
+});
+
+// GET /api/sales/sales-orders/:id
+router.get('/sales-orders/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { id } = req.params;
+    const [so] = await db.select().from(salesOrders)
+      .where(and(eq(salesOrders.id, id), eq(salesOrders.orgId, orgId))).limit(1);
+    if (!so) throw new AppError('Sales order not found.', 404);
+    return res.status(200).json(so);
+  } catch (err) { return next(err); }
+});
+
+// POST /api/sales/sales-orders
+router.post('/sales-orders', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const userId = req.user!.userId!;
+    const body = createSalesOrderSchema.parse(req.body);
+    const count = await db.select({ c: sql`count(*)` }).from(salesOrders).where(eq(salesOrders.orgId, orgId));
+    const seq = (Number((count[0] as any).c) + 1).toString().padStart(4, '0');
+    const soNumber = `SO-${seq}`;
+    const [so] = await db.insert(salesOrders).values({
+      orgId, soNumber,
+      customerId: body.customerId,
+      quoteId: body.quoteId || null,
+      date: body.date ? new Date(body.date) : new Date(),
+      expectedDelivery: body.expectedDelivery ? new Date(body.expectedDelivery) : null,
+      status: body.status,
+      currency: body.currency,
+      subtotal: body.subtotal,
+      discount: body.discount,
+      tax: body.tax,
+      total: body.total,
+      notes: body.notes || null,
+      lines: body.lines || [],
+      createdBy: userId,
+    } as any).returning();
+    return res.status(201).json(so);
+  } catch (err) {
+    if (err instanceof z.ZodError) return next(new AppError(err.issues[0]?.message || 'Validation failed', 400));
+    return next(err);
+  }
+});
+
+// PATCH /api/sales/sales-orders/:id
+router.patch('/sales-orders/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { id } = req.params;
+    const body = updateSalesOrderSchema.parse(req.body);
+    const updateData: any = { ...body };
+    if (body.date) updateData.date = new Date(body.date);
+    if (body.expectedDelivery) updateData.expectedDelivery = new Date(body.expectedDelivery);
+    const [so] = await db.update(salesOrders).set(updateData)
+      .where(and(eq(salesOrders.id, id), eq(salesOrders.orgId, orgId))).returning();
+    if (!so) throw new AppError('Sales order not found.', 404);
+    return res.status(200).json(so);
+  } catch (err) {
+    if (err instanceof z.ZodError) return next(new AppError(err.issues[0]?.message || 'Validation failed', 400));
+    return next(err);
+  }
+});
+
+// DELETE /api/sales/sales-orders/:id
+router.delete('/sales-orders/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { id } = req.params;
+    const [existing] = await db.select().from(salesOrders)
+      .where(and(eq(salesOrders.id, id), eq(salesOrders.orgId, orgId))).limit(1);
+    if (!existing) throw new AppError('Sales order not found.', 404);
+    if (existing.status === 'fulfilled') throw new AppError('Fulfilled sales orders cannot be deleted.', 400);
+    await db.delete(salesOrders).where(eq(salesOrders.id, id));
+    return res.status(200).json({ message: 'Sales order deleted.' });
+  } catch (err) { return next(err); }
+});
+
+// POST /api/sales/sales-orders/:id/convert — convert SO to invoice
+router.post('/sales-orders/:id/convert', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const userId = req.user!.userId!;
+    const { id } = req.params;
+    const [so] = await db.select().from(salesOrders)
+      .where(and(eq(salesOrders.id, id), eq(salesOrders.orgId, orgId))).limit(1);
+    if (!so) throw new AppError('Sales order not found.', 404);
+    if (so.status === 'fulfilled') throw new AppError('Sales order already fulfilled.', 400);
+    const count = await db.select({ c: sql`count(*)` }).from(invoices).where(eq(invoices.orgId, orgId));
+    const seq = (Number((count[0] as any).c) + 1).toString().padStart(4, '0');
+    const invoiceNumber = `INV-${seq}`;
+    const [invoice] = await db.insert(invoices).values({
+      orgId, invoiceNumber,
+      customerId: so.customerId,
+      soId: so.id,
+      date: new Date(),
+      dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      status: 'draft',
+      currency: so.currency,
+      subtotal: so.subtotal,
+      discountAmount: so.discount,
+      taxAmount: so.tax,
+      total: so.total,
+      amountPaid: 0,
+      balanceDue: so.total,
+      notes: so.notes || null,
+      createdBy: userId,
+    }).returning();
+    // Copy line items
+    const soLines = (so as any).lines || [];
+    for (const ql of soLines) {
+      const qty = Number(ql.quantity || 1);
+      const price = Number(ql.unitPrice || 0);
+      const discPct = Number(ql.discountPct || 0);
+      const taxRate = Number(ql.taxRate ?? 7.5);
+      const base = qty * price;
+      const disc = Math.round(base * discPct / 100);
+      const afterDisc = base - disc;
+      const taxAmt = Math.round(afterDisc * taxRate / 100);
+      await db.insert(invoiceLines).values({
+        invoiceId: invoice.id,
+        itemId: ql.itemId || null,
+        description: ql.description || '',
+        quantity: qty.toString(),
+        unitPrice: price,
+        discountPct: discPct.toString(),
+        taxRate: taxRate.toString(),
+        taxAmount: taxAmt,
+        lineTotal: afterDisc + taxAmt,
+        accountId: null,
+      });
+    }
+    await db.update(salesOrders).set({ status: 'fulfilled' }).where(eq(salesOrders.id, id));
+    return res.status(201).json({ invoice, message: 'Sales order converted to invoice successfully.' });
   } catch (err) { return next(err); }
 });
 

@@ -974,46 +974,7 @@ export function UsersSettingsPage() {
 // 6. MISSING ROUTED CHANNELS & PLACEHOLDERS (COMPREHENSIVE BACKUPS)
 // =========================================================================
 
-export function SalesOrdersPage() {
-  const orders = [
-    { id: 'SO-2026-001', customer: 'Dangote Conglomerates', date: '2026-06-14', amount: '₦125,400,000.00', status: 'Pending Delivery' },
-    { id: 'SO-2026-002', customer: 'Borno Agro Mills', date: '2026-06-12', amount: '₦8,950,000.00', status: 'Shipped' },
-    { id: 'SO-2026-003', customer: 'Maitama Tech Hub', date: '2026-06-10', amount: '₦4,200,000.00', status: 'Invoiced' }
-  ];
-  return (
-    <PageShell title="Sales Orders Registry" description="Track client requests, verified supply schedules, and automated fulfillment workflows." badge="Sales Pipeline">
-      <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-3xs">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              <th className="p-4">Order Reference</th>
-              <th className="p-4">Customer Name</th>
-              <th className="p-4">Order Date</th>
-              <th className="p-4">Structured Volume</th>
-              <th className="p-4 text-center">Fulfillment Status</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-50 text-xs text-slate-700">
-            {orders.map(o => (
-              <tr key={o.id} className="hover:bg-slate-50/40">
-                <td className="p-4 font-mono font-bold text-indigo-650">{o.id}</td>
-                <td className="p-4 font-bold text-slate-800">{o.customer}</td>
-                <td className="p-4 text-slate-500">{o.date}</td>
-                <td className="p-4 font-mono font-bold text-slate-900">{o.amount}</td>
-                <td className="p-4 text-center">
-                  <span className={`px-2 py-0.5 text-[9px] font-bold rounded-full border ${
-                    o.status === 'Shipped' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 
-                    o.status === 'Invoiced' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' : 'bg-amber-50 text-amber-700 border-amber-100'
-                  }`}>{o.status}</span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </PageShell>
-  );
-}
+export { SalesOrdersPage } from './sales/SalesOrders';
 
 export function ReceiptsPage() {
   const receipts = [
