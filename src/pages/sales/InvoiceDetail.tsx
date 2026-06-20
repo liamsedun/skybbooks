@@ -37,6 +37,15 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
   const { token } = useAuth();
   const { data: org } = useQuery({ queryKey: ['org'], queryFn: orgApi.getOrg, staleTime: 60000, enabled: !!token });
 
+  // Fetch full customer for Bill To
+  const customerId = (invoice as any)?.customerId;
+  const { data: customer } = useQuery({
+    queryKey: ['customer', customerId],
+    queryFn: () => salesApi.getCustomer(customerId),
+    enabled: !!customerId && !!token,
+    staleTime: 60000,
+  });
+
   const [paymentDrawerOpen, setPaymentDrawerOpen] = useState(false);
 
   const { data: invoice, isLoading, refetch } = useQuery({
@@ -385,12 +394,20 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
 
               {/* Bill To / Invoice Details */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 py-6 border-y border-slate-100">
-                <div className="sm:col-span-2 space-y-1">
+                <div className="sm:col-span-2 space-y-0.5">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Billed To</p>
-                  <p className="text-base font-bold text-slate-900">{invoiceData.clientName}</p>
-                  {invoiceData.clientEmail && (
-                    <p className="text-sm text-slate-500">{invoiceData.clientEmail}</p>
-                  )}
+                  <p className="text-sm font-bold text-slate-900 leading-tight">{invoiceData.clientName}</p>
+                  <div className="flex flex-col gap-y-0 mt-0.5">
+                    {customer?.address && (<span className="text-[11px] text-slate-500 leading-snug">{customer.address}</span>)}
+                    {customer?.city && (<span className="text-[11px] text-slate-500 leading-snug">{customer.city}</span>)}
+                    {customer?.state && (<span className="text-[11px] text-slate-500 leading-snug">{customer.state}</span>)}
+                    {customer?.country && (<span className="text-[11px] text-slate-500 leading-snug">{customer.country}</span>)}
+                  </div>
+                  <div className="flex flex-col gap-y-0 mt-1">
+                    {customer?.phone && (<span className="text-[11px] text-slate-500">{customer.phone}</span>)}
+                    {(customer?.email || invoiceData.clientEmail) && (<span className="text-[11px] text-slate-500">{customer?.email || invoiceData.clientEmail}</span>)}
+                    {(customer as any)?.website && (<span className="text-[11px] text-slate-500">{(customer as any).website}</span>)}
+                  </div>
                 </div>
                 <div className="space-y-2 sm:text-right">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Invoice Details</p>
@@ -582,3 +599,4 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
 }
 
 export default InvoiceDetail;
+
