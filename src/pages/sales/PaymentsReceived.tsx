@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 import React, { useState, useMemo } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import {
   Search, Loader2, AlertCircle, CreditCard,
@@ -355,14 +355,15 @@ function PaymentDetailPanel({
     [payment]
   );
 
-  // Fetch each allocated invoice. Number of allocations per payment is small.
-  const invoiceQueries = invoiceIds.map(invId =>
-    useQuery<InvoiceDetail>({
+  // Fetch each allocated invoice via useQueries (handles a dynamic number of queries safely,
+  // unlike calling useQuery in a .map() which breaks React's rules of hooks).
+  const invoiceQueries = useQueries({
+    queries: invoiceIds.map(invId => ({
       queryKey: ['sales', 'invoices', invId],
-      queryFn: async () => { const r = await api.get(`/sales/invoices/${invId}`); return r.data; },
+      queryFn: async () => { const r = await api.get(`/sales/invoices/${invId}`); return r.data as InvoiceDetail; },
       enabled: !!invId,
-    })
-  );
+    })),
+  });
 
   const invoicesById = useMemo(() => {
     const m = new Map<string, InvoiceDetail>();
