@@ -255,7 +255,7 @@ export function QuotesPage() {
       ...newLines[index],
       itemId,
       description: item.name,
-      unitPrice: item.salesPrice || 0,
+      unitPrice: item.salesPrice ? item.salesPrice / 100 : 0,
     };
     setForm({ ...form, lines: newLines });
   }
