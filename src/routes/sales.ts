@@ -5,7 +5,7 @@
 
 import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { db, contacts, invoices, quotes, paymentsReceived, paymentAllocations, creditNotes, accounts, paymentsMade, paymentMadeAllocations } from '../db/schema';
+import { db, contacts, invoices, invoiceLines, quotes, paymentsReceived, paymentAllocations, creditNotes, accounts, paymentsMade, paymentMadeAllocations } from '../db/schema';
 import { eq, and, desc, asc, sql } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
@@ -812,6 +812,33 @@ router.post('/quotes/:id/convert', async (req: AuthenticatedRequest, res: Respon
       terms: quote.terms || null,
       createdBy: userId,
     }).returning();
+    // Insert invoice lines from quote lines
+    const quoteLines = (quote as any).lines || [];
+    if (quoteLines.length > 0) {
+      for (const ql of quoteLines) {
+        const qty = Number(ql.quantity || 1);
+        const price = Number(ql.unitPrice || 0);
+        const discPct = Number(ql.discountPct || 0);
+        const taxRate = Number(ql.taxRate ?? 7.5);
+        const base = qty * price;
+        const disc = Math.round(base * discPct / 100);
+        const afterDisc = base - disc;
+        const taxAmt = Math.round(afterDisc * taxRate / 100);
+        const lineTotal = afterDisc + taxAmt;
+        await db.insert(invoiceLines).values({
+          invoiceId: invoice.id,
+          itemId: ql.itemId || null,
+          description: ql.description || '',
+          quantity: qty.toString(),
+          unitPrice: price,
+          discountPct: discPct.toString(),
+          taxRate: taxRate.toString(),
+          taxAmount: taxAmt,
+          lineTotal,
+          accountId: null,
+        });
+      }
+    }
     await db.update(quotes).set({ status: 'converted', convertedToId: invoice.id }).where(eq(quotes.id, id));
     return res.status(201).json({ invoice, message: 'Quote converted to invoice successfully.' });
   } catch (err) { return next(err); }
