@@ -61,52 +61,6 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
       clientName: invoice.clientName || invoice.customer?.name || null,
       clientEmail: invoice.clientEmail || invoice.customer?.email || null
     };
-
-    const mockDb: Record<string, any> = {
-      'inv-1001': {
-        id: 'inv-1001', invoiceNumber: 'INV-1001', clientName: 'Mainwood Systems Ltd',
-        clientEmail: 'info@mainwood.ng', date: '2026-06-01', dueDate: '2026-06-30',
-        status: 'sent', paymentTerms: 30, total: 125000000, balanceDue: 125000000,
-        notes: 'Please include invoice number on payment reference.',
-        terms: 'Payment due within 30 days of invoice date.',
-        lines: [{ id: '1', description: 'Consulting Advisory Services', quantity: 1, unitPrice: 125000000, discountPct: 0, taxRate: 7.5 }],
-        payments: []
-      },
-      'inv-1002': {
-        id: 'inv-1002', invoiceNumber: 'INV-1002', clientName: 'Apex Retail Stores Corp',
-        clientEmail: 'billing@apexstores.ng', date: '2026-05-15', dueDate: '2026-06-14',
-        status: 'overdue', paymentTerms: 30, total: 450000000, balanceDue: 450000000,
-        notes: '', terms: 'Net 30.',
-        lines: [{ id: '2', description: 'Cloud Integration Services', quantity: 2, unitPrice: 225000000, discountPct: 0, taxRate: 7.5 }],
-        payments: []
-      },
-      'inv-1003': {
-        id: 'inv-1003', invoiceNumber: 'INV-1003', clientName: 'Dangote Cement Distributors',
-        clientEmail: 'accounts@dangotegroup.com', date: '2026-06-10', dueDate: '2026-07-10',
-        status: 'paid', paymentTerms: 30, total: 820000000, balanceDue: 0,
-        notes: '', terms: 'Paid in full.',
-        lines: [{ id: '3', description: 'Distribution Advisory Services', quantity: 1, unitPrice: 820000000, discountPct: 0, taxRate: 7.5 }],
-        payments: [{ id: 'p-1', date: '2026-06-12', amount: 820000000, paymentMethod: 'bank_transfer', reference: 'NIBSS-902482' }]
-      },
-      'inv-1004': {
-        id: 'inv-1004', invoiceNumber: 'INV-1004', clientName: 'Interswitch Web Gateway',
-        clientEmail: 'integrations@interswitch.ng', date: '2026-06-12', dueDate: '2026-07-12',
-        status: 'draft', paymentTerms: 30, total: 35000000, balanceDue: 35000000,
-        notes: 'Initial integration proposal.', terms: 'Direct bank transfer only.',
-        lines: [{ id: '4', description: 'API Sandbox Integration Services', quantity: 1, unitPrice: 35000000, discountPct: 0, taxRate: 7.5 }],
-        payments: []
-      }
-    };
-
-    return mockDb[invoiceId] || {
-      id: invoiceId,
-      invoiceNumber: `INV-${invoiceId.substring(0, 6).toUpperCase()}`,
-      clientName: 'Customer', clientEmail: 'billing@customer.ng',
-      date: new Date().toISOString().split('T')[0],
-      dueDate: new Date(Date.now() + 30 * 24 * 3600000).toISOString().split('T')[0],
-      status: 'draft', paymentTerms: 30, total: 0, balanceDue: 0,
-      notes: '', terms: '', lines: [], payments: []
-    };
   }, [invoice, invoiceId]);
 
   const sendInvoiceMutation = useMutation({
@@ -238,6 +192,16 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
       <div className="py-24 text-center text-slate-400 flex flex-col items-center justify-center gap-3">
         <Loader2 className="w-7 h-7 animate-spin" />
         <span className="text-sm">Loading invoice…</span>
+      </div>
+    );
+  }
+
+
+  if (!invoiceData) {
+    return (
+      <div className="py-24 text-center text-slate-400 flex flex-col items-center justify-center gap-3">
+        <Loader2 className="w-7 h-7 animate-spin" />
+        <span className="text-sm">Loading invoice...</span>
       </div>
     );
   }
