@@ -646,18 +646,7 @@ export { CustomersPage } from './sales/Customers';
 
 export { QuotesPage } from './sales/Quotes';
 
-export function PaymentsPage() {
-  return (
-    <PageShell title="Inbound Corporate Payments" description="History of clear bank conversions, Stripe, and Paystack settlement logs." badge="Automated Bank Mapping">
-      <div className="bg-emerald-50/50 border border-emerald-150 p-4 rounded-2xl flex gap-3.5 text-xs text-emerald-950 max-w-xl mx-auto">
-        <CheckCircle className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
-        <div>
-          <span className="font-bold block">Integrations Active:</span> Accounts are connected to your Nigerian Paystack key. Wire and POS payments are matched automatically via local virtual accounts.
-        </div>
-      </div>
-    </PageShell>
-  );
-}
+export { PaymentsReceivedPage as PaymentsPage } from './sales/PaymentsReceived';
 
 export function CreditNotesPage() {
   return (
@@ -976,40 +965,7 @@ export function UsersSettingsPage() {
 
 export { SalesOrdersPage } from './sales/SalesOrders';
 
-export function ReceiptsPage() {
-  const receipts = [
-    { id: 'REC-90145', client: 'Jumia Nigeria HQ', date: '2026-06-15', sum: '₦2,900,000.00', bank: 'Access Bank PLC' },
-    { id: 'REC-90144', client: 'Mainasara Logistics', date: '2025-06-11', sum: '₦15,450,000.00', bank: 'Standard Chartered' }
-  ];
-  return (
-    <PageShell title="Receipts & Payments Settled" description="Auditable records representing dynamic liquid inflows, customer deposits and settlements." badge="Settlements Logs">
-      <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-3xs">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              <th className="p-4">Receipt Token</th>
-              <th className="p-4">Liquidator / Client</th>
-              <th className="p-4">Settlement Date</th>
-              <th className="p-4">Inward Clearings</th>
-              <th className="p-4">Clearing Institutional Node</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-50 text-xs text-slate-700">
-            {receipts.map(r => (
-              <tr key={r.id}>
-                <td className="p-4 font-mono font-bold text-slate-500">{r.id}</td>
-                <td className="p-4 font-bold text-slate-800">{r.client}</td>
-                <td className="p-4 text-slate-400">{r.date}</td>
-                <td className="p-4 font-mono font-extrabold text-emerald-600">{r.sum}</td>
-                <td className="p-4 font-medium text-slate-600">{r.bank}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </PageShell>
-  );
-}
+export { PaymentsReceivedPage as ReceiptsPage } from './sales/PaymentsReceived';
 
 export function RecurringInvoicesPage() {
   return (
