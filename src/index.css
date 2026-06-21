@@ -69,4 +69,13 @@
     top: 0;
     width: 100%;
   }
+  #receipt-pdf-container, #receipt-pdf-container * {
+    visibility: visible;
+  }
+  #receipt-pdf-container {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
 }

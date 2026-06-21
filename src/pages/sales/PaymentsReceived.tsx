@@ -7,7 +7,7 @@ import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/rea
 import { api } from '../../lib/api';
 import {
   Search, Loader2, AlertCircle, CreditCard,
-  Banknote, Smartphone, Building2, Receipt, Trash2, X, FileText, ChevronRight,
+  Banknote, Smartphone, Building2, Receipt, Trash2, X, FileText, ChevronRight, Download,
 } from 'lucide-react';
 
 interface Payment {
@@ -70,7 +70,28 @@ interface InvoiceDetail {
   customer: Customer;
 }
 
-interface Customer { id: string; name: string; email: string | null; }
+interface Customer {
+  id: string;
+  name: string;
+  email: string | null;
+  phone?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+}
+
+interface Org {
+  id: string;
+  name: string;
+  address: string | null;
+  phone: string | null;
+  email: string | null;
+  website: string | null;
+  logoUrl: string | null;
+  vatNumber: string | null;
+  rcNumber: string | null;
+}
 
 const METHOD_META: Record<string, { label: string; icon: React.ComponentType<{ className?: string }> }> = {
   bank_transfer: { label: 'Bank Transfer', icon: Building2 },
@@ -105,6 +126,7 @@ export function PaymentsReceivedPage() {
   const [deleteTarget, setDeleteTarget] = useState<Payment | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null);
+  const [receiptPaymentId, setReceiptPaymentId] = useState<string | null>(null);
 
   const { data: payments, isLoading, isError } = useQuery<Payment[]>({
     queryKey: ['sales', 'payments'],
@@ -114,6 +136,12 @@ export function PaymentsReceivedPage() {
   const { data: customers } = useQuery<Customer[]>({
     queryKey: ['sales', 'customers'],
     queryFn: async () => { const r = await api.get('/sales/customers'); return r.data; },
+  });
+
+  const { data: org } = useQuery<Org>({
+    queryKey: ['org'],
+    queryFn: async () => { const r = await api.get('/org'); return r.data; },
+    staleTime: 60000,
   });
 
   const customerMap = useMemo(() => {
@@ -273,7 +301,13 @@ export function PaymentsReceivedPage() {
                     </td>
                     <td className="py-2.5 pr-2">
                       <div className="flex items-center justify-end gap-1">
-                        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setReceiptPaymentId(p.id); }}
+                            className="p-1.5 rounded-md text-slate-400 hover:text-indigo-600 hover:bg-indigo-50"
+                            title="Download receipt">
+                            <Download size={14} />
+                          </button>
                           <button
                             onClick={(e) => { e.stopPropagation(); setDeleteTarget(p); setDeleteError(null); }}
                             className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50"
@@ -329,7 +363,15 @@ export function PaymentsReceivedPage() {
       <PaymentDetailPanel
         paymentId={selectedPaymentId}
         onClose={() => setSelectedPaymentId(null)}
+        onDownload={(id) => setReceiptPaymentId(id)}
         customerMap={customerMap}
+      />
+
+      <ReceiptModal
+        paymentId={receiptPaymentId}
+        onClose={() => setReceiptPaymentId(null)}
+        customerMap={customerMap}
+        org={org}
       />
     </div>
   );
@@ -338,10 +380,12 @@ export function PaymentsReceivedPage() {
 function PaymentDetailPanel({
   paymentId,
   onClose,
+  onDownload,
   customerMap,
 }: {
   paymentId: string | null;
   onClose: () => void;
+  onDownload: (paymentId: string) => void;
   customerMap: Map<string, Customer>;
 }) {
   const { data: payment, isLoading: paymentLoading } = useQuery<PaymentDetail>({
@@ -389,9 +433,20 @@ function PaymentDetailPanel({
       <div className="fixed top-0 right-0 h-full w-full max-w-lg bg-white shadow-2xl z-50 flex flex-col">
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
           <h2 className="text-base font-semibold text-slate-900">Payment Details</h2>
-          <button onClick={onClose} className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100">
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-1">
+            {paymentId && (
+              <button
+                onClick={() => onDownload(paymentId)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-indigo-600 hover:bg-indigo-50 rounded-md"
+                title="Download receipt">
+                <Download size={14} />
+                Download
+              </button>
+            )}
+            <button onClick={onClose} className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100">
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-5">
@@ -521,5 +576,185 @@ function PaymentDetailPanel({
         </div>
       </div>
     </>
+  );
+}
+
+function ReceiptModal({
+  paymentId,
+  onClose,
+  customerMap,
+  org,
+}: {
+  paymentId: string | null;
+  onClose: () => void;
+  customerMap: Map<string, Customer>;
+  org?: Org;
+}) {
+  const { data: payment, isLoading: paymentLoading } = useQuery<PaymentDetail>({
+    queryKey: ['sales', 'payments', paymentId],
+    queryFn: async () => { const r = await api.get(`/sales/payments/${paymentId}`); return r.data; },
+    enabled: !!paymentId,
+  });
+
+  const invoiceIds = useMemo(
+    () => Array.from(new Set((payment?.allocations || []).map(a => a.invoiceId))),
+    [payment]
+  );
+
+  const invoiceQueries = useQueries({
+    queries: invoiceIds.map(invId => ({
+      queryKey: ['sales', 'invoices', invId],
+      queryFn: async () => { const r = await api.get(`/sales/invoices/${invId}`); return r.data as InvoiceDetail; },
+      enabled: !!invId,
+    })),
+  });
+
+  const invoiceNumbers = useMemo(
+    () => invoiceQueries.map(q => q.data?.invoiceNumber).filter(Boolean) as string[],
+    [invoiceQueries]
+  );
+
+  if (!paymentId) return null;
+
+  const cust = payment ? customerMap.get(payment.customerId) : undefined;
+  const meta = payment ? (METHOD_META[payment.paymentMethod] || { label: payment.paymentMethod, icon: Banknote }) : null;
+  const isLoading = paymentLoading || invoiceQueries.some(q => q.isLoading);
+
+  const handlePrint = () => window.print();
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] px-4 py-8">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        {/* Non-printing toolbar */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 print:hidden">
+          <h2 className="text-base font-semibold text-slate-900">Payment Receipt</h2>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handlePrint}
+              disabled={isLoading}
+              className="flex items-center gap-1.5 px-3.5 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-slate-900 transition disabled:opacity-50"
+            >
+              <Download size={14} />
+              Download PDF
+            </button>
+            <button onClick={onClose} className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100">
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+          {isLoading || !payment ? (
+            <div className="flex items-center justify-center py-16 text-slate-400">
+              <Loader2 size={20} className="animate-spin mr-2" />Loading receipt...
+            </div>
+          ) : (
+            <div id="receipt-pdf-container" className="bg-white">
+              <div className="h-1.5 bg-gradient-to-r from-indigo-600 via-violet-500 to-indigo-400" />
+              <div className="p-8 sm:p-10 space-y-8">
+
+                {/* Header: company identity + receipt meta */}
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-8">
+                  <div className="flex flex-col items-start gap-2">
+                    {org?.logoUrl ? (
+                      <img src={org.logoUrl} alt={org?.name || 'Logo'} className="w-14 h-14 rounded-xl object-contain border border-slate-100 bg-white p-1" />
+                    ) : (
+                      <div className="w-14 h-14 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-xl font-bold">
+                        {org?.name?.[0]?.toUpperCase() ?? 'S'}
+                      </div>
+                    )}
+                    <div className="space-y-0.5">
+                      <h2 className="text-sm font-bold text-slate-900 leading-tight tracking-tight">{org?.name || 'Your Company'}</h2>
+                      <div className="flex flex-col gap-y-0 mt-0.5">
+                        {org?.address && <span className="text-[11px] text-slate-500 leading-snug">{org.address}</span>}
+                      </div>
+                      <div className="flex flex-col gap-y-0 mt-1">
+                        {org?.phone && <span className="text-[11px] text-slate-500">{org.phone}</span>}
+                        {org?.email && <span className="text-[11px] text-slate-500">{org.email}</span>}
+                        {org?.website && <span className="text-[11px] text-slate-500">{org.website}</span>}
+                      </div>
+                      {(org?.vatNumber || org?.rcNumber) && (
+                        <div className="flex flex-col gap-y-0 mt-1">
+                          {org?.rcNumber && <span className="text-[10px] text-slate-400">RC No: {org.rcNumber}</span>}
+                          {org?.vatNumber && <span className="text-[10px] text-slate-400">VAT No: {org.vatNumber}</span>}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="sm:text-right shrink-0 space-y-1">
+                    <p className="text-xs font-semibold text-indigo-500 uppercase tracking-widest">Payment Receipt</p>
+                    <p className="text-2xl font-black text-slate-900 tracking-tight">{payment.paymentNumber}</p>
+                    <span className="inline-block mt-1 px-3 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      Received
+                    </span>
+                  </div>
+                </div>
+
+                {/* Received From / Receipt Details */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 py-6 border-y border-slate-100">
+                  <div className="sm:col-span-2 space-y-0.5">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Received From</p>
+                    <p className="text-sm font-bold text-slate-900 leading-tight">{cust?.name || '—'}</p>
+                    <div className="flex flex-col gap-y-0 mt-0.5">
+                      {cust?.address && <span className="text-[11px] text-slate-500 leading-snug">{cust.address}</span>}
+                      {cust?.city && <span className="text-[11px] text-slate-500 leading-snug">{cust.city}</span>}
+                      {cust?.state && <span className="text-[11px] text-slate-500 leading-snug">{cust.state}</span>}
+                      {cust?.country && <span className="text-[11px] text-slate-500 leading-snug">{cust.country}</span>}
+                    </div>
+                    <div className="flex flex-col gap-y-0 mt-1">
+                      {cust?.phone && <span className="text-[11px] text-slate-500">{cust.phone}</span>}
+                      {cust?.email && <span className="text-[11px] text-slate-500">{cust.email}</span>}
+                    </div>
+                  </div>
+                  <div className="space-y-2 sm:text-right">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Receipt Details</p>
+                    <div className="space-y-1 text-sm">
+                      <div className="flex sm:justify-end gap-2">
+                        <span className="text-slate-400 w-24 sm:w-auto">Date</span>
+                        <span className="font-medium text-slate-700">{fmtDate(payment.date)}</span>
+                      </div>
+                      <div className="flex sm:justify-end gap-2">
+                        <span className="text-slate-400 w-24 sm:w-auto">Method</span>
+                        <span className="font-medium text-slate-700">{meta?.label}</span>
+                      </div>
+                      {payment.reference && (
+                        <div className="flex sm:justify-end gap-2">
+                          <span className="text-slate-400 w-24 sm:w-auto">Reference</span>
+                          <span className="font-medium text-slate-700 font-mono">{payment.reference}</span>
+                        </div>
+                      )}
+                      {invoiceNumbers.length > 0 && (
+                        <div className="flex sm:justify-end gap-2">
+                          <span className="text-slate-400 w-24 sm:w-auto">Invoice{invoiceNumbers.length > 1 ? 's' : ''}</span>
+                          <span className="font-medium text-slate-700 font-mono">{invoiceNumbers.join(', ')}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Amount */}
+                <div className="flex flex-col items-center justify-center py-6 bg-slate-50 rounded-xl border border-slate-100">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Amount Received</p>
+                  <p className="text-3xl font-black text-emerald-700 font-mono tracking-tight">{formatNaira(payment.amount)}</p>
+                  <p className="text-[11px] text-slate-400 mt-1">{payment.currency}</p>
+                </div>
+
+                {payment.notes && (
+                  <div className="text-[11px] text-slate-500 leading-relaxed border-t border-slate-100 pt-4">
+                    <p className="font-bold text-slate-400 uppercase tracking-widest text-[10px] mb-1">Notes</p>
+                    {payment.notes}
+                  </div>
+                )}
+
+                <div className="text-center text-[10px] text-slate-400 pt-4 border-t border-slate-100">
+                  This receipt was generated electronically and confirms the payment recorded above.
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
