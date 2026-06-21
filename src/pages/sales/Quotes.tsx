@@ -205,10 +205,16 @@ export function QuotesPage() {
     setModalOpen(true);
   }
 
-  function openEdit(q: Quote) {
+  async function openEdit(q: Quote) {
     setEditingId(q.id);
-    setForm(formFromQuote(q));
     setFormError(null);
+    // Fetch full quote detail to get lines
+    try {
+      const r = await api.get(\`/sales/quotes/\${q.id}\`);
+      setForm(formFromQuote(r.data));
+    } catch {
+      setForm(formFromQuote(q));
+    }
     setModalOpen(true);
   }
 

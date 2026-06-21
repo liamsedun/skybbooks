@@ -112,14 +112,7 @@ function formFromSO(so: SalesOrder): SOFormState {
     expectedDelivery: so.expectedDelivery ? so.expectedDelivery.split('T')[0] : '',
     status: so.status,
     notes: so.notes || '',
-    lines: (so.lines || []).length > 0 ? so.lines.map(l => ({
-      itemId: l.itemId || '',
-      description: l.description,
-      quantity: l.quantity.toString(),
-      unitPrice: (l.unitPrice / 100).toString(),
-      discountPct: (l.discountPct || 0).toString(),
-      taxRate: (l.taxRate || 7.5).toString(),
-    })) : [{ ...EMPTY_LINE }],
+    lines: (so.lines && so.lines.length > 0) ? so.lines : [{ ...EMPTY_LINE }],
   };
 }
 
@@ -205,7 +198,17 @@ export function SalesOrdersPage() {
   }, [soData]);
 
   function openAddModal() { setForm(EMPTY_FORM); setEditingId(null); setFormError(null); setModalOpen(true); }
-  function openEditModal(so: SalesOrder) { setForm(formFromSO(so)); setEditingId(so.id); setFormError(null); setModalOpen(true); }
+  async function openEditModal(so: SalesOrder) {
+    setEditingId(so.id);
+    setFormError(null);
+    try {
+      const r = await api.get('/sales/sales-orders/' + so.id);
+      setForm(formFromSO(r.data));
+    } catch {
+      setForm(formFromSO(so));
+    }
+    setModalOpen(true);
+  }
   function closeModal() { setModalOpen(false); setEditingId(null); setFormError(null); }
 
   function handleSubmit(e: React.FormEvent) {
