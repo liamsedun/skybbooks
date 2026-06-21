@@ -89,6 +89,11 @@ export const paymentMethodEnum = pgEnum('payment_method', [
   'ussd'
 ]);
 
+export const paymentCategoryEnum = pgEnum('payment_category', [
+  'sales_invoice',
+  'other_income'
+]);
+
 export const creditNoteStatusEnum = pgEnum('credit_note_status', [
   'draft',
   'issued',
@@ -419,7 +424,9 @@ export const paymentsReceived = pgTable('payments_received', {
   id: uuid('id').defaultRandom().primaryKey(),
   orgId: uuid('org_id').references(() => organisations.id).notNull(),
   paymentNumber: text('payment_number').notNull(),
-  customerId: uuid('customer_id').references(() => contacts.id).notNull(),
+  category: paymentCategoryEnum('category').default('sales_invoice').notNull(),
+  customerId: uuid('customer_id').references(() => contacts.id),
+  payerName: text('payer_name'),
   date: timestamp('date').notNull(),
   amount: integer('amount').notNull(),
   currency: text('currency').default('NGN').notNull(),
@@ -427,6 +434,7 @@ export const paymentsReceived = pgTable('payments_received', {
   paymentMethod: paymentMethodEnum('payment_method').notNull(),
   reference: text('reference'),
   accountId: uuid('account_id').references(() => accounts.id).notNull(),
+  incomeAccountId: uuid('income_account_id').references(() => accounts.id),
   notes: text('notes'),
   createdBy: uuid('created_by').references(() => users.id).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull()

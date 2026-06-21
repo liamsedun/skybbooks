@@ -21,6 +21,7 @@ import {
 } from '../services/invoice.service';
 import {
   recordPaymentReceived,
+  updatePaymentReceived,
   deletePaymentReceived,
   unallocatePayment,
   recordPaymentMade
@@ -101,20 +102,59 @@ const createRecurringInvoiceSchema = z.object({
 const updateRecurringInvoiceSchema = createRecurringInvoiceSchema.partial();
 
 const recordPaymentReceivedSchema = z.object({
-  customerId: z.string().uuid('Invalid customer id.'),
+  category: z.enum(['sales_invoice', 'other_income']).optional().default('sales_invoice'),
+  customerId: z.string().uuid('Invalid customer id.').optional().nullable(),
+  payerName: z.string().optional().nullable(),
   date: z.string().optional(),
   amount: z.number().int().positive('Payment amount must be greater than zero (In Kobo).'),
   currency: z.string().optional(),
   paymentMethod: z.enum(['cash', 'bank_transfer', 'card', 'cheque', 'pos', 'ussd']),
   reference: z.string().optional().nullable(),
   accountId: z.string().uuid('Invalid active receipt account.'),
+  incomeAccountId: z.string().uuid().optional().nullable(),
   notes: z.string().optional().nullable(),
   allocations: z.array(
     z.object({
       invoiceId: z.string().uuid(),
       amount: z.number().int().positive('Allocation amount must be positive.')
     })
-  ).min(1, 'Payment must specify at least one invoice allocation.')
+  ).optional().default([])
+}).superRefine((data, ctx) => {
+  if (data.category === 'sales_invoice') {
+    if (!data.customerId) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'A customer is required for sales invoice receipts.', path: ['customerId'] });
+    }
+    if (!data.allocations || data.allocations.length === 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Payment must specify at least one invoice allocation.', path: ['allocations'] });
+    }
+  } else {
+    if (!data.incomeAccountId) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'An income account is required for non-invoice receipts.', path: ['incomeAccountId'] });
+    }
+    if (!data.customerId && !data.payerName) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Provide either a customer or a payer name for this receipt.', path: ['payerName'] });
+    }
+  }
+});
+
+const updatePaymentReceivedSchema = z.object({
+  category: z.enum(['sales_invoice', 'other_income']).optional(),
+  customerId: z.string().uuid().optional().nullable(),
+  payerName: z.string().optional().nullable(),
+  date: z.string().optional(),
+  amount: z.number().int().positive('Payment amount must be greater than zero (In Kobo).').optional(),
+  currency: z.string().optional(),
+  paymentMethod: z.enum(['cash', 'bank_transfer', 'card', 'cheque', 'pos', 'ussd']).optional(),
+  reference: z.string().optional().nullable(),
+  accountId: z.string().uuid().optional(),
+  incomeAccountId: z.string().uuid().optional().nullable(),
+  notes: z.string().optional().nullable(),
+  allocations: z.array(
+    z.object({
+      invoiceId: z.string().uuid(),
+      amount: z.number().int().positive('Allocation amount must be positive.')
+    })
+  ).optional()
 });
 
 const recordPaymentMadeSchema = z.object({
@@ -401,6 +441,23 @@ router.get('/payments/:id', async (req: AuthenticatedRequest, res: Response, nex
 
     return res.status(200).json({ ...pmt, allocations, type: 'payment_received' });
   } catch (err) {
+    return next(err);
+  }
+});
+
+// Update a payment received (edits, then reverses & re-posts journal/allocations)
+router.patch('/payments/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const userId = req.user!.userId;
+    const { id } = req.params;
+    const body = updatePaymentReceivedSchema.parse(req.body);
+    const updated = await updatePaymentReceived(id, orgId, body, userId);
+    return res.status(200).json(updated);
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      return next(new AppError(err.issues[0]?.message || 'Validation failed', 400));
+    }
     return next(err);
   }
 });

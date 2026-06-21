@@ -88,38 +88,50 @@ export async function recordPaymentReceived(input: any, createdBy: string): Prom
   return await db.transaction(async (tx) => {
     const orgId = input.orgId;
     const amount = Number(input.amount || 0);
+    const category = input.category || 'sales_invoice';
 
     if (amount <= 0) {
       throw new AppError('Payment amount must be greater than zero.', 400);
     }
 
-    // 1. Check allocations
-    const allocations = input.allocations || [];
-    let allocatedSum = 0;
-    for (const alloc of allocations) {
-      allocatedSum += Number(alloc.amount || 0);
-    }
+    const allocations = category === 'sales_invoice' ? (input.allocations || []) : [];
 
-    if (allocatedSum !== amount) {
-      throw new AppError(`Total allocated sum (${allocatedSum} kobo) must exactly match payment amount (${amount} kobo).`, 400);
-    }
-
-    // 2. Validate allocations against invoices outstanding balance_due
-    for (const alloc of allocations) {
-      const [invoice] = await tx
-        .select()
-        .from(invoices)
-        .where(eq(invoices.id, alloc.invoiceId))
-        .limit(1);
-
-      if (!invoice) {
-        throw new AppError(`Invoice with ID ${alloc.invoiceId} not found.`, 404);
+    if (category === 'sales_invoice') {
+      // 1. Check allocations sum matches amount
+      let allocatedSum = 0;
+      for (const alloc of allocations) {
+        allocatedSum += Number(alloc.amount || 0);
       }
-      if (invoice.status === 'draft' || invoice.status === 'void') {
-        throw new AppError(`Cannot allocate receipt to a draft or void invoice ${invoice.invoiceNumber}.`, 400);
+
+      if (allocatedSum !== amount) {
+        throw new AppError(`Total allocated sum (${allocatedSum} kobo) must exactly match payment amount (${amount} kobo).`, 400);
       }
-      if (Number(alloc.amount) > invoice.balanceDue) {
-        throw new AppError(`Allocated amount (${alloc.amount} kobo) exceeds balance due (${invoice.balanceDue} kobo) on Invoice ${invoice.invoiceNumber}.`, 400);
+
+      // 2. Validate allocations against invoices outstanding balance_due
+      for (const alloc of allocations) {
+        const [invoice] = await tx
+          .select()
+          .from(invoices)
+          .where(eq(invoices.id, alloc.invoiceId))
+          .limit(1);
+
+        if (!invoice) {
+          throw new AppError(`Invoice with ID ${alloc.invoiceId} not found.`, 404);
+        }
+        if (invoice.status === 'draft' || invoice.status === 'void') {
+          throw new AppError(`Cannot allocate receipt to a draft or void invoice ${invoice.invoiceNumber}.`, 400);
+        }
+        if (Number(alloc.amount) > invoice.balanceDue) {
+          throw new AppError(`Allocated amount (${alloc.amount} kobo) exceeds balance due (${invoice.balanceDue} kobo) on Invoice ${invoice.invoiceNumber}.`, 400);
+        }
+      }
+    } else {
+      // Non-invoice income receipt (e.g. fixed asset disposal, donation/grant)
+      if (!input.incomeAccountId) {
+        throw new AppError('An income account must be specified for non-invoice receipts.', 400);
+      }
+      if (!input.customerId && !input.payerName) {
+        throw new AppError('Provide either a customer or a payer name for this receipt.', 400);
       }
     }
 
@@ -138,7 +150,9 @@ export async function recordPaymentReceived(input: any, createdBy: string): Prom
       .values({
         orgId,
         paymentNumber,
-        customerId: input.customerId,
+        category,
+        customerId: input.customerId || null,
+        payerName: input.payerName || null,
         date: new Date(input.date || new Date()),
         amount,
         currency: input.currency || 'NGN',
@@ -146,12 +160,13 @@ export async function recordPaymentReceived(input: any, createdBy: string): Prom
         paymentMethod: input.paymentMethod || 'bank_transfer',
         reference: input.reference || null,
         accountId: input.accountId, // Selected asset bank account
+        incomeAccountId: category === 'other_income' ? input.incomeAccountId : null,
         notes: input.notes || null,
         createdBy
       })
       .returning();
 
-    // 5. Save allocations and update invoices
+    // 5. Save allocations and update invoices (sales_invoice category only)
     const recordedAllocations: any[] = [];
     for (const alloc of allocations) {
       const [invoice] = await tx
@@ -188,14 +203,18 @@ export async function recordPaymentReceived(input: any, createdBy: string): Prom
     }
 
     // 6. Generate Journal Entry
-    // DR Bank Account (paymentsReceived.accountId)
-    // CR Accounts Receivable (contact's receivable account)
-    const arAccountId = await resolveAccountsReceivable(orgId, tx);
+    // Sales invoice receipt: DR Bank, CR Accounts Receivable
+    // Other income receipt:  DR Bank, CR the chosen income account
+    const creditAccountId = category === 'sales_invoice'
+      ? await resolveAccountsReceivable(orgId, tx)
+      : input.incomeAccountId;
 
     await createJournalEntry({
       orgId,
       date: payment.date,
-      description: `Journal posting of Payment Received ${payment.paymentNumber}`,
+      description: category === 'sales_invoice'
+        ? `Journal posting of Payment Received ${payment.paymentNumber}`
+        : `Journal posting of Other Income Receipt ${payment.paymentNumber}`,
       reference: payment.paymentNumber,
       source: 'payment',
       sourceId: payment.id,
@@ -207,9 +226,11 @@ export async function recordPaymentReceived(input: any, createdBy: string): Prom
           description: `Receipt mapping for payment ${payment.paymentNumber}`
         },
         {
-          accountId: arAccountId, // Customer debtor ledger
+          accountId: creditAccountId,
           credit: amount,
-          description: `AR application for payment ${payment.paymentNumber}`
+          description: category === 'sales_invoice'
+            ? `AR application for payment ${payment.paymentNumber}`
+            : `Income recognition for receipt ${payment.paymentNumber}`
         }
       ]
     }, tx);
@@ -218,6 +239,162 @@ export async function recordPaymentReceived(input: any, createdBy: string): Prom
       ...payment,
       allocations: recordedAllocations
     };
+  });
+}
+
+/**
+ * Update an existing payment received. Because payments carry journal entries and (optionally)
+ * invoice allocations, an edit is implemented as: reverse the old journal entry and allocations,
+ * then re-apply with the new values — while keeping the same payment id and payment number.
+ */
+export async function updatePaymentReceived(paymentId: string, orgId: string, input: any, userId: string): Promise<any> {
+  return await db.transaction(async (tx) => {
+    const [existing] = await tx
+      .select()
+      .from(paymentsReceived)
+      .where(and(eq(paymentsReceived.id, paymentId), eq(paymentsReceived.orgId, orgId)))
+      .limit(1);
+
+    if (!existing) throw new AppError('Payment not found.', 404);
+
+    // 1. Reverse old allocations (restore invoice balances)
+    const oldAllocations = await tx
+      .select()
+      .from(paymentAllocations)
+      .where(eq(paymentAllocations.paymentId, paymentId));
+
+    for (const alloc of oldAllocations) {
+      const [invoice] = await tx
+        .select()
+        .from(invoices)
+        .where(eq(invoices.id, alloc.invoiceId))
+        .limit(1);
+
+      if (invoice) {
+        const nextAmountPaid = Math.max(0, invoice.amountPaid - alloc.amount);
+        const nextBalanceDue = invoice.total - nextAmountPaid;
+        const nextStatus = nextAmountPaid === 0 ? 'sent' : 'partial';
+
+        await tx
+          .update(invoices)
+          .set({ amountPaid: nextAmountPaid, balanceDue: nextBalanceDue, status: nextStatus })
+          .where(eq(invoices.id, invoice.id));
+      }
+    }
+
+    await tx.delete(paymentAllocations).where(eq(paymentAllocations.paymentId, paymentId));
+
+    // 2. Reverse old journal entry
+    const oldEntries = await tx
+      .select()
+      .from(journalEntries)
+      .where(
+        and(
+          eq(journalEntries.source, 'payment'),
+          eq(journalEntries.sourceId, paymentId),
+          eq(journalEntries.isReversed, false)
+        )
+      );
+
+    for (const jr of oldEntries) {
+      await reverseJournalEntry(jr.id, new Date(), userId);
+    }
+
+    // 3. Merge new values over existing payment
+    const category = input.category || existing.category;
+    const amount = input.amount !== undefined ? Number(input.amount) : existing.amount;
+    const accountId = input.accountId || existing.accountId;
+    const date = input.date ? new Date(input.date) : existing.date;
+    const allocations = category === 'sales_invoice' ? (input.allocations || []) : [];
+
+    if (category === 'sales_invoice') {
+      let allocatedSum = 0;
+      for (const alloc of allocations) allocatedSum += Number(alloc.amount || 0);
+      if (allocations.length > 0 && allocatedSum !== amount) {
+        throw new AppError(`Total allocated sum (${allocatedSum} kobo) must exactly match payment amount (${amount} kobo).`, 400);
+      }
+      for (const alloc of allocations) {
+        const [invoice] = await tx.select().from(invoices).where(eq(invoices.id, alloc.invoiceId)).limit(1);
+        if (!invoice) throw new AppError(`Invoice with ID ${alloc.invoiceId} not found.`, 404);
+        if (Number(alloc.amount) > invoice.total) {
+          throw new AppError(`Allocated amount exceeds invoice total on ${invoice.invoiceNumber}.`, 400);
+        }
+      }
+    } else {
+      const incomeAccountId = input.incomeAccountId || existing.incomeAccountId;
+      if (!incomeAccountId) throw new AppError('An income account must be specified for non-invoice receipts.', 400);
+      if (!(input.customerId ?? existing.customerId) && !(input.payerName ?? existing.payerName)) {
+        throw new AppError('Provide either a customer or a payer name for this receipt.', 400);
+      }
+    }
+
+    // 4. Update the payment row
+    const [updated] = await tx
+      .update(paymentsReceived)
+      .set({
+        category,
+        customerId: category === 'sales_invoice' ? (input.customerId ?? existing.customerId) : (input.customerId ?? existing.customerId ?? null),
+        payerName: input.payerName ?? existing.payerName,
+        date,
+        amount,
+        currency: input.currency || existing.currency,
+        paymentMethod: input.paymentMethod || existing.paymentMethod,
+        reference: input.reference !== undefined ? input.reference : existing.reference,
+        accountId,
+        incomeAccountId: category === 'other_income' ? (input.incomeAccountId || existing.incomeAccountId) : null,
+        notes: input.notes !== undefined ? input.notes : existing.notes
+      })
+      .where(eq(paymentsReceived.id, paymentId))
+      .returning();
+
+    // 5. Re-apply allocations (sales_invoice only)
+    const recordedAllocations: any[] = [];
+    for (const alloc of allocations) {
+      const [invoice] = await tx.select().from(invoices).where(eq(invoices.id, alloc.invoiceId)).limit(1);
+      const allocAmt = Number(alloc.amount);
+      const nextAmountPaid = invoice.amountPaid + allocAmt;
+      const nextBalanceDue = invoice.total - nextAmountPaid;
+      const nextStatus = nextBalanceDue <= 0 ? 'paid' : 'partial';
+
+      await tx
+        .update(invoices)
+        .set({ amountPaid: nextAmountPaid, balanceDue: nextBalanceDue, status: nextStatus })
+        .where(eq(invoices.id, invoice.id));
+
+      const [recordedAlloc] = await tx
+        .insert(paymentAllocations)
+        .values({ paymentId: updated.id, invoiceId: invoice.id, amount: allocAmt })
+        .returning();
+
+      recordedAllocations.push(recordedAlloc);
+    }
+
+    // 6. Re-post journal entry
+    const creditAccountId = category === 'sales_invoice'
+      ? await resolveAccountsReceivable(orgId, tx)
+      : updated.incomeAccountId;
+
+    if (!creditAccountId) {
+      throw new AppError('An income account is required for non-invoice receipts.', 400);
+    }
+
+    await createJournalEntry({
+      orgId,
+      date: updated.date,
+      description: category === 'sales_invoice'
+        ? `Journal posting of Payment Received ${updated.paymentNumber} (edited)`
+        : `Journal posting of Other Income Receipt ${updated.paymentNumber} (edited)`,
+      reference: updated.paymentNumber,
+      source: 'payment',
+      sourceId: updated.id,
+      createdBy: userId,
+      lines: [
+        { accountId: updated.accountId, debit: amount, description: `Receipt mapping for payment ${updated.paymentNumber}` },
+        { accountId: creditAccountId, credit: amount, description: category === 'sales_invoice' ? `AR application for payment ${updated.paymentNumber}` : `Income recognition for receipt ${updated.paymentNumber}` }
+      ]
+    }, tx);
+
+    return { ...updated, allocations: recordedAllocations };
   });
 }
 

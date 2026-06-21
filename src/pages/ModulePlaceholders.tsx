@@ -967,18 +967,7 @@ export { SalesOrdersPage } from './sales/SalesOrders';
 
 export { PaymentsReceivedPage as ReceiptsPage } from './sales/PaymentsReceived';
 
-export function RecurringInvoicesPage() {
-  return (
-    <PageShell title="Recurring Billing Rules" description="Manage subscription tiers, automatic monthly clients billing agreements, and retainer sequences." badge="Auto pilot Active">
-      <div className="p-10 bg-white border border-slate-100 rounded-2xl text-center space-y-3 shadow-3xs">
-        <History className="w-8 h-8 text-indigo-400 mx-auto animate-spin duration-1000" />
-        <h4 className="text-sm font-bold text-slate-800">No active automated billing retainers found</h4>
-        <p className="text-xs text-slate-400 max-w-sm mx-auto">Instantiate monthly client subscriptions to generate automated SEC and IFRS compliant invoices automatically.</p>
-        <button className="py-2 px-4 bg-indigo-600 text-white rounded-xl text-xs font-bold shadow-sm hover:bg-slate-900 transition">Create Billing Template</button>
-      </div>
-    </PageShell>
-  );
-}
+export { RecurringInvoicesPage } from './sales/RecurringInvoices';
 
 export function RecurringExpensesPage() {
   return (
