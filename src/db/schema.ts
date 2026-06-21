@@ -341,6 +341,7 @@ export const quotes = pgTable('quotes', {
   total: integer('total').default(0).notNull(),
   notes: text('notes'),
   terms: text('terms'),
+  lines: jsonb('lines').default([]),
   convertedToId: uuid('converted_to_id'),
   createdBy: uuid('created_by').references(() => users.id).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull()
@@ -361,6 +362,7 @@ export const salesOrders = pgTable('sales_orders', {
   tax: integer('tax').default(0).notNull(),
   total: integer('total').default(0).notNull(),
   notes: text('notes'),
+  lines: jsonb('lines').default([]),
   createdBy: uuid('created_by').references(() => users.id).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
@@ -460,6 +462,7 @@ export const creditNotes = pgTable('credit_notes', {
   tax: integer('tax').default(0).notNull(),
   total: integer('total').default(0).notNull(),
   remainingCredit: integer('remaining_credit').default(0).notNull(),
+  notes: text('notes'),
   journalEntryId: uuid('journal_entry_id').references(() => journalEntries.id),
   createdBy: uuid('created_by').references(() => users.id).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull()

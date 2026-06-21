@@ -126,6 +126,7 @@ export async function createCreditNote(input: any, createdBy: string): Promise<a
         tax,
         total,
         remainingCredit: total,
+        notes: input.notes || null,
         createdBy
       })
       .returning();
@@ -274,5 +275,40 @@ export async function applyCreditNote(cnId: string, invoiceId: string, amount: n
       remainingCredit: nextRemainingCredit,
       invoiceBalanceDue: nextBalanceDue
     };
+  });
+}
+
+/**
+ * Void a credit note that has not yet been (fully) applied. Reverses its original
+ * journal entry and sets remainingCredit to 0 so it can no longer be allocated.
+ * A credit note that has already been partially or fully applied to an invoice
+ * cannot be voided here, since that would require also unwinding the invoice's
+ * balance — delete/adjust the invoice-side allocation first in that case.
+ */
+export async function voidCreditNote(cnId: string, orgId: string, userId: string): Promise<any> {
+  return await db.transaction(async (tx) => {
+    const [creditNote] = await tx
+      .select()
+      .from(creditNotes)
+      .where(and(eq(creditNotes.id, cnId), eq(creditNotes.orgId, orgId)))
+      .limit(1);
+
+    if (!creditNote) throw new AppError('Credit note not found.', 404);
+    if (creditNote.status === 'void') throw new AppError('This credit note is already void.', 400);
+    if (creditNote.remainingCredit < creditNote.total) {
+      throw new AppError('This credit note has already been partially or fully applied to an invoice and cannot be voided directly.', 400);
+    }
+
+    if (creditNote.journalEntryId) {
+      await reverseJournalEntry(creditNote.journalEntryId, new Date(), userId);
+    }
+
+    const [voided] = await tx
+      .update(creditNotes)
+      .set({ status: 'void', remainingCredit: 0 })
+      .where(eq(creditNotes.id, cnId))
+      .returning();
+
+    return voided;
   });
 }

@@ -6,7 +6,7 @@
 import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { db, contacts, invoices, invoiceLines, quotes, salesOrders, paymentsReceived, paymentAllocations, creditNotes, accounts, paymentsMade, paymentMadeAllocations } from '../db/schema';
-import { eq, and, desc, asc, sql } from 'drizzle-orm';
+import { eq, and, desc, asc, sql, inArray } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
 import {
@@ -28,7 +28,8 @@ import {
 } from '../services/payment.service';
 import {
   createCreditNote,
-  applyCreditNote
+  applyCreditNote,
+  voidCreditNote
 } from '../services/creditNote.service';
 import {
   createRecurringInvoice,
@@ -179,7 +180,8 @@ const createCreditNoteSchema = z.object({
   invoiceId: z.string().uuid().optional().nullable(),
   date: z.string().optional(),
   subtotal: z.number().int().nonnegative('Subtotal must be non-negative (In Kobo).'),
-  tax: z.number().int().nonnegative('Tax must be non-negative (In Kobo).')
+  tax: z.number().int().nonnegative('Tax must be non-negative (In Kobo).'),
+  notes: z.string().optional().nullable()
 });
 
 const applyCreditNoteSchema = z.object({
@@ -489,7 +491,22 @@ router.get('/credit-notes', async (req: AuthenticatedRequest, res: Response, nex
       .where(eq(creditNotes.orgId, orgId))
       .orderBy(desc(creditNotes.date));
 
-    return res.status(200).json(notes);
+    const allContacts = await db.select({ id: contacts.id, name: contacts.name, email: contacts.email }).from(contacts).where(eq(contacts.orgId, orgId));
+    const custMap = new Map(allContacts.map((c: any) => [c.id, c]));
+
+    const invoiceIds = notes.map(n => n.invoiceId).filter(Boolean) as string[];
+    const linkedInvoices = invoiceIds.length > 0
+      ? await db.select({ id: invoices.id, invoiceNumber: invoices.invoiceNumber }).from(invoices).where(inArray(invoices.id, invoiceIds))
+      : [];
+    const invMap = new Map(linkedInvoices.map((i: any) => [i.id, i.invoiceNumber]));
+
+    const enriched = notes.map(n => ({
+      ...n,
+      customer: custMap.get(n.customerId) || null,
+      invoiceNumber: n.invoiceId ? (invMap.get(n.invoiceId) || null) : null
+    }));
+
+    return res.status(200).json(enriched);
   } catch (err) {
     return next(err);
   }
@@ -525,7 +542,15 @@ router.get('/credit-notes/:id', async (req: AuthenticatedRequest, res: Response,
       .limit(1);
 
     if (!note) throw new AppError('Credit note not found.', 404);
-    return res.status(200).json(note);
+
+    const [customer] = await db.select().from(contacts).where(eq(contacts.id, note.customerId)).limit(1);
+    let invoice = null;
+    if (note.invoiceId) {
+      const [inv] = await db.select().from(invoices).where(eq(invoices.id, note.invoiceId)).limit(1);
+      invoice = inv || null;
+    }
+
+    return res.status(200).json({ ...note, customer, invoice });
   } catch (err) {
     return next(err);
   }
@@ -546,6 +571,17 @@ router.post('/credit-notes/:id/apply', async (req: AuthenticatedRequest, res: Re
     }
     return next(err);
   }
+});
+
+// Void a credit note that has not yet been applied to any invoice
+router.post('/credit-notes/:id/void', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const userId = req.user!.userId;
+    const { id } = req.params;
+    const voided = await voidCreditNote(id, orgId, userId);
+    return res.status(200).json(voided);
+  } catch (err) { return next(err); }
 });
 
 // ==========================================

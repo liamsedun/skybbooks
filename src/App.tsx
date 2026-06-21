@@ -18,6 +18,7 @@ import { InvoiceList } from './pages/sales/InvoiceList';
 import { InvoiceForm } from './pages/sales/InvoiceForm';
 import { InvoiceDetail } from './pages/sales/InvoiceDetail';
 import { RecurringInvoicesPage } from './pages/sales/RecurringInvoices';
+import { CreditNotesPage } from './pages/sales/CreditNotes';
 
 // Banking Pages
 import { BankAccounts } from './pages/banking/BankAccounts';
@@ -31,7 +32,6 @@ import {
   CustomersPage,
   QuotesPage,
   PaymentsPage,
-  CreditNotesPage,
   VendorsPage,
   ExpensesPage,
   BillsPage,
@@ -64,7 +64,6 @@ import {
   InvitesSettingsPage,
   IntegrationsSettingsPage
 } from './pages/ModulePlaceholders';
-import { PaymentsReceivedPage } from './pages/sales/PaymentsReceived';
 import { OrganisationSettingsPage as OrganisationSettingsPageReal } from './pages/settings/OrganisationSettings';
 
 import { useAuth } from './hooks/useAuth';
@@ -207,10 +206,10 @@ function AppRoutes() {
           <Route path="/sales/invoices/new" element={<InvoiceFormWrapper />} />
           <Route path="/sales/invoices/:id" element={<InvoiceDetailWrapper />} />
           <Route path="/sales/invoices/:id/edit" element={<InvoiceFormWrapper />} />
-          <Route path="/sales/payments" element={<PaymentsReceivedPage />} />
+          <Route path="/sales/payments" element={<PaymentsPage />} />
           <Route path="/sales/credit-notes" element={<CreditNotesPage />} />
           <Route path="/sales/sales-orders" element={<SalesOrdersPage />} />
-          <Route path="/sales/receipts" element={<PaymentsReceivedPage />} />
+          <Route path="/sales/receipts" element={<ReceiptsPage />} />
           <Route path="/sales/recurring-invoices" element={<RecurringInvoicesPage />} />
 
           {/* Purchases module routing */}
