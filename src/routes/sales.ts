@@ -29,6 +29,14 @@ import {
   createCreditNote,
   applyCreditNote
 } from '../services/creditNote.service';
+import {
+  createRecurringInvoice,
+  listRecurringInvoices,
+  getRecurringInvoice,
+  updateRecurringInvoice,
+  deleteRecurringInvoice,
+  generateInvoiceFromTemplate
+} from '../services/recurring.service';
 
 const router = Router();
 
@@ -63,6 +71,34 @@ const createInvoiceSchema = z.object({
 });
 
 const updateInvoiceSchema = createInvoiceSchema.partial();
+
+const recurringTemplateLineSchema = z.object({
+  itemId: z.string().uuid().optional().nullable(),
+  description: z.string().optional(),
+  quantity: z.number().positive('Quantity must be greater than zero.'),
+  unitPrice: z.number().int().nonnegative('Price must be non-negative (In Kobo).'),
+  discountPct: z.number().min(0).max(100).optional(),
+  taxRate: z.number().nonnegative().optional(),
+  accountId: z.string().uuid().optional().nullable()
+});
+
+const createRecurringInvoiceSchema = z.object({
+  customerId: z.string().uuid('Invalid customer id.'),
+  frequency: z.enum(['daily', 'weekly', 'monthly', 'quarterly', 'annually']),
+  startDate: z.string().optional(),
+  endDate: z.string().optional().nullable(),
+  isActive: z.boolean().optional(),
+  template: z.object({
+    lines: z.array(recurringTemplateLineSchema).min(1, 'Billing template must contain at least one line.'),
+    paymentTerms: z.number().optional(),
+    currency: z.string().optional(),
+    notes: z.string().optional().nullable(),
+    terms: z.string().optional().nullable(),
+    autoSend: z.boolean().optional()
+  })
+});
+
+const updateRecurringInvoiceSchema = createRecurringInvoiceSchema.partial();
 
 const recordPaymentReceivedSchema = z.object({
   customerId: z.string().uuid('Invalid customer id.'),
@@ -1020,6 +1056,76 @@ router.post('/sales-orders/:id/convert', async (req: AuthenticatedRequest, res: 
     }
     await db.update(salesOrders).set({ status: 'fulfilled' }).where(eq(salesOrders.id, id));
     return res.status(201).json({ invoice, message: 'Sales order converted to invoice successfully.' });
+  } catch (err) { return next(err); }
+});
+
+// ==========================================
+// RECURRING INVOICES (Billing Templates)
+// ==========================================
+
+router.get('/recurring-invoices', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const rows = await listRecurringInvoices(orgId);
+    return res.status(200).json(rows);
+  } catch (err) { return next(err); }
+});
+
+router.post('/recurring-invoices', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const userId = req.user!.userId;
+    const body = createRecurringInvoiceSchema.parse(req.body);
+    const created = await createRecurringInvoice(body, orgId, userId);
+    return res.status(201).json(created);
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      return next(new AppError(err.issues[0]?.message || 'Validation failed', 400));
+    }
+    return next(err);
+  }
+});
+
+router.get('/recurring-invoices/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { id } = req.params;
+    const row = await getRecurringInvoice(id, orgId);
+    return res.status(200).json(row);
+  } catch (err) { return next(err); }
+});
+
+router.patch('/recurring-invoices/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { id } = req.params;
+    const body = updateRecurringInvoiceSchema.parse(req.body);
+    const updated = await updateRecurringInvoice(id, orgId, body);
+    return res.status(200).json(updated);
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      return next(new AppError(err.issues[0]?.message || 'Validation failed', 400));
+    }
+    return next(err);
+  }
+});
+
+router.delete('/recurring-invoices/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { id } = req.params;
+    await deleteRecurringInvoice(id, orgId);
+    return res.status(200).json({ message: 'Billing template deleted.' });
+  } catch (err) { return next(err); }
+});
+
+router.post('/recurring-invoices/:id/generate-now', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const userId = req.user!.userId;
+    const { id } = req.params;
+    const invoice = await generateInvoiceFromTemplate(id, orgId, userId);
+    return res.status(201).json(invoice);
   } catch (err) { return next(err); }
 });
 

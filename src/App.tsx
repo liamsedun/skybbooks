@@ -17,6 +17,7 @@ import InsightsDashboard from './pages/ai/InsightsDashboard';
 import { InvoiceList } from './pages/sales/InvoiceList';
 import { InvoiceForm } from './pages/sales/InvoiceForm';
 import { InvoiceDetail } from './pages/sales/InvoiceDetail';
+import { RecurringInvoicesPage } from './pages/sales/RecurringInvoices';
 
 // Banking Pages
 import { BankAccounts } from './pages/banking/BankAccounts';
@@ -52,7 +53,6 @@ import {
   UsersSettingsPage,
   SalesOrdersPage,
   ReceiptsPage,
-  RecurringInvoicesPage,
   RecurringExpensesPage,
   PurchaseOrdersPage,
   PayeSchedulesPage,
