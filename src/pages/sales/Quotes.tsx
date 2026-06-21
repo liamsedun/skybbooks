@@ -210,7 +210,7 @@ export function QuotesPage() {
     setFormError(null);
     // Fetch full quote detail to get lines
     try {
-      const r = await api.get(\`/sales/quotes/\${q.id}\`);
+      const r = await api.get(`/sales/quotes/${q.id}`);
       setForm(formFromQuote(r.data));
     } catch {
       setForm(formFromQuote(q));
