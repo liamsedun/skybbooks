@@ -160,57 +160,95 @@ export function RecordPaymentDrawer({
     }
   }, [bankAccounts, setValue]);
 
+  // Distribute a given total amount (in kobo) across the currently-selected invoices,
+  // in the order they appear, filling each one's balance due before moving to the next.
+  // This mirrors how cash is actually applied: oldest/first selected invoice gets settled
+  // first, with any remainder flowing to the next selected invoice, and so on.
+  const redistribute = (totalKobo: number, allocations: typeof watchedAllocations) => {
+    let remaining = totalKobo;
+    return allocations.map((f) => {
+      if (!f.selected) return { ...f, allocatedAmount: 0 };
+      const applied = Math.max(0, Math.min(remaining, f.balanceDue));
+      remaining -= applied;
+      return { ...f, allocatedAmount: applied };
+    });
+  };
+
   // Handle allocation checkbox toggle
   const handleCheckboxToggle = (index: number) => {
-    const current = watchedAllocations[index];
-    const newSelected = !current.selected;
-    setValue(`allocations.${index}.selected`, newSelected);
-    
-    // After toggling, re-distribute the payment amount across all checked invoices
-    const updatedAllocations = [...watchedAllocations];
-    updatedAllocations[index] = { ...updatedAllocations[index], selected: newSelected };
-    
-    const paymentKobo = Math.round((parseFloat(watchedAmount as any) || 0) * 100);
-    const checkedInvoices = updatedAllocations.filter(f => f.selected);
-    
-    if (checkedInvoices.length === 0 || paymentKobo === 0) {
-      // Clear all allocations
-      updatedAllocations.forEach((_, i) => {
-        setValue(`allocations.${i}.allocatedAmount`, 0);
-      });
-      return;
-    }
-    
-    // Distribute payment amount: fill each invoice up to its balance due, in order
-    let remaining = paymentKobo;
-    updatedAllocations.forEach((alloc, i) => {
-      if (!alloc.selected) {
-        setValue(`allocations.${i}.allocatedAmount`, 0);
-      } else {
-        const canTake = Math.min(remaining, alloc.balanceDue);
-        setValue(`allocations.${i}.allocatedAmount`, canTake);
-        remaining -= canTake;
+    const updated = [...watchedAllocations];
+    updated[index] = { ...updated[index], selected: !updated[index].selected };
+
+    const totalKobo = Math.round((parseFloat(watchedAmount as any) || 0) * 100);
+    const redistributed = redistribute(totalKobo, updated);
+
+    redistributed.forEach((f, i) => {
+      setValue(`allocations.${i}.selected`, f.selected);
+      setValue(`allocations.${i}.allocatedAmount`, f.allocatedAmount);
+    });
+  };
+
+  // Re-run distribution whenever the person edits "Amount Received" so the selected
+  // invoices always reflect the latest figure without needing manual per-row entry.
+  useEffect(() => {
+    const totalKobo = Math.round((parseFloat(watchedAmount as any) || 0) * 100);
+    const anySelected = watchedAllocations.some((f) => f.selected);
+    if (!anySelected) return;
+    const redistributed = redistribute(totalKobo, watchedAllocations);
+    redistributed.forEach((f, i) => {
+      if (f.allocatedAmount !== watchedAllocations[i].allocatedAmount) {
+        setValue(`allocations.${i}.allocatedAmount`, f.allocatedAmount);
       }
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watchedAmount]);
+
+  const createPaymentMutation = useMutation({
+    mutationFn: async (data: PaymentFormData) => {
+      // Format active allocations list
+      const activeAllocations = data.allocations
+        .filter((field) => field.selected && field.allocatedAmount > 0)
+        .map((field) => ({
+          invoiceId: field.invoiceId,
+          amount: Math.round(field.allocatedAmount),
+        }));
+
+      if (activeAllocations.length === 0) {
+        throw new Error('Please select at least one invoice and allocate payments.');
+      }
+
+      // Final payment build packet
+      const payload = {
+        customerId: data.customerId,
+        date: data.date,
+        amount: Math.round(data.amount * 100), // convert Naira back to Kobo
+        paymentMethod: data.paymentMethod,
+        reference: data.reference || `REF-${Math.floor(100000 + Math.random() * 900000)}`,
+        accountId: data.accountId,
+        notes: data.notes,
+        allocations: activeAllocations,
+      };
+
+      return salesApi.createPaymentReceived(payload);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['bankAccounts'] });
+      queryClient.invalidateQueries({ queryKey: ['paymentsReceived'] });
+      queryClient.invalidateQueries({ queryKey: ['bankAccounts'] });
+      reset();
+      onSuccess?.();
+      onClose();
+    },
+  });
+
+  const onSubmit = (data: PaymentFormData) => {
+    createPaymentMutation.mutate(data);
   };
 
-  // When amount changes, re-distribute across checked invoices
-  const handleAmountChange = (val: string) => {
-    const paymentKobo = Math.round((parseFloat(val) || 0) * 100);
-    const checkedInvoices = watchedAllocations.filter(f => f.selected);
-    if (checkedInvoices.length === 0) return;
-    
-    let remaining = paymentKobo;
-    watchedAllocations.forEach((alloc, i) => {
-      if (!alloc.selected) return;
-      const canTake = Math.min(remaining, alloc.balanceDue);
-      setValue(`allocations.${i}.allocatedAmount`, canTake);
-      remaining -= canTake;
-    });
-  };
-
-
-
+  const totalAllocatedKobo = watchedAllocations
+    .filter((f) => f.selected)
+    .reduce((sum, f) => sum + (f.allocatedAmount || 0), 0);
 
   const paymentAmountKobo = Math.round((parseFloat(watchedAmount as any) || 0) * 100);
   const unallocatedKobo = Math.max(0, paymentAmountKobo - totalAllocatedKobo);
@@ -378,7 +416,6 @@ export function RecordPaymentDrawer({
                     {...register('amount', {
                       required: 'Payment amount is required.',
                       min: { value: 0.01, message: 'Amount must be greater than zero.' },
-                      onChange: (e) => handleAmountChange(e.target.value),
                     })}
                     className="w-full pl-8 pr-4 py-2 border border-purple-300 rounded-xl font-extrabold text-slate-800 bg-white focus:border-purple-600 focus:ring-1 focus:ring-purple-600 outline-none transition text-base"
                   />
@@ -389,21 +426,17 @@ export function RecordPaymentDrawer({
 
                 {/* Real-time distribution diagnostic summary line */}
                 <div className="flex justify-between items-center mt-3 text-[10px] text-slate-500 font-mono">
-                  <span>Allocated: <span className="font-bold text-emerald-600">{formatNaira(totalAllocatedKobo)}</span></span>
-                  {unallocatedKobo > 0 && (
-                    <span className="text-amber-600 font-bold">
-                      Unallocated: {formatNaira(unallocatedKobo)} — check more invoices below
-                    </span>
-                  )}
-                  {unallocatedKobo === 0 && totalAllocatedKobo > 0 && (
-                    <span className="text-emerald-600 font-bold">✓ Fully allocated</span>
-                  )}
+                  <span>Allocated: {formatNaira(totalAllocatedKobo)}</span>
+                  <span className={unallocatedKobo > 0 ? 'text-purple-600 font-bold' : ''}>
+                    Unallocated Excess: {formatNaira(unallocatedKobo)}
+                  </span>
                 </div>
 
                 {isMismatched && (
                   <div className="mt-3 p-2.5 bg-rose-50 border border-rose-200 rounded-lg text-[11px] text-rose-700 font-semibold leading-relaxed">
-                    Amount received ({formatNaira(paymentAmountKobo)}) doesn't match what you've allocated to invoices below
-                    ({formatNaira(totalAllocatedKobo)}). Adjust either figure before saving — the two must match exactly.
+                    You've entered {formatNaira(paymentAmountKobo)}, but the invoice(s) checked below can only absorb
+                    {' '}{formatNaira(totalAllocatedKobo)} of it. Select another invoice to apply the remainder, or
+                    reduce the amount received.
                   </div>
                 )}
               </div>
@@ -456,11 +489,11 @@ export function RecordPaymentDrawer({
                             </div>
                           </div>
 
-                          {/* Right: allocated amount display */}
-                          <div className="text-right shrink-0">
-                            <p className="text-[10px] text-slate-400 font-mono uppercase mb-0.5">Allocated</p>
-                            <p className="font-extrabold text-emerald-700 font-mono text-sm">
-                              {field.selected && field.allocatedAmount > 0 ? formatNaira(field.allocatedAmount) : <span className="text-slate-300">—</span>}
+                          {/* Right: auto-applied amount (read-only, driven by Amount Received above) */}
+                          <div className="text-right shrink-0 max-w-[140px]">
+                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">Applying</p>
+                            <p className={`font-mono font-extrabold text-sm ${field.selected && field.allocatedAmount > 0 ? 'text-emerald-700' : 'text-slate-300'}`}>
+                              {formatNaira(field.allocatedAmount || 0)}
                             </p>
                           </div>
                         </div>
