@@ -310,7 +310,9 @@ export function RecordPaymentDrawer({
             >
               {createPaymentMutation.isError && (
                 <div className="p-3 bg-rose-50 text-rose-700 font-bold rounded-xl leading-relaxed">
-                  ⚠️ {(createPaymentMutation.error as any)?.message || 'Unsuccessful posting of payment.'}
+                  ⚠️ {(createPaymentMutation.error as any)?.response?.data?.error
+                    || (createPaymentMutation.error as any)?.message
+                    || 'Unsuccessful posting of payment.'}
                 </div>
               )}
 
