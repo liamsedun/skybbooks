@@ -164,99 +164,53 @@ export function RecordPaymentDrawer({
   const handleCheckboxToggle = (index: number) => {
     const current = watchedAllocations[index];
     const newSelected = !current.selected;
-    
-    // Update selection state
     setValue(`allocations.${index}.selected`, newSelected);
     
-    if (newSelected) {
-      // Auto-fill allocated amount with remaining balance if possible
-      setValue(`allocations.${index}.allocatedAmount`, current.balanceDue);
-    } else {
-      setValue(`allocations.${index}.allocatedAmount`, 0);
-    }
-
-    // Auto-update total payment amount to matching checked total
-    const currentAllocations = [...watchedAllocations];
-    currentAllocations[index].selected = newSelected;
-    currentAllocations[index].allocatedAmount = newSelected ? current.balanceDue : 0;
-    
-    const checkedSum = currentAllocations
-      .filter((f) => f.selected)
-      .reduce((sum, f) => sum + f.allocatedAmount, 0);
-    
-    setValue('amount', checkedSum / 100);
-  };
-
-  // Handle allocated amount manual override
-  const handleAllocatedAmountChange = (index: number, val: string) => {
-    const numericNaira = parseFloat(val) || 0;
-    const koboVal = Math.round(numericNaira * 100);
-    setValue(`allocations.${index}.allocatedAmount`, koboVal);
-
-    // If greater than 0, check the select box automatically
-    if (koboVal > 0) {
-      setValue(`allocations.${index}.selected`, true);
-    }
-
-    // Re-sum checked amount
+    // After toggling, re-distribute the payment amount across all checked invoices
     const updatedAllocations = [...watchedAllocations];
-    updatedAllocations[index].allocatedAmount = koboVal;
-    if (koboVal > 0) {
-      updatedAllocations[index].selected = true;
+    updatedAllocations[index] = { ...updatedAllocations[index], selected: newSelected };
+    
+    const paymentKobo = Math.round((parseFloat(watchedAmount as any) || 0) * 100);
+    const checkedInvoices = updatedAllocations.filter(f => f.selected);
+    
+    if (checkedInvoices.length === 0 || paymentKobo === 0) {
+      // Clear all allocations
+      updatedAllocations.forEach((_, i) => {
+        setValue(`allocations.${i}.allocatedAmount`, 0);
+      });
+      return;
     }
-    const checkedSum = updatedAllocations
-      .filter((f) => f.selected)
-      .reduce((sum, f) => sum + f.allocatedAmount, 0);
-
-    setValue('amount', checkedSum / 100);
-  };
-
-  const createPaymentMutation = useMutation({
-    mutationFn: async (data: PaymentFormData) => {
-      // Format active allocations list
-      const activeAllocations = data.allocations
-        .filter((field) => field.selected && field.allocatedAmount > 0)
-        .map((field) => ({
-          invoiceId: field.invoiceId,
-          amount: Math.round(field.allocatedAmount),
-        }));
-
-      if (activeAllocations.length === 0) {
-        throw new Error('Please select at least one invoice and allocate payments.');
+    
+    // Distribute payment amount: fill each invoice up to its balance due, in order
+    let remaining = paymentKobo;
+    updatedAllocations.forEach((alloc, i) => {
+      if (!alloc.selected) {
+        setValue(`allocations.${i}.allocatedAmount`, 0);
+      } else {
+        const canTake = Math.min(remaining, alloc.balanceDue);
+        setValue(`allocations.${i}.allocatedAmount`, canTake);
+        remaining -= canTake;
       }
-
-      // Final payment build packet
-      const payload = {
-        customerId: data.customerId,
-        date: data.date,
-        amount: Math.round(data.amount * 100), // convert Naira back to Kobo
-        paymentMethod: data.paymentMethod,
-        reference: data.reference || `REF-${Math.floor(100000 + Math.random() * 900000)}`,
-        accountId: data.accountId,
-        notes: data.notes,
-        allocations: activeAllocations,
-      };
-
-      return salesApi.createPaymentReceived(payload);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['invoices'] });
-      queryClient.invalidateQueries({ queryKey: ['bankAccounts'] });
-      queryClient.invalidateQueries({ queryKey: ['paymentsReceived'] });
-      queryClient.invalidateQueries({ queryKey: ['bankAccounts'] });
-      reset();
-      onSuccess?.();
-      onClose();
-    },
-  });
-
-  const onSubmit = (data: PaymentFormData) => {
-    createPaymentMutation.mutate(data);
+    });
   };
 
-  const totalAllocatedKobo = watchedAllocations
-    .filter((f) => f.selected)
-    .reduce((sum, f) => sum + (f.allocatedAmount || 0), 0);
+  // When amount changes, re-distribute across checked invoices
+  const handleAmountChange = (val: string) => {
+    const paymentKobo = Math.round((parseFloat(val) || 0) * 100);
+    const checkedInvoices = watchedAllocations.filter(f => f.selected);
+    if (checkedInvoices.length === 0) return;
+    
+    let remaining = paymentKobo;
+    watchedAllocations.forEach((alloc, i) => {
+      if (!alloc.selected) return;
+      const canTake = Math.min(remaining, alloc.balanceDue);
+      setValue(`allocations.${i}.allocatedAmount`, canTake);
+      remaining -= canTake;
+    });
+  };
+
+
+
 
   const paymentAmountKobo = Math.round((parseFloat(watchedAmount as any) || 0) * 100);
   const unallocatedKobo = Math.max(0, paymentAmountKobo - totalAllocatedKobo);
@@ -424,6 +378,7 @@ export function RecordPaymentDrawer({
                     {...register('amount', {
                       required: 'Payment amount is required.',
                       min: { value: 0.01, message: 'Amount must be greater than zero.' },
+                      onChange: (e) => handleAmountChange(e.target.value),
                     })}
                     className="w-full pl-8 pr-4 py-2 border border-purple-300 rounded-xl font-extrabold text-slate-800 bg-white focus:border-purple-600 focus:ring-1 focus:ring-purple-600 outline-none transition text-base"
                   />
@@ -434,10 +389,15 @@ export function RecordPaymentDrawer({
 
                 {/* Real-time distribution diagnostic summary line */}
                 <div className="flex justify-between items-center mt-3 text-[10px] text-slate-500 font-mono">
-                  <span>Allocated: {formatNaira(totalAllocatedKobo)}</span>
-                  <span className={unallocatedKobo > 0 ? 'text-purple-600 font-bold' : ''}>
-                    Unallocated Excess: {formatNaira(unallocatedKobo)}
-                  </span>
+                  <span>Allocated: <span className="font-bold text-emerald-600">{formatNaira(totalAllocatedKobo)}</span></span>
+                  {unallocatedKobo > 0 && (
+                    <span className="text-amber-600 font-bold">
+                      Unallocated: {formatNaira(unallocatedKobo)} — check more invoices below
+                    </span>
+                  )}
+                  {unallocatedKobo === 0 && totalAllocatedKobo > 0 && (
+                    <span className="text-emerald-600 font-bold">✓ Fully allocated</span>
+                  )}
                 </div>
 
                 {isMismatched && (
@@ -496,17 +456,12 @@ export function RecordPaymentDrawer({
                             </div>
                           </div>
 
-                          {/* Right: cash override input */}
-                          <div className="text-right shrink-0 relative max-w-[120px]">
-                            <span className="text-[10px] font-mono text-emerald-600 absolute left-2 top-2">₦</span>
-                            <input
-                              type="number"
-                              step="0.01"
-                              placeholder="0.00"
-                              value={field.allocatedAmount ? (field.allocatedAmount / 100).toFixed(2) : ''}
-                              onChange={(e) => handleAllocatedAmountChange(index, e.target.value)}
-                              className="w-full pl-5 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-right font-bold text-slate-700 focus:bg-white focus:border-purple-600 outline-none text-xs transition"
-                            />
+                          {/* Right: allocated amount display */}
+                          <div className="text-right shrink-0">
+                            <p className="text-[10px] text-slate-400 font-mono uppercase mb-0.5">Allocated</p>
+                            <p className="font-extrabold text-emerald-700 font-mono text-sm">
+                              {field.selected && field.allocatedAmount > 0 ? formatNaira(field.allocatedAmount) : <span className="text-slate-300">—</span>}
+                            </p>
                           </div>
                         </div>
                       );
