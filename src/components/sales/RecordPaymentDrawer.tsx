@@ -160,6 +160,17 @@ export function RecordPaymentDrawer({
     }
   }, [bankAccounts, setValue]);
 
+  // Safety net: amount must always exactly equal the sum of selected allocations
+  // (the backend enforces this strictly). Recompute on every allocation change so
+  // the field can never silently drift out of sync, regardless of how it changed.
+  useEffect(() => {
+    const checkedSum = watchedAllocations
+      .filter((f) => f.selected)
+      .reduce((sum, f) => sum + (f.allocatedAmount || 0), 0);
+    setValue('amount', checkedSum / 100);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(watchedAllocations.map(f => `${f.selected}:${f.allocatedAmount}`))]);
+
   // Handle allocation checkbox toggle
   const handleCheckboxToggle = (index: number) => {
     const current = watchedAllocations[index];
@@ -412,7 +423,7 @@ export function RecordPaymentDrawer({
               {/* 3. Total Received Box */}
               <div className="bg-purple-50/50 p-4 rounded-2xl border border-purple-100">
                 <label className="block text-[10px] font-extrabold text-purple-700 uppercase tracking-widest mb-1.5">
-                  Amount Received (NGN)
+                  Amount Received (NGN) — auto-calculated from allocations below
                 </label>
                 <div className="relative">
                   <span className="font-sans font-bold text-slate-500 absolute left-3.5 top-2 ml-0.5">₦</span>
@@ -420,11 +431,12 @@ export function RecordPaymentDrawer({
                     type="number"
                     step="0.01"
                     id="payment-drawer-amount-input"
+                    readOnly
                     {...register('amount', {
                       required: 'Payment amount is required.',
-                      min: { value: 0.01, message: 'Amount must be greater than zero.' },
+                      min: { value: 0.01, message: 'Select at least one invoice and allocate an amount.' },
                     })}
-                    className="w-full pl-8 pr-4 py-2 border border-purple-300 rounded-xl font-extrabold text-slate-800 bg-white focus:border-purple-600 focus:ring-1 focus:ring-purple-600 outline-none transition text-base"
+                    className="w-full pl-8 pr-4 py-2 border border-purple-300 rounded-xl font-extrabold text-slate-800 bg-slate-100 cursor-not-allowed outline-none transition text-base"
                   />
                 </div>
                 {errors.amount && (
