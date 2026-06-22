@@ -160,17 +160,6 @@ export function RecordPaymentDrawer({
     }
   }, [bankAccounts, setValue]);
 
-  // Safety net: amount must always exactly equal the sum of selected allocations
-  // (the backend enforces this strictly). Recompute on every allocation change so
-  // the field can never silently drift out of sync, regardless of how it changed.
-  useEffect(() => {
-    const checkedSum = watchedAllocations
-      .filter((f) => f.selected)
-      .reduce((sum, f) => sum + (f.allocatedAmount || 0), 0);
-    setValue('amount', checkedSum / 100);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(watchedAllocations.map(f => `${f.selected}:${f.allocatedAmount}`))]);
-
   // Handle allocation checkbox toggle
   const handleCheckboxToggle = (index: number) => {
     const current = watchedAllocations[index];
@@ -271,6 +260,7 @@ export function RecordPaymentDrawer({
 
   const paymentAmountKobo = Math.round((parseFloat(watchedAmount as any) || 0) * 100);
   const unallocatedKobo = Math.max(0, paymentAmountKobo - totalAllocatedKobo);
+  const isMismatched = totalAllocatedKobo > 0 && paymentAmountKobo !== totalAllocatedKobo;
 
   return (
     <AnimatePresence>
@@ -423,7 +413,7 @@ export function RecordPaymentDrawer({
               {/* 3. Total Received Box */}
               <div className="bg-purple-50/50 p-4 rounded-2xl border border-purple-100">
                 <label className="block text-[10px] font-extrabold text-purple-700 uppercase tracking-widest mb-1.5">
-                  Amount Received (NGN) — auto-calculated from allocations below
+                  Amount Received (NGN)
                 </label>
                 <div className="relative">
                   <span className="font-sans font-bold text-slate-500 absolute left-3.5 top-2 ml-0.5">₦</span>
@@ -431,18 +421,17 @@ export function RecordPaymentDrawer({
                     type="number"
                     step="0.01"
                     id="payment-drawer-amount-input"
-                    readOnly
                     {...register('amount', {
                       required: 'Payment amount is required.',
-                      min: { value: 0.01, message: 'Select at least one invoice and allocate an amount.' },
+                      min: { value: 0.01, message: 'Amount must be greater than zero.' },
                     })}
-                    className="w-full pl-8 pr-4 py-2 border border-purple-300 rounded-xl font-extrabold text-slate-800 bg-slate-100 cursor-not-allowed outline-none transition text-base"
+                    className="w-full pl-8 pr-4 py-2 border border-purple-300 rounded-xl font-extrabold text-slate-800 bg-white focus:border-purple-600 focus:ring-1 focus:ring-purple-600 outline-none transition text-base"
                   />
                 </div>
                 {errors.amount && (
                   <span className="text-rose-600 font-bold mt-1 block">{errors.amount.message}</span>
                 )}
-                
+
                 {/* Real-time distribution diagnostic summary line */}
                 <div className="flex justify-between items-center mt-3 text-[10px] text-slate-500 font-mono">
                   <span>Allocated: {formatNaira(totalAllocatedKobo)}</span>
@@ -450,6 +439,13 @@ export function RecordPaymentDrawer({
                     Unallocated Excess: {formatNaira(unallocatedKobo)}
                   </span>
                 </div>
+
+                {isMismatched && (
+                  <div className="mt-3 p-2.5 bg-rose-50 border border-rose-200 rounded-lg text-[11px] text-rose-700 font-semibold leading-relaxed">
+                    Amount received ({formatNaira(paymentAmountKobo)}) doesn't match what you've allocated to invoices below
+                    ({formatNaira(totalAllocatedKobo)}). Adjust either figure before saving — the two must match exactly.
+                  </div>
+                )}
               </div>
 
               {/* 4. Invoices Allocations Stack */}
@@ -546,9 +542,10 @@ export function RecordPaymentDrawer({
               
               <button
                 type="button"
-                disabled={createPaymentMutation.isPending}
+                disabled={createPaymentMutation.isPending || isMismatched}
                 onClick={handleSubmit(onSubmit)}
-                className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-extrabold rounded-xl shadow-md outline-none transition flex items-center justify-center cursor-pointer min-w-[140px]"
+                title={isMismatched ? 'Amount received and allocated total must match before saving.' : undefined}
+                className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-extrabold rounded-xl shadow-md outline-none transition flex items-center justify-center cursor-pointer min-w-[140px]"
               >
                 {createPaymentMutation.isPending ? (
                   <>
