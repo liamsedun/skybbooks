@@ -169,7 +169,7 @@ export function RecurringInvoicesPage() {
       paymentTerms: t.template?.paymentTerms?.toString() || '30',
       notes: t.template?.notes || '',
       terms: t.template?.terms || '',
-      lines: t.template?.lines?.length ? t.template.lines : [{ ...EMPTY_LINE }],
+      lines: t.template?.lines?.length ? t.template.lines.map(l => ({ ...l, unitPrice: l.unitPrice / 100 })) : [{ ...EMPTY_LINE }],
     });
     setFormError(null);
     setModalOpen(true);
@@ -187,7 +187,7 @@ export function RecurringInvoicesPage() {
     const item = (items || []).find(it => it.id === itemId);
     if (!item) return;
     const nl = [...form.lines];
-    nl[idx] = { ...nl[idx], itemId, description: item.name, unitPrice: item.salesPrice ? item.salesPrice / 100 : 0 };
+    nl[idx] = { ...nl[idx], itemId, description: item.name, unitPrice: item.salesPrice ?? 0 };
     setForm({ ...form, lines: nl });
   }
 
@@ -203,7 +203,7 @@ export function RecurringInvoicesPage() {
       startDate: form.startDate,
       endDate: form.endDate || null,
       template: {
-        lines: form.lines,
+        lines: form.lines.map(l => ({ ...l, unitPrice: Math.round(l.unitPrice * 100) })),
         notes: form.notes,
         terms: form.terms,
         paymentTerms: parseInt(form.paymentTerms) || 30,
