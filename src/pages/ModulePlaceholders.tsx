@@ -658,52 +658,13 @@ export function CreditNotesPage() {
   );
 }
 
-export function VendorsPage() {
-  return (
-    <PageShell title="Wholesaler & Vendor Directory" description="Manage accounts payables, bulk suppliers, and regular suppliers." badge="Payables Integrated">
-      <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-3xs max-w-lg mx-auto text-center space-y-4">
-        <Building className="w-8 h-8 text-indigo-500 mx-auto" />
-        <h3 className="font-bold text-sm text-slate-800">No Custom Vendor Directory Registered</h3>
-        <p className="text-xs text-slate-500 leading-normal">
-          Keep track of your materials, leaseholders, and supply lines by adding your first creditor vendor node.
-        </p>
-        <button className="py-2.5 px-4 bg-purple-600 text-white font-bold rounded-xl text-xs hover:bg-purple-700 transition">
-          Add New Vendor
-        </button>
-      </div>
-    </PageShell>
-  );
-}
+export { VendorsPage } from './purchases/Vendors';
 
-export function ExpensesPage() {
-  return (
-    <PageShell title="Operational Expenses Console" description="Log petty cash payouts, SaaS leases, utilities, and daily operations costs matching VAT rules." badge="Integers Precinct">
-      <p className="text-xs text-slate-500 text-center py-10 bg-white border border-slate-100 rounded-2xl">
-        All daily operational expenses are automatically integrated with linked corporate debit cards and bank accounts.
-      </p>
-    </PageShell>
-  );
-}
+export { ExpensesPage } from './purchases/Expenses';
 
-export function BillsPage() {
-  return (
-    <PageShell title="Outstanding Vendor Bills" description="Manage incoming material logistics invoices, suppliers debt, and payment runs with 15-day alerts." badge="Procurement Node">
-      <div className="p-4 bg-indigo-50 border border-indigo-150 rounded-2xl text-xs text-indigo-950 font-medium">
-        🔔 <strong>Payables Alert:</strong> Next batch of bulk container freight bills matures in 4 days. Double check liquidity reserves before issuing payments made.
-      </div>
-    </PageShell>
-  );
-}
+export { BillsPage } from './purchases/Bills';
 
-export function PaymentsMadePage() {
-  return (
-    <PageShell title="Outbound Corporate Settlements" description="Log files matching outward bank transfers, bank schedules, and payments to suppliers." badge="Double-Entry Approved">
-      <p className="text-xs text-slate-500 text-center py-10 bg-white border border-slate-100 rounded-2xl">
-        Audit trail stable. High-value wire transfers to external suppliers are backed by valid proforma invoices.
-      </p>
-    </PageShell>
-  );
-}
+export { PaymentsMadePage } from './purchases/PaymentsMade';
 
 export { ItemsPage as InventoryPage } from './inventory/Items';
 
@@ -969,27 +930,9 @@ export { PaymentsReceivedPage as ReceiptsPage } from './sales/PaymentsReceived';
 
 export { RecurringInvoicesPage } from './sales/RecurringInvoices';
 
-export function RecurringExpensesPage() {
-  return (
-    <PageShell title="Recurring Payables & Costs" description="Schedules governing auto-approved vendor obligations, office rent, services, and software retainers." badge="Payables Management">
-      <div className="p-10 bg-white border border-slate-100 rounded-2xl text-center space-y-3 shadow-3xs">
-        <DollarSign className="w-8 h-8 text-neutral-400 mx-auto" />
-        <h4 className="text-sm font-bold text-slate-800">Recurring supplier accounts clear</h4>
-        <p className="text-xs text-slate-400 max-w-sm mx-auto">Establish schedules for automated utilities, standard subscriptions or monthly payroll ledger contributions.</p>
-      </div>
-    </PageShell>
-  );
-}
+export { RecurringExpensesPage } from './purchases/RecurringExpenses';
 
-export function PurchaseOrdersPage() {
-  return (
-    <PageShell title="Purchase Orders Control" description="Approve, track, and dispatch formal acquisition bills and procurement requests to vendors." badge="Procurement Control">
-      <div className="bg-white border border-slate-100 rounded-2xl p-6 text-center shadow-3xs">
-        <p className="text-xs text-slate-400 font-mono py-8 uppercase tracking-wider">Procurement logs cleared. Total Committed: ₦0.00</p>
-      </div>
-    </PageShell>
-  );
-}
+export { PurchaseOrdersPage } from './purchases/PurchaseOrders';
 
 export function PayeSchedulesPage() {
   return (
