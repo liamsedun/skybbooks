@@ -7,7 +7,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import {
   Plus, X, Loader2, AlertCircle, Search, RefreshCw,
-  CheckCircle2, Play, Pause, Trash2, Calendar
+  CheckCircle2, Play, Pause, Trash2, Calendar, Download, FileText
 } from 'lucide-react';
 
 interface Vendor { id: string; name: string; }
@@ -29,6 +29,29 @@ interface RecurringExpense {
   amount: number; taxAmount: number; description: string | null;
   paymentMethod: string; startDate: string; endDate: string | null;
   nextRunDate: string | null; isActive: boolean; createdAt: string;
+}
+
+
+function exportRecurringCSV(items: RecurringExpense[], vendorMap: Map<string,string>, accountMap: Map<string,string>) {
+  const headers = ['Description','Account','Vendor','Frequency','Amount (₦)','Start Date','End Date','Next Run','Status'];
+  const rows = items.map(r => [
+    r.description||'', accountMap.get(r.accountId)||'', r.vendorId ? (vendorMap.get(r.vendorId)||'') : '',
+    r.frequency, (r.amount/100).toFixed(2), fmtDate(r.startDate),
+    r.endDate ? fmtDate(r.endDate) : '', r.nextRunDate ? fmtDate(r.nextRunDate) : '',
+    r.isActive ? 'Active' : 'Paused'
+  ]);
+  const csv = [headers,...rows].map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');
+  const blob = new Blob([csv],{type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url;
+  a.download=`recurring-expenses-${new Date().toISOString().split('T')[0]}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
+function exportRecurringPDF(items: RecurringExpense[], vendorMap: Map<string,string>, accountMap: Map<string,string>) {
+  const rows = items.map(r=>`<tr><td>${r.description||accountMap.get(r.accountId)||'—'}</td><td>${accountMap.get(r.accountId)||'—'}</td><td>${r.vendorId?(vendorMap.get(r.vendorId)||'—'):'—'}</td><td>${r.frequency}</td><td style="text-align:right">₦${(r.amount/100).toLocaleString('en-NG',{minimumFractionDigits:2})}</td><td>${r.nextRunDate?fmtDate(r.nextRunDate):'—'}</td><td><span style="padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;background:${r.isActive?'#dcfce7':'#f1f5f9'};color:${r.isActive?'#166534':'#64748b'}">${r.isActive?'Active':'Paused'}</span></td></tr>`).join('');
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Recurring Expenses</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',sans-serif;color:#1e293b;padding:40px;font-size:13px}.header{display:flex;justify-content:space-between;margin-bottom:32px;padding-bottom:20px;border-bottom:2px solid #0f172a}.company{font-size:22px;font-weight:800}.subtitle{font-size:11px;color:#64748b;margin-top:4px}.title{font-size:18px;font-weight:700;text-align:right}.date{font-size:11px;color:#64748b;margin-top:4px;text-align:right}table{width:100%;border-collapse:collapse;margin-top:16px}th{background:#0f172a;color:#fff;padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase}td{padding:10px 12px;border-bottom:1px solid #e2e8f0;font-size:12px}tr:nth-child(even) td{background:#f8fafc}.footer{margin-top:40px;text-align:center;font-size:10px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:16px}@media print{body{padding:20px}}</style></head><body><div class="header"><div><div class="company">SkyBooks</div><div class="subtitle">By Skyhouse Accountants &amp; Technologies</div></div><div><div class="title">Recurring Expenses</div><div class="date">Generated: ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}</div></div></div><table><thead><tr><th>Description</th><th>Account</th><th>Vendor</th><th>Frequency</th><th style="text-align:right">Amount</th><th>Next Run</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table><div class="footer">SkyBooks By Skyhouse Accountants &amp; Technologies (Olalekan Williams Edun) &bull; Confidential</div></body></html>`;
+  const w = window.open('','_blank'); if(w){w.document.write(html);w.document.close();setTimeout(()=>w.print(),500);}
 }
 
 function formatNaira(kobo: number) {
@@ -152,9 +175,17 @@ export function RecurringExpensesPage() {
             {recurringExpenses.length} schedules · {activeCount} active
           </p>
         </div>
-        <button onClick={() => { setForm(EMPTY_FORM); setFormError(null); setModalOpen(true); }} className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors">
-          <Plus size={15} /> New Schedule
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => exportRecurringCSV(filtered, vendorMap, accountMap)} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
+            <Download size={14} /> CSV
+          </button>
+          <button onClick={() => exportRecurringPDF(filtered, vendorMap, accountMap)} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
+            <FileText size={14} /> PDF
+          </button>
+          <button onClick={() => { setForm(EMPTY_FORM); setFormError(null); setModalOpen(true); }} className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors">
+            <Plus size={15} /> New Schedule
+          </button>
+        </div>
       </div>
 
       {successMsg && (

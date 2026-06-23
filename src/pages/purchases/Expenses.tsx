@@ -7,7 +7,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import {
   Plus, X, Loader2, AlertCircle, Search, Receipt,
-  CheckCircle2, Trash2, Edit2, MoreVertical
+  CheckCircle2, Trash2, Edit2, Download, FileText
 } from 'lucide-react';
 
 interface Vendor { id: string; name: string; }
@@ -40,6 +40,70 @@ const EMPTY_FORM: FormState = {
   paymentAccountId: '', onAccount: false,
 };
 
+function exportCSV(expenses: Expense[], vendorMap: Map<string,string>, accountMap: Map<string,string>) {
+  const headers = ['Ref #','Date','Description','Account','Vendor','Method','Amount (₦)','VAT (₦)','Billable'];
+  const rows = expenses.map(e => [
+    e.expenseNumber,
+    fmtDate(e.date),
+    e.description || '',
+    accountMap.get(e.accountId) || '',
+    e.vendorId ? (vendorMap.get(e.vendorId) || '') : '',
+    e.paymentMethod?.replace('_',' '),
+    (e.amount / 100).toFixed(2),
+    (e.taxAmount / 100).toFixed(2),
+    e.isBillable ? 'Yes' : 'No',
+  ]);
+  const csv = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url;
+  a.download = `expenses-${new Date().toISOString().split('T')[0]}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
+function exportPDF(expenses: Expense[], vendorMap: Map<string,string>, accountMap: Map<string,string>, total: number) {
+  const rows = expenses.map(e => `
+    <tr>
+      <td>${e.expenseNumber}</td>
+      <td>${fmtDate(e.date)}</td>
+      <td>${e.description || '—'}</td>
+      <td>${accountMap.get(e.accountId) || '—'}</td>
+      <td>${e.vendorId ? (vendorMap.get(e.vendorId) || '—') : '—'}</td>
+      <td>${e.paymentMethod?.replace('_',' ')}</td>
+      <td style="text-align:right">${formatNaira(e.amount)}</td>
+    </tr>`).join('');
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Expenses Report</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family: 'Segoe UI', sans-serif; color:#1e293b; padding:40px; font-size:13px; }
+    .header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:32px; padding-bottom:20px; border-bottom:2px solid #0f172a; }
+    .company { font-size:22px; font-weight:800; color:#0f172a; }
+    .subtitle { font-size:11px; color:#64748b; margin-top:4px; }
+    .title { font-size:18px; font-weight:700; color:#0f172a; }
+    .date { font-size:11px; color:#64748b; margin-top:4px; }
+    table { width:100%; border-collapse:collapse; margin-top:16px; }
+    th { background:#0f172a; color:#fff; padding:10px 12px; text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:0.05em; }
+    td { padding:10px 12px; border-bottom:1px solid #e2e8f0; font-size:12px; }
+    tr:nth-child(even) td { background:#f8fafc; }
+    .total-row td { font-weight:700; background:#f1f5f9; font-size:13px; border-top:2px solid #0f172a; }
+    .footer { margin-top:40px; text-align:center; font-size:10px; color:#94a3b8; border-top:1px solid #e2e8f0; padding-top:16px; }
+    @media print { body { padding:20px; } }
+  </style></head><body>
+  <div class="header">
+    <div><div class="company">SkyBooks</div><div class="subtitle">By Skyhouse Accountants &amp; Technologies</div></div>
+    <div style="text-align:right"><div class="title">Expenses Report</div><div class="date">Generated: ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}</div></div>
+  </div>
+  <table>
+    <thead><tr><th>Ref #</th><th>Date</th><th>Description</th><th>Account</th><th>Vendor</th><th>Method</th><th style="text-align:right">Amount</th></tr></thead>
+    <tbody>${rows}</tbody>
+    <tfoot><tr class="total-row"><td colspan="6"><strong>Total (${expenses.length} records)</strong></td><td style="text-align:right">${formatNaira(total)}</td></tr></tfoot>
+  </table>
+  <div class="footer">SkyBooks By Skyhouse Accountants &amp; Technologies (Olalekan Williams Edun) &bull; Confidential</div>
+  </body></html>`;
+  const w = window.open('','_blank');
+  if (w) { w.document.write(html); w.document.close(); setTimeout(() => w.print(), 500); }
+}
+
 export function ExpensesPage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
@@ -47,7 +111,6 @@ export function ExpensesPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [formError, setFormError] = useState<string | null>(null);
-  const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const { data: expenses = [], isLoading, isError } = useQuery<Expense[]>({
@@ -85,13 +148,41 @@ export function ExpensesPage() {
     onError: (e: any) => setFormError(e?.response?.data?.error || 'Failed to save expense.'),
   });
 
+  const updateMutation = useMutation({
+    mutationFn: ({ id, p }: { id: string; p: any }) => api.patch(`/purchases/expenses/${id}`, p),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['expenses'] }); closeModal(); showSuccess('Expense updated.'); },
+    onError: (e: any) => setFormError(e?.response?.data?.error || 'Failed to update expense.'),
+  });
+
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.delete(`/purchases/expenses/${id}`),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['expenses'] }); setMenuOpen(null); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['expenses'] }); showSuccess('Expense deleted and journal reversed.'); },
     onError: (e: any) => alert(e?.response?.data?.error || 'Failed to delete expense.'),
   });
 
   function showSuccess(msg: string) { setSuccessMsg(msg); setTimeout(() => setSuccessMsg(null), 4000); }
+
+  function openCreate() { setEditingId(null); setForm(EMPTY_FORM); setFormError(null); setModalOpen(true); }
+
+  function openEdit(exp: Expense) {
+    setEditingId(exp.id);
+    setForm({
+      accountId: exp.accountId,
+      vendorId: exp.vendorId || '',
+      date: exp.date ? exp.date.split('T')[0] : new Date().toISOString().split('T')[0],
+      amount: (exp.amount / 100).toFixed(2),
+      taxAmount: (exp.taxAmount / 100).toFixed(2),
+      paymentMethod: exp.paymentMethod || 'cash',
+      reference: exp.reference || '',
+      description: exp.description || '',
+      isBillable: exp.isBillable || false,
+      paymentAccountId: '',
+      onAccount: false,
+    });
+    setFormError(null);
+    setModalOpen(true);
+  }
+
   function closeModal() { setModalOpen(false); setEditingId(null); setForm(EMPTY_FORM); setFormError(null); }
 
   function handleSubmit(e: React.FormEvent) {
@@ -100,7 +191,7 @@ export function ExpensesPage() {
     const amtKobo = Math.round(parseFloat(form.amount) * 100);
     const taxKobo = Math.round(parseFloat(form.taxAmount || '0') * 100);
     if (!amtKobo || amtKobo <= 0) { setFormError('Amount must be greater than zero.'); return; }
-    createMutation.mutate({
+    const payload = {
       accountId: form.accountId,
       vendorId: form.vendorId || null,
       date: form.date,
@@ -113,21 +204,32 @@ export function ExpensesPage() {
       onAccount: form.onAccount,
       paymentAccountId: form.paymentAccountId || null,
       currency: 'NGN',
-    });
+    };
+    if (editingId) updateMutation.mutate({ id: editingId, p: payload });
+    else createMutation.mutate(payload);
   }
 
-  const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
+  const totalExpenses = filtered.reduce((s, e) => s + e.amount, 0);
+  const isSaving = createMutation.isPending || updateMutation.isPending;
 
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-slate-900">Expenses</h1>
-          <p className="text-sm text-slate-500 mt-0.5">{expenses.length} records · {formatNaira(totalExpenses)} total</p>
+          <p className="text-sm text-slate-500 mt-0.5">{expenses.length} records · {formatNaira(expenses.reduce((s,e)=>s+e.amount,0))} total</p>
         </div>
-        <button onClick={() => { setForm(EMPTY_FORM); setFormError(null); setModalOpen(true); }} className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors">
-          <Plus size={15} /> Record Expense
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => exportCSV(filtered, vendorMap, accountMap)} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
+            <Download size={14} /> CSV
+          </button>
+          <button onClick={() => exportPDF(filtered, vendorMap, accountMap, totalExpenses)} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
+            <FileText size={14} /> PDF
+          </button>
+          <button onClick={openCreate} className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors">
+            <Plus size={15} /> Record Expense
+          </button>
+        </div>
       </div>
 
       {successMsg && (
@@ -167,7 +269,7 @@ export function ExpensesPage() {
                 <th className="py-3 px-2 text-left">Vendor</th>
                 <th className="py-3 px-2 text-left">Method</th>
                 <th className="py-3 px-2 text-right">Amount</th>
-                <th className="py-3 pl-2 pr-4 w-10"></th>
+                <th className="py-3 pl-2 pr-4 text-center w-24">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -175,28 +277,42 @@ export function ExpensesPage() {
                 <tr key={exp.id} className="hover:bg-slate-50 transition-colors">
                   <td className="py-3 pl-4 pr-2 font-mono text-xs text-slate-600">{exp.expenseNumber}</td>
                   <td className="py-3 px-2 text-xs text-slate-500">{fmtDate(exp.date)}</td>
-                  <td className="py-3 px-2 text-slate-700 max-w-[200px] truncate">{exp.description || '—'}</td>
-                  <td className="py-3 px-2 text-xs text-slate-500">{accountMap.get(exp.accountId) || '—'}</td>
+                  <td className="py-3 px-2 text-slate-700 max-w-[180px] truncate">{exp.description || '—'}</td>
+                  <td className="py-3 px-2 text-xs text-slate-500 max-w-[120px] truncate">{accountMap.get(exp.accountId) || '—'}</td>
                   <td className="py-3 px-2 text-xs text-slate-500">{exp.vendorId ? (vendorMap.get(exp.vendorId) || '—') : '—'}</td>
                   <td className="py-3 px-2">
                     <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full capitalize">{exp.paymentMethod?.replace('_', ' ')}</span>
                   </td>
                   <td className="py-3 px-2 text-right font-mono text-slate-900 font-medium">{formatNaira(exp.amount)}</td>
-                  <td className="py-3 pl-2 pr-4 relative">
-                    <button onClick={() => setMenuOpen(menuOpen === exp.id ? null : exp.id)} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
-                      <MoreVertical size={14} />
-                    </button>
-                    {menuOpen === exp.id && (
-                      <div className="absolute right-4 top-8 z-10 bg-white border border-slate-200 rounded-lg shadow-lg text-xs w-36 py-1">
-                        <button onClick={() => { if (confirm('Delete this expense and reverse journal?')) deleteMutation.mutate(exp.id); }} className="flex items-center gap-2 w-full px-3 py-2 hover:bg-rose-50 text-rose-600">
-                          <Trash2 size={12} /> Delete
-                        </button>
-                      </div>
-                    )}
+                  <td className="py-3 pl-2 pr-4">
+                    <div className="flex items-center justify-center gap-1">
+                      <button
+                        onClick={() => openEdit(exp)}
+                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-md transition-colors"
+                        title="Edit expense"
+                      >
+                        <Edit2 size={11} /> Edit
+                      </button>
+                      <button
+                        onClick={() => { if (confirm(`Delete ${exp.expenseNumber}? This will reverse the journal entry.`)) deleteMutation.mutate(exp.id); }}
+                        disabled={deleteMutation.isPending}
+                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-md transition-colors disabled:opacity-50"
+                        title="Delete expense"
+                      >
+                        <Trash2 size={11} /> Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
+            <tfoot>
+              <tr className="bg-slate-50 border-t-2 border-slate-200">
+                <td colSpan={6} className="py-3 pl-4 pr-2 text-xs font-bold text-slate-700 uppercase tracking-wide">Total ({filtered.length} records)</td>
+                <td className="py-3 px-2 text-right font-mono font-bold text-slate-900">{formatNaira(totalExpenses)}</td>
+                <td></td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       )}
@@ -206,7 +322,7 @@ export function ExpensesPage() {
         <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 px-4 py-8 overflow-y-auto">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-xl">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <h2 className="text-base font-semibold text-slate-900">Record Expense</h2>
+              <h2 className="text-base font-semibold text-slate-900">{editingId ? 'Edit Expense' : 'Record Expense'}</h2>
               <button onClick={closeModal} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
             </div>
             <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
@@ -256,29 +372,33 @@ export function ExpensesPage() {
                   <label className="block text-xs font-medium text-slate-500 mb-1">Description</label>
                   <input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="What was this expense for?" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
                 </div>
-                <div className="col-span-2">
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Paid from Account (Bank/Cash)</label>
-                  <select value={form.paymentAccountId} onChange={e => setForm({ ...form, paymentAccountId: e.target.value })} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 bg-white">
-                    <option value="">Auto-resolve bank/cash account</option>
-                    {assetAccounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                  </select>
-                </div>
+                {!editingId && (
+                  <div className="col-span-2">
+                    <label className="block text-xs font-medium text-slate-500 mb-1">Paid from Account (Bank/Cash)</label>
+                    <select value={form.paymentAccountId} onChange={e => setForm({ ...form, paymentAccountId: e.target.value })} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 bg-white">
+                      <option value="">Auto-resolve bank/cash account</option>
+                      {assetAccounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                    </select>
+                  </div>
+                )}
                 <div className="col-span-2 flex items-center gap-3">
                   <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
                     <input type="checkbox" checked={form.isBillable} onChange={e => setForm({ ...form, isBillable: e.target.checked })} className="rounded" />
                     Billable to customer
                   </label>
-                  <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
-                    <input type="checkbox" checked={form.onAccount} onChange={e => setForm({ ...form, onAccount: e.target.checked })} className="rounded" />
-                    On account (unpaid)
-                  </label>
+                  {!editingId && (
+                    <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
+                      <input type="checkbox" checked={form.onAccount} onChange={e => setForm({ ...form, onAccount: e.target.checked })} className="rounded" />
+                      On account (unpaid)
+                    </label>
+                  )}
                 </div>
               </div>
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
                 <button type="button" onClick={closeModal} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
-                <button type="submit" disabled={createMutation.isPending} className="px-5 py-2 text-sm font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 disabled:opacity-50 flex items-center gap-2">
-                  {createMutation.isPending && <Loader2 size={14} className="animate-spin" />}
-                  Record Expense
+                <button type="submit" disabled={isSaving} className="px-5 py-2 text-sm font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 disabled:opacity-50 flex items-center gap-2">
+                  {isSaving && <Loader2 size={14} className="animate-spin" />}
+                  {editingId ? 'Save Changes' : 'Record Expense'}
                 </button>
               </div>
             </form>

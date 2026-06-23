@@ -7,8 +7,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import {
   Plus, X, Loader2, AlertCircle, Search, FileText,
-  CheckCircle2, XCircle, Clock, ChevronDown, Copy,
-  TrendingDown, MoreVertical, Eye
+  CheckCircle2, XCircle, Copy, Download, FileText, Edit2, Trash2
 } from 'lucide-react';
 
 interface Vendor { id: string; name: string; }
@@ -39,6 +38,33 @@ function calcLine(l: BillLine) {
   const base = l.quantity * l.unitPrice;
   const tax = Math.round(base * (l.taxRate / 100));
   return { base, tax, total: base + tax };
+}
+
+
+function exportBillsCSV(bills: Bill[], vendorMap: Map<string,string>) {
+  const headers = ['Bill #','Vendor','Date','Due Date','Status','Total','Balance Due'];
+  const rows = bills.map(b => [
+    b.billNumber, vendorMap.get(b.vendorId)||'', fmtDate(b.date), fmtDate(b.dueDate),
+    b.status, (b.total/100).toFixed(2), (b.balanceDue/100).toFixed(2)
+  ]);
+  const csv = [headers,...rows].map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');
+  const blob = new Blob([csv],{type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url;
+  a.download=`bills-${new Date().toISOString().split('T')[0]}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
+function exportBillsPDF(bills: Bill[], vendorMap: Map<string,string>) {
+  const rows = bills.map(b => `<tr><td>${b.billNumber}</td><td>${vendorMap.get(b.vendorId)||'—'}</td><td>${fmtDate(b.date)}</td><td>${fmtDate(b.dueDate)}</td><td>${b.status}</td><td style="text-align:right">${formatNaira(b.total)}</td><td style="text-align:right">${formatNaira(b.balanceDue)}</td></tr>`).join('');
+  const total = bills.reduce((s,b)=>s+b.total,0);
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Bills Report</title>
+  <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',sans-serif;color:#1e293b;padding:40px;font-size:13px}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px;padding-bottom:20px;border-bottom:2px solid #0f172a}.company{font-size:22px;font-weight:800}.subtitle{font-size:11px;color:#64748b;margin-top:4px}.title{font-size:18px;font-weight:700;text-align:right}.date{font-size:11px;color:#64748b;margin-top:4px;text-align:right}table{width:100%;border-collapse:collapse;margin-top:16px}th{background:#0f172a;color:#fff;padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase}td{padding:10px 12px;border-bottom:1px solid #e2e8f0;font-size:12px}tr:nth-child(even) td{background:#f8fafc}.total-row td{font-weight:700;background:#f1f5f9;border-top:2px solid #0f172a}.footer{margin-top:40px;text-align:center;font-size:10px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:16px}@media print{body{padding:20px}}</style></head><body>
+  <div class="header"><div><div class="company">SkyBooks</div><div class="subtitle">By Skyhouse Accountants &amp; Technologies</div></div><div><div class="title">Bills Report</div><div class="date">Generated: ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}</div></div></div>
+  <table><thead><tr><th>Bill #</th><th>Vendor</th><th>Date</th><th>Due</th><th>Status</th><th style="text-align:right">Total</th><th style="text-align:right">Balance</th></tr></thead><tbody>${rows}</tbody><tfoot><tr class="total-row"><td colspan="5"><strong>Total (${bills.length} bills)</strong></td><td style="text-align:right">${formatNaira(total)}</td><td></td></tr></tfoot></table>
+  <div class="footer">SkyBooks By Skyhouse Accountants &amp; Technologies (Olalekan Williams Edun) &bull; Confidential</div></body></html>`;
+  const w = window.open('','_blank');
+  if (w) { w.document.write(html); w.document.close(); setTimeout(()=>w.print(),500); }
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -170,9 +196,17 @@ export function BillsPage() {
           <h1 className="text-xl font-bold text-slate-900">Bills</h1>
           <p className="text-sm text-slate-500 mt-0.5">Vendor invoices and payables</p>
         </div>
-        <button onClick={() => { setForm(EMPTY_FORM); setFormError(null); setModalOpen(true); }} className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors">
-          <Plus size={15} /> New Bill
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => exportBillsCSV(bills, vendorMap)} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
+            <Download size={14} /> CSV
+          </button>
+          <button onClick={() => exportBillsPDF(bills, vendorMap)} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
+            <FileText size={14} /> PDF
+          </button>
+          <button onClick={() => { setForm(EMPTY_FORM); setFormError(null); setModalOpen(true); }} className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors">
+            <Plus size={15} /> New Bill
+          </button>
+        </div>
       </div>
 
       {successMsg && (
@@ -225,7 +259,7 @@ export function BillsPage() {
                 <th className="py-3 px-2 text-left">Status</th>
                 <th className="py-3 px-2 text-right">Total</th>
                 <th className="py-3 px-2 text-right">Balance Due</th>
-                <th className="py-3 pl-2 pr-4 w-10"></th>
+                <th className="py-3 pl-2 pr-4 text-center w-28">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -242,27 +276,22 @@ export function BillsPage() {
                   </td>
                   <td className="py-3 px-2 text-right font-mono text-slate-900">{formatNaira(b.total)}</td>
                   <td className="py-3 px-2 text-right font-mono text-slate-700">{formatNaira(b.balanceDue)}</td>
-                  <td className="py-3 pl-2 pr-4 relative">
-                    <button onClick={() => setMenuOpen(menuOpen === b.id ? null : b.id)} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
-                      <MoreVertical size={14} />
-                    </button>
-                    {menuOpen === b.id && (
-                      <div className="absolute right-4 top-8 z-10 bg-white border border-slate-200 rounded-lg shadow-lg text-xs w-40 py-1">
-                        {b.status === 'draft' && (
-                          <button onClick={() => approveMutation.mutate(b.id)} className="flex items-center gap-2 w-full px-3 py-2 hover:bg-slate-50 text-slate-700">
-                            <CheckCircle2 size={12} /> Approve & Post
-                          </button>
-                        )}
-                        <button onClick={() => dupMutation.mutate(b.id)} className="flex items-center gap-2 w-full px-3 py-2 hover:bg-slate-50 text-slate-700">
-                          <Copy size={12} /> Duplicate
+                  <td className="py-3 pl-2 pr-4">
+                    <div className="flex items-center justify-center gap-1 flex-wrap">
+                      {b.status === 'draft' && (
+                        <button onClick={() => approveMutation.mutate(b.id)} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-md transition-colors">
+                          <CheckCircle2 size={11} /> Approve
                         </button>
-                        {b.status !== 'void' && b.amountPaid === 0 && (
-                          <button onClick={() => { if (confirm('Void this bill?')) voidMutation.mutate(b.id); }} className="flex items-center gap-2 w-full px-3 py-2 hover:bg-rose-50 text-rose-600">
-                            <XCircle size={12} /> Void
-                          </button>
-                        )}
-                      </div>
-                    )}
+                      )}
+                      <button onClick={() => dupMutation.mutate(b.id)} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-md transition-colors">
+                        <Copy size={11} /> Copy
+                      </button>
+                      {b.status !== 'void' && b.amountPaid === 0 && (
+                        <button onClick={() => { if (confirm('Void this bill?')) voidMutation.mutate(b.id); }} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-md transition-colors">
+                          <XCircle size={11} /> Void
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

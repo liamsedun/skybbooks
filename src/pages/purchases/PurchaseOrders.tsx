@@ -7,7 +7,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import {
   Plus, X, Loader2, AlertCircle, Search, ShoppingCart,
-  CheckCircle2, ArrowRight, MoreVertical
+  CheckCircle2, ArrowRight, Download, FileText
 } from 'lucide-react';
 
 interface Vendor { id: string; name: string; }
@@ -36,6 +36,23 @@ function calcLine(l: POLine) {
   const base = l.quantity * l.unitPrice;
   const tax = Math.round(base * (l.taxRate / 100));
   return { base, tax, total: base + tax };
+}
+
+
+function exportPOsCSV(pos: PO[], vendorMap: Map<string,string>) {
+  const headers = ['PO #','Vendor','Date','Expected','Status','Total'];
+  const rows = pos.map(p => [p.poNumber, vendorMap.get(p.vendorId)||'', fmtDate(p.date), fmtDate(p.expectedDate), p.status, (p.total/100).toFixed(2)]);
+  const csv = [headers,...rows].map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');
+  const blob = new Blob([csv],{type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download=`purchase-orders-${new Date().toISOString().split('T')[0]}.csv`; a.click(); URL.revokeObjectURL(url);
+}
+
+function exportPOsPDF(pos: PO[], vendorMap: Map<string,string>) {
+  const rows = pos.map(p=>`<tr><td>${p.poNumber}</td><td>${vendorMap.get(p.vendorId)||'—'}</td><td>${fmtDate(p.date)}</td><td>${fmtDate(p.expectedDate)}</td><td>${p.status}</td><td style="text-align:right">${formatNaira(p.total)}</td></tr>`).join('');
+  const total = pos.reduce((s,p)=>s+p.total,0);
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Purchase Orders</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',sans-serif;color:#1e293b;padding:40px;font-size:13px}.header{display:flex;justify-content:space-between;margin-bottom:32px;padding-bottom:20px;border-bottom:2px solid #0f172a}.company{font-size:22px;font-weight:800}.subtitle{font-size:11px;color:#64748b;margin-top:4px}.title{font-size:18px;font-weight:700;text-align:right}.date{font-size:11px;color:#64748b;margin-top:4px;text-align:right}table{width:100%;border-collapse:collapse;margin-top:16px}th{background:#0f172a;color:#fff;padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase}td{padding:10px 12px;border-bottom:1px solid #e2e8f0;font-size:12px}tr:nth-child(even) td{background:#f8fafc}.total-row td{font-weight:700;background:#f1f5f9;border-top:2px solid #0f172a}.footer{margin-top:40px;text-align:center;font-size:10px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:16px}@media print{body{padding:20px}}</style></head><body><div class="header"><div><div class="company">SkyBooks</div><div class="subtitle">By Skyhouse Accountants &amp; Technologies</div></div><div><div class="title">Purchase Orders</div><div class="date">Generated: ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}</div></div></div><table><thead><tr><th>PO #</th><th>Vendor</th><th>Date</th><th>Expected</th><th>Status</th><th style="text-align:right">Total</th></tr></thead><tbody>${rows}</tbody><tfoot><tr class="total-row"><td colspan="5"><strong>Total (${pos.length} orders)</strong></td><td style="text-align:right">${formatNaira(total)}</td></tr></tfoot></table><div class="footer">SkyBooks By Skyhouse Accountants &amp; Technologies (Olalekan Williams Edun) &bull; Confidential</div></body></html>`;
+  const w = window.open('','_blank'); if(w){w.document.write(html);w.document.close();setTimeout(()=>w.print(),500);}
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -137,9 +154,17 @@ export function PurchaseOrdersPage() {
           <h1 className="text-xl font-bold text-slate-900">Purchase Orders</h1>
           <p className="text-sm text-slate-500 mt-0.5">Manage procurement requests to vendors</p>
         </div>
-        <button onClick={() => { setModalOpen(true); setFormError(null); }} className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors">
-          <Plus size={15} /> New Purchase Order
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => exportPOsCSV(pos, vendorMap)} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
+            <Download size={14} /> CSV
+          </button>
+          <button onClick={() => exportPOsPDF(pos, vendorMap)} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
+            <FileText size={14} /> PDF
+          </button>
+          <button onClick={() => { setModalOpen(true); setFormError(null); }} className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors">
+            <Plus size={15} /> New Purchase Order
+          </button>
+        </div>
       </div>
 
       {successMsg && (
@@ -194,19 +219,14 @@ export function PurchaseOrdersPage() {
                     </span>
                   </td>
                   <td className="py-3 px-2 text-right font-mono text-slate-900">{formatNaira(po.total)}</td>
-                  <td className="py-3 pl-2 pr-4 relative">
-                    <button onClick={() => setMenuOpen(menuOpen === po.id ? null : po.id)} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
-                      <MoreVertical size={14} />
-                    </button>
-                    {menuOpen === po.id && (
-                      <div className="absolute right-4 top-8 z-10 bg-white border border-slate-200 rounded-lg shadow-lg text-xs w-44 py-1">
-                        {(po.status === 'sent' || po.status === 'received') && (
-                          <button onClick={() => convertMutation.mutate(po.id)} className="flex items-center gap-2 w-full px-3 py-2 hover:bg-slate-50 text-slate-700">
-                            <ArrowRight size={12} /> Convert to Bill
-                          </button>
-                        )}
-                      </div>
-                    )}
+                  <td className="py-3 pl-2 pr-4">
+                    <div className="flex items-center justify-center gap-1">
+                      {(po.status === 'sent' || po.status === 'received') && (
+                        <button onClick={() => convertMutation.mutate(po.id)} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-200 rounded-md transition-colors">
+                          <ArrowRight size={11} /> To Bill
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
