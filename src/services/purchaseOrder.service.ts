@@ -9,10 +9,12 @@ import {
   purchaseOrders,
   contacts,
   bills,
-  billLines
+  billLines,
+  accounts
 } from '../db/schema';
 import { AppError } from '../lib/errors';
 import { createBill } from './bill.service';
+import { createExpense } from './expense.service';
 
 // ==========================================
 // UTILITIES FOR STORAGE OF VIRTUAL PO LINES
@@ -368,6 +370,58 @@ export async function deletePO(poId: string, orgId: string): Promise<any> {
     .returning();
 
   return { message: `Purchase order ${deleted.poNumber} deleted successfully.` };
+}
+
+export async function convertToExpense(poId: string, userId: string): Promise<any> {
+  const [po] = await db
+    .select()
+    .from(purchaseOrders)
+    .where(eq(purchaseOrders.id, poId))
+    .limit(1);
+
+  if (!po) throw new AppError('Purchase order not found.', 404);
+  if (po.status === 'cancelled') {
+    throw new AppError('Cancelled purchase orders cannot be converted to expenses.', 400);
+  }
+
+  const decoded = deserializePoNotesAndLines(po.notes);
+
+  // Find an expense account for the org
+  const [expAccount] = await db
+    .select()
+    .from(accounts)
+    .where(and(eq(accounts.orgId, po.orgId), eq(accounts.type, 'expense')))
+    .limit(1);
+
+  if (!expAccount) {
+    throw new AppError('No expense GL account found. Please create an expense account first.', 400);
+  }
+
+  const expense = await createExpense({
+    orgId: po.orgId,
+    vendorId: po.vendorId,
+    accountId: expAccount.id,
+    date: new Date().toISOString(),
+    amount: po.total,
+    taxAmount: po.tax,
+    currency: po.currency || 'NGN',
+    paymentMethod: 'bank_transfer',
+    description: decoded.userNotes || `Expense from PO ${po.poNumber}`,
+    reference: po.poNumber,
+    isBillable: false,
+    onAccount: true,
+  }, userId);
+
+  // Update PO status to received
+  await db
+    .update(purchaseOrders)
+    .set({ status: 'received' })
+    .where(eq(purchaseOrders.id, poId));
+
+  return {
+    message: `Purchase Order ${po.poNumber} converted successfully into Expense ${expense.expenseNumber}.`,
+    expense,
+  };
 }
 
 export async function listPOs(

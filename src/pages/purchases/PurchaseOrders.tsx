@@ -130,6 +130,17 @@ export function PurchaseOrdersPage() {
     onError: (e: any) => alert(e?.response?.data?.error || 'Failed to convert PO.'),
   });
 
+  const convertToExpenseMutation = useMutation({
+    mutationFn: (id: string) => api.post(`/purchases/orders/${id}/convert-to-expense`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['purchase-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      showSuccess('PO converted to expense successfully.');
+      setMenuOpen(null);
+    },
+    onError: (e: any) => alert(e?.response?.data?.error || 'Failed to convert PO to expense.'),
+  });
+
   function openView(po: PO) { setViewingPo(po); }
 
   function openEdit(po: PO) {
@@ -142,7 +153,7 @@ export function PurchaseOrdersPage() {
         itemId: l.itemId || '',
         description: l.description || '',
         quantity: l.quantity,
-        unitPrice: l.unitPrice,
+        unitPrice: Math.round(l.unitPrice / 100),
         taxRate: l.taxRate,
         accountId: l.accountId || null,
       })) : [{ ...EMPTY_LINE }],
@@ -280,8 +291,13 @@ export function PurchaseOrdersPage() {
                         </button>
                       )}
                       {(po.status === 'sent' || po.status === 'received') && (
-                        <button onClick={() => convertMutation.mutate(po.id)} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-200 rounded-md transition-colors">
+                        <button onClick={() => convertMutation.mutate(po.id)} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-200 rounded-md transition-colors" title="Convert to Bill">
                           <ArrowRight size={11} /> To Bill
+                        </button>
+                      )}
+                      {(po.status === 'draft' || po.status === 'sent') && (
+                        <button onClick={() => convertToExpenseMutation.mutate(po.id)} disabled={convertToExpenseMutation.isPending} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-md transition-colors" title="Convert to Expense">
+                          <ArrowRight size={11} /> To Expense
                         </button>
                       )}
                     </div>

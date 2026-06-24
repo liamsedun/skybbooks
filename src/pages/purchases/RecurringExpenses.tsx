@@ -281,7 +281,7 @@ export function RecurringExpensesPage() {
         startDate: form.startDate,
         endDate: form.endDate || null,
       };
-      setSchedules(prev => prev.map(s => s.id === editingRe.id ? updated : s));
+      setSchedules(prev => { const next = prev.map(s => s.id === editingRe.id ? updated : s); saveSchedules(next); return next; });
       setEditingRe(null);
     } else {
       const newSchedule: RecurringExpense = {
@@ -300,7 +300,7 @@ export function RecurringExpensesPage() {
         isActive: true,
         createdAt: new Date().toISOString(),
       };
-      setSchedules(prev => [...prev, newSchedule]);
+      setSchedules(prev => { const next = [...prev, newSchedule]; saveSchedules(next); return next; });
     }
     closeModal();
     showSuccess('Recurring expense schedule saved.');

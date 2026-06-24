@@ -56,6 +56,7 @@ import {
   updatePO,
   sendPO,
   convertToBill,
+  convertToExpense,
   getPO,
   listPOs,
   deletePO
@@ -554,6 +555,19 @@ router.delete('/orders/:id', async (req: AuthenticatedRequest, res: Response, ne
     const { id } = req.params;
 
     const result = await deletePO(id, orgId);
+    return res.status(200).json(result);
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// Conversion of a PO into an expense
+router.post('/orders/:id/convert-to-expense', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId;
+    const { id } = req.params;
+
+    const result = await convertToExpense(id, userId);
     return res.status(200).json(result);
   } catch (err) {
     return next(err);

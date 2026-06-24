@@ -8,12 +8,13 @@ import { api } from '../../lib/api';
 import {
   Plus, X, Loader2, AlertCircle, Search, FileText,
   CheckCircle2, Download, Ban, ChevronDown, ChevronUp,
-  Pencil, Trash2, Copy, Upload
+  Pencil, Trash2, Copy, Upload, Package
 } from 'lucide-react';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
 
 interface Vendor { id: string; name: string; }
 interface Account { id: string; name: string; type: string; }
+interface Item { id: string; name: string; purchasePrice: number | null; }
 interface BillLine {
   itemId: string | null;
   description: string;
@@ -121,6 +122,20 @@ export function BillsPage() {
     queryFn: () => api.get('/accountant/accounts').then(r => r.data),
   });
 
+  const { data: items = [] } = useQuery<Item[]>({
+    queryKey: ['items'],
+    queryFn: async () => { const r = await api.get('/inventory/items'); return r.data; },
+  });
+
+  // New item inline creation
+  const [showNewItem, setShowNewItem] = useState(false);
+  const [newItemName, setNewItemName] = useState('');
+  const [newItemPrice, setNewItemPrice] = useState('');
+  const createItemMutation = useMutation({
+    mutationFn: (data: any) => api.post('/inventory/items', data).then(r => r.data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['items'] }); setShowNewItem(false); setNewItemName(''); setNewItemPrice(''); },
+  });
+
   const bills: Bill[]     = useMemo(() => Array.isArray(billsRaw) ? billsRaw : (billsRaw?.bills || billsRaw?.data || []), [billsRaw]);
   const vendors: Vendor[] = useMemo(() => Array.isArray(vendorsRaw) ? vendorsRaw : (vendorsRaw?.vendors || vendorsRaw?.data || []), [vendorsRaw]);
   const accounts: Account[] = useMemo(() => Array.isArray(accountsRaw) ? accountsRaw : (accountsRaw?.accounts || accountsRaw?.data || []), [accountsRaw]);
@@ -214,6 +229,11 @@ export function BillsPage() {
   function closeModal() { setModalMode(null); setEditingBill(null); setFormError(''); }
 
   // ── Line helpers ──────────────────────────────────────────────────────────
+  function selectItem(idx: number, itemId: string) {
+    const item = items.find(it => it.id === itemId);
+    if (!item) return;
+    setLine(idx, { itemId, description: item.name, unitPrice: item.purchasePrice ?? 0 });
+  }
   function addLine() { setForm(f => ({ ...f, lines: [...f.lines, { ...EMPTY_LINE }] })); }
   function removeLine(i: number) { setForm(f => ({ ...f, lines: f.lines.filter((_, idx) => idx !== i) })); }
   function setLine(i: number, patch: Partial<BillLine>) {
@@ -521,6 +541,7 @@ export function BillsPage() {
                     <table className="w-full min-w-[560px] text-sm">
                       <thead>
                         <tr className="bg-slate-50 text-xs font-medium text-slate-500 uppercase tracking-wide">
+                          <th className="px-3 py-2 text-left w-44">Item</th>
                           <th className="px-3 py-2 text-left">Description</th>
                           <th className="px-3 py-2 text-left w-16">Qty</th>
                           <th className="px-3 py-2 text-left w-28">Unit Price (₦)</th>
@@ -535,6 +556,17 @@ export function BillsPage() {
                           const { total: lineTotal } = calcLine(line);
                           return (
                             <tr key={i}>
+                              <td className="px-3 py-2">
+                                <select value={line.itemId || ''} onChange={e => e.target.value ? selectItem(i, e.target.value) : setLine(i, { itemId: null })}
+                                  className="w-full text-xs px-2 py-1.5 border border-slate-200 rounded focus:outline-none focus:border-primary bg-white">
+                                  <option value="">— Custom —</option>
+                                  {items.map(it => <option key={it.id} value={it.id}>{it.name}</option>)}
+                                </select>
+                                <button type="button" onClick={() => { setShowNewItem(true); }}
+                                  className="mt-1 text-[10px] font-medium text-indigo-600 hover:text-indigo-800 flex items-center gap-0.5">
+                                  <Plus size={10} /> New Item
+                                </button>
+                              </td>
                               <td className="px-3 py-2">
                                 <input value={line.description} onChange={e => setLine(i, { description: e.target.value })}
                                   placeholder="Description"
@@ -650,6 +682,37 @@ export function BillsPage() {
             };
           }}
         />
+      )}
+
+      {/* New Item Modal */}
+      {showNewItem && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[60] px-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6">
+            <h3 className="text-sm font-semibold text-slate-900 mb-4">Add New Item</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Item Name *</label>
+                <input value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder="e.g. Office Chair"
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Purchase Price (₦)</label>
+                <input type="number" min="0" step="0.01" value={newItemPrice} onChange={e => setNewItemPrice(e.target.value)} placeholder="0.00"
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20" />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-5 pt-3 border-t border-slate-100">
+              <button onClick={() => { setShowNewItem(false); setNewItemName(''); setNewItemPrice(''); }}
+                className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
+              <button onClick={() => { if (newItemName.trim()) createItemMutation.mutate({ name: newItemName.trim(), purchasePrice: Math.round(parseFloat(newItemPrice || '0') * 100), type: 'inventory' }); }}
+                disabled={!newItemName.trim() || createItemMutation.isPending}
+                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-50 flex items-center gap-1">
+                {createItemMutation.isPending && <Loader2 size={14} className="animate-spin" />}
+                Create Item
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>
