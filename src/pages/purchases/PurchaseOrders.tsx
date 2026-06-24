@@ -7,8 +7,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import {
   Plus, X, Loader2, AlertCircle, Search, ShoppingCart,
-  CheckCircle2, ArrowRight, Download, FileText
+  CheckCircle2, ArrowRight, Download, FileText, Upload
 } from 'lucide-react';
+import { CsvImportModal } from '../../components/ui/CsvImportModal';
 
 interface Vendor { id: string; name: string; }
 interface Item { id: string; name: string; purchasePrice: number | null; }
@@ -71,6 +72,7 @@ export function PurchaseOrdersPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
 
   const { data: posData, isLoading, isError } = useQuery({
     queryKey: ['purchase-orders', search],
@@ -160,6 +162,9 @@ export function PurchaseOrdersPage() {
           </button>
           <button onClick={() => exportPOsPDF(pos, vendorMap)} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
             <FileText size={14} /> PDF
+          </button>
+          <button onClick={() => setImportOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
+            <Upload size={14} /> Import CSV
           </button>
           <button onClick={() => { setModalOpen(true); setFormError(null); }} className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors">
             <Plus size={15} /> New Purchase Order
@@ -336,6 +341,26 @@ export function PurchaseOrdersPage() {
             </form>
           </div>
         </div>
+      )}
+      {importOpen && (
+        <CsvImportModal
+          entity="purchaseOrders"
+          endpoint="/purchases/orders"
+          onClose={() => setImportOpen(false)}
+          onSuccess={() => { queryClient.invalidateQueries({ queryKey: ['purchase-orders'] }); }}
+          transformRow={(row, headers) => ({
+            vendorId: row[headers.indexOf('vendorId (or name)')] || '',
+            date: row[headers.indexOf('date (YYYY-MM-DD)')] || '',
+            expectedDate: row[headers.indexOf('expectedDate')] || null,
+            notes: row[headers.indexOf('notes')] || null,
+            lines: row[headers.indexOf('line_description')] ? [{
+              description: row[headers.indexOf('line_description')],
+              quantity: parseFloat(row[headers.indexOf('line_quantity')]) || 1,
+              unitPrice: Math.round(parseFloat(row[headers.indexOf('line_unitPrice (NGN)')]) * 100) || 0,
+              taxRate: parseFloat(row[headers.indexOf('line_taxRate')]) || 0,
+            }] : [],
+          })}
+        />
       )}
     </div>
   );

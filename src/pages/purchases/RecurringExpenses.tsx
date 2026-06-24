@@ -5,9 +5,10 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
+import { parseCsv, downloadCsv, CSV_TEMPLATES } from '../../lib/csvTemplates';
 import {
   Plus, X, Loader2, AlertCircle, Search, RefreshCw,
-  CheckCircle2, Play, Pause, Trash2, Calendar, Download, FileText
+  CheckCircle2, Play, Pause, Trash2, Calendar, Download, FileText, Upload, FileSpreadsheet
 } from 'lucide-react';
 
 interface Vendor { id: string; name: string; }
@@ -210,6 +211,12 @@ export function RecurringExpensesPage() {
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [formError, setFormError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [csvPreview, setCsvPreview] = useState<{ headers: string[]; rows: string[][] } | null>(null);
+  const [csvImporting, setCsvImporting] = useState(false);
+  const [csvResults, setCsvResults] = useState<{ success: number; failed: number; errors: string[] } | null>(null);
+  const [csvError, setCsvError] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: vendors = [] } = useQuery<Vendor[]>({
     queryKey: ['vendors'],
@@ -280,6 +287,117 @@ export function RecurringExpensesPage() {
     showSuccess('Schedule deleted.');
   }
 
+  function handleCsvFile(e: React.ChangeEvent<HTMLInputElement>) {
+    setCsvError('');
+    setCsvResults(null);
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.name.endsWith('.csv')) { setCsvError('Please select a CSV file.'); return; }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = parseCsv(ev.target?.result as string);
+        if (data.rows.length > 500) { setCsvError('Maximum 500 rows per import.'); return; }
+        setCsvPreview(data);
+      } catch (err: any) {
+        setCsvError(err.message || 'Failed to parse CSV.');
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function handleCsvImport() {
+    if (!csvPreview) return;
+    setCsvImporting(true);
+    setCsvError('');
+    setCsvResults(null);
+    const errors: string[] = [];
+    let success = 0;
+    let failed = 0;
+    const imported: RecurringExpense[] = [];
+
+    for (let i = 0; i < csvPreview.rows.length; i++) {
+      try {
+        const row = csvPreview.rows[i];
+        const headers = csvPreview.headers;
+        const getVal = (h: string) => {
+          const idx = headers.findIndex(hh => hh.trim().toLowerCase() === h.trim().toLowerCase());
+          return idx >= 0 ? (row[idx] || '').trim() : '';
+        };
+
+        const vendorName = getVal('vendorId (or name)');
+        const accountName = getVal('accountId (or name)');
+        const frequency = getVal('frequency');
+        const amountStr = getVal('amount (NGN)');
+        const taxStr = getVal('taxAmount (NGN)');
+        const description = getVal('description');
+        const paymentMethod = getVal('paymentMethod');
+        const startDate = getVal('startDate (YYYY-MM-DD)');
+        const endDate = getVal('endDate');
+
+        const vendorId = vendorName
+          ? vendors.find(v => v.name.toLowerCase() === vendorName.toLowerCase())?.id || null
+          : null;
+        if (vendorName && !vendorId) {
+          throw new Error(`Vendor "${vendorName}" not found`);
+        }
+
+        const accountMatch = accounts.find(a => a.name.toLowerCase() === accountName.toLowerCase());
+        if (!accountMatch) throw new Error(`Account "${accountName}" not found`);
+        const accountId = accountMatch.id;
+
+        if (!frequency || !['daily', 'weekly', 'monthly', 'quarterly', 'annually'].includes(frequency)) {
+          throw new Error(`Invalid frequency "${frequency}". Must be daily, weekly, monthly, quarterly, or annually.`);
+        }
+
+        const amount = Math.round(parseFloat(amountStr || '0') * 100);
+        if (!amount || amount <= 0) throw new Error('Amount must be greater than zero.');
+
+        const taxAmount = Math.round(parseFloat(taxStr || '0') * 100);
+        if (!startDate) throw new Error('Start date is required.');
+
+        const item: RecurringExpense = {
+          id: `re_${Date.now()}_${i}`,
+          orgId: '',
+          vendorId,
+          accountId,
+          frequency: frequency as Frequency,
+          amount,
+          taxAmount,
+          description: description || null,
+          paymentMethod: paymentMethod || 'bank_transfer',
+          startDate,
+          endDate: endDate || null,
+          nextRunDate: calcNextRun(startDate, frequency as Frequency),
+          isActive: true,
+          createdAt: new Date().toISOString(),
+        };
+
+        imported.push(item);
+        success++;
+      } catch (err: any) {
+        failed++;
+        errors.push(`Row ${i + 2}: ${err.message || 'Unknown error'}`);
+      }
+    }
+
+    if (imported.length > 0) {
+      const updated = [...schedules, ...imported];
+      setSchedules(updated);
+      saveSchedules(updated);
+    }
+
+    setCsvResults({ success, failed, errors });
+    setCsvImporting(false);
+    if (failed === 0) {
+      setTimeout(() => {
+        setImportOpen(false);
+        setCsvPreview(null);
+        showSuccess(`Imported ${success} recurring expense schedule${success === 1 ? '' : 's'}.`);
+      }, 1500);
+    }
+  }
+
   const activeCount = schedules.filter(r => r.isActive).length;
 
   return (
@@ -295,6 +413,9 @@ export function RecurringExpensesPage() {
           </button>
           <button onClick={() => exportRecurringPDF(filtered, vendorMap, accountMap)} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
             <FileText size={14} /> PDF
+          </button>
+          <button onClick={() => { setImportOpen(true); setCsvPreview(null); setCsvError(''); setCsvResults(null); }} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
+            <Upload size={14} /> Import CSV
           </button>
           <button onClick={() => { setForm(EMPTY_FORM); setFormError(null); setModalOpen(true); }} className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors">
             <Plus size={15} /> New Schedule
@@ -437,6 +558,93 @@ export function RecurringExpensesPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Import CSV Modal */}
+      {importOpen && (
+        <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 px-4 py-8 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              <h2 className="text-base font-semibold text-slate-900">Import Recurring Expenses</h2>
+              <button onClick={() => { setImportOpen(false); setCsvPreview(null); setCsvError(''); setCsvResults(null); }} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              {csvError && (
+                <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2 flex items-center gap-2">
+                  <AlertCircle size={14} /> {csvError}
+                </div>
+              )}
+
+              {csvResults ? (
+                <div className="space-y-3">
+                  <div className={`flex items-center gap-2 text-sm font-medium ${csvResults.failed > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                    {csvResults.failed > 0 ? <AlertCircle size={16} /> : <CheckCircle2 size={16} />}
+                    {csvResults.success} imported, {csvResults.failed} failed
+                  </div>
+                  {csvResults.errors.length > 0 && (
+                    <div className="max-h-40 overflow-y-auto bg-red-50 border border-red-100 rounded-lg p-3 text-xs text-red-700 space-y-1">
+                      {csvResults.errors.map((e, i) => <p key={i}>{e}</p>)}
+                    </div>
+                  )}
+                </div>
+              ) : csvPreview ? (
+                <div className="space-y-4">
+                  <p className="text-sm text-slate-600">{csvPreview.rows.length} rows found. Review and import.</p>
+                  <div className="max-h-60 overflow-y-auto border border-slate-200 rounded-lg">
+                    <table className="w-full text-xs">
+                      <thead className="bg-slate-50 sticky top-0">
+                        <tr>
+                          {csvPreview.headers.slice(0, 6).map(h => <th key={h} className="px-3 py-2 text-left font-medium text-slate-500 capitalize">{h.replace(/_/g, ' ')}</th>)}
+                          {csvPreview.headers.length > 6 && <th className="px-3 py-2 text-left font-medium text-slate-500">...</th>}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {csvPreview.rows.slice(0, 10).map((row, i) => (
+                          <tr key={i} className="hover:bg-slate-50">
+                            {row.slice(0, 6).map((cell, j) => <td key={j} className="px-3 py-2 text-slate-600 max-w-[160px] truncate">{cell}</td>)}
+                            {row.length > 6 && <td className="px-3 py-2 text-slate-400">...</td>}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {csvPreview.rows.length > 10 && <p className="text-xs text-slate-400">Showing first 10 of {csvPreview.rows.length} rows</p>}
+
+                  <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                    <button onClick={() => { setCsvPreview(null); setCsvError(''); setCsvResults(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                      className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
+                    <button onClick={handleCsvImport} disabled={csvImporting}
+                      className="px-5 py-2 text-sm font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 disabled:opacity-50 flex items-center gap-2">
+                      {csvImporting && <Loader2 size={14} className="animate-spin" />}
+                      Import {csvPreview.rows.length} {csvPreview.rows.length === 1 ? 'row' : 'rows'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="border-2 border-dashed border-slate-200 rounded-xl p-8 text-center">
+                    <FileSpreadsheet size={36} className="mx-auto text-slate-300 mb-3" />
+                    <p className="text-sm font-medium text-slate-600 mb-1">Upload a CSV file to import recurring expenses</p>
+                    <p className="text-xs text-slate-400 mb-4">Maximum 500 rows</p>
+                    <button onClick={() => fileInputRef.current?.click()}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors">
+                      <Upload size={15} /> Select CSV File
+                    </button>
+                    <input ref={fileInputRef} type="file" accept=".csv" onChange={handleCsvFile} className="hidden" />
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                    <button onClick={() => downloadCsv(CSV_TEMPLATES.recurringExpenses.filename, CSV_TEMPLATES.recurringExpenses.headers, CSV_TEMPLATES.recurringExpenses.sample)}
+                      className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900 font-medium">
+                      <Download size={14} /> Download Template
+                    </button>
+                    <button onClick={() => { setImportOpen(false); setCsvPreview(null); setCsvError(''); setCsvResults(null); }} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
+import { CsvImportModal } from '../../components/ui/CsvImportModal';
 import {
-  Plus, X, Loader2, AlertCircle, Search, CreditCard,
+  Upload, Plus, X, Loader2, AlertCircle, Search, CreditCard,
   CheckCircle2, Download, FileText, Eye, Pencil, Save
 } from 'lucide-react';
 
@@ -63,6 +64,7 @@ export function PaymentsMadePage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
@@ -267,6 +269,9 @@ export function PaymentsMadePage() {
           </button>
           <button onClick={() => exportPaymentsPDF(filtered, vendorMap, filtered.reduce((s,p)=>s+p.amount,0))} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
             <FileText size={14} /> PDF
+          </button>
+          <button onClick={() => setImportOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
+            <Upload size={14} /> Import CSV
           </button>
           <button onClick={() => { setModalOpen(true); setFormError(null); }} className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors">
             <Plus size={15} /> Record Payment
@@ -670,6 +675,37 @@ export function PaymentsMadePage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* CSV Import Modal */}
+      {importOpen && (
+        <CsvImportModal
+          entity="paymentsMade"
+          endpoint="/purchases/payments"
+          onClose={() => setImportOpen(false)}
+          onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ['payments-made'] });
+            queryClient.invalidateQueries({ queryKey: ['bills'] });
+            queryClient.invalidateQueries({ queryKey: ['bills-open'] });
+          }}
+          transformRow={(row, headers) => {
+            const get = (key: string) => {
+              const idx = headers.findIndex(h => h.startsWith(key));
+              return idx >= 0 ? (row[idx] || '').trim() : '';
+            };
+            return {
+              vendorId: get('vendorId'),
+              date: get('date') || undefined,
+              amount: Math.round(parseFloat(get('amount')) * 100) || 0,
+              currency: 'NGN',
+              paymentMethod: get('paymentMethod'),
+              reference: get('reference') || null,
+              notes: get('notes') || null,
+              accountId: '',
+              allocations: [],
+            };
+          }}
+        />
       )}
     </div>
   );

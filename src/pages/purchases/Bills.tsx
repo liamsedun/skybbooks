@@ -8,8 +8,9 @@ import { api } from '../../lib/api';
 import {
   Plus, X, Loader2, AlertCircle, Search, FileText,
   CheckCircle2, Download, Ban, ChevronDown, ChevronUp,
-  Pencil, Trash2, Copy
+  Pencil, Trash2, Copy, Upload
 } from 'lucide-react';
+import { CsvImportModal } from '../../components/ui/CsvImportModal';
 
 interface Vendor { id: string; name: string; }
 interface Account { id: string; name: string; type: string; }
@@ -105,6 +106,7 @@ export function BillsPage() {
   const [editingBill, setEditingBill] = useState<Bill | null>(null);
   const [form, setForm]               = useState<FormState>({ ...EMPTY_FORM });
   const [formError, setFormError]     = useState('');
+  const [importOpen, setImportOpen]   = useState(false);
   // ── Queries ──────────────────────────────────────────────────────────────
   const { data: billsRaw, isLoading, error } = useQuery({
     queryKey: ['bills'],
@@ -272,6 +274,10 @@ export function BillsPage() {
           <button onClick={() => exportBillsCSV(filtered, vendorMap)}
             className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
             <Download size={15} /> CSV
+          </button>
+          <button onClick={() => setImportOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
+            <Upload size={15} /> Import CSV
           </button>
           <button onClick={openCreate}
             className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary-hover transition-colors">
@@ -617,6 +623,33 @@ export function BillsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Import CSV */}
+      {importOpen && (
+        <CsvImportModal
+          entity="bills"
+          endpoint="/purchases/bills"
+          onClose={() => setImportOpen(false)}
+          onSuccess={() => qc.invalidateQueries({ queryKey: ['bills'] })}
+          transformRow={(row, headers) => {
+            const vendorVal = row[headers.indexOf('vendorId (or name)')]?.trim();
+            const vendor = (vendors || []).find(v => v.id === vendorVal || v.name === vendorVal);
+            return {
+              vendorId: vendor?.id || vendorVal,
+              date: row[headers.indexOf('date (YYYY-MM-DD)')] || undefined,
+              dueDate: row[headers.indexOf('dueDate')] || undefined,
+              currency: row[headers.indexOf('currency')] || 'NGN',
+              notes: row[headers.indexOf('notes')] || null,
+              lines: [{
+                description: row[headers.indexOf('line_description')] || '',
+                quantity: parseFloat(row[headers.indexOf('line_quantity')]) || 1,
+                unitPrice: Math.round((parseFloat(row[headers.indexOf('line_unitPrice (NGN)')]) || 0) * 100),
+                taxRate: parseFloat(row[headers.indexOf('line_taxRate')]) || 0,
+              }],
+            };
+          }}
+        />
       )}
 
     </div>

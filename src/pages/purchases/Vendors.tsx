@@ -5,10 +5,11 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
+import { CsvImportModal } from '../../components/ui/CsvImportModal';
 import {
   Plus, X, Loader2, AlertCircle, Search, Building2,
   Phone, Mail, Edit2, Trash2, Download, FileText,
-  CheckCircle2, ToggleLeft, ToggleRight
+  CheckCircle2, ToggleLeft, ToggleRight, Upload
 } from 'lucide-react';
 
 interface Vendor {
@@ -98,6 +99,7 @@ export function VendorsPage() {
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [formError, setFormError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
 
   const { data: vendors = [], isLoading, isError } = useQuery<Vendor[]>({
     queryKey: ['vendors'],
@@ -176,6 +178,9 @@ export function VendorsPage() {
           </button>
           <button onClick={() => exportVendorsPDF(filtered)} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
             <FileText size={14} /> PDF
+          </button>
+          <button onClick={() => setImportOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
+            <Upload size={14} /> Import CSV
           </button>
           <button onClick={openCreate} className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors">
             <Plus size={15} /> Add Vendor
@@ -282,6 +287,32 @@ export function VendorsPage() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {importOpen && (
+        <CsvImportModal
+          entity="vendors"
+          endpoint="/purchases/vendors"
+          onClose={() => setImportOpen(false)}
+          onSuccess={() => queryClient.invalidateQueries({ queryKey: ['vendors'] })}
+          transformRow={(row, headers) => {
+            const map: Record<string, string> = {};
+            headers.forEach((h, i) => { map[h.trim()] = row[i]?.trim() || ''; });
+            return {
+              name: map['name'],
+              email: map['email'] || null,
+              phone: map['phone'] || null,
+              address: map['address'] || null,
+              city: map['city'] || null,
+              state: map['state'] || null,
+              country: map['country'] || 'Nigeria',
+              taxPin: map['taxPin'] || null,
+              paymentTerms: map['paymentTerms (days)'] ? parseInt(map['paymentTerms (days)'], 10) : null,
+              currency: map['currency'] || 'NGN',
+              notes: map['notes'] || null,
+            };
+          }}
+        />
       )}
 
       {/* Modal */}

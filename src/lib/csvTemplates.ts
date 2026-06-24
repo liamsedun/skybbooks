@@ -53,4 +53,35 @@ export const CSV_TEMPLATES: Record<string, { headers: string[]; sample: string[]
     headers: ['customerId (or name)', 'frequency', 'startDate (YYYY-MM-DD)', 'endDate', 'template_paymentTerms (days)', 'template_currency', 'template_notes', 'template_terms', 'line_description', 'line_quantity', 'line_unitPrice (NGN)', 'line_discountPct', 'line_taxRate'],
     sample: ['Acme Corp', 'monthly', '2026-06-24', '2027-06-24', '30', 'NGN', 'Monthly retainer', 'Net 30', 'Retainer fee', '1', '100000', '0', '7.5'],
   },
+  // Purchases module
+  vendors: {
+    filename: 'vendors-template.csv',
+    headers: ['name', 'email', 'phone', 'address', 'city', 'state', 'country', 'taxPin', 'paymentTerms (days)', 'currency', 'notes'],
+    sample: ['Supply Corp', 'supply@example.com', '+2348012345678', '456 Industrial Ave', 'Lagos', 'Lagos', 'Nigeria', 'VAT-001', '30', 'NGN', 'Preferred vendor'],
+  },
+  expenses: {
+    filename: 'expenses-template.csv',
+    headers: ['vendorId (or name)', 'accountId (or name)', 'date (YYYY-MM-DD)', 'amount (NGN)', 'taxAmount (NGN)', 'paymentMethod', 'reference', 'description', 'isBillable (yes/no)'],
+    sample: ['Supply Corp', 'Office Supplies', '2026-06-24', '50000', '3750', 'bank_transfer', 'EXP-001', 'Office supplies purchase', 'no'],
+  },
+  recurringExpenses: {
+    filename: 'recurring-expenses-template.csv',
+    headers: ['vendorId (or name)', 'accountId (or name)', 'frequency', 'amount (NGN)', 'taxAmount (NGN)', 'description', 'paymentMethod', 'startDate (YYYY-MM-DD)', 'endDate'],
+    sample: ['Supply Corp', 'Rent Expense', 'monthly', '200000', '15000', 'Office rent', 'bank_transfer', '2026-06-24', '2027-06-24'],
+  },
+  purchaseOrders: {
+    filename: 'purchase-orders-template.csv',
+    headers: ['vendorId (or name)', 'date (YYYY-MM-DD)', 'expectedDate', 'notes', 'line_description', 'line_quantity', 'line_unitPrice (NGN)', 'line_taxRate'],
+    sample: ['Supply Corp', '2026-06-24', '2026-07-24', 'PO notes', 'Raw materials', '100', '500', '7.5'],
+  },
+  bills: {
+    filename: 'bills-template.csv',
+    headers: ['vendorId (or name)', 'date (YYYY-MM-DD)', 'dueDate', 'currency', 'notes', 'line_description', 'line_quantity', 'line_unitPrice (NGN)', 'line_taxRate'],
+    sample: ['Supply Corp', '2026-06-24', '2026-07-24', 'NGN', 'Bill notes', 'Consulting services', '1', '250000', '7.5'],
+  },
+  paymentsMade: {
+    filename: 'payments-made-template.csv',
+    headers: ['vendorId (or name)', 'date (YYYY-MM-DD)', 'amount (NGN)', 'paymentMethod', 'reference', 'notes'],
+    sample: ['Supply Corp', '2026-06-24', '100000', 'bank_transfer', 'PMT-REF-001', 'Payment for invoices'],
+  },
 };

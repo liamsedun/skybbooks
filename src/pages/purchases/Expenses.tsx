@@ -7,8 +7,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import {
   Plus, X, Loader2, AlertCircle, Search, Receipt,
-  CheckCircle2, Trash2, Edit2, Download, FileText
+  CheckCircle2, Trash2, Edit2, Download, FileText, Upload
 } from 'lucide-react';
+import { CsvImportModal } from '../../components/ui/CsvImportModal';
 
 interface Vendor { id: string; name: string; }
 interface Account { id: string; name: string; type: string; code: string | null; }
@@ -170,6 +171,7 @@ export function ExpensesPage() {
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [formError, setFormError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
 
   const { data: expenses = [], isLoading, isError } = useQuery<Expense[]>({
     queryKey: ['expenses'],
@@ -284,6 +286,9 @@ export function ExpensesPage() {
           <button onClick={() => exportPDF(filtered, vendorMap, accountMap, totalExpenses)} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
             <FileText size={14} /> PDF
           </button>
+          <button onClick={() => setImportOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
+            <Upload size={14} /> Import CSV
+          </button>
           <button onClick={openCreate} className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors">
             <Plus size={15} /> Record Expense
           </button>
@@ -373,6 +378,35 @@ export function ExpensesPage() {
             </tfoot>
           </table>
         </div>
+      )}
+
+      {/* Import CSV */}
+      {importOpen && (
+        <CsvImportModal
+          entity="expenses"
+          endpoint="/purchases/expenses"
+          onClose={() => setImportOpen(false)}
+          onSuccess={() => queryClient.invalidateQueries({ queryKey: ['expenses'] })}
+          transformRow={(row, headers) => {
+            const vendorName = row[headers.indexOf('vendorId (or name)')]?.trim();
+            const vendor = (vendors || []).find(v => v.id === vendorName || v.name === vendorName);
+            const accountName = row[headers.indexOf('accountId (or name)')]?.trim();
+            const account = (accounts || []).find(a => a.id === accountName || a.name === accountName);
+            return {
+              accountId: account?.id || accountName,
+              vendorId: vendor?.id || vendorName || null,
+              date: row[headers.indexOf('date (YYYY-MM-DD)')],
+              amount: Math.round(parseFloat(row[headers.indexOf('amount (NGN)')]) * 100),
+              taxAmount: Math.round(parseFloat(row[headers.indexOf('taxAmount (NGN)')] || '0') * 100),
+              paymentMethod: row[headers.indexOf('paymentMethod')],
+              reference: row[headers.indexOf('reference')] || null,
+              description: row[headers.indexOf('description')] || null,
+              isBillable: row[headers.indexOf('isBillable (yes/no)')]?.toLowerCase() === 'yes',
+              onAccount: false,
+              currency: 'NGN',
+            };
+          }}
+        />
       )}
 
       {/* Modal */}
