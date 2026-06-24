@@ -713,7 +713,7 @@ export async function deletePaymentMade(paymentId: string, userId: string): Prom
       .from(journalEntries)
       .where(
         and(
-          eq(journalEntries.source, 'payment_made'),
+          eq(journalEntries.source, 'payment'),
           eq(journalEntries.sourceId, paymentId),
           eq(journalEntries.isReversed, false)
         )

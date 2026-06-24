@@ -105,7 +105,7 @@ export function PaymentsMadePage() {
   const { data: allBills = [] } = useQuery<Bill[]>({
     queryKey: ['bills-open'],
     queryFn: async () => {
-      const r = await api.get('/purchases/bills', { params: { status: 'open', limit: 100 } });
+      const r = await api.get('/purchases/bills', { params: { limit: 100 } });
       return r.data?.bills || [];
     },
   });
