@@ -9,9 +9,9 @@ import {
   User, Mail, Phone, Building2, Briefcase, CreditCard,
   Calendar, Hash, CheckCircle, XCircle, ChevronDown, Save
 } from 'lucide-react';
-import { payrollApi } from '../../lib/api';
-import { useAuth } from '../../hooks/useAuth';
-import { useCurrency } from '../../hooks/useCurrency';
+import { payrollApi } from '../lib/api';
+import { useAuth } from '../hooks/useAuth';
+import { useCurrency } from '../hooks/useCurrency';
 
 interface EmployeesPageProps {}
 
@@ -352,4 +352,3 @@ export function EmployeesPage({}: EmployeesPageProps) {
     </div>
   );
 }
-
