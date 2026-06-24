@@ -1,0 +1,99 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+
+  --font-size-title: 24px;
+  --font-size-body: 14px;
+  --font-size-table: 13px;
+
+  --color-primary: #2e7d32;
+  --color-primary-hover: #256628;
+  --color-primary-light: #e8f5e9;
+  --color-secondary: #1565c0;
+  
+  --color-ink-900: #0f172a;
+  --color-ink-600: #475569;
+  --color-ink-400: #94a3b8;
+  
+  --color-surface: #ffffff;
+  --color-surface-subtle: #f8fafc;
+  --color-border-custom: #e2e8f0;
+  --color-border-strong: #cbd5e1;
+  
+  --color-success-custom: #16a34a;
+  --color-success-bg: #f0fdf4;
+  --color-warning-custom: #d97706;
+  --color-warning-bg: #fffbeb;
+  --color-danger-custom: #dc2626;
+  --color-danger-bg: #fef2f2;
+  --color-info-custom: #0284c7;
+  --color-info-bg: #f0f9ff;
+  
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 2px 8px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 8px 24px rgba(15, 23, 42, 0.08);
+}
+
+@layer base {
+  body {
+    font-family: var(--font-sans);
+    font-size: var(--font-size-body);
+    line-height: var(--line-height-normal, 1.5);
+    color: var(--color-ink-900);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: "Plus Jakarta Sans", "Inter", sans-serif;
+  }
+}
+
+@utility tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Mobile-first: ensure tables scroll horizontally on small screens */
+.mobile-table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Touch-friendly tap targets */
+@media (max-width: 640px) {
+  button, a {
+    min-height: 36px;
+  }
+
+  /* Ensure modals/drawers don't overflow on mobile */
+  .drawer-panel {
+    width: 100% !important;
+    max-width: 100vw !important;
+  }
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #invoice-pdf-mock-container, #invoice-pdf-mock-container * {
+    visibility: visible;
+  }
+  #invoice-pdf-mock-container {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+  #receipt-pdf-container, #receipt-pdf-container * {
+    visibility: visible;
+  }
+  #receipt-pdf-container {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+}
