@@ -7,7 +7,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import {
   Plus, Search, Pencil, Trash2, X, Loader2, AlertCircle,
-  FileText, CheckCircle2, Clock, XCircle, TrendingDown,
+  FileText, Download, CheckCircle2, Clock, XCircle, TrendingDown,
   ShoppingCart, ArrowRight, PackageCheck,
   Upload,
 } from 'lucide-react';
@@ -108,6 +108,59 @@ function formFromSO(so: SalesOrder): SOFormState {
     notes: so.notes || '',
     lines: (so.lines && so.lines.length > 0) ? so.lines : [{ ...EMPTY_LINE }],
   };
+}
+
+function exportSOsCSV(orders: SalesOrder[], customerMap: Map<string, Customer>) {
+  const headers = ['SO #','Customer','Date','Delivery','Status','Subtotal (₦)','Discount (₦)','Tax (₦)','Total (₦)','Notes'];
+  const rows = orders.map(o => [
+    o.soNumber, customerMap.get(o.customerId)?.name || o.customerId, o.date, o.expectedDelivery||'', o.status,
+    (o.subtotal/100).toFixed(2), (o.discount/100).toFixed(2), (o.tax/100).toFixed(2), (o.total/100).toFixed(2),
+    o.notes||'',
+  ]);
+  const csv = [headers,...rows].map(r => r.map(val => `"${val}"`).join(',')).join('\n');
+  const blob = new Blob([csv],{type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url;
+  a.download=`sales-orders-${new Date().toISOString().split('T')[0]}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
+function exportSOsPDF(orders: SalesOrder[], customerMap: Map<string, Customer>) {
+  const fmt = (k: number) => `₦${(k/100).toLocaleString('en-NG',{minimumFractionDigits:2})}`;
+  const rows = orders.map(o => `
+    <tr>
+      <td>${o.soNumber}</td>
+      <td>${customerMap.get(o.customerId)?.name || '\u2014'}</td>
+      <td>${new Date(o.date).toLocaleDateString('en-GB')}</td>
+      <td>${o.expectedDelivery ? new Date(o.expectedDelivery).toLocaleDateString('en-GB') : '\u2014'}</td>
+      <td><span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;background:#f1f5f9;color:#475569">${o.status}</span></td>
+      <td style="text-align:right">${fmt(o.total)}</td>
+    </tr>`).join('');
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Sales Orders</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Segoe UI',sans-serif;color:#1e293b;padding:40px;font-size:13px}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px;padding-bottom:20px;border-bottom:2px solid #0f172a}
+    .company{font-size:22px;font-weight:800;color:#0f172a}
+    .subtitle{font-size:11px;color:#64748b;margin-top:4px}
+    .title{font-size:18px;font-weight:700;color:#0f172a}
+    .date{font-size:11px;color:#64748b;margin-top:4px}
+    table{width:100%;border-collapse:collapse;margin-top:16px}
+    th{background:#0f172a;color:#fff;padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.05em}
+    td{padding:10px 12px;border-bottom:1px solid #e2e8f0;font-size:12px}
+    tr:nth-child(even) td{background:#f8fafc}
+    .footer{margin-top:40px;text-align:center;font-size:10px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:16px}
+    @media print{body{padding:20px}}
+  </style></head><body>
+  <div class="header">
+    <div><div class="company">SkyBooks</div><div class="subtitle">By Skyhouse Accountants &amp; Technologies</div></div>
+    <div style="text-align:right"><div class="title">Sales Orders Report</div><div class="date">Generated: ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}</div><div class="date">${orders.length} orders</div></div>
+  </div>
+  <table><thead><tr><th>SO #</th><th>Customer</th><th>Date</th><th>Delivery</th><th>Status</th><th style="text-align:right">Total</th></tr></thead><tbody>${rows}</tbody></table>
+  <div class="footer">SkyBooks By Skyhouse Accountants &amp; Technologies (Olalekan Williams Edun) &bull; Confidential</div>
+  </body></html>`;
+  const w = window.open('','_blank');
+  if (w) { w.document.write(html); w.document.close(); setTimeout(()=>w.print(),500); }
 }
 
 export function SalesOrdersPage() {
@@ -244,6 +297,12 @@ export function SalesOrdersPage() {
           <p className="text-sm text-slate-500 mt-0.5">{counts.all} total · {counts.byStatus['confirmed'] || 0} confirmed · {counts.byStatus['fulfilled'] || 0} fulfilled</p>
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={() => exportSOsCSV(filtered, customerMap)} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
+            <Download size={14} /> CSV
+          </button>
+          <button onClick={() => exportSOsPDF(filtered, customerMap)} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
+            <FileText size={14} /> PDF
+          </button>
           <button onClick={() => setImportOpen(true)} className="inline-flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
             <Upload size={15} /> Import CSV
           </button>

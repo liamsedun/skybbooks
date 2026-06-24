@@ -9,7 +9,7 @@ import { api } from '../../lib/api';
 import {
   Plus, Search, Pencil, Trash2, X, Loader2, AlertCircle, Upload,
   FileText, ArrowRight, CheckCircle2, Clock, XCircle, RefreshCw, ChevronRight,
-  RotateCcw,
+  RotateCcw, Download,
 } from 'lucide-react';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
 
@@ -90,6 +90,59 @@ function formFromQuote(q: Quote): QuoteFormState {
       discountPct: (l.discountPct||0).toString(), taxRate: (l.taxRate||7.5).toString(),
     })) : [{ ...EMPTY_LINE }],
   };
+}
+
+function exportQuotesCSV(quotes: Quote[], customerMap: Map<string, Customer>) {
+  const headers = ['Quote #','Customer','Date','Expiry','Status','Subtotal (₦)','Discount (₦)','Tax (₦)','Total (₦)','Notes'];
+  const rows = quotes.map(q => [
+    q.quoteNumber, customerMap.get(q.customerId)?.name || q.customerId, q.date, q.expiryDate||'', q.status,
+    (q.subtotal/100).toFixed(2), (q.discount/100).toFixed(2), (q.tax/100).toFixed(2), (q.total/100).toFixed(2),
+    q.notes||'',
+  ]);
+  const csv = [headers,...rows].map(r => r.map(val => `"${val}"`).join(',')).join('\n');
+  const blob = new Blob([csv],{type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url;
+  a.download=`quotes-${new Date().toISOString().split('T')[0]}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
+function exportQuotesPDF(quotes: Quote[], customerMap: Map<string, Customer>) {
+  const fmt = (k: number) => `₦${(k/100).toLocaleString('en-NG',{minimumFractionDigits:2})}`;
+  const rows = quotes.map(q => `
+    <tr>
+      <td>${q.quoteNumber}</td>
+      <td>${customerMap.get(q.customerId)?.name || '\u2014'}</td>
+      <td>${new Date(q.date).toLocaleDateString('en-GB')}</td>
+      <td>${q.expiryDate ? new Date(q.expiryDate).toLocaleDateString('en-GB') : '\u2014'}</td>
+      <td><span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;background:#f1f5f9;color:#475569">${q.status}</span></td>
+      <td style="text-align:right">${fmt(q.total)}</td>
+    </tr>`).join('');
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Quotes</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Segoe UI',sans-serif;color:#1e293b;padding:40px;font-size:13px}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px;padding-bottom:20px;border-bottom:2px solid #0f172a}
+    .company{font-size:22px;font-weight:800;color:#0f172a}
+    .subtitle{font-size:11px;color:#64748b;margin-top:4px}
+    .title{font-size:18px;font-weight:700;color:#0f172a}
+    .date{font-size:11px;color:#64748b;margin-top:4px}
+    table{width:100%;border-collapse:collapse;margin-top:16px}
+    th{background:#0f172a;color:#fff;padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.05em}
+    td{padding:10px 12px;border-bottom:1px solid #e2e8f0;font-size:12px}
+    tr:nth-child(even) td{background:#f8fafc}
+    .footer{margin-top:40px;text-align:center;font-size:10px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:16px}
+    @media print{body{padding:20px}}
+  </style></head><body>
+  <div class="header">
+    <div><div class="company">SkyBooks</div><div class="subtitle">By Skyhouse Accountants &amp; Technologies</div></div>
+    <div style="text-align:right"><div class="title">Quotes Report</div><div class="date">Generated: ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}</div><div class="date">${quotes.length} quotes</div></div>
+  </div>
+  <table><thead><tr><th>Quote #</th><th>Customer</th><th>Date</th><th>Expiry</th><th>Status</th><th style="text-align:right">Total</th></tr></thead><tbody>${rows}</tbody></table>
+  <div class="footer">SkyBooks By Skyhouse Accountants &amp; Technologies (Olalekan Williams Edun) &bull; Confidential</div>
+  </body></html>`;
+  const w = window.open('','_blank');
+  if (w) { w.document.write(html); w.document.close(); setTimeout(()=>w.print(),500); }
 }
 
 export function QuotesPage() {
@@ -208,6 +261,12 @@ export function QuotesPage() {
           <p className="text-sm text-slate-500 mt-1">{counts.all} total · {counts.byStatus['draft']||0} draft · {counts.byStatus['accepted']||0} accepted</p>
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={() => exportQuotesCSV(filtered, customerMap)} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
+            <Download size={14} /> CSV
+          </button>
+          <button onClick={() => exportQuotesPDF(filtered, customerMap)} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
+            <FileText size={14} /> PDF
+          </button>
           <button onClick={() => setImportOpen(true)} className="inline-flex items-center gap-2 px-4 py-2 bg-white text-slate-700 text-sm font-medium border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
             <Upload size={16} /> Import CSV
           </button>

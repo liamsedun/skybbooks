@@ -153,6 +153,61 @@ function fmtDate(d: string): string {
   return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+// ── Export Helpers ──────────────────────────────────────────────────────────
+
+function exportPaymentsCSV(payments: Payment[]) {
+  const headers = ['Payment #','Payer','Date','Amount (₦)','Method','Reference','Category','Notes'];
+  const rows = payments.map(p => [
+    p.paymentNumber, p.payerName||'', p.date, (p.amount/100).toFixed(2),
+    p.paymentMethod, p.reference||'', p.category, p.notes||'',
+  ]);
+  const csv = [headers,...rows].map(r => r.map(val => `"${val}"`).join(',')).join('\n');
+  const blob = new Blob([csv],{type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url;
+  a.download=`payments-received-${new Date().toISOString().split('T')[0]}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
+function exportPaymentsPDF(payments: Payment[]) {
+  const fmt = (k: number) => `₦${(k/100).toLocaleString('en-NG',{minimumFractionDigits:2})}`;
+  const rows = payments.map(p => `
+    <tr>
+      <td>${p.paymentNumber}</td>
+      <td>${p.payerName||'\u2014'}</td>
+      <td>${new Date(p.date).toLocaleDateString('en-GB')}</td>
+      <td style="text-align:right">${fmt(p.amount)}</td>
+      <td>${p.paymentMethod}</td>
+      <td>${p.reference||'\u2014'}</td>
+      <td><span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;background:#f1f5f9;color:#475569">${p.category}</span></td>
+    </tr>`).join('');
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Payments Received</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Segoe UI',sans-serif;color:#1e293b;padding:40px;font-size:13px}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px;padding-bottom:20px;border-bottom:2px solid #0f172a}
+    .company{font-size:22px;font-weight:800;color:#0f172a}
+    .subtitle{font-size:11px;color:#64748b;margin-top:4px}
+    .title{font-size:18px;font-weight:700;color:#0f172a}
+    .date{font-size:11px;color:#64748b;margin-top:4px}
+    table{width:100%;border-collapse:collapse;margin-top:16px}
+    th{background:#0f172a;color:#fff;padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.05em}
+    td{padding:10px 12px;border-bottom:1px solid #e2e8f0;font-size:12px}
+    tr:nth-child(even) td{background:#f8fafc}
+    .footer{margin-top:40px;text-align:center;font-size:10px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:16px}
+    @media print{body{padding:20px}}
+  </style></head><body>
+  <div class="header">
+    <div><div class="company">SkyBooks</div><div class="subtitle">By Skyhouse Accountants &amp; Technologies</div></div>
+    <div style="text-align:right"><div class="title">Payments Received Report</div><div class="date">Generated: ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}</div><div class="date">${payments.length} payments</div></div>
+  </div>
+  <table><thead><tr><th>Payment #</th><th>Payer</th><th>Date</th><th style="text-align:right">Amount</th><th>Method</th><th>Reference</th><th>Category</th></tr></thead><tbody>${rows}</tbody></table>
+  <div class="footer">SkyBooks By Skyhouse Accountants &amp; Technologies (Olalekan Williams Edun) &bull; Confidential</div>
+  </body></html>`;
+  const w = window.open('','_blank');
+  if (w) { w.document.write(html); w.document.close(); setTimeout(()=>w.print(),500); }
+}
+
 // ── Main Page ────────────────────────────────────────────────────────────────
 
 export function PaymentsReceivedPage() {
@@ -380,6 +435,12 @@ export function PaymentsReceivedPage() {
               onClick={() => { setAddForm(EMPTY_ADD_FORM); setAddError(null); setAddOpen(true); }}
               className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors">
               <Plus size={16} />Record Payment
+            </button>
+            <button onClick={() => exportPaymentsCSV(filtered)} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
+              <Download size={14} /> CSV
+            </button>
+            <button onClick={() => exportPaymentsPDF(filtered)} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
+              <FileText size={14} /> PDF
             </button>
             <button onClick={() => setImportOpen(true)}
               className="inline-flex items-center gap-2 px-4 py-2 bg-white text-slate-700 text-sm font-medium border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">

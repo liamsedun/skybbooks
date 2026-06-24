@@ -8,7 +8,7 @@ import { api } from '../../lib/api';
 import {
   Plus, X, Loader2, AlertCircle, CheckCircle2,
   RefreshCw, Pause, Play, Trash2, Zap,
-  Calendar, TrendingDown, Search, Upload,
+  Calendar, TrendingDown, Search, Upload, Download, FileText,
 } from 'lucide-react';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
 
@@ -72,6 +72,57 @@ function formatNaira(naira: number): string {
 function fmtDate(d: string | null): string {
   if (!d) return '—';
   return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function exportRecurringCSV(invoices: RecurringInvoice[], customerMap: Map<string, Customer>) {
+  const headers = ['Customer','Frequency','Start Date','End Date','Next Run','Status'];
+  const rows = invoices.map(r => [
+    customerMap.get(r.customerId)?.name || r.customerId, r.frequency, r.startDate,
+    r.endDate||'', r.nextRunDate||'', r.isActive ? 'Active' : 'Inactive',
+  ]);
+  const csv = [headers,...rows].map(r => r.map(val => `"${val}"`).join(',')).join('\n');
+  const blob = new Blob([csv],{type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url;
+  a.download=`recurring-invoices-${new Date().toISOString().split('T')[0]}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
+function exportRecurringPDF(invoices: RecurringInvoice[], customerMap: Map<string, Customer>) {
+  const rows = invoices.map(r => `
+    <tr>
+      <td>${customerMap.get(r.customerId)?.name || '\u2014'}</td>
+      <td>${r.frequency}</td>
+      <td>${new Date(r.startDate).toLocaleDateString('en-GB')}</td>
+      <td>${r.endDate ? new Date(r.endDate).toLocaleDateString('en-GB') : '\u2014'}</td>
+      <td>${r.nextRunDate ? new Date(r.nextRunDate).toLocaleDateString('en-GB') : '\u2014'}</td>
+      <td><span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;background:${r.isActive?'#dcfce7':'#f1f5f9'};color:${r.isActive?'#166534':'#64748b'}">${r.isActive?'Active':'Inactive'}</span></td>
+    </tr>`).join('');
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Recurring Invoices</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Segoe UI',sans-serif;color:#1e293b;padding:40px;font-size:13px}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px;padding-bottom:20px;border-bottom:2px solid #0f172a}
+    .company{font-size:22px;font-weight:800;color:#0f172a}
+    .subtitle{font-size:11px;color:#64748b;margin-top:4px}
+    .title{font-size:18px;font-weight:700;color:#0f172a}
+    .date{font-size:11px;color:#64748b;margin-top:4px}
+    table{width:100%;border-collapse:collapse;margin-top:16px}
+    th{background:#0f172a;color:#fff;padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.05em}
+    td{padding:10px 12px;border-bottom:1px solid #e2e8f0;font-size:12px}
+    tr:nth-child(even) td{background:#f8fafc}
+    .footer{margin-top:40px;text-align:center;font-size:10px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:16px}
+    @media print{body{padding:20px}}
+  </style></head><body>
+  <div class="header">
+    <div><div class="company">SkyBooks</div><div class="subtitle">By Skyhouse Accountants &amp; Technologies</div></div>
+    <div style="text-align:right"><div class="title">Recurring Invoices Report</div><div class="date">Generated: ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}</div><div class="date">${invoices.length} schedules</div></div>
+  </div>
+  <table><thead><tr><th>Customer</th><th>Frequency</th><th>Start</th><th>End</th><th>Next Run</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>
+  <div class="footer">SkyBooks By Skyhouse Accountants &amp; Technologies (Olalekan Williams Edun) &bull; Confidential</div>
+  </body></html>`;
+  const w = window.open('','_blank');
+  if (w) { w.document.write(html); w.document.close(); setTimeout(()=>w.print(),500); }
 }
 
 export function RecurringInvoicesPage() {
@@ -230,6 +281,12 @@ export function RecurringInvoicesPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={() => exportRecurringCSV(filtered, customerMap)} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
+            <Download size={14} /> CSV
+          </button>
+          <button onClick={() => exportRecurringPDF(filtered, customerMap)} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
+            <FileText size={14} /> PDF
+          </button>
           <button onClick={() => setImportOpen(true)} className="inline-flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
             <Upload size={15} /> Import CSV
           </button>

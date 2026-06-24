@@ -41,6 +41,60 @@ interface InvoiceListProps {
   onNavigate: (viewId: string, invoiceId?: string) => void;
 }
 
+function exportInvoicesCSV(invoices: any[]) {
+  const headers = ['Invoice #','Customer','Date','Due Date','Status','Subtotal (₦)','Tax (₦)','Total (₦)','Balance Due (₦)'];
+  const rows = invoices.map((inv: any) => [
+    inv.invoiceNumber, inv.customer?.name||inv.customerId||'', inv.date, inv.dueDate||'',
+    inv.status, (inv.subtotal/100).toFixed(2), (inv.taxAmount/100).toFixed(2),
+    (inv.total/100).toFixed(2), (inv.balanceDue/100).toFixed(2),
+  ]);
+  const csv = [headers,...rows].map(r => r.map(val => `"${val}"`).join(',')).join('\n');
+  const blob = new Blob([csv],{type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url;
+  a.download=`invoices-${new Date().toISOString().split('T')[0]}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
+function exportInvoicesPDF(invoices: any[]) {
+  const fmt = (k: number) => `₦${(k/100).toLocaleString('en-NG',{minimumFractionDigits:2})}`;
+  const rows = invoices.map((inv: any) => `
+    <tr>
+      <td>${inv.invoiceNumber}</td>
+      <td>${inv.customer?.name||inv.customerId||'\u2014'}</td>
+      <td>${new Date(inv.date).toLocaleDateString('en-GB')}</td>
+      <td>${inv.dueDate ? new Date(inv.dueDate).toLocaleDateString('en-GB') : '\u2014'}</td>
+      <td><span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;background:#f1f5f9;color:#475569">${inv.status}</span></td>
+      <td style="text-align:right">${fmt(inv.total)}</td>
+      <td style="text-align:right">${fmt(inv.balanceDue)}</td>
+    </tr>`).join('');
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Invoices</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Segoe UI',sans-serif;color:#1e293b;padding:40px;font-size:13px}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px;padding-bottom:20px;border-bottom:2px solid #0f172a}
+    .company{font-size:22px;font-weight:800;color:#0f172a}
+    .subtitle{font-size:11px;color:#64748b;margin-top:4px}
+    .title{font-size:18px;font-weight:700;color:#0f172a}
+    .date{font-size:11px;color:#64748b;margin-top:4px}
+    table{width:100%;border-collapse:collapse;margin-top:16px}
+    th{background:#0f172a;color:#fff;padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.05em}
+    td{padding:10px 12px;border-bottom:1px solid #e2e8f0;font-size:12px}
+    tr:nth-child(even) td{background:#f8fafc}
+    .footer{margin-top:40px;text-align:center;font-size:10px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:16px}
+    @media print{body{padding:20px}}
+  </style></head><body>
+  <div class="header">
+    <div><div class="company">SkyBooks</div><div class="subtitle">By Skyhouse Accountants &amp; Technologies</div></div>
+    <div style="text-align:right"><div class="title">Invoice Report</div><div class="date">Generated: ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}</div><div class="date">${invoices.length} invoices</div></div>
+  </div>
+  <table><thead><tr><th>Invoice #</th><th>Customer</th><th>Date</th><th>Due</th><th>Status</th><th style="text-align:right">Total</th><th style="text-align:right">Balance</th></tr></thead><tbody>${rows}</tbody></table>
+  <div class="footer">SkyBooks By Skyhouse Accountants &amp; Technologies (Olalekan Williams Edun) &bull; Confidential</div>
+  </body></html>`;
+  const w = window.open('','_blank');
+  if (w) { w.document.write(html); w.document.close(); setTimeout(()=>w.print(),500); }
+}
+
 export function InvoiceList({ onNavigate }: InvoiceListProps) {
   const queryClient = useQueryClient();
   const { formatNaira } = useCurrency();
@@ -307,6 +361,12 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
             <RefreshCw className="w-4 h-4" />
           </button>
           
+          <button onClick={() => exportInvoicesCSV(filteredInvoices)} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
+            <Download size={14} /> CSV
+          </button>
+          <button onClick={() => exportInvoicesPDF(filteredInvoices)} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
+            <FileText size={14} /> PDF
+          </button>
           <button
             type="button"
             onClick={() => setImportOpen(true)}

@@ -21,6 +21,7 @@ import {
   FileText,
   Power,
   Upload,
+  Download,
 } from 'lucide-react';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
 
@@ -108,6 +109,63 @@ function formFromCustomer(c: Customer): CustomerFormState {
     creditLimit: c.creditLimit != null ? (c.creditLimit / 100).toString() : '',
     notes: c.notes || '',
   };
+}
+
+function exportCustomersCSV(customers: Customer[]) {
+  const headers = ['Name','Email','Phone','Address','City','State','Country','Tax PIN','Payment Terms','Credit Limit','Currency','Notes','Status'];
+  const rows = customers.map(c => [
+    c.name, c.email||'', c.phone||'', c.address||'', c.city||'', c.state||'',
+    c.country, c.taxPin||'', c.paymentTerms ? `Net ${c.paymentTerms}` : '',
+    c.creditLimit ? `₦${(c.creditLimit/100).toLocaleString('en-NG')}` : '',
+    c.currency, c.notes||'', c.isActive ? 'Active' : 'Inactive'
+  ]);
+  const csv = [headers,...rows].map(r => r.map(val => `"${val}"`).join(',')).join('\n');
+  const blob = new Blob([csv],{type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url;
+  a.download=`customers-${new Date().toISOString().split('T')[0]}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
+function exportCustomersPDF(customers: Customer[]) {
+  const rows = customers.map(c => `
+    <tr>
+      <td><strong>${c.name}</strong>${c.notes ? `<br><small style="color:#64748b">${c.notes}</small>` : ''}</td>
+      <td>${c.email||'\u2014'}<br>${c.phone||'\u2014'}</td>
+      <td>${[c.city,c.state,c.country].filter(Boolean).join(', ')||'\u2014'}</td>
+      <td>${c.taxPin||'\u2014'}</td>
+      <td>${c.paymentTerms ? `Net ${c.paymentTerms}` : '\u2014'}</td>
+      <td>${c.creditLimit ? `₦${(c.creditLimit/100).toLocaleString('en-NG')}` : '\u2014'}</td>
+      <td><span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;background:${c.isActive?'#dcfce7':'#f1f5f9'};color:${c.isActive?'#166534':'#64748b'}">${c.isActive?'Active':'Inactive'}</span></td>
+    </tr>`).join('');
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Customers</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Segoe UI',sans-serif;color:#1e293b;padding:40px;font-size:13px}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px;padding-bottom:20px;border-bottom:2px solid #0f172a}
+    .company{font-size:22px;font-weight:800;color:#0f172a}
+    .subtitle{font-size:11px;color:#64748b;margin-top:4px}
+    .title{font-size:18px;font-weight:700;color:#0f172a}
+    .date{font-size:11px;color:#64748b;margin-top:4px}
+    table{width:100%;border-collapse:collapse;margin-top:16px}
+    th{background:#0f172a;color:#fff;padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.05em}
+    td{padding:10px 12px;border-bottom:1px solid #e2e8f0;font-size:12px;vertical-align:top}
+    tr:nth-child(even) td{background:#f8fafc}
+    .footer{margin-top:40px;text-align:center;font-size:10px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:16px}
+    @media print{body{padding:20px}}
+  </style></head><body>
+  <div class="header">
+    <div><div class="company">SkyBooks</div><div class="subtitle">By Skyhouse Accountants &amp; Technologies</div></div>
+    <div style="text-align:right"><div class="title">Customer Directory</div><div class="date">Generated: ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}</div><div class="date">${customers.length} customers</div></div>
+  </div>
+  <table>
+    <thead><tr><th>Customer</th><th>Contact</th><th>Location</th><th>Tax PIN</th><th>Terms</th><th>Credit Limit</th><th>Status</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="footer">SkyBooks By Skyhouse Accountants &amp; Technologies (Olalekan Williams Edun) &bull; Confidential</div>
+  </body></html>`;
+  const w = window.open('','_blank');
+  if (w) { w.document.write(html); w.document.close(); setTimeout(()=>w.print(),500); }
 }
 
 export function CustomersPage() {
@@ -229,6 +287,12 @@ function CustomerList() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={() => exportCustomersCSV(filtered)} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
+            <Download size={14} /> CSV
+          </button>
+          <button onClick={() => exportCustomersPDF(filtered)} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
+            <FileText size={14} /> PDF
+          </button>
           <button onClick={() => setImportOpen(true)}
             className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
             <Upload size={15} /> Import CSV
