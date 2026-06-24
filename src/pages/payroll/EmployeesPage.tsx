@@ -6,50 +6,37 @@ import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   UserPlus, Search, X, Edit2, Loader2, RefreshCw,
-  User, Mail, Phone, Building2, Briefcase, CreditCard,
-  Calendar, Hash, CheckCircle, XCircle, ChevronDown, Save
+  User, Phone, Briefcase, CreditCard,
+  CheckCircle, XCircle, Save, GraduationCap,
+  Award, Building2, Heart, Shield, Users, Plus, Trash2, MapPin
 } from 'lucide-react';
 import { payrollApi } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
 import { useCurrency } from '../../hooks/useCurrency';
 
-interface EmployeesPageProps {}
-
 const DEPARTMENTS = ['Engineering', 'Finance', 'Sales', 'HR', 'Operations', 'Legal', 'Marketing', 'IT', 'Management'];
 const FREQUENCIES = [{ value: 'monthly', label: 'Monthly' }, { value: 'weekly', label: 'Weekly' }, { value: 'biweekly', label: 'Bi-weekly' }];
+const EDU_LEVELS = ['SSCE / WAEC', 'OND', 'HND', 'B.Sc / B.A', 'M.Sc / M.A', 'MBA', 'Ph.D', 'Others'];
 
-const emptyForm = {
-  staffId: '', firstName: '', lastName: '', email: '', phone: '',
-  department: '', designation: '', dateOfBirth: '', dateHired: '',
-  bankName: '', accountNumber: '', grossSalary: 0,
-  paymentFrequency: 'monthly', pensionPin: '', nhfNumber: '', taxId: '', isActive: true
-};
-
-function Field({ label, value, onChange, type = 'text', placeholder = '', required = false }: any) {
+function Field({ label, value, onChange, type = 'text', placeholder = '', required = false, span2 = false }: any) {
   return (
-    <div>
-      <label className="block text-xs font-semibold text-slate-600 mb-1">{label}{required && <span className="text-red-500 ml-0.5">*</span>}</label>
-      <input
-        type={type}
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
-        required={required}
-        className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:border-indigo-400 focus:ring-1 focus:ring-indigo-100 outline-none transition"
-      />
+    <div className={span2 ? 'col-span-2' : ''}>
+      <label className="block text-xs font-semibold text-slate-600 mb-1">
+        {label}{required && <span className="text-red-500 ml-0.5">*</span>}
+      </label>
+      <input type={type} value={value} onChange={e => onChange(e.target.value)}
+        placeholder={placeholder} required={required}
+        className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:border-indigo-400 focus:ring-1 focus:ring-indigo-100 outline-none transition" />
     </div>
   );
 }
 
-function SelectField({ label, value, onChange, options }: any) {
+function SelectField({ label, value, onChange, options, span2 = false }: any) {
   return (
-    <div>
+    <div className={span2 ? 'col-span-2' : ''}>
       <label className="block text-xs font-semibold text-slate-600 mb-1">{label}</label>
-      <select
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:border-indigo-400 outline-none transition"
-      >
+      <select value={value} onChange={e => onChange(e.target.value)}
+        className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:border-indigo-400 outline-none transition">
         <option value="">— Select —</option>
         {options.map((o: any) => <option key={o.value || o} value={o.value || o}>{o.label || o}</option>)}
       </select>
@@ -57,7 +44,88 @@ function SelectField({ label, value, onChange, options }: any) {
   );
 }
 
-export function EmployeesPage({}: EmployeesPageProps) {
+function SectionHeader({ icon: Icon, title }: any) {
+  return (
+    <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2 mb-4">
+      <Icon className="w-3.5 h-3.5" /> {title}
+    </h4>
+  );
+}
+
+function RepeatableSection({ title, icon: Icon, items, setItems, fields, maxItems = 5 }: any) {
+  function addItem() {
+    if (items.length >= maxItems) return;
+    const blank: any = {};
+    fields.forEach((f: any) => blank[f.key] = '');
+    setItems([...items, blank]);
+  }
+  function removeItem(i: number) { setItems(items.filter((_: any, idx: number) => idx !== i)); }
+  function updateItem(i: number, key: string, val: string) {
+    setItems(items.map((item: any, idx: number) => idx === i ? { ...item, [key]: val } : item));
+  }
+  return (
+    <div className="space-y-3 border-t border-slate-100 pt-5">
+      <div className="flex items-center justify-between">
+        <SectionHeader icon={Icon} title={title} />
+        {items.length < maxItems && (
+          <button type="button" onClick={addItem}
+            className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-semibold">
+            <Plus className="w-3.5 h-3.5" /> Add
+          </button>
+        )}
+      </div>
+      {items.length === 0 && (
+        <button type="button" onClick={addItem}
+          className="w-full py-3 border-2 border-dashed border-slate-200 rounded-lg text-xs text-slate-400 hover:border-indigo-300 hover:text-indigo-500 transition flex items-center justify-center gap-2">
+          <Plus className="w-3.5 h-3.5" /> Add {title}
+        </button>
+      )}
+      {items.map((item: any, i: number) => (
+        <div key={i} className="bg-slate-50 rounded-xl p-4 relative">
+          <button type="button" onClick={() => removeItem(i)}
+            className="absolute top-3 right-3 p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-red-500 transition">
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+          <div className="grid grid-cols-2 gap-3 pr-6">
+            {fields.map((f: any) => (
+              f.type === 'select'
+                ? <div key={f.key} className={f.span2 ? 'col-span-2' : ''}>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">{f.label}</label>
+                    <select value={item[f.key]} onChange={e => updateItem(i, f.key, e.target.value)}
+                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:border-indigo-400 outline-none transition">
+                      <option value="">— Select —</option>
+                      {f.options.map((o: string) => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </div>
+                : <div key={f.key} className={f.span2 ? 'col-span-2' : ''}>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">{f.label}</label>
+                    <input type={f.type || 'text'} value={item[f.key]} onChange={e => updateItem(i, f.key, e.target.value)}
+                      placeholder={f.placeholder || ''}
+                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:border-indigo-400 outline-none transition" />
+                  </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const emptyForm = {
+  staffId: '', firstName: '', lastName: '', email: '', phone: '',
+  address: '', department: '', designation: '', dateOfBirth: '', dateHired: '',
+  bankName: '', accountNumber: '', grossSalary: 0,
+  paymentFrequency: 'monthly', pensionPin: '', nhfNumber: '', taxId: '', isActive: true,
+};
+
+const emptyEduQual = { level: '', institution: '', course: '', year: '' };
+const emptyProfQual = { qualification: '', issuingBody: '', year: '' };
+const emptyInstitution = { name: '', type: '', from: '', to: '', certificate: '' };
+const emptyNextOfKin = { name: '', relationship: '', phone: '', address: '', email: '' };
+const emptyGuarantor = { name: '', occupation: '', phone: '', address: '', relationship: '' };
+const emptyReference = { name: '', title: '', organization: '', phone: '', email: '' };
+
+export function EmployeesPage() {
   const { token } = useAuth();
   const { formatNaira } = useCurrency();
   const queryClient = useQueryClient();
@@ -68,6 +136,14 @@ export function EmployeesPage({}: EmployeesPageProps) {
   const [form, setForm] = useState({ ...emptyForm });
   const [filterDept, setFilterDept] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
+
+  // Repeatable sections state
+  const [eduQuals, setEduQuals] = useState<any[]>([]);
+  const [profQuals, setProfQuals] = useState<any[]>([]);
+  const [institutions, setInstitutions] = useState<any[]>([]);
+  const [nextOfKin, setNextOfKin] = useState<any[]>([]);
+  const [guarantors, setGuarantors] = useState<any[]>([]);
+  const [references, setReferences] = useState<any[]>([]);
 
   const { data: employeesData, isLoading } = useQuery({
     queryKey: ['employees'],
@@ -96,13 +172,18 @@ export function EmployeesPage({}: EmployeesPageProps) {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['employees'] }); resetForm(); },
   });
 
-  function resetForm() { setForm({ ...emptyForm }); setShowForm(false); setEditingId(null); }
+  function resetForm() {
+    setForm({ ...emptyForm });
+    setEduQuals([]); setProfQuals([]); setInstitutions([]);
+    setNextOfKin([]); setGuarantors([]); setReferences([]);
+    setShowForm(false); setEditingId(null);
+  }
 
   function openEdit(emp: any) {
     setForm({
       staffId: emp.staffId || '', firstName: emp.firstName || '', lastName: emp.lastName || '',
-      email: emp.email || '', phone: emp.phone || '', department: emp.department || '',
-      designation: emp.designation || '',
+      email: emp.email || '', phone: emp.phone || '', address: emp.address || '',
+      department: emp.department || '', designation: emp.designation || '',
       dateOfBirth: emp.dateOfBirth ? emp.dateOfBirth.split('T')[0] : '',
       dateHired: emp.dateHired ? emp.dateHired.split('T')[0] : '',
       bankName: emp.bankName || '', accountNumber: emp.accountNumber || '',
@@ -111,22 +192,32 @@ export function EmployeesPage({}: EmployeesPageProps) {
       pensionPin: emp.pensionPin || '', nhfNumber: emp.nhfNumber || '',
       taxId: emp.taxId || '', isActive: emp.isActive !== false,
     });
+    setEduQuals(emp.eduQuals || []);
+    setProfQuals(emp.profQuals || []);
+    setInstitutions(emp.institutions || []);
+    setNextOfKin(emp.nextOfKin || []);
+    setGuarantors(emp.guarantors || []);
+    setReferences(emp.references || []);
     setEditingId(emp.id);
     setShowForm(true);
   }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const payload = { ...form, grossSalary: Math.round(Number(form.grossSalary) * 100) };
+    const payload = {
+      ...form,
+      grossSalary: Math.round(Number(form.grossSalary) * 100),
+      eduQuals, profQuals, institutions, nextOfKin, guarantors, references,
+    };
     if (editingId) updateMutation.mutate({ id: editingId, data: payload });
     else createMutation.mutate(payload);
   }
 
   const f = (key: string) => (val: any) => setForm(prev => ({ ...prev, [key]: val }));
   const isSaving = createMutation.isPending || updateMutation.isPending;
-
-  const activeCount = (Array.isArray(employeesData) ? employeesData : (employeesData?.employees || [])).filter((e: any) => e.isActive).length;
-  const totalPayroll = (Array.isArray(employeesData) ? employeesData : (employeesData?.employees || [])).filter((e: any) => e.isActive).reduce((s: number, e: any) => s + (e.grossSalary || 0), 0);
+  const allEmployees = Array.isArray(employeesData) ? employeesData : (employeesData?.employees || []);
+  const activeCount = allEmployees.filter((e: any) => e.isActive).length;
+  const totalPayroll = allEmployees.filter((e: any) => e.isActive).reduce((s: number, e: any) => s + (e.grossSalary || 0), 0);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -152,7 +243,7 @@ export function EmployeesPage({}: EmployeesPageProps) {
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <div className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Total Employees</p>
-          <p className="text-2xl font-bold text-slate-900 mt-1">{(Array.isArray(employeesData) ? employeesData : (employeesData?.employees || [])).length}</p>
+          <p className="text-2xl font-bold text-slate-900 mt-1">{allEmployees.length}</p>
         </div>
         <div className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Active Staff</p>
@@ -268,11 +359,11 @@ export function EmployeesPage({}: EmployeesPageProps) {
       {showForm && (
         <div className="fixed inset-0 z-50 flex">
           <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={resetForm} />
-          <div className="relative ml-auto w-full max-w-xl bg-white h-full overflow-y-auto shadow-2xl flex flex-col">
+          <div className="relative ml-auto w-full max-w-2xl bg-white h-full overflow-y-auto shadow-2xl flex flex-col">
             <div className="sticky top-0 bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between z-10">
               <div>
                 <h3 className="text-base font-bold text-slate-900">{editingId ? 'Edit Employee' : 'Add New Employee'}</h3>
-                <p className="text-xs text-slate-400 mt-0.5">Personnel & payroll configuration</p>
+                <p className="text-xs text-slate-400 mt-0.5">Personnel record & payroll configuration</p>
               </div>
               <button onClick={resetForm} className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 outline-none">
                 <X className="w-5 h-5" />
@@ -280,11 +371,10 @@ export function EmployeesPage({}: EmployeesPageProps) {
             </div>
 
             <form onSubmit={handleSubmit} className="flex-1 p-6 space-y-6">
-              {/* Personal Info */}
+
+              {/* 1. Personal Information */}
               <div className="space-y-4">
-                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                  <User className="w-3.5 h-3.5" /> Personal Information
-                </h4>
+                <SectionHeader icon={User} title="Personal Information" />
                 <div className="grid grid-cols-2 gap-4">
                   <Field label="Staff ID" value={form.staffId} onChange={f('staffId')} placeholder="EMP-001" required />
                   <Field label="Date Hired" value={form.dateHired} onChange={f('dateHired')} type="date" />
@@ -293,14 +383,13 @@ export function EmployeesPage({}: EmployeesPageProps) {
                   <Field label="Email" value={form.email} onChange={f('email')} type="email" placeholder="john@company.com" />
                   <Field label="Phone" value={form.phone} onChange={f('phone')} placeholder="+234 801 234 5678" />
                   <Field label="Date of Birth" value={form.dateOfBirth} onChange={f('dateOfBirth')} type="date" />
+                  <Field label="Residential Address" value={form.address} onChange={f('address')} placeholder="12 Main Street, Lagos" span2 />
                 </div>
               </div>
 
-              {/* Job Info */}
+              {/* 2. Job Details */}
               <div className="space-y-4 border-t border-slate-100 pt-5">
-                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                  <Briefcase className="w-3.5 h-3.5" /> Job Details
-                </h4>
+                <SectionHeader icon={Briefcase} title="Job Details" />
                 <div className="grid grid-cols-2 gap-4">
                   <SelectField label="Department" value={form.department} onChange={f('department')} options={DEPARTMENTS} />
                   <Field label="Designation / Job Title" value={form.designation} onChange={f('designation')} placeholder="Software Engineer" />
@@ -311,20 +400,16 @@ export function EmployeesPage({}: EmployeesPageProps) {
                       className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:border-indigo-400 outline-none transition" />
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={form.isActive} onChange={e => f('isActive')(e.target.checked)}
-                      className="w-4 h-4 rounded text-indigo-600 border-slate-300 focus:ring-indigo-500" />
-                    <span className="text-sm font-medium text-slate-700">Active Employee</span>
-                  </label>
-                </div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={form.isActive} onChange={e => f('isActive')(e.target.checked)}
+                    className="w-4 h-4 rounded text-indigo-600 border-slate-300 focus:ring-indigo-500" />
+                  <span className="text-sm font-medium text-slate-700">Active Employee</span>
+                </label>
               </div>
 
-              {/* Bank Info */}
+              {/* 3. Bank & Tax */}
               <div className="space-y-4 border-t border-slate-100 pt-5">
-                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                  <CreditCard className="w-3.5 h-3.5" /> Bank & Tax Details
-                </h4>
+                <SectionHeader icon={CreditCard} title="Bank & Tax Details" />
                 <div className="grid grid-cols-2 gap-4">
                   <Field label="Bank Name" value={form.bankName} onChange={f('bankName')} placeholder="GTBank" />
                   <Field label="Account Number" value={form.accountNumber} onChange={f('accountNumber')} placeholder="0123456789" />
@@ -334,7 +419,101 @@ export function EmployeesPage({}: EmployeesPageProps) {
                 </div>
               </div>
 
-              <div className="sticky bottom-0 bg-white border-t border-slate-100 pt-4 flex gap-3">
+              {/* 4. Educational Qualifications */}
+              <RepeatableSection
+                title="Educational Qualifications"
+                icon={GraduationCap}
+                items={eduQuals}
+                setItems={setEduQuals}
+                maxItems={5}
+                fields={[
+                  { key: 'level', label: 'Qualification Level', type: 'select', options: EDU_LEVELS },
+                  { key: 'course', label: 'Course / Field of Study', placeholder: 'Computer Science' },
+                  { key: 'institution', label: 'Institution', placeholder: 'University of Lagos', span2: true },
+                  { key: 'year', label: 'Year Obtained', type: 'number', placeholder: '2015' },
+                ]}
+              />
+
+              {/* 5. Professional Qualifications */}
+              <RepeatableSection
+                title="Professional Qualifications"
+                icon={Award}
+                items={profQuals}
+                setItems={setProfQuals}
+                maxItems={5}
+                fields={[
+                  { key: 'qualification', label: 'Qualification', placeholder: 'ICAN, CIPM, PMP...' },
+                  { key: 'issuingBody', label: 'Issuing Body', placeholder: 'ICAN' },
+                  { key: 'year', label: 'Year Obtained', type: 'number', placeholder: '2018' },
+                ]}
+              />
+
+              {/* 6. Institutions Attended */}
+              <RepeatableSection
+                title="Institutions Attended"
+                icon={Building2}
+                items={institutions}
+                setItems={setInstitutions}
+                maxItems={5}
+                fields={[
+                  { key: 'name', label: 'Institution Name', placeholder: 'University of Lagos', span2: true },
+                  { key: 'type', label: 'Type', type: 'select', options: ['Primary', 'Secondary', 'Polytechnic', 'University', 'Professional', 'Others'] },
+                  { key: 'certificate', label: 'Certificate Obtained', placeholder: 'B.Sc Computer Science' },
+                  { key: 'from', label: 'From (Year)', type: 'number', placeholder: '2010' },
+                  { key: 'to', label: 'To (Year)', type: 'number', placeholder: '2014' },
+                ]}
+              />
+
+              {/* 7. Next of Kin */}
+              <RepeatableSection
+                title="Next of Kin"
+                icon={Heart}
+                items={nextOfKin}
+                setItems={setNextOfKin}
+                maxItems={1}
+                fields={[
+                  { key: 'name', label: 'Full Name', placeholder: 'Jane Doe', span2: true },
+                  { key: 'relationship', label: 'Relationship', placeholder: 'Spouse / Sibling...' },
+                  { key: 'phone', label: 'Phone Number', placeholder: '+234 801 234 5678' },
+                  { key: 'email', label: 'Email', type: 'email', placeholder: 'jane@example.com' },
+                  { key: 'address', label: 'Address', placeholder: '12 Main Street, Lagos', span2: true },
+                ]}
+              />
+
+              {/* 8. Guarantors */}
+              <RepeatableSection
+                title="Guarantors"
+                icon={Shield}
+                items={guarantors}
+                setItems={setGuarantors}
+                maxItems={3}
+                fields={[
+                  { key: 'name', label: 'Full Name', placeholder: 'Mr. John Smith', span2: true },
+                  { key: 'occupation', label: 'Occupation', placeholder: 'Civil Servant' },
+                  { key: 'relationship', label: 'Relationship', placeholder: 'Friend / Colleague' },
+                  { key: 'phone', label: 'Phone Number', placeholder: '+234 801 234 5678' },
+                  { key: 'address', label: 'Address', placeholder: '12 Main Street, Lagos', span2: true },
+                ]}
+              />
+
+              {/* 9. References */}
+              <RepeatableSection
+                title="References"
+                icon={Users}
+                items={references}
+                setItems={setReferences}
+                maxItems={3}
+                fields={[
+                  { key: 'name', label: 'Full Name', placeholder: 'Dr. Adaeze Obi', span2: true },
+                  { key: 'title', label: 'Title / Designation', placeholder: 'Director, Finance' },
+                  { key: 'organization', label: 'Organisation', placeholder: 'ABC Ltd' },
+                  { key: 'phone', label: 'Phone Number', placeholder: '+234 801 234 5678' },
+                  { key: 'email', label: 'Email', type: 'email', placeholder: 'adaeze@abc.com' },
+                ]}
+              />
+
+              {/* Submit */}
+              <div className="sticky bottom-0 bg-white border-t border-slate-100 pt-4 flex gap-3 pb-2">
                 <button type="button" onClick={resetForm}
                   className="flex-1 px-4 py-2.5 border border-slate-200 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-50 transition">
                   Cancel
@@ -352,4 +531,3 @@ export function EmployeesPage({}: EmployeesPageProps) {
     </div>
   );
 }
-
