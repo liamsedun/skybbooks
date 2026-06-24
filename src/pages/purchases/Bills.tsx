@@ -460,7 +460,7 @@ export function BillsPage() {
                                 </select>
                               </td>
                               <td className="px-3 py-2 text-right text-xs font-semibold text-slate-700 whitespace-nowrap">
-                                {(lineTotal / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+                                {lineTotal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
                               </td>
                               <td className="px-2 py-2">
                                 {form.lines.length > 1 && (
@@ -492,9 +492,9 @@ export function BillsPage() {
                     className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
                 </div>
                 <div className="bg-slate-50 rounded-lg p-4 space-y-2 text-sm self-start">
-                  <div className="flex justify-between text-slate-600"><span>Subtotal</span><span className="font-medium">{(subtotal / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span></div>
-                  <div className="flex justify-between text-slate-600"><span>Tax</span><span className="font-medium">{(taxTotal / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span></div>
-                  <div className="flex justify-between font-bold text-slate-900 pt-2 border-t border-slate-200"><span>Total</span><span>{(grandTotal / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span></div>
+                  <div className="flex justify-between text-slate-600"><span>Subtotal</span><span className="font-medium">{subtotal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span></div>
+                  <div className="flex justify-between text-slate-600"><span>Tax</span><span className="font-medium">{taxTotal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span></div>
+                  <div className="flex justify-between font-bold text-slate-900 pt-2 border-t border-slate-200"><span>Total</span><span>{grandTotal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span></div>
                 </div>
               </div>
             </div>
