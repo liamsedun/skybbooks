@@ -972,6 +972,38 @@ router.post('/quotes/:id/convert', async (req: AuthenticatedRequest, res: Respon
   } catch (err) { return next(err); }
 });
 
+// POST /api/sales/quotes/:id/unconvert — revert a converted quote back to accepted
+router.post('/quotes/:id/unconvert', authenticate, requireOrg, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { id } = req.params;
+    const [quote] = await db.select().from(quotes)
+      .where(and(eq(quotes.id, id), eq(quotes.orgId, orgId))).limit(1);
+    if (!quote) throw new AppError('Quote not found.', 404);
+    if (quote.status !== 'converted') throw new AppError('Only converted quotes can be unconverted.', 400);
+    const convertedToId = (quote as any).convertedToId;
+    if (convertedToId) {
+      const [linkedInvoice] = await db.select().from(invoices)
+        .where(and(eq(invoices.id, convertedToId), eq(invoices.orgId, orgId))).limit(1);
+      if (linkedInvoice) {
+        if (linkedInvoice.status === 'draft') {
+          await db.delete(invoiceLines).where(eq(invoiceLines.invoiceId, linkedInvoice.id));
+          await db.delete(invoices).where(eq(invoices.id, linkedInvoice.id));
+        } else if (['open', 'partial'].includes(linkedInvoice.status)) {
+          throw new AppError(
+            `Cannot unconvert: the linked invoice (${linkedInvoice.invoiceNumber}) has status "${linkedInvoice.status}". Void the invoice first.`,
+            400
+          );
+        }
+      }
+    }
+    await db.update(quotes)
+      .set({ status: 'accepted', convertedToId: null } as any)
+      .where(eq(quotes.id, id));
+    return res.status(200).json({ message: 'Quote successfully reverted to accepted status.' });
+  } catch (err) { return next(err); }
+});
+
 
 // =========================================================================
 // SALES ORDERS ENDPOINTS
