@@ -7,10 +7,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../lib/api';
 import {
-  Plus, Search, Pencil, Trash2, X, Loader2, AlertCircle,
+  Plus, Search, Pencil, Trash2, X, Loader2, AlertCircle, Upload,
   FileText, ArrowRight, CheckCircle2, Clock, XCircle, RefreshCw, ChevronRight,
   RotateCcw,
 } from 'lucide-react';
+import { CsvImportModal } from '../../components/ui/CsvImportModal';
 
 type QuoteStatus = 'draft' | 'sent' | 'accepted' | 'declined' | 'expired' | 'converted';
 
@@ -106,6 +107,7 @@ export function QuotesPage() {
   const [convertingId, setConvertingId] = useState<string|null>(null);
   const [convertSuccess, setConvertSuccess] = useState<string|null>(null);
   const [unconvertingId, setUnconvertingId] = useState<string|null>(null);
+  const [importOpen, setImportOpen] = useState(false);
 
   const { data: quotesData, isLoading, isError } = useQuery<Quote[]>({
     queryKey: ['sales','quotes'],
@@ -205,9 +207,14 @@ export function QuotesPage() {
           <h1 className="text-2xl font-bold text-slate-900">Quotes</h1>
           <p className="text-sm text-slate-500 mt-1">{counts.all} total · {counts.byStatus['draft']||0} draft · {counts.byStatus['accepted']||0} accepted</p>
         </div>
-        <button onClick={openAddModal} className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors">
-          <Plus size={16} />New Quote
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setImportOpen(true)} className="inline-flex items-center gap-2 px-4 py-2 bg-white text-slate-700 text-sm font-medium border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
+            <Upload size={16} /> Import CSV
+          </button>
+          <button onClick={openAddModal} className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors">
+            <Plus size={16} />New Quote
+          </button>
+        </div>
       </div>
 
       {convertSuccess && (
@@ -533,6 +540,33 @@ export function QuotesPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {importOpen && (
+        <CsvImportModal
+          entity="quotes"
+          endpoint="/sales/quotes"
+          onClose={() => setImportOpen(false)}
+          onSuccess={() => queryClient.invalidateQueries({queryKey:['sales','quotes']})}
+          transformRow={(row, headers) => {
+            const idx = (h: string) => headers.indexOf(h);
+            return {
+              customerId: row[idx('customerId (or name)')],
+              date: row[idx('date (YYYY-MM-DD)')] || undefined,
+              expiryDate: row[idx('expiryDate')] || undefined,
+              currency: row[idx('currency')] || undefined,
+              notes: row[idx('notes')] || null,
+              terms: row[idx('terms')] || null,
+              lines: [{
+                description: row[idx('line_description')] || '',
+                quantity: parseFloat(row[idx('line_quantity')]) || 1,
+                unitPrice: Math.round((parseFloat(row[idx('line_unitPrice (NGN)')]) || 0) * 100),
+                discountPct: parseFloat(row[idx('line_discountPct')]) || 0,
+                taxRate: parseFloat(row[idx('line_taxRate')]) || 7.5,
+              }],
+            };
+          }}
+        />
       )}
     </div>
   );

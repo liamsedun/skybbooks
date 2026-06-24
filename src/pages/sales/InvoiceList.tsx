@@ -26,7 +26,8 @@ import {
   RefreshCw,
   Clock,
   Briefcase,
-  Loader2
+  Loader2,
+  Upload
 } from 'lucide-react';
 import { salesApi } from '../../lib/api';
 import { useCurrency } from '../../hooks/useCurrency';
@@ -34,6 +35,7 @@ import { StatusBadge } from '../../components/ui/StatusBadge';
 import { AmountDisplay } from '../../components/ui/AmountDisplay';
 import { RecordPaymentDrawer } from '../../components/sales/RecordPaymentDrawer';
 import { useAuth } from '../../hooks/useAuth';
+import { CsvImportModal } from '../../components/ui/CsvImportModal';
 
 interface InvoiceListProps {
   onNavigate: (viewId: string, invoiceId?: string) => void;
@@ -56,6 +58,7 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
   const [selectedInvoices, setSelectedInvoices] = useState<string[]>([]);
   const [paymentDrawerOpen, setPaymentDrawerOpen] = useState(false);
   const [selectedInvoiceForPayment, setSelectedInvoiceForPayment] = useState<{ id: string; customerId: string } | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
 
   // 2. Query Invoice Data from React Query
   const { data: invoicesResult, isLoading, refetch } = useQuery({
@@ -304,6 +307,14 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
             <RefreshCw className="w-4 h-4" />
           </button>
           
+          <button
+            type="button"
+            onClick={() => setImportOpen(true)}
+            className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 outline-none rounded-lg shadow-sm cursor-pointer transition flex items-center shrink-0"
+          >
+            <Upload className="w-4 h-4 mr-1.5 stroke-[2.5]" />
+            Import CSV
+          </button>
           <button
             type="button"
             onClick={() => onNavigate('invoice-form')}
@@ -630,17 +641,17 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
 
                       {/* Customer Info */}
                       <td className="px-4 align-middle h-12">
-                        <div className="font-semibold text-ink-900 text-[13px]">{invoice.clientName || invoice.customerId || "—"}</div>
+                        <div className="font-semibold text-ink-900 text-[13px]">{invoice.clientName || invoice.customerId || "ï¿½"}</div>
                         <div className="text-[10px] text-ink-400 mt-0.5 font-bold">{invoice.clientEmail || ""}</div>
                       </td>
 
                       {/* Issue date */}
-                      <td className="px-4 align-middle h-12 font-mono text-ink-600 font-medium text-[13px]">{invoice.date ? new Date(invoice.date).toLocaleDateString("en-GB", { day:"2-digit", month:"short", year:"numeric" }) : "—"}</td>
+                      <td className="px-4 align-middle h-12 font-mono text-ink-600 font-medium text-[13px]">{invoice.date ? new Date(invoice.date).toLocaleDateString("en-GB", { day:"2-digit", month:"short", year:"numeric" }) : "ï¿½"}</td>
 
                       {/* Due Date */}
                       <td className="px-4 align-middle h-12 font-mono text-ink-650 font-medium text-[13px]">
                         <span className={(invoice.status || '').toLowerCase() === 'overdue' ? 'text-danger-custom font-bold' : 'text-slate-500'}>
-                          {invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString("en-GB", { day:"2-digit", month:"short", year:"numeric" }) : "—"}
+                          {invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString("en-GB", { day:"2-digit", month:"short", year:"numeric" }) : "ï¿½"}
                         </span>
                       </td>
 
@@ -760,6 +771,36 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
           invoiceId={selectedInvoiceForPayment.id}
           onSuccess={() => {
             refetch();
+          }}
+        />
+      )}
+
+      {importOpen && (
+        <CsvImportModal
+          entity="invoices"
+          endpoint="/sales/invoices"
+          onClose={() => setImportOpen(false)}
+          onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ['invoices'] });
+          }}
+          transformRow={(row, headers) => {
+            const data: Record<string, string> = {};
+            headers.forEach((h, i) => { data[h.trim()] = (row[i] || '').trim(); });
+            return {
+              customerId: data['customerId (or name)'],
+              date: data['date (YYYY-MM-DD)'] || undefined,
+              dueDate: data['dueDate'] || undefined,
+              currency: data['currency'] || undefined,
+              notes: data['notes'] || null,
+              terms: data['terms'] || null,
+              lines: [{
+                description: data['line_description'] || undefined,
+                quantity: data['line_quantity'] ? parseFloat(data['line_quantity']) : undefined,
+                unitPrice: data['line_unitPrice (NGN)'] ? Math.round(parseFloat(data['line_unitPrice (NGN)']) * 100) : undefined,
+                discountPct: data['line_discountPct'] ? parseFloat(data['line_discountPct']) : undefined,
+                taxRate: data['line_taxRate'] ? parseFloat(data['line_taxRate']) : undefined,
+              }],
+            };
           }}
         />
       )}

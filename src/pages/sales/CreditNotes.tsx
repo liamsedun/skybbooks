@@ -5,8 +5,9 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
+import { CsvImportModal } from '../../components/ui/CsvImportModal';
 import {
-  Search, Loader2, AlertCircle, X, Plus, FileMinus, ChevronRight,
+  Search, Upload, Loader2, AlertCircle, X, Plus, FileMinus, ChevronRight,
   Ban, CheckCircle2, ReceiptText,
 } from 'lucide-react';
 
@@ -63,6 +64,7 @@ export function CreditNotesPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
   const [voidTarget, setVoidTarget] = useState<CreditNote | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -108,13 +110,22 @@ export function CreditNotesPage() {
             Issue and apply credit notes against customer invoices for returns, disputes, or VAT adjustments.
           </p>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-slate-900 transition shadow-sm"
-        >
-          <Plus size={16} />
-          New Credit Note
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setImportOpen(true)}
+            className="flex items-center gap-1.5 px-4 py-2 bg-white border border-slate-200 text-slate-700 text-sm font-semibold rounded-lg hover:bg-slate-50 transition shadow-sm"
+          >
+            <Upload size={16} />
+            Import CSV
+          </button>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-slate-900 transition shadow-sm"
+          >
+            <Plus size={16} />
+            New Credit Note
+          </button>
+        </div>
       </div>
 
       {/* Summary cards */}
@@ -275,6 +286,33 @@ export function CreditNotesPage() {
         onClose={() => setSelectedId(null)}
         onError={setActionError}
       />
+
+      {importOpen && (
+        <CsvImportModal
+          entity="creditNotes"
+          endpoint="/sales/credit-notes"
+          onClose={() => setImportOpen(false)}
+          onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ['sales', 'credit-notes'] });
+            queryClient.invalidateQueries({ queryKey: ['sales'] });
+          }}
+          transformRow={(row, headers) => {
+            const get = (key: string) => {
+              const idx = headers.findIndex(h => h.toLowerCase() === key.toLowerCase());
+              return idx >= 0 ? row[idx]?.trim() : '';
+            };
+            const customerName = get('customerId (or name)') || get('customerId') || get('customer');
+            return {
+              customerId: customerName,
+              invoiceId: get('invoiceNumber (optional)') || get('invoiceNumber') || get('invoice') || null,
+              date: get('date (YYYY-MM-DD)') || get('date') || undefined,
+              subtotal: Math.round(parseFloat(get('subtotal (NGN)') || get('subtotal') || '0') * 100),
+              tax: Math.round(parseFloat(get('tax (NGN)') || get('tax') || '0') * 100),
+              notes: get('notes') || null,
+            };
+          }}
+        />
+      )}
     </div>
   );
 }

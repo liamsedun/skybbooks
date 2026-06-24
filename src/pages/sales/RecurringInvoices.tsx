@@ -8,8 +8,9 @@ import { api } from '../../lib/api';
 import {
   Plus, X, Loader2, AlertCircle, CheckCircle2,
   RefreshCw, Pause, Play, Trash2, Zap,
-  Calendar, TrendingDown, Search,
+  Calendar, TrendingDown, Search, Upload,
 } from 'lucide-react';
+import { CsvImportModal } from '../../components/ui/CsvImportModal';
 
 type Frequency = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'annually';
 
@@ -82,6 +83,7 @@ export function RecurringInvoicesPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
 
   const { data: templates, isLoading, isError } = useQuery<RecurringInvoice[]>({
     queryKey: ['recurring-invoices'],
@@ -227,9 +229,14 @@ export function RecurringInvoicesPage() {
             {templates?.length || 0} templates · {activeCount} active
           </p>
         </div>
-        <button onClick={openCreate} className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors">
-          <Plus size={15} /> New Billing Template
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setImportOpen(true)} className="inline-flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
+            <Upload size={15} /> Import CSV
+          </button>
+          <button onClick={openCreate} className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors">
+            <Plus size={15} /> New Billing Template
+          </button>
+        </div>
       </div>
 
       {successMsg && (
@@ -500,6 +507,42 @@ export function RecurringInvoicesPage() {
             </form>
           </div>
         </div>
+      )}
+
+      {importOpen && (
+        <CsvImportModal
+          entity="recurringInvoices"
+          endpoint="/sales/recurring-invoices"
+          onClose={() => setImportOpen(false)}
+          onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ['recurring-invoices'] });
+            queryClient.invalidateQueries({ queryKey: ['invoices'] });
+          }}
+          transformRow={(row, headers) => {
+            const data: any = {};
+            headers.forEach((h, i) => { data[h] = row[i]; });
+            return {
+              customerId: data['customerId (or name)'],
+              frequency: data.frequency,
+              startDate: data['startDate (YYYY-MM-DD)'],
+              endDate: data.endDate || null,
+              isActive: true,
+              template: {
+                lines: [{
+                  description: data.line_description,
+                  quantity: parseFloat(data.line_quantity) || 1,
+                  unitPrice: Math.round((parseFloat(data['line_unitPrice (NGN)']) || 0) * 100),
+                  discountPct: parseFloat(data.line_discountPct) || 0,
+                  taxRate: parseFloat(data.line_taxRate) || 0,
+                }],
+                paymentTerms: parseInt(data.template_paymentTerms) || 30,
+                currency: data.template_currency,
+                notes: data.template_notes || null,
+                terms: data.template_terms || null,
+              },
+            };
+          }}
+        />
       )}
     </div>
   );

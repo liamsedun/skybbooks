@@ -20,7 +20,9 @@ import {
   MapPin,
   FileText,
   Power,
+  Upload,
 } from 'lucide-react';
+import { CsvImportModal } from '../../components/ui/CsvImportModal';
 
 interface Customer {
   id: string;
@@ -124,6 +126,7 @@ function CustomerList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [modalOpen, setModalOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<CustomerFormState>(EMPTY_FORM);
   const [formError, setFormError] = useState<string | null>(null);
@@ -225,13 +228,19 @@ function CustomerList() {
             {counts.all} customers · {counts.active} active · {counts.inactive} inactive
           </p>
         </div>
-        <button
-          onClick={openAddModal}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors"
-        >
-          <Plus size={16} />
-          Add Customer
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setImportOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
+            <Upload size={15} /> Import CSV
+          </button>
+          <button
+            onClick={openAddModal}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors"
+          >
+            <Plus size={16} />
+            Add Customer
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2 mb-4">
@@ -362,6 +371,27 @@ function CustomerList() {
           isSaving={isSaving}
           onSubmit={handleSubmit}
           onClose={closeModal}
+        />
+      )}
+      {importOpen && (
+        <CsvImportModal
+          entity="customers"
+          endpoint="/sales/customers"
+          onClose={() => setImportOpen(false)}
+          onSuccess={() => queryClient.invalidateQueries({ queryKey: ['sales', 'customers'] })}
+          transformRow={(row, headers) => ({
+            name: row[headers.indexOf('name')] || '',
+            email: row[headers.indexOf('email')] || null,
+            phone: row[headers.indexOf('phone')] || null,
+            address: row[headers.indexOf('address')] || null,
+            city: row[headers.indexOf('city')] || null,
+            state: row[headers.indexOf('state')] || null,
+            country: row[headers.indexOf('country')] || 'Nigeria',
+            taxPin: row[headers.indexOf('taxPin')] || null,
+            paymentTerms: row[headers.indexOf('paymentTerms (days)')] ? parseInt(row[headers.indexOf('paymentTerms (days)')], 10) : null,
+            creditLimit: row[headers.indexOf('creditLimit (NGN)')] ? Math.round(parseFloat(row[headers.indexOf('creditLimit (NGN)')]) * 100) : null,
+            notes: row[headers.indexOf('notes')] || null,
+          })}
         />
       )}
     </div>

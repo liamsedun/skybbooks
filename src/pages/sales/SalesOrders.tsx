@@ -9,7 +9,9 @@ import {
   Plus, Search, Pencil, Trash2, X, Loader2, AlertCircle,
   FileText, CheckCircle2, Clock, XCircle, TrendingDown,
   ShoppingCart, ArrowRight, PackageCheck,
+  Upload,
 } from 'lucide-react';
+import { CsvImportModal } from '../../components/ui/CsvImportModal';
 
 type SOStatus = 'draft' | 'confirmed' | 'partial' | 'fulfilled' | 'cancelled';
 
@@ -120,6 +122,7 @@ export function SalesOrdersPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [convertingId, setConvertingId] = useState<string | null>(null);
   const [convertSuccess, setConvertSuccess] = useState<string | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
 
   const { data: ordersData, isLoading, isError } = useQuery<SalesOrder[]>({
     queryKey: ['sales', 'orders'],
@@ -240,9 +243,14 @@ export function SalesOrdersPage() {
           <h1 className="text-xl font-bold text-slate-900">Sales Orders</h1>
           <p className="text-sm text-slate-500 mt-0.5">{counts.all} total · {counts.byStatus['confirmed'] || 0} confirmed · {counts.byStatus['fulfilled'] || 0} fulfilled</p>
         </div>
-        <button onClick={openCreate} className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors">
-          <Plus size={15} /> New Sales Order
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setImportOpen(true)} className="inline-flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
+            <Upload size={15} /> Import CSV
+          </button>
+          <button onClick={openCreate} className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors">
+            <Plus size={15} /> New Sales Order
+          </button>
+        </div>
       </div>
 
       {convertSuccess && (
@@ -483,6 +491,34 @@ export function SalesOrdersPage() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Import CSV */}
+      {importOpen && (
+        <CsvImportModal
+          entity="salesOrders"
+          endpoint="/sales/sales-orders"
+          onClose={() => setImportOpen(false)}
+          onSuccess={() => queryClient.invalidateQueries({ queryKey: ['sales', 'orders'] })}
+          transformRow={(row, headers) => {
+            const custName = row[headers.indexOf('customerId (or name)')]?.trim();
+            const customer = (customers || []).find(c => c.id === custName || c.name === custName);
+            return {
+              customerId: customer?.id || custName,
+              date: row[headers.indexOf('date (YYYY-MM-DD)')] || undefined,
+              expectedDelivery: row[headers.indexOf('expectedDelivery')] || null,
+              currency: row[headers.indexOf('currency')] || 'NGN',
+              notes: row[headers.indexOf('notes')] || null,
+              lines: [{
+                description: row[headers.indexOf('line_description')] || '',
+                quantity: parseFloat(row[headers.indexOf('line_quantity')]) || 1,
+                unitPrice: Math.round((parseFloat(row[headers.indexOf('line_unitPrice (NGN)')]) || 0) * 100),
+                discountPct: parseFloat(row[headers.indexOf('line_discountPct')]) || 0,
+                taxRate: parseFloat(row[headers.indexOf('line_taxRate')]) || 0,
+              }],
+            };
+          }}
+        />
       )}
 
       {/* Delete Confirm */}

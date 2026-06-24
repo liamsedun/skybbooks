@@ -9,8 +9,9 @@ import { api } from '../../lib/api';
 import {
   Search, Loader2, AlertCircle, CreditCard, Plus, Pencil,
   Banknote, Smartphone, Building2, Receipt, Trash2, X,
-  FileText, ChevronRight, Download,
+  FileText, ChevronRight, Download, Upload,
 } from 'lucide-react';
+import { CsvImportModal } from '../../components/ui/CsvImportModal';
 
 // ── Interfaces ──────────────────────────────────────────────────────────────
 
@@ -176,6 +177,7 @@ export function PaymentsReceivedPage() {
   // Delete confirmation
   const [deleteTarget, setDeleteTarget] = useState<Payment | null>(null);
   const [deleteError, setDeleteError]   = useState<string | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
 
   // ── Queries ────────────────────────────────────────────────────────────────
 
@@ -373,11 +375,17 @@ export function PaymentsReceivedPage() {
               {totals.count} payments · {formatNaira(totals.sum)} total received
             </p>
           </div>
-          <button
-            onClick={() => { setAddForm(EMPTY_ADD_FORM); setAddError(null); setAddOpen(true); }}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors">
-            <Plus size={16} />Record Payment
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => { setAddForm(EMPTY_ADD_FORM); setAddError(null); setAddOpen(true); }}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors">
+              <Plus size={16} />Record Payment
+            </button>
+            <button onClick={() => setImportOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-white text-slate-700 text-sm font-medium border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
+              <Upload size={16} />Import CSV
+            </button>
+          </div>
         </div>
 
         {/* Summary cards */}
@@ -838,6 +846,36 @@ export function PaymentsReceivedPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── CSV Import Modal ──────────────────────────────────────────────── */}
+      {importOpen && (
+        <CsvImportModal
+          entity="paymentsReceived"
+          endpoint="/sales/payments"
+          onClose={() => setImportOpen(false)}
+          onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ['sales', 'payments'] });
+            queryClient.invalidateQueries({ queryKey: ['paymentsReceived'] });
+          }}
+          transformRow={(row, headers) => {
+            const custName = row[headers.indexOf('customerId (or name)')]?.trim();
+            const customer = (customers || []).find(c => c.id === custName || c.name === custName);
+            const amountStr = row[headers.indexOf('amount (NGN)')]?.replace(/[,₦]/g, '').trim();
+            return {
+              category: row[headers.indexOf('category')]?.trim() || 'other_income',
+              customerId: customer?.id || custName || null,
+              payerName: row[headers.indexOf('payerName')]?.trim() || null,
+              date: row[headers.indexOf('date (YYYY-MM-DD)')] || undefined,
+              amount: Math.round((parseFloat(amountStr) || 0) * 100),
+              paymentMethod: row[headers.indexOf('paymentMethod')]?.trim() || 'bank_transfer',
+              reference: row[headers.indexOf('reference')]?.trim() || null,
+              accountId: '',
+              notes: row[headers.indexOf('notes')]?.trim() || null,
+              allocations: [],
+            };
+          }}
+        />
       )}
 
       {/* ── Receipt Modal (sales_invoice only) ─────────────────────────────── */}

@@ -1,0 +1,56 @@
+const BOM = '\uFEFF';
+
+export function downloadCsv(filename: string, headers: string[], sampleRow: string[]) {
+  const csv = [headers.join(','), sampleRow.join(',')].join('\n');
+  const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+export function parseCsv(text: string): { headers: string[]; rows: string[][] } {
+  const lines = text.split(/\r?\n/).filter(Boolean);
+  if (lines.length < 2) throw new Error('CSV must have a header row and at least one data row.');
+  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+  const rows = lines.slice(1).map(line => line.split(',').map(c => c.trim().replace(/^"|"$/g, '')));
+  return { headers, rows };
+}
+
+export const CSV_TEMPLATES: Record<string, { headers: string[]; sample: string[]; filename: string }> = {
+  customers: {
+    filename: 'customers-template.csv',
+    headers: ['name', 'email', 'phone', 'address', 'city', 'state', 'country', 'taxPin', 'paymentTerms (days)', 'creditLimit (NGN)', 'currency', 'notes'],
+    sample: ['Acme Corp', 'contact@acme.com', '+2348012345678', '123 Main St', 'Lagos', 'Lagos', 'Nigeria', 'PST-001', '30', '500000', 'NGN', 'Preferred customer'],
+  },
+  quotes: {
+    filename: 'quotes-template.csv',
+    headers: ['customerId (or name)', 'date (YYYY-MM-DD)', 'expiryDate', 'currency', 'notes', 'terms', 'line_description', 'line_quantity', 'line_unitPrice (NGN)', 'line_discountPct', 'line_taxRate'],
+    sample: ['Acme Corp', '2026-06-24', '2026-07-24', 'NGN', 'Quote notes', 'Standard terms', 'Consulting service', '1', '50000', '0', '7.5'],
+  },
+  salesOrders: {
+    filename: 'sales-orders-template.csv',
+    headers: ['customerId (or name)', 'date (YYYY-MM-DD)', 'expectedDelivery', 'currency', 'notes', 'line_description', 'line_quantity', 'line_unitPrice (NGN)', 'line_discountPct', 'line_taxRate'],
+    sample: ['Acme Corp', '2026-06-24', '2026-07-24', 'NGN', 'Order notes', 'Product A', '10', '2500', '0', '7.5'],
+  },
+  invoices: {
+    filename: 'invoices-template.csv',
+    headers: ['customerId (or name)', 'date (YYYY-MM-DD)', 'dueDate', 'currency', 'notes', 'terms', 'line_description', 'line_quantity', 'line_unitPrice (NGN)', 'line_discountPct', 'line_taxRate'],
+    sample: ['Acme Corp', '2026-06-24', '2026-07-24', 'NGN', 'Invoice notes', 'Net 30', 'Web development', '1', '200000', '0', '7.5'],
+  },
+  paymentsReceived: {
+    filename: 'payments-received-template.csv',
+    headers: ['customerId (or name)', 'payerName', 'date (YYYY-MM-DD)', 'amount (NGN)', 'paymentMethod', 'reference', 'category', 'notes'],
+    sample: ['Acme Corp', 'Acme Corp', '2026-06-24', '50000', 'bank_transfer', 'TXN-12345', 'sales_invoice', 'Payment for INV-0001'],
+  },
+  creditNotes: {
+    filename: 'credit-notes-template.csv',
+    headers: ['customerId (or name)', 'invoiceNumber (optional)', 'date (YYYY-MM-DD)', 'subtotal (NGN)', 'tax (NGN)', 'notes'],
+    sample: ['Acme Corp', 'INV-0001', '2026-06-24', '50000', '3750', 'Credit for damaged goods'],
+  },
+  recurringInvoices: {
+    filename: 'recurring-invoices-template.csv',
+    headers: ['customerId (or name)', 'frequency', 'startDate (YYYY-MM-DD)', 'endDate', 'template_paymentTerms (days)', 'template_currency', 'template_notes', 'template_terms', 'line_description', 'line_quantity', 'line_unitPrice (NGN)', 'line_discountPct', 'line_taxRate'],
+    sample: ['Acme Corp', 'monthly', '2026-06-24', '2027-06-24', '30', 'NGN', 'Monthly retainer', 'Net 30', 'Retainer fee', '1', '100000', '0', '7.5'],
+  },
+};
