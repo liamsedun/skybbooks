@@ -26,6 +26,7 @@ const router = Router();
 const createEmployeeSchema = z.object({
   staffId: z.string().min(1, 'Staff ID is required.'),
   firstName: z.string().min(1, 'First Name is required.'),
+  middleName: z.string().optional().nullable(),
   lastName: z.string().min(1, 'Last Name is required.'),
   email: z.string().email('Invalid email address.').optional().nullable().or(z.literal('')),
   phone: z.string().optional().nullable(),
@@ -82,7 +83,7 @@ router.get('/employees', async (req: AuthenticatedRequest, res: Response, next: 
 
     if (search) {
       conditions.push(
-        sql`(lower(${employees.firstName}) like ${`%${search.toLowerCase()}%`} or lower(${employees.lastName}) like ${`%${search.toLowerCase()}%`} or lower(${employees.staffId}) like ${`%${search.toLowerCase()}%`})`
+        sql`(lower(${employees.firstName}) like ${`%${search.toLowerCase()}%`} or lower(${employees.middleName}) like ${`%${search.toLowerCase()}%`} or lower(${employees.lastName}) like ${`%${search.toLowerCase()}%`} or lower(${employees.staffId}) like ${`%${search.toLowerCase()}%`})`
       );
     }
 

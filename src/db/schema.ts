@@ -645,6 +645,7 @@ export const employees = pgTable('employees', {
   orgId: uuid('org_id').references(() => organisations.id).notNull(),
   staffId: text('staff_id').notNull(),
   firstName: text('first_name').notNull(),
+  middleName: text('middle_name'),
   lastName: text('last_name').notNull(),
   email: text('email'),
   phone: text('phone'),

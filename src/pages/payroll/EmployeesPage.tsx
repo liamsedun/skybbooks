@@ -8,8 +8,9 @@ import {
   UserPlus, Search, X, Edit2, Loader2, RefreshCw,
   User, Phone, Briefcase, CreditCard,
   CheckCircle, XCircle, Save, GraduationCap,
-  Award, Building2, Heart, Shield, Users, Plus, Trash2, MapPin
+  Award, Building2, Heart, Shield, Users, Plus, Trash2, MapPin, Upload
 } from 'lucide-react';
+import { CsvImportModal } from '../../components/ui/CsvImportModal';
 import { payrollApi } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
 import { useCurrency } from '../../hooks/useCurrency';
@@ -112,7 +113,7 @@ function RepeatableSection({ title, icon: Icon, items, setItems, fields, maxItem
 }
 
 const emptyForm = {
-  staffId: '', firstName: '', lastName: '', email: '', phone: '',
+  staffId: '', firstName: '', middleName: '', lastName: '', email: '', phone: '',
   address: '', department: '', designation: '', dateOfBirth: '', dateHired: '',
   bankName: '', accountNumber: '', grossSalary: 0,
   paymentFrequency: 'monthly', pensionPin: '', nhfNumber: '', taxId: '', isActive: true,
@@ -136,6 +137,7 @@ export function EmployeesPage() {
   const [form, setForm] = useState({ ...emptyForm });
   const [filterDept, setFilterDept] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [importOpen, setImportOpen] = useState(false);
 
   // Repeatable sections state
   const [eduQuals, setEduQuals] = useState<any[]>([]);
@@ -181,7 +183,7 @@ export function EmployeesPage() {
 
   function openEdit(emp: any) {
     setForm({
-      staffId: emp.staffId || '', firstName: emp.firstName || '', lastName: emp.lastName || '',
+      staffId: emp.staffId || '', firstName: emp.firstName || '', middleName: emp.middleName || '', lastName: emp.lastName || '',
       email: emp.email || '', phone: emp.phone || '', address: emp.address || '',
       department: emp.department || '', designation: emp.designation || '',
       dateOfBirth: emp.dateOfBirth ? emp.dateOfBirth.split('T')[0] : '',
@@ -231,6 +233,10 @@ export function EmployeesPage() {
           <button onClick={() => queryClient.invalidateQueries({ queryKey: ['employees'] })}
             className="p-2 border border-slate-200 bg-white hover:bg-slate-50 rounded-xl text-slate-500 outline-none">
             <RefreshCw className="w-4 h-4" />
+          </button>
+          <button onClick={() => setImportOpen(true)}
+            className="p-2 border border-slate-200 bg-white hover:bg-slate-50 rounded-xl text-slate-500 outline-none">
+            <Upload className="w-4 h-4" />
           </button>
           <button onClick={() => { resetForm(); setShowForm(true); }}
             className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 transition">
@@ -297,7 +303,11 @@ export function EmployeesPage() {
               <p className="text-sm font-semibold text-slate-700">No employees found</p>
               <p className="text-xs text-slate-400 mt-1">Add your first employee to get started with payroll.</p>
             </div>
-            <button onClick={() => { resetForm(); setShowForm(true); }}
+          <button onClick={() => setImportOpen(true)}
+            className="p-2 border border-slate-200 bg-white hover:bg-slate-50 rounded-xl text-slate-500 outline-none">
+            <Upload className="w-4 h-4" />
+          </button>
+          <button onClick={() => { resetForm(); setShowForm(true); }}
               className="px-4 py-2 bg-indigo-600 text-white text-xs font-semibold rounded-lg">
               Add First Employee
             </button>
@@ -379,6 +389,7 @@ export function EmployeesPage() {
                   <Field label="Staff ID" value={form.staffId} onChange={f('staffId')} placeholder="EMP-001" required />
                   <Field label="Date Hired" value={form.dateHired} onChange={f('dateHired')} type="date" />
                   <Field label="First Name" value={form.firstName} onChange={f('firstName')} placeholder="John" required />
+                  <Field label="Middle Name" value={form.middleName} onChange={f('middleName')} placeholder="Michael" />
                   <Field label="Last Name" value={form.lastName} onChange={f('lastName')} placeholder="Doe" required />
                   <Field label="Email" value={form.email} onChange={f('email')} type="email" placeholder="john@company.com" />
                   <Field label="Phone" value={form.phone} onChange={f('phone')} placeholder="+234 801 234 5678" />
@@ -527,6 +538,34 @@ export function EmployeesPage() {
             </form>
           </div>
         </div>
+      )}
+      {importOpen && (
+        <CsvImportModal
+          entity="employees"
+          endpoint="/payroll/employees"
+          onClose={() => setImportOpen(false)}
+          onSuccess={() => { queryClient.invalidateQueries({ queryKey: ['employees'] }); }}
+          transformRow={(row, headers) => ({
+            staffId: row[headers.indexOf('staffId')]?.trim() || '',
+            firstName: row[headers.indexOf('firstName')]?.trim() || '',
+            middleName: row[headers.indexOf('middleName')]?.trim() || null,
+            lastName: row[headers.indexOf('lastName')]?.trim() || '',
+            email: row[headers.indexOf('email')]?.trim() || null,
+            phone: row[headers.indexOf('phone')]?.trim() || null,
+            department: row[headers.indexOf('department')]?.trim() || null,
+            designation: row[headers.indexOf('designation')]?.trim() || null,
+            dateOfBirth: row[headers.indexOf('dateOfBirth (YYYY-MM-DD)')]?.trim() || null,
+            dateHired: row[headers.indexOf('dateHired (YYYY-MM-DD)')]?.trim() || null,
+            bankName: row[headers.indexOf('bankName')]?.trim() || null,
+            accountNumber: row[headers.indexOf('accountNumber')]?.trim() || null,
+            grossSalary: Math.round(parseFloat(row[headers.indexOf('grossSalary (NGN)')] || '0') * 100),
+            paymentFrequency: row[headers.indexOf('paymentFrequency')]?.trim() || 'monthly',
+            pensionPin: row[headers.indexOf('pensionPin')]?.trim() || null,
+            nhfNumber: row[headers.indexOf('nhfNumber')]?.trim() || null,
+            taxId: row[headers.indexOf('taxId')]?.trim() || null,
+            isActive: row[headers.indexOf('isActive (yes/no)')]?.toLowerCase() === 'yes',
+          })}
+        />
       )}
     </div>
   );
