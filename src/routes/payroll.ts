@@ -26,21 +26,21 @@ const router = Router();
 const createEmployeeSchema = z.object({
   staffId: z.string().min(1, 'Staff ID is required.'),
   firstName: z.string().min(1, 'First Name is required.'),
-  middleName: z.string().optional().nullable(),
+  middleName: z.string().optional().nullable().default(null),
   lastName: z.string().min(1, 'Last Name is required.'),
-  email: z.string().email('Invalid email address.').optional().nullable().or(z.literal('')),
-  phone: z.string().optional().nullable(),
-  department: z.string().optional().nullable(),
-  designation: z.string().optional().nullable(),
-  dateOfBirth: z.string().optional().nullable(),
-  dateHired: z.string().optional().nullable(),
-  bankName: z.string().optional().nullable(),
-  accountNumber: z.string().optional().nullable(),
-  grossSalary: z.number().int().nonnegative('Gross salary must be non-negative (In Kobo).').default(0),
+  email: z.string().optional().nullable().default(null).or(z.literal('')),
+  phone: z.string().optional().nullable().default(null),
+  department: z.string().optional().nullable().default(null),
+  designation: z.string().optional().nullable().default(null),
+  dateOfBirth: z.string().optional().nullable().default(null),
+  dateHired: z.string().optional().nullable().default(null),
+  bankName: z.string().optional().nullable().default(null),
+  accountNumber: z.string().optional().nullable().default(null),
+  grossSalary: z.number().int().nonnegative('Gross salary must be non-negative (In Kobo).').optional().default(0),
   paymentFrequency: z.enum(['monthly', 'weekly', 'biweekly']).default('monthly'),
-  pensionPin: z.string().optional().nullable(),
-  nhfNumber: z.string().optional().nullable(),
-  taxId: z.string().optional().nullable(),
+  pensionPin: z.string().optional().nullable().default(null),
+  nhfNumber: z.string().optional().nullable().default(null),
+  taxId: z.string().optional().nullable().default(null),
   isActive: z.boolean().optional().default(true)
 });
 
@@ -99,6 +99,13 @@ router.get('/employees', async (req: AuthenticatedRequest, res: Response, next: 
   }
 });
 
+function safeDate(value: string | null | undefined): Date | null {
+  if (!value) return null;
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return null;
+  return d;
+}
+
 // Create new employee resource
 router.post('/employees', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
@@ -106,7 +113,7 @@ router.post('/employees', async (req: AuthenticatedRequest, res: Response, next:
     const body = createEmployeeSchema.parse(req.body);
 
     const [existing] = await db
-      .select()
+      .select({ id: employees.id })
       .from(employees)
       .where(and(eq(employees.orgId, orgId), eq(employees.staffId, body.staffId)))
       .limit(1);
@@ -118,11 +125,25 @@ router.post('/employees', async (req: AuthenticatedRequest, res: Response, next:
     const [employee] = await db
       .insert(employees)
       .values({
-        ...body,
+        staffId: body.staffId,
+        firstName: body.firstName,
+        middleName: body.middleName,
+        lastName: body.lastName,
+        email: body.email || null,
+        phone: body.phone || null,
+        department: body.department || null,
+        designation: body.designation || null,
+        dateOfBirth: safeDate(body.dateOfBirth),
+        dateHired: safeDate(body.dateHired),
+        bankName: body.bankName || null,
+        accountNumber: body.accountNumber || null,
+        grossSalary: body.grossSalary ?? 0,
+        paymentFrequency: body.paymentFrequency ?? 'monthly',
+        pensionPin: body.pensionPin || null,
+        nhfNumber: body.nhfNumber || null,
+        taxId: body.taxId || null,
+        isActive: body.isActive ?? true,
         orgId,
-        dateOfBirth: body.dateOfBirth ? new Date(body.dateOfBirth) : null,
-        dateHired: body.dateHired ? new Date(body.dateHired) : null,
-        isActive: body.isActive ?? true
       })
       .returning();
 

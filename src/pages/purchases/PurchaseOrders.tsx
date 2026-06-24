@@ -175,7 +175,7 @@ export function PurchaseOrdersPage() {
     const item = items.find(it => it.id === itemId);
     if (!item) return;
     const nl = [...form.lines];
-    nl[idx] = { ...nl[idx], itemId, description: item.name, unitPrice: item.purchasePrice ?? 0 };
+    nl[idx] = { ...nl[idx], itemId, description: item.name, unitPrice: (item.purchasePrice ?? 0) / 100 };
     setForm({ ...form, lines: nl });
   }
 

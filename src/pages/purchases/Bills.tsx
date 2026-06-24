@@ -232,7 +232,7 @@ export function BillsPage() {
   function selectItem(idx: number, itemId: string) {
     const item = items.find(it => it.id === itemId);
     if (!item) return;
-    setLine(idx, { itemId, description: item.name, unitPrice: item.purchasePrice ?? 0 });
+    setLine(idx, { itemId, description: item.name, unitPrice: (item.purchasePrice ?? 0) / 100 });
   }
   function addLine() { setForm(f => ({ ...f, lines: [...f.lines, { ...EMPTY_LINE }] })); }
   function removeLine(i: number) { setForm(f => ({ ...f, lines: f.lines.filter((_, idx) => idx !== i) })); }
