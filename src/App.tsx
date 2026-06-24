@@ -4,40 +4,7 @@
  */
 
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate, useParams, Outlet } from 'react-router-dom';
-import { QueryClientProvider } from '@tanstack/react-query';
-import { queryClient } from './lib/api';
 
-// Layout & Custom Pages
-import AppLayout from './components/layout/AppLayout';
-import { Dashboard } from './pages/Dashboard';
-import InsightsDashboard from './pages/ai/InsightsDashboard';
-
-// Sales Pages
-import { InvoiceList } from './pages/sales/InvoiceList';
-import { InvoiceForm } from './pages/sales/InvoiceForm';
-import { InvoiceDetail } from './pages/sales/InvoiceDetail';
-import { RecurringInvoicesPage } from './pages/sales/RecurringInvoices';
-import { CreditNotesPage } from './pages/sales/CreditNotes';
-
-// Banking Pages
-import { BankAccounts } from './pages/banking/BankAccounts';
-import { Reconciliation } from './pages/banking/Reconciliation';
-import { BankRules } from './pages/banking/BankRules';
-
-// Public & Protected Route Component Placeholders
-import { LoginPage, RegisterPage, ForgotPasswordPage } from './pages/AuthPages';
-import {
-  NotFoundPage,
-  CustomersPage,
-  QuotesPage,
-  PaymentsPage,
-  VendorsPage,
-  ExpensesPage,
-  BillsPage,
-  PaymentsMadePage,
-  InventoryPage,
-  EmployeesPage,
   PayrollRunsPage,
   ChartOfAccountsPage,
   JournalsPage,
@@ -67,6 +34,7 @@ import {
 import { OrganisationSettingsPage as OrganisationSettingsPageReal } from './pages/settings/OrganisationSettings';
 
 import { useAuth } from './hooks/useAuth';
+import { EmployeesPage } from './pages/payroll/EmployeesPage';
 
 // =========================================================================
 // 1. COMPATIBLE ADAPTERS FOR BESPOKE NAVIGATION HANDLERS
@@ -280,3 +248,6 @@ export default function App() {
     </QueryClientProvider>
   );
 }
+
+
+
