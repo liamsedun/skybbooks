@@ -48,7 +48,8 @@ export interface PayrollCalculation {
 // =========================================================================
 
 /**
- * Calculates Nigerian payroll parameters for a single employee based on monthly gross salary.
+ * Calculates Nigerian payroll parameters for a single employee based on monthly gross salary,
+ * using the Nigeria Tax Act 2025 (effective 1 January 2026) rates.
  * All inputs and outputs must be computed and returned in kobo integers (100 kobo = NGN 1).
  * 
  * 1. SALARY STRUCTURE (Gross Salary):
@@ -65,20 +66,22 @@ export interface PayrollCalculation {
  * 3. NHF (National Housing Fund):
  *    - Employee Contribution: 2.5% of Basic salary.
  * 
- * 4. PAYE — Consolidated Relief Allowance (CRA) & Progressive Brackets:
+ * 4. PAYE (Nigeria Tax Act 2025, effective 2026):
  *    - Annualized Gross = Monthly Gross Pay * 12
  *    - Annualized Employee Pension = Employee Pension * 12
  *    - Annualized NHF = NHF * 12
- *    - Annual CRA = Higher of (NGN 200,000 or 1% of Annualized Gross) + 20% of Annualized Gross
- *    - Annual Chargeable Income = Annualized Gross - Annualized Employee Pension - Annualized NHF - Annual CRA
+ *    - The old CRA (Consolidated Relief Allowance) has been REMOVED.
+ *    - Rent Relief: 20% of annual rent paid, max ₦500,000 (default ₦0 if not provided)
+ *    - Tax-Free Threshold: First ₦800,000 of chargeable income @ 0%
+ *    - Chargeable Income = Annualized Gross - Annualized Employee Pension - Annualized NHF - Rent Relief
  *    - Progressive Tax Bands (Annual Chargeable Income):
- *        - First NGN 300,000:     7%
- *        - Next NGN 300,000:     11%
- *        - Next NGN 500,000:     15%
- *        - Next NGN 500,000:     19%
- *        - Next NGN 1,600,000:   21%
- *        - Above NGN 3,200,000:  24%
- *    - Minimum Tax Constraint: If computed annual PAYE < 1% of Annualized Gross, then annual PAYE is set to 1% of annual gross.
+ *        - First ₦800,000:      0%
+ *        - Next ₦2,200,000:    15%
+ *        - Next ₦9,000,000:    18%
+ *        - Next ₦13,000,000:   21%
+ *        - Next ₦25,000,000:   23%
+ *        - Above ₦50,000,000:  25%
+ *    - Minimum tax rule (1% of gross) no longer applies — replaced by the 0% band.
  *    - Monthly PAYE = Annual PAYE / 12
  * 
  * @param employee Selected active employee record
@@ -94,7 +97,6 @@ export function calculatePayrollForEmployee(employee: any, payPeriod?: { start?:
   const otherAllowances = Math.max(0, grossPay - basic - housing - transport);
 
   // 2. PENSION CONTRIBUTIONS
-  // Monthly pensionable cap: NGN 300,000 representing 30,000,000 kobo
   const MAX_PENSIONABLE_MONTHLY = 300000 * 100;
   const rawPensionableEarnings = basic + housing + transport;
   const pensionableEarnings = Math.min(rawPensionableEarnings, MAX_PENSIONABLE_MONTHLY);
@@ -105,29 +107,28 @@ export function calculatePayrollForEmployee(employee: any, payPeriod?: { start?:
   // 3. NATIONAL HOUSING FUND (NHF)
   const nhf = Math.round(basic * 0.025);
 
-  // 4. PAYE CALCULATIONS (ANNUAL BASIS)
+  // 4. PAYE CALCULATIONS (ANNUAL BASIS) — 2026 NTA Rules
   const annualGross = grossPay * 12;
   const pensionEmployeeAnnual = pensionEmployee * 12;
   const nhfAnnual = nhf * 12;
 
-  // CRA = Higher of (NGN 200,000 or 1% of gross annual income) + 20% of gross annual income
-  const CRA_BASE_MIN_ANNUAL = 200000 * 100; // NGN 200,000 representing 20,000,000 kobo
-  const craBaseOption = Math.max(CRA_BASE_MIN_ANNUAL, Math.round(annualGross * 0.01));
-  const craAdditional = Math.round(annualGross * 0.20);
-  const cra = craBaseOption + craAdditional;
+  // Rent relief: 20% of annual rent paid, capped at ₦500,000 (₦50,000,000 kobo)
+  // Default to 0 if not provided via employee record
+  const annualRentKobo = Number(employee.annualRent || 0);
+  const rentRelief = Math.min(Math.round(annualRentKobo * 0.20), 500000 * 100);
 
-  // Chargeable Income = Annual Gross - Employee Pension - NHF - CRA
-  const rawChargeableIncome = annualGross - pensionEmployeeAnnual - nhfAnnual - cra;
+  // Chargeable Income = Annual Gross - Employee Pension - NHF - Rent Relief
+  const rawChargeableIncome = annualGross - pensionEmployeeAnnual - nhfAnnual - rentRelief;
   const chargeableIncome = Math.max(0, rawChargeableIncome);
 
-  // Standard progressive tax bands (amounts configured in kobo)
+  // 2026 NTA progressive tax bands (amounts configured in kobo)
   const bands = [
-    { name: 'First ₦300,000', limit: 300000 * 100, rate: 0.07 },
-    { name: 'Next ₦300,000', limit: 300000 * 100, rate: 0.11 },
-    { name: 'Next ₦500,000', limit: 500000 * 100, rate: 0.15 },
-    { name: 'Next ₦500,000', limit: 500000 * 100, rate: 0.19 },
-    { name: 'Next ₦1,600,000', limit: 1600000 * 100, rate: 0.21 },
-    { name: 'Above ₦3,200,000', limit: Infinity, rate: 0.24 }
+    { name: 'First ₦800,000 @ 0%', limit: 800000 * 100, rate: 0.00 },
+    { name: 'Next ₦2,200,000 @ 15%', limit: 2200000 * 100, rate: 0.15 },
+    { name: 'Next ₦9,000,000 @ 18%', limit: 9000000 * 100, rate: 0.18 },
+    { name: 'Next ₦13,000,000 @ 21%', limit: 13000000 * 100, rate: 0.21 },
+    { name: 'Next ₦25,000,000 @ 23%', limit: 25000000 * 100, rate: 0.23 },
+    { name: 'Above ₦50,000,000 @ 25%', limit: Infinity, rate: 0.25 }
   ];
 
   let remainingChargeable = chargeableIncome;
@@ -150,25 +151,12 @@ export function calculatePayrollForEmployee(employee: any, payPeriod?: { start?:
     });
   }
 
-  // Minimum tax: 1% of gross annual income if calculated PAYE is lower
-  const minimumTaxAnnual = Math.round(annualGross * 0.01);
-  if (annualPaye < minimumTaxAnnual) {
-    annualPaye = minimumTaxAnnual;
-    // Inject a special flag or breakdown line detailing the Minimum Tax override
-    breakdown.splice(0, breakdown.length);
-    breakdown.push({
-      bandName: 'Minimum Tax Override (1% Annual Gross)',
-      taxableAmountInBand: annualGross,
-      rate: 0.01,
-      taxAmountInBand: minimumTaxAnnual
-    });
-  }
-
-  // Monthly breakdown
+  // Minimum tax rule (1% of gross) is REMOVED under 2026 NTA — the 0% band handles it.
+  // Monthly PAYE
   const monthlyPaye = Math.round(annualPaye / 12);
-  const otherDeductions = 0; // Default to 0, available for manual input extension
+  const otherDeductions = 0;
 
-  // Net Pay = Gross - PAYE - Employee Pension - Employee NHF - Other Deductions
+  // Net Pay = Gross - PAYE - Employee Pension - NHF - Other Deductions
   const netPay = Math.max(0, grossPay - monthlyPaye - pensionEmployee - nhf - otherDeductions);
   const effectiveTaxRate = grossPay > 0 ? Number((monthlyPaye / grossPay).toFixed(4)) : 0;
 
@@ -184,7 +172,7 @@ export function calculatePayrollForEmployee(employee: any, payPeriod?: { start?:
     pensionEmployer,
     nhf,
     annualGross,
-    cra,
+    cra: rentRelief, // repurposed field — now holds rent relief amount
     chargeableIncome,
     annualPaye,
     monthlyPaye,

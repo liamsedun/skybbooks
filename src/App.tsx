@@ -38,7 +38,6 @@ import {
   PaymentsMadePage,
   InventoryPage,
   EmployeesPage,
-  PayrollRunsPage,
   ChartOfAccountsPage,
   JournalsPage,
   BudgetsPage,
@@ -56,9 +55,6 @@ import {
   RecurringExpensesPage,
   PurchaseOrdersPage,
   PurchaseCreditNotesPage,
-  PayeSchedulesPage,
-  PensionSchedulesPage,
-  PayslipsPage,
   CurrencyRatesPage,
   AuditLogsPage,
   CustomReportsPage,
@@ -69,6 +65,10 @@ import { OrganisationSettingsPage as OrganisationSettingsPageReal } from './page
 
 import { useAuth } from './hooks/useAuth';
 import { EmployeesPage as EmployeesPageReal } from './pages/payroll/EmployeesPage';
+import { PayrollRunsPage } from './pages/payroll/PayrollRunsPage';
+import { PayeSchedulesPage } from './pages/payroll/PayeSchedulesPage';
+import { PensionSchedulesPage } from './pages/payroll/PensionSchedulesPage';
+import { PayslipsPage } from './pages/payroll/PayslipsPage';
 
 // =========================================================================
 // 1. COMPATIBLE ADAPTERS FOR BESPOKE NAVIGATION HANDLERS
