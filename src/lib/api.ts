@@ -442,6 +442,10 @@ export const purchasesApi = {
     const res = await api.get(`/purchases/payments/${id}`);
     return res.data;
   },
+  deletePaymentMade: async (id: string) => {
+    const res = await api.delete(`/purchases/payments/${id}`);
+    return res.data;
+  },
   getExpenses: async () => {
     const res = await api.get('/purchases/expenses');
     return res.data;
@@ -480,6 +484,14 @@ export const purchasesApi = {
   },
   getPurchaseOrder: async (id: string) => {
     const res = await api.get(`/purchases/orders/${id}`);
+    return res.data;
+  },
+  updatePurchaseOrder: async (id: string, data: any) => {
+    const res = await api.patch(`/purchases/orders/${id}`, data);
+    return res.data;
+  },
+  deletePurchaseOrder: async (id: string) => {
+    const res = await api.delete(`/purchases/orders/${id}`);
     return res.data;
   },
   convertToBill: async (id: string) => {

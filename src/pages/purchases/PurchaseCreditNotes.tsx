@@ -4,7 +4,7 @@ import { api } from '../../lib/api';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
 import {
   Search, Upload, Loader2, AlertCircle, X, Plus, FileMinus, ChevronRight,
-  Ban, CheckCircle2, ReceiptText,
+  Ban, CheckCircle2, ReceiptText, Edit2,
 } from 'lucide-react';
 
 interface Vendor { id: string; name: string; email: string | null; }
@@ -61,6 +61,7 @@ export function PurchaseCreditNotesPage() {
   const [importOpen, setImportOpen] = useState(false);
   const [voidTarget, setVoidTarget] = useState<VendorCredit | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [editingNote, setEditingNote] = useState<VendorCredit | null>(null);
 
   const { data: notes, isLoading, isError } = useQuery<VendorCredit[]>({
     queryKey: ['purchases', 'vendor-credit-notes'],
@@ -75,6 +76,19 @@ export function PurchaseCreditNotesPage() {
     },
     onError: (e: any) => setActionError(e?.response?.data?.error || 'Failed to void credit note.'),
   });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => api.patch(`/purchases/credit-notes/${id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['purchases', 'vendor-credit-notes'] });
+      setEditingNote(null);
+    },
+    onError: (e: any) => setActionError(e?.response?.data?.error || 'Failed to update credit note.'),
+  });
+
+  function openEdit(note: VendorCredit) {
+    setEditingNote(note);
+  }
 
   const filtered = useMemo(() => {
     const term = searchTerm.toLowerCase();
@@ -228,6 +242,13 @@ export function PurchaseCreditNotesPage() {
                     <td className="py-2.5 pr-2">
                       <div className="flex items-center justify-end gap-1">
                         <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); openEdit(n); }}
+                            title="Edit"
+                            className="p-1.5 rounded-md text-slate-400 hover:text-indigo-600 hover:bg-indigo-50"
+                          >
+                            <Edit2 size={14} />
+                          </button>
                           {n.status === 'issued' && n.remainingCredit === n.total && (
                             <button
                               onClick={(e) => { e.stopPropagation(); setVoidTarget(n); }}
@@ -251,6 +272,15 @@ export function PurchaseCreditNotesPage() {
 
       {showCreateModal && (
         <CreateVendorCreditModal onClose={() => setShowCreateModal(false)} onError={setActionError} />
+      )}
+      {editingNote && (
+        <CreateVendorCreditModal
+          key={editingNote.id}
+          editNote={editingNote}
+          onClose={() => setEditingNote(null)}
+          onError={setActionError}
+          updateMutation={updateMutation}
+        />
       )}
 
       {voidTarget && (
@@ -533,14 +563,19 @@ function DetailPanel({
   );
 }
 
-function CreateVendorCreditModal({ onClose, onError }: { onClose: () => void; onError: (msg: string | null) => void }) {
+function CreateVendorCreditModal({ onClose, onError, editNote, updateMutation }: {
+  onClose: () => void;
+  onError: (msg: string | null) => void;
+  editNote?: VendorCredit | null;
+  updateMutation?: { mutate: (args: { id: string; data: any }) => void; isPending: boolean };
+}) {
   const queryClient = useQueryClient();
-  const [vendorId, setVendorId] = useState('');
-  const [billId, setBillId] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [subtotal, setSubtotal] = useState('');
-  const [taxRate, setTaxRate] = useState('7.5');
-  const [reason, setReason] = useState('');
+  const [vendorId, setVendorId] = useState(editNote?.vendorId || '');
+  const [billId, setBillId] = useState(editNote?.billId || '');
+  const [date, setDate] = useState(editNote?.date || new Date().toISOString().split('T')[0]);
+  const [subtotal, setSubtotal] = useState(editNote ? (editNote.subtotal / 100).toFixed(2) : '');
+  const [taxRate, setTaxRate] = useState(editNote ? (editNote.subtotal > 0 ? ((editNote.tax / editNote.subtotal) * 100).toFixed(1) : '7.5') : '7.5');
+  const [reason, setReason] = useState(editNote?.notes || '');
 
   const { data: vendors } = useQuery<Vendor[]>({
     queryKey: ['vendors'],
@@ -578,21 +613,26 @@ function CreateVendorCreditModal({ onClose, onError }: { onClose: () => void; on
     if (!vendorId) { onError('Select a vendor.'); return; }
     if (subtotalKobo <= 0) { onError('Enter a credit subtotal greater than zero.'); return; }
     onError(null);
-    createMutation.mutate({
+    const payload = {
       vendorId,
       billId: billId || null,
       date,
       subtotal: subtotalKobo,
       tax: taxKobo,
       notes: reason || null,
-    });
+    };
+    if (editNote && updateMutation) {
+      updateMutation.mutate({ id: editNote.id, data: payload });
+    } else {
+      createMutation.mutate(payload);
+    }
   };
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4 py-8">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-          <h2 className="text-base font-semibold text-slate-900">New Vendor Credit Note</h2>
+          <h2 className="text-base font-semibold text-slate-900">{editNote ? 'Edit Vendor Credit Note' : 'New Vendor Credit Note'}</h2>
           <button onClick={onClose} className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100">
             <X size={18} />
           </button>
@@ -696,10 +736,12 @@ function CreateVendorCreditModal({ onClose, onError }: { onClose: () => void; on
           </button>
           <button
             onClick={handleSubmit}
-            disabled={createMutation.isPending}
+            disabled={editNote ? updateMutation?.isPending : createMutation.isPending}
             className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-slate-900 disabled:opacity-50"
           >
-            {createMutation.isPending ? 'Creating...' : 'Issue Credit Note'}
+            {editNote
+              ? (updateMutation?.isPending ? 'Saving...' : 'Save Changes')
+              : (createMutation.isPending ? 'Creating...' : 'Issue Credit Note')}
           </button>
         </div>
       </div>

@@ -125,6 +125,39 @@ export async function createVendorCredit(input: any, createdBy: string): Promise
   });
 }
 
+export async function updateVendorCredit(id: string, input: any, userId: string): Promise<any> {
+  const [credit] = await db
+    .select()
+    .from(vendorCredits)
+    .where(eq(vendorCredits.id, id))
+    .limit(1);
+
+  if (!credit) throw new AppError('Vendor credit not found.', 404);
+  if (credit.status !== 'issued') throw new AppError('Only issued vendor credits can be edited.', 400);
+
+  const updates: any = {};
+  if (input.date !== undefined) updates.date = new Date(input.date);
+  if (input.notes !== undefined) updates.notes = input.notes;
+  if (input.subtotal !== undefined) {
+    updates.subtotal = Number(input.subtotal);
+    updates.total = updates.subtotal + (input.tax !== undefined ? Number(input.tax) : credit.tax);
+    updates.remainingCredit = updates.total - (credit.total - credit.remainingCredit);
+  }
+  if (input.tax !== undefined) {
+    updates.tax = Number(input.tax);
+    updates.total = (input.subtotal !== undefined ? Number(input.subtotal) : credit.subtotal) + updates.tax;
+    updates.remainingCredit = updates.total - (credit.total - credit.remainingCredit);
+  }
+
+  const [updated] = await db
+    .update(vendorCredits)
+    .set(updates)
+    .where(eq(vendorCredits.id, id))
+    .returning();
+
+  return updated;
+}
+
 export async function applyVendorCredit(cnId: string, billId: string, amount: number, userId: string): Promise<any> {
   return await db.transaction(async (tx) => {
     const [credit] = await tx

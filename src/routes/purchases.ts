@@ -33,7 +33,8 @@ import {
 } from '../services/bill.service';
 import {
   recordPaymentMade,
-  updatePaymentMade
+  updatePaymentMade,
+  deletePaymentMade
 } from '../services/payment.service';
 import {
   createExpense,
@@ -47,7 +48,8 @@ import {
   applyVendorCredit,
   voidVendorCredit,
   listVendorCredits,
-  getVendorCredit
+  getVendorCredit,
+  updateVendorCredit
 } from '../services/vendorCredit.service';
 import {
   createPO,
@@ -55,7 +57,8 @@ import {
   sendPO,
   convertToBill,
   getPO,
-  listPOs
+  listPOs,
+  deletePO
 } from '../services/purchaseOrder.service';
 
 const router = Router();
@@ -370,6 +373,18 @@ router.patch('/payments/:id', async (req: AuthenticatedRequest, res: Response, n
   }
 });
 
+router.delete('/payments/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId;
+    const { id } = req.params;
+
+    const result = await deletePaymentMade(id, userId);
+    return res.status(200).json(result);
+  } catch (err) {
+    return next(err);
+  }
+});
+
 // ==========================================
 // 3. EXPENSES ENDPOINTS (DIRECT DISBURSED OUTLAYS)
 // ==========================================
@@ -512,6 +527,34 @@ router.get('/orders/:id', async (req: AuthenticatedRequest, res: Response, next:
 
     const po = await getPO(id, orgId);
     return res.status(200).json(po);
+  } catch (err) {
+    return next(err);
+  }
+});
+
+router.patch('/orders/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId;
+    const { id } = req.params;
+    const body = updatePOSchema.parse(req.body);
+
+    const updated = await updatePO(id, body, userId);
+    return res.status(200).json(updated);
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      return next(new AppError(err.issues[0]?.message || 'Validation failed', 400));
+    }
+    return next(err);
+  }
+});
+
+router.delete('/orders/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { id } = req.params;
+
+    const result = await deletePO(id, orgId);
+    return res.status(200).json(result);
   } catch (err) {
     return next(err);
   }
@@ -770,6 +813,21 @@ router.post('/credit-notes/:id/apply', async (req: AuthenticatedRequest, res: Re
 
     const result = await applyVendorCredit(id, body.billId, body.amount, userId);
     return res.status(200).json(result);
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      return next(new AppError(err.issues[0]?.message || 'Validation failed', 400));
+    }
+    return next(err);
+  }
+});
+
+router.patch('/credit-notes/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId;
+    const { id } = req.params;
+
+    const updated = await updateVendorCredit(id, req.body, userId);
+    return res.status(200).json(updated);
   } catch (err) {
     if (err instanceof z.ZodError) {
       return next(new AppError(err.issues[0]?.message || 'Validation failed', 400));

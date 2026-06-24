@@ -667,3 +667,64 @@ export async function updatePaymentMade(id: string, input: any, userId: string):
 
   return updated;
 }
+
+export async function deletePaymentMade(paymentId: string, userId: string): Promise<any> {
+  return await db.transaction(async (tx) => {
+    const [payment] = await tx
+      .select()
+      .from(paymentsMade)
+      .where(eq(paymentsMade.id, paymentId))
+      .limit(1);
+
+    if (!payment) throw new AppError('Payment not found.', 404);
+
+    const allocations = await tx
+      .select()
+      .from(paymentMadeAllocations)
+      .where(eq(paymentMadeAllocations.paymentId, paymentId));
+
+    for (const alloc of allocations) {
+      const [bill] = await tx
+        .select()
+        .from(bills)
+        .where(eq(bills.id, alloc.billId))
+        .limit(1);
+
+      if (bill) {
+        const nextAmountPaid = Math.max(0, bill.amountPaid - alloc.amount);
+        const nextBalanceDue = bill.total - nextAmountPaid;
+        const nextStatus = nextAmountPaid === 0 ? 'open' : 'partial';
+
+        await tx
+          .update(bills)
+          .set({
+            amountPaid: nextAmountPaid,
+            balanceDue: nextBalanceDue,
+            status: nextStatus,
+          })
+          .where(eq(bills.id, bill.id));
+      }
+    }
+
+    await tx.delete(paymentMadeAllocations).where(eq(paymentMadeAllocations.paymentId, paymentId));
+
+    const entryList = await tx
+      .select()
+      .from(journalEntries)
+      .where(
+        and(
+          eq(journalEntries.source, 'payment_made'),
+          eq(journalEntries.sourceId, paymentId),
+          eq(journalEntries.isReversed, false)
+        )
+      );
+
+    for (const jr of entryList) {
+      await reverseJournalEntry(jr.id, new Date(), userId);
+    }
+
+    await tx.delete(paymentsMade).where(eq(paymentsMade.id, paymentId));
+
+    return { message: 'Payment successfully deleted and allocations reversed.' };
+  });
+}

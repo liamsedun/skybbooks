@@ -4,7 +4,7 @@ import { api } from '../../lib/api';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
 import {
   Upload, Plus, X, Loader2, AlertCircle, Search, CreditCard,
-  CheckCircle2, Download, FileText, Eye, Pencil, Save
+  CheckCircle2, Download, FileText, Eye, Pencil, Save, Trash2
 } from 'lucide-react';
 
 interface Vendor { id: string; name: string; }
@@ -67,6 +67,7 @@ export function PaymentsMadePage() {
   const [importOpen, setImportOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     vendorId: '', date: new Date().toISOString().split('T')[0],
@@ -162,6 +163,17 @@ export function PaymentsMadePage() {
       showSuccess('Payment updated successfully.');
     },
     onError: (e: any) => setDetailFormError(e?.response?.data?.message || 'Failed to update payment.'),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api.delete(`/purchases/payments/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payments-made'] });
+      queryClient.invalidateQueries({ queryKey: ['bills'] });
+      queryClient.invalidateQueries({ queryKey: ['bills-open'] });
+      setDetailPaymentId(null);
+    },
+    onError: (e: any) => setActionError(e?.response?.data?.error || 'Failed to delete payment.'),
   });
 
   function showSuccess(msg: string) { setSuccessMsg(msg); setTimeout(() => setSuccessMsg(null), 4000); }
@@ -285,6 +297,12 @@ export function PaymentsMadePage() {
         </div>
       )}
 
+      {actionError && (
+        <div className="flex items-center gap-2 px-4 py-3 bg-rose-50 border border-rose-200 rounded-lg text-sm text-rose-700">
+          <AlertCircle size={16} /> {actionError}
+        </div>
+      )}
+
       <div className="relative max-w-sm">
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search payments..." className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
@@ -330,11 +348,21 @@ export function PaymentsMadePage() {
                   <td className="py-3 px-2 text-xs text-slate-500 font-mono">{p.reference || '—'}</td>
                   <td className="py-3 px-2 text-right font-mono font-medium text-slate-900">{formatNaira(p.amount)}</td>
                   <td className="py-3 px-2 text-center">
-                    <button onClick={() => openDetail(p)}
-                      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-md transition-colors"
-                      title="View payment">
-                      <Eye size={12} /> View
-                    </button>
+                    <div className="flex items-center justify-center gap-1">
+                      <button onClick={() => openDetail(p)}
+                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-md transition-colors"
+                        title="View payment">
+                        <Eye size={12} /> View
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); if (window.confirm('Delete this payment? This will reverse allocations and journal entries.')) deleteMutation.mutate(p.id); }}
+                        disabled={deleteMutation.isPending}
+                        className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                        title="Delete"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -458,10 +486,19 @@ export function PaymentsMadePage() {
               </div>
               <div className="flex items-center gap-2">
                 {!detailEditMode && (
-                  <button onClick={enableDetailEdit}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">
-                    <Pencil size={12} /> Edit
-                  </button>
+                  <>
+                    <button onClick={enableDetailEdit}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">
+                      <Pencil size={12} /> Edit
+                    </button>
+                    <button
+                      onClick={() => { if (window.confirm('Delete this payment? This action cannot be undone.')) deleteMutation.mutate(detailPaymentId!); }}
+                      disabled={deleteMutation.isPending}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-rose-600 bg-white border border-rose-200 rounded-lg hover:bg-rose-50"
+                    >
+                      <Trash2 size={14} /> Delete
+                    </button>
+                  </>
                 )}
                 <button onClick={closeDetail} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
               </div>

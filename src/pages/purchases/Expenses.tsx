@@ -6,7 +6,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import {
-  Plus, X, Loader2, AlertCircle, Search, Receipt,
+  Plus, X, Loader2, AlertCircle, Search, Receipt, Eye,
   CheckCircle2, Trash2, Edit2, Download, FileText, Upload
 } from 'lucide-react';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
@@ -172,6 +172,7 @@ export function ExpensesPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [viewingExpense, setViewingExpense] = useState<Expense | null>(null);
 
   const { data: expenses = [], isLoading, isError } = useQuery<Expense[]>({
     queryKey: ['expenses'],
@@ -241,6 +242,10 @@ export function ExpensesPage() {
     });
     setFormError(null);
     setModalOpen(true);
+  }
+
+  function openView(exp: Expense) {
+    setViewingExpense(exp);
   }
 
   function closeModal() { setModalOpen(false); setEditingId(null); setForm(EMPTY_FORM); setFormError(null); }
@@ -350,6 +355,13 @@ export function ExpensesPage() {
                   <td className="py-3 pl-2 pr-4">
                     <div className="flex items-center justify-center gap-1">
                       <button
+                        onClick={() => openView(exp)}
+                        className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                        title="View"
+                      >
+                        <Eye size={14} />
+                      </button>
+                      <button
                         onClick={() => openEdit(exp)}
                         className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-md transition-colors"
                         title="Edit expense"
@@ -377,6 +389,76 @@ export function ExpensesPage() {
               </tr>
             </tfoot>
           </table>
+        </div>
+      )}
+
+      {viewingExpense && (
+        <div className="fixed inset-0 bg-black/30 z-40" onClick={() => setViewingExpense(null)} />
+      )}
+      {viewingExpense && (
+        <div className="fixed top-0 right-0 h-full w-full max-w-lg bg-white shadow-2xl z-50 flex flex-col">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+            <h2 className="text-base font-semibold text-slate-900">Expense Details</h2>
+            <button onClick={() => setViewingExpense(null)} className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100">
+              <X size={18} />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto px-5 py-5 space-y-6">
+            <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+              <p className="font-mono text-sm font-semibold text-slate-700">{viewingExpense.expenseNumber}</p>
+              <p className="text-xs text-slate-400 mt-0.5">{new Date(viewingExpense.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-xs text-slate-400 uppercase tracking-wide mb-0.5">Account</p>
+                <p className="font-medium text-slate-800">{accounts.find((a: any) => a.id === viewingExpense.accountId)?.name || viewingExpense.accountId}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 uppercase tracking-wide mb-0.5">Vendor</p>
+                <p className="font-medium text-slate-800">{viewingExpense.vendorId ? (vendorMap.get(viewingExpense.vendorId) || viewingExpense.vendorId) : '\u2014'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 uppercase tracking-wide mb-0.5">Amount</p>
+                <p className="font-mono font-semibold text-slate-800">{formatNaira(viewingExpense.amount)}</p>
+              </div>
+              {viewingExpense.taxAmount > 0 && (
+                <div>
+                  <p className="text-xs text-slate-400 uppercase tracking-wide mb-0.5">Tax</p>
+                  <p className="font-mono text-slate-600">{formatNaira(viewingExpense.taxAmount)}</p>
+                </div>
+              )}
+              <div>
+                <p className="text-xs text-slate-400 uppercase tracking-wide mb-0.5">Payment Method</p>
+                <p className="capitalize text-slate-700">{viewingExpense.paymentMethod}</p>
+              </div>
+              {viewingExpense.reference && (
+                <div>
+                  <p className="text-xs text-slate-400 uppercase tracking-wide mb-0.5">Reference</p>
+                  <p className="font-mono text-slate-700">{viewingExpense.reference}</p>
+                </div>
+              )}
+              {viewingExpense.isBillable && (
+                <div className="col-span-2">
+                  <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">Billable to Customer</span>
+                </div>
+              )}
+            </div>
+
+            {viewingExpense.description && (
+              <div className="text-sm text-slate-600 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-0.5">Description</p>
+                {viewingExpense.description}
+              </div>
+            )}
+
+            {(viewingExpense as any).poId && (
+              <div className="flex items-center gap-2 text-sm text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2">
+                <FileText size={14} />
+                Linked to Purchase Order
+              </div>
+            )}
+          </div>
         </div>
       )}
 

@@ -7,7 +7,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import {
   Plus, X, Loader2, AlertCircle, Search, ShoppingCart,
-  CheckCircle2, ArrowRight, Download, FileText, Upload
+  CheckCircle2, ArrowRight, Download, FileText, Upload,
+  Eye, Edit2, Trash2
 } from 'lucide-react';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
 
@@ -21,6 +22,7 @@ interface PO {
   id: string; poNumber: string; vendorId: string;
   date: string; expectedDate: string | null; status: string;
   subtotal: number; taxAmount: number; total: number; currency: string; notes: string | null;
+  lines?: POLine[];
 }
 
 const EMPTY_LINE: POLine = { itemId: null, description: '', quantity: 1, unitPrice: 0, taxRate: 7.5, accountId: null };
@@ -73,6 +75,8 @@ export function PurchaseOrdersPage() {
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [viewingPo, setViewingPo] = useState<PO | null>(null);
+  const [editingPo, setEditingPo] = useState<PO | null>(null);
 
   const { data: posData, isLoading, isError } = useQuery({
     queryKey: ['purchase-orders', search],
@@ -103,6 +107,18 @@ export function PurchaseOrdersPage() {
     onError: (e: any) => setFormError(e?.response?.data?.error || 'Failed to create PO.'),
   });
 
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => api.patch(`/purchases/orders/${id}`, data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['purchase-orders'] }); setEditingPo(null); closeModal(); showSuccess('Purchase order updated.'); },
+    onError: (e: any) => setFormError(e?.response?.data?.error || 'Failed to update PO.'),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api.delete(`/purchases/orders/${id}`),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['purchase-orders'] }); showSuccess('Purchase order deleted.'); },
+    onError: (e: any) => setFormError(e?.response?.data?.error || 'Failed to delete PO.'),
+  });
+
   const convertMutation = useMutation({
     mutationFn: (id: string) => api.post(`/purchases/orders/${id}/convert-to-bill`),
     onSuccess: () => {
@@ -114,8 +130,29 @@ export function PurchaseOrdersPage() {
     onError: (e: any) => alert(e?.response?.data?.error || 'Failed to convert PO.'),
   });
 
+  function openView(po: PO) { setViewingPo(po); }
+
+  function openEdit(po: PO) {
+    setForm({
+      vendorId: po.vendorId,
+      date: po.date?.split('T')[0] || '',
+      expectedDate: po.expectedDate?.split('T')[0] || '',
+      notes: po.notes || '',
+      lines: po.lines?.length ? po.lines.map((l: any) => ({
+        itemId: l.itemId || '',
+        description: l.description || '',
+        quantity: l.quantity,
+        unitPrice: l.unitPrice,
+        taxRate: l.taxRate,
+        accountId: l.accountId || null,
+      })) : [{ ...EMPTY_LINE }],
+    });
+    setEditingPo(po);
+    setModalOpen(true);
+  }
+
   function showSuccess(msg: string) { setSuccessMsg(msg); setTimeout(() => setSuccessMsg(null), 4000); }
-  function closeModal() { setModalOpen(false); setForm({ vendorId: '', date: today, expectedDate: '', notes: '', lines: [{ ...EMPTY_LINE }] }); setFormError(null); }
+  function closeModal() { setModalOpen(false); setEditingPo(null); setForm({ vendorId: '', date: today, expectedDate: '', notes: '', lines: [{ ...EMPTY_LINE }] }); setFormError(null); }
 
   function updateLine(idx: number, field: keyof POLine, value: any) {
     const nl = [...form.lines];
@@ -140,13 +177,18 @@ export function PurchaseOrdersPage() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.vendorId) { setFormError('Please select a vendor.'); return; }
-    createMutation.mutate({
+    const payload = {
       vendorId: form.vendorId,
       date: form.date,
       expectedDate: form.expectedDate || null,
       notes: form.notes || null,
       lines: form.lines.map(l => ({ ...l, unitPrice: Math.round(l.unitPrice * 100) })),
-    });
+    };
+    if (editingPo) {
+      updateMutation.mutate({ id: editingPo.id, data: payload });
+    } else {
+      createMutation.mutate(payload);
+    }
   }
 
   return (
@@ -226,6 +268,17 @@ export function PurchaseOrdersPage() {
                   <td className="py-3 px-2 text-right font-mono text-slate-900">{formatNaira(po.total)}</td>
                   <td className="py-3 pl-2 pr-4">
                     <div className="flex items-center justify-center gap-1">
+                      <button onClick={() => openView(po)} className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100" title="View">
+                        <Eye size={14} />
+                      </button>
+                      <button onClick={() => openEdit(po)} className="p-1.5 rounded-md text-slate-400 hover:text-indigo-600 hover:bg-indigo-50" title="Edit">
+                        <Edit2 size={14} />
+                      </button>
+                      {po.status === 'draft' && (
+                        <button onClick={() => { if (window.confirm('Delete this purchase order?')) deleteMutation.mutate(po.id); }} className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50" title="Delete" disabled={deleteMutation.isPending}>
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                       {(po.status === 'sent' || po.status === 'received') && (
                         <button onClick={() => convertMutation.mutate(po.id)} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-200 rounded-md transition-colors">
                           <ArrowRight size={11} /> To Bill
@@ -241,11 +294,72 @@ export function PurchaseOrdersPage() {
       )}
 
       {/* Modal */}
+      {/* View Detail */}
+      {viewingPo && (
+        <div className="fixed inset-0 bg-black/30 z-40" onClick={() => setViewingPo(null)} />
+      )}
+      {viewingPo && (
+        <div className="fixed top-0 right-0 h-full w-full max-w-lg bg-white shadow-2xl z-50 flex flex-col">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+            <h2 className="text-base font-semibold text-slate-900">Purchase Order Details</h2>
+            <button onClick={() => setViewingPo(null)} className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100">
+              <X size={18} />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto px-5 py-5">
+            <div className="space-y-6">
+              <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <p className="font-mono text-sm font-semibold text-slate-700">{viewingPo.poNumber}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">{fmtDate(viewingPo.date)}</p>
+                  </div>
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${STATUS_STYLES[viewingPo.status] || 'bg-slate-100 text-slate-500'}`}>{viewingPo.status}</span>
+                </div>
+                <div className="text-sm">
+                  <p className="text-xs text-slate-400 uppercase tracking-wide mb-0.5">Vendor</p>
+                  <p className="font-medium text-slate-800">{vendorMap.get(viewingPo.vendorId) || viewingPo.vendorId}</p>
+                </div>
+                {viewingPo.expectedDate && (
+                  <div className="text-sm mt-3">
+                    <p className="text-xs text-slate-400 uppercase tracking-wide mb-0.5">Expected Delivery</p>
+                    <p className="text-slate-700">{fmtDate(viewingPo.expectedDate)}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-slate-100 pt-4 space-y-1 text-sm">
+                <div className="flex justify-between text-slate-500">
+                  <span>Subtotal</span>
+                  <span className="font-mono">{formatNaira(viewingPo.subtotal)}</span>
+                </div>
+                <div className="flex justify-between text-slate-500">
+                  <span>VAT</span>
+                  <span className="font-mono">{formatNaira(viewingPo.taxAmount)}</span>
+                </div>
+                <div className="flex justify-between font-bold text-slate-900 pt-1 border-t border-slate-100">
+                  <span>Total</span>
+                  <span className="font-mono">{formatNaira(viewingPo.total)}</span>
+                </div>
+              </div>
+
+              {viewingPo.notes && (
+                <div className="text-sm text-slate-600 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-0.5">Notes</p>
+                  {viewingPo.notes}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal */}
       {modalOpen && (
         <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 px-4 py-8 overflow-y-auto">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <h2 className="text-base font-semibold text-slate-900">New Purchase Order</h2>
+              <h2 className="text-base font-semibold text-slate-900">{editingPo ? 'Edit Purchase Order' : 'New Purchase Order'}</h2>
               <button onClick={closeModal} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
             </div>
             <form onSubmit={handleSubmit} className="px-6 py-5 space-y-5">
@@ -333,9 +447,9 @@ export function PurchaseOrdersPage() {
 
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
                 <button type="button" onClick={closeModal} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
-                <button type="submit" disabled={createMutation.isPending} className="px-5 py-2 text-sm font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 disabled:opacity-50 flex items-center gap-2">
-                  {createMutation.isPending && <Loader2 size={14} className="animate-spin" />}
-                  Create PO
+                <button type="submit" disabled={createMutation.isPending || updateMutation.isPending} className="px-5 py-2 text-sm font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 disabled:opacity-50 flex items-center gap-2">
+                  {(createMutation.isPending || updateMutation.isPending) && <Loader2 size={14} className="animate-spin" />}
+                  {editingPo ? 'Save Changes' : 'Create PO'}
                 </button>
               </div>
             </form>

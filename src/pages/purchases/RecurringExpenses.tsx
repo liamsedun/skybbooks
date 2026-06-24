@@ -8,7 +8,7 @@ import { api } from '../../lib/api';
 import { parseCsv, downloadCsv, CSV_TEMPLATES } from '../../lib/csvTemplates';
 import {
   Plus, X, Loader2, AlertCircle, Search, RefreshCw,
-  CheckCircle2, Play, Pause, Trash2, Calendar, Download, FileText, Upload, FileSpreadsheet
+  CheckCircle2, Play, Pause, Trash2, Calendar, Download, FileText, Upload, FileSpreadsheet, Edit2
 } from 'lucide-react';
 
 interface Vendor { id: string; name: string; }
@@ -210,6 +210,7 @@ export function RecurringExpensesPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [formError, setFormError] = useState<string | null>(null);
+  const [editingRe, setEditingRe] = useState<RecurringExpense | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [csvPreview, setCsvPreview] = useState<{ headers: string[]; rows: string[][] } | null>(null);
@@ -242,36 +243,67 @@ export function RecurringExpensesPage() {
   }, [schedules, search, vendorMap, accountMap]);
 
   function showSuccess(msg: string) { setSuccessMsg(msg); setTimeout(() => setSuccessMsg(null), 4000); }
-  function closeModal() { setModalOpen(false); setForm(EMPTY_FORM); setFormError(null); }
+  function closeModal() { setModalOpen(false); setForm(EMPTY_FORM); setFormError(null); setEditingRe(null); }
+
+  function openEdit(re: RecurringExpense) {
+    setForm({
+      vendorId: re.vendorId || '',
+      accountId: re.accountId,
+      frequency: re.frequency,
+      amount: String(re.amount / 100),
+      taxAmount: String(re.taxAmount / 100),
+      description: re.description || '',
+      paymentMethod: re.paymentMethod,
+      startDate: re.startDate?.split('T')[0] || '',
+      endDate: re.endDate?.split('T')[0] || '',
+    });
+    setEditingRe(re);
+    setModalOpen(true);
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.accountId) { setFormError('Please select an expense account.'); return; }
     const amtKobo = Math.round(parseFloat(form.amount) * 100);
     if (!amtKobo || amtKobo <= 0) { setFormError('Amount must be greater than zero.'); return; }
+    setFormError(null);
 
-    const newSchedule: RecurringExpense = {
-      id: `re_${Date.now()}`,
-      orgId: '',
-      vendorId: form.vendorId || null,
-      accountId: form.accountId,
-      frequency: form.frequency,
-      amount: amtKobo,
-      taxAmount: Math.round(parseFloat(form.taxAmount || '0') * 100),
-      description: form.description || null,
-      paymentMethod: form.paymentMethod,
-      startDate: form.startDate,
-      endDate: form.endDate || null,
-      nextRunDate: calcNextRun(form.startDate, form.frequency),
-      isActive: true,
-      createdAt: new Date().toISOString(),
-    };
-
-    const updated = [...schedules, newSchedule];
-    setSchedules(updated);
-    saveSchedules(updated);
+    if (editingRe) {
+      const updated = {
+        ...editingRe,
+        vendorId: form.vendorId || null,
+        accountId: form.accountId,
+        frequency: form.frequency as Frequency,
+        amount: amtKobo,
+        taxAmount: Math.round(parseFloat(form.taxAmount || '0') * 100),
+        description: form.description || null,
+        paymentMethod: form.paymentMethod,
+        startDate: form.startDate,
+        endDate: form.endDate || null,
+      };
+      setSchedules(prev => prev.map(s => s.id === editingRe.id ? updated : s));
+      setEditingRe(null);
+    } else {
+      const newSchedule: RecurringExpense = {
+        id: `re_${Date.now()}`,
+        orgId: '',
+        vendorId: form.vendorId || null,
+        accountId: form.accountId,
+        frequency: form.frequency as Frequency,
+        amount: amtKobo,
+        taxAmount: Math.round(parseFloat(form.taxAmount || '0') * 100),
+        description: form.description || null,
+        paymentMethod: form.paymentMethod,
+        startDate: form.startDate,
+        endDate: form.endDate || null,
+        nextRunDate: calcNextRun(form.startDate, form.frequency),
+        isActive: true,
+        createdAt: new Date().toISOString(),
+      };
+      setSchedules(prev => [...prev, newSchedule]);
+    }
     closeModal();
-    showSuccess('Recurring expense schedule created.');
+    showSuccess('Recurring expense schedule saved.');
   }
 
   function toggleActive(id: string) {
@@ -417,7 +449,7 @@ export function RecurringExpensesPage() {
           <button onClick={() => { setImportOpen(true); setCsvPreview(null); setCsvError(''); setCsvResults(null); }} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
             <Upload size={14} /> Import CSV
           </button>
-          <button onClick={() => { setForm(EMPTY_FORM); setFormError(null); setModalOpen(true); }} className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors">
+          <button onClick={() => { setForm(EMPTY_FORM); setFormError(null); setEditingRe(null); setModalOpen(true); }} className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors">
             <Plus size={15} /> New Schedule
           </button>
         </div>
@@ -472,6 +504,9 @@ export function RecurringExpensesPage() {
                   >
                     {r.isActive ? <><Pause size={12} /> Pause</> : <><Play size={12} /> Resume</>}
                   </button>
+                  <button onClick={() => openEdit(r)} className="p-1.5 rounded-md text-slate-400 hover:text-indigo-600 hover:bg-indigo-50" title="Edit">
+                    <Edit2 size={12} />
+                  </button>
                   <button
                     onClick={() => { if (confirm('Delete this recurring expense schedule?')) deleteSchedule(r.id); }}
                     className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors"
@@ -490,7 +525,7 @@ export function RecurringExpensesPage() {
         <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 px-4 py-8 overflow-y-auto">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-xl">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <h2 className="text-base font-semibold text-slate-900">New Recurring Expense</h2>
+              <h2 className="text-base font-semibold text-slate-900">{editingRe ? 'Edit Recurring Expense' : 'New Recurring Expense Schedule'}</h2>
               <button onClick={closeModal} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
             </div>
             <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
@@ -554,7 +589,7 @@ export function RecurringExpensesPage() {
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
                 <button type="button" onClick={closeModal} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
                 <button type="submit" className="px-5 py-2 text-sm font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 flex items-center gap-2">
-                  Create Schedule
+                  {editingRe ? 'Save Changes' : 'Add Schedule'}
                 </button>
               </div>
             </form>

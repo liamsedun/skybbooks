@@ -350,6 +350,26 @@ export async function getPO(poId: string, orgId: string): Promise<any> {
   };
 }
 
+export async function deletePO(poId: string, orgId: string): Promise<any> {
+  const [po] = await db
+    .select()
+    .from(purchaseOrders)
+    .where(and(eq(purchaseOrders.id, poId), eq(purchaseOrders.orgId, orgId)))
+    .limit(1);
+
+  if (!po) throw new AppError('Purchase order not found.', 404);
+  if (po.status !== 'draft') {
+    throw new AppError('Only draft purchase orders can be deleted.', 400);
+  }
+
+  const [deleted] = await db
+    .delete(purchaseOrders)
+    .where(eq(purchaseOrders.id, poId))
+    .returning();
+
+  return { message: `Purchase order ${deleted.poNumber} deleted successfully.` };
+}
+
 export async function listPOs(
   orgId: string,
   filters: { status?: string; vendorId?: string; dateFrom?: string; dateTo?: string },
