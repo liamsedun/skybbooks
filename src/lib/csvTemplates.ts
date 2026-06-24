@@ -84,4 +84,9 @@ export const CSV_TEMPLATES: Record<string, { headers: string[]; sample: string[]
     headers: ['vendorId (or name)', 'date (YYYY-MM-DD)', 'amount (NGN)', 'paymentMethod', 'reference', 'notes'],
     sample: ['Supply Corp', '2026-06-24', '100000', 'bank_transfer', 'PMT-REF-001', 'Payment for invoices'],
   },
+  purchaseCreditNotes: {
+    filename: 'vendor-credit-notes-template.csv',
+    headers: ['vendorId (or name)', 'date (YYYY-MM-DD)', 'subtotal (NGN)', 'tax (NGN)', 'notes', 'billNumber (optional)'],
+    sample: ['Supply Corp', '2026-06-24', '50000', '3750', 'Returned damaged goods', 'BILL-0001'],
+  },
 };

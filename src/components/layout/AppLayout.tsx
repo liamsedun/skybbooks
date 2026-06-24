@@ -117,6 +117,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     'purchase_orders': '/purchases/purchase-orders',
     'bills': '/purchases/bills',
     'payments_made': '/purchases/payments-made',
+    'purchase_credit_notes': '/purchases/credit-notes',
     'items': '/inventory/items',
     'employees': '/payroll/employees',
     'payroll_runs': '/payroll/runs',
@@ -188,6 +189,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
         { name: 'Purchase Orders', id: 'purchase_orders', icon: FileText },
         { name: 'Bills', id: 'bills', icon: FileText },
         { name: 'Payments Made', id: 'payments_made', icon: DollarSign },
+        { name: 'Credit Notes', id: 'purchase_credit_notes', icon: FileText },
       ],
     },
     {

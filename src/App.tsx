@@ -55,6 +55,7 @@ import {
   ReceiptsPage,
   RecurringExpensesPage,
   PurchaseOrdersPage,
+  PurchaseCreditNotesPage,
   PayeSchedulesPage,
   PensionSchedulesPage,
   PayslipsPage,
@@ -224,6 +225,7 @@ function AppRoutes() {
           <Route path="/purchases/payments-made" element={<PaymentsMadePage />} />
           <Route path="/purchases/recurring-expenses" element={<RecurringExpensesPage />} />
           <Route path="/purchases/purchase-orders" element={<PurchaseOrdersPage />} />
+          <Route path="/purchases/credit-notes" element={<PurchaseCreditNotesPage />} />
 
           {/* Inventory module routing */}
           <Route path="/inventory/items" element={<InventoryPage />} />

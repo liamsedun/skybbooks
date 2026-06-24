@@ -547,6 +547,12 @@ export const paymentMadeAllocations = pgTable('payment_made_allocations', {
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
+export const vendorCreditStatusEnum = pgEnum('vendor_credit_status', [
+  'issued',
+  'applied',
+  'void'
+]);
+
 export const vendorCredits = pgTable('vendor_credits', {
   id: uuid('id').defaultRandom().primaryKey(),
   orgId: uuid('org_id').references(() => organisations.id).notNull(),
@@ -554,8 +560,12 @@ export const vendorCredits = pgTable('vendor_credits', {
   vendorId: uuid('vendor_id').references(() => contacts.id).notNull(),
   billId: uuid('bill_id').references(() => bills.id),
   date: timestamp('date').notNull(),
+  status: vendorCreditStatusEnum('status').notNull().default('issued'),
+  subtotal: bigint('subtotal', { mode: 'number' }).default(0).notNull(),
+  tax: bigint('tax', { mode: 'number' }).default(0).notNull(),
   total: bigint('total', { mode: 'number' }).default(0).notNull(),
   remainingCredit: bigint('remaining_credit', { mode: 'number' }).default(0).notNull(),
+  notes: text('notes'),
   journalEntryId: uuid('journal_entry_id').references(() => journalEntries.id),
   createdBy: uuid('created_by').references(() => users.id).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull()

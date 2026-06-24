@@ -934,6 +934,8 @@ export { RecurringExpensesPage } from './purchases/RecurringExpenses';
 
 export { PurchaseOrdersPage } from './purchases/PurchaseOrders';
 
+export { PurchaseCreditNotesPage } from './purchases/PurchaseCreditNotes';
+
 export function PayeSchedulesPage() {
   return (
     <PageShell title="PAYE Tax Schedules" description="Verify monthly Pay-As-You-Earn schedules mapped directly to legal LIRS, FIRS and sub-national channels." badge="Tax Compliance">

@@ -506,6 +506,26 @@ export const purchasesApi = {
     const res = await api.get(`/purchases/vendors/${id}/statement`);
     return res.data;
   },
+  getVendorCreditNotes: async () => {
+    const res = await api.get('/purchases/credit-notes');
+    return res.data;
+  },
+  createVendorCreditNote: async (data: any) => {
+    const res = await api.post('/purchases/credit-notes', data);
+    return res.data;
+  },
+  getVendorCreditNote: async (id: string) => {
+    const res = await api.get(`/purchases/credit-notes/${id}`);
+    return res.data;
+  },
+  applyVendorCreditNote: async (id: string, data: any) => {
+    const res = await api.post(`/purchases/credit-notes/${id}/apply`, data);
+    return res.data;
+  },
+  voidVendorCreditNote: async (id: string) => {
+    const res = await api.post(`/purchases/credit-notes/${id}/void`);
+    return res.data;
+  },
 };
 
 // 6. Payroll Endpoints

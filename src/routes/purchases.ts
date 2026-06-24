@@ -43,6 +43,13 @@ import {
   attachReceipt
 } from '../services/expense.service';
 import {
+  createVendorCredit,
+  applyVendorCredit,
+  voidVendorCredit,
+  listVendorCredits,
+  getVendorCredit
+} from '../services/vendorCredit.service';
+import {
   createPO,
   updatePO,
   sendPO,
@@ -151,6 +158,20 @@ const createVendorSchema = z.object({
 
 const updateVendorSchema = createVendorSchema.partial().extend({
   isActive: z.boolean().optional()
+});
+
+const createVendorCreditSchema = z.object({
+  vendorId: z.string().uuid('Invalid vendor id.'),
+  billId: z.string().uuid().optional().nullable(),
+  date: z.string().optional(),
+  subtotal: z.number().int().nonnegative().default(0),
+  tax: z.number().int().nonnegative().default(0),
+  notes: z.string().optional().nullable(),
+});
+
+const applyVendorCreditSchema = z.object({
+  billId: z.string().uuid('Invalid bill id.'),
+  amount: z.number().int().positive('Amount must be positive (In Kobo).'),
 });
 
 // Configure core security session middleware checks on all purchases routes
@@ -694,6 +715,77 @@ router.get('/vendors/:id/statement', async (req: AuthenticatedRequest, res: Resp
       ledgerStatement,
       closingCreditorBalance: rollingBalance
     });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// ==========================================
+// 6. VENDOR CREDIT NOTES ENDPOINTS
+// ==========================================
+
+router.get('/credit-notes', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const list = await listVendorCredits(orgId);
+    return res.status(200).json(list);
+  } catch (err) {
+    return next(err);
+  }
+});
+
+router.post('/credit-notes', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const userId = req.user!.userId;
+    const body = createVendorCreditSchema.parse(req.body);
+
+    const credit = await createVendorCredit({ ...body, orgId }, userId);
+    return res.status(201).json(credit);
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      return next(new AppError(err.issues[0]?.message || 'Validation failed', 400));
+    }
+    return next(err);
+  }
+});
+
+router.get('/credit-notes/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { id } = req.params;
+
+    const credit = await getVendorCredit(id, orgId);
+    return res.status(200).json(credit);
+  } catch (err) {
+    return next(err);
+  }
+});
+
+router.post('/credit-notes/:id/apply', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId;
+    const { id } = req.params;
+    const body = applyVendorCreditSchema.parse(req.body);
+
+    const result = await applyVendorCredit(id, body.billId, body.amount, userId);
+    return res.status(200).json(result);
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      return next(new AppError(err.issues[0]?.message || 'Validation failed', 400));
+    }
+    return next(err);
+  }
+});
+
+router.post('/credit-notes/:id/void', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId;
+    const orgId = req.user!.orgId!;
+    const { id } = req.params;
+
+    const voided = await voidVendorCredit(id, orgId, userId);
+    return res.status(200).json(voided);
   } catch (err) {
     return next(err);
   }
