@@ -8,7 +8,7 @@ import { api } from '../../lib/api';
 import {
   Plus, X, Loader2, AlertCircle, Search, FileText,
   CheckCircle2, Download, Ban, ChevronDown, ChevronUp,
-  Pencil, Trash2, Copy, CreditCard
+  Pencil, Trash2, Copy
 } from 'lucide-react';
 
 interface Vendor { id: string; name: string; }
@@ -80,7 +80,7 @@ const STATUS_STYLES: Record<string, string> = {
   void:    'bg-slate-100 text-slate-400',
 };
 
-type ModalMode = 'create' | 'edit' | 'payment';
+type ModalMode = 'create' | 'edit';
 
 interface FormState {
   vendorId: string;
@@ -105,14 +105,6 @@ export function BillsPage() {
   const [editingBill, setEditingBill] = useState<Bill | null>(null);
   const [form, setForm]               = useState<FormState>({ ...EMPTY_FORM });
   const [formError, setFormError]     = useState('');
-  // Payment modal state
-  const [paymentBill, setPaymentBill] = useState<Bill | null>(null);
-  const [paymentAmount, setPaymentAmount] = useState('');
-  const [paymentDate, setPaymentDate] = useState(today);
-  const [paymentMethod, setPaymentMethod] = useState('bank_transfer');
-  const [paymentRef, setPaymentRef]   = useState('');
-  const [paymentError, setPaymentError] = useState('');
-
   // ── Queries ──────────────────────────────────────────────────────────────
   const { data: billsRaw, isLoading, error } = useQuery({
     queryKey: ['bills'],
@@ -179,11 +171,6 @@ export function BillsPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['bills'] }),
     onError: (e: any) => alert(e?.response?.data?.message || 'Failed to delete bill'),
   });
-  const paymentMutation = useMutation({
-    mutationFn: (data: any) => api.post('/purchases/payments-made', data).then(r => r.data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['bills'] }); closePaymentModal(); },
-    onError: (e: any) => setPaymentError(e?.response?.data?.message || 'Failed to record payment'),
-  });
 
   // ── Modal helpers ─────────────────────────────────────────────────────────
   function openCreate() {
@@ -222,18 +209,7 @@ export function BillsPage() {
     }
   }
 
-  function openPayment(bill: Bill) {
-    setPaymentBill(bill);
-    setPaymentAmount(((bill.balanceDue) / 100).toFixed(2));
-    setPaymentDate(today);
-    setPaymentMethod('bank_transfer');
-    setPaymentRef('');
-    setPaymentError('');
-    setModalMode('payment');
-  }
-
   function closeModal() { setModalMode(null); setEditingBill(null); setFormError(''); }
-  function closePaymentModal() { setModalMode(null); setPaymentBill(null); setPaymentError(''); }
 
   // ── Line helpers ──────────────────────────────────────────────────────────
   function addLine() { setForm(f => ({ ...f, lines: [...f.lines, { ...EMPTY_LINE }] })); }
@@ -276,25 +252,6 @@ export function BillsPage() {
     } else {
       createMutation.mutate(payload);
     }
-  }
-
-  // ── Submit payment ────────────────────────────────────────────────────────
-  function handlePayment() {
-    setPaymentError('');
-    if (!paymentBill) return;
-    const amt = parseFloat(paymentAmount);
-    if (isNaN(amt) || amt <= 0) return setPaymentError('Enter a valid payment amount.');
-    if (amt > paymentBill.balanceDue / 100) return setPaymentError(`Amount exceeds balance due of ${formatNaira(paymentBill.balanceDue)}.`);
-
-    paymentMutation.mutate({
-      vendorId: paymentBill.vendorId,
-      date: toISO(paymentDate),
-      amount: Math.round(amt * 100),
-      currency: paymentBill.currency || 'NGN',
-      paymentMethod,
-      reference: paymentRef || null,
-      allocations: [{ billId: paymentBill.id, amount: Math.round(amt * 100) }],
-    });
   }
 
   const isSaving = createMutation.isPending || updateMutation.isPending;
@@ -417,8 +374,8 @@ export function BillsPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-center gap-1 flex-wrap">
 
-                          {/* Edit — only on draft */}
-                          {bill.status === 'draft' && (
+                          {/* Edit — all except paid and void */}
+                          {!['paid', 'void'].includes(bill.status) && (
                             <button onClick={() => openEdit(bill)}
                               className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-md transition-colors"
                               title="Edit bill">
@@ -433,15 +390,6 @@ export function BillsPage() {
                               className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 rounded-md transition-colors disabled:opacity-50"
                               title="Approve bill">
                               <CheckCircle2 size={12} /> Approve
-                            </button>
-                          )}
-
-                          {/* Record Payment — open or partial */}
-                          {['open', 'partial', 'overdue'].includes(bill.status) && (
-                            <button onClick={() => openPayment(bill)}
-                              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-md transition-colors"
-                              title="Record payment">
-                              <CreditCard size={12} /> Pay
                             </button>
                           )}
 
@@ -671,71 +619,6 @@ export function BillsPage() {
         </div>
       )}
 
-      {/* =========================================================== */}
-      {/* RECORD PAYMENT MODAL                                         */}
-      {/* =========================================================== */}
-      {modalMode === 'payment' && paymentBill && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <div>
-                <h2 className="text-base font-bold text-slate-900">Record Payment</h2>
-                <p className="text-xs text-slate-500 mt-0.5">{paymentBill.billNumber} · Balance: {formatNaira(paymentBill.balanceDue)}</p>
-              </div>
-              <button onClick={closePaymentModal} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors">
-                <X size={18} className="text-slate-500" />
-              </button>
-            </div>
-
-            <div className="px-6 py-5 space-y-4">
-              {paymentError && (
-                <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2 flex items-center gap-2">
-                  <AlertCircle size={15} /> {paymentError}
-                </div>
-              )}
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Amount (₦) *</label>
-                <input type="number" min="0" step="0.01" value={paymentAmount}
-                  onChange={e => setPaymentAmount(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Payment Date *</label>
-                <input type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Payment Method</label>
-                <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
-                  <option value="bank_transfer">Bank Transfer</option>
-                  <option value="cash">Cash</option>
-                  <option value="cheque">Cheque</option>
-                  <option value="card">Card</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Reference (optional)</label>
-                <input type="text" value={paymentRef} onChange={e => setPaymentRef(e.target.value)}
-                  placeholder="e.g. TXN123456"
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50 rounded-b-2xl">
-              <button onClick={closePaymentModal} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
-                Cancel
-              </button>
-              <button onClick={handlePayment} disabled={paymentMutation.isPending}
-                className="px-5 py-2 bg-primary hover:bg-primary-hover text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-60 flex items-center gap-2">
-                {paymentMutation.isPending && <Loader2 size={14} className="animate-spin" />}
-                Record Payment
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

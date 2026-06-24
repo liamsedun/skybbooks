@@ -292,8 +292,11 @@ export async function updateBill(billId: string, input: any, userId: string): Pr
       .limit(1);
 
     if (!bill) throw new AppError('Bill not found.', 404);
-    if (bill.status !== 'draft') {
-      throw new AppError('Only draft bills can be modified.', 400);
+    if (bill.status === 'paid') {
+      throw new AppError('Paid bills cannot be modified.', 400);
+    }
+    if (bill.status === 'void') {
+      throw new AppError('Void bills cannot be modified.', 400);
     }
 
     // 2. Clear old lines if lines are provided
@@ -339,7 +342,7 @@ export async function updateBill(billId: string, input: any, userId: string): Pr
       input.subtotal = subtotal;
       input.taxAmount = totalTax;
       input.total = total;
-      input.balanceDue = total;
+      input.balanceDue = total - bill.amountPaid;
     }
 
     // 3. Update fields
@@ -354,6 +357,7 @@ export async function updateBill(billId: string, input: any, userId: string): Pr
     if (input.taxAmount !== undefined) updatePayload.taxAmount = input.taxAmount;
     if (input.total !== undefined) updatePayload.total = input.total;
     if (input.balanceDue !== undefined) updatePayload.balanceDue = input.balanceDue;
+    if (input.notes !== undefined) updatePayload.notes = input.notes;
 
     const [updated] = await tx
       .update(bills)

@@ -641,3 +641,29 @@ export async function recordPaymentMade(input: any, createdBy: string): Promise<
     };
   });
 }
+
+export async function updatePaymentMade(id: string, input: any, userId: string): Promise<any> {
+  const [pmt] = await db
+    .select()
+    .from(paymentsMade)
+    .where(eq(paymentsMade.id, id))
+    .limit(1);
+
+  if (!pmt) throw new AppError('Payment not found.', 404);
+
+  const updatePayload: any = {};
+  if (input.date) updatePayload.date = new Date(input.date);
+  if (input.amount) updatePayload.amount = input.amount;
+  if (input.paymentMethod) updatePayload.paymentMethod = input.paymentMethod;
+  if (input.reference !== undefined) updatePayload.reference = input.reference;
+  if (input.notes !== undefined) updatePayload.notes = input.notes;
+  if (input.accountId) updatePayload.accountId = input.accountId;
+
+  const [updated] = await db
+    .update(paymentsMade)
+    .set(updatePayload)
+    .where(eq(paymentsMade.id, id))
+    .returning();
+
+  return updated;
+}

@@ -32,7 +32,8 @@ import {
   getBillAgingReport
 } from '../services/bill.service';
 import {
-  recordPaymentMade
+  recordPaymentMade,
+  updatePaymentMade
 } from '../services/payment.service';
 import {
   createExpense,
@@ -336,6 +337,17 @@ router.get('/payments/:id', async (req: AuthenticatedRequest, res: Response, nex
   }
 });
 
+router.patch('/payments/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId;
+    const { id } = req.params;
+
+    const updated = await updatePaymentMade(id, req.body, userId);
+    return res.status(200).json(updated);
+  } catch (err) {
+    return next(err);
+  }
+});
 
 // ==========================================
 // 3. EXPENSES ENDPOINTS (DIRECT DISBURSED OUTLAYS)
