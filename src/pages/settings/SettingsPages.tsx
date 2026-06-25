@@ -1151,133 +1151,585 @@ export function UsersPage() {
 }
 
 // ─── Roles ─────────────────────────────────────────────────────────────────
+// ─── Permission Schema ─────────────────────────────────────────────────────
+const PERM_COLUMNS: Record<string, string[]> = {
+  standard: ['full', 'view', 'create', 'edit', 'delete', 'others'],
+  withApprove: ['full', 'view', 'create', 'edit', 'delete', 'approve', 'others'],
+  withAssignOwner: ['full', 'view', 'create', 'edit', 'delete', 'assignOwner', 'others'],
+  withApproveAssign: ['full', 'view', 'create', 'edit', 'delete', 'approve', 'assignOwner', 'others'],
+};
+
+const COLUMN_LABELS: Record<string, string> = {
+  full: 'Full', view: 'View', create: 'Create', edit: 'Edit',
+  delete: 'Delete', approve: 'Approve', assignOwner: 'Assign owner', others: 'Others',
+};
+
+const REPORT_COLUMNS = ['fullAccess', 'view', 'export', 'schedule', 'share'];
+const REPORT_COL_LABELS: Record<string, string> = {
+  fullAccess: 'Full Access', view: 'View', export: 'Export', schedule: 'Schedule', share: 'Share',
+};
+
+const PERMISSION_SECTIONS = [
+  { name: 'Contacts', subs: [
+    { key: 'customers', label: 'Customers', columns: 'withAssignOwner', more: [{ key: 'assignedCustomersOnly', label: 'Allow users to handle the data and transactions for assigned customers only.' }] },
+    { key: 'vendors', label: 'Vendors', columns: 'withApprove' },
+    { key: 'vendorBank', label: 'Vendors Bank', more: [{ key: 'editDeleteVendorBank', label: "Allow users to add, edit and delete vendor's bank account details." }] },
+  ]},
+  { name: 'Items', subs: [
+    { key: 'item', label: 'Item', columns: 'withApprove' },
+    { key: 'inventoryAdjustments', label: 'Inventory Adjustments', columns: 'standard', more: [{ key: 'inventoryAdjustmentsMore', label: '' }] },
+    { key: 'priceList', label: 'Price List', columns: 'standard' },
+  ]},
+  { name: 'Banking', subs: [
+    { key: 'banking', label: 'Banking', columns: 'standard', more: [{ key: 'bankingMore', label: '' }] },
+  ]},
+  { name: 'Sales', subs: [
+    { key: 'invoices', label: 'Invoices', columns: 'withApprove', more: [{ key: 'invoicesMore', label: '' }] },
+    { key: 'customerPayments', label: 'Customer Payments', columns: 'standard', more: [{ key: 'customerPaymentsMore', label: '' }] },
+    { key: 'quotes', label: 'Quotes', columns: 'withApprove', more: [{ key: 'quotesMore', label: '' }] },
+    { key: 'salesReceipt', label: 'Sales Receipt', columns: 'standard', more: [{ key: 'salesReceiptMore', label: '' }] },
+    { key: 'salesOrders', label: 'Sales Orders', columns: 'withApprove', more: [{ key: 'salesOrdersMore', label: '' }] },
+    { key: 'creditNotes', label: 'Credit Notes', columns: 'withApprove', more: [{ key: 'creditNotesMore', label: '' }] },
+  ]},
+  { name: 'Purchases', subs: [
+    { key: 'bills', label: 'Bills', columns: 'withApprove', more: [{ key: 'billsMore', label: '' }] },
+    { key: 'vendorPayments', label: 'Vendor Payments', columns: 'withApprove', more: [{ key: 'vendorPaymentsMore', label: '' }] },
+    { key: 'expenses', label: 'Expenses', columns: 'standard' },
+    { key: 'purchaseOrders', label: 'Purchase Orders', columns: 'withApprove', more: [{ key: 'purchaseOrdersMore', label: '' }] },
+    { key: 'vendorCredits', label: 'Vendor Credits', columns: 'withApprove', more: [{ key: 'vendorCreditsMore', label: '' }] },
+  ]},
+  { name: 'Accountant', subs: [
+    { key: 'chartOfAccounts', label: 'Chart of Accounts', columns: 'withApprove' },
+    { key: 'journals', label: 'Journals', columns: 'withApprove' },
+    { key: 'budget', label: 'Budget', columns: 'standard' },
+  ]},
+  { name: 'Tasks', subs: [
+    { key: 'tasks', label: 'Tasks', columns: 'standard', more: [{ key: 'tasksMore', label: '' }] },
+  ]},
+  { name: 'Timesheets', subs: [
+    { key: 'projects', label: 'Projects', columns: 'standard', more: [{ key: 'noExpenseRecording', label: "Don't allow timesheet staffs to record expenses for the associated project(s)." }] },
+  ]},
+  { name: 'Locations', subs: [
+    { key: 'locations', label: 'Locations', columns: 'standard' },
+  ]},
+  { name: 'Reporting Tags', subs: [
+    { key: 'reportingTags', label: 'Reporting Tags', columns: 'standard' },
+  ]},
+  { name: 'Fixed Asset', subs: [
+    { key: 'fixedAsset', label: 'Fixed Asset', columns: 'standard', more: [{ key: 'fixedAssetMore', label: '' }] },
+  ]},
+];
+
+const DOCUMENT_PERMS = [
+  { key: 'viewDocuments', label: 'View Documents' },
+  { key: 'uploadDocuments', label: 'Upload Documents' },
+  { key: 'deleteDocuments', label: 'Delete Documents' },
+  { key: 'manageFolder', label: 'Manage Folder' },
+];
+
+const SETTINGS_TOGGLES = [
+  { key: 'updateOrgProfile', label: 'Update organization profile' },
+  { key: 'users', label: 'Users' },
+  { key: 'exportData', label: 'Export data' },
+  { key: 'generalPreferences', label: 'General preferences' },
+  { key: 'fixedAssetPreferences', label: 'Fixed Asset preferences' },
+  { key: 'accountantPreferences', label: 'Accountant preferences' },
+  { key: 'taxes', label: 'Taxes' },
+  { key: 'protectedData', label: 'Provide access to protected data' },
+  { key: 'paymentTerms', label: 'Payment Terms' },
+  { key: 'templates', label: 'Templates' },
+  { key: 'emailTemplate', label: 'Email Template' },
+  { key: 'manageIntegration', label: 'Manage Integration' },
+  { key: 'automation', label: 'Automation' },
+  { key: 'incomingWebhook', label: 'Incoming Webhook' },
+  { key: 'signal', label: 'Signal' },
+];
+
+const DASHBOARD_WIDGETS = [
+  { key: 'totalPayables', label: 'Total Payables' },
+  { key: 'totalReceivables', label: 'Total Receivables' },
+  { key: 'cashFlow', label: 'Cash Flow' },
+  { key: 'incomeAndExpenses', label: 'Income and Expenses' },
+  { key: 'topExpense', label: 'Your Top Expense' },
+  { key: 'projects', label: 'Projects' },
+  { key: 'bankAndCreditCards', label: 'Bank and Credit Cards' },
+  { key: 'accountWatchlist', label: 'Account Watchlist' },
+];
+
+const ALL_REPORTS = [
+  'Profit and Loss', 'Cash Flow Statement', 'Balance Sheet', 'Business Performance Ratios',
+  'Cash Flow Forecasting', 'Movement of Equity', 'Sales by Customer', 'Sales by Item',
+  'Sales Return History', 'Sales by Sales Person', 'Sales Summary', 'Profit By Item',
+  'Sales Channel Integrations Sync Summary', 'Inventory Summary', 'Committed Stock Details',
+  'Inventory Aging Summary', 'Stock Summary', 'Stock Movement', 'Inventory Adjustment Summary',
+  'Inventory Adjustment Details', 'Inventory Turnover By Quantity', 'Inventory Valuation Summary',
+  'FIFO Cost Lot Tracking', 'ABC classification', 'Landed Cost Summary',
+  'Inventory Turnover By Amount', 'Weighted Average Costing Summary', 'AR Aging Summary',
+  'AR Aging Details', 'Invoice Details', 'Retainer Invoice Details', 'Sales Order Details',
+  'Delivery Challan Details', 'Quote Details', 'Customer Balance Summary', 'Receivable Summary',
+  'Receivable Details', 'Payments Received', 'Time to Get Paid', 'Credit Note Details',
+  'Refund History', 'Recurring Invoice Details', 'Payment Failure', 'Payment Retry',
+  'Card Expiry', 'Vendor Balance Summary', 'AP Aging Summary', 'AP Aging Details',
+  'Bill Details', 'Vendor Credit Details', 'Payments Made', 'Refund History',
+  'Purchase Order Details', 'Purchase Orders by Vendor', 'Payable Summary', 'Payable Details',
+  'Active Purchase Orders Report', 'Purchases by Vendor', 'Purchases by Item',
+  'Expense Details', 'Expenses by Category', 'Expenses by Customer', 'Expenses by Project',
+  'Expenses by Employee', 'Billable Expense Details', 'Tax Summary', 'FEC Report',
+  'VAT MOSS Report', 'IOSS Report', 'OSS Report', 'TDS Payable Summary',
+  'TDS Receivable Summary', 'Overseas Digital Tax Summary', 'Reverse Charge Summary',
+  'Sales Reverse Charge Summary', 'Reconciliation Status', 'Timesheet Details',
+  'Timesheet Profitability Summary', 'Project Summary', 'Project Details',
+  'Projects Cost Summary', 'Projects Revenue Summary', 'Projects Performance Summary',
+  'Project Revenue Details', 'TimeSheet Profitability Details', 'Fixed Asset Register',
+  'Account Transactions', 'Account Type Summary', 'General Ledger', 'Detailed General Ledger',
+  'Journal Report', 'Trial Balance', 'Budget Vs Actuals', 'Realized Gain or Loss',
+  'Unrealized Gain or Loss', 'System Mails', 'SMS Notifications', 'Snail Mail Credits Report',
+  'Activity Logs', 'Exception Report', 'Portal Activities', 'Customer Reviews',
+  'API Usage', 'Pending Inventory Valuations', 'Scheduled Date Based Workflow Rules',
+  'Scheduled Time Based Workflow Actions',
+];
+
+function buildDefaultRole(name: string, isAccountant = false) {
+  const role: Record<string, any> = { name, description: '', isAccountant };
+  PERMISSION_SECTIONS.forEach(section => {
+    role[section.name] = {};
+    section.subs.forEach(sub => {
+      const cols = sub.columns ? PERM_COLUMNS[sub.columns] || PERM_COLUMNS.standard : [];
+      role[section.name][sub.key] = {};
+      cols.forEach(c => { role[section.name][sub.key][c] = false; });
+      (sub.more || []).forEach(m => { role[section.name][sub.key][m.key] = false; });
+    });
+  });
+  role.Documents = {};
+  DOCUMENT_PERMS.forEach(d => { role.Documents[d.key] = false; });
+  role.Settings = {};
+  SETTINGS_TOGGLES.forEach(s => { role.Settings[s.key] = false; });
+  role.Dashboard = {};
+  DASHBOARD_WIDGETS.forEach(d => { role.Dashboard[d.key] = false; });
+  role.Dashboard.enableFullAccessAllReports = false;
+  role.Reports = {};
+  ALL_REPORTS.forEach(r => {
+    const key = r.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+    role.Reports[key] = {};
+    REPORT_COLUMNS.forEach(c => { role.Reports[key][c] = false; });
+  });
+  return role;
+}
+
+function getRoleNames(form: Record<string, any>) {
+  const names: string[] = [];
+  Object.keys(form).forEach(k => {
+    if (form[k] && typeof form[k] === 'object' && !Array.isArray(form[k]) && 'name' in form[k]) {
+      if (!names.includes(form[k].name)) names.push(form[k].name);
+    }
+  });
+  return names;
+}
+
+// ─── Role Editor Modal ─────────────────────────────────────────────────────
+function RoleEditorModal({ role, form, setForm, onClose, isNew }: {
+  role: string;
+  form: Record<string, any>;
+  setForm: React.Dispatch<React.SetStateAction<Record<string, any>>>;
+  onClose: () => void;
+  isNew: boolean;
+}) {
+  const roleData = form[role] || buildDefaultRole(role);
+  const [local, setLocal] = useState<Record<string, any>>(roleData);
+  const [activeTab, setActiveTab] = useState('general');
+  const [reportSearch, setReportSearch] = useState('');
+
+  useEffect(() => { setLocal(form[role] || buildDefaultRole(role)); }, [role, form]);
+
+  function updateLocal(path: string[], value: any) {
+    setLocal((prev: Record<string, any>) => {
+      const next = JSON.parse(JSON.stringify(prev));
+      let cur = next;
+      for (let i = 0; i < path.length - 1; i++) {
+        if (!cur[path[i]]) cur[path[i]] = {};
+        cur = cur[path[i]];
+      }
+      cur[path[path.length - 1]] = value;
+      return next;
+    });
+  }
+
+  function getVal(path: string[], def = false) {
+    let cur = local;
+    for (const p of path) {
+      if (cur === undefined || cur === null || typeof cur !== 'object') return def;
+      cur = cur[p];
+    }
+    return cur === undefined ? def : cur;
+  }
+
+  function handleDone() {
+    setForm((p: Record<string, any>) => ({ ...p, [role]: local }));
+    onClose();
+  }
+
+  function setAllInSection(sectionIdx: number, subKey: string, cols: string[], value: boolean) {
+    setLocal((prev: Record<string, any>) => {
+      const next = JSON.parse(JSON.stringify(prev));
+      const sectionName = PERMISSION_SECTIONS[sectionIdx].name;
+      cols.forEach(c => {
+        if (next[sectionName] && next[sectionName][subKey]) {
+          next[sectionName][subKey][c] = value;
+        }
+      });
+      return next;
+    });
+  }
+
+  function setAllReports(value: boolean) {
+    setLocal((prev: Record<string, any>) => {
+      const next = JSON.parse(JSON.stringify(prev));
+      if (next.Reports) {
+        Object.keys(next.Reports).forEach(r => {
+          REPORT_COLUMNS.forEach(c => { next.Reports[r][c] = value; });
+        });
+      }
+      return next;
+    });
+  }
+
+  const roleName = role;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-8 pb-8 overflow-y-auto">
+      <div className="fixed inset-0 bg-black/40" onClick={handleDone} />
+      <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-5xl mx-4 overflow-hidden z-10 max-h-[calc(100vh-4rem)] flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 shrink-0">
+          <div>
+            <h2 className="text-base font-semibold text-slate-900">{isNew ? 'New Role' : `Edit Role: ${roleName.replace(/_/g, ' ')}`}</h2>
+            <p className="text-xs text-slate-500">Define granular permissions for this role</p>
+          </div>
+          <button onClick={handleDone} className="text-slate-400 hover:text-slate-600 transition"><X size={18} /></button>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-1 px-6 py-2 border-b border-slate-200 bg-slate-50 shrink-0 overflow-x-auto">
+          {[
+            { id: 'general', label: 'General' },
+            ...PERMISSION_SECTIONS.map(s => ({ id: s.name, label: s.name })),
+            { id: 'Documents', label: 'Documents' },
+            { id: 'Settings', label: 'Settings' },
+            { id: 'Dashboard', label: 'Dashboard' },
+            { id: 'Reports', label: 'Reports' },
+          ].map(tab => (
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition whitespace-nowrap ${activeTab === tab.id ? 'bg-white text-indigo-600 shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-700'}`}>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto p-6">
+          {activeTab === 'general' && (
+            <div className="space-y-5 max-w-xl">
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">Role Name</label>
+                <input type="text" value={local.name || ''} onChange={e => updateLocal(['name'], e.target.value)}
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">Description <span className="text-slate-400 font-normal">(Max. 500 characters)</span></label>
+                <textarea value={local.description || ''} onChange={e => updateLocal(['description'], e.target.value)} maxLength={500} rows={3}
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 resize-none" />
+              </div>
+              <label className="flex items-start gap-3 pt-2">
+                <input type="checkbox" checked={!!local.isAccountant} onChange={e => updateLocal(['isAccountant'], e.target.checked)}
+                  className="mt-0.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                <div>
+                  <p className="text-sm font-medium text-slate-700">This role is for Accountant users</p>
+                  <p className="text-xs text-slate-400">If you mark this option, all users who are added with this role will be an accountant user.</p>
+                </div>
+              </label>
+            </div>
+          )}
+
+          {activeTab !== 'general' && activeTab !== 'Documents' && activeTab !== 'Settings' && activeTab !== 'Dashboard' && activeTab !== 'Reports' && (
+            (() => {
+              const section = PERMISSION_SECTIONS.find(s => s.name === activeTab);
+              if (!section) return null;
+              return (
+                <div className="space-y-6">
+                  {section.subs.map(sub => {
+                    const cols = sub.columns ? PERM_COLUMNS[sub.columns] || PERM_COLUMNS.standard : [];
+                    const allChecked = cols.every(c => getVal([section.name, sub.key, c]));
+                    return (
+                      <div key={sub.key}>
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="text-sm font-semibold text-slate-800">{sub.label}</h3>
+                          <label className="flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer">
+                            <input type="checkbox" checked={allChecked} onChange={e => setAllInSection(PERMISSION_SECTIONS.indexOf(section), sub.key, cols, e.target.checked)}
+                              className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                            Select All
+                          </label>
+                        </div>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-xs border-collapse">
+                            <thead>
+                              <tr className="bg-slate-50">
+                                <th className="text-left px-3 py-2 font-medium text-slate-600 border border-slate-200">Particulars</th>
+                                {cols.map(c => (
+                                  <th key={c} className="text-center px-3 py-2 font-medium text-slate-600 border border-slate-200 whitespace-nowrap">{COLUMN_LABELS[c] || c}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr>
+                                <td className="px-3 py-2 text-slate-700 border border-slate-200 font-medium">{sub.label}</td>
+                                {cols.map(c => (
+                                  <td key={c} className="text-center px-3 py-2 border border-slate-200">
+                                    <input type="checkbox" checked={getVal([section.name, sub.key, c])} onChange={e => updateLocal([section.name, sub.key, c], e.target.checked)}
+                                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                                  </td>
+                                ))}
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                        {(sub.more || []).filter(m => m.label).map(m => (
+                          <label key={m.key} className="flex items-start gap-2 mt-2 cursor-pointer">
+                            <input type="checkbox" checked={getVal([section.name, sub.key, m.key])} onChange={e => updateLocal([section.name, sub.key, m.key], e.target.checked)}
+                              className="mt-0.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                            <span className="text-xs text-slate-500">{m.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()
+          )}
+
+          {activeTab === 'Documents' && (
+            <div className="space-y-3">
+              {DOCUMENT_PERMS.map(d => (
+                <label key={d.key} className="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" checked={getVal(['Documents', d.key])} onChange={e => updateLocal(['Documents', d.key], e.target.checked)}
+                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                  <span className="text-sm text-slate-700">{d.label}</span>
+                </label>
+              ))}
+            </div>
+          )}
+
+          {activeTab === 'Settings' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {SETTINGS_TOGGLES.map(s => (
+                <label key={s.key} className="flex items-center gap-3 cursor-pointer p-3 border border-slate-100 rounded-lg hover:bg-slate-50">
+                  <input type="checkbox" checked={getVal(['Settings', s.key])} onChange={e => updateLocal(['Settings', s.key], e.target.checked)}
+                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                  <span className="text-xs text-slate-700">{s.label}</span>
+                </label>
+              ))}
+            </div>
+          )}
+
+          {activeTab === 'Dashboard' && (
+            <div className="space-y-4">
+              <label className="flex items-center gap-3 cursor-pointer p-3 border border-slate-100 rounded-lg hover:bg-slate-50">
+                <input type="checkbox" checked={getVal(['Dashboard', 'enableFullAccessAllReports'])} onChange={e => updateLocal(['Dashboard', 'enableFullAccessAllReports'], e.target.checked)}
+                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                <div>
+                  <p className="text-sm font-medium text-slate-700">Enable full access for all reports</p>
+                  <p className="text-xs text-slate-400">When new reports are introduced, you will have to edit the role and provide access to them.</p>
+                </div>
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {DASHBOARD_WIDGETS.map(d => (
+                  <label key={d.key} className="flex items-center gap-3 cursor-pointer p-3 border border-slate-100 rounded-lg hover:bg-slate-50">
+                    <input type="checkbox" checked={getVal(['Dashboard', d.key])} onChange={e => updateLocal(['Dashboard', d.key], e.target.checked)}
+                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                    <span className="text-xs text-slate-700">{d.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'Reports' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-4">
+                <input type="text" value={reportSearch} onChange={e => setReportSearch(e.target.value)}
+                  placeholder="Search reports..." className="flex-1 px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 max-w-xs" />
+                <div className="flex items-center gap-3">
+                  <button onClick={() => setAllReports(true)} className="text-xs text-indigo-600 hover:underline">Select All</button>
+                  <button onClick={() => setAllReports(false)} className="text-xs text-slate-500 hover:underline">Clear All</button>
+                </div>
+              </div>
+              <div className="overflow-x-auto border border-slate-200 rounded-lg">
+                <table className="w-full text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 sticky top-0">
+                      <th className="text-left px-3 py-2 font-medium text-slate-600 border-b border-slate-200">Report Groups</th>
+                      {REPORT_COLUMNS.map(c => (
+                        <th key={c} className="text-center px-3 py-2 font-medium text-slate-600 border-b border-slate-200 whitespace-nowrap">{REPORT_COL_LABELS[c]}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ALL_REPORTS.filter(r => !reportSearch || r.toLowerCase().includes(reportSearch.toLowerCase())).map(r => {
+                      const key = r.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+                      return (
+                        <tr key={key} className="hover:bg-slate-50">
+                          <td className="px-3 py-2 text-slate-700 border-b border-slate-100 whitespace-nowrap">{r}</td>
+                          {REPORT_COLUMNS.map(c => (
+                            <td key={c} className="text-center px-3 py-2 border-b border-slate-100">
+                              <input type="checkbox" checked={getVal(['Reports', key, c])} onChange={e => updateLocal(['Reports', key, c], e.target.checked)}
+                                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                            </td>
+                          ))}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 shrink-0">
+          <button onClick={onClose} className="px-4 py-2 text-sm text-slate-600 hover:text-slate-800 transition">Cancel</button>
+          <button onClick={handleDone} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition">
+            {isNew ? 'Create Role' : 'Save Changes'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Roles Page ────────────────────────────────────────────────────────────
 export function RolesPage() {
-  const { form, field, handleSave, isPending, saved, error, setForm } = useSettingsForm('roles');
-  const [newRoleName, setNewRoleName] = useState('');
-  const [renamingRole, setRenamingRole] = useState<string | null>(null);
-  const [renameValue, setRenameValue] = useState('');
+  const { form, handleSave, isPending, saved, error, setForm } = useSettingsForm('roles');
+  const [editingRole, setEditingRole] = useState<string | null>(null);
+  const [isNew, setIsNew] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [newRoleNameInput, setNewRoleNameInput] = useState('');
 
   const defaultRoles = ['admin', 'accountant', 'staff'];
+  const roleNames = getRoleNames(form);
 
-  const roles = defaultRoles.concat(
-    Object.keys(form)
-      .filter(k => k.endsWith('_sales') || k.endsWith('_purchases') || k.endsWith('_accounting') || k.endsWith('_reports') || k.endsWith('_settings'))
-      .map(k => k.replace(/_(sales|purchases|accounting|reports|settings)$/, ''))
-      .filter(r => !defaultRoles.includes(r))
-      .filter((r, i, a) => a.indexOf(r) === i)
+  const allRoles = defaultRoles.concat(
+    roleNames.filter(r => !defaultRoles.includes(r))
   );
 
-  const modules = ['Sales', 'Purchases', 'Accounting', 'Reports', 'Settings'];
-
-  function addRole() {
-    const name = newRoleName.trim().toLowerCase().replace(/\s+/g, '_');
-    if (!name || defaultRoles.includes(name) || roles.includes(name)) return;
-    modules.forEach(m => {
-      const key = `${name}_${m.toLowerCase()}`;
-      setForm((p: Record<string, any>) => ({ ...p, [key]: 'none' }));
+  function initDefaultRoles() {
+    setForm((p: Record<string, any>) => {
+      const next = { ...p };
+      defaultRoles.forEach(r => { if (!next[r]) next[r] = buildDefaultRole(r); });
+      return next;
     });
-    setNewRoleName('');
+  }
+
+  useEffect(() => {
+    if (Object.keys(form).length === 0) initDefaultRoles();
+  }, []);
+
+  function openNewRole() {
+    const name = newRoleNameInput.trim().toLowerCase().replace(/\s+/g, '_');
+    if (!name || defaultRoles.includes(name) || roleNames.includes(name)) return;
+    setForm((p: Record<string, any>) => ({ ...p, [name]: buildDefaultRole(name) }));
+    setEditingRole(name);
+    setIsNew(true);
+    setNewRoleNameInput('');
   }
 
   function deleteRole(role: string) {
     if (defaultRoles.includes(role)) return;
-    const newForm = { ...form };
-    modules.forEach(m => delete newForm[`${role}_${m.toLowerCase()}`]);
-    setForm(newForm);
-  }
-
-  function startRename(role: string) {
-    setRenamingRole(role);
-    setRenameValue(role);
-  }
-
-  function confirmRename(oldName: string) {
-    const newName = renameValue.trim().toLowerCase().replace(/\s+/g, '_');
-    if (!newName || newName === oldName || defaultRoles.includes(newName)) {
-      setRenamingRole(null);
-      return;
-    }
-    const newForm = { ...form };
-    modules.forEach(m => {
-      const oldKey = `${oldName}_${m.toLowerCase()}`;
-      const newKey = `${newName}_${m.toLowerCase()}`;
-      if (oldKey in newForm) {
-        newForm[newKey] = newForm[oldKey];
-        delete newForm[oldKey];
-      }
+    setForm((p: Record<string, any>) => {
+      const next = { ...p };
+      delete next[role];
+      return next;
     });
-    setForm(newForm);
-    setRenamingRole(null);
+    setShowDeleteConfirm(null);
   }
 
   return (
     <PageShell title="Roles" desc="Define access permissions for different user roles." icon={Shield}>
-      <Section title="Roles & Permissions">
-        {roles.map((role) => (
-          <div key={role} className="border border-slate-200 rounded-lg p-4 mb-3">
-            <div className="flex items-center justify-between mb-3">
-              {renamingRole === role ? (
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={renameValue}
-                    onChange={e => setRenameValue(e.target.value)}
-                    className="text-sm border border-slate-200 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                    autoFocus
-                    onKeyDown={e => { if (e.key === 'Enter') confirmRename(role); if (e.key === 'Escape') setRenamingRole(null); }}
-                  />
-                  <button onClick={() => confirmRename(role)} className="text-xs text-indigo-600 hover:underline">Save</button>
-                  <button onClick={() => setRenamingRole(null)} className="text-xs text-slate-400 hover:underline">Cancel</button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-slate-800 capitalize">{role.replace(/_/g, ' ')}</span>
-                  {!defaultRoles.includes(role) && (
-                    <>
-                      <button onClick={() => startRename(role)} className="text-slate-300 hover:text-indigo-600 transition"><Pencil size={12} /></button>
-                      <button onClick={() => deleteRole(role)} className="text-slate-300 hover:text-red-500 transition"><Trash2 size={12} /></button>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-            <div className="space-y-1.5">
-              {modules.map(m => {
-                const key = `${role}_${m.toLowerCase()}`;
-                return (
-                  <div key={m} className="flex items-center justify-between text-xs text-slate-600">
-                    <span>{m}</span>
-                    <select
-                      value={form[key] || 'none'}
-                      onChange={field(key)}
-                      className="text-xs border border-slate-200 rounded px-2 py-1"
-                    >
-                      <option value="none">No Access</option>
-                      <option value="read">View Only</option>
-                      <option value="write">Create & Edit</option>
-                      <option value="full">Full Access</option>
-                    </select>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-        <div className="flex items-center gap-2 pt-2">
-          <input
-            type="text"
-            value={newRoleName}
-            onChange={e => setNewRoleName(e.target.value)}
-            placeholder="New role name..."
-            className="flex-1 px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-            onKeyDown={e => { if (e.key === 'Enter') addRole(); }}
-          />
-          <button onClick={addRole} disabled={!newRoleName.trim()} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition flex items-center gap-1.5">
-            <Plus size={14} /> Add Role
+      {/* Toolbar */}
+      <div className="flex items-center justify-between mb-5">
+        <p className="text-xs text-slate-500">{allRoles.length} role{allRoles.length !== 1 ? 's' : ''} configured</p>
+        <div className="flex items-center gap-2">
+          <input type="text" value={newRoleNameInput} onChange={e => setNewRoleNameInput(e.target.value)}
+            placeholder="New role name..." className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 w-48"
+            onKeyDown={e => { if (e.key === 'Enter') openNewRole(); }} />
+          <button onClick={openNewRole} disabled={!newRoleNameInput.trim()}
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition flex items-center gap-1.5">
+            <Plus size={14} /> New Role
           </button>
         </div>
+      </div>
+
+      {/* Role Cards */}
+      <Section title="Roles & Permissions">
+        {allRoles.map(role => {
+          const data = form[role];
+          return (
+            <div key={role} className="border border-slate-200 rounded-lg p-4 mb-3 hover:border-slate-300 transition">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 text-xs font-bold uppercase">
+                    {role.charAt(0)}
+                  </div>
+                  <div>
+                    <span className="text-sm font-semibold text-slate-800 capitalize block">{role.replace(/_/g, ' ')}</span>
+                    <span className="text-xs text-slate-400">{data?.description || (defaultRoles.includes(role) ? 'Default role' : '')}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => { setEditingRole(role); setIsNew(false); }}
+                    className="px-3 py-1.5 text-xs font-medium text-indigo-600 hover:bg-indigo-50 rounded-lg transition flex items-center gap-1">
+                    <Pencil size={12} /> Edit
+                  </button>
+                  {!defaultRoles.includes(role) && (
+                    <button onClick={() => setShowDeleteConfirm(role)}
+                      className="px-3 py-1.5 text-xs font-medium text-red-500 hover:bg-red-50 rounded-lg transition">
+                      <Trash2 size={12} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </Section>
+
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
+
+      {/* Delete Confirmation */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="fixed inset-0 bg-black/40" onClick={() => setShowDeleteConfirm(null)} />
+          <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6 z-10">
+            <h3 className="text-sm font-semibold text-slate-900 mb-2">Delete Role</h3>
+            <p className="text-xs text-slate-500 mb-4">Are you sure you want to delete <strong className="capitalize">{showDeleteConfirm.replace(/_/g, ' ')}</strong>? This action cannot be undone.</p>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setShowDeleteConfirm(null)} className="px-4 py-2 text-sm text-slate-600 hover:text-slate-800 transition">Cancel</button>
+              <button onClick={() => deleteRole(showDeleteConfirm)} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition">Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Role Editor Modal */}
+      {editingRole && (
+        <RoleEditorModal
+          role={editingRole}
+          form={form}
+          setForm={setForm}
+          onClose={() => { setEditingRole(null); setIsNew(false); }}
+          isNew={isNew}
+        />
+      )}
     </PageShell>
   );
 }
