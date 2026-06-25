@@ -1,7 +1,40 @@
-import React, { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../hooks/useAuth';
-import { orgApi } from '../../lib/api';
+import { useOrgSettings } from '../../hooks/useOrgSettings';
+
+function useSettingsForm(key: string, defaults?: Record<string, any>) {
+  const { settings, save, isPending } = useOrgSettings();
+  const [form, setForm] = useState<Record<string, any>>(defaults || {});
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (settings[key]) {
+      setForm((prev: Record<string, any>) => ({ ...prev, ...settings[key] }));
+    }
+  }, [settings, key]);
+
+  const handleSave = useCallback(() => {
+    setError(null);
+    save({ [key]: form }, {
+      onSuccess: () => { setSaved(true); setTimeout(() => setSaved(false), 3000); },
+      onError: (err: any) => setError(err?.response?.data?.error || err?.message || 'Save failed'),
+    });
+  }, [key, form, save]);
+
+  function field(name: string) {
+    return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+      const value = e.target.type === 'checkbox' ? (e.target as HTMLInputElement).checked : e.target.value;
+      setForm((p: Record<string, any>) => ({ ...p, [name]: value }));
+    };
+  }
+
+  function toggle(name: string) {
+    return () => setForm((p: Record<string, any>) => ({ ...p, [name]: !p[name] }));
+  }
+
+  return { form, field, toggle, handleSave, isPending, saved, error, setForm };
+}
 import {
   Building2, Paintbrush, Globe, MapPinned, Users, Shield, UserCog,
   Settings, CreditCard, Clock, Scale, Bell, Store, Boxes, Hash,
@@ -40,8 +73,9 @@ function Section({ title, desc, children }: { title: string; desc?: string; chil
   );
 }
 
-function ToggleRow({ label, desc, defaultChecked }: { label: string; desc?: string; defaultChecked?: boolean }) {
-  const [on, setOn] = useState(defaultChecked ?? false);
+function ToggleRow({ label, desc, checked, onClick, defaultChecked }: { label: string; desc?: string; checked?: boolean; onClick?: () => void; defaultChecked?: boolean }) {
+  const [internal, setInternal] = useState(defaultChecked ?? false);
+  const isOn = checked !== undefined ? checked : internal;
   return (
     <div className="flex items-center justify-between py-2">
       <div>
@@ -49,10 +83,11 @@ function ToggleRow({ label, desc, defaultChecked }: { label: string; desc?: stri
         {desc && <p className="text-xs text-slate-400">{desc}</p>}
       </div>
       <button
-        onClick={() => setOn(!on)}
-        className={`relative w-10 h-5 rounded-full transition-colors shrink-0 ${on ? 'bg-indigo-600' : 'bg-slate-300'}`}
+        type="button"
+        onClick={() => { if (onClick) onClick(); else setInternal(!internal); }}
+        className={`relative w-10 h-5 rounded-full transition-colors shrink-0 ${isOn ? 'bg-indigo-600' : 'bg-slate-300'}`}
       >
-        <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${on ? 'translate-x-5' : 'translate-x-0.5'}`} />
+        <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${isOn ? 'translate-x-5' : 'translate-x-0.5'}`} />
       </button>
     </div>
   );
@@ -103,13 +138,29 @@ function Select({ label, desc, options, value, onChange }: { label: string; desc
   );
 }
 
-function SaveBar({ children }: { children?: React.ReactNode }) {
+function SaveBar({ onSave, isPending, saved, error }: { onSave?: () => void; isPending?: boolean; saved?: boolean; error?: string | null }) {
   return (
-    <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
-      {children}
-      <button className="px-5 py-2.5 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors">
-        Save Changes
-      </button>
+    <div className="flex flex-col gap-2">
+      {error && (
+        <div className="flex items-center gap-2 text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-4 py-3">
+          <AlertCircle size={16} className="shrink-0" />
+          {error}
+        </div>
+      )}
+      <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+        {saved && (
+          <span className="flex items-center gap-1.5 text-xs text-emerald-600 font-medium">
+            <CheckCircle2 size={14} /> Saved
+          </span>
+        )}
+        <button
+          onClick={onSave}
+          disabled={isPending}
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 disabled:opacity-50 transition-colors"
+        >
+          {isPending ? <><Loader2 size={15} className="animate-spin" />Saving…</> : <><Save size={15} />Save Changes</>}
+        </button>
+      </div>
     </div>
   );
 }
@@ -336,6 +387,7 @@ export function OrganisationProfilePage() {
 
 // ─── Branding ──────────────────────────────────────────────────────────────
 export function BrandingPage() {
+  const { form, field, toggle, handleSave, isPending, saved, error } = useSettingsForm('branding', { showLogo: true });
   return (
     <PageShell title="Branding" desc="Customize the look and feel of your customer-facing documents." icon={Paintbrush}>
       <Section title="Logo & Appearance">
@@ -352,28 +404,29 @@ export function BrandingPage() {
             </label>
           </div>
         </div>
-        <Field label="Company Tagline" placeholder="Your tagline here" desc="Appears below your company name on documents." />
+        <Field label="Company Tagline" placeholder="Your tagline here" value={form.tagline || ''} onChange={field('tagline')} desc="Appears below your company name on documents." />
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Primary Color" type="text" placeholder="#4F46E5" />
-          <Field label="Accent Color" type="text" placeholder="#10B981" />
+          <Field label="Primary Color" type="text" placeholder="#4F46E5" value={form.primaryColor || ''} onChange={field('primaryColor')} />
+          <Field label="Accent Color" type="text" placeholder="#10B981" value={form.accentColor || ''} onChange={field('accentColor')} />
         </div>
       </Section>
       <Section title="Invoice & Document Customization">
-        <ToggleRow label="Show company logo on all documents" defaultChecked />
-        <ToggleRow label="Show company signature on invoices" />
-        <ToggleRow label="Include payment QR code on invoices" />
+        <ToggleRow label="Show company logo on all documents" defaultChecked={form.showLogo} onClick={toggle('showLogo')} />
+        <ToggleRow label="Show company signature on invoices" defaultChecked={form.showSignature} onClick={toggle('showSignature')} />
+        <ToggleRow label="Include payment QR code on invoices" defaultChecked={form.showQRCode} onClick={toggle('showQRCode')} />
       </Section>
-      <SaveBar />
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 // ─── Custom Domain ─────────────────────────────────────────────────────────
 export function CustomDomainPage() {
+  const { form, field, handleSave, isPending, saved, error } = useSettingsForm('domain');
   return (
     <PageShell title="Custom Domain" desc="Connect your own domain to host your customer portal and documents." icon={Globe}>
       <Section title="Domain Configuration">
-        <Field label="Custom Domain" placeholder="books.yourcompany.com" desc="Enter the domain you want to use." />
+        <Field label="Custom Domain" placeholder="books.yourcompany.com" value={form.domain || ''} onChange={field('domain')} desc="Enter the domain you want to use." />
         <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-sm text-slate-600 space-y-2">
           <p className="font-medium text-slate-800 flex items-center gap-2"><Lightbulb size={14} />DNS Setup Instructions</p>
           <p>Add the following CNAME record to your DNS provider:</p>
@@ -381,39 +434,42 @@ export function CustomDomainPage() {
             Type: CNAME<br />Name: books<br />Value: skybooks.app
           </code>
         </div>
+        <ToggleRow label="Enable custom domain" defaultChecked={form.enabled} onClick={() => {}} />
       </Section>
-      <SaveBar />
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 // ─── Locations ─────────────────────────────────────────────────────────────
 export function LocationsPage() {
+  const { form, handleSave, isPending, saved, error } = useSettingsForm('locations');
   return (
     <PageShell title="Locations" desc="Manage your business locations for multi-branch operations." icon={MapPinned}>
       <Section title="Your Locations">
-        <div className="space-y-3">
-          {['Head Office — Lagos', 'Branch Office — Abuja', 'Warehouse — Port Harcourt'].map((loc, i) => (
-            <div key={i} className="flex items-center justify-between border border-slate-100 rounded-lg px-4 py-3">
-              <div className="flex items-center gap-3">
-                <MapPinned size={16} className="text-slate-400" />
-                <div>
-                  <p className="text-sm font-medium text-slate-700">{loc}</p>
-                  <p className="text-xs text-slate-400">Address line, city, state</p>
+        {(form.locations || []).length === 0 ? (
+          <p className="text-sm text-slate-400 py-4 text-center">No locations added yet.</p>
+        ) : (
+          <div className="space-y-3">
+            {(form.locations || []).map((loc: any, i: number) => (
+              <div key={i} className="flex items-center justify-between border border-slate-100 rounded-lg px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <MapPinned size={16} className="text-slate-400" />
+                  <div>
+                    <p className="text-sm font-medium text-slate-700">{loc.name}</p>
+                    <p className="text-xs text-slate-400">{loc.address}</p>
+                  </div>
                 </div>
+                <button className="text-slate-400 hover:text-red-500 transition"><Trash2 size={14} /></button>
               </div>
-              <div className="flex items-center gap-2">
-                <button className="p-1.5 text-slate-400 hover:text-slate-600 transition"><Pencil size={14} /></button>
-                <button className="p-1.5 text-slate-400 hover:text-red-500 transition"><Trash2 size={14} /></button>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
         <button className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 transition">
           <Plus size={16} /> Add Location
         </button>
       </Section>
-      <SaveBar />
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
@@ -423,31 +479,7 @@ export function UsersPage() {
   return (
     <PageShell title="Users" desc="Manage team members who have access to your SkyBooks account." icon={Users}>
       <Section title="Team Members">
-        <div className="space-y-3">
-          {[
-            { name: 'Liam Sedun', email: 'liam@company.ng', role: 'Administrator' },
-            { name: 'Sarah Johnson', email: 'sarah@company.ng', role: 'Accountant' },
-            { name: 'Michael Obi', email: 'michael@company.ng', role: 'Viewer' },
-          ].map((u, i) => (
-            <div key={i} className="flex items-center justify-between border border-slate-100 rounded-lg px-4 py-3">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold">
-                  {u.name.split(' ').map(n => n[0]).join('')}
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-slate-700">{u.name}</p>
-                  <p className="text-xs text-slate-400">{u.email} · {u.role}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full uppercase ${i === 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>{i === 0 ? 'Active' : 'Invited'}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-        <button className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 transition">
-          <Plus size={16} /> Invite User
-        </button>
+        <p className="text-sm text-slate-400 py-4 text-center">User management is available via the API. Use the invite flow to add team members.</p>
       </Section>
     </PageShell>
   );
@@ -455,291 +487,294 @@ export function UsersPage() {
 
 // ─── Roles ─────────────────────────────────────────────────────────────────
 export function RolesPage() {
+  const { form, handleSave, isPending, saved, error } = useSettingsForm('roles');
   return (
     <PageShell title="Roles" desc="Define access permissions for different user roles." icon={Shield}>
       <Section title="Roles & Permissions">
-        {['Administrator', 'Accountant', 'Viewer'].map((role, i) => (
-          <div key={i} className="border border-slate-200 rounded-lg p-4 mb-3">
+        {['admin', 'accountant', 'staff'].map((role) => (
+          <div key={role} className="border border-slate-200 rounded-lg p-4 mb-3">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-semibold text-slate-800">{role}</span>
-              <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
-                i === 0 ? 'bg-purple-50 text-purple-700' : 'bg-slate-100 text-slate-500'
-              }`}>
-                {i === 0 ? 'Full Access' : i === 1 ? 'Restricted' : 'Read Only'}
-              </span>
+              <span className="text-sm font-semibold text-slate-800 capitalize">{role}</span>
             </div>
             <div className="space-y-1.5">
               {['Sales', 'Purchases', 'Accounting', 'Reports', 'Settings'].map(m => (
                 <div key={m} className="flex items-center justify-between text-xs text-slate-600">
                   <span>{m}</span>
-                  <span className={`font-medium ${i === 0 ? 'text-emerald-600' : i === 2 ? 'text-slate-400' : 'text-amber-600'}`}>
-                    {i === 0 ? 'Full Access' : i === 2 ? 'View Only' : 'Create & Edit'}
-                  </span>
+                  <select
+                    value={form[`${role}_${m.toLowerCase()}`] || 'read'}
+                    onChange={() => {}}
+                    className="text-xs border border-slate-200 rounded px-2 py-1"
+                  >
+                    <option value="none">No Access</option>
+                    <option value="read">View Only</option>
+                    <option value="write">Create & Edit</option>
+                    <option value="full">Full Access</option>
+                  </select>
                 </div>
               ))}
             </div>
           </div>
         ))}
       </Section>
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 // ─── User Preferences ──────────────────────────────────────────────────────
 export function UserPreferencesPage() {
+  const { form, field, toggle, handleSave, isPending, saved, error } = useSettingsForm('userPreferences');
   return (
     <PageShell title="User Preferences" desc="Configure your personal app preferences." icon={UserCog}>
       <Section title="Preferences">
-        <Select label="Language" options={[{ value: 'en', label: 'English' }, { value: 'fr', label: 'French' }]} value="en" />
-        <Select label="Date Format" options={[{ value: 'DD-MM-YYYY', label: 'DD-MM-YYYY' }, { value: 'MM-DD-YYYY', label: 'MM-DD-YYYY' }]} value="DD-MM-YYYY" />
-        <Select label="Number Format" options={[{ value: 'NG', label: '1,234.56 (NG)' }, { value: 'US', label: '1,234.56 (US)' }]} value="NG" />
-        <Select label="Timezone" options={[{ value: 'WAT', label: 'West Africa Time (WAT)' }]} value="WAT" />
-        <ToggleRow label="Receive email notifications" desc="Get notified about invoices, payments, and updates." defaultChecked />
-        <ToggleRow label="Compact sidebar mode" desc="Use a narrower sidebar for more screen space." />
+        <Select label="Language" options={[{ value: 'en', label: 'English' }, { value: 'fr', label: 'French' }]} value={form.language || 'en'} onChange={v => field('language')({ target: { value: v } } as any)} />
+        <Select label="Date Format" options={[{ value: 'DD-MM-YYYY', label: 'DD-MM-YYYY' }, { value: 'MM-DD-YYYY', label: 'MM-DD-YYYY' }]} value={form.dateFormat || 'DD-MM-YYYY'} />
+        <Select label="Number Format" options={[{ value: 'NG', label: '1,234.56 (NG)' }, { value: 'US', label: '1,234.56 (US)' }]} value={form.numberFormat || 'NG'} />
+        <Select label="Timezone" options={[{ value: 'WAT', label: 'West Africa Time (WAT)' }]} value={form.timezone || 'WAT'} />
+        <ToggleRow label="Receive email notifications" desc="Get notified about invoices, payments, and updates." checked={form.emailNotifications} onClick={toggle('emailNotifications')} />
+        <ToggleRow label="Compact sidebar mode" desc="Use a narrower sidebar for more screen space." checked={form.compactSidebar} onClick={toggle('compactSidebar')} />
       </Section>
-      <SaveBar />
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 // ─── General ───────────────────────────────────────────────────────────────
 export function GeneralPage() {
+  const { form, field, toggle, handleSave, isPending, saved, error } = useSettingsForm('general');
   return (
     <PageShell title="General" desc="Configure general system settings." icon={Settings}>
       <Section title="General Settings">
-        <Select label="Default Currency" options={[{ value: 'NGN', label: 'NGN - Nigerian Naira' }, { value: 'USD', label: 'USD - US Dollar' }]} value="NGN" />
-        <Field label="Default Tax Rate (%)" type="number" placeholder="7.5" desc="Default VAT rate for new transactions." />
-        <ToggleRow label="Auto-generate transaction numbers" defaultChecked />
-        <ToggleRow label="Allow negative inventory" desc="Permit inventory to go below zero temporarily." />
+        <Select label="Default Currency" options={[{ value: 'NGN', label: 'NGN - Nigerian Naira' }, { value: 'USD', label: 'USD - US Dollar' }]} value={form.defaultCurrency || 'NGN'} />
+        <Field label="Default Tax Rate (%)" type="number" placeholder="7.5" value={form.defaultTaxRate || ''} onChange={field('defaultTaxRate')} desc="Default VAT rate for new transactions." />
+        <ToggleRow label="Auto-generate transaction numbers" checked={form.autoGenerateNumbers} onClick={toggle('autoGenerateNumbers')} />
+        <ToggleRow label="Allow negative inventory" desc="Permit inventory to go below zero temporarily." checked={form.allowNegativeInventory} onClick={toggle('allowNegativeInventory')} />
       </Section>
-      <SaveBar />
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 // ─── Currencies ────────────────────────────────────────────────────────────
 export function CurrenciesPage() {
+  const { form, handleSave, isPending, saved, error } = useSettingsForm('currencies');
   return (
     <PageShell title="Currencies" desc="Manage currencies used in your account." icon={CreditCard}>
       <Section title="Active Currencies">
-        <div className="space-y-2">
-          {[
-            { code: 'NGN', name: 'Nigerian Naira', symbol: '₦', rate: '1.0000' },
-            { code: 'USD', name: 'US Dollar', symbol: '$', rate: '1,550.00' },
-            { code: 'GBP', name: 'British Pound', symbol: '£', rate: '1,980.00' },
-            { code: 'EUR', name: 'Euro', symbol: '€', rate: '1,700.00' },
-          ].map(c => (
-            <div key={c.code} className="flex items-center justify-between border border-slate-100 rounded-lg px-4 py-3">
-              <div className="flex items-center gap-3">
-                <span className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-sm font-bold">{c.symbol}</span>
-                <div>
-                  <p className="text-sm font-medium text-slate-700">{c.code} — {c.name}</p>
-                  <p className="text-xs text-slate-400">1 {c.code} = ₦{c.rate}</p>
+        {!form.activeCurrencies || form.activeCurrencies.length === 0 ? (
+          <p className="text-sm text-slate-400 py-4 text-center">No currencies configured.</p>
+        ) : (
+          <div className="space-y-2">
+            {form.activeCurrencies.map((c: any) => (
+              <div key={c.code} className="flex items-center justify-between border border-slate-100 rounded-lg px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <span className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-sm font-bold">{c.symbol}</span>
+                  <div>
+                    <p className="text-sm font-medium text-slate-700">{c.code} — {c.name}</p>
+                    <p className="text-xs text-slate-400">1 {c.code} = ₦{c.rate}</p>
+                  </div>
                 </div>
               </div>
-              <ToggleLeft size={18} className="text-indigo-600" />
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </Section>
-      <Section title="Exchange Rates">
-        <p className="text-xs text-slate-400">Exchange rates update automatically via our provider. Manual override is also available.</p>
-        <button className="inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 transition mt-2">
-          <RefreshCw size={14} /> Update Exchange Rates
-        </button>
-      </Section>
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 // ─── Payment Terms ─────────────────────────────────────────────────────────
 export function PaymentTermsPage() {
+  const { form, handleSave, isPending, saved, error } = useSettingsForm('paymentTerms', { defaultTerm: 'net30' });
   return (
     <PageShell title="Payment Terms" desc="Define payment terms for customers and vendors." icon={Clock}>
       <Section title="Default Payment Terms">
         <div className="space-y-3">
           {[
-            { label: 'Due on Receipt', days: 0 },
-            { label: 'Net 15', days: 15 },
-            { label: 'Net 30', days: 30 },
-            { label: 'Net 60', days: 60 },
+            { label: 'Due on Receipt', value: 'dueonreceipt', days: 0 },
+            { label: 'Net 15', value: 'net15', days: 15 },
+            { label: 'Net 30', value: 'net30', days: 30 },
+            { label: 'Net 60', value: 'net60', days: 60 },
           ].map(t => (
-            <div key={t.days} className="flex items-center justify-between border border-slate-100 rounded-lg px-4 py-3">
+            <label key={t.value} className="flex items-center justify-between border border-slate-100 rounded-lg px-4 py-3 cursor-pointer hover:bg-slate-50">
               <div>
                 <p className="text-sm font-medium text-slate-700">{t.label}</p>
                 <p className="text-xs text-slate-400">Payment due within {t.days} day{t.days !== 1 ? 's' : ''}</p>
               </div>
-              <input type="radio" name="default-term" defaultChecked={t.days === 30} className="w-4 h-4 text-indigo-600" />
-            </div>
+              <input type="radio" name="default-term" value={t.value} checked={form.defaultTerm === t.value} onChange={() => {}} className="w-4 h-4 text-indigo-600" />
+            </label>
           ))}
         </div>
       </Section>
-      <SaveBar />
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 // ─── Opening Balances ──────────────────────────────────────────────────────
 export function OpeningBalancesPage() {
+  const { form, handleSave, isPending, saved, error } = useSettingsForm('openingBalances');
   return (
     <PageShell title="Opening Balances" desc="Set up opening balances for your accounts." icon={Scale}>
       <Section title="Opening Balance Entry">
         <p className="text-xs text-slate-500 mb-3">Enter the opening balances for your accounts as of the start of your fiscal year.</p>
-        <div className="space-y-2">
-          {[
-            { account: 'CBN Cash Account', balance: '₦ 12,450,000.00' },
-            { account: 'GTBank Current Account', balance: '₦ 8,200,000.00' },
-            { account: 'Accounts Receivable', balance: '₦ 5,750,000.00' },
-          ].map((a, i) => (
-            <div key={i} className="flex items-center gap-3">
-              <div className="flex-1">
-                <p className="text-sm text-slate-700">{a.account}</p>
+        {!form.balances || form.balances.length === 0 ? (
+          <p className="text-sm text-slate-400 py-4 text-center">No opening balances set. Balances can be imported from your chart of accounts.</p>
+        ) : (
+          <div className="space-y-2">
+            {form.balances.map((a: any, i: number) => (
+              <div key={i} className="flex items-center gap-3">
+                <div className="flex-1">
+                  <p className="text-sm text-slate-700">{a.account}</p>
+                </div>
+                <input type="text" defaultValue={a.balance} className="w-40 px-3 py-2 text-sm border border-slate-200 rounded-lg text-right font-mono" />
               </div>
-              <input type="text" defaultValue={a.balance} className="w-40 px-3 py-2 text-sm border border-slate-200 rounded-lg text-right font-mono" />
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </Section>
-      <SaveBar />
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 // ─── Reminders ─────────────────────────────────────────────────────────────
 export function RemindersPage() {
+  const { form, field, toggle, handleSave, isPending, saved, error } = useSettingsForm('reminders', { enabled: true, emailEnabled: true });
   return (
     <PageShell title="Reminders" desc="Configure automated payment reminders for overdue invoices." icon={Bell}>
       <Section title="Payment Reminders">
-        <ToggleRow label="Enable automatic reminders" desc="Send reminders for overdue invoices automatically." defaultChecked />
-        <Field label="First reminder after (days)" type="number" defaultValue="1" placeholder="1" desc="Days after the due date." />
-        <Field label="Second reminder after (days)" type="number" defaultValue="7" placeholder="7" />
-        <Field label="Final reminder after (days)" type="number" defaultValue="15" placeholder="15" />
-        <ToggleRow label="Send reminder via email" defaultChecked />
-        <ToggleRow label="Send reminder via SMS" />
+        <ToggleRow label="Enable automatic reminders" desc="Send reminders for overdue invoices automatically." checked={form.enabled} onClick={toggle('enabled')} />
+        <Field label="First reminder after (days)" type="number" value={form.firstAfter ?? ''} onChange={field('firstAfter')} placeholder="1" desc="Days after the due date." />
+        <Field label="Second reminder after (days)" type="number" value={form.secondAfter ?? ''} onChange={field('secondAfter')} placeholder="7" />
+        <Field label="Final reminder after (days)" type="number" value={form.finalAfter ?? ''} onChange={field('finalAfter')} placeholder="15" />
+        <ToggleRow label="Send reminder via email" checked={form.emailEnabled} onClick={toggle('emailEnabled')} />
+        <ToggleRow label="Send reminder via SMS" checked={form.smsEnabled} onClick={toggle('smsEnabled')} />
       </Section>
-      <SaveBar />
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 // ─── Customer Portal ───────────────────────────────────────────────────────
 export function CustomerPortalPage() {
+  const { form, field, toggle, handleSave, isPending, saved, error } = useSettingsForm('customerPortal', { enabled: true, allowDownload: true, allowPayments: true, showHistory: true });
   return (
     <PageShell title="Customer Portal" desc="Configure your customer self-service portal." icon={Store}>
       <Section title="Portal Settings">
-        <ToggleRow label="Enable Customer Portal" desc="Allow customers to view invoices and make payments online." defaultChecked />
-        <ToggleRow label="Allow customers to download invoices" defaultChecked />
-        <ToggleRow label="Allow customers to make payments via portal" defaultChecked />
-        <ToggleRow label="Show payment history" defaultChecked />
-        <Field label="Portal custom message" placeholder="Welcome to our billing portal" desc="Shown at the top of the portal login page." />
+        <ToggleRow label="Enable Customer Portal" desc="Allow customers to view invoices and make payments online." checked={form.enabled} onClick={toggle('enabled')} />
+        <ToggleRow label="Allow customers to download invoices" checked={form.allowDownload} onClick={toggle('allowDownload')} />
+        <ToggleRow label="Allow customers to make payments via portal" checked={form.allowPayments} onClick={toggle('allowPayments')} />
+        <ToggleRow label="Show payment history" checked={form.showHistory} onClick={toggle('showHistory')} />
+        <Field label="Portal custom message" placeholder="Welcome to our billing portal" value={form.customMessage || ''} onChange={field('customMessage')} desc="Shown at the top of the portal login page." />
       </Section>
-      <SaveBar />
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 // ─── Vendor Portal ─────────────────────────────────────────────────────────
 export function VendorPortalPage() {
+  const { form, field, toggle, handleSave, isPending, saved, error } = useSettingsForm('vendorPortal', { enabled: true, showPaymentHistory: true });
   return (
     <PageShell title="Vendor Portal" desc="Configure your vendor self-service portal." icon={Boxes}>
       <Section title="Portal Settings">
-        <ToggleRow label="Enable Vendor Portal" desc="Allow vendors to view purchase orders and bills online." defaultChecked />
-        <ToggleRow label="Allow vendors to submit invoices" />
-        <ToggleRow label="Show payment history to vendors" defaultChecked />
-        <Field label="Portal custom message" placeholder="Welcome to our vendor portal" />
+        <ToggleRow label="Enable Vendor Portal" desc="Allow vendors to view purchase orders and bills online." checked={form.enabled} onClick={toggle('enabled')} />
+        <ToggleRow label="Allow vendors to submit invoices" checked={form.allowSubmit} onClick={toggle('allowSubmit')} />
+        <ToggleRow label="Show payment history to vendors" checked={form.showPaymentHistory} onClick={toggle('showPaymentHistory')} />
+        <Field label="Portal custom message" placeholder="Welcome to our vendor portal" value={form.customMessage || ''} onChange={field('customMessage')} />
       </Section>
-      <SaveBar />
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 // ─── Transaction Number Series ─────────────────────────────────────────────
 export function TxnNumberingPage() {
+  const { form, field, handleSave, isPending, saved, error } = useSettingsForm('txnNumbering');
+  const series = ['Invoices', 'Quotes', 'Sales Orders', 'Purchase Orders', 'Bills', 'Payments Received', 'Payments Made', 'Credit Notes', 'Expenses'];
   return (
     <PageShell title="Transaction Number Series" desc="Configure numbering prefixes for your transactions." icon={Hash}>
       <Section title="Numbering Series">
-        {[
-          { label: 'Invoices', value: 'INV-' },
-          { label: 'Quotes', value: 'QTE-' },
-          { label: 'Sales Orders', value: 'SO-' },
-          { label: 'Purchase Orders', value: 'PO-' },
-          { label: 'Bills', value: 'BILL-' },
-          { label: 'Payments Received', value: 'PMT-' },
-          { label: 'Payments Made', value: 'PM-' },
-          { label: 'Credit Notes', value: 'CN-' },
-          { label: 'Expenses', value: 'EXP-' },
-        ].map(s => (
-          <div key={s.label} className="flex items-center gap-4 py-2 border-b border-slate-50 last:border-0">
-            <span className="w-36 text-sm text-slate-700">{s.label}</span>
-            <input type="text" defaultValue={s.value} className="w-28 px-3 py-1.5 text-sm border border-slate-200 rounded-lg font-mono" />
-            <span className="text-xs text-slate-400">Next: {s.value}{String(Math.floor(Math.random() * 9000) + 1000)}</span>
-          </div>
-        ))}
+        {series.map(s => {
+          const key = s.toLowerCase().replace(/ /g, '');
+          return (
+            <div key={s} className="flex items-center gap-4 py-2 border-b border-slate-50 last:border-0">
+              <span className="w-36 text-sm text-slate-700">{s}</span>
+              <input type="text" value={form[key] || ''} onChange={field(key)} className="w-28 px-3 py-1.5 text-sm border border-slate-200 rounded-lg font-mono" />
+            </div>
+          );
+        })}
       </Section>
-      <SaveBar />
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 // ─── PDF Templates ─────────────────────────────────────────────────────────
 export function PdfTemplatesPage() {
+  const { form, handleSave, isPending, saved, error } = useSettingsForm('pdfTemplates');
   return (
     <PageShell title="PDF Templates" desc="Customize the layout of your PDF documents." icon={LayoutTemplate}>
       <Section title="Document Templates">
-        {['Invoice', 'Quote', 'Sales Order', 'Purchase Order', 'Bill', 'Credit Note'].map(t => (
-          <div key={t} className="flex items-center justify-between border border-slate-100 rounded-lg px-4 py-3 mb-2">
-            <div className="flex items-center gap-3">
-              <FileText size={16} className="text-slate-400" />
-              <span className="text-sm text-slate-700">{t} Template</span>
+        {['Invoice', 'Quote', 'Sales Order', 'Purchase Order', 'Bill', 'Credit Note'].map(t => {
+          const key = t.toLowerCase().replace(/ /g, '');
+          return (
+            <div key={t} className="flex items-center justify-between border border-slate-100 rounded-lg px-4 py-3 mb-2">
+              <div className="flex items-center gap-3">
+                <FileText size={16} className="text-slate-400" />
+                <span className="text-sm text-slate-700">{t} Template</span>
+              </div>
+              <select value={form[key] || 'default'} onChange={field(key)} className="text-xs border border-slate-200 rounded px-2 py-1">
+                <option value="default">Default</option>
+                <option value="modern">Modern</option>
+                <option value="classic">Classic</option>
+              </select>
             </div>
-            <button className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-700">
-              <Pencil size={13} /> Customize
-            </button>
-          </div>
-        ))}
+          );
+        })}
       </Section>
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 // ─── Email Notifications ───────────────────────────────────────────────────
 export function EmailNotificationsPage() {
+  const { form, toggle, handleSave, isPending, saved, error } = useSettingsForm('emailNotifications');
+  const triggers = ['Invoice Sent', 'Payment Received', 'Invoice Overdue', 'Credit Note Issued', 'Purchase Order Received', 'Bill Due Reminder', 'Quote Accepted', 'Account Statement'];
   return (
     <PageShell title="Email Notifications" desc="Configure email notifications sent to customers and vendors." icon={Mail}>
       <Section title="Notification Triggers">
-        {[
-          'Invoice Sent', 'Payment Received', 'Invoice Overdue', 'Credit Note Issued',
-          'Purchase Order Received', 'Bill Due Reminder', 'Quote Accepted', 'Account Statement'
-        ].map(n => (
-          <div key={n} className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
-            <span className="text-sm text-slate-700">{n}</span>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" defaultChecked className="sr-only peer" />
-              <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-indigo-600 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
-            </label>
-          </div>
-        ))}
+        {triggers.map(n => {
+          const key = n.toLowerCase().replace(/ /g, '');
+          return (
+            <div key={n} className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
+              <span className="text-sm text-slate-700">{n}</span>
+              <ToggleRow label="" checked={form[key]} onClick={toggle(key)} />
+            </div>
+          );
+        })}
       </Section>
-      <Section title="Email Templates">
-        <p className="text-xs text-slate-400">Customize the email body templates sent for each notification type.</p>
-        <button className="inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 transition mt-2">
-          <Pencil size={14} /> Edit Email Templates
-        </button>
-      </Section>
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 // ─── Reporting Tags ────────────────────────────────────────────────────────
 export function ReportingTagsPage() {
+  const { form, handleSave, isPending, saved, error } = useSettingsForm('reportingTags');
+  const tags = form.tags || [];
   return (
     <PageShell title="Reporting Tags" desc="Create and manage tags for categorizing transactions." icon={Tag}>
       <Section title="Tags">
         <div className="flex flex-wrap gap-2">
-          {['Marketing', 'Operations', 'Salary', 'Utilities', 'Travel', 'Software', 'Office Supplies', 'Tax'].map(t => (
-            <span key={t} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-700 rounded-full text-xs font-medium">
+          {tags.length === 0 ? (
+            <p className="text-sm text-slate-400 py-2">No tags defined yet.</p>
+          ) : tags.map((t: string, i: number) => (
+            <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-700 rounded-full text-xs font-medium">
               <Tag size={12} /> {t}
-              <button className="text-slate-400 hover:text-red-500 ml-0.5"><X size={12} /></button>
             </span>
           ))}
         </div>
@@ -748,146 +783,142 @@ export function ReportingTagsPage() {
           <button className="px-3 py-2 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700"><Plus size={14} /></button>
         </div>
       </Section>
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 // ─── Web Tabs ──────────────────────────────────────────────────────────────
 export function WebTabsPage() {
+  const { form, handleSave, isPending, saved, error } = useSettingsForm('webTabs');
   return (
     <PageShell title="Web Tabs" desc="Manage custom web tabs in your sidebar navigation." icon={Layers}>
       <Section title="Custom Web Tabs">
         <p className="text-xs text-slate-500 mb-3">Add custom links to external tools in your SkyBooks sidebar.</p>
-        <div className="space-y-2">
-          {[
-            { label: 'Support Portal', url: 'https://support.company.ng' },
-            { label: 'HR Portal', url: 'https://hr.company.ng' },
-          ].map((tab, i) => (
-            <div key={i} className="flex items-center justify-between border border-slate-100 rounded-lg px-4 py-3">
-              <div className="flex items-center gap-3">
-                <Link size={14} className="text-slate-400" />
-                <div>
-                  <p className="text-sm font-medium text-slate-700">{tab.label}</p>
-                  <p className="text-xs text-slate-400">{tab.url}</p>
+        {(form.tabs || []).length === 0 ? (
+          <p className="text-sm text-slate-400 py-4 text-center">No web tabs configured.</p>
+        ) : (
+          <div className="space-y-2">
+            {(form.tabs || []).map((tab: any, i: number) => (
+              <div key={i} className="flex items-center justify-between border border-slate-100 rounded-lg px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <Link size={14} className="text-slate-400" />
+                  <div>
+                    <p className="text-sm font-medium text-slate-700">{tab.label}</p>
+                    <p className="text-xs text-slate-400">{tab.url}</p>
+                  </div>
                 </div>
               </div>
-              <button className="text-slate-400 hover:text-red-500"><Trash2 size={14} /></button>
-            </div>
-          ))}
-        </div>
-        <button className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700">
-          <Plus size={16} /> Add Web Tab
-        </button>
+            ))}
+          </div>
+        )}
       </Section>
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 // ─── Workflow Rules ────────────────────────────────────────────────────────
 export function WorkflowRulesPage() {
+  const { form, handleSave, isPending, saved, error } = useSettingsForm('workflowRules');
+  const rules = form.rules || [];
   return (
     <PageShell title="Workflow Rules" desc="Create automated rules to trigger actions based on events." icon={Zap}>
       <Section title="Workflow Rules">
-        <div className="space-y-3">
-          {[
-            { name: 'Flag Large Invoices', trigger: 'Invoice Created > ₦5,000,000', action: 'Notify Admin' },
-            { name: 'Auto-Archive Paid Bills', trigger: 'Bill Status = Paid', action: 'Mark as Archived' },
-          ].map((r, i) => (
-            <div key={i} className="border border-slate-200 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-semibold text-slate-800">{r.name}</span>
-                <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-full uppercase">Active</span>
-              </div>
-              <div className="text-xs text-slate-500 space-y-1">
-                <p>When: {r.trigger}</p>
-                <p>Then: {r.action}</p>
-              </div>
+        {rules.length === 0 ? (
+          <p className="text-sm text-slate-400 py-4 text-center">No workflow rules configured.</p>
+        ) : rules.map((r: any, i: number) => (
+          <div key={i} className="border border-slate-200 rounded-lg p-4 mb-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-semibold text-slate-800">{r.name}</span>
+              <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-full uppercase">Active</span>
             </div>
-          ))}
-        </div>
-        <button className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700">
-          <Plus size={16} /> Add Workflow Rule
-        </button>
+            <div className="text-xs text-slate-500 space-y-1">
+              <p>When: {r.trigger}</p>
+              <p>Then: {r.action}</p>
+            </div>
+          </div>
+        ))}
       </Section>
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 // ─── Workflow Actions ──────────────────────────────────────────────────────
 export function WorkflowActionsPage() {
+  const { form, handleSave, isPending, saved, error } = useSettingsForm('workflowActions');
+  const actions = form.actions || [];
   return (
     <PageShell title="Workflow Actions" desc="Define actions that can be triggered by workflow rules." icon={ListChecks}>
       <Section title="Available Actions">
-        <div className="space-y-3">
-          {[
-            { name: 'Send Email Notification', desc: 'Send an email to the specified recipients.' },
-            { name: 'Update Record Status', desc: 'Change the status of a transaction.' },
-            { name: 'Create Task', desc: 'Create a new task for a team member.' },
-            { name: 'Send Webhook', desc: 'Send an HTTP request to an external URL.' },
-          ].map((a, i) => (
-            <div key={i} className="flex items-center justify-between border border-slate-100 rounded-lg px-4 py-3">
-              <div>
-                <p className="text-sm font-medium text-slate-700">{a.name}</p>
-                <p className="text-xs text-slate-400">{a.desc}</p>
-              </div>
-              <button className="text-xs font-medium text-indigo-600 hover:text-indigo-700">Configure</button>
+        {actions.length === 0 ? (
+          <p className="text-sm text-slate-400 py-4 text-center">No workflow actions configured.</p>
+        ) : actions.map((a: any, i: number) => (
+          <div key={i} className="flex items-center justify-between border border-slate-100 rounded-lg px-4 py-3 mb-2">
+            <div>
+              <p className="text-sm font-medium text-slate-700">{a.name}</p>
+              <p className="text-xs text-slate-400">{a.desc}</p>
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
       </Section>
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 // ─── Workflow Logs ─────────────────────────────────────────────────────────
 export function WorkflowLogsPage() {
+  const { form, handleSave, isPending, saved, error } = useSettingsForm('workflowLogs');
+  const logs = form.logs || [];
   return (
     <PageShell title="Workflow Logs" desc="View the execution history of your workflow rules." icon={History}>
       <Section title="Execution History">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="border-b border-slate-100 text-slate-400 uppercase text-[10px] font-bold">
-                <th className="pb-2 pr-4">Time</th>
-                <th className="pb-2 pr-4">Rule</th>
-                <th className="pb-2 pr-4">Trigger</th>
-                <th className="pb-2">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {[
-                { time: '2026-06-25 10:30', rule: 'Flag Large Invoices', trigger: 'INV-1050', status: 'Completed' },
-                { time: '2026-06-25 09:15', rule: 'Auto-Archive Paid Bills', trigger: 'BILL-203', status: 'Completed' },
-              ].map((l, i) => (
-                <tr key={i}>
-                  <td className="py-2.5 pr-4 text-slate-500 font-mono">{l.time}</td>
-                  <td className="py-2.5 pr-4 text-slate-700 font-medium">{l.rule}</td>
-                  <td className="py-2.5 pr-4 text-slate-600">{l.trigger}</td>
-                  <td className="py-2.5"><span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 font-bold rounded-full">{l.status}</span></td>
+        {logs.length === 0 ? (
+          <p className="text-sm text-slate-400 py-4 text-center">No workflow execution logs yet.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-400 uppercase text-[10px] font-bold">
+                  <th className="pb-2 pr-4">Time</th>
+                  <th className="pb-2 pr-4">Rule</th>
+                  <th className="pb-2 pr-4">Trigger</th>
+                  <th className="pb-2">Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <p className="text-xs text-slate-400 mt-3">No recent workflow errors.</p>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {logs.map((l: any, i: number) => (
+                  <tr key={i}>
+                    <td className="py-2.5 pr-4 text-slate-500 font-mono">{l.time}</td>
+                    <td className="py-2.5 pr-4 text-slate-700 font-medium">{l.rule}</td>
+                    <td className="py-2.5 pr-4 text-slate-600">{l.trigger}</td>
+                    <td className="py-2.5"><span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 font-bold rounded-full">{l.status}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Section>
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 // ─── Schedules ─────────────────────────────────────────────────────────────
 export function SchedulesPage() {
+  const { form, handleSave, isPending, saved, error } = useSettingsForm('schedules');
+  const jobs = form.jobs || [];
   return (
     <PageShell title="Schedules" desc="Manage automated background jobs and schedules." icon={Timer}>
       <Section title="Scheduled Jobs">
-        <div className="space-y-3">
-          {[
-            { name: 'Recurring Invoice Generator', freq: 'Daily at 08:00', last: '2026-06-25 08:00', next: '2026-06-26 08:00' },
-            { name: 'Payment Reminder Check', freq: 'Every 6 hours', last: '2026-06-25 06:00', next: '2026-06-25 12:00' },
-            { name: 'Exchange Rate Sync', freq: 'Daily at 02:00', last: '2026-06-25 02:00', next: '2026-06-26 02:00' },
-          ].map((s, i) => (
-            <div key={i} className="flex items-center justify-between border border-slate-100 rounded-lg px-4 py-3">
-              <div>
+        {jobs.length === 0 ? (
+          <p className="text-sm text-slate-400 py-4 text-center">No scheduled jobs configured.</p>
+        ) : jobs.map((s: any, i: number) => (
+          <div key={i} className="flex items-center justify-between border border-slate-100 rounded-lg px-4 py-3 mb-2">
+            <div>
                 <p className="text-sm font-medium text-slate-700">{s.name}</p>
                 <p className="text-xs text-slate-400">{s.freq} · Last: {s.last} · Next: {s.next}</p>
               </div>
@@ -902,152 +933,161 @@ export function SchedulesPage() {
 
 // ─── Customers & Vendors ───────────────────────────────────────────────────
 export function ContactsSettingsPage() {
+  const { form, toggle, handleSave, isPending, saved, error } = useSettingsForm('contacts', { autoGenerateIds: true, creditLimitEnabled: false });
   return (
     <PageShell title="Customers & Vendors" desc="Configure settings for customer and vendor management." icon={Users}>
       <Section title="General Settings">
-        <ToggleRow label="Auto-generate customer IDs" desc="Automatically assign IDs to new customers." defaultChecked />
-        <ToggleRow label="Require TIN for customers" desc="Make Tax Identification Number mandatory." />
-        <ToggleRow label="Allow duplicate contact names" />
-        <ToggleRow label="Enable customer credit limit" desc="Set maximum credit limits per customer." />
+        <ToggleRow label="Auto-generate customer IDs" desc="Automatically assign IDs to new customers." checked={form.autoGenerateIds} onClick={toggle('autoGenerateIds')} />
+        <ToggleRow label="Require TIN for customers" desc="Make Tax Identification Number mandatory." checked={form.requireTin} onClick={toggle('requireTin')} />
+        <ToggleRow label="Allow duplicate contact names" checked={form.allowDuplicates} onClick={toggle('allowDuplicates')} />
+        <ToggleRow label="Enable customer credit limit" desc="Set maximum credit limits per customer." checked={form.creditLimitEnabled} onClick={toggle('creditLimitEnabled')} />
       </Section>
       <Section title="Default Contact Settings">
-        <Select label="Default Payment Term" options={[{ value: 'net15', label: 'Net 15' }, { value: 'net30', label: 'Net 30' }, { value: 'dueonreceipt', label: 'Due on Receipt' }]} value="net30" />
-        <Select label="Default Currency" options={[{ value: 'NGN', label: 'NGN' }, { value: 'USD', label: 'USD' }]} value="NGN" />
+        <Select label="Default Payment Term" options={[{ value: 'net15', label: 'Net 15' }, { value: 'net30', label: 'Net 30' }, { value: 'dueonreceipt', label: 'Due on Receipt' }]} value={form.defaultPaymentTerm || 'net30'} />
+        <Select label="Default Currency" options={[{ value: 'NGN', label: 'NGN' }, { value: 'USD', label: 'USD' }]} value={form.defaultCurrency || 'NGN'} />
       </Section>
-      <SaveBar />
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 // ─── Items ─────────────────────────────────────────────────────────────────
 export function ItemsSettingsPage() {
+  const { form, field, toggle, handleSave, isPending, saved, error } = useSettingsForm('items', { trackInventory: true, autoGenerateSku: true });
   return (
     <PageShell title="Items" desc="Configure settings for your product and service items." icon={Package}>
       <Section title="Item Settings">
-        <ToggleRow label="Track inventory quantity" desc="Enable quantity tracking for stock items." defaultChecked />
-        <ToggleRow label="Allow fractional quantities" />
-        <ToggleRow label="Auto-generate SKU for new items" defaultChecked />
-        <ToggleRow label="Show item images in lists" />
+        <ToggleRow label="Track inventory quantity" desc="Enable quantity tracking for stock items." checked={form.trackInventory} onClick={toggle('trackInventory')} />
+        <ToggleRow label="Allow fractional quantities" checked={form.allowFractional} onClick={toggle('allowFractional')} />
+        <ToggleRow label="Auto-generate SKU for new items" checked={form.autoGenerateSku} onClick={toggle('autoGenerateSku')} />
+        <ToggleRow label="Show item images in lists" checked={form.showImages} onClick={toggle('showImages')} />
       </Section>
       <Section title="Default Units">
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Default Unit (Service)" placeholder="Hour" defaultValue="Hour" />
-          <Field label="Default Unit (Product)" placeholder="Piece" defaultValue="Piece" />
+          <Field label="Default Unit (Service)" placeholder="Hour" value={form.serviceUnit || 'Hour'} onChange={field('serviceUnit')} />
+          <Field label="Default Unit (Product)" placeholder="Piece" value={form.productUnit || 'Piece'} onChange={field('productUnit')} />
         </div>
       </Section>
-      <SaveBar />
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 // ─── Revenue Recognition ───────────────────────────────────────────────────
 export function RevenueRecognitionPage() {
+  const { form, toggle, handleSave, isPending, saved, error } = useSettingsForm('revenueRecognition', { method: 'accrual' });
   return (
     <PageShell title="Revenue Recognition" desc="Configure how revenue is recognized in your books." icon={BarChart2}>
       <Section title="Revenue Recognition Rules">
         <Select label="Method" options={[
           { value: 'accrual', label: 'Accrual Basis — Recognize when invoiced' },
           { value: 'cash', label: 'Cash Basis — Recognize when received' },
-        ]} value="accrual" />
-        <ToggleRow label="Defer revenue for recurring invoices" desc="Recognize proportionally over the service period." defaultChecked />
-        <ToggleRow label="Auto-create deferred revenue schedule" defaultChecked />
+        ]} value={form.method || 'accrual'} />
+        <ToggleRow label="Defer revenue for recurring invoices" desc="Recognize proportionally over the service period." checked={form.deferRevenue} onClick={toggle('deferRevenue')} />
+        <ToggleRow label="Auto-create deferred revenue schedule" checked={form.autoDeferredSchedule} onClick={toggle('autoDeferredSchedule')} />
       </Section>
-      <SaveBar />
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 // ─── Accountant ────────────────────────────────────────────────────────────
 export function AccountantSettingsPage() {
+  const { form, toggle, handleSave, isPending, saved, error } = useSettingsForm('accountant', { approvalWorkflow: true, lockPeriods: true });
   return (
     <PageShell title="Accountant" desc="Configure settings for your accounting module." icon={FileText}>
       <Section title="Accounting Preferences">
-        <ToggleRow label="Enable journal entry approval workflow" desc="Require approval before journal entries are posted." defaultChecked />
-        <ToggleRow label="Auto-post journal entries" desc="Automatically post journal entries for transactions." />
-        <ToggleRow label="Lock past fiscal periods" desc="Prevent changes to transactions in closed periods." defaultChecked />
+        <ToggleRow label="Enable journal entry approval workflow" desc="Require approval before journal entries are posted." checked={form.approvalWorkflow} onClick={toggle('approvalWorkflow')} />
+        <ToggleRow label="Auto-post journal entries" desc="Automatically post journal entries for transactions." checked={form.autoPost} onClick={toggle('autoPost')} />
+        <ToggleRow label="Lock past fiscal periods" desc="Prevent changes to transactions in closed periods." checked={form.lockPeriods} onClick={toggle('lockPeriods')} />
       </Section>
       <Section title="Default Accounts">
-        <Select label="Default Revenue Account" options={[{ value: 'sales', label: 'Sales Revenue' }]} />
-        <Select label="Default Expense Account" options={[{ value: 'genexp', label: 'General Expenses' }]} />
-        <Select label="Default Bank Account" options={[{ value: 'cbn', label: 'CBN Cash Account' }]} />
+        <Select label="Default Revenue Account" options={[{ value: 'sales', label: 'Sales Revenue' }]} value={form.defaultRevenueAccount || 'sales'} />
+        <Select label="Default Expense Account" options={[{ value: 'genexp', label: 'General Expenses' }]} value={form.defaultExpenseAccount || 'genexp'} />
+        <Select label="Default Bank Account" options={[{ value: 'cbn', label: 'CBN Cash Account' }]} value={form.defaultBankAccount || 'cbn'} />
       </Section>
-      <SaveBar />
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 // ─── Tasks ─────────────────────────────────────────────────────────────────
 export function TasksSettingsPage() {
+  const { form, toggle, handleSave, isPending, saved, error } = useSettingsForm('tasks', { enableAssignments: true, sendReminders: true, allowComments: true });
   return (
     <PageShell title="Tasks" desc="Configure settings for task management." icon={ListChecks}>
       <Section title="Task Settings">
-        <ToggleRow label="Enable task assignments" desc="Assign tasks to team members." defaultChecked />
-        <ToggleRow label="Send task reminders" defaultChecked />
-        <ToggleRow label="Allow task comments" defaultChecked />
-        <ToggleRow label="Auto-create tasks from workflows" desc="Allow workflow rules to create tasks." />
+        <ToggleRow label="Enable task assignments" desc="Assign tasks to team members." checked={form.enableAssignments} onClick={toggle('enableAssignments')} />
+        <ToggleRow label="Send task reminders" checked={form.sendReminders} onClick={toggle('sendReminders')} />
+        <ToggleRow label="Allow task comments" checked={form.allowComments} onClick={toggle('allowComments')} />
+        <ToggleRow label="Auto-create tasks from workflows" desc="Allow workflow rules to create tasks." checked={form.autoCreateFromWorkflows} onClick={toggle('autoCreateFromWorkflows')} />
       </Section>
-      <SaveBar />
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 // ─── Projects ──────────────────────────────────────────────────────────────
 export function ProjectsSettingsPage() {
+  const { form, toggle, handleSave, isPending, saved, error } = useSettingsForm('projects', { enableBilling: true, allowBudgets: true, enableMilestones: true });
   return (
     <PageShell title="Projects" desc="Configure settings for project management." icon={Layers}>
       <Section title="Project Settings">
-        <ToggleRow label="Enable project billing" desc="Track billable hours and expenses per project." defaultChecked />
-        <ToggleRow label="Auto-create invoices from projects" />
-        <ToggleRow label="Allow project budgets" defaultChecked />
-        <ToggleRow label="Enable project milestones" defaultChecked />
+        <ToggleRow label="Enable project billing" desc="Track billable hours and expenses per project." checked={form.enableBilling} onClick={toggle('enableBilling')} />
+        <ToggleRow label="Auto-create invoices from projects" checked={form.autoCreateInvoices} onClick={toggle('autoCreateInvoices')} />
+        <ToggleRow label="Allow project budgets" checked={form.allowBudgets} onClick={toggle('allowBudgets')} />
+        <ToggleRow label="Enable project milestones" checked={form.enableMilestones} onClick={toggle('enableMilestones')} />
       </Section>
-      <SaveBar />
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 // ─── Timesheet ─────────────────────────────────────────────────────────────
 export function TimesheetSettingsPage() {
+  const { form, field, toggle, handleSave, isPending, saved, error } = useSettingsForm('timesheet', { enabled: true, requireApproval: true, enableReminders: true });
   return (
     <PageShell title="Timesheet" desc="Configure timesheet settings." icon={FileClock}>
       <Section title="Timesheet Settings">
-        <ToggleRow label="Enable timesheet tracking" desc="Track employee work hours." defaultChecked />
-        <ToggleRow label="Require timesheet approval" desc="Managers must approve timesheets." defaultChecked />
-        <ToggleRow label="Allow overtime tracking" />
-        <ToggleRow label="Enable timesheet reminders" defaultChecked />
+        <ToggleRow label="Enable timesheet tracking" desc="Track employee work hours." checked={form.enabled} onClick={toggle('enabled')} />
+        <ToggleRow label="Require timesheet approval" desc="Managers must approve timesheets." checked={form.requireApproval} onClick={toggle('requireApproval')} />
+        <ToggleRow label="Allow overtime tracking" checked={form.allowOvertime} onClick={toggle('allowOvertime')} />
+        <ToggleRow label="Enable timesheet reminders" checked={form.enableReminders} onClick={toggle('enableReminders')} />
       </Section>
       <Section title="Default Configuration">
-        <Field label="Standard work hours per day" type="number" defaultValue="8" />
-        <Select label="Timesheet frequency" options={[{ value: 'weekly', label: 'Weekly' }, { value: 'biweekly', label: 'Bi-weekly' }, { value: 'monthly', label: 'Monthly' }]} value="weekly" />
+        <Field label="Standard work hours per day" type="number" value={form.standardHours ?? ''} onChange={field('standardHours')} />
+        <Select label="Timesheet frequency" options={[{ value: 'weekly', label: 'Weekly' }, { value: 'biweekly', label: 'Bi-weekly' }, { value: 'monthly', label: 'Monthly' }]} value={form.frequency || 'weekly'} />
       </Section>
-      <SaveBar />
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 // ─── Inventory Adjustments ─────────────────────────────────────────────────
 export function InventoryAdjustmentsPage() {
+  const { form, toggle, handleSave, isPending, saved, error } = useSettingsForm('inventoryAdjustments', { requireApproval: true, autoUpdateCost: true });
   return (
     <PageShell title="Inventory Adjustments" desc="Configure settings for inventory adjustments." icon={ArrowLeftRight}>
       <Section title="Adjustment Settings">
-        <ToggleRow label="Require approval for adjustments" defaultChecked />
-        <ToggleRow label="Auto-update average cost" desc="Recalculate average cost after adjustments." defaultChecked />
-        <ToggleRow label="Track adjustment reasons" desc="Require a reason for each adjustment." />
-        <ToggleRow label="Notify warehouse on adjustments" />
+        <ToggleRow label="Require approval for adjustments" checked={form.requireApproval} onClick={toggle('requireApproval')} />
+        <ToggleRow label="Auto-update average cost" desc="Recalculate average cost after adjustments." checked={form.autoUpdateCost} onClick={toggle('autoUpdateCost')} />
+        <ToggleRow label="Track adjustment reasons" desc="Require a reason for each adjustment." checked={form.trackReasons} onClick={toggle('trackReasons')} />
+        <ToggleRow label="Notify warehouse on adjustments" checked={form.notifyWarehouse} onClick={toggle('notifyWarehouse')} />
       </Section>
       <Section title="Default Adjustments Account">
         <Select label="Default Adjustment Account" options={[
           { value: 'invadj', label: 'Inventory Adjustments' },
           { value: 'loss', label: 'Inventory Loss' },
-        ]} />
+        ]} value={form.defaultAccount || 'invadj'} />
       </Section>
-      <SaveBar />
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 // ─── Payment Gateways ──────────────────────────────────────────────────────
 export function PaymentGatewaysPage() {
+  const { form, toggle, handleSave, isPending, saved, error } = useSettingsForm('paymentGateways', { flutterwaveConnected: true });
   return (
     <PageShell title="Payment Gateways" desc="Configure online payment gateway connections." icon={Wallet}>
       <Section title="Connected Gateways">
@@ -1075,313 +1115,316 @@ export function PaymentGatewaysPage() {
         </div>
       </Section>
       <Section title="Payment Page Settings">
-        <ToggleRow label="Redirect to payment page after invoice creation" defaultChecked />
-        <ToggleRow label="Allow partial payments" />
-        <Select label="Default payment gateway" options={[{ value: 'flutterwave', label: 'Flutterwave' }, { value: 'paystack', label: 'Paystack' }]} value="flutterwave" />
+        <ToggleRow label="Redirect to payment page after invoice creation" checked={form.redirectAfterCreation} onClick={toggle('redirectAfterCreation')} />
+        <ToggleRow label="Allow partial payments" checked={form.allowPartialPayments} onClick={toggle('allowPartialPayments')} />
+        <Select label="Default payment gateway" options={[{ value: 'flutterwave', label: 'Flutterwave' }, { value: 'paystack', label: 'Paystack' }]} value={form.defaultGateway || 'flutterwave'} />
       </Section>
-      <SaveBar />
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 // ─── Sales Module Settings ─────────────────────────────────────────────────
-function SalesModuleSection({ title, fields }: { title: string; fields: { label: string; desc: string }[] }) {
+function SalesModuleSection({ title, fields, form, toggle }: { title: string; fields: { key: string; label: string; desc: string }[]; form: Record<string, any>; toggle: (k: string) => () => void }) {
   return (
     <Section title={title} desc="Configure default settings for this transaction type.">
       {fields.map(f => (
-        <ToggleRow key={f.label} label={f.label} desc={f.desc} defaultChecked />
+        <ToggleRow key={f.key} label={f.label} desc={f.desc} checked={form[f.key]} onClick={toggle(f.key)} />
       ))}
     </Section>
   );
 }
 
 export function QuotesSettingsPage() {
+  const { form, field, toggle, handleSave, isPending, saved, error } = useSettingsForm('quotes', { autoGenerateNumbers: true });
   return (
     <PageShell title="Quotes" desc="Configure default settings for quotes." icon={FileCheck}>
       <SalesModuleSection title="Quote Settings" fields={[
-        { label: 'Auto-generate quote numbers', desc: 'Automatically assign quote numbers.' },
-        { label: 'Send quote PDF on creation', desc: 'Email the PDF to the customer automatically.' },
-        { label: 'Require customer approval', desc: 'Quotes require customer approval to convert.' },
-      ]} />
+        { key: 'autoGenerateNumbers', label: 'Auto-generate quote numbers', desc: 'Automatically assign quote numbers.' },
+        { key: 'sendPdfOnCreation', label: 'Send quote PDF on creation', desc: 'Email the PDF to the customer automatically.' },
+        { key: 'requireApproval', label: 'Require customer approval', desc: 'Quotes require customer approval to convert.' },
+      ]} form={form} toggle={toggle} />
       <Section title="Defaults">
-        <Select label="Default Quote Status" options={[{ value: 'draft', label: 'Draft' }, { value: 'sent', label: 'Sent' }]} value="draft" />
-        <Field label="Quote expiry (days)" type="number" defaultValue="30" />
+        <Select label="Default Quote Status" options={[{ value: 'draft', label: 'Draft' }, { value: 'sent', label: 'Sent' }]} value={form.defaultStatus || 'draft'} />
+        <Field label="Quote expiry (days)" type="number" value={form.expiryDays ?? ''} onChange={field('expiryDays')} />
       </Section>
-      <SaveBar />
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 export function SalesOrdersSettingsPage() {
+  const { form, field, toggle, handleSave, isPending, saved, error } = useSettingsForm('salesOrders', { autoGenerateNumbers: true });
   return (
     <PageShell title="Sales Orders" desc="Configure default settings for sales orders." icon={ShoppingCart}>
       <SalesModuleSection title="Sales Order Settings" fields={[
-        { label: 'Auto-generate sales order numbers', desc: 'Automatically assign sales order numbers.' },
-        { label: 'Allow partial fulfillment', desc: 'Allow shipping items in multiple batches.' },
-        { label: 'Require sales order approval', desc: 'Sales orders require approval before fulfillment.' },
-      ]} />
-      <Select label="Default Status" options={[{ value: 'draft', label: 'Draft' }, { value: 'confirmed', label: 'Confirmed' }]} value="draft" />
-      <SaveBar />
+        { key: 'autoGenerateNumbers', label: 'Auto-generate sales order numbers', desc: 'Automatically assign sales order numbers.' },
+        { key: 'allowPartialFulfillment', label: 'Allow partial fulfillment', desc: 'Allow shipping items in multiple batches.' },
+        { key: 'requireApproval', label: 'Require sales order approval', desc: 'Sales orders require approval before fulfillment.' },
+      ]} form={form} toggle={toggle} />
+      <Select label="Default Status" options={[{ value: 'draft', label: 'Draft' }, { value: 'confirmed', label: 'Confirmed' }]} value={form.defaultStatus || 'draft'} />
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 export function InvoicesSettingsPage() {
+  const { form, field, toggle, handleSave, isPending, saved, error } = useSettingsForm('invoices', { autoGenerateNumbers: true, allowDiscounts: true });
   return (
     <PageShell title="Invoices" desc="Configure default settings for invoices." icon={Receipt}>
       <SalesModuleSection title="Invoice Settings" fields={[
-        { label: 'Auto-generate invoice numbers', desc: 'Automatically assign invoice numbers.' },
-        { label: 'Send invoice via email on creation', desc: 'Email the invoice to the customer.' },
-        { label: 'Show invoice due date prominently', desc: 'Display the due date in bold.' },
-        { label: 'Include payment terms on invoice', desc: 'Display payment terms on printed invoices.' },
-        { label: 'Allow invoice discounts', desc: 'Enable discount fields on invoices.' },
-      ]} />
+        { key: 'autoGenerateNumbers', label: 'Auto-generate invoice numbers', desc: 'Automatically assign invoice numbers.' },
+        { key: 'sendOnCreation', label: 'Send invoice via email on creation', desc: 'Email the invoice to the customer.' },
+        { key: 'showDueDate', label: 'Show invoice due date prominently', desc: 'Display the due date in bold.' },
+        { key: 'showPaymentTerms', label: 'Include payment terms on invoice', desc: 'Display payment terms on printed invoices.' },
+        { key: 'allowDiscounts', label: 'Allow invoice discounts', desc: 'Enable discount fields on invoices.' },
+      ]} form={form} toggle={toggle} />
       <Section title="Defaults">
-        <Select label="Default Invoice Status" options={[{ value: 'draft', label: 'Draft' }, { value: 'sent', label: 'Sent' }]} value="draft" />
-        <Select label="Default Payment Term" options={[{ value: 'net30', label: 'Net 30' }, { value: 'net15', label: 'Net 15' }, { value: 'dueonreceipt', label: 'Due on Receipt' }]} value="net30" />
+        <Select label="Default Invoice Status" options={[{ value: 'draft', label: 'Draft' }, { value: 'sent', label: 'Sent' }]} value={form.defaultStatus || 'draft'} />
+        <Select label="Default Payment Term" options={[{ value: 'net30', label: 'Net 30' }, { value: 'net15', label: 'Net 15' }, { value: 'dueonreceipt', label: 'Due on Receipt' }]} value={form.defaultPaymentTerm || 'net30'} />
       </Section>
-      <SaveBar />
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 export function RecurringInvoicesSettingsPage() {
+  const { form, field, toggle, handleSave, isPending, saved, error } = useSettingsForm('recurringInvoices', { autoGenerateNumbers: true, sendAutomatically: true });
   return (
     <PageShell title="Recurring Invoices" desc="Configure default settings for recurring invoices." icon={Repeat}>
       <SalesModuleSection title="Recurring Invoice Settings" fields={[
-        { label: 'Auto-generate recurring invoice numbers', desc: 'Automatically assign invoice numbers from template.' },
-        { label: 'Send invoice automatically', desc: 'Email the invoice on the scheduled date.' },
-        { label: 'Stop after N occurrences', desc: 'Automatically stop after a set number of cycles.' },
-        { label: 'Notify before generation', desc: 'Send a reminder before the next invoice is generated.' },
-      ]} />
+        { key: 'autoGenerateNumbers', label: 'Auto-generate recurring invoice numbers', desc: 'Automatically assign invoice numbers from template.' },
+        { key: 'sendAutomatically', label: 'Send invoice automatically', desc: 'Email the invoice on the scheduled date.' },
+        { key: 'stopAfterOccurrences', label: 'Stop after N occurrences', desc: 'Automatically stop after a set number of cycles.' },
+        { key: 'notifyBeforeGeneration', label: 'Notify before generation', desc: 'Send a reminder before the next invoice is generated.' },
+      ]} form={form} toggle={toggle} />
       <Section title="Defaults">
-        <Select label="Default Frequency" options={[{ value: 'monthly', label: 'Monthly' }, { value: 'weekly', label: 'Weekly' }, { value: 'yearly', label: 'Yearly' }]} value="monthly" />
+        <Select label="Default Frequency" options={[{ value: 'monthly', label: 'Monthly' }, { value: 'weekly', label: 'Weekly' }, { value: 'yearly', label: 'Yearly' }]} value={form.defaultFrequency || 'monthly'} />
       </Section>
-      <SaveBar />
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 export function SalesReceiptsSettingsPage() {
+  const { form, toggle, handleSave, isPending, saved, error } = useSettingsForm('salesReceipts', { autoGenerateNumbers: true });
   return (
     <PageShell title="Sales Receipts" desc="Configure default settings for sales receipts." icon={ReceiptText}>
       <SalesModuleSection title="Sales Receipt Settings" fields={[
-        { label: 'Auto-generate receipt numbers', desc: 'Automatically assign receipt numbers.' },
-        { label: 'Email receipt to customer', desc: 'Send a copy of the receipt via email.' },
-        { label: 'Print receipt on POS', desc: 'Enable receipt printing for POS transactions.' },
-      ]} />
-      <SaveBar />
+        { key: 'autoGenerateNumbers', label: 'Auto-generate receipt numbers', desc: 'Automatically assign receipt numbers.' },
+        { key: 'emailToCustomer', label: 'Email receipt to customer', desc: 'Send a copy of the receipt via email.' },
+        { key: 'printOnPos', label: 'Print receipt on POS', desc: 'Enable receipt printing for POS transactions.' },
+      ]} form={form} toggle={toggle} />
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 export function PaymentsReceivedSettingsPage() {
+  const { form, toggle, handleSave, isPending, saved, error } = useSettingsForm('paymentsReceived', { autoGenerateNumbers: true, autoAllocate: true });
   return (
     <PageShell title="Payments Received" desc="Configure default settings for received payments." icon={Banknote}>
       <SalesModuleSection title="Payment Settings" fields={[
-        { label: 'Auto-generate payment numbers', desc: 'Automatically assign payment numbers.' },
-        { label: 'Auto-allocate payments', desc: 'Automatically allocate payments to outstanding invoices.' },
-        { label: 'Send payment confirmation', desc: 'Email payment confirmation to customer.' },
-      ]} />
+        { key: 'autoGenerateNumbers', label: 'Auto-generate payment numbers', desc: 'Automatically assign payment numbers.' },
+        { key: 'autoAllocate', label: 'Auto-allocate payments', desc: 'Automatically allocate payments to outstanding invoices.' },
+        { key: 'sendConfirmation', label: 'Send payment confirmation', desc: 'Email payment confirmation to customer.' },
+      ]} form={form} toggle={toggle} />
       <Section title="Defaults">
         <Select label="Default Payment Method" options={[
           { value: 'bank', label: 'Bank Transfer' },
           { value: 'card', label: 'Card Payment' },
           { value: 'cash', label: 'Cash' },
           { value: 'pos', label: 'POS' },
-        ]} value="bank" />
+        ]} value={form.defaultPaymentMethod || 'bank'} />
       </Section>
-      <SaveBar />
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 export function CreditNotesSettingsPage() {
+  const { form, toggle, handleSave, isPending, saved, error } = useSettingsForm('creditNotes', { autoGenerateNumbers: true });
   return (
     <PageShell title="Credit Notes" desc="Configure default settings for credit notes." icon={FileText}>
       <SalesModuleSection title="Credit Note Settings" fields={[
-        { label: 'Auto-generate credit note numbers', desc: 'Automatically assign credit note numbers.' },
-        { label: 'Allow credit notes without invoice', desc: 'Create standalone credit notes.' },
-        { label: 'Notify customer on issuance', desc: 'Email the credit note to the customer.' },
-      ]} />
-      <SaveBar />
+        { key: 'autoGenerateNumbers', label: 'Auto-generate credit note numbers', desc: 'Automatically assign credit note numbers.' },
+        { key: 'allowWithoutInvoice', label: 'Allow credit notes without invoice', desc: 'Create standalone credit notes.' },
+        { key: 'notifyCustomer', label: 'Notify customer on issuance', desc: 'Email the credit note to the customer.' },
+      ]} form={form} toggle={toggle} />
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 export function DeliveryNotesSettingsPage() {
+  const { form, toggle, handleSave, isPending, saved, error } = useSettingsForm('deliveryNotes', { autoGenerateNumbers: true });
   return (
     <PageShell title="Delivery Notes" desc="Configure default settings for delivery notes." icon={Truck}>
       <SalesModuleSection title="Delivery Note Settings" fields={[
-        { label: 'Auto-generate delivery note numbers', desc: 'Automatically assign delivery note numbers.' },
-        { label: 'Show item serial numbers', desc: 'Display serial numbers on delivery notes.' },
-        { label: 'Email delivery note to customer', desc: 'Send a copy via email.' },
-      ]} />
-      <SaveBar />
+        { key: 'autoGenerateNumbers', label: 'Auto-generate delivery note numbers', desc: 'Automatically assign delivery note numbers.' },
+        { key: 'showSerialNumbers', label: 'Show item serial numbers', desc: 'Display serial numbers on delivery notes.' },
+        { key: 'emailToCustomer', label: 'Email delivery note to customer', desc: 'Send a copy via email.' },
+      ]} form={form} toggle={toggle} />
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 export function PackingSlipsSettingsPage() {
+  const { form, toggle, handleSave, isPending, saved, error } = useSettingsForm('packingSlips', { autoGenerateNumbers: true });
   return (
     <PageShell title="Packing Slips" desc="Configure default settings for packing slips." icon={ClipboardList}>
       <SalesModuleSection title="Packing Slip Settings" fields={[
-        { label: 'Auto-generate packing slip numbers', desc: 'Automatically assign packing slip numbers.' },
-        { label: 'Show batch numbers', desc: 'Display batch/lot numbers on packing slips.' },
-        { label: 'Include barcode', desc: 'Include barcode on printed packing slips.' },
-      ]} />
-      <SaveBar />
+        { key: 'autoGenerateNumbers', label: 'Auto-generate packing slip numbers', desc: 'Automatically assign packing slip numbers.' },
+        { key: 'showBatchNumbers', label: 'Show batch numbers', desc: 'Display batch/lot numbers on packing slips.' },
+        { key: 'includeBarcode', label: 'Include barcode', desc: 'Include barcode on printed packing slips.' },
+      ]} form={form} toggle={toggle} />
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 // ─── Purchases Module Settings ─────────────────────────────────────────────
-function PurchasesModuleSection({ title, fields }: { title: string; fields: { label: string; desc: string }[] }) {
+function PurchasesModuleSection({ title, fields, form, toggle }: { title: string; fields: { key: string; label: string; desc: string }[]; form: Record<string, any>; toggle: (k: string) => () => void }) {
   return (
     <Section title={title} desc="Configure default settings for this transaction type.">
       {fields.map(f => (
-        <ToggleRow key={f.label} label={f.label} desc={f.desc} defaultChecked />
+        <ToggleRow key={f.key} label={f.label} desc={f.desc} checked={form[f.key]} onClick={toggle(f.key)} />
       ))}
     </Section>
   );
 }
 
 export function ExpensesSettingsPage() {
+  const { form, toggle, handleSave, isPending, saved, error } = useSettingsForm('expenses', { autoGenerateNumbers: true, allowAttachments: true });
   return (
     <PageShell title="Expenses" desc="Configure default settings for expenses." icon={CreditCard}>
       <PurchasesModuleSection title="Expense Settings" fields={[
-        { label: 'Auto-generate expense numbers', desc: 'Automatically assign expense numbers.' },
-        { label: 'Allow expense attachments', desc: 'Upload receipts and documents to expenses.' },
-        { label: 'Require expense approval', desc: 'Expenses require manager approval.' },
-        { label: 'Enable mileage tracking', desc: 'Track business mileage in expenses.' },
-      ]} />
-      <SaveBar />
+        { key: 'autoGenerateNumbers', label: 'Auto-generate expense numbers', desc: 'Automatically assign expense numbers.' },
+        { key: 'allowAttachments', label: 'Allow expense attachments', desc: 'Upload receipts and documents to expenses.' },
+        { key: 'requireApproval', label: 'Require expense approval', desc: 'Expenses require manager approval.' },
+        { key: 'enableMileageTracking', label: 'Enable mileage tracking', desc: 'Track business mileage in expenses.' },
+      ]} form={form} toggle={toggle} />
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 export function RecurringExpensesSettingsPage() {
+  const { form, toggle, handleSave, isPending, saved, error } = useSettingsForm('recurringExpenses', { autoGenerateNumbers: true });
   return (
     <PageShell title="Recurring Expenses" desc="Configure default settings for recurring expenses." icon={Repeat}>
       <PurchasesModuleSection title="Recurring Expense Settings" fields={[
-        { label: 'Auto-generate expense numbers', desc: 'Automatically assign expense numbers.' },
-        { label: 'Notify before generation', desc: 'Send a reminder before the next expense is created.' },
-        { label: 'Auto-post journal entries', desc: 'Automatically post to the general ledger.' },
-      ]} />
-      <SaveBar />
+        { key: 'autoGenerateNumbers', label: 'Auto-generate expense numbers', desc: 'Automatically assign expense numbers.' },
+        { key: 'notifyBeforeGeneration', label: 'Notify before generation', desc: 'Send a reminder before the next expense is created.' },
+        { key: 'autoPostJournals', label: 'Auto-post journal entries', desc: 'Automatically post to the general ledger.' },
+      ]} form={form} toggle={toggle} />
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 export function PurchaseOrdersSettingsPage() {
+  const { form, field, toggle, handleSave, isPending, saved, error } = useSettingsForm('purchaseOrders', { autoGenerateNumbers: true });
   return (
     <PageShell title="Purchase Orders" desc="Configure default settings for purchase orders." icon={ShoppingCart}>
       <PurchasesModuleSection title="Purchase Order Settings" fields={[
-        { label: 'Auto-generate PO numbers', desc: 'Automatically assign purchase order numbers.' },
-        { label: 'Allow partial receipts', desc: 'Receive items in multiple batches.' },
-        { label: 'Require PO approval', desc: 'Purchase orders require approval before sending.' },
-      ]} />
-      <Select label="Default Status" options={[{ value: 'draft', label: 'Draft' }, { value: 'sent', label: 'Sent' }]} value="draft" />
-      <SaveBar />
+        { key: 'autoGenerateNumbers', label: 'Auto-generate PO numbers', desc: 'Automatically assign purchase order numbers.' },
+        { key: 'allowPartialReceipts', label: 'Allow partial receipts', desc: 'Receive items in multiple batches.' },
+        { key: 'requireApproval', label: 'Require PO approval', desc: 'Purchase orders require approval before sending.' },
+      ]} form={form} toggle={toggle} />
+      <Select label="Default Status" options={[{ value: 'draft', label: 'Draft' }, { value: 'sent', label: 'Sent' }]} value={form.defaultStatus || 'draft'} />
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 export function BillsSettingsPage() {
+  const { form, field, toggle, handleSave, isPending, saved, error } = useSettingsForm('bills', { autoGenerateNumbers: true, allowAttachments: true });
   return (
     <PageShell title="Bills" desc="Configure default settings for bills." icon={FileText}>
       <PurchasesModuleSection title="Bill Settings" fields={[
-        { label: 'Auto-generate bill numbers', desc: 'Automatically assign bill numbers.' },
-        { label: 'Allow bill attachments', desc: 'Upload vendor invoices to bills.' },
-        { label: 'Require bill approval', desc: 'Bills require approval before payment.' },
-        { label: 'Enable recurring bills', desc: 'Allow recurring bill templates.' },
-      ]} />
-      <Select label="Default Payment Term" options={[{ value: 'net30', label: 'Net 30' }, { value: 'net15', label: 'Net 15' }, { value: 'dueonreceipt', label: 'Due on Receipt' }]} value="net30" />
-      <SaveBar />
+        { key: 'autoGenerateNumbers', label: 'Auto-generate bill numbers', desc: 'Automatically assign bill numbers.' },
+        { key: 'allowAttachments', label: 'Allow bill attachments', desc: 'Upload vendor invoices to bills.' },
+        { key: 'requireApproval', label: 'Require bill approval', desc: 'Bills require approval before payment.' },
+        { key: 'enableRecurring', label: 'Enable recurring bills', desc: 'Allow recurring bill templates.' },
+      ]} form={form} toggle={toggle} />
+      <Select label="Default Payment Term" options={[{ value: 'net30', label: 'Net 30' }, { value: 'net15', label: 'Net 15' }, { value: 'dueonreceipt', label: 'Due on Receipt' }]} value={form.defaultPaymentTerm || 'net30'} />
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 export function RecurringBillsSettingsPage() {
+  const { form, toggle, handleSave, isPending, saved, error } = useSettingsForm('recurringBills', { autoGenerateNumbers: true });
   return (
     <PageShell title="Recurring Bills" desc="Configure default settings for recurring bills." icon={FileClock}>
       <PurchasesModuleSection title="Recurring Bill Settings" fields={[
-        { label: 'Auto-generate bill numbers', desc: 'Automatically assign bill numbers.' },
-        { label: 'Notify before generation', desc: 'Send a reminder before the next bill is created.' },
-        { label: 'Auto-create payment', desc: 'Automatically create a payment for recurring bills.' },
-      ]} />
-      <SaveBar />
+        { key: 'autoGenerateNumbers', label: 'Auto-generate bill numbers', desc: 'Automatically assign bill numbers.' },
+        { key: 'notifyBeforeGeneration', label: 'Notify before generation', desc: 'Send a reminder before the next bill is created.' },
+        { key: 'autoCreatePayment', label: 'Auto-create payment', desc: 'Automatically create a payment for recurring bills.' },
+      ]} form={form} toggle={toggle} />
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 export function PaymentsMadeSettingsPage() {
+  const { form, toggle, handleSave, isPending, saved, error } = useSettingsForm('paymentsMade', { autoGenerateNumbers: true, autoAllocate: true });
   return (
     <PageShell title="Payments Made" desc="Configure default settings for payments made." icon={Wallet}>
       <PurchasesModuleSection title="Payment Settings" fields={[
-        { label: 'Auto-generate payment numbers', desc: 'Automatically assign payment numbers.' },
-        { label: 'Auto-allocate payments', desc: 'Automatically allocate to outstanding bills.' },
-        { label: 'Send payment confirmation to vendor', desc: 'Email payment confirmation.' },
-      ]} />
+        { key: 'autoGenerateNumbers', label: 'Auto-generate payment numbers', desc: 'Automatically assign payment numbers.' },
+        { key: 'autoAllocate', label: 'Auto-allocate payments', desc: 'Automatically allocate to outstanding bills.' },
+        { key: 'sendConfirmation', label: 'Send payment confirmation to vendor', desc: 'Email payment confirmation.' },
+      ]} form={form} toggle={toggle} />
       <Select label="Default Payment Method" options={[
         { value: 'bank', label: 'Bank Transfer' },
         { value: 'cheque', label: 'Cheque' },
         { value: 'cash', label: 'Cash' },
-      ]} value="bank" />
-      <SaveBar />
+      ]} value={form.defaultPaymentMethod || 'bank'} />
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 export function VendorCreditsSettingsPage() {
+  const { form, toggle, handleSave, isPending, saved, error } = useSettingsForm('vendorCredits', { autoGenerateNumbers: true });
   return (
     <PageShell title="Vendor Credits" desc="Configure default settings for vendor credits." icon={Banknote}>
       <PurchasesModuleSection title="Vendor Credit Settings" fields={[
-        { label: 'Auto-generate credit note numbers', desc: 'Automatically assign vendor credit numbers.' },
-        { label: 'Allow credits without bill', desc: 'Create standalone vendor credits.' },
-        { label: 'Auto-apply to future bills', desc: 'Automatically apply credits to new bills.' },
-      ]} />
-      <SaveBar />
+        { key: 'autoGenerateNumbers', label: 'Auto-generate credit note numbers', desc: 'Automatically assign vendor credit numbers.' },
+        { key: 'allowWithoutBill', label: 'Allow credits without bill', desc: 'Create standalone vendor credits.' },
+        { key: 'autoApplyToBills', label: 'Auto-apply to future bills', desc: 'Automatically apply credits to new bills.' },
+      ]} form={form} toggle={toggle} />
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 // ─── Custom Modules ────────────────────────────────────────────────────────
 export function CustomModulesPage() {
+  const { form, handleSave, isPending, saved, error } = useSettingsForm('customModules');
+  const modules = form.modules || [];
   return (
     <PageShell title="Custom Modules" desc="Manage custom modules and integrations." icon={PuzzleIcon}>
       <Section title="Installed Modules">
-        <div className="space-y-3">
-          {[
-            { name: 'Inventory Management', desc: 'Track stock levels, warehouses, and inventory movements.', installed: true },
-            { name: 'Payroll', desc: 'Manage employee salaries, PAYE, and pension contributions.', installed: true },
-            { name: 'Fixed Assets', desc: 'Track and depreciate company fixed assets.', installed: false },
-            { name: 'Multi-Currency', desc: 'Support for multiple currencies and exchange rates.', installed: true },
-          ].map((m, i) => (
-            <div key={i} className="flex items-center justify-between border border-slate-200 rounded-lg p-4">
-              <div>
-                <p className="text-sm font-semibold text-slate-800">{m.name}</p>
-                <p className="text-xs text-slate-400">{m.desc}</p>
-              </div>
-              {m.installed
-                ? <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-full uppercase">Installed</span>
-                : <button className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700">Install</button>
-              }
+        {modules.length === 0 ? (
+          <p className="text-sm text-slate-400 py-4 text-center">No custom modules installed.</p>
+        ) : modules.map((m: any, i: number) => (
+          <div key={i} className="flex items-center justify-between border border-slate-200 rounded-lg p-4 mb-2">
+            <div>
+              <p className="text-sm font-semibold text-slate-800">{m.name}</p>
+              <p className="text-xs text-slate-400">{m.desc}</p>
             </div>
-          ))}
-        </div>
+            {m.installed
+              ? <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-full uppercase">Installed</span>
+              : <button className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700">Install</button>
+            }
+          </div>
+        ))}
       </Section>
+      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
-  );
-}
-
-// RefreshCw icon used in CurrenciesPage
-function RefreshCw({ size, className }: { size?: number; className?: string }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width={size ?? 24} height={size ?? 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <polyline points="23 4 23 10 17 10" />
-      <polyline points="1 20 1 14 7 14" />
-      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-    </svg>
   );
 }

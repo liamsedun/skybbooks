@@ -188,6 +188,7 @@ export const organisations = pgTable('organisations', {
   vatNumber: text('vat_number'),
   rcNumber: text('rc_number'),
   website: text('website'),
+  settings: jsonb('settings').default({}).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 

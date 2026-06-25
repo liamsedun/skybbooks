@@ -202,6 +202,14 @@ export const orgApi = {
     });
     return res.data;
   },
+  getSettings: async (): Promise<Record<string, any>> => {
+    const res = await api.get('/org/settings');
+    return res.data;
+  },
+  updateSettings: async (settings: Record<string, any>): Promise<Record<string, any>> => {
+    const res = await api.patch('/org/settings', { settings });
+    return res.data;
+  },
   getUsers: async () => {
     const res = await api.get('/organisations/users');
     return res.data;

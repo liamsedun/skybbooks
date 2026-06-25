@@ -23,6 +23,8 @@ export async function runMigration() {
     console.log('[Migration] Verifying database connection and syncing schema...');
     // Validate database connection
     await db.execute('SELECT 1');
+    // Ensure settings column exists on organisations
+    await db.execute(`ALTER TABLE organisations ADD COLUMN IF NOT EXISTS settings jsonb DEFAULT '{}'::jsonb NOT NULL`);
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema push:', err);

@@ -113,7 +113,62 @@ router.patch('/', requireRole('owner', 'accountant'), async (req: AuthenticatedR
 });
 
 // ==========================================
-// 3. POST /org/logo — Upload logo (Multer, Max 2MB, JPEG/PNG only)
+// 3. GET /org/settings — Get org settings JSON
+// ==========================================
+router.get('/settings', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const [org] = await db
+      .select({ settings: organisations.settings })
+      .from(organisations)
+      .where(eq(organisations.id, orgId))
+      .limit(1);
+    if (!org) throw new AppError('Organisation not found.', 404);
+    return res.status(200).json(org.settings || {});
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// ==========================================
+// 4. PATCH /org/settings — Update org settings (merge partial JSON)
+// ==========================================
+const updateSettingsSchema = z.object({
+  settings: z.record(z.any())
+});
+
+router.patch('/settings', requireRole('owner', 'accountant'), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { settings } = updateSettingsSchema.parse(req.body);
+
+    const [org] = await db
+      .select({ existing: organisations.settings })
+      .from(organisations)
+      .where(eq(organisations.id, orgId))
+      .limit(1);
+    if (!org) throw new AppError('Organisation not found.', 404);
+
+    const merged = { ...(typeof org.existing === 'object' && org.existing !== null ? org.existing : {}), ...settings };
+
+    const [updated] = await db
+      .update(organisations)
+      .set({ settings: merged })
+      .where(eq(organisations.id, orgId))
+      .returning({ settings: organisations.settings });
+
+    if (!updated) throw new AppError('Could not update settings.', 500);
+    return res.status(200).json(updated.settings);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return next(new AppError(error.issues[0]?.message || 'Validation failed', 400));
+    }
+    return next(error);
+  }
+});
+
+// ==========================================
+// 5. POST /org/logo — Upload logo (Multer, Max 2MB, JPEG/PNG only)
 // ==========================================
 
 const storage = multer.memoryStorage();
