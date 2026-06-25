@@ -12,7 +12,11 @@ function useSettingsForm(key: string, defaults?: Record<string, any>) {
 
   useEffect(() => {
     if (settings[key]) {
-      setForm((prev: Record<string, any>) => ({ ...prev, ...settings[key] }));
+      if (Array.isArray(settings[key])) {
+        setForm((prev: Record<string, any>) => ({ ...prev, [key]: settings[key] }));
+      } else {
+        setForm((prev: Record<string, any>) => ({ ...prev, ...settings[key] }));
+      }
     }
   }, [settings, key]);
 

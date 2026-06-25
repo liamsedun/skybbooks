@@ -8,6 +8,7 @@ import { z } from 'zod';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import crypto from 'crypto';
 import { v2 as cloudinary } from 'cloudinary';
 
 cloudinary.config({
@@ -362,6 +363,64 @@ router.patch('/users/:userId', requireRole('owner'), async (req: AuthenticatedRe
     return res.status(200).json({
       message: 'User profile updated successfully.',
       user: safeUser
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return next(new AppError(error.issues[0]?.message || 'Validation failed', 400));
+    }
+    return next(error);
+  }
+});
+
+// ==========================================
+// 7. POST /org/invite — Invite a user to the org
+// ==========================================
+const inviteSchema = z.object({
+  name: z.string().min(1).max(255),
+  email: z.string().email(),
+  role: z.enum(['admin', 'accountant', 'staff']),
+});
+
+router.post('/invite', requireRole('owner', 'admin'), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { name, email, role } = inviteSchema.parse(req.body);
+
+    const existing = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(and(eq(users.email, email), eq(users.organisationId, orgId)))
+      .limit(1);
+
+    if (existing.length > 0) {
+      throw new AppError('A user with this email already belongs to your organisation.', 409);
+    }
+
+    const token = crypto.randomBytes(24).toString('hex');
+
+    const [org] = await db
+      .select({ settings: organisations.settings })
+      .from(organisations)
+      .where(eq(organisations.id, orgId))
+      .limit(1);
+
+    if (!org) throw new AppError('Organisation not found.', 404);
+
+    const existingSettings = typeof org.settings === 'object' && org.settings !== null ? org.settings : {};
+    const invites = Array.isArray((existingSettings as any).invites) ? (existingSettings as any).invites : [];
+
+    invites.push({ name, email, role, token, status: 'pending', createdAt: new Date().toISOString() });
+
+    await db
+      .update(organisations)
+      .set({ settings: { ...existingSettings, invites } })
+      .where(eq(organisations.id, orgId));
+
+    const inviteLink = `${req.protocol}://${req.get('host')}/accept-invite?token=${token}`;
+
+    return res.status(201).json({
+      message: `Invitation sent to ${email}.`,
+      inviteLink,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
