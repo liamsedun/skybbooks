@@ -602,8 +602,14 @@ export function LocationsPage() {
   function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    setLogoPreview(URL.createObjectURL(file));
-    setLocForm((p: Record<string, any>) => ({ ...p, logoUrl: URL.createObjectURL(file), logoFile: file.name }));
+    const previewUrl = URL.createObjectURL(file);
+    setLogoPreview(previewUrl);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUri = reader.result as string;
+      setLocForm((p: Record<string, any>) => ({ ...p, logoUrl: dataUri }));
+    };
+    reader.readAsDataURL(file);
   }
 
   function persistLocations(newLocations: any[]) {
