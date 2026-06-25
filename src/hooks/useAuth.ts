@@ -121,6 +121,19 @@ export function useAuth() {
     }
   };
 
+  const refreshUser = async () => {
+    try {
+      const data = await authApi.getMe();
+      localStorage.setItem('user', JSON.stringify(data.user));
+      localStorage.setItem('organisation', JSON.stringify(data.organisation));
+      setUser(data.user);
+      setOrganisation(data.organisation);
+      return data;
+    } catch (err) {
+      console.error('Failed to refresh user', err);
+    }
+  };
+
   return {
     user,
     organisation,
@@ -131,5 +144,6 @@ export function useAuth() {
     login,
     register,
     logout,
+    refreshUser,
   };
 }

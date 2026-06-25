@@ -1152,17 +1152,97 @@ export function UsersPage() {
 
 // ─── Roles ─────────────────────────────────────────────────────────────────
 export function RolesPage() {
-  const { form, field, handleSave, isPending, saved, error } = useSettingsForm('roles');
+  const { form, field, handleSave, isPending, saved, error, setForm } = useSettingsForm('roles');
+  const [newRoleName, setNewRoleName] = useState('');
+  const [renamingRole, setRenamingRole] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+
+  const defaultRoles = ['admin', 'accountant', 'staff'];
+
+  const roles = defaultRoles.concat(
+    Object.keys(form)
+      .filter(k => k.endsWith('_sales') || k.endsWith('_purchases') || k.endsWith('_accounting') || k.endsWith('_reports') || k.endsWith('_settings'))
+      .map(k => k.replace(/_(sales|purchases|accounting|reports|settings)$/, ''))
+      .filter(r => !defaultRoles.includes(r))
+      .filter((r, i, a) => a.indexOf(r) === i)
+  );
+
+  const modules = ['Sales', 'Purchases', 'Accounting', 'Reports', 'Settings'];
+
+  function addRole() {
+    const name = newRoleName.trim().toLowerCase().replace(/\s+/g, '_');
+    if (!name || defaultRoles.includes(name) || roles.includes(name)) return;
+    modules.forEach(m => {
+      const key = `${name}_${m.toLowerCase()}`;
+      setForm((p: Record<string, any>) => ({ ...p, [key]: 'none' }));
+    });
+    setNewRoleName('');
+  }
+
+  function deleteRole(role: string) {
+    if (defaultRoles.includes(role)) return;
+    const newForm = { ...form };
+    modules.forEach(m => delete newForm[`${role}_${m.toLowerCase()}`]);
+    setForm(newForm);
+  }
+
+  function startRename(role: string) {
+    setRenamingRole(role);
+    setRenameValue(role);
+  }
+
+  function confirmRename(oldName: string) {
+    const newName = renameValue.trim().toLowerCase().replace(/\s+/g, '_');
+    if (!newName || newName === oldName || defaultRoles.includes(newName)) {
+      setRenamingRole(null);
+      return;
+    }
+    const newForm = { ...form };
+    modules.forEach(m => {
+      const oldKey = `${oldName}_${m.toLowerCase()}`;
+      const newKey = `${newName}_${m.toLowerCase()}`;
+      if (oldKey in newForm) {
+        newForm[newKey] = newForm[oldKey];
+        delete newForm[oldKey];
+      }
+    });
+    setForm(newForm);
+    setRenamingRole(null);
+  }
+
   return (
     <PageShell title="Roles" desc="Define access permissions for different user roles." icon={Shield}>
       <Section title="Roles & Permissions">
-        {['admin', 'accountant', 'staff'].map((role) => (
+        {roles.map((role) => (
           <div key={role} className="border border-slate-200 rounded-lg p-4 mb-3">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-semibold text-slate-800 capitalize">{role}</span>
+              {renamingRole === role ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={renameValue}
+                    onChange={e => setRenameValue(e.target.value)}
+                    className="text-sm border border-slate-200 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                    autoFocus
+                    onKeyDown={e => { if (e.key === 'Enter') confirmRename(role); if (e.key === 'Escape') setRenamingRole(null); }}
+                  />
+                  <button onClick={() => confirmRename(role)} className="text-xs text-indigo-600 hover:underline">Save</button>
+                  <button onClick={() => setRenamingRole(null)} className="text-xs text-slate-400 hover:underline">Cancel</button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-slate-800 capitalize">{role.replace(/_/g, ' ')}</span>
+                  {!defaultRoles.includes(role) && (
+                    <>
+                      <button onClick={() => startRename(role)} className="text-slate-300 hover:text-indigo-600 transition"><Pencil size={12} /></button>
+                      <button onClick={() => deleteRole(role)} className="text-slate-300 hover:text-red-500 transition"><Trash2 size={12} /></button>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
             <div className="space-y-1.5">
-              {['Sales', 'Purchases', 'Accounting', 'Reports', 'Settings'].map(m => {
+              {modules.map(m => {
                 const key = `${role}_${m.toLowerCase()}`;
                 return (
                   <div key={m} className="flex items-center justify-between text-xs text-slate-600">
@@ -1183,6 +1263,19 @@ export function RolesPage() {
             </div>
           </div>
         ))}
+        <div className="flex items-center gap-2 pt-2">
+          <input
+            type="text"
+            value={newRoleName}
+            onChange={e => setNewRoleName(e.target.value)}
+            placeholder="New role name..."
+            className="flex-1 px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+            onKeyDown={e => { if (e.key === 'Enter') addRole(); }}
+          />
+          <button onClick={addRole} disabled={!newRoleName.trim()} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition flex items-center gap-1.5">
+            <Plus size={14} /> Add Role
+          </button>
+        </div>
       </Section>
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
@@ -1192,7 +1285,7 @@ export function RolesPage() {
 // ─── User Preferences ──────────────────────────────────────────────────────
 export function UserPreferencesPage() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const { form, field, toggle, handleSave, isPending, saved, error } = useSettingsForm('userPreferences');
   const [profileForm, setProfileForm] = useState({ fullName: user?.fullName || '', email: user?.email || '' });
   const [avatarUploading, setAvatarUploading] = useState(false);
@@ -1200,6 +1293,11 @@ export function UserPreferencesPage() {
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setProfileForm({ fullName: user?.fullName || '', email: user?.email || '' });
+    setAvatarPreview(user?.avatarUrl || null);
+  }, [user]);
 
   function pf(name: string) {
     return (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -1215,7 +1313,7 @@ export function UserPreferencesPage() {
       const fd = new FormData(); fd.append("photo", file);
       const updated = await authApi.uploadAvatar(fd);
       setAvatarPreview(updated.avatarUrl || URL.createObjectURL(file));
-      queryClient.invalidateQueries({ queryKey: ["org"] });
+      await refreshUser();
     } catch { setProfileError("Upload failed. Try again."); }
     finally { setAvatarUploading(false); }
   }
@@ -1224,7 +1322,7 @@ export function UserPreferencesPage() {
     setProfileSaving(true); setProfileError(null); setProfileSaved(false);
     try {
       await authApi.updateProfile({ fullName: profileForm.fullName, email: profileForm.email });
-      queryClient.invalidateQueries({ queryKey: ["org"] });
+      await refreshUser();
       setProfileSaved(true);
       setTimeout(() => setProfileSaved(false), 3000);
     } catch (err: any) {
