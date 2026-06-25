@@ -448,20 +448,92 @@ export function BrandingPage() {
 
 // ─── Custom Domain ─────────────────────────────────────────────────────────
 export function CustomDomainPage() {
+  const [showModal, setShowModal] = useState(false);
   const { form, field, handleSave, isPending, saved, error } = useSettingsForm('domain');
   return (
     <PageShell title="Custom Domain" desc="Connect your own domain to host your customer portal and documents." icon={Globe}>
-      <Section title="Domain Configuration">
-        <Field label="Custom Domain" placeholder="books.yourcompany.com" value={form.domain || ''} onChange={field('domain')} desc="Enter the domain you want to use." />
-        <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-sm text-slate-600 space-y-2">
-          <p className="font-medium text-slate-800 flex items-center gap-2"><Lightbulb size={14} />DNS Setup Instructions</p>
-          <p>Add the following CNAME record to your DNS provider:</p>
-          <code className="block bg-white border border-slate-200 rounded px-3 py-2 text-xs font-mono text-indigo-600">
-            Type: CNAME<br />Name: books<br />Value: skybooks.app
-          </code>
+      <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-3 mb-5">
+        <div className="flex items-start gap-3">
+          <Globe size={20} className="text-indigo-600 mt-0.5 shrink-0" />
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900">Custom Domain Mapping</h2>
+            <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+              This feature lets your customers access their Customer Portal and vendor portal with a custom domain name.
+            </p>
+            <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+              For example, let's say your company's name is Zylker and your website's domain name is{' '}
+              https://www.zylker.com. With domain mapping, your customers can access their Customer Portal from the
+              subdomain <strong>https://books.zylker.com/portal</strong> instead of{' '}
+              <strong>https://books.skyaccounting.com.ng/portal</strong>.
+            </p>
+            <a href="#" className="inline-flex items-center gap-1 text-xs text-indigo-600 font-medium mt-2 hover:underline">
+              Read more about Domain Mapping
+            </a>
+          </div>
         </div>
-        <ToggleRow label="Enable custom domain" defaultChecked={form.enabled} onClick={() => {}} />
-      </Section>
+      </div>
+
+      <div className="bg-white border border-slate-200 rounded-xl p-8 text-center mb-5">
+        <Globe size={36} className="text-slate-300 mx-auto mb-3" />
+        <p className="text-sm text-slate-500">You have not mapped a custom domain yet.</p>
+        <button
+          onClick={() => setShowModal(true)}
+          className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition"
+        >
+          <Plus size={16} /> Add Custom Domain
+        </button>
+      </div>
+
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-16">
+          <div className="fixed inset-0 bg-black/40" onClick={() => setShowModal(false)} />
+          <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden z-10">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+              <div className="flex items-center gap-2 text-xs">
+                <span className="font-semibold text-indigo-600">Domain mapping</span>
+                <span className="text-slate-300">/</span>
+                <span className="text-slate-500">Add Domain</span>
+                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-bold">3</span>
+                <span className="text-slate-300">/</span>
+                <span className="text-slate-500">Verify Ownership</span>
+              </div>
+              <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600 transition">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="px-6 py-5 space-y-5">
+              <div>
+                <p className="text-xs font-medium text-slate-500 mb-1">Your registered domain is :</p>
+                <p className="text-sm font-semibold text-slate-900">https://book.skyaccounting.com</p>
+              </div>
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-xs text-slate-600 space-y-2">
+                <p className="font-medium text-slate-800">Follow these steps before submitting your custom domain name:</p>
+                <ol className="list-decimal list-inside space-y-1">
+                  <li>Go to your domain name provider's website and locate the DNS management page.</li>
+                  <li>In this website, create a CNAME record by entering the following information:</li>
+                </ol>
+                <div className="bg-white border border-slate-200 rounded px-3 py-2 space-y-1 mt-2 font-mono text-xs">
+                  <p><span className="font-medium text-slate-700">Host Name:</span> book.skyaccounting.com</p>
+                  <p><span className="font-medium text-slate-700">CNAME:</span> knyk3m.books.cs.zohohost.com</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <button className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition">
+                  Submit &amp; Verify
+                </button>
+                <button onClick={() => setShowModal(false)} className="px-4 py-2 text-sm text-slate-600 hover:text-slate-800 transition">
+                  Cancel
+                </button>
+              </div>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Note: You will not be able to verify your custom domain name until it reflects on the DNS server.
+                This process could take some time.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
