@@ -390,6 +390,23 @@ export function OrganisationProfilePage() {
 // ─── Branding ──────────────────────────────────────────────────────────────
 export function BrandingPage() {
   const { form, field, toggle, handleSave, isPending, saved, error } = useSettingsForm('branding', { showLogo: true });
+  const queryClient = useQueryClient();
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [logoError, setLogoError] = useState<string | null>(null);
+
+  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { setLogoError("Logo must be under 2MB"); return; }
+    setLogoUploading(true); setLogoError(null);
+    try {
+      const fd = new FormData(); fd.append("logo", file);
+      await orgApi.uploadLogo(fd);
+      queryClient.invalidateQueries({ queryKey: ["org"] });
+    } catch { setLogoError("Upload failed. Try again."); }
+    finally { setLogoUploading(false); }
+  }
+
   return (
     <PageShell title="Branding" desc="Customize the look and feel of your customer-facing documents." icon={Paintbrush}>
       <Section title="Logo & Appearance">
@@ -401,9 +418,10 @@ export function BrandingPage() {
             <p className="text-sm font-medium text-slate-700">Company Logo</p>
             <p className="text-xs text-slate-400 mb-2">Appears on all customer-facing documents.</p>
             <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg">
-              <Upload size={14} /> Upload Logo
-              <input type="file" accept="image/png,image/jpeg" className="hidden" />
+              {logoUploading ? "Uploading..." : <><Upload size={14} /> Upload Logo</>}
+              <input type="file" accept="image/png,image/jpeg" className="hidden" onChange={handleLogoUpload} disabled={logoUploading} />
             </label>
+            {logoError && <p className="text-xs text-red-500 mt-1">{logoError}</p>}
           </div>
         </div>
         <Field label="Company Tagline" placeholder="Your tagline here" value={form.tagline || ''} onChange={field('tagline')} desc="Appears below your company name on documents." />
@@ -413,9 +431,9 @@ export function BrandingPage() {
         </div>
       </Section>
       <Section title="Invoice & Document Customization">
-        <ToggleRow label="Show company logo on all documents" defaultChecked={form.showLogo} onClick={toggle('showLogo')} />
-        <ToggleRow label="Show company signature on invoices" defaultChecked={form.showSignature} onClick={toggle('showSignature')} />
-        <ToggleRow label="Include payment QR code on invoices" defaultChecked={form.showQRCode} onClick={toggle('showQRCode')} />
+        <ToggleRow label="Show company logo on all documents" checked={form.showLogo} onClick={toggle('showLogo')} />
+        <ToggleRow label="Show company signature on invoices" checked={form.showSignature} onClick={toggle('showSignature')} />
+        <ToggleRow label="Include payment QR code on invoices" checked={form.showQRCode} onClick={toggle('showQRCode')} />
       </Section>
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
