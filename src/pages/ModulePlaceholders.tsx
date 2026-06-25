@@ -13,7 +13,7 @@ import {
   Trash2, Search, FileText, DollarSign, Calendar, TrendingUp, AlertCircle,
   Phone, Twitter, Linkedin, Facebook, Globe, Eye, EyeOff, History, Users
 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
+
 
 // =========================================================================
 // 1. PUBLIC AUTHENTICATION GATES
@@ -700,103 +700,38 @@ export { ChartOfAccountsPage } from './accountant/ChartOfAccounts';export functi
 
 export function BudgetsPage() {
   return (
-    <PageShell title="Fiscal Budgets & Directives" description="Allocate structural funding caps for logistics, SaaS, and payroll. Generate alerts for variances." badge="Treasury Approved">
-      <div className="bg-white border border-slate-100 p-5 rounded-2xl shadow-3xs max-w-sm">
-        <h4 className="text-xs font-bold text-slate-700">Monthly Expense Cap Variance</h4>
-        <div className="h-2 bg-slate-100 rounded-full mt-3 overflow-hidden">
-          <div className="h-full bg-purple-600 rounded-full" style={{ width: '68%' }}></div>
-        </div>
-        <div className="flex justify-between items-center text-[10px] font-mono text-slate-400 font-bold mt-2">
-          <span>68% ALLOCATED</span>
-          <span>₦12,450,000 / ₦18,000,000 Max</span>
-        </div>
+    <PageShell title="Fiscal Budgets & Directives" description="Allocate structural funding caps for logistics, SaaS, and payroll." badge="Budgets">
+      <div className="bg-white border border-slate-100 p-10 rounded-2xl text-center">
+        <p className="text-sm text-slate-400">No budgets created yet. Create one to get started.</p>
       </div>
     </PageShell>
   );
 }
-
 export function FixedAssetsPage() {
   return (
-    <PageShell title="Corporate Fixed Assets Registry" description="Track physical plant, heavy freight trucks, warehouse space, and depreciation rate schedules." badge="IFRS Compliant">
-      <p className="text-xs text-slate-500 text-center py-10 bg-white border border-slate-105 rounded-2xl">
-        Physical tooling, systems, properties and machinery lists are integrated with annual depreciation journal cycles.
-      </p>
-    </PageShell>
-  );
-}
-
-// =========================================================================
-// 4. REPORTS COCKPIT (DYNAMIC CHARTS & SUMMARY METRICS)
-// =========================================================================
-
-export function TrialBalancePage() {
-  const trialData = [
-    { code: '#1000', name: 'CBN Cash Assets', debit: 24582100, credit: 0 },
-    { code: '#1200', name: 'Finished Inventory', debit: 18245600, credit: 0 },
-    { code: '#2000', name: 'Sales VAT Liability', debit: 0, credit: 1120400 },
-    { code: '#3000', name: 'Retained Liquidity', debit: 0, credit: 41707300 }
-  ];
-
-  return (
-    <PageShell title="Trial Balance Sheet Ledger" description="Continuous reconciliation matching Debits and Credits." badge="Balanced Ledger verified">
-      <div className="bg-white border border-slate-150 rounded-2xl overflow-hidden shadow-2xs">
-        <table className="w-full text-left font-mono text-xs text-slate-700 border-collapse">
-          <thead className="bg-slate-50 text-[10px] font-black tracking-widest text-slate-400 uppercase border-b border-slate-100">
-            <tr>
-              <th className="p-4">Account Code</th>
-              <th className="p-4">Legal Account Title</th>
-              <th className="p-4 text-right">Debit Assets (₦)</th>
-              <th className="p-4 text-right">Credit Liabilities (₦)</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-50">
-            {trialData.map(d => (
-              <tr key={d.code} className="hover:bg-slate-50/50">
-                <td className="p-4 font-bold text-slate-950">{d.code}</td>
-                <td className="p-4 font-sans text-slate-800 font-semibold">{d.name}</td>
-                <td className="p-4 text-right text-emerald-600 font-bold">{d.debit > 0 ? (d.debit/100).toLocaleString() : '-'}</td>
-                <td className="p-4 text-right text-indigo-600 font-bold">{d.credit > 0 ? (d.credit/100).toLocaleString() : '-'}</td>
-              </tr>
-            ))}
-            <tr className="bg-slate-50/70 border-t-2 border-slate-200 font-black text-xs">
-              <td className="p-4">TOTAL</td>
-              <td className="p-4 font-sans uppercase">Balanced Capital Log</td>
-              <td className="p-4 text-right text-emerald-700">42,827,700.00</td>
-              <td className="p-4 text-right text-indigo-700">42,827,700.00</td>
-            </tr>
-          </tbody>
-        </table>
+    <PageShell title="Corporate Fixed Assets Registry" description="Track physical plant, heavy freight trucks, warehouse space, and depreciation rate schedules." badge="Fixed Assets">
+      <div className="bg-white border border-slate-100 p-10 rounded-2xl text-center">
+        <p className="text-sm text-slate-400">No fixed assets registered yet.</p>
       </div>
     </PageShell>
   );
 }
 
-const mockActivityData = [
-  { name: 'Jan', Sales: 4000, Expenses: 2400 },
-  { name: 'Feb', Sales: 3000, Expenses: 1398 },
-  { name: 'Mar', Sales: 9800, Expenses: 5000 },
-  { name: 'Apr', Sales: 6780, Expenses: 3908 },
-  { name: 'May', Sales: 1890, Expenses: 4800 },
-  { name: 'Jun', Sales: 2390, Expenses: 3800 }
-];
+export function TrialBalancePage() {
+  return (
+    <PageShell title="Trial Balance Sheet Ledger" description="Continuous reconciliation matching Debits and Credits." badge="Trial Balance">
+      <div className="bg-white border border-slate-100 p-10 rounded-2xl text-center">
+        <p className="text-sm text-slate-400">No journal entries yet. Trial balance will appear here once transactions are recorded.</p>
+      </div>
+    </PageShell>
+  );
+}
 
 export function IncomeStatementPage() {
   return (
-    <PageShell title="Corporate Profit & Loss Statement" description="Historical display tracking raw revenues, material costs and net indices monthly." badge="Net Profit Analyzed">
-      <div className="bg-white border border-slate-100 p-5 rounded-2xl shadow-3xs space-y-4">
-        <h4 className="text-xs font-mono font-extrabold text-slate-400 uppercase">Operational Margins (Naira KNG)</h4>
-        <div className="h-60 w-full font-mono">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={mockActivityData}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-              <XAxis dataKey="name" fontSize={11} stroke="#94A3B8" />
-              <YAxis fontSize={11} stroke="#94A3B8" />
-              <Tooltip />
-              <Bar dataKey="Sales" fill="#7C3AED" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Expenses" fill="#EF4444" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+    <PageShell title="Corporate Profit & Loss Statement" description="Historical display tracking raw revenues, material costs and net indices monthly." badge="Profit & Loss">
+      <div className="bg-white border border-slate-100 p-10 rounded-2xl text-center">
+        <p className="text-sm text-slate-400">No income or expense data yet. Start recording transactions to see your P&L.</p>
       </div>
     </PageShell>
   );
@@ -804,23 +739,9 @@ export function IncomeStatementPage() {
 
 export function BalanceSheetPage() {
   return (
-    <PageShell title="Statement of Capital Position (Balance Sheet)" description="Consolidated summaries of active reserves, accounts inventories, and long-term liabilities." badge="IFRS Compliant">
-      <div className="bg-white border border-slate-100 p-6 rounded-2xl shadow-3xs space-y-3 max-w-md">
-        <h3 className="font-bold text-slate-800 text-sm border-b border-slate-50 pb-2">Primary Capital Equation</h3>
-        <div className="space-y-2.5 text-xs">
-          <div className="flex justify-between items-center text-slate-600">
-            <span>Corporate Assets Value (A):</span>
-            <span className="font-mono font-bold text-slate-900">₦42,827,700.00</span>
-          </div>
-          <div className="flex justify-between items-center text-slate-600">
-            <span>Accounts Outstanding Liabilities (L):</span>
-            <span className="font-mono font-bold text-rose-600">₦1,120,400.00</span>
-          </div>
-          <div className="flex justify-between items-center pt-2.5 border-t border-slate-50 text-slate-950 font-extrabold text-sm">
-            <span>Net Shareholder Equities (A - L):</span>
-            <span className="font-mono text-emerald-600">₦41,707,300.00</span>
-          </div>
-        </div>
+    <PageShell title="Statement of Capital Position (Balance Sheet)" description="Consolidated summaries of active reserves, accounts inventories, and long-term liabilities." badge="Balance Sheet">
+      <div className="bg-white border border-slate-100 p-10 rounded-2xl text-center">
+        <p className="text-sm text-slate-400">No balance sheet data yet. It will populate as you record transactions.</p>
       </div>
     </PageShell>
   );
@@ -828,25 +749,13 @@ export function BalanceSheetPage() {
 
 export function CashFlowPage() {
   return (
-    <PageShell title="Cash Flow Statements" description="Track inward receivables liquidity against outward operational adjustments." badge="Verified Cash Logs">
-      <div className="bg-white border border-slate-100 p-5 rounded-2xl shadow-3xs space-y-4">
-        <h4 className="text-xs font-mono font-extrabold text-slate-400 uppercase">Cash Position Run (H1 2026)</h4>
-        <div className="h-60 w-full font-mono">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={mockActivityData}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-              <XAxis dataKey="name" fontSize={11} stroke="#94A3B8" />
-              <YAxis fontSize={11} stroke="#94A3B8" />
-              <Tooltip />
-              <Line type="monotone" dataKey="Sales" stroke="#10B981" strokeWidth={2.5} activeDot={{ r: 6 }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
+    <PageShell title="Cash Flow Statements" description="Track inward receivables liquidity against outward operational adjustments." badge="Cash Flow">
+      <div className="bg-white border border-slate-100 p-10 rounded-2xl text-center">
+        <p className="text-sm text-slate-400">No cash flow data yet. It will populate as you record transactions.</p>
       </div>
     </PageShell>
   );
 }
-
 export function AgedReceivablesPage() {
   return (
     <PageShell title="Aged Client Receivables Tracker" description="Verify client payments due over 30, 60 or 90 days. Keep accounts receivables balanced." badge="Credit Control Active">
@@ -1006,34 +915,10 @@ export function CurrencyRatesPage() {
 }
 
 export function AuditLogsPage() {
-  const logs = [
-    { date: '2026-06-16 09:12:35', user: 'controller@company.ng', event: 'Bank Reconciled', desc: 'Matched transaction ref FL-902 with ledger account 1102' },
-    { date: '2026-06-15 17:45:11', user: 'controller@company.ng', event: 'Journal Posted', desc: 'Manuel ledger adjustment with value ₦430,500.00' },
-    { date: '2026-06-15 08:30:00', user: 'system-auth', event: 'API Integration Sync', desc: 'Periodic bank balance sync retrieved from Flutterwave infrastructure' }
-  ];
   return (
-    <PageShell title="Enterprise Digital Audit Trail" description="Persistent tamper-proof security log tracking all accounting operations under statutory compliance." badge="Audit Safe">
-      <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-3xs">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              <th className="p-4">Timestamp (UTC)</th>
-              <th className="p-4">Actor</th>
-              <th className="p-4">Event Operation</th>
-              <th className="p-4">Structured Description</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-50 text-xs text-slate-700 font-mono">
-            {logs.map((l, idx) => (
-              <tr key={idx} className="hover:bg-slate-50/40">
-                <td className="p-4 text-slate-400">{l.date}</td>
-                <td className="p-4 font-bold text-slate-600">{l.user}</td>
-                <td className="p-4 font-semibold text-indigo-650">{l.event}</td>
-                <td className="p-4 text-slate-500 font-sans">{l.desc}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    <PageShell title="Enterprise Digital Audit Trail" description="Persistent tamper-proof security log tracking all accounting operations under statutory compliance." badge="Audit Trail">
+      <div className="bg-white border border-slate-100 p-10 rounded-2xl text-center">
+        <p className="text-sm text-slate-400">No audit logs yet. They will appear as you use the system.</p>
       </div>
     </PageShell>
   );
@@ -1041,14 +926,9 @@ export function AuditLogsPage() {
 
 export function CustomReportsPage() {
   return (
-    <PageShell title="Custom Reports & Analytics Builder" description="Design, compile and filter specific corporate bookkeeping parameters dynamically." badge="Ad-hoc Analytics">
-      <div className="bg-white border border-slate-150 p-6 rounded-2xl shadow-3xs space-y-4">
-        <h4 className="text-xs font-extrabold text-slate-800 uppercase tracking-widest font-mono">Generate Specific Audit Parameters</h4>
-        <div className="flex flex-wrap gap-3">
-          <button className="py-2.5 px-4 bg-slate-100 font-bold rounded-xl text-xs hover:bg-indigo-50 hover:text-indigo-700 transition">Cash Flows (MoM)</button>
-          <button className="py-2.5 px-4 bg-slate-100 font-bold rounded-xl text-xs hover:bg-indigo-50 hover:text-indigo-700 transition">Tax Liability Forecast</button>
-          <button className="py-2.5 px-4 bg-slate-100 font-bold rounded-xl text-xs hover:bg-indigo-50 hover:text-indigo-700 transition">Equity Movement Audit</button>
-        </div>
+    <PageShell title="Custom Reports & Analytics Builder" description="Design, compile and filter specific corporate bookkeeping parameters dynamically." badge="Custom Reports">
+      <div className="bg-white border border-slate-100 p-10 rounded-2xl text-center">
+        <p className="text-sm text-slate-400">Select parameters to generate custom reports.</p>
       </div>
     </PageShell>
   );
@@ -1069,22 +949,9 @@ export function InvitesSettingsPage() {
 
 export function IntegrationsSettingsPage() {
   return (
-    <PageShell title="External Integrations Hub" description="Link secure payment processors, automated banks, and global analytical connectors." badge="Integrity Active">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white border border-slate-150 p-5 rounded-2xl space-y-3 shadow-3xs flex items-center justify-between">
-          <div>
-            <h4 className="font-bold text-slate-850 text-xs uppercase font-mono">Flutterwave Corp Feed</h4>
-            <p className="text-[10px] text-slate-400 font-sans mt-0.5">Dual-mode local clearings client and live bank feeds</p>
-          </div>
-          <span className="px-2 py-0.5 bg-emerald-50 border border-emerald-100 text-emerald-700 font-extrabold text-[9px] rounded-full uppercase">Connected</span>
-        </div>
-        <div className="bg-white border border-slate-150 p-5 rounded-2xl space-y-3 shadow-3xs flex items-center justify-between">
-          <div>
-            <h4 className="font-bold text-slate-850 text-xs uppercase font-mono">Paystack API Node</h4>
-            <p className="text-[10px] text-slate-400 font-sans mt-0.5">Automated settlement matching and payout logs sync</p>
-          </div>
-          <span className="px-2 py-0.5 bg-emerald-50 border border-emerald-100 text-emerald-700 font-extrabold text-[9px] rounded-full uppercase">Connected</span>
-        </div>
+    <PageShell title="External Integrations Hub" description="Link secure payment processors, automated banks, and global analytical connectors." badge="Integrations">
+      <div className="bg-white border border-slate-100 p-10 rounded-2xl text-center">
+        <p className="text-sm text-slate-400">No integrations configured yet. Connect Flutterwave, Paystack, or other services.</p>
       </div>
     </PageShell>
   );
