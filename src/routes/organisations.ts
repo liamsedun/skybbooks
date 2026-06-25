@@ -47,7 +47,9 @@ const inviteUserSchema = z.object({
 });
 
 const updateUserSchema = z.object({
-  role: z.enum(['owner', 'accountant', 'staff']).optional(),
+  fullName: z.string().min(1).max(255).optional(),
+  email: z.string().email().optional(),
+  role: z.enum(['owner', 'accountant', 'staff', 'admin', 'manager']).optional(),
   isActive: z.boolean().optional()
 });
 
@@ -350,6 +352,8 @@ router.patch('/users/:userId', requireRole('owner'), async (req: AuthenticatedRe
     const [updatedUser] = await db
       .update(users)
       .set({
+        ...(body.fullName !== undefined && { fullName: body.fullName }),
+        ...(body.email !== undefined && { email: body.email.toLowerCase() }),
         ...(body.role !== undefined && { role: body.role }),
         ...(body.isActive !== undefined && { isActive: body.isActive })
       })
@@ -523,6 +527,80 @@ router.post('/users/manual', requireRole('owner', 'admin'), async (req: Authenti
     if (error instanceof z.ZodError) {
       return next(new AppError(error.issues[0]?.message || 'Validation failed', 400));
     }
+    return next(error);
+  }
+});
+
+// ==========================================
+// 9. GET /org/users/export/csv — Export users as CSV
+// ==========================================
+router.get('/users/export/csv', requireRole('owner', 'admin'), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const userList = await db
+      .select({ fullName: users.fullName, email: users.email, role: users.role, isActive: users.isActive, lastLogin: users.lastLogin })
+      .from(users)
+      .where(eq(users.organisationId, orgId));
+
+    const header = 'Name,Email,Role,Status,Last Login\n';
+    const rows = userList.map(u =>
+      `"${u.fullName || ''}","${u.email}","${u.role}","${u.isActive ? 'Active' : 'Inactive'}","${u.lastLogin ? new Date(u.lastLogin).toISOString().split('T')[0] : 'Never'}"`
+    ).join('\n');
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=users.csv');
+    return res.status(200).send(header + rows);
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// ==========================================
+// 10. GET /org/users/export/pdf — Export users as PDF (HTML-to-PDF)
+// ==========================================
+router.get('/users/export/pdf', requireRole('owner', 'admin'), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const org = await db.select({ name: organisations.name }).from(organisations).where(eq(organisations.id, orgId)).limit(1);
+    const userList = await db
+      .select({ fullName: users.fullName, email: users.email, role: users.role, isActive: users.isActive, lastLogin: users.lastLogin })
+      .from(users)
+      .where(eq(users.organisationId, orgId));
+
+    const rows = userList.map(u => `
+      <tr>
+        <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;font-size:13px;">${u.fullName || ''}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;font-size:13px;">${u.email}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;font-size:13px;text-transform:capitalize;">${u.role}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;font-size:13px;">${u.isActive ? 'Active' : 'Inactive'}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;font-size:13px;">${u.lastLogin ? new Date(u.lastLogin).toISOString().split('T')[0] : 'Never'}</td>
+      </tr>
+    `).join('');
+
+    const html = `
+      <!DOCTYPE html>
+      <html><head><meta charset="utf-8"><title>Users - ${org?.[0]?.name || 'Export'}</title>
+      <style>
+        body { font-family: Arial, sans-serif; margin: 32px; color: #1f2937; }
+        h1 { font-size: 20px; margin-bottom: 4px; }
+        p { font-size: 12px; color: #6b7280; margin: 0 0 24px 0; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 8px 12px; font-size: 12px; color: #6b7280; border-bottom: 2px solid #e5e7eb; }
+      </style></head>
+      <body>
+        <h1>Team Members</h1>
+        <p>${org?.[0]?.name || 'Organisation'} — ${userList.length} user${userList.length !== 1 ? 's' : ''}</p>
+        <table><thead><tr>
+          <th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Last Login</th>
+        </tr></thead><tbody>${rows}</tbody></table>
+        <p style="margin-top:24px;font-size:10px;color:#9ca3af;">Generated on ${new Date().toLocaleDateString()}</p>
+      </body></html>
+    `;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename=users.pdf');
+    return res.status(200).send(html);
+  } catch (error) {
     return next(error);
   }
 });

@@ -895,6 +895,53 @@ export function UsersPage() {
 
   function refreshUsers() { queryClient.invalidateQueries({ queryKey: ['orgUsers'] }); }
 
+  const [editingUser, setEditingUser] = useState<any | null>(null);
+  const [editForm, setEditForm] = useState<Record<string, any>>({});
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editSuccess, setEditSuccess] = useState<string | null>(null);
+
+  function openEditUser(u: any) {
+    setEditingUser(u);
+    setEditForm({ fullName: u.fullName || '', email: u.email || '', role: u.role || 'staff', isActive: u.isActive !== false });
+    setEditError(null);
+    setEditSuccess(null);
+  }
+
+  async function handleEditSave() {
+    if (!editingUser) return;
+    setEditError(null); setEditSuccess(null);
+    if (!editForm.fullName?.trim()) { setEditError('Name is required.'); return; }
+    if (!editForm.email?.trim()) { setEditError('Email is required.'); return; }
+    setEditSaving(true);
+    try {
+      await orgApi.updateUser(editingUser.id, editForm);
+      setEditSuccess('User updated successfully.');
+      refreshUsers();
+      setTimeout(() => { setEditingUser(null); }, 2000);
+    } catch (err: any) {
+      setEditError(err?.response?.data?.error || err?.message || 'Failed to update user.');
+    } finally { setEditSaving(false); }
+  }
+
+  async function handleExportCsv() {
+    try {
+      const blob = await orgApi.exportUsersCsv();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'users.csv'; a.click();
+      window.URL.revokeObjectURL(url);
+    } catch { setInviteError('Failed to export CSV.'); }
+  }
+
+  async function handleExportPdf() {
+    try {
+      const blob = await orgApi.exportUsersPdf();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'users.pdf'; a.click();
+      window.URL.revokeObjectURL(url);
+    } catch { setInviteError('Failed to export PDF.'); }
+  }
+
   function auf(name: string) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
       setAddUserForm((p: Record<string, any>) => ({ ...p, [name]: e.target.value }));
@@ -976,10 +1023,10 @@ export function UsersPage() {
           </button>
         </div>
         <div className="flex items-center gap-2">
-          <button className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 hover:border-slate-300 text-slate-700 text-xs font-medium rounded-lg transition">
+          <button onClick={handleExportCsv} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 hover:border-slate-300 text-slate-700 text-xs font-medium rounded-lg transition">
             <Download size={14} /> CSV
           </button>
-          <button className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 hover:border-slate-300 text-slate-700 text-xs font-medium rounded-lg transition">
+          <button onClick={handleExportPdf} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 hover:border-slate-300 text-slate-700 text-xs font-medium rounded-lg transition">
             <Download size={14} /> PDF
           </button>
         </div>
@@ -1029,7 +1076,7 @@ export function UsersPage() {
                       {u.lastLogin ? new Date(u.lastLogin).toLocaleDateString() : 'Never'}
                     </td>
                     <td className="px-4 py-3">
-                      <button className="text-slate-400 hover:text-indigo-600 transition">
+                      <button onClick={() => openEditUser(u)} className="text-slate-400 hover:text-indigo-600 transition">
                         <Pencil size={13} />
                       </button>
                     </td>
@@ -1285,6 +1332,55 @@ export function UsersPage() {
               <button onClick={() => setShowAddUser(false)} className="px-4 py-2 text-sm text-slate-600 hover:text-slate-800 transition">Cancel</button>
               <button onClick={handleAddUser} disabled={addUserPending} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition disabled:opacity-50">
                 {addUserPending ? 'Creating...' : 'Create User'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit User Modal */}
+      {editingUser && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-8 pb-8 overflow-y-auto">
+          <div className="fixed inset-0 bg-black/40" onClick={() => setEditingUser(null)} />
+          <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 z-10">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+              <div>
+                <h2 className="text-sm font-semibold text-slate-900">Edit User</h2>
+                <p className="text-xs text-slate-400">Update user details and permissions.</p>
+              </div>
+              <button onClick={() => setEditingUser(null)} className="text-slate-400 hover:text-slate-600 transition"><X size={18} /></button>
+            </div>
+            <div className="px-6 py-5 space-y-5">
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">Full Name</label>
+                <input type="text" value={editForm.fullName || ''} onChange={e => setEditForm(p => ({...p, fullName: e.target.value}))} placeholder="Full name" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">Email Address</label>
+                <input type="email" value={editForm.email || ''} onChange={e => setEditForm(p => ({...p, email: e.target.value}))} placeholder="email@company.com" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">Role</label>
+                <select value={editForm.role || ''} onChange={e => setEditForm(p => ({...p, role: e.target.value}))} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800">
+                  <option value="admin">Admin</option>
+                  <option value="accountant">Accountant</option>
+                  <option value="staff">Staff</option>
+                  <option value="manager">Manager</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={editForm.isActive !== false} onChange={e => setEditForm(p => ({...p, isActive: e.target.checked}))} className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                  <span className="text-sm text-slate-700">Active</span>
+                </label>
+              </div>
+            </div>
+            {editSuccess && <div className="px-6 py-3 bg-emerald-50 border-t border-emerald-100"><p className="text-xs text-emerald-700 flex items-center gap-1"><CheckCircle2 size={12} /> {editSuccess}</p></div>}
+            {editError && <div className="px-6 py-3 bg-rose-50 border-t border-rose-100"><p className="text-xs text-rose-600">{editError}</p></div>}
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200">
+              <button onClick={() => setEditingUser(null)} className="px-4 py-2 text-sm text-slate-600 hover:text-slate-800 transition">Cancel</button>
+              <button onClick={handleEditSave} disabled={editSaving} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition disabled:opacity-50">
+                {editSaving ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </div>

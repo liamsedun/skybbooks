@@ -237,7 +237,15 @@ export const orgApi = {
     return res.data;
   },
   updateUser: async (userId: string, data: any) => {
-    const res = await api.patch(`/organisations/users/${userId}`, data);
+    const res = await api.patch(`/org/users/${userId}`, data);
+    return res.data;
+  },
+  exportUsersCsv: async () => {
+    const res = await api.get('/org/users/export/csv', { responseType: 'blob' });
+    return res.data;
+  },
+  exportUsersPdf: async () => {
+    const res = await api.get('/org/users/export/pdf', { responseType: 'blob' });
     return res.data;
   },
 };
