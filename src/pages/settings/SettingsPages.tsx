@@ -1410,12 +1410,13 @@ function getRoleNames(form: Record<string, any>) {
 }
 
 // ─── Role Editor Modal ─────────────────────────────────────────────────────
-function RoleEditorModal({ role, form, setForm, onClose, isNew }: {
+function RoleEditorModal({ role, form, setForm, onClose, isNew, saveSettings }: {
   role: string;
   form: Record<string, any>;
   setForm: React.Dispatch<React.SetStateAction<Record<string, any>>>;
   onClose: () => void;
   isNew: boolean;
+  saveSettings?: (partial: Record<string, any>, opts?: any) => void;
 }) {
   const roleData = form[role] || buildDefaultRole(role);
   const [local, setLocal] = useState<Record<string, any>>(roleData);
@@ -1446,8 +1447,15 @@ function RoleEditorModal({ role, form, setForm, onClose, isNew }: {
     return cur === undefined ? def : cur;
   }
 
-  function handleDone() {
-    setForm((p: Record<string, any>) => ({ ...p, [role]: local }));
+  function handleDone(withSave = false) {
+    const updated = { ...form, [role]: local };
+    setForm(updated);
+    if (withSave && saveSettings) {
+      saveSettings({ roles: updated }, {
+        onSuccess: () => {},
+        onError: (err: any) => console.error('Save failed', err),
+      });
+    }
     onClose();
   }
 
@@ -1681,7 +1689,7 @@ function RoleEditorModal({ role, form, setForm, onClose, isNew }: {
         {/* Footer */}
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 shrink-0">
           <button onClick={onClose} className="px-4 py-2 text-sm text-slate-600 hover:text-slate-800 transition">Cancel</button>
-          <button onClick={handleDone} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition">
+          <button onClick={() => handleDone(true)} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition">
             {isNew ? 'Create Role' : 'Save Changes'}
           </button>
         </div>
@@ -1692,7 +1700,7 @@ function RoleEditorModal({ role, form, setForm, onClose, isNew }: {
 
 // ─── Roles Page ────────────────────────────────────────────────────────────
 export function RolesPage() {
-  const { form, handleSave, isPending, saved, error, setForm } = useSettingsForm('roles');
+  const { form, handleSave, isPending, saved, error, setForm, save } = useSettingsForm('roles');
   const [editingRole, setEditingRole] = useState<string | null>(null);
   const [isNew, setIsNew] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
@@ -1808,6 +1816,7 @@ export function RolesPage() {
           setForm={setForm}
           onClose={() => { setEditingRole(null); setIsNew(false); }}
           isNew={isNew}
+          saveSettings={save}
         />
       )}
     </PageShell>
