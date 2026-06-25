@@ -45,7 +45,7 @@ import {
   FileCheck, Truck, ClipboardList, ArrowLeftRight, Wallet, PuzzleIcon,
   ShoppingCart, Receipt, ToggleLeft, Download, Upload, Link,
   Lightbulb, Eye, Pencil, Trash2, Plus, Check, X,
-  Loader2, Save, CheckCircle2, AlertCircle, MapPin, Calendar, Phone,
+  Loader2, Save, CheckCircle2, AlertCircle, MapPin, Calendar, Phone, Search,
 } from 'lucide-react';
 
 function PageShell({ title, desc, icon: Icon, children }: { title: string; desc?: string; icon?: React.ComponentType<{ className?: string }>; children: React.ReactNode }) {
@@ -861,11 +861,253 @@ export function LocationsPage() {
 
 // ─── Users ─────────────────────────────────────────────────────────────────
 export function UsersPage() {
+  const [showInviteUser, setShowInviteUser] = useState(false);
+  const [showInviteAccountant, setShowInviteAccountant] = useState(false);
+  const [inviteForm, setInviteForm] = useState<Record<string, any>>({});
+  const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
+  const [locationSearch, setLocationSearch] = useState('');
+
+  const availableLocations = ['Abuja', 'Head Office, Lagos'];
+
+  function ifv(name: string) {
+    return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+      setInviteForm((p: Record<string, any>) => ({ ...p, [name]: e.target.value }));
+  }
+
+  function toggleLocation(loc: string) {
+    setSelectedLocations((prev) =>
+      prev.includes(loc) ? prev.filter((l) => l !== loc) : [...prev, loc]
+    );
+  }
+
+  const filteredLocations = availableLocations.filter((l) =>
+    l.toLowerCase().includes(locationSearch.toLowerCase())
+  );
+
   return (
     <PageShell title="Users" desc="Manage team members who have access to your SkyBooks account." icon={Users}>
+      <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => { setInviteForm({}); setSelectedLocations([]); setShowInviteUser(true); }}
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg transition"
+          >
+            <Plus size={14} /> Invite User
+          </button>
+          <button
+            onClick={() => { setInviteForm({}); setSelectedLocations([]); setShowInviteAccountant(true); }}
+            className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 hover:border-slate-300 text-slate-700 text-xs font-medium rounded-lg transition"
+          >
+            <Plus size={14} /> Invite Accountant
+          </button>
+        </div>
+        <div className="flex items-center gap-2">
+          <button className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 hover:border-slate-300 text-slate-700 text-xs font-medium rounded-lg transition">
+            <Download size={14} /> CSV
+          </button>
+          <button className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 hover:border-slate-300 text-slate-700 text-xs font-medium rounded-lg transition">
+            <Download size={14} /> PDF
+          </button>
+        </div>
+      </div>
+
       <Section title="Team Members">
-        <p className="text-sm text-slate-400 py-4 text-center">User management is available via the API. Use the invite flow to add team members.</p>
+        <p className="text-sm text-slate-400 py-4 text-center">No users have been invited yet.</p>
       </Section>
+
+      {/* Invite User Modal */}
+      {showInviteUser && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-8 pb-8 overflow-y-auto">
+          <div className="fixed inset-0 bg-black/40" onClick={() => setShowInviteUser(false)} />
+          <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 z-10">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+              <h2 className="text-sm font-semibold text-slate-900">Invite User</h2>
+              <button onClick={() => setShowInviteUser(false)} className="text-slate-400 hover:text-slate-600 transition"><X size={18} /></button>
+            </div>
+            <div className="px-6 py-5 space-y-5 max-h-[65vh] overflow-y-auto">
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">Name</label>
+                <input type="text" value={inviteForm.name || ''} onChange={ifv('name')} placeholder="Full name" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">Email Address</label>
+                <input type="email" value={inviteForm.email || ''} onChange={ifv('email')} placeholder="email@company.com" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">Role</label>
+                <select value={inviteForm.role || ''} onChange={ifv('role')} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800">
+                  <option value="">Select a role</option>
+                  <option value="admin">Admin</option>
+                  <option value="accountant">Accountant</option>
+                  <option value="staff">Staff</option>
+                </select>
+              </div>
+
+              {/* Restrict Access To */}
+              <div className="border border-slate-200 rounded-xl p-4 space-y-3">
+                <p className="text-xs font-medium text-slate-600">Restrict Access To</p>
+
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1">User's Default Business Location :</label>
+                  <select className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800">
+                    <option value="">None</option>
+                    {availableLocations.map((l) => <option key={l} value={l}>{l}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1">User's Default Warehouse Location :</label>
+                  <select className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800">
+                    <option value="">None</option>
+                    {availableLocations.map((l) => <option key={l} value={l}>{l}</option>)}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1">Type to search Locations</label>
+                  <div className="relative">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      value={locationSearch}
+                      onChange={(e) => setLocationSearch(e.target.value)}
+                      placeholder="Search locations..."
+                      className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400"
+                    />
+                  </div>
+                </div>
+
+                <label className="flex items-center gap-2 text-xs text-slate-600 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedLocations.length === availableLocations.length}
+                    onChange={() =>
+                      setSelectedLocations(
+                        selectedLocations.length === availableLocations.length ? [] : [...availableLocations]
+                      )
+                    }
+                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  Select All
+                </label>
+
+                <div className="space-y-1 max-h-32 overflow-y-auto">
+                  {filteredLocations.map((loc) => (
+                    <label key={loc} className="flex items-center gap-2 text-xs text-slate-600 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedLocations.includes(loc)}
+                        onChange={() => toggleLocation(loc)}
+                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      {loc}
+                    </label>
+                  ))}
+                </div>
+
+                <p className="text-xs text-slate-400">{selectedLocations.length} Associated Values {selectedLocations.length}</p>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200">
+              <button onClick={() => setShowInviteUser(false)} className="px-4 py-2 text-sm text-slate-600 hover:text-slate-800 transition">Cancel</button>
+              <button className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition">Send Invite</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Invite Accountant Modal */}
+      {showInviteAccountant && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-8 pb-8 overflow-y-auto">
+          <div className="fixed inset-0 bg-black/40" onClick={() => setShowInviteAccountant(false)} />
+          <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 z-10">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+              <h2 className="text-sm font-semibold text-slate-900">Invite Accountant</h2>
+              <button onClick={() => setShowInviteAccountant(false)} className="text-slate-400 hover:text-slate-600 transition"><X size={18} /></button>
+            </div>
+            <div className="px-6 py-5 space-y-5 max-h-[65vh] overflow-y-auto">
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">Name</label>
+                <input type="text" value={inviteForm.accName || ''} onChange={ifv('accName')} placeholder="Full name" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">Email Address</label>
+                <input type="email" value={inviteForm.accEmail || ''} onChange={ifv('accEmail')} placeholder="email@company.com" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400" />
+              </div>
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
+                Note: Since there are no roles configured for accountant users, an accountant role will be automatically created and assigned to this user. You can configure this role from Roles tab.
+              </div>
+
+              {/* Restrict Access To */}
+              <div className="border border-slate-200 rounded-xl p-4 space-y-3">
+                <p className="text-xs font-medium text-slate-600">Restrict Access To</p>
+
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1">User's Default Business Location :</label>
+                  <select className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800">
+                    <option value="">None</option>
+                    {availableLocations.map((l) => <option key={l} value={l}>{l}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1">User's Default Warehouse Location :</label>
+                  <select className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800">
+                    <option value="">None</option>
+                    {availableLocations.map((l) => <option key={l} value={l}>{l}</option>)}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1">Type to search Locations</label>
+                  <div className="relative">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      value={locationSearch}
+                      onChange={(e) => setLocationSearch(e.target.value)}
+                      placeholder="Search locations..."
+                      className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400"
+                    />
+                  </div>
+                </div>
+
+                <label className="flex items-center gap-2 text-xs text-slate-600 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedLocations.length === availableLocations.length}
+                    onChange={() =>
+                      setSelectedLocations(
+                        selectedLocations.length === availableLocations.length ? [] : [...availableLocations]
+                      )
+                    }
+                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  Select All
+                </label>
+
+                <div className="space-y-1 max-h-32 overflow-y-auto">
+                  {filteredLocations.map((loc) => (
+                    <label key={loc} className="flex items-center gap-2 text-xs text-slate-600 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedLocations.includes(loc)}
+                        onChange={() => toggleLocation(loc)}
+                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      {loc}
+                    </label>
+                  ))}
+                </div>
+
+                <p className="text-xs text-slate-400">{selectedLocations.length} Associated Values {selectedLocations.length}</p>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200">
+              <button onClick={() => setShowInviteAccountant(false)} className="px-4 py-2 text-sm text-slate-600 hover:text-slate-800 transition">Cancel</button>
+              <button className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition">Send Invite</button>
+            </div>
+          </div>
+        </div>
+      )}
     </PageShell>
   );
 }
