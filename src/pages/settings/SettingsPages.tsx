@@ -560,7 +560,9 @@ export function CustomDomainPage() {
 export function LocationsPage() {
   const { form, setForm, handleSave, isPending, saved, error } = useSettingsForm('locations');
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [locForm, setLocForm] = useState<Record<string, any>>({ type: 'business' });
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const locations = form.locations || [];
 
   function f(name: string) {
@@ -568,13 +570,50 @@ export function LocationsPage() {
       setLocForm((p: Record<string, any>) => ({ ...p, [name]: e.target.value }));
   }
 
+  function openAddForm() {
+    setEditingId(null);
+    setLocForm({ type: 'business' });
+    setLogoPreview(null);
+    setShowForm(true);
+  }
+
+  function openEditForm(loc: any) {
+    setEditingId(loc.id);
+    setLocForm({ ...loc });
+    setLogoPreview(loc.logoUrl || null);
+    setShowForm(true);
+  }
+
+  function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLogoPreview(URL.createObjectURL(file));
+    setLocForm((p: Record<string, any>) => ({ ...p, logoUrl: URL.createObjectURL(file), logoFile: file.name }));
+  }
+
   function handleSaveLocation() {
+    if (editingId) {
+      setForm((p: Record<string, any>) => ({
+        ...p,
+        locations: (p.locations || []).map((l: any) => l.id === editingId ? { ...locForm, id: editingId } : l),
+      }));
+    } else {
+      setForm((p: Record<string, any>) => ({
+        ...p,
+        locations: [...(p.locations || []), { ...locForm, id: Date.now().toString() }],
+      }));
+    }
+    setLocForm({ type: 'business' });
+    setLogoPreview(null);
+    setEditingId(null);
+    setShowForm(false);
+  }
+
+  function handleDeleteLocation(id: string) {
     setForm((p: Record<string, any>) => ({
       ...p,
-      locations: [...(p.locations || []), { ...locForm, id: Date.now().toString() }],
+      locations: (p.locations || []).filter((l: any) => l.id !== id),
     }));
-    setLocForm({ type: 'business' });
-    setShowForm(false);
   }
 
   return (
@@ -587,19 +626,26 @@ export function LocationsPage() {
             {locations.map((loc: any, i: number) => (
               <div key={i} className="flex items-center justify-between border border-slate-100 rounded-lg px-4 py-3">
                 <div className="flex items-center gap-3">
-                  <MapPinned size={16} className="text-slate-400" />
+                  <div className="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center bg-slate-50 overflow-hidden shrink-0">
+                    {loc.logoUrl
+                      ? <img src={loc.logoUrl} alt="" className="w-full h-full object-contain" />
+                      : <MapPinned size={14} className="text-slate-400" />}
+                  </div>
                   <div>
                     <p className="text-sm font-medium text-slate-700">{loc.name}</p>
-                    <p className="text-xs text-slate-400">{loc.address}</p>
+                    <p className="text-xs text-slate-400">{loc.city || loc.street1 || ''}</p>
                   </div>
                 </div>
-                <button className="text-slate-400 hover:text-red-500 transition"><Trash2 size={14} /></button>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => openEditForm(loc)} className="text-slate-400 hover:text-indigo-600 transition"><Pencil size={14} /></button>
+                  <button onClick={() => handleDeleteLocation(loc.id)} className="text-slate-400 hover:text-red-500 transition"><Trash2 size={14} /></button>
+                </div>
               </div>
             ))}
           </div>
         )}
         <button
-          onClick={() => setShowForm(true)}
+          onClick={openAddForm}
           className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 transition"
         >
           <Plus size={16} /> Add Location
@@ -611,7 +657,7 @@ export function LocationsPage() {
           <div className="fixed inset-0 bg-black/40" onClick={() => setShowForm(false)} />
           <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 z-10">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
-              <h2 className="text-sm font-semibold text-slate-900">Add Location</h2>
+              <h2 className="text-sm font-semibold text-slate-900">{editingId ? 'Edit Location' : 'Add Location'}</h2>
               <button onClick={() => setShowForm(false)} className="text-slate-400 hover:text-slate-600 transition">
                 <X size={18} />
               </button>
@@ -657,12 +703,14 @@ export function LocationsPage() {
               <div>
                 <p className="text-xs font-medium text-slate-600 mb-2">Logo</p>
                 <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 rounded-lg border-2 border-dashed border-slate-200 flex items-center justify-center bg-slate-50">
-                    <Building2 size={24} className="text-slate-300" />
+                  <div className="w-16 h-16 rounded-lg border-2 border-dashed border-slate-200 flex items-center justify-center bg-slate-50 overflow-hidden shrink-0">
+                    {logoPreview
+                      ? <img src={logoPreview} alt="" className="w-full h-full object-contain" />
+                      : <Building2 size={24} className="text-slate-300" />}
                   </div>
                   <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg transition">
                     <Upload size={12} /> Upload Logo
-                    <input type="file" accept="image/png,image/jpeg" className="hidden" />
+                    <input type="file" accept="image/png,image/jpeg" className="hidden" onChange={handleLogoChange} />
                   </label>
                 </div>
               </div>
