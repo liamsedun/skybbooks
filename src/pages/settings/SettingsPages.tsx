@@ -503,41 +503,45 @@ export function CustomDomainPage() {
               </button>
             </div>
             <div className="px-6 py-5 space-y-5">
-              <div>
-                <p className="text-xs font-medium text-slate-500 mb-1">Your registered domain is :</p>
-                <p className="text-sm font-semibold text-slate-900">
-                  https://{domainInput || 'yourdomain.com'}
-                </p>
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-indigo-600">Step 1</p>
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-xs text-slate-600 space-y-2">
+                  <p className="font-medium text-slate-800">Follow these steps before submitting your custom domain name:</p>
+                  <ol className="list-decimal list-inside space-y-1">
+                    <li>Go to your domain name provider's website and locate the DNS management page.</li>
+                    <li>In this website, create a CNAME record by entering the following information:</li>
+                  </ol>
+                  <div className="bg-white border border-slate-200 rounded px-3 py-2 space-y-1 mt-2 font-mono text-xs">
+                    <p><span className="font-medium text-slate-700">Host Name:</span> {domainInput || 'book.skyaccounting.com'}</p>
+                    <p><span className="font-medium text-slate-700">CNAME:</span> knyk3m.books.cs.skyaccounting.com.ng</p>
+                  </div>
+                </div>
               </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1.5">Enter your domain</label>
+
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-indigo-600">Step 2</p>
+                <label className="block text-xs font-medium text-slate-600">Enter your corporate subdomain</label>
                 <input
                   type="text"
                   value={domainInput}
                   onChange={(e) => setDomainInput(e.target.value)}
-                  placeholder="books.yourcompany.com"
-                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400"
+                  placeholder="https://book.skyaccounting.com"
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400 mt-1"
                 />
               </div>
-              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-xs text-slate-600 space-y-2">
-                <p className="font-medium text-slate-800">Follow these steps before submitting your custom domain name:</p>
-                <ol className="list-decimal list-inside space-y-1">
-                  <li>Go to your domain name provider's website and locate the DNS management page.</li>
-                  <li>In this website, create a CNAME record by entering the following information:</li>
-                </ol>
-                <div className="bg-white border border-slate-200 rounded px-3 py-2 space-y-1 mt-2 font-mono text-xs">
-                  <p><span className="font-medium text-slate-700">Host Name:</span> {domainInput || 'books.yourcompany.com'}</p>
-                  <p><span className="font-medium text-slate-700">CNAME:</span> knyk3m.books.cs.zohohost.com</p>
+
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-indigo-600">Step 3</p>
+                <div className="flex items-center gap-3 pt-1">
+                  <button className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition">
+                    Submit &amp; Verify
+                  </button>
+                  <button onClick={() => setShowModal(false)} className="px-4 py-2 text-sm text-slate-600 hover:text-slate-800 transition">
+                    Cancel
+                  </button>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <button className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition">
-                  Submit &amp; Verify
-                </button>
-                <button onClick={() => setShowModal(false)} className="px-4 py-2 text-sm text-slate-600 hover:text-slate-800 transition">
-                  Cancel
-                </button>
-              </div>
+
               <p className="text-xs text-slate-400 leading-relaxed">
                 Note: You will not be able to verify your custom domain name until it reflects on the DNS server.
                 This process could take some time.
