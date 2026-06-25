@@ -80,19 +80,22 @@ function buildPayload(form: SOFormState) {
     discount += c.disc;
     tax += c.vat;
   });
+  const total = subtotal - discount + tax;
   return {
     customerId: form.customerId,
     date: form.date || undefined,
     expectedDelivery: form.expectedDelivery || null,
     status: form.status,
-    subtotal, discount, tax,
-    total: subtotal - discount + tax,
+    subtotal: Math.round(subtotal * 100),
+    discount: Math.round(discount * 100),
+    tax: Math.round(tax * 100),
+    total: Math.round(total * 100),
     notes: form.notes.trim() || null,
     lines: form.lines.map(l => ({
       itemId: l.itemId || null,
       description: l.description,
       quantity: l.quantity,
-      unitPrice: l.unitPrice,
+      unitPrice: Math.round(l.unitPrice * 100),
       discountPct: l.discountPct,
       taxRate: l.taxRate,
     })),
@@ -106,7 +109,9 @@ function formFromSO(so: SalesOrder): SOFormState {
     expectedDelivery: so.expectedDelivery ? so.expectedDelivery.split('T')[0] : '',
     status: so.status,
     notes: so.notes || '',
-    lines: (so.lines && so.lines.length > 0) ? so.lines : [{ ...EMPTY_LINE }],
+    lines: (so.lines && so.lines.length > 0)
+      ? so.lines.map(l => ({ ...l, unitPrice: l.unitPrice / 100 }))
+      : [{ ...EMPTY_LINE }],
   };
 }
 
