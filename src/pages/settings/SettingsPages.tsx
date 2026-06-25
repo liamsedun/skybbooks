@@ -1616,27 +1616,28 @@ export function RolesPage() {
   const [newRoleNameInput, setNewRoleNameInput] = useState('');
 
   const defaultRoles = ['admin', 'accountant', 'staff'];
-  const roleNames = getRoleNames(form);
+  const existingNames = Object.keys(form).filter(k => form[k] && typeof form[k] === 'object' && !Array.isArray(form[k]));
+  const allRoles = [...new Set([...defaultRoles, ...existingNames])];
 
-  const allRoles = defaultRoles.concat(
-    roleNames.filter(r => !defaultRoles.includes(r))
-  );
-
-  function initDefaultRoles() {
+  function ensureDefaults() {
     setForm((p: Record<string, any>) => {
+      let changed = false;
       const next = { ...p };
-      defaultRoles.forEach(r => { if (!next[r]) next[r] = buildDefaultRole(r); });
-      return next;
+      defaultRoles.forEach(r => {
+        if (!next[r] || typeof next[r] !== 'object' || Array.isArray(next[r]) || !next[r].name) {
+          next[r] = buildDefaultRole(r);
+          changed = true;
+        }
+      });
+      return changed ? next : p;
     });
   }
 
-  useEffect(() => {
-    if (Object.keys(form).length === 0) initDefaultRoles();
-  }, []);
+  useEffect(() => { ensureDefaults(); }, []);
 
   function openNewRole() {
     const name = newRoleNameInput.trim().toLowerCase().replace(/\s+/g, '_');
-    if (!name || defaultRoles.includes(name) || roleNames.includes(name)) return;
+    if (!name || allRoles.includes(name)) return;
     setForm((p: Record<string, any>) => ({ ...p, [name]: buildDefaultRole(name) }));
     setEditingRole(name);
     setIsNew(true);
@@ -1655,7 +1656,6 @@ export function RolesPage() {
 
   return (
     <PageShell title="Roles" desc="Define access permissions for different user roles." icon={Shield}>
-      {/* Toolbar */}
       <div className="flex items-center justify-between mb-5">
         <p className="text-xs text-slate-500">{allRoles.length} role{allRoles.length !== 1 ? 's' : ''} configured</p>
         <div className="flex items-center gap-2">
@@ -1669,7 +1669,6 @@ export function RolesPage() {
         </div>
       </div>
 
-      {/* Role Cards */}
       <Section title="Roles & Permissions">
         {allRoles.map(role => {
           const data = form[role];
@@ -1705,7 +1704,6 @@ export function RolesPage() {
 
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
 
-      {/* Delete Confirmation */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="fixed inset-0 bg-black/40" onClick={() => setShowDeleteConfirm(null)} />
@@ -1720,7 +1718,6 @@ export function RolesPage() {
         </div>
       )}
 
-      {/* Role Editor Modal */}
       {editingRole && (
         <RoleEditorModal
           role={editingRole}
