@@ -873,14 +873,43 @@ export function LocationsPage() {
 export function UsersPage() {
   const [showInviteUser, setShowInviteUser] = useState(false);
   const [showInviteAccountant, setShowInviteAccountant] = useState(false);
+  const [showAddUser, setShowAddUser] = useState(false);
   const [inviteForm, setInviteForm] = useState<Record<string, any>>({});
+  const [addUserForm, setAddUserForm] = useState<Record<string, any>>({});
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [locationSearch, setLocationSearch] = useState('');
   const [sendingInvite, setSendingInvite] = useState(false);
+  const [addUserPending, setAddUserPending] = useState(false);
   const [inviteSuccess, setInviteSuccess] = useState<string | null>(null);
   const [inviteError, setInviteError] = useState<string | null>(null);
+  const [addUserError, setAddUserError] = useState<string | null>(null);
+  const [addUserSuccess, setAddUserSuccess] = useState<string | null>(null);
 
   const availableLocations = ['Abuja', 'Head Office, Lagos'];
+
+  function auf(name: string) {
+    return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+      setAddUserForm((p: Record<string, any>) => ({ ...p, [name]: e.target.value }));
+  }
+
+  async function handleAddUser() {
+    setAddUserError(null); setAddUserSuccess(null);
+    const name = addUserForm.name?.trim();
+    const email = addUserForm.email?.trim();
+    const role = addUserForm.role;
+    const password = addUserForm.password;
+    if (!name || !email || !role || !password) { setAddUserError('All fields are required.'); return; }
+    if (password.length < 6) { setAddUserError('Password must be at least 6 characters.'); return; }
+    setAddUserPending(true);
+    try {
+      const result = await orgApi.createUser({ name, email, role, password });
+      setAddUserSuccess(result.message || `User ${name} created successfully.`);
+      setAddUserForm({});
+      setTimeout(() => { setShowAddUser(false); setAddUserSuccess(null); }, 3000);
+    } catch (err: any) {
+      setAddUserError(err?.response?.data?.error || err?.message || 'Failed to create user.');
+    } finally { setAddUserPending(false); }
+  }
 
   async function handleSendInvite(emailField: string, nameField: string, role: string) {
     setInviteError(null); setInviteSuccess(null);
@@ -929,6 +958,12 @@ export function UsersPage() {
             className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 hover:border-slate-300 text-slate-700 text-xs font-medium rounded-lg transition"
           >
             <Plus size={14} /> Invite Accountant
+          </button>
+          <button
+            onClick={() => { setInviteForm({}); setShowAddUser(true); }}
+            className="inline-flex items-center gap-1.5 px-3 py-2 border border-emerald-200 hover:border-emerald-300 text-emerald-700 text-xs font-medium rounded-lg transition"
+          >
+            <Plus size={14} /> Add User
           </button>
         </div>
         <div className="flex items-center gap-2">
@@ -1141,6 +1176,54 @@ export function UsersPage() {
               <button onClick={() => setShowInviteAccountant(false)} className="px-4 py-2 text-sm text-slate-600 hover:text-slate-800 transition">Cancel</button>
               <button onClick={() => handleSendInvite('accEmail', 'accName', 'accountant')} disabled={sendingInvite} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition disabled:opacity-50">
                 {sendingInvite ? 'Sending...' : 'Send Invite'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add User Modal (bypasses invite email) */}
+      {showAddUser && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-8 pb-8 overflow-y-auto">
+          <div className="fixed inset-0 bg-black/40" onClick={() => setShowAddUser(false)} />
+          <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 z-10">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+              <div>
+                <h2 className="text-sm font-semibold text-slate-900">Add User Manually</h2>
+                <p className="text-xs text-slate-400">Create a user directly without sending an invite email.</p>
+              </div>
+              <button onClick={() => setShowAddUser(false)} className="text-slate-400 hover:text-slate-600 transition"><X size={18} /></button>
+            </div>
+            <div className="px-6 py-5 space-y-5">
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">Full Name</label>
+                <input type="text" value={addUserForm.name || ''} onChange={auf('name')} placeholder="Full name" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">Email Address</label>
+                <input type="email" value={addUserForm.email || ''} onChange={auf('email')} placeholder="email@company.com" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">Role</label>
+                <select value={addUserForm.role || ''} onChange={auf('role')} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800">
+                  <option value="">Select a role</option>
+                  <option value="admin">Admin</option>
+                  <option value="accountant">Accountant</option>
+                  <option value="staff">Staff</option>
+                  <option value="manager">Manager</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">Password</label>
+                <input type="password" value={addUserForm.password || ''} onChange={auf('password')} placeholder="Minimum 6 characters" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400" />
+              </div>
+            </div>
+            {addUserSuccess && <div className="px-6 py-3 bg-emerald-50 border-t border-emerald-100"><p className="text-xs text-emerald-700 flex items-center gap-1"><CheckCircle2 size={12} /> {addUserSuccess}</p></div>}
+            {addUserError && <div className="px-6 py-3 bg-rose-50 border-t border-rose-100"><p className="text-xs text-rose-600">{addUserError}</p></div>}
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200">
+              <button onClick={() => setShowAddUser(false)} className="px-4 py-2 text-sm text-slate-600 hover:text-slate-800 transition">Cancel</button>
+              <button onClick={handleAddUser} disabled={addUserPending} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition disabled:opacity-50">
+                {addUserPending ? 'Creating...' : 'Create User'}
               </button>
             </div>
           </div>

@@ -232,6 +232,10 @@ export const orgApi = {
     const res = await api.get('/organisations/users');
     return res.data;
   },
+  createUser: async (data: { name: string; email: string; role: string; password: string }) => {
+    const res = await api.post('/org/users/manual', data);
+    return res.data;
+  },
   updateUser: async (userId: string, data: any) => {
     const res = await api.patch(`/organisations/users/${userId}`, data);
     return res.data;

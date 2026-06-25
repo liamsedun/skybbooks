@@ -6,6 +6,7 @@
 import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import multer from 'multer';
+import bcrypt from 'bcrypt';
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
@@ -474,6 +475,50 @@ router.post('/invite', requireRole('owner', 'admin'), async (req: AuthenticatedR
       inviteLink,
       emailSent,
     });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return next(new AppError(error.issues[0]?.message || 'Validation failed', 400));
+    }
+    return next(error);
+  }
+});
+
+// ==========================================
+// 8. POST /org/users/manual — Manually create a user (bypass invite)
+// ==========================================
+const manualUserSchema = z.object({
+  name: z.string().min(1, 'Name is required.'),
+  email: z.string().email('Invalid email address.'),
+  role: z.enum(['admin', 'accountant', 'staff', 'manager']),
+  password: z.string().min(6, 'Password must be at least 6 characters.'),
+});
+
+router.post('/users/manual', requireRole('owner', 'admin'), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { name, email, role, password } = manualUserSchema.parse(req.body);
+
+    const existing = await db.select().from(users).where(eq(users.email, email.toLowerCase())).limit(1);
+    if (existing.length > 0) {
+      throw new AppError('A user with this email already exists.', 400);
+    }
+
+    const saltRounds = 12;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+    const [created] = await db.insert(users).values({
+      email: email.toLowerCase(),
+      passwordHash: hashedPassword,
+      fullName: name,
+      role,
+      organisationId: orgId,
+      isActive: true,
+    }).returning();
+
+    if (!created) throw new AppError('Failed to create user.', 500);
+
+    const { passwordHash: _, ...userResponse } = created;
+    return res.status(201).json({ message: `User ${name} created successfully.`, user: userResponse });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return next(new AppError(error.issues[0]?.message || 'Validation failed', 400));
