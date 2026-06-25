@@ -871,6 +871,7 @@ export function LocationsPage() {
 
 // ─── Users ─────────────────────────────────────────────────────────────────
 export function UsersPage() {
+  const queryClient = useQueryClient();
   const [showInviteUser, setShowInviteUser] = useState(false);
   const [showInviteAccountant, setShowInviteAccountant] = useState(false);
   const [showAddUser, setShowAddUser] = useState(false);
@@ -886,6 +887,13 @@ export function UsersPage() {
   const [addUserSuccess, setAddUserSuccess] = useState<string | null>(null);
 
   const availableLocations = ['Abuja', 'Head Office, Lagos'];
+
+  const { data: users, isLoading: usersLoading } = useQuery({
+    queryKey: ['orgUsers'],
+    queryFn: orgApi.getUsers,
+  });
+
+  function refreshUsers() { queryClient.invalidateQueries({ queryKey: ['orgUsers'] }); }
 
   function auf(name: string) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
@@ -905,6 +913,7 @@ export function UsersPage() {
       const result = await orgApi.createUser({ name, email, role, password });
       setAddUserSuccess(result.message || `User ${name} created successfully.`);
       setAddUserForm({});
+      refreshUsers();
       setTimeout(() => { setShowAddUser(false); setAddUserSuccess(null); }, 3000);
     } catch (err: any) {
       setAddUserError(err?.response?.data?.error || err?.message || 'Failed to create user.');
@@ -977,7 +986,59 @@ export function UsersPage() {
       </div>
 
       <Section title="Team Members">
-        <p className="text-sm text-slate-400 py-4 text-center">No users have been invited yet.</p>
+        {usersLoading ? (
+          <div className="flex items-center justify-center py-8"><Loader2 size={20} className="animate-spin text-slate-300" /></div>
+        ) : !users || users.length === 0 ? (
+          <p className="text-sm text-slate-400 py-4 text-center">No users have been invited yet.</p>
+        ) : (
+          <div className="border border-slate-200 rounded-lg overflow-hidden">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="bg-slate-50 text-left">
+                  <th className="px-4 py-3 font-medium text-slate-500">User</th>
+                  <th className="px-4 py-3 font-medium text-slate-500">Role</th>
+                  <th className="px-4 py-3 font-medium text-slate-500">Status</th>
+                  <th className="px-4 py-3 font-medium text-slate-500">Last Login</th>
+                  <th className="px-4 py-3 font-medium text-slate-500">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map((u: any) => (
+                  <tr key={u.id} className="border-t border-slate-100 hover:bg-slate-50 transition">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-7 h-7 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center text-[10px] font-semibold text-indigo-600 uppercase shrink-0">
+                          {(u.fullName || u.email || '?').charAt(0)}
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-slate-700">{u.fullName || 'Unnamed'}</p>
+                          <p className="text-[11px] text-slate-400">{u.email}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-indigo-50 text-indigo-700 capitalize">{u.role}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center gap-1 text-[11px] ${u.isActive ? 'text-emerald-600' : 'text-slate-400'}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${u.isActive ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                        {u.isActive ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-slate-400 text-[11px]">
+                      {u.lastLogin ? new Date(u.lastLogin).toLocaleDateString() : 'Never'}
+                    </td>
+                    <td className="px-4 py-3">
+                      <button className="text-slate-400 hover:text-indigo-600 transition">
+                        <Pencil size={13} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Section>
 
       {/* Invite User Modal */}

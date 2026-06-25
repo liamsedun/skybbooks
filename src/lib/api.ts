@@ -229,7 +229,7 @@ export const orgApi = {
     return res.data;
   },
   getUsers: async () => {
-    const res = await api.get('/organisations/users');
+    const res = await api.get('/org/users');
     return res.data;
   },
   createUser: async (data: { name: string; email: string; role: string; password: string }) => {
