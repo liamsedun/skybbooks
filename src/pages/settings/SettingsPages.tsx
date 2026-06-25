@@ -449,6 +449,7 @@ export function BrandingPage() {
 // ─── Custom Domain ─────────────────────────────────────────────────────────
 export function CustomDomainPage() {
   const [showModal, setShowModal] = useState(false);
+  const [domainInput, setDomainInput] = useState('');
   const { form, field, handleSave, isPending, saved, error } = useSettingsForm('domain');
   return (
     <PageShell title="Custom Domain" desc="Connect your own domain to host your customer portal and documents." icon={Globe}>
@@ -477,7 +478,7 @@ export function CustomDomainPage() {
         <Globe size={36} className="text-slate-300 mx-auto mb-3" />
         <p className="text-sm text-slate-500">You have not mapped a custom domain yet.</p>
         <button
-          onClick={() => setShowModal(true)}
+          onClick={() => { setDomainInput(''); setShowModal(true); }}
           className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition"
         >
           <Plus size={16} /> Add Custom Domain
@@ -504,7 +505,19 @@ export function CustomDomainPage() {
             <div className="px-6 py-5 space-y-5">
               <div>
                 <p className="text-xs font-medium text-slate-500 mb-1">Your registered domain is :</p>
-                <p className="text-sm font-semibold text-slate-900">https://book.skyaccounting.com</p>
+                <p className="text-sm font-semibold text-slate-900">
+                  https://{domainInput || 'yourdomain.com'}
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">Enter your domain</label>
+                <input
+                  type="text"
+                  value={domainInput}
+                  onChange={(e) => setDomainInput(e.target.value)}
+                  placeholder="books.yourcompany.com"
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400"
+                />
               </div>
               <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-xs text-slate-600 space-y-2">
                 <p className="font-medium text-slate-800">Follow these steps before submitting your custom domain name:</p>
@@ -513,7 +526,7 @@ export function CustomDomainPage() {
                   <li>In this website, create a CNAME record by entering the following information:</li>
                 </ol>
                 <div className="bg-white border border-slate-200 rounded px-3 py-2 space-y-1 mt-2 font-mono text-xs">
-                  <p><span className="font-medium text-slate-700">Host Name:</span> book.skyaccounting.com</p>
+                  <p><span className="font-medium text-slate-700">Host Name:</span> {domainInput || 'books.yourcompany.com'}</p>
                   <p><span className="font-medium text-slate-700">CNAME:</span> knyk3m.books.cs.zohohost.com</p>
                 </div>
               </div>
