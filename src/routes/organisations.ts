@@ -419,13 +419,15 @@ router.post('/invite', requireRole('owner', 'admin'), async (req: AuthenticatedR
 
     const inviteLink = `${req.protocol}://${req.get('host')}/accept-invite?token=${token}`;
 
-    // Send email via Resend (free tier)
+    // Send invite email via Resend
     const resendApiKey = process.env.RESEND_API_KEY;
+    const fromEmail = process.env.FROM_EMAIL || 'delivered@resend.dev';
+    let emailSent = false;
     if (resendApiKey) {
       try {
         const resend = new Resend(resendApiKey);
-        await resend.emails.send({
-          from: 'SkyBooks <invitations@skyaccounting.com.ng>',
+        const emailResult = await resend.emails.send({
+          from: `SkyBooks <${fromEmail}>`,
           to: email,
           subject: `You've been invited to join ${org.name} on SkyBooks`,
           html: `
@@ -449,21 +451,28 @@ router.post('/invite', requireRole('owner', 'admin'), async (req: AuthenticatedR
                 </a>
               </div>
               <p style="color: #9CA3AF; font-size: 12px;">
+                Or copy this link into your browser:<br/>
+                <span style="font-size: 11px;">${inviteLink}</span>
+              </p>
+              <p style="color: #9CA3AF; font-size: 12px; margin-top: 16px;">
                 If you weren't expecting this invitation, you can safely ignore this email.
               </p>
             </div>
           `,
         });
-      } catch (emailErr) {
-        console.error('[Invite] Failed to send email via Resend:', emailErr);
+        emailSent = true;
+        console.log('[Invite] Email sent successfully:', emailResult?.id);
+      } catch (emailErr: any) {
+        console.error('[Invite] Failed to send email via Resend:', emailErr?.message || emailErr);
       }
-    } else {
-      console.log(`[Invite] Email would be sent to ${email}: ${inviteLink}`);
     }
 
     return res.status(201).json({
-      message: `Invitation sent to ${email}.`,
+      message: emailSent
+        ? `Invitation sent to ${email}. They'll receive an email with instructions.`
+        : `Invite created for ${email}. To deliver the email, verify your sender domain in Resend and set FROM_EMAIL env var. Invite link: ${inviteLink}`,
       inviteLink,
+      emailSent,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
