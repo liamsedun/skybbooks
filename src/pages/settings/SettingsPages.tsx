@@ -393,6 +393,10 @@ export function BrandingPage() {
   const queryClient = useQueryClient();
   const [logoUploading, setLogoUploading] = useState(false);
   const [logoError, setLogoError] = useState<string | null>(null);
+  const { data: org } = useQuery<OrgData>({
+    queryKey: ['org'],
+    queryFn: orgApi.getOrg,
+  });
 
   async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -411,8 +415,10 @@ export function BrandingPage() {
     <PageShell title="Branding" desc="Customize the look and feel of your customer-facing documents." icon={Paintbrush}>
       <Section title="Logo & Appearance">
         <div className="flex items-center gap-5 pb-4 border-b border-slate-100">
-          <div className="w-20 h-20 rounded-xl border-2 border-dashed border-slate-200 flex items-center justify-center bg-slate-50">
-            <Building2 size={28} className="text-slate-300" />
+          <div className="w-20 h-20 rounded-xl border-2 border-dashed border-slate-200 flex items-center justify-center bg-slate-50 overflow-hidden shrink-0">
+            {org?.logoUrl
+              ? <img src={org.logoUrl} alt="Logo" className="w-full h-full object-contain" />
+              : <Building2 size={28} className="text-slate-300" />}
           </div>
           <div>
             <p className="text-sm font-medium text-slate-700">Company Logo</p>
