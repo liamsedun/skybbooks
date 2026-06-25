@@ -127,67 +127,6 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
     if (!invoicesResult) return [];
     const array = Array.isArray(invoicesResult) ? invoicesResult : (invoicesResult.invoices || invoicesResult.data || []);
     
-    // In case there is no databases yet or empty records list, let's provide a magnificent set of core demo seed invoices 
-    if (array.length === 0) {
-      return [
-        {
-          id: 'inv-1001',
-          invoiceNumber: 'INV-1001',
-          clientName: 'Mainwood Systems Ltd',
-          clientEmail: 'info@mainwood.ng',
-          customerId: 'cust-01',
-          date: '2026-06-01',
-          dueDate: '2026-06-30',
-          status: 'sent',
-          total: 125000000, // ₦1,250,000.00
-          balanceDue: 125000000,
-          vatAmount: 9375000,
-          whtAmount: 6250000,
-        },
-        {
-          id: 'inv-1002',
-          invoiceNumber: 'INV-1002',
-          clientName: 'Apex Retail Stores Corp',
-          clientEmail: 'billing@apexstores.ng',
-          customerId: 'cust-02',
-          date: '2026-05-15',
-          dueDate: '2026-06-14',
-          status: 'overdue',
-          total: 450000000, // ₦4,500,000.00
-          balanceDue: 450000000,
-          vatAmount: 33750000,
-          whtAmount: 22500000,
-        },
-        {
-          id: 'inv-1003',
-          invoiceNumber: 'INV-1003',
-          clientName: 'Dangote Cement Distributors',
-          clientEmail: 'accounts@dangotegroup.com',
-          customerId: 'cust-03',
-          date: '2026-06-10',
-          dueDate: '2026-07-10',
-          status: 'paid',
-          total: 820000000, // ₦8,200,000.00
-          balanceDue: 0,
-          vatAmount: 61500000,
-          whtAmount: 41000000,
-        },
-        {
-          id: 'inv-1004',
-          invoiceNumber: 'INV-1004',
-          clientName: 'Interswitch Web Gateway',
-          clientEmail: 'integrations@interswitch.ng',
-          customerId: 'cust-04',
-          date: '2026-06-12',
-          dueDate: '2026-07-12',
-          status: 'draft',
-          total: 35000000, // ₦350,000.00
-          balanceDue: 35000000,
-          vatAmount: 2625000,
-          whtAmount: 1750000,
-        }
-      ];
-    }
     return array;
   }, [invoicesResult]);
 
