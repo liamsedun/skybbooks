@@ -184,6 +184,16 @@ export const authApi = {
     const res = await api.get('/auth/me');
     return res.data;
   },
+  updateProfile: async (data: { fullName?: string; email?: string }) => {
+    const res = await api.patch('/auth/me', data);
+    return res.data;
+  },
+  uploadAvatar: async (formData: FormData) => {
+    const res = await api.post('/auth/me/photo', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data;
+  },
 };
 
 // 2. Organisation Management

@@ -200,6 +200,7 @@ export const users = pgTable('users', {
   role: userRoleEnum('role').default('staff').notNull(),
   organisationId: uuid('organisation_id').references(() => organisations.id),
   isActive: boolean('is_active').default(true).notNull(),
+  avatarUrl: text('avatar_url'),
   lastLogin: timestamp('last_login'),
   createdAt: timestamp('created_at').defaultNow().notNull()
 });

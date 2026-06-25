@@ -6,6 +6,7 @@
 import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import bcrypt from 'bcrypt';
+import multer from 'multer';
 import { eq, and } from 'drizzle-orm';
 import { db } from '../db/schema';
 import { users, organisations, sessions } from '../db/schema';
@@ -356,6 +357,82 @@ router.get('/me', authenticate, async (req: AuthenticatedRequest, res: Response,
       user: userResponse,
       organisation
     });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// ==========================================
+// 6. PATCH /auth/me — Update own profile
+// ==========================================
+const updateProfileSchema = z.object({
+  fullName: z.string().min(1).max(255).optional(),
+  email: z.string().email().optional(),
+});
+
+router.patch('/me', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    if (!req.user) throw new AppError('Authentication context is missing.', 401);
+    const { userId } = req.user;
+    const body = updateProfileSchema.parse(req.body);
+
+    if (Object.keys(body).length === 0) {
+      throw new AppError('No fields to update.', 400);
+    }
+
+    const [updated] = await db
+      .update(users)
+      .set(body)
+      .where(eq(users.id, userId))
+      .returning();
+
+    if (!updated) throw new AppError('User profile could not be found.', 404);
+
+    const { passwordHash: _, ...userResponse } = updated;
+    return res.status(200).json(userResponse);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return next(new AppError(error.issues[0]?.message || 'Validation failed', 400));
+    }
+    return next(error);
+  }
+});
+
+// ==========================================
+// 7. POST /auth/me/photo — Upload avatar photo
+// ==========================================
+const photoStorage = multer.memoryStorage();
+const photoUpload = multer({
+  storage: photoStorage,
+  limits: { fileSize: 2 * 1024 * 1024 },
+  fileFilter: (_req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+    if (file.mimetype === 'image/png' || file.mimetype === 'image/jpeg') {
+      cb(null, true);
+    } else {
+      cb(new AppError('Only PNG and JPEG files are allowed.', 400));
+    }
+  },
+});
+
+router.post('/me/photo', authenticate, photoUpload.single('photo'), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    if (!req.user) throw new AppError('Authentication context is missing.', 401);
+    if (!req.file) throw new AppError('No photo file provided.', 400);
+
+    const { userId } = req.user;
+    const base64 = req.file.buffer.toString('base64');
+    const dataUri = `data:${req.file.mimetype};base64,${base64}`;
+
+    const [updated] = await db
+      .update(users)
+      .set({ avatarUrl: dataUri })
+      .where(eq(users.id, userId))
+      .returning();
+
+    if (!updated) throw new AppError('User profile could not be found.', 404);
+
+    const { passwordHash: _, ...userResponse } = updated;
+    return res.status(200).json(userResponse);
   } catch (error) {
     return next(error);
   }

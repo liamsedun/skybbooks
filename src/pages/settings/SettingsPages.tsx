@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../hooks/useAuth';
 import { useOrgSettings } from '../../hooks/useOrgSettings';
-import { orgApi } from '../../lib/api';
+import { orgApi, authApi } from '../../lib/api';
 
 function useSettingsForm(key: string, defaults?: Record<string, any>) {
   const { settings, save, isPending } = useOrgSettings();
@@ -1150,9 +1150,90 @@ export function RolesPage() {
 
 // ─── User Preferences ──────────────────────────────────────────────────────
 export function UserPreferencesPage() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
   const { form, field, toggle, handleSave, isPending, saved, error } = useSettingsForm('userPreferences');
+  const [profileForm, setProfileForm] = useState({ fullName: user?.fullName || '', email: user?.email || '' });
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(user?.avatarUrl || null);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileSaved, setProfileSaved] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+
+  function pf(name: string) {
+    return (e: React.ChangeEvent<HTMLInputElement>) =>
+      setProfileForm((p) => ({ ...p, [name]: e.target.value }));
+  }
+
+  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { setProfileError("Photo must be under 2MB"); return; }
+    setAvatarUploading(true); setProfileError(null);
+    try {
+      const fd = new FormData(); fd.append("photo", file);
+      const updated = await authApi.uploadAvatar(fd);
+      setAvatarPreview(updated.avatarUrl || URL.createObjectURL(file));
+      queryClient.invalidateQueries({ queryKey: ["org"] });
+    } catch { setProfileError("Upload failed. Try again."); }
+    finally { setAvatarUploading(false); }
+  }
+
+  async function handleProfileSave() {
+    setProfileSaving(true); setProfileError(null); setProfileSaved(false);
+    try {
+      await authApi.updateProfile({ fullName: profileForm.fullName, email: profileForm.email });
+      queryClient.invalidateQueries({ queryKey: ["org"] });
+      setProfileSaved(true);
+      setTimeout(() => setProfileSaved(false), 3000);
+    } catch (err: any) {
+      setProfileError(err?.response?.data?.error || err?.message || 'Failed to save profile.');
+    } finally { setProfileSaving(false); }
+  }
+
   return (
-    <PageShell title="User Preferences" desc="Configure your personal app preferences." icon={UserCog}>
+    <PageShell title="User Preferences" desc="Configure your personal profile and app preferences." icon={UserCog}>
+      <Section title="My Profile">
+        <div className="flex items-center gap-5 pb-4 border-b border-slate-100">
+          <div className="w-20 h-20 rounded-full border-2 border-dashed border-slate-200 flex items-center justify-center bg-slate-50 overflow-hidden shrink-0">
+            {avatarPreview
+              ? <img src={avatarPreview} alt="" className="w-full h-full object-cover" />
+              : <UserCog size={28} className="text-slate-300" />}
+          </div>
+          <div>
+            <p className="text-sm font-medium text-slate-700">Passport Photograph</p>
+            <p className="text-xs text-slate-400 mb-2">PNG or JPG, max 2MB.</p>
+            <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg transition">
+              {avatarUploading ? "Uploading..." : <><Upload size={12} /> Upload Photo</>}
+              <input type="file" accept="image/png,image/jpeg" className="hidden" onChange={handleAvatarUpload} disabled={avatarUploading} />
+            </label>
+            {profileError && <p className="text-xs text-red-500 mt-1">{profileError}</p>}
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1.5">Full Name</label>
+            <input type="text" value={profileForm.fullName} onChange={pf('fullName')} placeholder="Your full name" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1.5">Email Address</label>
+            <input type="email" value={profileForm.email} onChange={pf('email')} placeholder="email@company.com" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400" />
+          </div>
+        </div>
+        <div className="flex justify-end pt-2">
+          <button
+            onClick={handleProfileSave}
+            disabled={profileSaving}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 disabled:opacity-50 transition"
+          >
+            {profileSaving ? <><Loader2 size={14} className="animate-spin" />Saving...</> : <><Save size={14} />Save Profile</>}
+          </button>
+        </div>
+        {profileSaved && (
+          <p className="text-xs text-emerald-600 mt-2 flex items-center gap-1"><CheckCircle2 size={12} /> Profile saved successfully.</p>
+        )}
+      </Section>
+
       <Section title="Preferences">
         <Select label="Language" options={[{ value: 'en', label: 'English' }, { value: 'fr', label: 'French' }]} value={form.language || 'en'} onChange={v => field('language')({ target: { value: v } } as any)} />
         <Select label="Date Format" options={[{ value: 'DD-MM-YYYY', label: 'DD-MM-YYYY' }, { value: 'MM-DD-YYYY', label: 'MM-DD-YYYY' }]} value={form.dateFormat || 'DD-MM-YYYY'} />
