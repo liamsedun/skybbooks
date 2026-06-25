@@ -558,15 +558,33 @@ export function CustomDomainPage() {
 
 // ─── Locations ─────────────────────────────────────────────────────────────
 export function LocationsPage() {
-  const { form, handleSave, isPending, saved, error } = useSettingsForm('locations');
+  const { form, setForm, handleSave, isPending, saved, error } = useSettingsForm('locations');
+  const [showForm, setShowForm] = useState(false);
+  const [locForm, setLocForm] = useState<Record<string, any>>({ type: 'business' });
+  const locations = form.locations || [];
+
+  function f(name: string) {
+    return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+      setLocForm((p: Record<string, any>) => ({ ...p, [name]: e.target.value }));
+  }
+
+  function handleSaveLocation() {
+    setForm((p: Record<string, any>) => ({
+      ...p,
+      locations: [...(p.locations || []), { ...locForm, id: Date.now().toString() }],
+    }));
+    setLocForm({ type: 'business' });
+    setShowForm(false);
+  }
+
   return (
     <PageShell title="Locations" desc="Manage your business locations for multi-branch operations." icon={MapPinned}>
       <Section title="Your Locations">
-        {(form.locations || []).length === 0 ? (
+        {locations.length === 0 ? (
           <p className="text-sm text-slate-400 py-4 text-center">No locations added yet.</p>
         ) : (
           <div className="space-y-3">
-            {(form.locations || []).map((loc: any, i: number) => (
+            {locations.map((loc: any, i: number) => (
               <div key={i} className="flex items-center justify-between border border-slate-100 rounded-lg px-4 py-3">
                 <div className="flex items-center gap-3">
                   <MapPinned size={16} className="text-slate-400" />
@@ -580,10 +598,196 @@ export function LocationsPage() {
             ))}
           </div>
         )}
-        <button className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 transition">
+        <button
+          onClick={() => setShowForm(true)}
+          className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 transition"
+        >
           <Plus size={16} /> Add Location
         </button>
       </Section>
+
+      {showForm && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-8 pb-8 overflow-y-auto">
+          <div className="fixed inset-0 bg-black/40" onClick={() => setShowForm(false)} />
+          <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 z-10">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+              <h2 className="text-sm font-semibold text-slate-900">Add Location</h2>
+              <button onClick={() => setShowForm(false)} className="text-slate-400 hover:text-slate-600 transition">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="px-6 py-5 space-y-6 max-h-[70vh] overflow-y-auto">
+              {/* Location Type */}
+              <div>
+                <p className="text-xs font-medium text-slate-600 mb-3">Location Type</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setLocForm((p: Record<string, any>) => ({ ...p, type: 'business' }))}
+                    className={`border rounded-xl p-4 text-left transition ${locForm.type === 'business' ? 'border-indigo-500 ring-2 ring-indigo-500/20' : 'border-slate-200 hover:border-slate-300'}`}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <Building2 size={16} className="text-indigo-600" />
+                      <span className="text-sm font-medium text-slate-800">Business Location</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 leading-relaxed">
+                      A Business Location represents your organization or office's operational location. It is used
+                      to record transactions, assess regional performance, and monitor stock levels for items stored
+                      at this location.
+                    </p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLocForm((p: Record<string, any>) => ({ ...p, type: 'warehouse' }))}
+                    className={`border rounded-xl p-4 text-left transition ${locForm.type === 'warehouse' ? 'border-indigo-500 ring-2 ring-indigo-500/20' : 'border-slate-200 hover:border-slate-300'}`}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <Store size={16} className="text-indigo-600" />
+                      <span className="text-sm font-medium text-slate-800">Warehouse Only Location</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 leading-relaxed">
+                      A Warehouse Only Location refers to where your items are stored. It helps track and monitor
+                      stock levels for items stored at this location.
+                    </p>
+                  </button>
+                </div>
+              </div>
+
+              {/* Logo */}
+              <div>
+                <p className="text-xs font-medium text-slate-600 mb-2">Logo</p>
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 rounded-lg border-2 border-dashed border-slate-200 flex items-center justify-center bg-slate-50">
+                    <Building2 size={24} className="text-slate-300" />
+                  </div>
+                  <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg transition">
+                    <Upload size={12} /> Upload Logo
+                    <input type="file" accept="image/png,image/jpeg" className="hidden" />
+                  </label>
+                </div>
+              </div>
+
+              {/* Name */}
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">Name</label>
+                <input
+                  type="text"
+                  value={locForm.name || ''}
+                  onChange={f('name')}
+                  placeholder="Location Name"
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400"
+                />
+                <p className="text-xs text-slate-400 mt-1">This is a Child Location</p>
+              </div>
+
+              {/* Address */}
+              <div>
+                <p className="text-xs font-medium text-slate-600 mb-3">Address</p>
+                <div className="space-y-3">
+                  <input type="text" value={locForm.attention || ''} onChange={f('attention')} placeholder="Attention" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400" />
+                  <input type="text" value={locForm.street1 || ''} onChange={f('street1')} placeholder="Street 1" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400" />
+                  <input type="text" value={locForm.street2 || ''} onChange={f('street2')} placeholder="Street 2" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400" />
+                  <div className="grid grid-cols-3 gap-3">
+                    <input type="text" value={locForm.city || ''} onChange={f('city')} placeholder="City" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400" />
+                    <input type="text" value={locForm.zip || ''} onChange={f('zip')} placeholder="ZIP/Postal Code" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400" />
+                    <input type="text" value={locForm.state || ''} onChange={f('state')} placeholder="State/Province" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1.5">Phone</label>
+                  <input type="text" value={locForm.phone || ''} onChange={f('phone')} placeholder="Phone" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1.5">Fax Number</label>
+                  <input type="text" value={locForm.fax || ''} onChange={f('fax')} placeholder="Fax Number" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">Website URL</label>
+                <input type="text" value={locForm.website || ''} onChange={f('website')} placeholder="Website URL" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">Website URL</label>
+                <input type="text" value={locForm.website2 || ''} onChange={f('website2')} placeholder="Website URL" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">Primary Contact</label>
+                <select value={locForm.primaryContact || ''} onChange={f('primaryContact')} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800">
+                  <option value="">Select a contact</option>
+                  <option value="olalekan">Olalekan Edun</option>
+                </select>
+              </div>
+
+              {/* Transaction Number Series */}
+              <div className="border border-slate-200 rounded-xl p-4 space-y-3">
+                <p className="text-xs font-medium text-slate-600">Transaction Number Series</p>
+                <button className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-700 transition">
+                  <Plus size={14} /> Add Transaction Series
+                </button>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Default Transaction Number Series</label>
+                  <select className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800">
+                    <option value="">None</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Location Access */}
+              <div className="border border-slate-200 rounded-xl p-4 space-y-3">
+                <p className="text-xs font-medium text-slate-600">Location Access</p>
+                <p className="text-xs text-slate-400">1 user(s) selected</p>
+                <p className="text-xs text-slate-500">Selected users can create and access transactions for this location.</p>
+                <div className="flex items-center gap-2">
+                  <input type="checkbox" id="access-all" className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                  <label htmlFor="access-all" className="text-xs text-slate-600">Provide access to all users</label>
+                </div>
+                <div className="border border-slate-200 rounded-lg overflow-hidden">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="bg-slate-50 text-left">
+                        <th className="px-3 py-2 font-medium text-slate-500">Users</th>
+                        <th className="px-3 py-2 font-medium text-slate-500">Role</th>
+                        <th className="px-3 py-2 font-medium text-slate-500">Remove</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-t border-slate-100">
+                        <td className="px-3 py-2">
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-[10px] font-medium text-indigo-700">OE</div>
+                            <div>
+                              <p className="text-xs font-medium text-slate-700">Olalekan Edun</p>
+                              <p className="text-[10px] text-slate-400">info@skyaccounting.com.ng</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-3 py-2"><span className="text-xs text-slate-600">Admin</span></td>
+                        <td className="px-3 py-2"><button className="text-slate-400 hover:text-red-500 transition"><Trash2 size={14} /></button></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200">
+              <button onClick={() => setShowForm(false)} className="px-4 py-2 text-sm text-slate-600 hover:text-slate-800 transition">
+                Cancel
+              </button>
+              <button onClick={handleSaveLocation} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition">
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
