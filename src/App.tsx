@@ -49,7 +49,6 @@ import {
   AgedReceivablesPage,
   AgedPayablesPage,
 
-  UsersSettingsPage,
   SalesOrdersPage,
   ReceiptsPage,
   RecurringExpensesPage,
@@ -61,7 +60,24 @@ import {
   InvitesSettingsPage,
   IntegrationsSettingsPage
 } from './pages/ModulePlaceholders';
-import { OrganisationSettingsPage as OrganisationSettingsPageReal } from './pages/settings/OrganisationSettings';
+import { SettingsLayout } from './components/settings/SettingsLayout';
+import {
+  OrganisationProfilePage, BrandingPage, CustomDomainPage, LocationsPage,
+  UsersPage, RolesPage, UserPreferencesPage,
+  GeneralPage, CurrenciesPage, PaymentTermsPage, OpeningBalancesPage,
+  RemindersPage, CustomerPortalPage, VendorPortalPage,
+  TxnNumberingPage, PdfTemplatesPage, EmailNotificationsPage, ReportingTagsPage, WebTabsPage,
+  WorkflowRulesPage, WorkflowActionsPage, WorkflowLogsPage, SchedulesPage,
+  ContactsSettingsPage, ItemsSettingsPage, RevenueRecognitionPage, AccountantSettingsPage,
+  TasksSettingsPage, ProjectsSettingsPage, TimesheetSettingsPage,
+  InventoryAdjustmentsPage, PaymentGatewaysPage,
+  QuotesSettingsPage, SalesOrdersSettingsPage, InvoicesSettingsPage,
+  RecurringInvoicesSettingsPage, SalesReceiptsSettingsPage, PaymentsReceivedSettingsPage,
+  CreditNotesSettingsPage, DeliveryNotesSettingsPage, PackingSlipsSettingsPage,
+  ExpensesSettingsPage, RecurringExpensesSettingsPage, PurchaseOrdersSettingsPage,
+  BillsSettingsPage, RecurringBillsSettingsPage, PaymentsMadeSettingsPage, VendorCreditsSettingsPage,
+  CustomModulesPage,
+} from './pages/settings/SettingsPages';
 
 import { useAuth } from './hooks/useAuth';
 import { EmployeesPage as EmployeesPageReal } from './pages/payroll/EmployeesPage';
@@ -263,8 +279,58 @@ function AppRoutes() {
           <Route path="/reports/custom" element={<CustomReportsPage />} />
 
           {/* System metadata & account preferences */}
-          <Route path="/settings/organisation" element={<OrganisationSettingsPageReal />} />
-          <Route path="/settings/users" element={<UsersSettingsPage />} />
+          <Route path="/settings" element={<SettingsLayout />}>
+            <Route index element={<Navigate to="/settings/organisation" replace />} />
+            <Route path="organisation" element={<OrganisationProfilePage />} />
+            <Route path="branding" element={<BrandingPage />} />
+            <Route path="domain" element={<CustomDomainPage />} />
+            <Route path="locations" element={<LocationsPage />} />
+            <Route path="users" element={<UsersPage />} />
+            <Route path="roles" element={<RolesPage />} />
+            <Route path="user-preferences" element={<UserPreferencesPage />} />
+            <Route path="general" element={<GeneralPage />} />
+            <Route path="currencies" element={<CurrenciesPage />} />
+            <Route path="payment-terms" element={<PaymentTermsPage />} />
+            <Route path="opening-balances" element={<OpeningBalancesPage />} />
+            <Route path="reminders" element={<RemindersPage />} />
+            <Route path="customer-portal" element={<CustomerPortalPage />} />
+            <Route path="vendor-portal" element={<VendorPortalPage />} />
+            <Route path="txn-numbering" element={<TxnNumberingPage />} />
+            <Route path="pdf-templates" element={<PdfTemplatesPage />} />
+            <Route path="email-notifications" element={<EmailNotificationsPage />} />
+            <Route path="reporting-tags" element={<ReportingTagsPage />} />
+            <Route path="web-tabs" element={<WebTabsPage />} />
+            <Route path="workflow-rules" element={<WorkflowRulesPage />} />
+            <Route path="workflow-actions" element={<WorkflowActionsPage />} />
+            <Route path="workflow-logs" element={<WorkflowLogsPage />} />
+            <Route path="schedules" element={<SchedulesPage />} />
+            <Route path="contacts" element={<ContactsSettingsPage />} />
+            <Route path="items" element={<ItemsSettingsPage />} />
+            <Route path="revenue-recognition" element={<RevenueRecognitionPage />} />
+            <Route path="accountant" element={<AccountantSettingsPage />} />
+            <Route path="tasks" element={<TasksSettingsPage />} />
+            <Route path="projects" element={<ProjectsSettingsPage />} />
+            <Route path="timesheet" element={<TimesheetSettingsPage />} />
+            <Route path="inventory-adjustments" element={<InventoryAdjustmentsPage />} />
+            <Route path="payment-gateways" element={<PaymentGatewaysPage />} />
+            <Route path="quotes" element={<QuotesSettingsPage />} />
+            <Route path="sales-orders" element={<SalesOrdersSettingsPage />} />
+            <Route path="invoices" element={<InvoicesSettingsPage />} />
+            <Route path="recurring-invoices" element={<RecurringInvoicesSettingsPage />} />
+            <Route path="sales-receipts" element={<SalesReceiptsSettingsPage />} />
+            <Route path="payments-received" element={<PaymentsReceivedSettingsPage />} />
+            <Route path="credit-notes" element={<CreditNotesSettingsPage />} />
+            <Route path="delivery-notes" element={<DeliveryNotesSettingsPage />} />
+            <Route path="packing-slips" element={<PackingSlipsSettingsPage />} />
+            <Route path="expenses" element={<ExpensesSettingsPage />} />
+            <Route path="recurring-expenses" element={<RecurringExpensesSettingsPage />} />
+            <Route path="purchase-orders" element={<PurchaseOrdersSettingsPage />} />
+            <Route path="bills" element={<BillsSettingsPage />} />
+            <Route path="recurring-bills" element={<RecurringBillsSettingsPage />} />
+            <Route path="payments-made" element={<PaymentsMadeSettingsPage />} />
+            <Route path="vendor-credits" element={<VendorCreditsSettingsPage />} />
+            <Route path="custom-modules" element={<CustomModulesPage />} />
+          </Route>
           <Route path="/settings/invites" element={<InvitesSettingsPage />} />
           <Route path="/settings/integrations" element={<IntegrationsSettingsPage />} />
         </Route>

@@ -142,7 +142,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     'rep_custom': '/reports/custom',
     'set_organisation': '/settings/organisation',
     'set_invites': '/settings/invites',
-    'set_roles': '/settings/users',
+    'set_roles': '/settings/roles',
     'set_integrations': '/settings/integrations',
   }), []);
 
@@ -240,13 +240,11 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
       ],
     },
     {
-      title: 'SETTINGS',
-      items: [
-        { name: 'Organisation Settings', id: 'set_organisation', icon: Settings },
-        { name: 'Invites & Members', id: 'set_invites', icon: Users },
-        { name: 'Users & Roles', id: 'set_roles', icon: Shield },
-        { name: 'Integrations', id: 'set_integrations', icon: HelpCircle },
-      ],
+    title: 'SETTINGS',
+    items: [
+      { name: 'Organisation Settings', id: 'set_organisation', icon: Settings },
+      { name: 'Users & Roles', id: 'set_roles', icon: Shield },
+    ],
     },
   ], []);
 
