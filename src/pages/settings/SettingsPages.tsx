@@ -1152,7 +1152,7 @@ export function UsersPage() {
 
 // ─── Roles ─────────────────────────────────────────────────────────────────
 export function RolesPage() {
-  const { form, handleSave, isPending, saved, error } = useSettingsForm('roles');
+  const { form, field, handleSave, isPending, saved, error } = useSettingsForm('roles');
   return (
     <PageShell title="Roles" desc="Define access permissions for different user roles." icon={Shield}>
       <Section title="Roles & Permissions">
@@ -1162,21 +1162,24 @@ export function RolesPage() {
               <span className="text-sm font-semibold text-slate-800 capitalize">{role}</span>
             </div>
             <div className="space-y-1.5">
-              {['Sales', 'Purchases', 'Accounting', 'Reports', 'Settings'].map(m => (
-                <div key={m} className="flex items-center justify-between text-xs text-slate-600">
-                  <span>{m}</span>
-                  <select
-                    value={form[`${role}_${m.toLowerCase()}`] || 'read'}
-                    onChange={() => {}}
-                    className="text-xs border border-slate-200 rounded px-2 py-1"
-                  >
-                    <option value="none">No Access</option>
-                    <option value="read">View Only</option>
-                    <option value="write">Create & Edit</option>
-                    <option value="full">Full Access</option>
-                  </select>
-                </div>
-              ))}
+              {['Sales', 'Purchases', 'Accounting', 'Reports', 'Settings'].map(m => {
+                const key = `${role}_${m.toLowerCase()}`;
+                return (
+                  <div key={m} className="flex items-center justify-between text-xs text-slate-600">
+                    <span>{m}</span>
+                    <select
+                      value={form[key] || 'none'}
+                      onChange={field(key)}
+                      className="text-xs border border-slate-200 rounded px-2 py-1"
+                    >
+                      <option value="none">No Access</option>
+                      <option value="read">View Only</option>
+                      <option value="write">Create & Edit</option>
+                      <option value="full">Full Access</option>
+                    </select>
+                  </div>
+                );
+              })}
             </div>
           </div>
         ))}
