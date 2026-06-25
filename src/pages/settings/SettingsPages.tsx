@@ -925,7 +925,6 @@ export function SchedulesPage() {
               <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-full uppercase">Active</span>
             </div>
           ))}
-        </div>
       </Section>
     </PageShell>
   );
