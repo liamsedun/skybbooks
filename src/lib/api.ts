@@ -198,6 +198,10 @@ export const authApi = {
 
 // 2. Organisation Management
 export const orgApi = {
+  inviteUser: async (data: { name: string; email: string; role: string }) => {
+    const res = await api.post('/org/invite', data);
+    return res.data;
+  },
   getOrg: async () => {
     const res = await api.get('/org');
     return res.data;
@@ -222,10 +226,6 @@ export const orgApi = {
   },
   getUsers: async () => {
     const res = await api.get('/organisations/users');
-    return res.data;
-  },
-  inviteUser: async (data: any) => {
-    const res = await api.post('/organisations/users/invite', data);
     return res.data;
   },
   updateUser: async (userId: string, data: any) => {

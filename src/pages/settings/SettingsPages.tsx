@@ -876,8 +876,28 @@ export function UsersPage() {
   const [inviteForm, setInviteForm] = useState<Record<string, any>>({});
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [locationSearch, setLocationSearch] = useState('');
+  const [sendingInvite, setSendingInvite] = useState(false);
+  const [inviteSuccess, setInviteSuccess] = useState<string | null>(null);
+  const [inviteError, setInviteError] = useState<string | null>(null);
 
   const availableLocations = ['Abuja', 'Head Office, Lagos'];
+
+  async function handleSendInvite(emailField: string, nameField: string, role: string) {
+    setInviteError(null); setInviteSuccess(null);
+    const name = inviteForm[nameField]?.trim();
+    const email = inviteForm[emailField]?.trim();
+    if (!name || !email) { setInviteError('Name and email are required.'); return; }
+    setSendingInvite(true);
+    try {
+      const result = await orgApi.inviteUser({ name, email, role });
+      setInviteSuccess(result.message || `Invitation sent to ${email}.`);
+      setInviteForm({});
+      setSelectedLocations([]);
+      setTimeout(() => { setShowInviteUser(false); setShowInviteAccountant(false); setInviteSuccess(null); }, 3000);
+    } catch (err: any) {
+      setInviteError(err?.response?.data?.error || err?.message || 'Failed to send invite.');
+    } finally { setSendingInvite(false); }
+  }
 
   function ifv(name: string) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
@@ -1017,9 +1037,13 @@ export function UsersPage() {
                 <p className="text-xs text-slate-400">{selectedLocations.length} Associated Values {selectedLocations.length}</p>
               </div>
             </div>
+            {inviteSuccess && <div className="px-6 py-3 bg-emerald-50 border-t border-emerald-100"><p className="text-xs text-emerald-700 flex items-center gap-1"><CheckCircle2 size={12} /> {inviteSuccess}</p></div>}
+            {inviteError && <div className="px-6 py-3 bg-rose-50 border-t border-rose-100"><p className="text-xs text-rose-600">{inviteError}</p></div>}
             <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200">
               <button onClick={() => setShowInviteUser(false)} className="px-4 py-2 text-sm text-slate-600 hover:text-slate-800 transition">Cancel</button>
-              <button className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition">Send Invite</button>
+              <button onClick={() => handleSendInvite('email', 'name', inviteForm.role || 'staff')} disabled={sendingInvite} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition disabled:opacity-50">
+                {sendingInvite ? 'Sending...' : 'Send Invite'}
+              </button>
             </div>
           </div>
         </div>
@@ -1111,9 +1135,13 @@ export function UsersPage() {
                 <p className="text-xs text-slate-400">{selectedLocations.length} Associated Values {selectedLocations.length}</p>
               </div>
             </div>
+            {inviteSuccess && <div className="px-6 py-3 bg-emerald-50 border-t border-emerald-100"><p className="text-xs text-emerald-700 flex items-center gap-1"><CheckCircle2 size={12} /> {inviteSuccess}</p></div>}
+            {inviteError && <div className="px-6 py-3 bg-rose-50 border-t border-rose-100"><p className="text-xs text-rose-600">{inviteError}</p></div>}
             <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200">
               <button onClick={() => setShowInviteAccountant(false)} className="px-4 py-2 text-sm text-slate-600 hover:text-slate-800 transition">Cancel</button>
-              <button className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition">Send Invite</button>
+              <button onClick={() => handleSendInvite('accEmail', 'accName', 'accountant')} disabled={sendingInvite} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition disabled:opacity-50">
+                {sendingInvite ? 'Sending...' : 'Send Invite'}
+              </button>
             </div>
           </div>
         </div>

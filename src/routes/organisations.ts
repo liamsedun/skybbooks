@@ -9,6 +9,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
+import { Resend } from 'resend';
 import { v2 as cloudinary } from 'cloudinary';
 
 cloudinary.config({
@@ -399,7 +400,7 @@ router.post('/invite', requireRole('owner', 'admin'), async (req: AuthenticatedR
     const token = crypto.randomBytes(24).toString('hex');
 
     const [org] = await db
-      .select({ settings: organisations.settings })
+      .select({ name: organisations.name, settings: organisations.settings })
       .from(organisations)
       .where(eq(organisations.id, orgId))
       .limit(1);
@@ -417,6 +418,48 @@ router.post('/invite', requireRole('owner', 'admin'), async (req: AuthenticatedR
       .where(eq(organisations.id, orgId));
 
     const inviteLink = `${req.protocol}://${req.get('host')}/accept-invite?token=${token}`;
+
+    // Send email via Resend (free tier)
+    const resendApiKey = process.env.RESEND_API_KEY;
+    if (resendApiKey) {
+      try {
+        const resend = new Resend(resendApiKey);
+        await resend.emails.send({
+          from: 'SkyBooks <invitations@skyaccounting.com.ng>',
+          to: email,
+          subject: `You've been invited to join ${org.name} on SkyBooks`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto;">
+              <h2 style="color: #4F46E5;">You're Invited!</h2>
+              <p style="color: #374151; font-size: 14px; line-height: 1.6;">
+                Hi <strong>${name}</strong>,
+              </p>
+              <p style="color: #374151; font-size: 14px; line-height: 1.6;">
+                <strong>${req.user?.fullName || 'An admin'}</strong> has invited you to join
+                <strong>${org.name}</strong> on SkyBooks as a
+                <strong>${role.charAt(0).toUpperCase() + role.slice(1)}</strong>.
+              </p>
+              <p style="color: #374151; font-size: 14px; line-height: 1.6;">
+                Click the button below to accept the invitation and set up your account:
+              </p>
+              <div style="text-align: center; margin: 28px 0;">
+                <a href="${inviteLink}"
+                   style="display: inline-block; padding: 12px 28px; background-color: #4F46E5; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 600; border-radius: 8px;">
+                  Accept Invitation
+                </a>
+              </div>
+              <p style="color: #9CA3AF; font-size: 12px;">
+                If you weren't expecting this invitation, you can safely ignore this email.
+              </p>
+            </div>
+          `,
+        });
+      } catch (emailErr) {
+        console.error('[Invite] Failed to send email via Resend:', emailErr);
+      }
+    } else {
+      console.log(`[Invite] Email would be sent to ${email}: ${inviteLink}`);
+    }
 
     return res.status(201).json({
       message: `Invitation sent to ${email}.`,
