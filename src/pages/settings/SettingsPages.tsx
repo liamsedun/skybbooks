@@ -561,6 +561,7 @@ export function LocationsPage() {
   const { form, setForm, handleSave, isPending, saved, error } = useSettingsForm('locations');
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [viewOnly, setViewOnly] = useState(false);
   const [locForm, setLocForm] = useState<Record<string, any>>({ type: 'business' });
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const locations = form.locations || [];
@@ -572,13 +573,23 @@ export function LocationsPage() {
 
   function openAddForm() {
     setEditingId(null);
+    setViewOnly(false);
     setLocForm({ type: 'business' });
     setLogoPreview(null);
     setShowForm(true);
   }
 
+  function openViewForm(loc: any) {
+    setEditingId(loc.id);
+    setViewOnly(true);
+    setLocForm({ ...loc });
+    setLogoPreview(loc.logoUrl || null);
+    setShowForm(true);
+  }
+
   function openEditForm(loc: any) {
     setEditingId(loc.id);
+    setViewOnly(false);
     setLocForm({ ...loc });
     setLogoPreview(loc.logoUrl || null);
     setShowForm(true);
@@ -637,6 +648,7 @@ export function LocationsPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  <button onClick={() => openViewForm(loc)} className="text-slate-400 hover:text-indigo-600 transition"><Eye size={14} /></button>
                   <button onClick={() => openEditForm(loc)} className="text-slate-400 hover:text-indigo-600 transition"><Pencil size={14} /></button>
                   <button onClick={() => handleDeleteLocation(loc.id)} className="text-slate-400 hover:text-red-500 transition"><Trash2 size={14} /></button>
                 </div>
@@ -657,7 +669,7 @@ export function LocationsPage() {
           <div className="fixed inset-0 bg-black/40" onClick={() => setShowForm(false)} />
           <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 z-10">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
-              <h2 className="text-sm font-semibold text-slate-900">{editingId ? 'Edit Location' : 'Add Location'}</h2>
+              <h2 className="text-sm font-semibold text-slate-900">{viewOnly ? 'View Location' : editingId ? 'Edit Location' : 'Add Location'}</h2>
               <button onClick={() => setShowForm(false)} className="text-slate-400 hover:text-slate-600 transition">
                 <X size={18} />
               </button>
@@ -669,8 +681,9 @@ export function LocationsPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
+                    disabled={viewOnly}
                     onClick={() => setLocForm((p: Record<string, any>) => ({ ...p, type: 'business' }))}
-                    className={`border rounded-xl p-4 text-left transition ${locForm.type === 'business' ? 'border-indigo-500 ring-2 ring-indigo-500/20' : 'border-slate-200 hover:border-slate-300'}`}
+                    className={`border rounded-xl p-4 text-left transition ${viewOnly ? 'cursor-default' : ''} ${locForm.type === 'business' ? 'border-indigo-500 ring-2 ring-indigo-500/20' : 'border-slate-200 hover:border-slate-300'}`}
                   >
                     <div className="flex items-center gap-2 mb-2">
                       <Building2 size={16} className="text-indigo-600" />
@@ -684,8 +697,9 @@ export function LocationsPage() {
                   </button>
                   <button
                     type="button"
+                    disabled={viewOnly}
                     onClick={() => setLocForm((p: Record<string, any>) => ({ ...p, type: 'warehouse' }))}
-                    className={`border rounded-xl p-4 text-left transition ${locForm.type === 'warehouse' ? 'border-indigo-500 ring-2 ring-indigo-500/20' : 'border-slate-200 hover:border-slate-300'}`}
+                    className={`border rounded-xl p-4 text-left transition ${viewOnly ? 'cursor-default' : ''} ${locForm.type === 'warehouse' ? 'border-indigo-500 ring-2 ring-indigo-500/20' : 'border-slate-200 hover:border-slate-300'}`}
                   >
                     <div className="flex items-center gap-2 mb-2">
                       <Store size={16} className="text-indigo-600" />
@@ -708,9 +722,9 @@ export function LocationsPage() {
                       ? <img src={logoPreview} alt="" className="w-full h-full object-contain" />
                       : <Building2 size={24} className="text-slate-300" />}
                   </div>
-                  <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg transition">
+                  <label className={`inline-flex items-center gap-2 px-3 py-1.5 text-white text-xs font-medium rounded-lg transition ${viewOnly ? 'bg-slate-300 cursor-not-allowed' : 'cursor-pointer bg-indigo-600 hover:bg-indigo-700'}`}>
                     <Upload size={12} /> Upload Logo
-                    <input type="file" accept="image/png,image/jpeg" className="hidden" onChange={handleLogoChange} />
+                    <input type="file" accept="image/png,image/jpeg" className="hidden" onChange={handleLogoChange} disabled={viewOnly} />
                   </label>
                 </div>
               </div>
@@ -723,7 +737,8 @@ export function LocationsPage() {
                   value={locForm.name || ''}
                   onChange={f('name')}
                   placeholder="Location Name"
-                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400"
+                  disabled={viewOnly}
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400 disabled:bg-slate-50 disabled:text-slate-500"
                 />
                 <p className="text-xs text-slate-400 mt-1">This is a Child Location</p>
               </div>
@@ -732,13 +747,13 @@ export function LocationsPage() {
               <div>
                 <p className="text-xs font-medium text-slate-600 mb-3">Address</p>
                 <div className="space-y-3">
-                  <input type="text" value={locForm.attention || ''} onChange={f('attention')} placeholder="Attention" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400" />
-                  <input type="text" value={locForm.street1 || ''} onChange={f('street1')} placeholder="Street 1" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400" />
-                  <input type="text" value={locForm.street2 || ''} onChange={f('street2')} placeholder="Street 2" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400" />
+                  <input type="text" value={locForm.attention || ''} onChange={f('attention')} placeholder="Attention" disabled={viewOnly} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400 disabled:bg-slate-50 disabled:text-slate-500" />
+                  <input type="text" value={locForm.street1 || ''} onChange={f('street1')} placeholder="Street 1" disabled={viewOnly} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400 disabled:bg-slate-50 disabled:text-slate-500" />
+                  <input type="text" value={locForm.street2 || ''} onChange={f('street2')} placeholder="Street 2" disabled={viewOnly} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400 disabled:bg-slate-50 disabled:text-slate-500" />
                   <div className="grid grid-cols-3 gap-3">
-                    <input type="text" value={locForm.city || ''} onChange={f('city')} placeholder="City" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400" />
-                    <input type="text" value={locForm.zip || ''} onChange={f('zip')} placeholder="ZIP/Postal Code" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400" />
-                    <input type="text" value={locForm.state || ''} onChange={f('state')} placeholder="State/Province" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400" />
+                    <input type="text" value={locForm.city || ''} onChange={f('city')} placeholder="City" disabled={viewOnly} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400 disabled:bg-slate-50 disabled:text-slate-500" />
+                    <input type="text" value={locForm.zip || ''} onChange={f('zip')} placeholder="ZIP/Postal Code" disabled={viewOnly} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400 disabled:bg-slate-50 disabled:text-slate-500" />
+                    <input type="text" value={locForm.state || ''} onChange={f('state')} placeholder="State/Province" disabled={viewOnly} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400 disabled:bg-slate-50 disabled:text-slate-500" />
                   </div>
                 </div>
               </div>
@@ -747,27 +762,27 @@ export function LocationsPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1.5">Phone</label>
-                  <input type="text" value={locForm.phone || ''} onChange={f('phone')} placeholder="Phone" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400" />
+                  <input type="text" value={locForm.phone || ''} onChange={f('phone')} placeholder="Phone" disabled={viewOnly} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400 disabled:bg-slate-50 disabled:text-slate-500" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1.5">Fax Number</label>
-                  <input type="text" value={locForm.fax || ''} onChange={f('fax')} placeholder="Fax Number" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400" />
+                  <input type="text" value={locForm.fax || ''} onChange={f('fax')} placeholder="Fax Number" disabled={viewOnly} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400 disabled:bg-slate-50 disabled:text-slate-500" />
                 </div>
               </div>
 
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1.5">Email</label>
-                <input type="email" value={locForm.email || ''} onChange={f('email')} placeholder="Email address" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400" />
+                <input type="email" value={locForm.email || ''} onChange={f('email')} placeholder="Email address" disabled={viewOnly} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400 disabled:bg-slate-50 disabled:text-slate-500" />
               </div>
 
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1.5">Website URL</label>
-                <input type="text" value={locForm.website2 || ''} onChange={f('website2')} placeholder="Website URL" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400" />
+                <input type="text" value={locForm.website2 || ''} onChange={f('website2')} placeholder="Website URL" disabled={viewOnly} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400 disabled:bg-slate-50 disabled:text-slate-500" />
               </div>
 
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1.5">Primary Contact</label>
-                <select value={locForm.primaryContact || ''} onChange={f('primaryContact')} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800">
+                <select value={locForm.primaryContact || ''} onChange={f('primaryContact')} disabled={viewOnly} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 disabled:bg-slate-50 disabled:text-slate-500">
                   <option value="">Select a contact</option>
                   <option value="olalekan">Olalekan Edun</option>
                 </select>
@@ -776,12 +791,12 @@ export function LocationsPage() {
               {/* Transaction Number Series */}
               <div className="border border-slate-200 rounded-xl p-4 space-y-3">
                 <p className="text-xs font-medium text-slate-600">Transaction Number Series</p>
-                <button className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-700 transition">
+                <button disabled={viewOnly} className={`inline-flex items-center gap-1.5 text-xs font-medium transition ${viewOnly ? 'text-slate-300 cursor-not-allowed' : 'text-indigo-600 hover:text-indigo-700'}`}>
                   <Plus size={14} /> Add Transaction Series
                 </button>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Default Transaction Number Series</label>
-                  <select className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800">
+                  <select disabled={viewOnly} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 disabled:bg-slate-50 disabled:text-slate-500">
                     <option value="">None</option>
                   </select>
                 </div>
@@ -793,7 +808,7 @@ export function LocationsPage() {
                 <p className="text-xs text-slate-400">1 user(s) selected</p>
                 <p className="text-xs text-slate-500">Selected users can create and access transactions for this location.</p>
                 <div className="flex items-center gap-2">
-                  <input type="checkbox" id="access-all" className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                  <input type="checkbox" id="access-all" disabled={viewOnly} className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 disabled:opacity-50" />
                   <label htmlFor="access-all" className="text-xs text-slate-600">Provide access to all users</label>
                 </div>
                 <div className="border border-slate-200 rounded-lg overflow-hidden">
@@ -817,7 +832,7 @@ export function LocationsPage() {
                           </div>
                         </td>
                         <td className="px-3 py-2"><span className="text-xs text-slate-600">Admin</span></td>
-                        <td className="px-3 py-2"><button className="text-slate-400 hover:text-red-500 transition"><Trash2 size={14} /></button></td>
+                        <td className="px-3 py-2"><button disabled={viewOnly} className="text-slate-400 hover:text-red-500 transition disabled:opacity-30"><Trash2 size={14} /></button></td>
                       </tr>
                     </tbody>
                   </table>
@@ -828,7 +843,7 @@ export function LocationsPage() {
               <button onClick={() => setShowForm(false)} className="px-4 py-2 text-sm text-slate-600 hover:text-slate-800 transition">
                 Cancel
               </button>
-              <button onClick={handleSaveLocation} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition">
+              <button onClick={handleSaveLocation} disabled={viewOnly} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition disabled:bg-slate-300 disabled:cursor-not-allowed">
                 Save
               </button>
             </div>
