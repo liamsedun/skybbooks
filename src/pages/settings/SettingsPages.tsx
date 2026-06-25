@@ -35,7 +35,7 @@ function useSettingsForm(key: string, defaults?: Record<string, any>) {
     return () => setForm((p: Record<string, any>) => ({ ...p, [name]: !p[name] }));
   }
 
-  return { form, field, toggle, handleSave, isPending, saved, error, setForm };
+  return { form, field, toggle, handleSave, isPending, saved, error, setForm, save, setSaved, setError };
 }
 import {
   Building2, Paintbrush, Globe, MapPinned, Users, Shield, UserCog,
@@ -558,7 +558,7 @@ export function CustomDomainPage() {
 
 // ─── Locations ─────────────────────────────────────────────────────────────
 export function LocationsPage() {
-  const { form, setForm, handleSave, isPending, saved, error } = useSettingsForm('locations');
+  const { form, setForm, handleSave, save, isPending, saved, error, setSaved, setError } = useSettingsForm('locations');
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [viewOnly, setViewOnly] = useState(false);
@@ -602,18 +602,23 @@ export function LocationsPage() {
     setLocForm((p: Record<string, any>) => ({ ...p, logoUrl: URL.createObjectURL(file), logoFile: file.name }));
   }
 
+  function persistLocations(newLocations: any[]) {
+    setForm((p: Record<string, any>) => ({ ...p, locations: newLocations }));
+    save({ locations: newLocations }, {
+      onSuccess: () => { setSaved(true); setTimeout(() => setSaved(false), 3000); },
+      onError: (err: any) => setError(err?.response?.data?.error || err?.message || 'Save failed'),
+    });
+  }
+
   function handleSaveLocation() {
+    const current = form.locations || [];
+    let newLocations: any[];
     if (editingId) {
-      setForm((p: Record<string, any>) => ({
-        ...p,
-        locations: (p.locations || []).map((l: any) => l.id === editingId ? { ...locForm, id: editingId } : l),
-      }));
+      newLocations = current.map((l: any) => l.id === editingId ? { ...locForm, id: editingId } : l);
     } else {
-      setForm((p: Record<string, any>) => ({
-        ...p,
-        locations: [...(p.locations || []), { ...locForm, id: Date.now().toString() }],
-      }));
+      newLocations = [...current, { ...locForm, id: Date.now().toString() }];
     }
+    persistLocations(newLocations);
     setLocForm({ type: 'business' });
     setLogoPreview(null);
     setEditingId(null);
@@ -621,10 +626,8 @@ export function LocationsPage() {
   }
 
   function handleDeleteLocation(id: string) {
-    setForm((p: Record<string, any>) => ({
-      ...p,
-      locations: (p.locations || []).filter((l: any) => l.id !== id),
-    }));
+    const newLocations = (form.locations || []).filter((l: any) => l.id !== id);
+    persistLocations(newLocations);
   }
 
   return (
