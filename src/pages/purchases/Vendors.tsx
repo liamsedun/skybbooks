@@ -439,7 +439,7 @@ function VendorDetail({ id }: { id: string }) {
     },
   });
 
-  const { data: statement, isLoading: loadingStatement } = useQuery<StatementResponse>({
+  const { data: statement, isLoading: loadingStatement, isError: statementError } = useQuery<StatementResponse>({
     queryKey: ['purchases', 'vendor', id, 'statement'],
     queryFn: async () => {
       const res = await api.get(`/purchases/vendors/${id}/statement`);
@@ -581,8 +581,31 @@ function VendorDetail({ id }: { id: string }) {
             <Loader2 size={18} className="animate-spin mr-2" />
             Loading statement...
           </div>
-        ) : !statement || statement.ledgerStatement.length === 0 ? (
-          <div className="text-center py-12 text-sm text-slate-400">No transactions yet.</div>
+        ) : !statement || statementError ? (
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-slate-100 text-left text-xs font-medium text-slate-400 uppercase tracking-wide">
+                <th className="py-2.5 pl-4 pr-3">Date</th>
+                <th className="py-2.5 pr-3">Type</th>
+                <th className="py-2.5 pr-3">Number</th>
+                <th className="py-2.5 pr-3">Reference</th>
+                <th className="py-2.5 pr-3 text-right">Debit</th>
+                <th className="py-2.5 pr-3 text-right">Credit</th>
+                <th className="py-2.5 pr-4 text-right">Balance</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              <tr className="bg-slate-50 font-medium">
+                <td className="py-2.5 pl-4 pr-3 text-sm text-slate-600">—</td>
+                <td className="py-2.5 pr-3"><span className="text-xs font-medium capitalize text-slate-800">Opening Balance</span></td>
+                <td className="py-2.5 pr-3 text-sm font-mono text-slate-600">—</td>
+                <td className="py-2.5 pr-3 text-sm text-slate-500">Opening Balance</td>
+                <td className="py-2.5 pr-3 text-sm text-right text-slate-700">—</td>
+                <td className="py-2.5 pr-3 text-sm text-right text-slate-700">{formatNaira((vendor.balance || 0) + (vendor.outstanding || 0))}</td>
+                <td className="py-2.5 pr-4 text-sm text-right font-medium text-slate-900">{formatNaira((vendor.balance || 0) + (vendor.outstanding || 0))}</td>
+              </tr>
+            </tbody>
+          </table>
         ) : (
           <table className="w-full">
             <thead>
