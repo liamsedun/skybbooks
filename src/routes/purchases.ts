@@ -753,6 +753,20 @@ router.get('/vendors/:id/statement', async (req: AuthenticatedRequest, res: Resp
     // Sort chronologically
     transactionsList.sort((a, b) => a.date.getTime() - b.date.getTime());
 
+    // Prepend opening balance from contacts.balance
+    const openingBalance = vendor.balance || 0;
+    if (openingBalance > 0) {
+      transactionsList.unshift({
+        id: 'opening',
+        date: new Date(0),
+        type: 'opening_balance',
+        number: '',
+        reference: 'Opening Balance',
+        debit: 0,
+        credit: openingBalance
+      });
+    }
+
     // Rolling outstanding creditor balance: increases on CR (bill), decreases on DR (payment/credit)
     let rollingBalance = 0;
     const ledgerStatement = transactionsList.map((item) => {
