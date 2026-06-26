@@ -4696,10 +4696,37 @@ export function RevenueRecognitionPage() {
 }
 
 // ─── Accountant ────────────────────────────────────────────────────────────
+const defaultAccountTypes = [
+  { key: 'receivable', label: 'Accounts Receivable' },
+  { key: 'vendorAdvances', label: 'Vendor Advances' },
+  { key: 'payable', label: 'Accounts Payable' },
+  { key: 'customerAdvances', label: 'Customer Advances' },
+  { key: 'lateFeeIncome', label: 'Late Fee Income' },
+  { key: 'discount', label: 'Discount' },
+  { key: 'adjustment', label: 'Adjustment' },
+  { key: 'shippingCharge', label: 'Shipping Charge' },
+  { key: 'badDebt', label: 'Bad Debt' },
+  { key: 'purchaseAdjustment', label: 'Purchase Adjustment' },
+];
+
+const dataTypeOptions = [
+  { value: 'text', label: 'Text' },
+  { value: 'number', label: 'Number' },
+  { value: 'date', label: 'Date' },
+  { value: 'dropdown', label: 'Dropdown' },
+  { value: 'textarea', label: 'Text Area' },
+  { value: 'checkbox', label: 'Checkbox' },
+];
+
 export function AccountantSettingsPage() {
-  const { form, field, toggle, handleSave, isPending, saved, error, setForm } = useSettingsForm('accountant', {
+  const { form, field, toggle, handleSave, isPending, saved, error, setForm, settings } = useSettingsForm('accountant', {
     makeAccountCodeMandatory: false, currencyGainLoss: 'sameAccount', exchangeAdjustmentAccount: '',
     allow13thMonth: false, recurringJournalState: 'draft',
+    journalApprovalType: 'noApproval',
+    defaultAccounts: {} as Record<string, string>,
+    journalFields: [] as any[],
+    coaFields: [] as any[],
+    fixedAssetFields: [] as any[],
   });
   const [aTab, setATab] = useState('Preferences');
   const aTabs = ['Preferences', 'Default Account Tracking', 'Journal Approvals', 'Journal Validation Rules', 'Journal Fields', 'Chart of Accounts Fields', 'Fixed Asset Fields'];
@@ -4712,6 +4739,61 @@ export function AccountantSettingsPage() {
     value: a.id,
     label: `${a.code} — ${a.name}`,
   }));
+
+  // Default Account Tracking helpers
+  const defaultAccounts = (form.defaultAccounts || {}) as Record<string, string>;
+  const setDefaultAccount = (key: string, val: string) => setForm((p: any) => ({ ...p, defaultAccounts: { ...(p.defaultAccounts || {}), [key]: val } }));
+
+  // Journal / COA / Fixed Asset Fields state
+  const [fieldSearch, setFieldSearch] = useState('');
+  const [fieldTarget, setFieldTarget] = useState<'journal' | 'coa' | 'fixedAsset'>('journal');
+  const [showFieldModal, setShowFieldModal] = useState(false);
+  const [editFieldIdx, setEditFieldIdx] = useState<number | null>(null);
+  const [fieldForm, setFieldForm] = useState({ labelName: '', dataType: 'text', mandatory: false, showInPdf: false, status: 'active' });
+
+  const fieldsMap: Record<string, any[]> = {
+    journal: form.journalFields || [],
+    coa: form.coaFields || [],
+    fixedAsset: form.fixedAssetFields || [],
+  };
+  const currentFields = fieldsMap[fieldTarget] || [];
+
+  const filteredFields = currentFields.filter((f: any) =>
+    !fieldSearch || f.labelName?.toLowerCase().includes(fieldSearch.toLowerCase())
+  );
+
+  const openFieldModal = (target: string, idx: number | null = null) => {
+    setFieldTarget(target as any);
+    if (idx !== null) {
+      const f = currentFields[idx];
+      setFieldForm({ labelName: f.labelName, dataType: f.dataType, mandatory: f.mandatory, showInPdf: f.showInPdf, status: f.status });
+      setEditFieldIdx(idx);
+    } else {
+      setFieldForm({ labelName: '', dataType: 'text', mandatory: false, showInPdf: false, status: 'active' });
+      setEditFieldIdx(null);
+    }
+    setShowFieldModal(true);
+  };
+
+  const saveField = () => {
+    const key = fieldTarget === 'journal' ? 'journalFields' : fieldTarget === 'coa' ? 'coaFields' : 'fixedAssetFields';
+    const list = [...(form[key] || [])];
+    if (editFieldIdx !== null) {
+      list[editFieldIdx] = fieldForm;
+    } else {
+      list.push({ ...fieldForm, id: Date.now().toString() });
+    }
+    setForm((p: any) => ({ ...p, [key]: list }));
+    setShowFieldModal(false);
+    setEditFieldIdx(null);
+  };
+
+  const deleteField = (target: string, idx: number) => {
+    const key = target === 'journal' ? 'journalFields' : target === 'coa' ? 'coaFields' : 'fixedAssetFields';
+    const list = [...(form[key] || [])];
+    list.splice(idx, 1);
+    setForm((p: any) => ({ ...p, [key]: list }));
+  };
 
   return (
     <PageShell title="Accountant" desc="Configure settings for your accounting module." icon={FileText}>
@@ -4774,8 +4856,140 @@ export function AccountantSettingsPage() {
           </Section>
         </div>
       )}
-      {aTab !== 'Preferences' && (
-        <Section title={aTab}><p className="text-sm text-slate-400 py-8 text-center">No {aTab.toLowerCase()} configured yet.</p></Section>
+
+      {aTab === 'Default Account Tracking' && (
+        <div className="space-y-5">
+          <Section title="Select Default Accounts for Each Account Type">
+            <p className="text-xs text-slate-500 mb-4">The default accounts you select here will automatically be applied when you create new transactions.</p>
+            <div className="space-y-4">
+              {defaultAccountTypes.map(at => (
+                <div key={at.key} className="grid grid-cols-2 gap-4 items-center">
+                  <p className="text-sm font-medium text-slate-700">{at.label}</p>
+                  <Select label="" options={[{ value: '', label: 'Select an account...' }, ...accountOptions]}
+                    value={defaultAccounts[at.key] || ''} onChange={(v: string) => setDefaultAccount(at.key, v)} />
+                </div>
+              ))}
+            </div>
+          </Section>
+        </div>
+      )}
+
+      {aTab === 'Journal Approvals' && (
+        <div className="space-y-5">
+          <Section title="Approval Type">
+            {[
+              { value: 'noApproval', label: 'No Approval', desc: 'Create Journal and perform further actions without approval.' },
+              { value: 'simple', label: 'Simple Approval', desc: 'Any user with approve permission can approve the Journal.' },
+              { value: 'multiLevel', label: 'Multi-Level Approval', desc: 'Set many levels of approval. The Journal will be approved only when all the approvers approve.' },
+            ].map(o => (
+              <label key={o.value} className="flex items-start gap-3 px-3 py-2.5 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 mb-2">
+                <input type="radio" name="journalApprovalType" checked={form.journalApprovalType === o.value} onChange={() => setForm((p: any) => ({ ...p, journalApprovalType: o.value }))} className="text-indigo-600 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-slate-700">{o.label}</p>
+                  <p className="text-xs text-slate-400">{o.desc}</p>
+                </div>
+              </label>
+            ))}
+          </Section>
+        </div>
+      )}
+
+      {aTab === 'Journal Validation Rules' && (
+        <div className="space-y-5">
+          <Section title="Create Validation Rules">
+            <p className="text-xs text-slate-500 mb-4">Validation Rules helps you to validate the data entered while creating, editing, or converting transactions and to prevent users from performing specific actions.</p>
+            <div className="text-center py-12 text-sm text-slate-400 border border-dashed border-slate-200 rounded-lg">No results found</div>
+          </Section>
+        </div>
+      )}
+
+      {['Journal Fields', 'Chart of Accounts Fields', 'Fixed Asset Fields'].includes(aTab) && (
+        <div className="space-y-5">
+          <Section title={aTab}>
+            <div className="flex items-center gap-3 mb-4">
+              <input type="text" placeholder="Search Field Name"
+                className="flex-1 px-3 py-2 text-xs border border-slate-200 rounded-lg"
+                value={fieldSearch} onChange={e => setFieldSearch(e.target.value)} />
+            </div>
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-slate-200 text-slate-500">
+                  <th className="text-left py-2 font-medium">Field Name</th>
+                  <th className="text-left py-2 font-medium">Data Type</th>
+                  <th className="text-left py-2 font-medium">Mandatory</th>
+                  <th className="text-left py-2 font-medium">Show in All PDFs</th>
+                  <th className="text-left py-2 font-medium">Status</th>
+                  <th className="text-right py-2 font-medium">More Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredFields.length === 0 && (
+                  <tr><td colSpan={6} className="py-8 text-center text-slate-400">No fields configured yet.</td></tr>
+                )}
+                {filteredFields.map((f: any, idx: number) => (
+                  <tr key={f.id || idx} className="border-b border-slate-100">
+                    <td className="py-2 text-slate-700">{f.labelName}</td>
+                    <td className="py-2 text-slate-500">{f.dataType}</td>
+                    <td className="py-2">{f.mandatory ? <span className="text-green-600">Yes</span> : <span className="text-slate-400">No</span>}</td>
+                    <td className="py-2">{f.showInPdf ? <span className="text-green-600">Yes</span> : <span className="text-slate-400">No</span>}</td>
+                    <td className="py-2">
+                      <span className={`px-2 py-0.5 rounded-full text-xs ${f.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>{f.status}</span>
+                    </td>
+                    <td className="py-2 text-right">
+                      <button onClick={() => openFieldModal(aTab === 'Journal Fields' ? 'journal' : aTab === 'Chart of Accounts Fields' ? 'coa' : 'fixedAsset', idx)} className="text-indigo-600 hover:underline mr-2">Edit</button>
+                      <button onClick={() => deleteField(aTab === 'Journal Fields' ? 'journal' : aTab === 'Chart of Accounts Fields' ? 'coa' : 'fixedAsset', idx)} className="text-red-500 hover:underline">Delete</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="text-xs text-slate-400 mt-3">
+              Do you have information that doesn't go under any existing field? Go ahead and{' '}
+              <button className="text-indigo-600 hover:underline" onClick={() => openFieldModal(aTab === 'Journal Fields' ? 'journal' : aTab === 'Chart of Accounts Fields' ? 'coa' : 'fixedAsset')}>create a new field</button>.
+            </p>
+          </Section>
+        </div>
+      )}
+
+      {/* New / Edit Field Modal */}
+      {showFieldModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={() => setShowFieldModal(false)}>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 p-6" onClick={e => e.stopPropagation()}>
+            <h3 className="text-sm font-semibold text-slate-800 mb-4">
+              {editFieldIdx !== null ? 'Edit' : 'New'} Field - {fieldTarget === 'journal' ? 'Chart of Accounts' : fieldTarget === 'coa' ? 'Chart of Accounts' : 'Fixed Asset'}
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <p className="text-xs font-medium text-slate-700 mb-1">Label Name</p>
+                <input type="text" className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg" value={fieldForm.labelName}
+                  onChange={e => setFieldForm(p => ({ ...p, labelName: e.target.value }))} />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-slate-700 mb-1">Data Type</p>
+                <Select label="" options={dataTypeOptions} value={fieldForm.dataType} onChange={(v: string) => setFieldForm(p => ({ ...p, dataType: v }))} />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-slate-700 mb-1">Is Mandatory</p>
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                    <input type="radio" name="fieldMandatory" checked={fieldForm.mandatory} onChange={() => setFieldForm(p => ({ ...p, mandatory: true }))} className="text-indigo-600" /> Yes
+                  </label>
+                  <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                    <input type="radio" name="fieldMandatory" checked={!fieldForm.mandatory} onChange={() => setFieldForm(p => ({ ...p, mandatory: false }))} className="text-indigo-600" /> No
+                  </label>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" checked={fieldForm.showInPdf} onChange={e => setFieldForm(p => ({ ...p, showInPdf: e.target.checked }))} className="text-indigo-600" />
+                <span className="text-xs text-slate-700">Show in All PDFs</span>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button onClick={() => setShowFieldModal(false)} className="px-4 py-2 text-xs font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200">Cancel</button>
+                <button onClick={saveField} className="px-4 py-2 text-xs font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700">Save</button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
