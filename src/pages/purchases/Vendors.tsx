@@ -11,7 +11,7 @@ import {
   Plus, X, Loader2, AlertCircle, Search, Building2,
   Phone, Mail, Edit2, Trash2, Download, FileText,
   CheckCircle2, ToggleLeft, ToggleRight, Upload,
-  ArrowLeft, MapPin, Pencil
+  ArrowLeft, MapPin, Pencil, Eye
 } from 'lucide-react';
 
 interface Vendor {
@@ -280,6 +280,9 @@ export function VendorsPage() {
                   </td>
                   <td className="py-3 pl-2 pr-4">
                     <div className="flex items-center justify-center gap-1">
+                      <button onClick={() => navigate(`/purchases/vendors/${v.id}`)} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-md transition-colors" title="View">
+                        <Eye size={11}/> View
+                      </button>
                       <button onClick={() => openEdit(v)} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-md transition-colors" title="Edit">
                         <Edit2 size={11}/> Edit
                       </button>
