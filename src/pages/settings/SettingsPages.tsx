@@ -50,7 +50,7 @@ import {
   ShoppingCart, Receipt, ToggleLeft, Download, Upload, Link,
   Lightbulb, Eye, Pencil, Trash2, Plus, Check, X,
   Loader2, Save, CheckCircle2, AlertCircle, MapPin, Calendar, Phone, Search, Star,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, Activity, Code, Filter,
 } from 'lucide-react';
 
 function PageShell({ title, desc, icon: Icon, children }: { title: string; desc?: string; icon?: React.ComponentType<{ className?: string }>; children: React.ReactNode }) {
@@ -4144,26 +4144,109 @@ export function WebTabsPage() {
 
 // ─── Workflow Rules ────────────────────────────────────────────────────────
 export function WorkflowRulesPage() {
-  const { form, handleSave, isPending, saved, error } = useSettingsForm('workflowRules');
+  const { form, handleSave, isPending, saved, error, setForm } = useSettingsForm('workflowRules', { rules: [] as { name: string; module: string; desc: string; status: string }[] });
+  const [moduleFilter, setModuleFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const rules = form.rules || [];
+
+  function deleteRule(i: number) {
+    setForm((p: any) => ({ ...p, rules: (p.rules || []).filter((_: any, j: number) => j !== i) }));
+  }
+
+  const filtered = rules.filter((r: any) => {
+    if (moduleFilter && r.module !== moduleFilter) return false;
+    if (statusFilter && r.status !== statusFilter) return false;
+    return true;
+  });
+
+  const modules = [...new Set(rules.map((r: any) => r.module).filter(Boolean))];
+
   return (
     <PageShell title="Workflow Rules" desc="Create automated rules to trigger actions based on events." icon={Zap}>
-      <Section title="Workflow Rules">
-        {rules.length === 0 ? (
-          <p className="text-sm text-slate-400 py-4 text-center">No workflow rules configured.</p>
-        ) : rules.map((r: any, i: number) => (
-          <div key={i} className="border border-slate-200 rounded-lg p-4 mb-3">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-semibold text-slate-800">{r.name}</span>
-              <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-full uppercase">Active</span>
+      {/* Intro banner */}
+      <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-100 rounded-xl p-5 mb-5">
+        <p className="text-xs text-indigo-700 mb-2">Looking to streamline your business operations?</p>
+        <p className="text-xs text-slate-500">Try out the examples in the Custom Function Series forum posts and discover how functions can be tailored to meet your unique business needs. <a href="#" className="text-indigo-600 hover:underline font-medium">View Examples</a></p>
+      </div>
+
+      {/* Stats cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
+        {[
+          { icon: Code, label: 'Functions', value: 0, total: 10000, color: 'blue' },
+          { icon: Globe, label: 'Webhooks', value: 0, total: 10000, color: 'emerald' },
+          { icon: Mail, label: 'Email Alerts', value: 0, total: 500, color: 'amber' },
+        ].map(s => (
+          <div key={s.label} className="bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-lg bg-${s.color}-50 flex items-center justify-center`}>
+              <s.icon size={18} className={`text-${s.color}-600`} />
             </div>
-            <div className="text-xs text-slate-500 space-y-1">
-              <p>When: {r.trigger}</p>
-              <p>Then: {r.action}</p>
+            <div>
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Usage Stats (per day)</p>
+              <p className="text-lg font-bold text-slate-800">{s.value} / {s.total.toLocaleString()}</p>
+              <p className="text-xs text-slate-500">{s.label}</p>
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Workflow Rules section */}
+      <Section title="Workflow Rules">
+        {/* Filters */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <Filter size={12} className="text-slate-400" />
+            <span className="text-[10px] font-semibold text-slate-400 uppercase">Module :</span>
+            <select value={moduleFilter} onChange={e => setModuleFilter(e.target.value)} className="text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white">
+              <option value="">All</option>
+              {modules.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <Filter size={12} className="text-slate-400" />
+            <span className="text-[10px] font-semibold text-slate-400 uppercase">Status :</span>
+            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white">
+              <option value="">All</option>
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className="overflow-x-auto -mx-6 px-6">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-100">
+                <th className="text-left py-3 pr-4 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Name</th>
+                <th className="text-left py-3 pr-4 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Module</th>
+                <th className="text-left py-3 pr-4 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Description</th>
+                <th className="text-left py-3 pr-4 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                <th className="text-right py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">More Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-12 text-center">
+                    <p className="text-sm text-slate-400">There are no workflows</p>
+                  </td>
+                </tr>
+              ) : filtered.map((r: any, i: number) => (
+                <tr key={i} className="hover:bg-slate-50/50">
+                  <td className="py-3 pr-4 text-sm font-medium text-slate-700">{r.name}</td>
+                  <td className="py-3 pr-4 text-xs text-slate-500">{r.module || '-'}</td>
+                  <td className="py-3 pr-4 text-xs text-slate-500">{r.desc || '-'}</td>
+                  <td className="py-3 pr-4"><span className={`px-2 py-0.5 text-[10px] font-bold rounded-full uppercase ${r.status === 'Active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>{r.status || 'Inactive'}</span></td>
+                  <td className="py-3 text-right">
+                    <button onClick={() => deleteRule(i)} className="p-1.5 text-slate-400 hover:text-red-500 rounded-lg hover:bg-slate-100"><Trash2 size={14} /></button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </Section>
+
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
@@ -4171,22 +4254,68 @@ export function WorkflowRulesPage() {
 
 // ─── Workflow Actions ──────────────────────────────────────────────────────
 export function WorkflowActionsPage() {
-  const { form, handleSave, isPending, saved, error } = useSettingsForm('workflowActions');
-  const actions = form.actions || [];
+  const { form, handleSave, isPending, saved, error, setForm } = useSettingsForm('workflowActions', { emailAlerts: [] as { module: string; template: string; rules: string; actions: string }[] });
+  const [actionTab, setActionTab] = useState('Email Alerts');
+  const [moduleFilter, setModuleFilter] = useState('');
+  const emailAlerts = form.emailAlerts || [];
+  const tabs = ['Email Alerts', 'In-app Notifications', 'Field Updates', 'Webhooks', 'Functions'];
+
+  const filtered = emailAlerts.filter((a: any) => !moduleFilter || a.module === moduleFilter);
+  const modules = [...new Set(emailAlerts.map((a: any) => a.module).filter(Boolean))];
+
   return (
     <PageShell title="Workflow Actions" desc="Define actions that can be triggered by workflow rules." icon={ListChecks}>
-      <Section title="Available Actions">
-        {actions.length === 0 ? (
-          <p className="text-sm text-slate-400 py-4 text-center">No workflow actions configured.</p>
-        ) : actions.map((a: any, i: number) => (
-          <div key={i} className="flex items-center justify-between border border-slate-100 rounded-lg px-4 py-3 mb-2">
-            <div>
-              <p className="text-sm font-medium text-slate-700">{a.name}</p>
-              <p className="text-xs text-slate-400">{a.desc}</p>
-            </div>
-          </div>
+      {/* Tab bar */}
+      <div className="flex items-center gap-1 mb-5 bg-slate-100 rounded-lg p-1 w-fit">
+        {tabs.map(t => (
+          <button key={t} onClick={() => setActionTab(t)}
+            className={`px-4 py-1.5 text-xs font-medium rounded-md transition ${actionTab === t ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          >{t}</button>
         ))}
-      </Section>
+      </div>
+
+      {actionTab === 'Email Alerts' && (
+        <Section title="Email Alerts">
+          <div className="flex items-center gap-2 mb-4">
+            <Filter size={12} className="text-slate-400" />
+            <span className="text-[10px] font-semibold text-slate-400 uppercase">Module :</span>
+            <select value={moduleFilter} onChange={e => setModuleFilter(e.target.value)} className="text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white">
+              <option value="">All</option>
+              {modules.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </div>
+          <div className="overflow-x-auto -mx-6 px-6">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100">
+                  <th className="text-left py-3 pr-4 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Module</th>
+                  <th className="text-left py-3 pr-4 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Email Template</th>
+                  <th className="text-left py-3 pr-4 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Related rules</th>
+                  <th className="text-right py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {filtered.length === 0 ? (
+                  <tr><td colSpan={4} className="py-12 text-center"><p className="text-sm text-slate-400">There are no email alerts</p></td></tr>
+                ) : filtered.map((a: any, i: number) => (
+                  <tr key={i} className="hover:bg-slate-50/50">
+                    <td className="py-3 pr-4 text-sm font-medium text-slate-700">{a.module}</td>
+                    <td className="py-3 pr-4 text-xs text-slate-500">{a.template || '-'}</td>
+                    <td className="py-3 pr-4 text-xs text-slate-500">{a.rules || '-'}</td>
+                    <td className="py-3 text-right"><button className="p-1.5 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-slate-100"><Pencil size={14} /></button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Section>
+      )}
+      {actionTab !== 'Email Alerts' && (
+        <Section title={actionTab}>
+          <p className="text-sm text-slate-400 py-8 text-center">No {actionTab.toLowerCase()} configured yet.</p>
+        </Section>
+      )}
+
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
@@ -4194,38 +4323,122 @@ export function WorkflowActionsPage() {
 
 // ─── Workflow Logs ─────────────────────────────────────────────────────────
 export function WorkflowLogsPage() {
-  const { form, handleSave, isPending, saved, error } = useSettingsForm('workflowLogs');
-  const logs = form.logs || [];
+  const { form, handleSave, isPending, saved, error, setForm } = useSettingsForm('workflowLogs', {
+    emailLogs: [] as { occurredAt: string; name: string; logId: string; entity: string; status: string }[],
+    schedules: [] as { name: string; lastExecuted: string; nextDate: string; frequency: string; status: string }[],
+  });
+  const [logTab, setLogTab] = useState('Email Alerts');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [modulesFilter, setModulesFilter] = useState('');
+  const [dateRange, setDateRange] = useState('');
+
+  const emailLogs = form.emailLogs || [];
+  const schedules = form.schedules || [];
+  const logTabs = ['Email Alerts', 'Webhooks', 'Functions', 'Schedules', 'Buttons'];
+
+  const filteredLogs = emailLogs.filter((l: any) => {
+    if (statusFilter && l.status !== statusFilter) return false;
+    if (modulesFilter && l.entity !== modulesFilter) return false;
+    return true;
+  });
+
+  const logEntities = [...new Set(emailLogs.map((l: any) => l.entity).filter(Boolean))];
+
   return (
     <PageShell title="Workflow Logs" desc="View the execution history of your workflow rules." icon={History}>
-      <Section title="Execution History">
-        {logs.length === 0 ? (
-          <p className="text-sm text-slate-400 py-4 text-center">No workflow execution logs yet.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+      {/* Tab bar */}
+      <div className="flex items-center gap-1 mb-5 bg-slate-100 rounded-lg p-1 w-fit">
+        {logTabs.map(t => (
+          <button key={t} onClick={() => setLogTab(t)}
+            className={`px-4 py-1.5 text-xs font-medium rounded-md transition ${logTab === t ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          >{t}</button>
+        ))}
+      </div>
+
+      {logTab === 'Schedules' ? (
+        <Section title="Schedules">
+          <p className="text-xs text-slate-500 mb-3">Create tasks and execute them in different time intervals with Schedules. <a href="#" className="text-indigo-600 hover:underline">Learn More</a></p>
+          <div className="overflow-x-auto -mx-6 px-6">
+            <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-100 text-slate-400 uppercase text-[10px] font-bold">
-                  <th className="pb-2 pr-4">Time</th>
-                  <th className="pb-2 pr-4">Rule</th>
-                  <th className="pb-2 pr-4">Trigger</th>
-                  <th className="pb-2">Status</th>
+                <tr className="border-b border-slate-100">
+                  {['Name', 'Last Executed On', 'Next date', 'Frequency', 'Status', 'Actions'].map(h => (
+                    <th key={h} className="text-left py-3 pr-4 text-[11px] font-semibold text-slate-500 uppercase tracking-wider last:text-right last:pr-0">{h}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {logs.map((l: any, i: number) => (
-                  <tr key={i}>
-                    <td className="py-2.5 pr-4 text-slate-500 font-mono">{l.time}</td>
-                    <td className="py-2.5 pr-4 text-slate-700 font-medium">{l.rule}</td>
-                    <td className="py-2.5 pr-4 text-slate-600">{l.trigger}</td>
-                    <td className="py-2.5"><span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 font-bold rounded-full">{l.status}</span></td>
+                {schedules.length === 0 ? (
+                  <tr><td colSpan={6} className="py-12 text-center"><p className="text-sm text-slate-400">No schedules configured.</p></td></tr>
+                ) : schedules.map((s: any, i: number) => (
+                  <tr key={i} className="hover:bg-slate-50/50">
+                    <td className="py-3 pr-4 text-sm font-medium text-slate-700">{s.name}</td>
+                    <td className="py-3 pr-4 text-xs text-slate-500">{s.lastExecuted || '-'}</td>
+                    <td className="py-3 pr-4 text-xs text-slate-500">{s.nextDate || '-'}</td>
+                    <td className="py-3 pr-4 text-xs text-slate-500">{s.frequency || '-'}</td>
+                    <td className="py-3 pr-4"><span className={`px-2 py-0.5 text-[10px] font-bold rounded-full uppercase ${s.status === 'Active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>{s.status || 'Inactive'}</span></td>
+                    <td className="py-3 text-right"><button className="p-1.5 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-slate-100"><Pencil size={14} /></button></td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        )}
-      </Section>
+        </Section>
+      ) : (
+        <Section title={logTab}>
+          {/* Filters */}
+          <div className="flex items-center gap-3 flex-wrap mb-4">
+            <div className="flex items-center gap-2">
+              <Filter size={12} className="text-slate-400" />
+              <span className="text-[10px] font-semibold text-slate-400 uppercase">Status :</span>
+              <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white">
+                <option value="">All</option>
+                <option value="Success">Success</option>
+                <option value="Failed">Failed</option>
+                <option value="Pending">Pending</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <Filter size={12} className="text-slate-400" />
+              <span className="text-[10px] font-semibold text-slate-400 uppercase">Modules :</span>
+              <select value={modulesFilter} onChange={e => setModulesFilter(e.target.value)} className="text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white">
+                <option value="">All</option>
+                {logEntities.map(e => <option key={e} value={e}>{e}</option>)}
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <Filter size={12} className="text-slate-400" />
+              <span className="text-[10px] font-semibold text-slate-400 uppercase">Date Range :</span>
+              <input type="date" value={dateRange} onChange={e => setDateRange(e.target.value)} className="text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white" />
+            </div>
+          </div>
+          <div className="overflow-x-auto -mx-6 px-6">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100">
+                  {['Occurred at', 'Name', 'Log ID', 'Entity type', 'Status'].map(h => (
+                    <th key={h} className="text-left py-3 pr-4 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {filteredLogs.length === 0 ? (
+                  <tr><td colSpan={5} className="py-12 text-center"><p className="text-sm text-slate-400">There are no logs</p></td></tr>
+                ) : filteredLogs.map((l: any, i: number) => (
+                  <tr key={i} className="hover:bg-slate-50/50">
+                    <td className="py-3 pr-4 text-xs text-slate-500">{l.occurredAt || '-'}</td>
+                    <td className="py-3 pr-4 text-sm font-medium text-slate-700">{l.name}</td>
+                    <td className="py-3 pr-4 text-xs font-mono text-slate-500">{l.logId || '-'}</td>
+                    <td className="py-3 pr-4 text-xs text-slate-500">{l.entity || '-'}</td>
+                    <td className="py-3"><span className={`px-2 py-0.5 text-[10px] font-bold rounded-full uppercase ${l.status === 'Success' ? 'bg-emerald-50 text-emerald-700' : l.status === 'Failed' ? 'bg-red-50 text-red-600' : 'bg-slate-100 text-slate-500'}`}>{l.status || 'Pending'}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Section>
+      )}
+
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
