@@ -3082,16 +3082,143 @@ export function RemindersPage() {
 
 // ─── Customer Portal ───────────────────────────────────────────────────────
 export function CustomerPortalPage() {
-  const { form, field, toggle, handleSave, isPending, saved, error } = useSettingsForm('customerPortal', { enabled: true, allowDownload: true, allowPayments: true, showHistory: true });
+  const { form, field, toggle, handleSave, isPending, saved, error, setForm } = useSettingsForm('customerPortal', {
+    webTabs: true,
+    customModules: false,
+    portalName: 'wastecaresolutionsresourcesman',
+    portalUrl: 'https://books.skybooks.com/portal/wastecaresolutionsresourcesman',
+    bannerMessage: '',
+    enableMfa: false,
+    allowPaymentMethods: false,
+    preventDuplicatePayments: false,
+    allowSignup: false,
+    notifyActivity: false,
+    notifyEmail: true,
+    notifyInApp: true,
+    notifyOnComment: false,
+    allowEditInfo: false,
+    allowForwardDocs: false,
+    allowBulkPayments: false,
+    enableReviews: false,
+    allowViewSalesOrders: false,
+    displaySalesReceipts: false,
+    displayCreditNotes: false,
+    allowViewProjects: false,
+    enableIdentityVerification: false,
+  });
+
   return (
     <PageShell title="Customer Portal" desc="Configure your customer self-service portal." icon={Store}>
-      <Section title="Portal Settings">
-        <ToggleRow label="Enable Customer Portal" desc="Allow customers to view invoices and make payments online." checked={form.enabled} onClick={toggle('enabled')} />
-        <ToggleRow label="Allow customers to download invoices" checked={form.allowDownload} onClick={toggle('allowDownload')} />
-        <ToggleRow label="Allow customers to make payments via portal" checked={form.allowPayments} onClick={toggle('allowPayments')} />
-        <ToggleRow label="Show payment history" checked={form.showHistory} onClick={toggle('showHistory')} />
-        <Field label="Portal custom message" placeholder="Welcome to our billing portal" value={form.customMessage || ''} onChange={field('customMessage')} desc="Shown at the top of the portal login page." />
+      <Section title="Preferences">
+        <ToggleRow label="Web Tabs" desc="Enable web tabs in the customer portal." checked={form.webTabs} onClick={toggle('webTabs')} />
+        <ToggleRow label="Custom Modules" desc="Enable custom module support in the portal." checked={form.customModules} onClick={toggle('customModules')} />
+        <Field label="Portal Name" value={form.portalName || ''} onChange={field('portalName')} placeholder="wastecaresolutionsresourcesman" />
+        <Field label="Portal URL" value={form.portalUrl || ''} onChange={field('portalUrl')} placeholder="https://books.skybooks.com/portal/..." />
+        <p className="text-xs text-slate-400">Note: The portal name and portal URL will be common for the Customer and Vendor Portal.</p>
+        <div className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 mt-2">
+          <p className="text-xs font-medium text-slate-700">Have you tried the Customer Portal feature?</p>
+        </div>
       </Section>
+
+      <Section title="Banner Message">
+        <textarea
+          value={form.bannerMessage || ''}
+          onChange={field('bannerMessage')}
+          placeholder="This message will be displayed right on top of the 'Home' page of the portal."
+          className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-white text-slate-800 placeholder-slate-400 min-h-[80px] resize-y"
+        />
+      </Section>
+
+      <Section title="Security">
+        <ToggleRow
+          label="Enable multi-factor authentication (MFA)"
+          desc="Add an extra layer of security to the customer portal by enabling Multi-Factor Authentication (MFA). Once enabled, your customer will need to verify their identity with a code using an authenticator app, in addition to a password. This helps prevent unauthorized access, even if their password is compromised."
+          checked={form.enableMfa}
+          onClick={toggle('enableMfa')}
+        />
+        <div className="flex items-start justify-between py-2 flex-wrap gap-2">
+          <div>
+            <p className="text-sm font-medium text-slate-700">Allow customers to add payment methods</p>
+            <p className="text-xs text-slate-400">Your customers will be able to add new payment methods directly from the portal. These payment methods can be associated with both new and existing transactions to facilitate autocharge.</p>
+          </div>
+          <span className="px-2 py-0.5 bg-amber-50 border border-amber-200 text-amber-700 text-[10px] font-semibold rounded-full uppercase shrink-0">Unavailable in your current plan</span>
+        </div>
+        <ToggleRow
+          label="Prevent duplicate payments"
+          desc="Subsequent payments cannot be made for invoices with Pending payments, that is, invoice payments that were made via ACH or any other method that typically takes longer to process. Payments will be allowed again if the previous attempt fails."
+          checked={form.preventDuplicatePayments}
+          onClick={toggle('preventDuplicatePayments')}
+        />
+      </Section>
+
+      <Section title="Access">
+        <ToggleRow
+          label="Allow customers to sign up to the Customer Portal"
+          desc="Your customers and their contacts can sign up to the Customer Portal by themselves, using signup links that will be displayed to them while making invoice payments via Payment Links."
+          checked={form.allowSignup}
+          onClick={toggle('allowSignup')}
+        />
+        <div className="border-t border-slate-100 pt-3 mt-3">
+          <ToggleRow
+            label="Notify me about Customer Portal activity"
+            desc="You will be notified about your customers' portal activity such as payments, comments or transaction approvals."
+            checked={form.notifyActivity}
+            onClick={toggle('notifyActivity')}
+          />
+          {form.notifyActivity && (
+            <div className="pl-6 space-y-2 border-l-2 border-indigo-200 ml-1 mt-2">
+              <ToggleRow label="Notify via email" checked={form.notifyEmail} onClick={toggle('notifyEmail')} />
+              <ToggleRow label="Notify via in-app notification" checked={form.notifyInApp} onClick={toggle('notifyInApp')} />
+            </div>
+          )}
+        </div>
+        <div className="border-t border-slate-100 pt-3 mt-3">
+          <ToggleRow
+            label="Send an email notification to customers when I comment on transactions."
+            desc="Your customers will receive an email notification whenever you comment on their transactions with the Show in Portal option enabled."
+            checked={form.notifyOnComment}
+            onClick={toggle('notifyOnComment')}
+          />
+        </div>
+      </Section>
+
+      <Section title="Customer Permissions">
+        <ToggleRow label="Allow customers to upload documents and edit their information in the portal" desc="Your customers will be able to upload documents and edit their basic details, such as their address and display name." checked={form.allowEditInfo} onClick={toggle('allowEditInfo')} />
+        <ToggleRow label="Allow customers to forward documents from the portal" desc="Your customers can share invoices with their contact persons via email, right from the portal." checked={form.allowForwardDocs} onClick={toggle('allowForwardDocs')} />
+        <ToggleRow label="Enable customers to make bulk payments for invoices" desc="Your customers can select multiple invoices and make a single payment for the selected invoices." checked={form.allowBulkPayments} onClick={toggle('allowBulkPayments')} />
+        <ToggleRow label="Enable customer reviews for my service" desc="Your customers can rate your service and provide feedback. These reviews are not public." checked={form.enableReviews} onClick={toggle('enableReviews')} />
+        <ToggleRow label="Allow customers to view Sales Orders" desc="This option allows your customers to view Sales Orders in the portal." checked={form.allowViewSalesOrders} onClick={toggle('allowViewSalesOrders')} />
+        <ToggleRow label="Display sales receipts in the portal" desc="Your customers will be able to view all their sales receipts and payment details." checked={form.displaySalesReceipts} onClick={toggle('displaySalesReceipts')} />
+        <ToggleRow label="Display credit notes in the portal" desc="Your customers will be able to view all of their credit notes, the invoices to which they were applied, and details of refunds." checked={form.displayCreditNotes} onClick={toggle('displayCreditNotes')} />
+        <ToggleRow
+          label="Allow customers to view projects and timesheets"
+          desc="Enabling this option will allow your customers to view the following project related information in the Customer Portal: Project name and description, Logged time, billed and unbilled hours, Fixed cost of the project, Customer approvals and approve them."
+          checked={form.allowViewProjects}
+          onClick={toggle('allowViewProjects')}
+        />
+      </Section>
+
+      <Section title="Secure Public Links">
+        <ToggleRow
+          label="Enable identity verification to view invoices and estimates"
+          desc="Require customers to verify their email address or contact number to view or download invoice and estimate PDFs. This keeps their data secure and is recommended when sharing transactions outside the Customer Portal."
+          checked={form.enableIdentityVerification}
+          onClick={toggle('enableIdentityVerification')}
+        />
+      </Section>
+
+      <Section title="Support">
+        <div className="flex items-start justify-between py-2 flex-wrap gap-3">
+          <div>
+            <p className="text-sm font-medium text-slate-700">Provide instant support to customers</p>
+            <p className="text-xs text-slate-400 mt-0.5">Reach your customers instantly when they're in need! Connect with Zoho SalesIQ to answer customer queries through a live chat option.</p>
+          </div>
+          <button className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition shrink-0">
+            Connect Now
+          </button>
+        </div>
+      </Section>
+
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
