@@ -608,7 +608,22 @@ router.get('/vendors', async (req: AuthenticatedRequest, res: Response, next: Ne
       )
       .orderBy(contacts.name);
 
-    return res.status(200).json(list);
+    const balances = await db
+      .select({
+        vendorId: bills.vendorId,
+        totalBalance: sql`coalesce(sum(${bills.total}), 0)`
+      })
+      .from(bills)
+      .where(
+        and(
+          eq(bills.orgId, orgId),
+          sql`${bills.status} in ('open', 'partial')`
+        )
+      )
+      .groupBy(bills.vendorId);
+    const balanceMap = new Map(balances.map((b: any) => [b.vendorId, Number(b.totalBalance)]));
+    const listWithBalance = list.map((v: any) => ({ ...v, outstanding: balanceMap.get(v.id) || 0 }));
+    return res.status(200).json(listWithBalance);
   } catch (err) {
     return next(err);
   }
@@ -650,7 +665,11 @@ router.get('/vendors/:id', async (req: AuthenticatedRequest, res: Response, next
       .limit(1);
 
     if (!vendor) throw new AppError('Vendor profile could not be found.', 404);
-    return res.status(200).json(vendor);
+    const [balResult] = await db
+      .select({ total: sql`COALESCE(SUM(total), 0)` })
+      .from(bills)
+      .where(and(eq(bills.vendorId, id), eq(bills.orgId, orgId), sql`status NOT IN ('paid', 'draft')`));
+    return res.status(200).json({ ...vendor, outstanding: Number(balResult?.total || 0) });
   } catch (err) {
     return next(err);
   }
@@ -755,17 +774,15 @@ router.get('/vendors/:id/statement', async (req: AuthenticatedRequest, res: Resp
 
     // Prepend opening balance from contacts.balance
     const openingBalance = vendor.balance || 0;
-    if (openingBalance > 0) {
-      transactionsList.unshift({
-        id: 'opening',
-        date: new Date(0),
-        type: 'opening_balance',
-        number: '',
-        reference: 'Opening Balance',
-        debit: 0,
-        credit: openingBalance
-      });
-    }
+    transactionsList.unshift({
+      id: 'opening',
+      date: new Date(0),
+      type: 'opening_balance',
+      number: '',
+      reference: 'Opening Balance',
+      debit: 0,
+      credit: openingBalance
+    });
 
     // Rolling outstanding creditor balance: increases on CR (bill), decreases on DR (payment/credit)
     let rollingBalance = 0;

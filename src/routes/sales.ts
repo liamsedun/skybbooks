@@ -774,17 +774,15 @@ router.get('/customers/:id/statement', async (req: AuthenticatedRequest, res: Re
 
     // Prepend opening balance from contacts.balance
     const openingBalance = customer.balance || 0;
-    if (openingBalance > 0) {
-      transactionsList.unshift({
-        id: 'opening',
-        date: new Date(0),
-        type: 'opening_balance',
-        number: '',
-        reference: 'Opening Balance',
-        debit: openingBalance,
-        credit: 0
-      });
-    }
+    transactionsList.unshift({
+      id: 'opening',
+      date: new Date(0),
+      type: 'opening_balance',
+      number: '',
+      reference: 'Opening Balance',
+      debit: openingBalance,
+      credit: 0
+    });
 
     // Compute rolling ledger balance
     let currentBalance = 0;
