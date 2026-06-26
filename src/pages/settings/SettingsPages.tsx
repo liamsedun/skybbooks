@@ -2749,6 +2749,9 @@ export function OpeningBalancesPage() {
     importedRows: [] as any[],
   });
 
+  const { settings } = useOrgSettings();
+  const locations = settings?.locations || [];
+
   const { data: accounts } = useQuery<any[]>({
     queryKey: ['accounts'],
     queryFn: async () => { const r = await api.get('/accountant/accounts'); return r.data; },
@@ -3077,7 +3080,10 @@ export function OpeningBalancesPage() {
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1.5">Location</label>
               <select value={form.location || ''} onChange={e => setForm((p: any) => ({ ...p, location: e.target.value }))} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-white text-slate-800">
-                <option value="">Main Office</option>
+                <option value="">Select a location...</option>
+                {locations.map((loc: any) => (
+                  <option key={loc.id} value={loc.id}>{loc.name}</option>
+                ))}
               </select>
             </div>
             <div>
