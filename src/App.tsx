@@ -77,6 +77,7 @@ import {
   ExpensesSettingsPage, RecurringExpensesSettingsPage, PurchaseOrdersSettingsPage,
   BillsSettingsPage, RecurringBillsSettingsPage, PaymentsMadeSettingsPage, VendorCreditsSettingsPage,
   CustomModulesPage,
+  TaxesPage,
 } from './pages/settings/SettingsPages';
 
 import { useAuth } from './hooks/useAuth';
@@ -304,6 +305,7 @@ function AppRoutes() {
             <Route path="workflow-actions" element={<WorkflowActionsPage />} />
             <Route path="workflow-logs" element={<WorkflowLogsPage />} />
             <Route path="schedules" element={<SchedulesPage />} />
+            <Route path="taxes" element={<TaxesPage />} />
             <Route path="contacts" element={<ContactsSettingsPage />} />
             <Route path="items" element={<ItemsSettingsPage />} />
             <Route path="revenue-recognition" element={<RevenueRecognitionPage />} />

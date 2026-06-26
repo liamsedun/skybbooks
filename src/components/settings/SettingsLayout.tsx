@@ -38,6 +38,7 @@ const NAV: NavGroup[] = [
       { label: 'Payment Terms', path: '/settings/payment-terms', icon: Clock },
       { label: 'Opening Balances', path: '/settings/opening-balances', icon: Scale },
       { label: 'Reminders', path: '/settings/reminders', icon: Bell },
+      { label: 'Taxes', path: '/settings/taxes', icon: Receipt },
       { label: 'Customer Portal', path: '/settings/customer-portal', icon: Store },
       { label: 'Vendor Portal', path: '/settings/vendor-portal', icon: Boxes },
     ],

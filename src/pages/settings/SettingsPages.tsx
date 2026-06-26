@@ -3172,3 +3172,175 @@ export function CustomModulesPage() {
     </PageShell>
   );
 }
+
+// ─── Taxes ──────────────────────────────────────────────────────────────────
+const DEFAULT_TAX_RATES: { name: string; rate: number }[] = [
+  { name: 'FCTA NCS1 AMMC/AEPB (WHT&Others)', rate: -14.5 },
+  { name: 'LAWMA Deduction (Sources) WHT STM DUTY VAT', rate: -12.5 },
+  { name: 'Value Added Tax (VAT)', rate: 7.5 },
+  { name: 'Withholding Tax (WHT) - 10%', rate: 10 },
+  { name: 'Withholding Tax (WHT) - 5%', rate: 5 },
+];
+
+export function TaxesPage() {
+  const { form, field, toggle, handleSave, isPending, saved, error } = useSettingsForm('taxes', {
+    taxRates: DEFAULT_TAX_RATES,
+    whtRates: [],
+    taxRegistrationNumber: 'TAX 2301110109017',
+    enableWht: false,
+    enableTdsFor: 'customers',
+    enableWhtOverrideSales: false,
+    enableWhtOverridePurchases: false,
+    enableReverseChargeSales: false,
+    enableReverseChargePurchases: false,
+    taxTrackingPreference: 'single',
+    enableTaxOverrideSales: false,
+    enableTaxOverridePurchases: false,
+    enableVatMoss: false,
+  });
+  const [activeTab, setActiveTab] = useState<'taxRates' | 'whtRates' | 'settings'>('taxRates');
+
+  const tabs = [
+    { key: 'taxRates' as const, label: 'Tax Rates' },
+    { key: 'whtRates' as const, label: 'WHT(TSD) Rates' },
+    { key: 'settings' as const, label: 'Tax Settings' },
+  ];
+
+  return (
+    <PageShell title="Taxes" desc="Manage tax rates, WHT (TSD) rates, and tax settings." icon={Receipt}>
+      {/* Tab Bar */}
+      <div className="flex gap-1 mb-6 bg-slate-100 rounded-lg p-1">
+        {tabs.map(t => (
+          <button
+            key={t.key}
+            onClick={() => setActiveTab(t.key)}
+            className={`flex-1 px-4 py-2 text-xs font-medium rounded-md transition ${
+              activeTab === t.key
+                ? 'bg-white text-slate-900 shadow-sm'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'taxRates' && (
+        <Section title="Active Taxes">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-200 text-left">
+                <th className="py-2.5 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Tax Name</th>
+                <th className="py-2.5 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Rate (%)</th>
+                <th className="py-2.5 pl-4 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(form.taxRates || []).map((tax: any, i: number) => (
+                <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
+                  <td className="py-3 pr-4 text-sm text-slate-800">{tax.name}</td>
+                  <td className="py-3 px-4 text-sm text-slate-800">{tax.rate}%</td>
+                  <td className="py-3 pl-4 text-right">
+                    <button className="text-slate-400 hover:text-indigo-600 transition mr-2"><Pencil size={14} /></button>
+                    <button className="text-slate-400 hover:text-red-500 transition"><Trash2 size={14} /></button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <button className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 transition">
+            <Plus size={16} /> Add Tax
+          </button>
+        </Section>
+      )}
+
+      {activeTab === 'whtRates' && (
+        <Section title="New WHT (TSD)">
+          <div className="space-y-4">
+            <Field label="WHT Name" placeholder="e.g. Withholding Tax - 10%" value={form.whtName || ''} onChange={field('whtName')} />
+            <Field label="WHT Rate (%)" type="number" placeholder="10" value={form.whtRate || ''} onChange={field('whtRate')} />
+            <Select label="Tracking Preference" options={[
+              { value: 'sales', label: 'Track in Sales' },
+              { value: 'purchases', label: 'Track in Purchases' },
+              { value: 'both', label: 'Track in Both' },
+            ]} value={form.whtTrackingPref || 'both'} onChange={field('whtTrackingPref')} />
+            <Field label="Account to Track WHT in Sales" placeholder="Select account" value={form.whtSalesAccount || ''} onChange={field('whtSalesAccount')} />
+            <Field label="Account to Track WHT in Purchases" placeholder="Select account" value={form.whtPurchasesAccount || ''} onChange={field('whtPurchasesAccount')} />
+          </div>
+        </Section>
+      )}
+
+      {activeTab === 'settings' && (
+        <>
+          <Section title="Tax Registration Number">
+            <Field label="Tax Registration Number" placeholder="TAX 2301110109017" value={form.taxRegistrationNumber || ''} onChange={field('taxRegistrationNumber')} />
+            <p className="text-xs text-slate-400 mt-1">
+              To include this number as part of your organization address in transaction PDFs, insert this number's placeholder in Organization Address Format under{' '}
+              <a href="/settings/general" className="text-indigo-600 hover:underline">Settings &gt; Preferences &gt; General</a>.
+            </p>
+          </Section>
+
+          <Section title="WHT">
+            <ToggleRow label="Enable WHT" checked={form.enableWht} onClick={toggle('enableWht')} />
+            {form.enableWht && (
+              <>
+                <p className="text-xs text-slate-500 mb-2">
+                  TDS or the Tax Deducted at Source, can be associated with the customers, vendors or both in Zoho Books. You can enable TDS for a particular contact in the contact's create or edit page.
+                </p>
+                <Select label="Enable TDS For" options={[
+                  { value: 'customers', label: 'Customers' },
+                  { value: 'vendors', label: 'Vendors' },
+                  { value: 'both', label: 'Both Customers & Vendors' },
+                ]} value={form.enableTdsFor || 'customers'} onChange={field('enableTdsFor')} />
+                <div className="mt-3 pl-4 border-l-2 border-indigo-200 space-y-1">
+                  <ToggleRow label="Enable WHT Override for sales transactions" checked={form.enableWhtOverrideSales} onClick={toggle('enableWhtOverrideSales')} desc="This option lets you override the system generated TDS amount in sales transactions." />
+                  <ToggleRow label="Enable WHT Override for purchases transactions" checked={form.enableWhtOverridePurchases} onClick={toggle('enableWhtOverridePurchases')} desc="This option lets you override the system generated TDS amount in purchases transactions." />
+                </div>
+              </>
+            )}
+          </Section>
+
+          <Section title="Reverse Charge">
+            <p className="text-xs text-slate-500 mb-2">
+              Reverse Charge allows you to pay taxes directly to the government for purchases and enables customers to do the same for sales transactions. Enable Reverse Charge to apply and track it to your sales and purchase transactions.
+            </p>
+            <ToggleRow label="Enable Reverse Charge in Sales transactions" checked={form.enableReverseChargeSales} onClick={toggle('enableReverseChargeSales')} />
+            <ToggleRow label="Enable Reverse Charge in Purchase transactions" checked={form.enableReverseChargePurchases} onClick={toggle('enableReverseChargePurchases')} />
+          </Section>
+
+          <Section title="Tax Tracking Account Preference">
+            <div className="space-y-3">
+              <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
+                <input type="radio" name="taxTrackingPref" value="single" checked={form.taxTrackingPreference !== 'separate'} onChange={() => {}} onClick={() => toggle('taxTrackingPreference')} className="text-indigo-600" />
+                <div>
+                  <p className="text-sm font-medium text-slate-700">Track taxes under a single account</p>
+                  <p className="text-xs text-slate-400">The taxes applied on your sales and purchase transactions will be tracked under the Tax Payable account.</p>
+                </div>
+              </label>
+              <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
+                <input type="radio" name="taxTrackingPref" value="separate" checked={form.taxTrackingPreference === 'separate'} onChange={() => {}} onClick={() => toggle('taxTrackingPreference')} className="text-indigo-600" />
+                <div>
+                  <p className="text-sm font-medium text-slate-700">Track taxes under separate accounts</p>
+                  <p className="text-xs text-slate-400">The taxes applied on your sales and purchase transactions will be tracked under the Output Tax and Input Tax accounts respectively.</p>
+                </div>
+              </label>
+            </div>
+          </Section>
+
+          <Section title="Tax Override in Transactions">
+            <ToggleRow label="Enable Tax Override for sales transactions" checked={form.enableTaxOverrideSales} onClick={toggle('enableTaxOverrideSales')} desc="This option lets you override the system generated Tax amount in sales transactions." />
+            <ToggleRow label="Enable Tax Override for purchases transactions" checked={form.enableTaxOverridePurchases} onClick={toggle('enableTaxOverridePurchases')} desc="This option lets you override the system generated Tax amount in purchases transactions." />
+          </Section>
+
+          <Section title="VAT MOSS, IOSS and Digital Services Export">
+            <ToggleRow label="Track VAT MOSS, OSS, IOSS, or the sale of digital services to overseas customers" checked={form.enableVatMoss} onClick={toggle('enableVatMoss')} desc="Enable this to track the sale of digital services to the EU member states using the VAT MOSS Report. Also, you can track the VAT collected on the sale of imported goods to buyers in the EU member states using IOSS Report, and track digital services export using the Overseas Digital Tax Summary report." />
+          </Section>
+
+          <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
+        </>
+      )}
+
+      {activeTab !== 'settings' && <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />}
+    </PageShell>
+  );
+}
