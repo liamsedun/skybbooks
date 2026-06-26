@@ -97,7 +97,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
 
   // Net Profit Margin or dynamic PnL
   const netPnLKobo = totalCashKobo - payablesKobo;
-  const pnlPercent = totalCashKobo > 0 ? Math.min(Math.round((netPnLKobo / totalCashKobo) * 100), 100) : 15.4;
+  const pnlPercent = totalCashKobo > 0 ? Math.min(Math.round((netPnLKobo / totalCashKobo) * 100), 100) : 0;
 
   // Mock bank transaction list if there's no synchronized data yet
   const recentTransactions = (() => {
@@ -251,7 +251,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
             </h3>
             <div className="inline-flex items-center text-[11px] font-semibold px-2 py-0.5 mt-2 rounded bg-primary-light text-primary">
               <TrendingUp className="w-3.5 h-3.5 mr-1" />
-              {totalCashKobo > payablesKobo ? `Net positive: ₦${((totalCashKobo - payablesKobo) / 100).toLocaleString('en-NG', {notation:'compact'})}` : 'Net negative position'}
+              {totalCashKobo === 0 && payablesKobo === 0 ? 'No transaction data yet' : totalCashKobo > payablesKobo ? `Net positive: ₦${((totalCashKobo - payablesKobo) / 100).toLocaleString('en-NG', {notation:'compact'})}` : 'Net negative position'}
             </div>
           </div>
         </div>
