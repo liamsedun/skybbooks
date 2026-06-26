@@ -5221,7 +5221,16 @@ export function InventoryAdjustmentsPage() {
 
 // ─── Payment Gateways ──────────────────────────────────────────────────────
 export function PaymentGatewaysPage() {
-  const { form, toggle, handleSave, isPending, saved, error } = useSettingsForm('paymentGateways', { flutterwaveConnected: true });
+  const { form, setForm, field, toggle, handleSave, isPending, saved, error } = useSettingsForm('paymentGateways', {
+    flutterwaveConnected: true, paystackConnected: false,
+    redirectAfterCreation: true, allowPartialPayments: false, defaultGateway: 'flutterwave',
+  });
+
+  const toggleGateway = (gw: 'flutterwave' | 'paystack') => {
+    const key = gw === 'flutterwave' ? 'flutterwaveConnected' : 'paystackConnected';
+    setForm((p: any) => ({ ...p, [key]: !p[key] }));
+  };
+
   return (
     <PageShell title="Payment Gateways" desc="Configure online payment gateway connections." icon={Wallet}>
       <Section title="Connected Gateways">
@@ -5231,27 +5240,41 @@ export function PaymentGatewaysPage() {
               <div className="w-10 h-10 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center text-sm font-bold">FW</div>
               <div>
                 <p className="text-sm font-semibold text-slate-800">Flutterwave</p>
-                <p className="text-xs text-slate-400">Connected · Live Mode</p>
+                <p className="text-xs text-slate-400">{form.flutterwaveConnected ? 'Connected · Live Mode' : 'Not connected'}</p>
               </div>
             </div>
-            <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-full uppercase">Active</span>
+            {form.flutterwaveConnected ? (
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-full uppercase">Active</span>
+                <button onClick={() => toggleGateway('flutterwave')} className="px-3 py-1.5 border border-red-300 text-red-600 text-xs font-medium rounded-lg hover:bg-red-50">Disconnect</button>
+              </div>
+            ) : (
+              <button onClick={() => toggleGateway('flutterwave')} className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700">Connect</button>
+            )}
           </div>
           <div className="flex items-center justify-between border border-slate-200 rounded-lg p-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-bold">PS</div>
               <div>
                 <p className="text-sm font-semibold text-slate-800">Paystack</p>
-                <p className="text-xs text-slate-400">Not connected</p>
+                <p className="text-xs text-slate-400">{form.paystackConnected ? 'Connected · Live Mode' : 'Not connected'}</p>
               </div>
             </div>
-            <button className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700">Connect</button>
+            {form.paystackConnected ? (
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-full uppercase">Active</span>
+                <button onClick={() => toggleGateway('paystack')} className="px-3 py-1.5 border border-red-300 text-red-600 text-xs font-medium rounded-lg hover:bg-red-50">Disconnect</button>
+              </div>
+            ) : (
+              <button onClick={() => toggleGateway('paystack')} className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700">Connect</button>
+            )}
           </div>
         </div>
       </Section>
       <Section title="Payment Page Settings">
         <ToggleRow label="Redirect to payment page after invoice creation" checked={form.redirectAfterCreation} onClick={toggle('redirectAfterCreation')} />
         <ToggleRow label="Allow partial payments" checked={form.allowPartialPayments} onClick={toggle('allowPartialPayments')} />
-        <Select label="Default payment gateway" options={[{ value: 'flutterwave', label: 'Flutterwave' }, { value: 'paystack', label: 'Paystack' }]} value={form.defaultGateway || 'flutterwave'} />
+        <Select label="Default payment gateway" options={[{ value: 'flutterwave', label: 'Flutterwave' }, { value: 'paystack', label: 'Paystack' }]} value={form.defaultGateway || 'flutterwave'} onChange={field('defaultGateway')} />
       </Section>
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
