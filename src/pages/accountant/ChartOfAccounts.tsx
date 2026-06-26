@@ -272,8 +272,8 @@ export function ChartOfAccountsPage() {
               <span className="font-mono text-sm text-slate-500">{node.code}</span>
             </div>
           </td>
-          <td className="py-2.5 pr-3">
-            <span className={`text-sm ${depth === 0 ? 'font-semibold text-slate-900' : 'text-slate-700'}`}>
+          <td className="py-2.5 pr-3 max-w-0 w-full">
+            <span className={`text-sm truncate block ${depth === 0 ? 'font-semibold text-slate-900' : 'text-slate-700'}`}>
               {node.name}
             </span>
           </td>
@@ -318,7 +318,7 @@ export function ChartOfAccountsPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-8">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
       <div className="flex items-start justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Chart of Accounts</h1>
@@ -368,7 +368,7 @@ export function ChartOfAccountsPage() {
         />
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+      <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
         {isLoading ? (
           <div className="flex items-center justify-center py-16 text-slate-400">
             <Loader2 size={20} className="animate-spin mr-2" />
@@ -456,7 +456,7 @@ export function ChartOfAccountsPage() {
                   {formError}
                 </div>
               )}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Code</label>
                   <input
@@ -488,7 +488,7 @@ export function ChartOfAccountsPage() {
                   className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Sub-type</label>
                   <input

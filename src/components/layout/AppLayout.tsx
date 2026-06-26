@@ -311,9 +311,9 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
       {/* 1. LEFT SIDEBAR: Standard desktop (hidden on tablet/mobile unless toggled) */}
       <aside 
         id="desktop-sidebar-pane"
-        className={`fixed top-0 bottom-0 left-0 z-40 w-60 bg-white border-r border-slate-100 flex flex-col transition-transform duration-300 xl:translate-x-0 ${
+        className={`fixed top-0 bottom-0 left-0 z-40 w-60 bg-white border-r border-slate-100 flex flex-col transition-transform duration-300 lg:translate-x-0 ${
           isMobileOpen ? 'translate-x-0' : '-translate-x-full'
-        } xl:static xl:h-screen shrink-0`}
+        } lg:static lg:h-screen shrink-0`}
       >
         {/* Brand visual header area */}
         <div className="h-16 px-5 border-b border-slate-50 flex items-center justify-between">
@@ -328,7 +328,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
           {/* Close drawer icon on small viewports */}
           <button 
             onClick={() => setIsMobileOpen(false)}
-            className="xl:hidden p-1.5 hover:bg-slate-50 text-slate-400 rounded-lg outline-none"
+            className="lg:hidden p-1.5 hover:bg-slate-50 text-slate-400 rounded-lg outline-none"
           >
             <X className="w-5 h-5" />
           </button>
@@ -424,19 +424,19 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
       {isMobileOpen && (
         <div 
           onClick={() => setIsMobileOpen(false)}
-          className="xl:hidden fixed inset-0 z-30 bg-slate-900/40 backdrop-blur-xs"
+          className="lg:hidden fixed inset-0 z-30 bg-slate-900/40 backdrop-blur-xs"
         />
       )}
 
       {/* 2. MAIN CONTAINER AREA WITH TOP HEADER */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto xl:h-screen" id="main-content-scroll-container">
+      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto lg:h-screen" id="main-content-scroll-container">
         {/* TOP HEADER */}
         <header className="h-14 md:h-16 px-4 md:px-6 bg-white border-b border-slate-100 flex items-center justify-between shrink-0 sticky top-0 z-20">
           
           {/* Hamburger toggle button on smaller screens */}
           <button 
             onClick={() => setIsMobileOpen(!isMobileOpen)}
-            className="xl:hidden p-2 border border-slate-200 hover:bg-slate-50 text-slate-500 rounded-xl outline-none mr-3 shrink-0 transition"
+            className="lg:hidden p-2 border border-slate-200 hover:bg-slate-50 text-slate-500 rounded-xl outline-none mr-3 shrink-0 transition"
           >
             <Menu className="w-5 h-5" />
           </button>
@@ -484,7 +484,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
               </button>
 
               {showNotifications && (
-                <div className="absolute right-0 mt-3.5 w-72 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 p-4 space-y-2 text-[11px] font-medium" id="header-notifications-popup">
+                <div className="absolute right-0 mt-3.5 w-72 max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-xl border border-slate-100 z-50 p-4 space-y-2 text-[11px] font-medium" id="header-notifications-popup">
                   <div className="font-extrabold text-ink-900 border-b border-slate-50 pb-2 mb-2 flex justify-between items-center text-xs">
                     <span>Recent Audit Events</span>
                     <span 
@@ -553,7 +553,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
         </header>
 
         {/* 3. SCROLLABLE SCREEN CONTENT AREA */}
-        <main className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto" id="shell-inner-viewport">
+        <main className="flex-1 p-4 sm:p-6 md:p-8 max-w-7xl w-full mx-auto" id="shell-inner-viewport">
           {children || <Outlet />}
         </main>
         

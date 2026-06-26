@@ -202,7 +202,7 @@ export function SettingsSidebar() {
 
 export function SettingsLayout() {
   return (
-    <div className="max-w-5xl mx-auto px-6 py-8 flex gap-6 items-start">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 sm:py-8 flex gap-6 items-start">
       <SettingsSidebar />
       <div className="flex-1 min-w-0">
         <Outlet />

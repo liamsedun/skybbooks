@@ -69,7 +69,7 @@ function PageShell({ title, desc, icon: Icon, children }: { title: string; desc?
 
 function Section({ title, desc, children }: { title: string; desc?: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-4 mb-5">
+    <div className="bg-white border border-slate-200 rounded-xl p-4 sm:p-6 space-y-4 mb-5">
       <div>
         <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
         {desc && <p className="text-xs text-slate-400 mt-0.5">{desc}</p>}
@@ -83,7 +83,7 @@ function ToggleRow({ label, desc, checked, onClick, defaultChecked }: { label: s
   const [internal, setInternal] = useState(defaultChecked ?? false);
   const isOn = checked !== undefined ? checked : internal;
   return (
-    <div className="flex items-center justify-between py-2">
+    <div className="flex items-center justify-between py-2 flex-wrap gap-2">
       <div>
         <p className="text-sm font-medium text-slate-700">{label}</p>
         {desc && <p className="text-xs text-slate-400">{desc}</p>}
@@ -295,7 +295,7 @@ export function OrganisationProfilePage() {
     <PageShell title="Organisation Settings" desc="Update your company profile, tax identifiers, and fiscal configuration." icon={Building2}>
       <form onSubmit={handleSubmit}>
         <Section title="Company Identity" desc="Your business name and contact details appear on invoices and documents.">
-          <div className="flex items-center gap-5 pb-4 border-b border-slate-100">
+          <div className="flex items-center gap-5 pb-4 border-b border-slate-100 flex-wrap">
             <div className="w-20 h-20 rounded-xl border-2 border-dashed border-slate-200 flex items-center justify-center bg-slate-50 overflow-hidden shrink-0">
               {org?.logoUrl
                 ? <img src={org.logoUrl} alt="Logo" className="w-full h-full object-contain" />
@@ -340,7 +340,7 @@ export function OrganisationProfilePage() {
             <Shield size={14} />
             Account Info
           </h2>
-          <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
             <div>
               <span className="text-xs text-slate-400 block mb-0.5">Administrator</span>
               <span className="font-medium text-slate-700">{user?.fullName || '—'}</span>
@@ -435,7 +435,7 @@ export function BrandingPage() {
           </div>
         </div>
         <Field label="Company Tagline" placeholder="Your tagline here" value={form.tagline || ''} onChange={field('tagline')} desc="Appears below your company name on documents." />
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="Primary Color" type="text" placeholder="#4F46E5" value={form.primaryColor || ''} onChange={field('primaryColor')} />
           <Field label="Accent Color" type="text" placeholder="#10B981" value={form.accentColor || ''} onChange={field('accentColor')} />
         </div>
@@ -691,7 +691,7 @@ export function LocationsPage() {
               {/* Location Type */}
               <div>
                 <p className="text-xs font-medium text-slate-600 mb-3">Location Type</p>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <button
                     type="button"
                     disabled={viewOnly}
@@ -763,7 +763,7 @@ export function LocationsPage() {
                   <input type="text" value={locForm.attention || ''} onChange={f('attention')} placeholder="Attention" disabled={viewOnly} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400 disabled:bg-slate-50 disabled:text-slate-500" />
                   <input type="text" value={locForm.street1 || ''} onChange={f('street1')} placeholder="Street 1" disabled={viewOnly} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400 disabled:bg-slate-50 disabled:text-slate-500" />
                   <input type="text" value={locForm.street2 || ''} onChange={f('street2')} placeholder="Street 2" disabled={viewOnly} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400 disabled:bg-slate-50 disabled:text-slate-500" />
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <input type="text" value={locForm.city || ''} onChange={f('city')} placeholder="City" disabled={viewOnly} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400 disabled:bg-slate-50 disabled:text-slate-500" />
                     <input type="text" value={locForm.zip || ''} onChange={f('zip')} placeholder="ZIP/Postal Code" disabled={viewOnly} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400 disabled:bg-slate-50 disabled:text-slate-500" />
                     <input type="text" value={locForm.state || ''} onChange={f('state')} placeholder="State/Province" disabled={viewOnly} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400 disabled:bg-slate-50 disabled:text-slate-500" />
@@ -772,7 +772,7 @@ export function LocationsPage() {
               </div>
 
               {/* Contact */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1.5">Phone</label>
                   <input type="text" value={locForm.phone || ''} onChange={f('phone')} placeholder="Phone" disabled={viewOnly} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400 disabled:bg-slate-50 disabled:text-slate-500" />
@@ -824,7 +824,7 @@ export function LocationsPage() {
                   <input type="checkbox" id="access-all" disabled={viewOnly} className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 disabled:opacity-50" />
                   <label htmlFor="access-all" className="text-xs text-slate-600">Provide access to all users</label>
                 </div>
-                <div className="border border-slate-200 rounded-lg overflow-hidden">
+                <div className="border border-slate-200 rounded-lg overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="bg-slate-50 text-left">
@@ -1001,7 +1001,7 @@ export function UsersPage() {
 
   return (
     <PageShell title="Users" desc="Manage team members who have access to your SkyBooks account." icon={Users}>
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-between mb-5 flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <button
             onClick={() => { setInviteForm({}); setSelectedLocations([]); setShowInviteUser(true); }}
@@ -1038,7 +1038,7 @@ export function UsersPage() {
         ) : !users || users.length === 0 ? (
           <p className="text-sm text-slate-400 py-4 text-center">No users have been invited yet.</p>
         ) : (
-          <div className="border border-slate-200 rounded-lg overflow-hidden">
+          <div className="border border-slate-200 rounded-lg overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
                 <tr className="bg-slate-50 text-left">
@@ -1904,11 +1904,11 @@ export function RolesPage() {
 
   return (
     <PageShell title="Roles" desc="Define access permissions for different user roles." icon={Shield}>
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-between mb-5 flex-wrap gap-2">
         <p className="text-xs text-slate-500">{allRoles.length} role{allRoles.length !== 1 ? 's' : ''} configured</p>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <input type="text" value={newRoleNameInput} onChange={e => setNewRoleNameInput(e.target.value)}
-            placeholder="New role name..." className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 w-48"
+            placeholder="New role name..." className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 w-full sm:w-48"
             onKeyDown={e => { if (e.key === 'Enter') openNewRole(); }} />
           <button onClick={openNewRole} disabled={!newRoleNameInput.trim()}
             className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition flex items-center gap-1.5">
@@ -2756,7 +2756,7 @@ export function OpeningBalancesPage() {
 
       <Section title="Opening Balances">
         <div className="space-y-5">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1.5">Location</label>
               <select value={form.location || ''} onChange={e => setForm((p: any) => ({ ...p, location: e.target.value }))} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-white text-slate-800">
@@ -2771,14 +2771,14 @@ export function OpeningBalancesPage() {
           </div>
 
           <div className="border-t border-slate-100 pt-4 space-y-3">
-            <div className="flex items-center justify-between py-2">
+            <div className="flex items-center justify-between py-2 flex-wrap gap-2">
               <div className="flex items-center gap-3">
                 <span className="text-sm font-medium text-slate-700">Accounts Receivable</span>
                 <button className="px-3 py-1 border border-indigo-200 text-indigo-600 text-xs font-medium rounded-lg hover:bg-indigo-50 transition">Import</button>
               </div>
               <input type="number" value={ar} onChange={e => setForm((p: any) => ({ ...p, accountsReceivable: parseFloat(e.target.value) || 0 }))} className="w-40 px-3 py-2 text-sm border border-slate-200 rounded-lg text-right font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
             </div>
-            <div className="flex items-center justify-between py-2">
+            <div className="flex items-center justify-between py-2 flex-wrap gap-2">
               <div className="flex items-center gap-3">
                 <span className="text-sm font-medium text-slate-700">Accounts Payable</span>
                 <button className="px-3 py-1 border border-indigo-200 text-indigo-600 text-xs font-medium rounded-lg hover:bg-indigo-50 transition">Import</button>
@@ -2795,7 +2795,7 @@ export function OpeningBalancesPage() {
           <div className="border-t border-slate-100 pt-4 space-y-3">
             <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Opening Balance Adjustments</h4>
             <p className="text-xs text-slate-400">This account will hold the difference in credit and debit.</p>
-            <div className="flex items-center justify-between py-2">
+            <div className="flex items-center justify-between py-2 flex-wrap gap-2">
               <span className="text-sm text-slate-700">{form.adjustmentAccount || 'Opening Balance Adjustments'}</span>
               <input type="number" value={adj} onChange={e => setForm((p: any) => ({ ...p, adjustmentAmount: parseFloat(e.target.value) || 0 }))} className="w-40 px-3 py-2 text-sm border border-slate-200 rounded-lg text-right font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
             </div>
@@ -3147,7 +3147,7 @@ export function ItemsSettingsPage() {
         <ToggleRow label="Show item images in lists" checked={form.showImages} onClick={toggle('showImages')} />
       </Section>
       <Section title="Default Units">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="Default Unit (Service)" placeholder="Hour" value={form.serviceUnit || 'Hour'} onChange={field('serviceUnit')} />
           <Field label="Default Unit (Product)" placeholder="Piece" value={form.productUnit || 'Piece'} onChange={field('productUnit')} />
         </div>
@@ -3680,7 +3680,7 @@ export function TaxesPage() {
 
   return (
     <PageShell title="Taxes" desc="Manage tax rates, WHT (TSD) rates, and tax settings." icon={Receipt}>
-      <div className="flex gap-1 mb-6 bg-slate-100 rounded-lg p-1">
+      <div className="flex gap-1 mb-6 bg-slate-100 rounded-lg p-1 overflow-x-auto">
         {tabs.map(t => (
           <button
             key={t.key}
@@ -3698,6 +3698,7 @@ export function TaxesPage() {
 
       {activeTab === 'taxRates' && (
         <Section title="Active Taxes">
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200 text-left">
@@ -3719,6 +3720,7 @@ export function TaxesPage() {
               ))}
             </tbody>
           </table>
+          </div>
           <button onClick={openAddTax} className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 transition">
             <Plus size={16} /> Add Tax
           </button>
@@ -3797,16 +3799,16 @@ export function TaxesPage() {
 
           <Section title="Tax Tracking Account Preference">
             <div className="space-y-3">
-              <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
-                <input type="radio" name="taxTrackingPref" value="single" checked={form.taxTrackingPreference === 'single'} onChange={() => setForm((p: any) => ({ ...p, taxTrackingPreference: 'single' }))} className="text-indigo-600" />
-                <div>
+              <label className="flex items-start gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
+                <input type="radio" name="taxTrackingPref" value="single" checked={form.taxTrackingPreference === 'single'} onChange={() => setForm((p: any) => ({ ...p, taxTrackingPreference: 'single' }))} className="text-indigo-600 mt-0.5 shrink-0" />
+                <div className="min-w-0">
                   <p className="text-sm font-medium text-slate-700">Track taxes under a single account</p>
                   <p className="text-xs text-slate-400">The taxes applied on your sales and purchase transactions will be tracked under the Tax Payable account.</p>
                 </div>
               </label>
-              <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
-                <input type="radio" name="taxTrackingPref" value="separate" checked={form.taxTrackingPreference === 'separate'} onChange={() => setForm((p: any) => ({ ...p, taxTrackingPreference: 'separate' }))} className="text-indigo-600" />
-                <div>
+              <label className="flex items-start gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
+                <input type="radio" name="taxTrackingPref" value="separate" checked={form.taxTrackingPreference === 'separate'} onChange={() => setForm((p: any) => ({ ...p, taxTrackingPreference: 'separate' }))} className="text-indigo-600 mt-0.5 shrink-0" />
+                <div className="min-w-0">
                   <p className="text-sm font-medium text-slate-700">Track taxes under separate accounts</p>
                   <p className="text-xs text-slate-400">The taxes applied on your sales and purchase transactions will be tracked under the Output Tax and Input Tax accounts respectively.</p>
                 </div>

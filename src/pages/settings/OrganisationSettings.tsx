@@ -503,7 +503,7 @@ export function OrganisationSettingsPage() {
               <Shield size={14} />
               Account Info
             </h2>
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="text-xs text-slate-400 block mb-0.5">Administrator</span>
                 <span className="font-medium text-slate-700">{user?.fullName || '—'}</span>
