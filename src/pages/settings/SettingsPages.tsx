@@ -3427,22 +3427,145 @@ export function VendorPortalPage() {
 }
 
 // ─── Transaction Number Series ─────────────────────────────────────────────
+const DEFAULT_SERIES = [
+  { module: 'Credit Note', prefix: 'CN-', start: '00001' },
+  { module: 'Journal', prefix: '', start: '1' },
+  { module: 'Customer Payment', prefix: '', start: '1' },
+  { module: 'Vendor Payment', prefix: '', start: '1' },
+  { module: 'Purchase Order', prefix: 'PO-', start: '00001' },
+  { module: 'Sales Order', prefix: 'SO-', start: '00001' },
+  { module: 'Retainer Invoice', prefix: 'RET-', start: '00001' },
+  { module: 'Vendor Credits', prefix: 'DN-', start: '00001' },
+  { module: 'Debit Note', prefix: 'CDN-', start: '000001' },
+  { module: 'Invoice', prefix: 'INV-', start: '000001' },
+  { module: 'Quote', prefix: 'QT-', start: '000001' },
+  { module: 'Sales Receipt', prefix: 'SR-', start: '00001' },
+  { module: 'Fixed Asset', prefix: 'FA1-', start: '00001' },
+  { module: 'Self-Billed Credit Note', prefix: 'SBCN-', start: '000001' },
+];
+
 export function TxnNumberingPage() {
-  const { form, field, handleSave, isPending, saved, error } = useSettingsForm('txnNumbering');
-  const series = ['Invoices', 'Quotes', 'Sales Orders', 'Purchase Orders', 'Bills', 'Payments Received', 'Payments Made', 'Credit Notes', 'Expenses'];
+  const { form, handleSave, isPending, saved, error, setForm } = useSettingsForm('txnNumbering', {
+    series: DEFAULT_SERIES,
+  });
+
+  const [showNewSeries, setShowNewSeries] = useState(false);
+  const [newModule, setNewModule] = useState('');
+  const [newPrefix, setNewPrefix] = useState('');
+  const [newStart, setNewStart] = useState('00001');
+
+  const seriesList = form.series || DEFAULT_SERIES;
+
+  function updateSeries(i: number, field: string, val: string) {
+    setForm((p: any) => ({
+      ...p,
+      series: (p.series || []).map((s: any, j: number) => j === i ? { ...s, [field]: val } : s),
+    }));
+  }
+
+  function addSeries() {
+    if (!newModule.trim()) return;
+    setForm((p: any) => ({
+      ...p,
+      series: [...(p.series || []), { module: newModule.trim(), prefix: newPrefix, start: newStart }],
+    }));
+    setNewModule('');
+    setNewPrefix('');
+    setNewStart('00001');
+    setShowNewSeries(false);
+  }
+
+  function removeSeries(i: number) {
+    setForm((p: any) => ({
+      ...p,
+      series: (p.series || []).filter((_: any, j: number) => j !== i),
+    }));
+  }
+
   return (
     <PageShell title="Transaction Number Series" desc="Configure numbering prefixes for your transactions." icon={Hash}>
+      <div className="flex items-center gap-2 mb-5 flex-wrap">
+        <span className="px-3 py-1.5 bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-full">All Series</span>
+        {seriesList.map((s: any, i: number) => (
+          <span key={i} className="px-3 py-1.5 bg-slate-100 text-slate-600 text-xs font-medium rounded-full hover:bg-slate-200 transition cursor-default">{s.module}</span>
+        ))}
+      </div>
+
       <Section title="Numbering Series">
-        {series.map(s => {
-          const key = s.toLowerCase().replace(/ /g, '');
-          return (
-            <div key={s} className="flex items-center gap-4 py-2 border-b border-slate-50 last:border-0">
-              <span className="w-36 text-sm text-slate-700">{s}</span>
-              <input type="text" value={form[key] || ''} onChange={field(key)} className="w-28 px-3 py-1.5 text-sm border border-slate-200 rounded-lg font-mono" />
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                <th className="px-4 py-2.5">Module</th>
+                <th className="px-4 py-2.5">Prefix</th>
+                <th className="px-4 py-2.5">Starting Number</th>
+                <th className="px-4 py-2.5">Restart Numbering</th>
+                <th className="px-4 py-2.5">Preview</th>
+                <th className="px-4 py-2.5" />
+              </tr>
+            </thead>
+            <tbody>
+              {seriesList.map((s: any, i: number) => (
+                <tr key={i} className="border-t border-slate-100 hover:bg-slate-50">
+                  <td className="px-4 py-2.5 text-sm text-slate-700 font-medium">{s.module}</td>
+                  <td className="px-4 py-2.5">
+                    <input
+                      type="text" value={s.prefix || ''}
+                      onChange={e => updateSeries(i, 'prefix', e.target.value)}
+                      className="w-24 px-2 py-1.5 text-sm border border-slate-200 rounded font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-white"
+                    />
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <input
+                      type="text" value={s.start || ''}
+                      onChange={e => updateSeries(i, 'start', e.target.value)}
+                      className="w-24 px-2 py-1.5 text-sm border border-slate-200 rounded font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-white"
+                    />
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" className="sr-only peer" />
+                      <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-500/20 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600" />
+                    </label>
+                  </td>
+                  <td className="px-4 py-2.5 font-mono text-sm text-slate-600">{s.prefix}{s.start}</td>
+                  <td className="px-4 py-2.5 text-right">
+                    <button onClick={() => removeSeries(i)} className="text-slate-400 hover:text-red-500 transition"><Trash2 size={14} /></button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {showNewSeries ? (
+          <div className="mt-4 border border-slate-200 rounded-lg p-4 bg-slate-50 space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Module</label>
+                <input type="text" value={newModule} onChange={e => setNewModule(e.target.value)} placeholder="Series name" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-white" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Prefix</label>
+                <input type="text" value={newPrefix} onChange={e => setNewPrefix(e.target.value)} placeholder="INV-" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-white font-mono" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Starting Number</label>
+                <input type="text" value={newStart} onChange={e => setNewStart(e.target.value)} placeholder="000001" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-white font-mono" />
+              </div>
+              <div className="flex items-end gap-2">
+                <button onClick={addSeries} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition">Add</button>
+                <button onClick={() => setShowNewSeries(false)} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition">Cancel</button>
+              </div>
             </div>
-          );
-        })}
+          </div>
+        ) : (
+          <button onClick={() => setShowNewSeries(true)} className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700 transition">
+            <Plus size={16} /> New Series
+          </button>
+        )}
       </Section>
+
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
