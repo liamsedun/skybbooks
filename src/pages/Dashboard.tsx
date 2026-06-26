@@ -394,7 +394,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
               </button>
 
               <button 
-                onClick={() => navigate('/banking')}
+                onClick={() => navigate('/payroll/runs')}
                 className="w-full text-left p-3 border border-slate-150 rounded-xl hover:border-primary-light hover:bg-primary-light/10 transition flex items-center justify-between group cursor-pointer"
               >
                 <div className="min-w-0">
