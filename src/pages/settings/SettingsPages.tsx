@@ -2711,26 +2711,114 @@ export function PaymentTermsPage() {
 
 // ─── Opening Balances ──────────────────────────────────────────────────────
 export function OpeningBalancesPage() {
-  const { form, handleSave, isPending, saved, error } = useSettingsForm('openingBalances');
+  const { form, handleSave, isPending, saved, error, setForm } = useSettingsForm('openingBalances', {
+    location: '',
+    migrationDate: '01 Mar 2025',
+    accountsReceivable: 0,
+    accountsPayable: 0,
+    adjustmentAccount: 'Opening Balance Adjustments',
+    adjustmentAmount: 0,
+  });
+
+  const ar = form.accountsReceivable || 0;
+  const ap = form.accountsPayable || 0;
+  const adj = form.adjustmentAmount || 0;
+  const total = ar - ap;
+  const grandTotal = total + adj;
+
+  function formatMoney(val: number) {
+    return val.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
   return (
     <PageShell title="Opening Balances" desc="Set up opening balances for your accounts." icon={Scale}>
-      <Section title="Opening Balance Entry">
-        <p className="text-xs text-slate-500 mb-3">Enter the opening balances for your accounts as of the start of your fiscal year.</p>
-        {!form.balances || form.balances.length === 0 ? (
-          <p className="text-sm text-slate-400 py-4 text-center">No opening balances set. Balances can be imported from your chart of accounts.</p>
-        ) : (
-          <div className="space-y-2">
-            {form.balances.map((a: any, i: number) => (
-              <div key={i} className="flex items-center gap-3">
-                <div className="flex-1">
-                  <p className="text-sm text-slate-700">{a.account}</p>
-                </div>
-                <input type="text" defaultValue={a.balance} className="w-40 px-3 py-2 text-sm border border-slate-200 rounded-lg text-right font-mono" />
-              </div>
-            ))}
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 mb-5">
+        <h3 className="text-xs font-semibold text-blue-800 uppercase tracking-wide mb-3">Page Tips</h3>
+        <ul className="space-y-2 text-xs text-blue-700">
+          <li className="flex items-start gap-2">
+            <span className="mt-0.5 w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />
+            Generate the Trial Balance report in your previous accounting software on the date you're migrating to Zoho Books.
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="mt-0.5 w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />
+            Add all your bank and credit card accounts in the Banking module of Zoho Books. Once added, you can enter their balances.
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="mt-0.5 w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />
+            Import all your items along with their opening stocks.
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="mt-0.5 w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />
+            Import all your contacts along with their opening balances.
+          </li>
+        </ul>
+      </div>
+
+      <Section title="Opening Balances">
+        <div className="space-y-5">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1.5">Location</label>
+              <select value={form.location || ''} onChange={e => setForm((p: any) => ({ ...p, location: e.target.value }))} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-white text-slate-800">
+                <option value="">Main Office</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1.5">Migration Date</label>
+              <input type="text" value={form.migrationDate || ''} onChange={e => setForm((p: any) => ({ ...p, migrationDate: e.target.value }))} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-white text-slate-800" />
+              <p className="text-xs text-slate-400 mt-1">The date on which you generated the Trial Balance report in your previous accounting software while migrating.</p>
+            </div>
           </div>
-        )}
+
+          <div className="border-t border-slate-100 pt-4 space-y-3">
+            <div className="flex items-center justify-between py-2">
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium text-slate-700">Accounts Receivable</span>
+                <button className="px-3 py-1 border border-indigo-200 text-indigo-600 text-xs font-medium rounded-lg hover:bg-indigo-50 transition">Import</button>
+              </div>
+              <input type="number" value={ar} onChange={e => setForm((p: any) => ({ ...p, accountsReceivable: parseFloat(e.target.value) || 0 }))} className="w-40 px-3 py-2 text-sm border border-slate-200 rounded-lg text-right font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+            </div>
+            <div className="flex items-center justify-between py-2">
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium text-slate-700">Accounts Payable</span>
+                <button className="px-3 py-1 border border-indigo-200 text-indigo-600 text-xs font-medium rounded-lg hover:bg-indigo-50 transition">Import</button>
+              </div>
+              <input type="number" value={ap} onChange={e => setForm((p: any) => ({ ...p, accountsPayable: parseFloat(e.target.value) || 0 }))} className="w-40 px-3 py-2 text-sm border border-slate-200 rounded-lg text-right font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between py-3 border-t border-slate-200">
+            <span className="text-sm font-semibold text-slate-800">Total</span>
+            <span className="text-sm font-mono font-semibold text-slate-800">₦{formatMoney(total)}</span>
+          </div>
+
+          <div className="border-t border-slate-100 pt-4 space-y-3">
+            <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Opening Balance Adjustments</h4>
+            <p className="text-xs text-slate-400">This account will hold the difference in credit and debit.</p>
+            <div className="flex items-center justify-between py-2">
+              <span className="text-sm text-slate-700">{form.adjustmentAccount || 'Opening Balance Adjustments'}</span>
+              <input type="number" value={adj} onChange={e => setForm((p: any) => ({ ...p, adjustmentAmount: parseFloat(e.target.value) || 0 }))} className="w-40 px-3 py-2 text-sm border border-slate-200 rounded-lg text-right font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+            </div>
+          </div>
+
+          <div className="bg-slate-50 rounded-xl p-5 border border-slate-200">
+            <p className="text-xs font-medium text-slate-500 mb-2">TOTAL AMOUNT <span className="text-slate-400 font-normal">(Includes Opening Balance Adjustment account)</span></p>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-slate-600">Grand Total</span>
+              <span className="text-lg font-mono font-bold text-slate-900">₦{formatMoney(grandTotal)}</span>
+            </div>
+            <div className="flex items-center justify-between text-xs text-slate-400 mt-1">
+              <span>Opening Balance Total</span>
+              <span>₦{formatMoney(total)}</span>
+            </div>
+            <div className="flex items-center justify-between text-xs text-slate-400">
+              <span>Adjustment</span>
+              <span>₦{formatMoney(adj)}</span>
+            </div>
+          </div>
+        </div>
       </Section>
+
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
