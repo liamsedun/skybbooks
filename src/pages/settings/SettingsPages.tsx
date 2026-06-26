@@ -5136,28 +5136,130 @@ export function CreditNotesSettingsPage() {
 }
 
 export function DeliveryNotesSettingsPage() {
-  const { form, toggle, handleSave, isPending, saved, error } = useSettingsForm('deliveryNotes', { autoGenerateNumbers: true });
+  const { form, handleSave, isPending, saved, error, setForm } = useSettingsForm('deliveryNotes', {
+    labels: {} as Record<string,string>,
+    showCustomerNotes: true,
+  });
+
+  const fields = [
+    { key: 'documentTitle', label: 'Document Title', default: 'DELIVERY NOTE' },
+    { key: 'transactionNumber', label: 'Transaction Number', default: '#' },
+    { key: 'dateField', label: 'Date Field', default: 'Date' },
+    { key: 'item', label: 'Item', default: 'Item' },
+    { key: 'description', label: 'Description', default: 'Description' },
+    { key: 'quantity', label: 'Quantity', default: 'Qty' },
+    { key: 'referenceField', label: 'Reference Field', default: 'Reference#' },
+    { key: 'billTo', label: 'Bill To', default: 'Bill To' },
+    { key: 'signature', label: 'Signature', default: 'Authorized Signature' },
+    { key: 'deliveryTo', label: 'Delivery To', default: 'Delivery To' },
+    { key: 'balanceDue', label: 'Balance Due', default: 'Balance Due' },
+  ];
+
+  const labels = form.labels || {};
+
+  function setLabel(key: string, value: string) {
+    setForm((p: any) => ({ ...p, labels: { ...(p.labels || {}), [key]: value } }));
+  }
+
   return (
     <PageShell title="Delivery Notes" desc="Configure default settings for delivery notes." icon={Truck}>
-      <SalesModuleSection title="Delivery Note Settings" fields={[
-        { key: 'autoGenerateNumbers', label: 'Auto-generate delivery note numbers', desc: 'Automatically assign delivery note numbers.' },
-        { key: 'showSerialNumbers', label: 'Show item serial numbers', desc: 'Display serial numbers on delivery notes.' },
-        { key: 'emailToCustomer', label: 'Email delivery note to customer', desc: 'Send a copy via email.' },
-      ]} form={form} toggle={toggle} />
+      <Section title="Delivery Notes">
+        <div className="overflow-x-auto -mx-6 px-6">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-100">
+                <th className="text-left py-3 pr-4 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Field</th>
+                <th className="text-left py-3 pr-4 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Label</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {fields.map(f => (
+                <tr key={f.key} className="hover:bg-slate-50/50">
+                  <td className="py-3 pr-4 text-sm font-medium text-slate-700">{f.label}</td>
+                  <td className="py-3 pr-4">
+                    <input type="text" value={labels[f.key] ?? f.default} onChange={e => setLabel(f.key, e.target.value)}
+                      className="w-full max-w-[200px] px-2.5 py-1.5 text-sm border border-slate-200 rounded-lg bg-white" />
+                  </td>
+                </tr>
+              ))}
+              <tr className="hover:bg-slate-50/50">
+                <td className="py-3 pr-4 text-sm font-medium text-slate-700">Customer Notes</td>
+                <td className="py-3 pr-4">
+                  <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                    <input type="checkbox" checked={form.showCustomerNotes} onChange={() => setForm((p: any) => ({ ...p, showCustomerNotes: !p.showCustomerNotes }))} className="text-indigo-600 rounded" />
+                    Show Customer Notes
+                  </label>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </Section>
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 export function PackingSlipsSettingsPage() {
-  const { form, toggle, handleSave, isPending, saved, error } = useSettingsForm('packingSlips', { autoGenerateNumbers: true });
+  const { form, handleSave, isPending, saved, error, setForm } = useSettingsForm('packingSlips', {
+    labels: {} as Record<string,string>,
+    showCustomerNotes: true,
+  });
+
+  const fields = [
+    { key: 'documentTitle', label: 'Document Title', default: 'PACKING SLIP' },
+    { key: 'transactionNumber', label: 'Transaction Number', default: '#' },
+    { key: 'dateField', label: 'Date Field', default: 'Date' },
+    { key: 'item', label: 'Item', default: 'Item' },
+    { key: 'description', label: 'Description', default: 'Description' },
+    { key: 'quantity', label: 'Quantity', default: 'Qty' },
+    { key: 'referenceField', label: 'Reference Field', default: 'Reference#' },
+    { key: 'billTo', label: 'Bill To', default: 'Bill To' },
+    { key: 'signature', label: 'Signature', default: 'Authorized Signature' },
+    { key: 'deliveryTo', label: 'Delivery To', default: 'Delivery To' },
+    { key: 'balanceDue', label: 'Balance Due', default: 'Balance Due' },
+  ];
+
+  const labels = form.labels || {};
+
+  function setLabel(key: string, value: string) {
+    setForm((p: any) => ({ ...p, labels: { ...(p.labels || {}), [key]: value } }));
+  }
+
   return (
     <PageShell title="Packing Slips" desc="Configure default settings for packing slips." icon={ClipboardList}>
-      <SalesModuleSection title="Packing Slip Settings" fields={[
-        { key: 'autoGenerateNumbers', label: 'Auto-generate packing slip numbers', desc: 'Automatically assign packing slip numbers.' },
-        { key: 'showBatchNumbers', label: 'Show batch numbers', desc: 'Display batch/lot numbers on packing slips.' },
-        { key: 'includeBarcode', label: 'Include barcode', desc: 'Include barcode on printed packing slips.' },
-      ]} form={form} toggle={toggle} />
+      <Section title="Packing Slips">
+        <div className="overflow-x-auto -mx-6 px-6">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-100">
+                <th className="text-left py-3 pr-4 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Field</th>
+                <th className="text-left py-3 pr-4 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Label</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {fields.map(f => (
+                <tr key={f.key} className="hover:bg-slate-50/50">
+                  <td className="py-3 pr-4 text-sm font-medium text-slate-700">{f.label}</td>
+                  <td className="py-3 pr-4">
+                    <input type="text" value={labels[f.key] ?? f.default} onChange={e => setLabel(f.key, e.target.value)}
+                      className="w-full max-w-[200px] px-2.5 py-1.5 text-sm border border-slate-200 rounded-lg bg-white" />
+                  </td>
+                </tr>
+              ))}
+              <tr className="hover:bg-slate-50/50">
+                <td className="py-3 pr-4 text-sm font-medium text-slate-700">Customer Notes</td>
+                <td className="py-3 pr-4">
+                  <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                    <input type="checkbox" checked={form.showCustomerNotes} onChange={() => setForm((p: any) => ({ ...p, showCustomerNotes: !p.showCustomerNotes }))} className="text-indigo-600 rounded" />
+                    Show Customer Notes
+                  </label>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </Section>
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
