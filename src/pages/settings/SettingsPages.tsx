@@ -3348,15 +3348,79 @@ export function CustomerPortalPage() {
 
 // ─── Vendor Portal ─────────────────────────────────────────────────────────
 export function VendorPortalPage() {
-  const { form, field, toggle, handleSave, isPending, saved, error } = useSettingsForm('vendorPortal', { enabled: true, showPaymentHistory: true });
+  const { form, field, toggle, handleSave, isPending, saved, error, setForm } = useSettingsForm('vendorPortal', {
+    portalName: 'wastecaresolutionsresourcesman',
+    portalUrl: 'https://books.skybooks.com/portal/wastecaresolutionsresourcesman',
+    bannerMessage: '',
+    notifyActivity: false,
+    notifyOnComment: false,
+    allowEditContact: false,
+    allowUploadDocs: false,
+    allowAcceptRejectPO: false,
+  });
+
   return (
     <PageShell title="Vendor Portal" desc="Configure your vendor self-service portal." icon={Boxes}>
+      <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-5">
+        <p className="text-xs text-amber-700">
+          Enter a valid portal name (Use only 5 to 30 characters in lower case without any space and special characters)
+        </p>
+      </div>
+
       <Section title="Portal Settings">
-        <ToggleRow label="Enable Vendor Portal" desc="Allow vendors to view purchase orders and bills online." checked={form.enabled} onClick={toggle('enabled')} />
-        <ToggleRow label="Allow vendors to submit invoices" checked={form.allowSubmit} onClick={toggle('allowSubmit')} />
-        <ToggleRow label="Show payment history to vendors" checked={form.showPaymentHistory} onClick={toggle('showPaymentHistory')} />
-        <Field label="Portal custom message" placeholder="Welcome to our vendor portal" value={form.customMessage || ''} onChange={field('customMessage')} />
+        <Field label="Portal Name" value={form.portalName || ''} onChange={field('portalName')} placeholder="wastecaresolutionsresourcesman" />
+        <Field label="Portal URL" value={form.portalUrl || ''} onChange={field('portalUrl')} placeholder="https://books.skybooks.com/portal/..." />
+        <p className="text-xs text-slate-400">Note: The portal name and portal URL will be common for the Customer and Vendor Portal.</p>
+        <div className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 mt-2">
+          <p className="text-xs font-medium text-slate-700">Understand how the vendor portal works</p>
+        </div>
       </Section>
+
+      <Section title="Banner Message">
+        <textarea
+          value={form.bannerMessage || ''}
+          onChange={field('bannerMessage')}
+          placeholder="This message will be displayed right on top of the 'Home' page of the portal."
+          className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-white text-slate-800 placeholder-slate-400 min-h-[80px] resize-y"
+        />
+      </Section>
+
+      <Section title="Notifications">
+        <ToggleRow
+          label="Notify me for every activity that takes place in the portal"
+          desc="An email and an in-app notification will be sent to you whenever your vendor adds comments, updates custom fields or uploads documents."
+          checked={form.notifyActivity}
+          onClick={toggle('notifyActivity')}
+        />
+        <ToggleRow
+          label="Notify my vendor when I comment or reject the documents"
+          desc="An email notification will be sent to your vendor whenever you add a comment or reject the documents they uploaded."
+          checked={form.notifyOnComment}
+          onClick={toggle('notifyOnComment')}
+        />
+      </Section>
+
+      <Section title="Vendor Permissions">
+        <ToggleRow
+          label="Allow vendors to update their contact details in the portal"
+          desc="Vendors can add or edit their shipping/billing addresses, custom fields and other contact details."
+          checked={form.allowEditContact}
+          onClick={toggle('allowEditContact')}
+        />
+        <ToggleRow
+          label="Allow vendors to upload documents"
+          desc="Vendors can upload invoices that support your purchases. Once uploaded, you can verify and convert them into bills in SkyBooks."
+          checked={form.allowUploadDocs}
+          onClick={toggle('allowUploadDocs')}
+        />
+        <ToggleRow
+          label="Allow vendors to accept/reject purchase orders"
+          desc="The purchase orders you create and send will be available in the portal. The vendor can review the orders and accept or reject them."
+          checked={form.allowAcceptRejectPO}
+          onClick={toggle('allowAcceptRejectPO')}
+        />
+      </Section>
+
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
