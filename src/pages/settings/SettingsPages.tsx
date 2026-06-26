@@ -50,6 +50,7 @@ import {
   ShoppingCart, Receipt, ToggleLeft, Download, Upload, Link,
   Lightbulb, Eye, Pencil, Trash2, Plus, Check, X,
   Loader2, Save, CheckCircle2, AlertCircle, MapPin, Calendar, Phone, Search, Star,
+  ChevronLeft, ChevronRight,
 } from 'lucide-react';
 
 function PageShell({ title, desc, icon: Icon, children }: { title: string; desc?: string; icon?: React.ComponentType<{ className?: string }>; children: React.ReactNode }) {
@@ -2727,6 +2728,16 @@ function parseCSV(text: string): string[][] {
   );
 }
 
+const SYSTEM_FIELDS = [
+  { value: 'accountName', label: 'Account Name', required: true },
+  { value: 'amount', label: 'Amount', required: true },
+  { value: 'debitOrCredit', label: 'Debit or Credit' },
+  { value: 'migrationDate', label: 'Migration Date' },
+  { value: 'contactName', label: 'Contact Name' },
+  { value: 'currencyCode', label: 'Currency Code' },
+  { value: 'exchangeRate', label: 'Exchange Rate' },
+];
+
 export function OpeningBalancesPage() {
   const { form, handleSave, isPending, saved, error, setForm } = useSettingsForm('openingBalances', {
     location: '',
@@ -2735,37 +2746,317 @@ export function OpeningBalancesPage() {
     apTotal: 0,
     adjustmentAccount: 'Opening Balance Adjustments',
     adjustmentAmount: 0,
+    importedRows: [] as any[],
   });
+
+  const { data: accounts } = useQuery<any[]>({
+    queryKey: ['accounts'],
+    queryFn: async () => { const r = await api.get('/accountant/accounts'); return r.data; },
+    enabled: true,
+  });
+
+  const [importStep, setImportStep] = useState(0);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [parsedHeaders, setParsedHeaders] = useState<string[]>([]);
+  const [parsedRows, setParsedRows] = useState<string[][]>([]);
+  const [encoding, setEncoding] = useState('UTF-8');
+  const [fieldMapping, setFieldMapping] = useState<Record<string, string>>({});
+  const [isDragOver, setIsDragOver] = useState(false);
 
   const ar = form.arTotal || 0;
   const ap = form.apTotal || 0;
   const adj = form.adjustmentAmount || 0;
   const grandTotalVal = ar - ap + adj;
 
+  const accountNameMap = new Map(
+    (accounts || []).map((a: any) => [a.name.toLowerCase(), a.name])
+  );
+
   function formatMoney(val: number) {
     return val.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
-  function handleCSVImport(type: string, e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  function autoMap(headers: string[]) {
+    const map: Record<string, string> = {};
+    headers.forEach(h => {
+      const lower = h.toLowerCase().trim();
+      if (lower.includes('account') || lower.includes('name')) map[h] = 'accountName';
+      else if (lower.includes('amount') || lower.includes('balance') || lower.includes('total')) map[h] = 'amount';
+      else if (lower.includes('debit') || lower.includes('credit') || lower.includes('dr') || lower.includes('cr')) map[h] = 'debitOrCredit';
+      else if (lower.includes('date') || lower.includes('migration')) map[h] = 'migrationDate';
+      else if (lower.includes('contact') || lower.includes('customer') || lower.includes('vendor') || lower.includes('client')) map[h] = 'contactName';
+      else if (lower.includes('currency') || lower.includes('curr') || lower.includes('code')) map[h] = 'currencyCode';
+      else if (lower.includes('rate') || lower.includes('exchange') || lower.includes('fx')) map[h] = 'exchangeRate';
+    });
+    return map;
+  }
+
+  function handleFile(file: File) {
+    setImportFile(file);
     const reader = new FileReader();
     reader.onload = (ev) => {
       const text = ev.target?.result as string;
-      const rows = parseCSV(text);
-      if (rows.length < 2) return;
-      const header = rows[0];
-      const amountIdx = header.findIndex(h => h.toLowerCase().includes('amount') || h.toLowerCase().includes('balance'));
-      const contactIdx = header.findIndex(h => h.toLowerCase().includes('name') || h.toLowerCase().includes('contact') || h.toLowerCase().includes('customer') || h.toLowerCase().includes('vendor'));
-      if (contactIdx === -1 || amountIdx === -1) return;
-      let total = 0;
-      for (let i = 1; i < rows.length; i++) {
-        total += parseFloat(rows[i][amountIdx]) || 0;
-      }
-      setForm((p: any) => ({ ...p, [type === 'ar' ? 'arTotal' : 'apTotal']: total }));
+      const separator = file.name.endsWith('.tsv') ? '\t' : ',';
+      const lines = text.split('\n').filter(Boolean);
+      if (lines.length < 2) return;
+      const rows = lines.map(line => {
+        const parts: string[] = [];
+        let current = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+          const ch = line[i];
+          if (ch === '"') { inQuotes = !inQuotes; }
+          else if (ch === separator && !inQuotes) { parts.push(current.trim()); current = ''; }
+          else { current += ch; }
+        }
+        parts.push(current.trim());
+        return parts;
+      });
+      setParsedHeaders(rows[0]);
+      setParsedRows(rows.slice(1));
+      setFieldMapping(autoMap(rows[0]));
+      setImportStep(1);
     };
     reader.readAsText(file);
-    e.target.value = '';
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setIsDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  }
+
+  function confirmImport() {
+    const acctIdx = parsedHeaders.findIndex(h => fieldMapping[h] === 'accountName');
+    const amtIdx = parsedHeaders.findIndex(h => fieldMapping[h] === 'amount');
+    const dcIdx = parsedHeaders.findIndex(h => fieldMapping[h] === 'debitOrCredit');
+    const dateIdx = parsedHeaders.findIndex(h => fieldMapping[h] === 'migrationDate');
+    const contactIdx = parsedHeaders.findIndex(h => fieldMapping[h] === 'contactName');
+    const currIdx = parsedHeaders.findIndex(h => fieldMapping[h] === 'currencyCode');
+    const rateIdx = parsedHeaders.findIndex(h => fieldMapping[h] === 'exchangeRate');
+
+    if (acctIdx === -1 || amtIdx === -1) return;
+
+    const rows = parsedRows.map((row, i) => {
+      const rawAcct = row[acctIdx] || '';
+      const matched = accountNameMap.get(rawAcct.toLowerCase().trim());
+      return {
+        id: `imported_${i}`,
+        accountName: matched || rawAcct,
+        accountMatched: !!matched,
+        amount: parseFloat(row[amtIdx]) || 0,
+        debitOrCredit: dcIdx >= 0 ? row[dcIdx] : 'Debit',
+        migrationDate: dateIdx >= 0 ? row[dateIdx] : form.migrationDate,
+        contactName: contactIdx >= 0 ? row[contactIdx] : '',
+        currencyCode: currIdx >= 0 ? row[currIdx] : '',
+        exchangeRate: parseFloat(rateIdx >= 0 ? row[rateIdx] : '1') || 1,
+      };
+    });
+
+    let totalAr = 0, totalAp = 0;
+    for (const r of rows) {
+      const baseAmt = r.amount * r.exchangeRate;
+      const isDebit = r.debitOrCredit.toLowerCase().startsWith('d');
+      if (r.accountName.toLowerCase().includes('receivable')) {
+        totalAr += isDebit ? baseAmt : -baseAmt;
+      } else if (r.accountName.toLowerCase().includes('payable')) {
+        totalAp += isDebit ? baseAmt : -baseAmt;
+      }
+    }
+
+    setForm((p: any) => ({
+      ...p,
+      arTotal: totalAr || p.arTotal,
+      apTotal: totalAp || p.apTotal,
+      importedRows: rows,
+      migrationDate: rows[0]?.migrationDate || p.migrationDate,
+    }));
+    setImportStep(0);
+    setImportFile(null);
+  }
+
+  function renderUploadZone() {
+    return (
+      <div
+        onDrop={handleDrop}
+        onDragOver={e => { e.preventDefault(); setIsDragOver(true); }}
+        onDragLeave={() => setIsDragOver(false)}
+        className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition ${
+          isDragOver ? 'border-indigo-400 bg-indigo-50' : 'border-slate-300 hover:border-slate-400 bg-white'
+        }`}
+        onClick={() => document.getElementById('ob-file-input')?.click()}
+      >
+        <Upload size={36} className="mx-auto text-slate-300 mb-3" />
+        <p className="text-sm font-medium text-slate-700 mb-1">Drag and drop file to import</p>
+        <p className="text-xs text-slate-400">Maximum File Size: 25 MB &bull; File Format: CSV or TSV or XLS</p>
+        <input
+          id="ob-file-input"
+          type="file" accept=".csv,.tsv,.xls,.xlsx"
+          className="hidden"
+          onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
+        />
+        <div className="mt-5 flex items-center justify-center gap-2">
+          <button onClick={(e) => { e.stopPropagation(); downloadSampleCSV('sample_opening_balance.csv',
+            ['Migration Date', 'Account Name', 'Debit or Credit', 'Currency Code', 'Amount', 'Exchange Rate', 'Contact Name'],
+            [['2017-01-01', 'Accounts Receivable', 'Debit', 'USD', '10000.0', '1.000000', 'Ethan'],
+             ['2017-01-01', 'Accounts Payable', 'Credit', 'USD', '10000.0', '1.000000', 'Edward'],
+             ['2017-01-01', 'Salaries and Employee Wages', 'Debit', 'USD', '10000', '1', ''],
+             ['2017-01-01', 'General Income', 'Credit', 'USD', '10000', '1', '']]
+          ); }} className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg transition">
+            <Download size={14} /> Download a sample file
+          </button>
+        </div>
+        <p className="text-xs text-slate-400 mt-3">
+          Download a sample file and compare it to your import file to ensure you have the file perfect for the import.
+        </p>
+      </div>
+    );
+  }
+
+  function renderConfigureStep() {
+    const headerCount = parsedHeaders.length;
+    const rowCount = parsedRows.length;
+    return (
+      <div className="space-y-5">
+        <div className="flex items-center text-xs text-slate-500 mb-2">
+          <span className="flex items-center gap-1.5"><CheckCircle2 size={14} className="text-emerald-500" /> File selected: <span className="font-medium text-slate-700">{importFile?.name}</span></span>
+          <span className="mx-3 text-slate-300">|</span>
+          <span>{headerCount} columns</span>
+          <span className="mx-3 text-slate-300">|</span>
+          <span>{rowCount} rows</span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1.5">Character Encoding</label>
+            <select value={encoding} onChange={e => setEncoding(e.target.value)} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-white text-slate-800">
+              <option>UTF-8</option>
+              <option>ISO-8859-1</option>
+              <option>Windows-1252</option>
+              <option>UTF-16</option>
+            </select>
+          </div>
+        </div>
+        <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+          <p className="text-xs text-amber-700">
+            <strong>Page Tips:</strong> If you have files in other formats, you can convert it to an accepted file format using any online/offline converter. You can configure your import settings and save them for future too!
+          </p>
+        </div>
+        <div className="flex justify-between items-center">
+          <button onClick={() => { setImportStep(0); setImportFile(null); }} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg transition">Cancel</button>
+          <button onClick={() => setImportStep(2)} disabled={!parsedHeaders.length} className="inline-flex items-center gap-1.5 px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition">
+            Continue <ChevronRight size={16} />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  function renderMapFieldsStep() {
+    return (
+      <div className="space-y-5">
+        <p className="text-xs text-slate-500">Map your file columns to the system fields. Required fields are marked with <span className="text-red-500">*</span>.</p>
+        <div className="space-y-3 max-w-lg">
+          {parsedHeaders.map(h => (
+            <div key={h} className="flex items-center gap-3">
+              <span className="w-36 text-sm text-slate-700 truncate shrink-0">{h}</span>
+              <ChevronRight size={14} className="text-slate-300 shrink-0" />
+              <select
+                value={fieldMapping[h] || ''}
+                onChange={e => setFieldMapping(p => ({ ...p, [h]: e.target.value }))}
+                className="flex-1 px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-white text-slate-800"
+              >
+                <option value="">— Skip —</option>
+                {SYSTEM_FIELDS.map(f => (
+                  <option key={f.value} value={f.value}>
+                    {f.label}{f.required ? ' *' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ))}
+        </div>
+        <div className="flex justify-between items-center pt-2">
+          <button onClick={() => setImportStep(1)} className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg transition">
+            <ChevronLeft size={16} /> Back
+          </button>
+          <button
+            onClick={() => setImportStep(3)}
+            disabled={!parsedHeaders.some(h => fieldMapping[h] === 'accountName') || !parsedHeaders.some(h => fieldMapping[h] === 'amount')}
+            className="inline-flex items-center gap-1.5 px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition"
+          >
+            Continue <ChevronRight size={16} />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  function renderPreviewStep() {
+    const acctIdx = parsedHeaders.findIndex(h => fieldMapping[h] === 'accountName');
+    const amtIdx = parsedHeaders.findIndex(h => fieldMapping[h] === 'amount');
+    const dcIdx = parsedHeaders.findIndex(h => fieldMapping[h] === 'debitOrCredit');
+    const contactIdx = parsedHeaders.findIndex(h => fieldMapping[h] === 'contactName');
+    const currIdx = parsedHeaders.findIndex(h => fieldMapping[h] === 'currencyCode');
+
+    const previewRows = parsedRows.slice(0, 50);
+    let totalDebit = 0, totalCredit = 0;
+
+    return (
+      <div className="space-y-5">
+        <div className="flex items-center gap-2 text-xs text-slate-500 mb-2">
+          <CheckCircle2 size={14} className="text-emerald-500" />
+          <span>Parsed <strong>{parsedRows.length}</strong> rows. Showing first {Math.min(50, parsedRows.length)}.</span>
+        </div>
+        <div className="overflow-x-auto border border-slate-200 rounded-lg">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="bg-slate-50 text-left font-semibold text-slate-500 uppercase tracking-wide">
+                <th className="px-3 py-2">Account Name</th>
+                <th className="px-3 py-2">Match</th>
+                <th className="px-3 py-2 text-right">Amount</th>
+                <th className="px-3 py-2">Debit/Credit</th>
+                <th className="px-3 py-2">Contact</th>
+                <th className="px-3 py-2">Currency</th>
+              </tr>
+            </thead>
+            <tbody>
+              {previewRows.map((row, i) => {
+                const rawAcct = row[acctIdx] || '';
+                const matched = accountNameMap.get(rawAcct.toLowerCase().trim());
+                const amount = parseFloat(row[amtIdx]) || 0;
+                const isDebit = dcIdx >= 0 ? row[dcIdx]?.toLowerCase().startsWith('d') : true;
+                if (isDebit) totalDebit += amount; else totalCredit += amount;
+                return (
+                  <tr key={i} className="border-t border-slate-100">
+                    <td className="px-3 py-2 text-slate-700 max-w-48 truncate">{rawAcct}</td>
+                    <td className="px-3 py-2">{matched ? <span className="text-emerald-600 font-medium">✓</span> : <span className="text-amber-500 font-medium">?</span>}</td>
+                    <td className="px-3 py-2 text-right font-mono text-slate-800">{amount.toFixed(2)}</td>
+                    <td className="px-3 py-2">{dcIdx >= 0 ? row[dcIdx] : '—'}</td>
+                    <td className="px-3 py-2 text-slate-500">{contactIdx >= 0 ? row[contactIdx] : '—'}</td>
+                    <td className="px-3 py-2">{currIdx >= 0 ? row[currIdx] : '—'}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <div className="bg-slate-50 rounded-lg p-4 flex items-center justify-between">
+          <div className="space-y-1 text-xs">
+            <p className="text-slate-600">Total Debit: <span className="font-semibold text-slate-800">₦{formatMoney(totalDebit)}</span></p>
+            <p className="text-slate-600">Total Credit: <span className="font-semibold text-slate-800">₦{formatMoney(totalCredit)}</span></p>
+          </div>
+        </div>
+        <div className="flex justify-between items-center">
+          <button onClick={() => setImportStep(2)} className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg transition">
+            <ChevronLeft size={16} /> Back
+          </button>
+          <button onClick={confirmImport} className="inline-flex items-center gap-1.5 px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition">
+            <Check size={16} /> Confirm Import
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -2796,32 +3087,60 @@ export function OpeningBalancesPage() {
             </div>
           </div>
 
-          <div className="border-t border-slate-100 pt-4 space-y-3">
-            <div className="flex items-center justify-between py-2 flex-wrap gap-2">
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-slate-700">Accounts Receivable</span>
-                <label className="px-3 py-1 border border-indigo-200 text-indigo-600 text-xs font-medium rounded-lg hover:bg-indigo-50 transition cursor-pointer">
-                  Import <input type="file" accept=".csv" className="hidden" onChange={e => handleCSVImport('ar', e)} />
-                </label>
-                <button onClick={() => downloadSampleCSV('accounts_receivable.csv', ['Customer Name', 'Outstanding Amount'], [['Sample Customer', '500000']])} className="px-3 py-1 border border-slate-200 text-slate-500 text-xs font-medium rounded-lg hover:bg-slate-50 transition flex items-center gap-1">
-                  <Download size={12} /> Sample CSV
-                </button>
+          <div className="border-t border-slate-100 pt-5">
+            <h3 className="text-sm font-semibold text-slate-800 mb-4">Opening Balances — Select File</h3>
+
+            {importStep === 0 && renderUploadZone()}
+
+            {importStep >= 1 && (
+              <div className="border border-slate-200 rounded-xl overflow-hidden">
+                <div className="flex items-center gap-1 px-5 py-3 bg-slate-50 border-b border-slate-200">
+                  {[
+                    { step: 1, label: 'Configure' },
+                    { step: 2, label: 'Map Fields' },
+                    { step: 3, label: 'Preview' },
+                  ].map(s => (
+                    <div key={s.step} className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md transition ${
+                      importStep === s.step ? 'bg-indigo-100 text-indigo-700' : importStep > s.step ? 'text-emerald-600' : 'text-slate-400'
+                    }`}>
+                      {importStep > s.step ? <CheckCircle2 size={14} /> : <span className="w-4 h-4 rounded-full border border-current flex items-center justify-center text-[10px] font-bold">{s.step}</span>}
+                      {s.label}
+                    </div>
+                  ))}
+                </div>
+                <div className="px-5 py-4">
+                  {importStep === 1 && renderConfigureStep()}
+                  {importStep === 2 && renderMapFieldsStep()}
+                  {importStep === 3 && renderPreviewStep()}
+                </div>
               </div>
-              <input type="number" value={ar} onChange={e => setForm((p: any) => ({ ...p, arTotal: parseFloat(e.target.value) || 0 }))} className="w-40 px-3 py-2 text-sm border border-slate-200 rounded-lg text-right font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
-            </div>
-            <div className="flex items-center justify-between py-2 flex-wrap gap-2">
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-slate-700">Accounts Payable</span>
-                <label className="px-3 py-1 border border-indigo-200 text-indigo-600 text-xs font-medium rounded-lg hover:bg-indigo-50 transition cursor-pointer">
-                  Import <input type="file" accept=".csv" className="hidden" onChange={e => handleCSVImport('ap', e)} />
-                </label>
-                <button onClick={() => downloadSampleCSV('accounts_payable.csv', ['Vendor Name', 'Outstanding Amount'], [['Sample Vendor', '250000']])} className="px-3 py-1 border border-slate-200 text-slate-500 text-xs font-medium rounded-lg hover:bg-slate-50 transition flex items-center gap-1">
-                  <Download size={12} /> Sample CSV
-                </button>
-              </div>
-              <input type="number" value={ap} onChange={e => setForm((p: any) => ({ ...p, apTotal: parseFloat(e.target.value) || 0 }))} className="w-40 px-3 py-2 text-sm border border-slate-200 rounded-lg text-right font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
-            </div>
+            )}
           </div>
+
+          {(form.importedRows?.length > 0) && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+              <p className="text-xs font-medium text-emerald-700 flex items-center gap-1.5 mb-2">
+                <CheckCircle2 size={14} /> {form.importedRows.length} rows imported successfully
+              </p>
+              <div className="overflow-x-auto max-h-40">
+                <table className="w-full text-xs">
+                  <thead><tr className="text-left font-semibold text-emerald-600">
+                    <th className="px-2 py-1">Account</th><th className="px-2 py-1 text-right">Amount</th><th className="px-2 py-1">Dr/Cr</th><th className="px-2 py-1">Contact</th>
+                  </tr></thead>
+                  <tbody>
+                    {(form.importedRows || []).slice(0, 20).map((r: any, i: number) => (
+                      <tr key={i} className="border-t border-emerald-100 text-emerald-800">
+                        <td className="px-2 py-1">{r.accountName}{!r.accountMatched ? ' ⚠' : ''}</td>
+                        <td className="px-2 py-1 text-right font-mono">{r.amount.toFixed(2)}</td>
+                        <td className="px-2 py-1">{r.debitOrCredit}</td>
+                        <td className="px-2 py-1">{r.contactName || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
           <div className="border-t border-slate-100 pt-4 space-y-3">
             <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Opening Balance Adjustments</h4>
@@ -2840,15 +3159,15 @@ export function OpeningBalancesPage() {
             </div>
             <div className="flex items-center justify-between text-xs text-slate-400 mt-1">
               <span>Accounts Receivable</span>
-              <span>₦{formatMoney(ar)}</span>
+              <span className="font-mono">₦{formatMoney(ar)}</span>
             </div>
             <div className="flex items-center justify-between text-xs text-slate-400">
               <span>Accounts Payable</span>
-              <span>₦{formatMoney(ap)}</span>
+              <span className="font-mono">₦{formatMoney(ap)}</span>
             </div>
             <div className="flex items-center justify-between text-xs text-slate-400">
               <span>Adjustment</span>
-              <span>₦{formatMoney(adj)}</span>
+              <span className="font-mono">₦{formatMoney(adj)}</span>
             </div>
           </div>
         </div>
