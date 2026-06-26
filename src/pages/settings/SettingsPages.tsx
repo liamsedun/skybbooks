@@ -4469,19 +4469,71 @@ export function SchedulesPage() {
 
 // ─── Customers & Vendors ───────────────────────────────────────────────────
 export function ContactsSettingsPage() {
-  const { form, toggle, handleSave, isPending, saved, error } = useSettingsForm('contacts', { autoGenerateIds: true, creditLimitEnabled: false });
+  const { form, toggle, handleSave, isPending, saved, error, setForm, field } = useSettingsForm('contacts', {
+    allowDuplicates: false, enableCustomerNumbers: true, enableVendorNumbers: true,
+    defaultCustomerType: 'business', creditLimit: 'disabled',
+    billingFormat: ['${CONTACT.CONTACT_DISPLAYNAME}', '${CONTACT.CONTACT_ADDRESS}', '${CONTACT.CONTACT_CITY}', '${CONTACT.CONTACT_CODE} ${CONTACT.CONTACT_STATE}', '${CONTACT.CONTACT_COUNTRY}'].join('\n'),
+    shippingFormat: ['${CONTACT.CONTACT_ADDRESS}', '${CONTACT.CONTACT_CITY}', '${CONTACT.CONTACT_CODE} ${CONTACT.CONTACT_STATE}', '${CONTACT.CONTACT_COUNTRY}'].join('\n'),
+  });
+  const [cTab, setCTab] = useState('Preferences');
+  const cTabs = ['Preferences', 'Fields', 'Buttons', 'Related Lists'];
+
   return (
     <PageShell title="Customers & Vendors" desc="Configure settings for customer and vendor management." icon={Users}>
-      <Section title="General Settings">
-        <ToggleRow label="Auto-generate customer IDs" desc="Automatically assign IDs to new customers." checked={form.autoGenerateIds} onClick={toggle('autoGenerateIds')} />
-        <ToggleRow label="Require TIN for customers" desc="Make Tax Identification Number mandatory." checked={form.requireTin} onClick={toggle('requireTin')} />
-        <ToggleRow label="Allow duplicate contact names" checked={form.allowDuplicates} onClick={toggle('allowDuplicates')} />
-        <ToggleRow label="Enable customer credit limit" desc="Set maximum credit limits per customer." checked={form.creditLimitEnabled} onClick={toggle('creditLimitEnabled')} />
-      </Section>
-      <Section title="Default Contact Settings">
-        <Select label="Default Payment Term" options={[{ value: 'net15', label: 'Net 15' }, { value: 'net30', label: 'Net 30' }, { value: 'dueonreceipt', label: 'Due on Receipt' }]} value={form.defaultPaymentTerm || 'net30'} />
-        <Select label="Default Currency" options={[{ value: 'NGN', label: 'NGN' }, { value: 'USD', label: 'USD' }]} value={form.defaultCurrency || 'NGN'} />
-      </Section>
+      <div className="flex items-center gap-1 mb-5 bg-slate-100 rounded-lg p-1 w-fit">
+        {cTabs.map(t => (
+          <button key={t} onClick={() => setCTab(t)}
+            className={`px-4 py-1.5 text-xs font-medium rounded-md transition ${cTab === t ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          >{t}</button>
+        ))}
+      </div>
+
+      {cTab === 'Preferences' && (
+        <div className="space-y-5">
+          <Section title="Customers and Vendors">
+            <ToggleRow label="Allow duplicates for customer and vendor display name." checked={form.allowDuplicates} onClick={toggle('allowDuplicates')} />
+          </Section>
+
+          <Section title="Customer & Vendor Numbers">
+            <p className="text-xs text-slate-500 mb-3">Generate customer and vendor numbers automatically. You can configure the series in which numbers are generated while creating new records.</p>
+            <ToggleRow label="Enable Customer Numbers" checked={form.enableCustomerNumbers} onClick={toggle('enableCustomerNumbers')} />
+            <ToggleRow label="Enable Vendor Numbers" checked={form.enableVendorNumbers} onClick={toggle('enableVendorNumbers')} />
+          </Section>
+
+          <Section title="Default Customer Type">
+            <p className="text-xs text-slate-500 mb-3">Select the default customer type based on the kind of customers you usually sell your products or services to. The default customer type will be pre-selected in the customer creation form.</p>
+            <div className="flex items-center gap-4">
+              {['Business', 'Individual'].map(t => (
+                <label key={t} className="flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 text-sm text-slate-700">
+                  <input type="radio" name="defaultCustomerType" checked={form.defaultCustomerType === t.toLowerCase()} onChange={() => setForm((p: any) => ({ ...p, defaultCustomerType: t.toLowerCase() }))} className="text-indigo-600" />
+                  {t}
+                </label>
+              ))}
+            </div>
+          </Section>
+
+          <Section title="Customer Credit Limit">
+            <p className="text-xs text-slate-500 mb-3">Credit Limit enables you to set limit on the outstanding receivable amount of the customers.</p>
+            <Select label="" options={[{ value: 'disabled', label: 'Disabled' }]} value={form.creditLimit || 'disabled'} onChange={field('creditLimit')} />
+          </Section>
+
+          <Section title="Customer and Vendor Billing Address Format (Displayed in PDF only)">
+            <p className="text-xs text-slate-500 mb-2">Insert Placeholders</p>
+            <textarea value={form.billingFormat || ''} onChange={e => setForm((p: any) => ({ ...p, billingFormat: e.target.value }))}
+              className="w-full px-3 py-2.5 text-xs font-mono text-slate-600 border border-slate-200 rounded-lg bg-slate-50 min-h-[100px] resize-y" />
+          </Section>
+
+          <Section title="Customer and Vendor Shipping Address Format (Displayed in PDF only)">
+            <p className="text-xs text-slate-500 mb-2">Insert Placeholders</p>
+            <textarea value={form.shippingFormat || ''} onChange={e => setForm((p: any) => ({ ...p, shippingFormat: e.target.value }))}
+              className="w-full px-3 py-2.5 text-xs font-mono text-slate-600 border border-slate-200 rounded-lg bg-slate-50 min-h-[80px] resize-y" />
+          </Section>
+        </div>
+      )}
+      {cTab !== 'Preferences' && (
+        <Section title={cTab}><p className="text-sm text-slate-400 py-8 text-center">No {cTab.toLowerCase()} configured yet.</p></Section>
+      )}
+
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
@@ -4489,21 +4541,85 @@ export function ContactsSettingsPage() {
 
 // ─── Items ─────────────────────────────────────────────────────────────────
 export function ItemsSettingsPage() {
-  const { form, field, toggle, handleSave, isPending, saved, error } = useSettingsForm('items', { trackInventory: true, autoGenerateSku: true });
+  const { form, field, toggle, handleSave, isPending, saved, error, setForm } = useSettingsForm('items', {
+    decimalRate: true, valuationMethod: 'fifo', allowDuplicateNames: false,
+    enhancedSearch: false, priceLists: false, trackInventory: true, inventoryStartDate: '01 Mar 2025',
+    preventNegativeStock: false, showOutOfStockWarning: false, notifyReorder: false, notifyTo: '',
+    trackLandedCost: false,
+  });
+  const [iTab, setITab] = useState('Preferences');
+  const iTabs = ['Preferences', 'Fields', 'Validation Rules', 'Record Locking', 'Buttons', 'Related Lists'];
+
   return (
     <PageShell title="Items" desc="Configure settings for your product and service items." icon={Package}>
-      <Section title="Item Settings">
-        <ToggleRow label="Track inventory quantity" desc="Enable quantity tracking for stock items." checked={form.trackInventory} onClick={toggle('trackInventory')} />
-        <ToggleRow label="Allow fractional quantities" checked={form.allowFractional} onClick={toggle('allowFractional')} />
-        <ToggleRow label="Auto-generate SKU for new items" checked={form.autoGenerateSku} onClick={toggle('autoGenerateSku')} />
-        <ToggleRow label="Show item images in lists" checked={form.showImages} onClick={toggle('showImages')} />
-      </Section>
-      <Section title="Default Units">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field label="Default Unit (Service)" placeholder="Hour" value={form.serviceUnit || 'Hour'} onChange={field('serviceUnit')} />
-          <Field label="Default Unit (Product)" placeholder="Piece" value={form.productUnit || 'Piece'} onChange={field('productUnit')} />
+      <div className="flex items-center gap-1 mb-5 bg-slate-100 rounded-lg p-1 w-fit overflow-x-auto">
+        {iTabs.map(t => (
+          <button key={t} onClick={() => setITab(t)}
+            className={`whitespace-nowrap px-4 py-1.5 text-xs font-medium rounded-md transition ${iTab === t ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          >{t}</button>
+        ))}
+      </div>
+
+      {iTab === 'Preferences' && (
+        <div className="space-y-5">
+          <Section title="Preferences">
+            <ToggleRow label="Set a decimal rate for your item quantity" checked={form.decimalRate} onClick={toggle('decimalRate')} />
+          </Section>
+
+          <Section title="Default Inventory Valuation Method">
+            <p className="text-xs text-slate-500 mb-3">This valuation method will be used by default when creating items, variants and composite items.</p>
+            <Select label="Inventory Valuation Method" options={[
+              { value: 'fifo', label: 'FIFO (First In, First Out)' },
+              { value: 'lifo', label: 'LIFO (Last In, First Out)' },
+              { value: 'average', label: 'Average Cost' },
+            ]} value={form.valuationMethod || 'fifo'} onChange={field('valuationMethod')} />
+          </Section>
+
+          <Section title="Duplicate Item Name">
+            <ToggleRow label="Allow duplicate item names" desc="If you allow duplicate item names, all imports involving items will use SKU as the primary field for mapping." checked={form.allowDuplicateNames} onClick={toggle('allowDuplicateNames')} />
+            {form.allowDuplicateNames && <p className="text-xs text-amber-600 ml-10">Before you enable this option, make the SKU field active and mandatory.</p>}
+          </Section>
+
+          <Section title="Enhanced Item Search">
+            <ToggleRow label="Enable Enhanced Item Search" desc="Enabling this option makes it easier to find any item using relevant keywords in any order." checked={form.enhancedSearch} onClick={toggle('enhancedSearch')} />
+          </Section>
+
+          <Section title="Price Lists">
+            <ToggleRow label="Enable Price Lists" desc="Price Lists enables you to customise the rates of the items in your sales and purchase transactions." checked={form.priceLists} onClick={toggle('priceLists')} />
+          </Section>
+
+          <Section title="Inventory">
+            <ToggleRow label="Enable Inventory Tracking" checked={form.trackInventory} onClick={toggle('trackInventory')} />
+            {form.trackInventory && (
+              <div className="ml-10 space-y-3 mt-2">
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-slate-600 font-medium">Inventory Start Date :</span>
+                  <span className="text-xs text-slate-700">{form.inventoryStartDate || '01 Mar 2025'}</span>
+                  <button className="text-xs text-indigo-600 hover:underline">Change</button>
+                </div>
+                <ToggleRow label="Prevent stock from going below zero" checked={form.preventNegativeStock} onClick={toggle('preventNegativeStock')} />
+                <ToggleRow label="Show an Out of Stock warning when an item's stock drops below zero" checked={form.showOutOfStockWarning} onClick={toggle('showOutOfStockWarning')} />
+                <div className="flex flex-wrap items-center gap-3">
+                  <ToggleRow label="Notify me if an item's quantity reaches the reorder point" checked={form.notifyReorder} onClick={toggle('notifyReorder')} />
+                  {form.notifyReorder && <Field label="Notify to" placeholder="email@example.com" value={form.notifyTo || ''} onChange={field('notifyTo')} />}
+                </div>
+                <ToggleRow label="Track landed cost on items" checked={form.trackLandedCost} onClick={toggle('trackLandedCost')} />
+              </div>
+            )}
+          </Section>
+
+          <Section title="Advanced Inventory">
+            <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 flex items-center gap-3">
+              <p className="text-xs text-indigo-700">Looking for Advanced Inventory Management features, integrate with Sky Inventory <a href="#" className="font-semibold underline">Learn More</a></p>
+            </div>
+            <p className="text-xs text-slate-400 mt-1">Do more than just basic item creation with SkyBooks. Use advanced serial, bin, batch tracking features and more to track your items and simplify your inventory management.</p>
+          </Section>
         </div>
-      </Section>
+      )}
+      {iTab !== 'Preferences' && (
+        <Section title={iTab}><p className="text-sm text-slate-400 py-8 text-center">No {iTab.toLowerCase()} configured yet.</p></Section>
+      )}
+
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
@@ -4511,17 +4627,37 @@ export function ItemsSettingsPage() {
 
 // ─── Revenue Recognition ───────────────────────────────────────────────────
 export function RevenueRecognitionPage() {
-  const { form, toggle, handleSave, isPending, saved, error } = useSettingsForm('revenueRecognition', { method: 'accrual' });
+  const { form, handleSave, isPending, saved, error } = useSettingsForm('revenueRecognition', { method: 'accrual', deferRevenue: false, autoDeferredSchedule: false });
   return (
     <PageShell title="Revenue Recognition" desc="Configure how revenue is recognized in your books." icon={BarChart2}>
-      <Section title="Revenue Recognition Rules">
-        <Select label="Method" options={[
-          { value: 'accrual', label: 'Accrual Basis — Recognize when invoiced' },
-          { value: 'cash', label: 'Cash Basis — Recognize when received' },
-        ]} value={form.method || 'accrual'} />
-        <ToggleRow label="Defer revenue for recurring invoices" desc="Recognize proportionally over the service period." checked={form.deferRevenue} onClick={toggle('deferRevenue')} />
-        <ToggleRow label="Auto-create deferred revenue schedule" checked={form.autoDeferredSchedule} onClick={toggle('autoDeferredSchedule')} />
+      <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-5 mb-5">
+        <p className="text-xs text-indigo-700">Revenue recognition lets you track your revenue on an accrual basis, i.e., the revenue a transaction earns over the course of its service period, even if it was paid for upfront. Once enabled, you'll find new Revenue Recognition reports which let you track metrics like recognized and deferred revenues. This feature helps you stay compliant with accounting standards like IFRS 15.</p>
+      </div>
+
+      <Section title="Revenue Recognition">
+        <div className="space-y-3">
+          {[
+            { label: 'Create Recognition Rules', desc: 'Define rules that automatically recognize revenue based on service periods.' },
+            { label: 'Associate Rules with Transactions', desc: 'Link recognition rules to your invoices and sales transactions.' },
+            { label: 'Track Recognized and Deferred Revenues', desc: 'Monitor revenue metrics through dedicated reports.' },
+          ].map((s, i) => (
+            <div key={i} className="flex items-center gap-3 px-3 py-2.5 border border-slate-200 rounded-lg">
+              <Check size={14} className="text-emerald-500 shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-slate-700">{s.label}</p>
+                <p className="text-xs text-slate-400">{s.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
       </Section>
+
+      <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-100 rounded-xl p-5 mb-5">
+        <p className="text-xs font-semibold text-indigo-800 mb-1">Exclusive for accounting and bookkeeping firms!</p>
+        <p className="text-xs text-slate-500">Introducing Sky Practice, the complete practice management software to centralize client management, simplify tasks, get access to financial insights and receive compliance alerts, ensuring service excellence.</p>
+        <button className="mt-3 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg transition">Get started now</button>
+      </div>
+
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
@@ -4529,19 +4665,78 @@ export function RevenueRecognitionPage() {
 
 // ─── Accountant ────────────────────────────────────────────────────────────
 export function AccountantSettingsPage() {
-  const { form, toggle, handleSave, isPending, saved, error } = useSettingsForm('accountant', { approvalWorkflow: true, lockPeriods: true });
+  const { form, field, toggle, handleSave, isPending, saved, error, setForm } = useSettingsForm('accountant', {
+    makeAccountCodeMandatory: false, currencyGainLoss: 'sameAccount', exchangeAdjustmentAccount: '',
+    allow13thMonth: false, recurringJournalState: 'draft',
+  });
+  const [aTab, setATab] = useState('Preferences');
+  const aTabs = ['Preferences', 'Default Account Tracking', 'Journal Approvals', 'Journal Validation Rules', 'Journal Fields', 'Chart of Accounts Fields', 'Fixed Asset Fields'];
+
   return (
     <PageShell title="Accountant" desc="Configure settings for your accounting module." icon={FileText}>
-      <Section title="Accounting Preferences">
-        <ToggleRow label="Enable journal entry approval workflow" desc="Require approval before journal entries are posted." checked={form.approvalWorkflow} onClick={toggle('approvalWorkflow')} />
-        <ToggleRow label="Auto-post journal entries" desc="Automatically post journal entries for transactions." checked={form.autoPost} onClick={toggle('autoPost')} />
-        <ToggleRow label="Lock past fiscal periods" desc="Prevent changes to transactions in closed periods." checked={form.lockPeriods} onClick={toggle('lockPeriods')} />
-      </Section>
-      <Section title="Default Accounts">
-        <Select label="Default Revenue Account" options={[{ value: 'sales', label: 'Sales Revenue' }]} value={form.defaultRevenueAccount || 'sales'} />
-        <Select label="Default Expense Account" options={[{ value: 'genexp', label: 'General Expenses' }]} value={form.defaultExpenseAccount || 'genexp'} />
-        <Select label="Default Bank Account" options={[{ value: 'cbn', label: 'CBN Cash Account' }]} value={form.defaultBankAccount || 'cbn'} />
-      </Section>
+      <div className="flex items-center gap-1 mb-5 bg-slate-100 rounded-lg p-1 w-fit overflow-x-auto">
+        {aTabs.map(t => (
+          <button key={t} onClick={() => setATab(t)}
+            className={`whitespace-nowrap px-4 py-1.5 text-xs font-medium rounded-md transition ${aTab === t ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          >{t}</button>
+        ))}
+      </div>
+
+      {aTab === 'Preferences' && (
+        <div className="space-y-5">
+          <Section title="Chart of Accounts">
+            <ToggleRow label="Make Account Code mandatory for new accounts." desc="Enter a unique Account Code for accounts created." checked={form.makeAccountCodeMandatory} onClick={toggle('makeAccountCodeMandatory')} />
+          </Section>
+
+          <Section title="Default Account for Currency Exchange Gain/Loss">
+            <p className="text-xs text-slate-500 mb-3">Exchange rates affect the value of your base currency during conversions. Set a default account to track these gains or losses and keep your financial records accurate.</p>
+            {[
+              { value: 'sameAccount', label: 'Track gains and losses in the same expense account', desc: 'You can track both gains and losses in the same expense account for a consolidated view.' },
+              { value: 'separateAccounts', label: 'Track gains and losses in separate accounts', desc: 'You can track gains in an income account and losses in an expense account for better categorization.' },
+            ].map(o => (
+              <label key={o.value} className="flex items-start gap-3 px-3 py-2.5 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 mb-2">
+                <input type="radio" name="currencyGainLoss" checked={form.currencyGainLoss === o.value} onChange={() => setForm((p: any) => ({ ...p, currencyGainLoss: o.value }))} className="text-indigo-600 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-slate-700">{o.label}</p>
+                  <p className="text-xs text-slate-400">{o.desc}</p>
+                </div>
+              </label>
+            ))}
+          </Section>
+
+          <Section title="Default Account for Exchange Adjustments in Transactions">
+            <p className="text-xs text-slate-500 mb-3">When transactions are created in foreign currencies, there may be decimal value variations between the debit and credit amounts while the journal entries are being posted. These variations are recorded as adjustments. Select the default account using which these adjustments must be recorded.</p>
+            <Select label="" options={[
+              { value: '', label: 'Select an account...' },
+              { value: 'adj', label: 'Exchange Adjustment Account' },
+            ]} value={form.exchangeAdjustmentAccount || ''} onChange={field('exchangeAdjustmentAccount')} />
+          </Section>
+
+          <Section title="Journals">
+            <ToggleRow label="Allow 13th Month Adjustments in manual journals" desc="Enable this option to create a 13th month adjustment journal entry for the selected fiscal year. Once enabled, you can make end-of-period corrections or balance adjustments to your accounts for accurate financial reporting." checked={form.allow13thMonth} onClick={toggle('allow13thMonth')} />
+          </Section>
+
+          <Section title="Recurring Journals">
+            <p className="text-xs text-slate-500 mb-3">Recurring Journals are created automatically based on a pre-configured schedule. These journal entries can either be created in the Draft state or in the Published state.</p>
+            {[
+              { value: 'draft', label: 'Create manual journals in the Draft state', desc: 'Journal entries will be saved as drafts. You can review and publish them later.' },
+              { value: 'published', label: 'Create manual journals in the Published state', desc: 'Journal entries will be created directly in the Published state.' },
+            ].map(o => (
+              <label key={o.value} className="flex items-start gap-3 px-3 py-2.5 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 mb-2">
+                <input type="radio" name="recurringJournalState" checked={form.recurringJournalState === o.value} onChange={() => setForm((p: any) => ({ ...p, recurringJournalState: o.value }))} className="text-indigo-600 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-slate-700">{o.label}</p>
+                  <p className="text-xs text-slate-400">{o.desc}</p>
+                </div>
+              </label>
+            ))}
+          </Section>
+        </div>
+      )}
+      {aTab !== 'Preferences' && (
+        <Section title={aTab}><p className="text-sm text-slate-400 py-8 text-center">No {aTab.toLowerCase()} configured yet.</p></Section>
+      )}
+
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
@@ -4549,15 +4744,54 @@ export function AccountantSettingsPage() {
 
 // ─── Tasks ─────────────────────────────────────────────────────────────────
 export function TasksSettingsPage() {
-  const { form, toggle, handleSave, isPending, saved, error } = useSettingsForm('tasks', { enableAssignments: true, sendReminders: true, allowComments: true });
+  const { form, field, toggle, handleSave, isPending, saved, error, setForm } = useSettingsForm('tasks', {
+    notifyCompletion: true, setReminder: false, alertType: 'email', remindBefore: 1,
+  });
+  const [tTab, setTTab] = useState('Preferences');
+  const tTabs = ['Preferences', 'Statuses', 'Fields'];
+
   return (
     <PageShell title="Tasks" desc="Configure settings for task management." icon={ListChecks}>
-      <Section title="Task Settings">
-        <ToggleRow label="Enable task assignments" desc="Assign tasks to team members." checked={form.enableAssignments} onClick={toggle('enableAssignments')} />
-        <ToggleRow label="Send task reminders" checked={form.sendReminders} onClick={toggle('sendReminders')} />
-        <ToggleRow label="Allow task comments" checked={form.allowComments} onClick={toggle('allowComments')} />
-        <ToggleRow label="Auto-create tasks from workflows" desc="Allow workflow rules to create tasks." checked={form.autoCreateFromWorkflows} onClick={toggle('autoCreateFromWorkflows')} />
-      </Section>
+      <div className="flex items-center gap-1 mb-5 bg-slate-100 rounded-lg p-1 w-fit">
+        {tTabs.map(t => (
+          <button key={t} onClick={() => setTTab(t)}
+            className={`px-4 py-1.5 text-xs font-medium rounded-md transition ${tTab === t ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          >{t}</button>
+        ))}
+      </div>
+
+      {tTab === 'Preferences' && (
+        <div className="space-y-5">
+          <Section title="Task Completion Notify">
+            <ToggleRow label="Notify users once the status is changed to Completed" desc="An email and an in-app notification will be sent to the users associated with each task when a task's status is updated to Completed" checked={form.notifyCompletion} onClick={toggle('notifyCompletion')} />
+          </Section>
+
+          <Section title="Set Reminder Notify">
+            <ToggleRow label="Set the default preference for reminder" desc="The reminder preference that you configure here will auto-populate when you create a task and enable reminder for it" checked={form.setReminder} onClick={toggle('setReminder')} />
+            {form.setReminder && (
+              <div className="ml-10 flex items-center gap-3 mt-3">
+                <Select label="Alert Type" options={[
+                  { value: 'email', label: 'Email' },
+                  { value: 'inapp', label: 'In-App Notification' },
+                  { value: 'both', label: 'Email & In-App' },
+                ]} value={form.alertType || 'email'} onChange={field('alertType')} />
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-500">Remind Before</span>
+                  <div className="flex items-center gap-1">
+                    <input type="number" value={form.remindBefore ?? 1} onChange={e => setForm((p: any) => ({ ...p, remindBefore: parseInt(e.target.value) || 0 }))}
+                      className="w-16 px-2 py-1.5 text-sm border border-slate-200 rounded-lg text-center" />
+                    <span className="text-xs text-slate-500">Day(s)</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </Section>
+        </div>
+      )}
+      {tTab !== 'Preferences' && (
+        <Section title={tTab}><p className="text-sm text-slate-400 py-8 text-center">No {tTab.toLowerCase()} configured yet.</p></Section>
+      )}
+
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
@@ -4565,15 +4799,86 @@ export function TasksSettingsPage() {
 
 // ─── Projects ──────────────────────────────────────────────────────────────
 export function ProjectsSettingsPage() {
-  const { form, toggle, handleSave, isPending, saved, error } = useSettingsForm('projects', { enableBilling: true, allowBudgets: true, enableMilestones: true });
+  const { form, handleSave, isPending, saved, error, setForm } = useSettingsForm('projects', {
+    fields: [] as { name: string; dataType: string; mandatory: boolean; status: string }[],
+  });
+  const [pTab, setPTab] = useState('Fields');
+  const pTabs = ['Fields', 'Buttons', 'Related Lists'];
+  const [fieldName, setFieldName] = useState('');
+  const [fieldDataType, setFieldDataType] = useState('text');
+  const fields = form.fields || [];
+
+  function addField() {
+    if (!fieldName.trim()) return;
+    setForm((p: any) => ({ ...p, fields: [...(p.fields || []), { name: fieldName.trim(), dataType: fieldDataType, mandatory: false, status: 'Active' }] }));
+    setFieldName('');
+  }
+
+  function removeField(i: number) {
+    setForm((p: any) => ({ ...p, fields: (p.fields || []).filter((_: any, j: number) => j !== i) }));
+  }
+
   return (
     <PageShell title="Projects" desc="Configure settings for project management." icon={Layers}>
-      <Section title="Project Settings">
-        <ToggleRow label="Enable project billing" desc="Track billable hours and expenses per project." checked={form.enableBilling} onClick={toggle('enableBilling')} />
-        <ToggleRow label="Auto-create invoices from projects" checked={form.autoCreateInvoices} onClick={toggle('autoCreateInvoices')} />
-        <ToggleRow label="Allow project budgets" checked={form.allowBudgets} onClick={toggle('allowBudgets')} />
-        <ToggleRow label="Enable project milestones" checked={form.enableMilestones} onClick={toggle('enableMilestones')} />
-      </Section>
+      <div className="flex items-center gap-1 mb-5 bg-slate-100 rounded-lg p-1 w-fit">
+        {pTabs.map(t => (
+          <button key={t} onClick={() => setPTab(t)}
+            className={`px-4 py-1.5 text-xs font-medium rounded-md transition ${pTab === t ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          >{t}</button>
+        ))}
+      </div>
+
+      {pTab === 'Fields' && (
+        <div className="space-y-5">
+          <Section title="Search Field Name">
+            <input type="text" value={fieldName} onChange={e => setFieldName(e.target.value)} placeholder="e.g. Custom Field" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-white" />
+            <div className="flex items-center gap-3 mt-2">
+              <select value={fieldDataType} onChange={e => setFieldDataType(e.target.value)}
+                className="px-3 py-2.5 text-sm border border-slate-200 rounded-lg bg-white">
+                <option value="text">Text</option>
+                <option value="number">Number</option>
+                <option value="date">Date</option>
+                <option value="boolean">Boolean</option>
+              </select>
+              <button onClick={addField} disabled={!fieldName.trim()} className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg"><Plus size={14} /></button>
+            </div>
+          </Section>
+
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-100 bg-slate-50/50">
+                    <th className="text-left px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Field Name</th>
+                    <th className="text-left px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Data Type</th>
+                    <th className="text-left px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Mandatory</th>
+                    <th className="text-left px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                    <th className="text-right px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">More Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {fields.length === 0 ? (
+                    <tr><td colSpan={5} className="px-4 py-8 text-center"><p className="text-sm text-slate-400">No custom fields yet.</p></td></tr>
+                  ) : fields.map((f: any, i: number) => (
+                    <tr key={i} className="hover:bg-slate-50/50">
+                      <td className="px-4 py-3 text-sm font-medium text-slate-700">{f.name}</td>
+                      <td className="px-4 py-3 text-xs text-slate-500">{f.dataType}</td>
+                      <td className="px-4 py-3"><input type="checkbox" checked={f.mandatory} onChange={() => setForm((p: any) => ({ ...p, fields: (p.fields || []).map((x: any, j: number) => j === i ? { ...x, mandatory: !x.mandatory } : x) }))} className="text-indigo-600 rounded" /></td>
+                      <td className="px-4 py-3"><span className={`px-2 py-0.5 text-[10px] font-bold rounded-full uppercase ${f.status === 'Active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>{f.status}</span></td>
+                      <td className="px-4 py-3 text-right"><button onClick={() => removeField(i)} className="p-1.5 text-slate-400 hover:text-red-500 rounded-lg hover:bg-slate-100"><Trash2 size={14} /></button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {fields.length > 0 && <p className="px-4 py-3 text-xs text-slate-400 border-t border-slate-100">Do you have information that doesn't go under any existing field? Go ahead and <button onClick={() => { setFieldName(''); setFieldDataType('text'); }} className="text-indigo-600 hover:underline">create a new field</button>.</p>}
+          </div>
+        </div>
+      )}
+      {pTab !== 'Fields' && (
+        <Section title={pTab}><p className="text-sm text-slate-400 py-8 text-center">No {pTab.toLowerCase()} configured yet.</p></Section>
+      )}
+
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
@@ -4581,19 +4886,57 @@ export function ProjectsSettingsPage() {
 
 // ─── Timesheet ─────────────────────────────────────────────────────────────
 export function TimesheetSettingsPage() {
-  const { form, field, toggle, handleSave, isPending, saved, error } = useSettingsForm('timesheet', { enabled: true, requireApproval: true, enableReminders: true });
+  const { form, field, toggle, handleSave, isPending, saved, error, setForm } = useSettingsForm('timesheet', {
+    roundOff: 'none', maxHoursDay: '24:00', trackCosts: false,
+    enableApprovals: false, enableCustomerApprovals: false,
+  });
+  const [tsTab, setTsTab] = useState('Preferences');
+  const tsTabs = ['Preferences', 'Fields'];
+
   return (
     <PageShell title="Timesheet" desc="Configure timesheet settings." icon={FileClock}>
-      <Section title="Timesheet Settings">
-        <ToggleRow label="Enable timesheet tracking" desc="Track employee work hours." checked={form.enabled} onClick={toggle('enabled')} />
-        <ToggleRow label="Require timesheet approval" desc="Managers must approve timesheets." checked={form.requireApproval} onClick={toggle('requireApproval')} />
-        <ToggleRow label="Allow overtime tracking" checked={form.allowOvertime} onClick={toggle('allowOvertime')} />
-        <ToggleRow label="Enable timesheet reminders" checked={form.enableReminders} onClick={toggle('enableReminders')} />
-      </Section>
-      <Section title="Default Configuration">
-        <Field label="Standard work hours per day" type="number" value={form.standardHours ?? ''} onChange={field('standardHours')} />
-        <Select label="Timesheet frequency" options={[{ value: 'weekly', label: 'Weekly' }, { value: 'biweekly', label: 'Bi-weekly' }, { value: 'monthly', label: 'Monthly' }]} value={form.frequency || 'weekly'} />
-      </Section>
+      <div className="flex items-center gap-1 mb-5 bg-slate-100 rounded-lg p-1 w-fit">
+        {tsTabs.map(t => (
+          <button key={t} onClick={() => setTsTab(t)}
+            className={`px-4 py-1.5 text-xs font-medium rounded-md transition ${tsTab === t ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          >{t}</button>
+        ))}
+      </div>
+
+      {tsTab === 'Preferences' && (
+        <div className="space-y-5">
+          <Section title="Round Off Time">
+            <p className="text-xs text-slate-500 mb-3">Time entries will appear on your invoices and reports based on the selected round-off format.</p>
+            <Select label="" options={[
+              { value: 'none', label: 'No Round Off' },
+              { value: '15min', label: '15 Minutes' },
+              { value: '30min', label: '30 Minutes' },
+              { value: '1hour', label: '1 Hour' },
+            ]} value={form.roundOff || 'none'} onChange={field('roundOff')} />
+          </Section>
+
+          <Section title="Maximum Hours">
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-medium text-slate-600">Set maximum hours/day for logging time</span>
+              <input type="text" value={form.maxHoursDay || '24:00'} onChange={e => setForm((p: any) => ({ ...p, maxHoursDay: e.target.value }))}
+                className="w-20 px-2.5 py-1.5 text-sm border border-slate-200 rounded-lg text-center bg-white" />
+            </div>
+          </Section>
+
+          <Section title="Cost Tracking">
+            <ToggleRow label="Track costs for time entries" desc="Enabling this option allows you to track the cost associated with paying your staff for their time entries." checked={form.trackCosts} onClick={toggle('trackCosts')} />
+          </Section>
+
+          <Section title="Timesheet Approvals">
+            <ToggleRow label="Enable Approvals for time entries" desc="Enabling this option lets you submit time entries to the project manager for their approval before you invoice them." checked={form.enableApprovals} onClick={toggle('enableApprovals')} />
+            <ToggleRow label="Enable Customer Approvals for time entries." desc="Enabling this option allows you to submit time entries to your customers and get their approval before you invoice them." checked={form.enableCustomerApprovals} onClick={toggle('enableCustomerApprovals')} />
+          </Section>
+        </div>
+      )}
+      {tsTab !== 'Preferences' && (
+        <Section title={tsTab}><p className="text-sm text-slate-400 py-8 text-center">No {tsTab.toLowerCase()} configured yet.</p></Section>
+      )}
+
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
