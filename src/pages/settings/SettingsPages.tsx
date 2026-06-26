@@ -2302,48 +2302,104 @@ export function GeneralPage() {
 
 // ─── Currencies ────────────────────────────────────────────────────────────
 const ALL_CURRENCIES = [
-  { code: 'AED', name: 'UAE Dirham', symbol: 'د.إ' },
-  { code: 'ARS', name: 'Argentine Peso', symbol: '$' },
-  { code: 'AUD', name: 'Australian Dollar', symbol: '$' },
-  { code: 'BRL', name: 'Brazilian Real', symbol: 'R$' },
-  { code: 'CAD', name: 'Canadian Dollar', symbol: '$' },
-  { code: 'CHF', name: 'Swiss Franc', symbol: 'Fr' },
-  { code: 'CNY', name: 'Chinese Yuan', symbol: '¥' },
-  { code: 'DKK', name: 'Danish Krone', symbol: 'kr' },
-  { code: 'EUR', name: 'Euro', symbol: '€' },
-  { code: 'GBP', name: 'British Pound', symbol: '£' },
-  { code: 'GHS', name: 'Ghanaian Cedi', symbol: '₵' },
-  { code: 'INR', name: 'Indian Rupee', symbol: '₹' },
-  { code: 'JPY', name: 'Japanese Yen', symbol: '¥' },
-  { code: 'KES', name: 'Kenyan Shilling', symbol: 'KSh' },
-  { code: 'KRW', name: 'South Korean Won', symbol: '₩' },
-  { code: 'MAD', name: 'Moroccan Dirham', symbol: 'د.م.' },
-  { code: 'NGN', name: 'Nigerian Naira', symbol: '₦' },
-  { code: 'NOK', name: 'Norwegian Krone', symbol: 'kr' },
-  { code: 'NZD', name: 'New Zealand Dollar', symbol: '$' },
-  { code: 'RUB', name: 'Russian Ruble', symbol: '₽' },
-  { code: 'SAR', name: 'Saudi Riyal', symbol: '﷼' },
-  { code: 'SEK', name: 'Swedish Krona', symbol: 'kr' },
-  { code: 'SGD', name: 'Singapore Dollar', symbol: 'S$' },
-  { code: 'TRY', name: 'Turkish Lira', symbol: '₺' },
-  { code: 'USD', name: 'US Dollar', symbol: '$' },
-  { code: 'XAF', name: 'Central African CFA', symbol: 'Fr' },
-  { code: 'XOF', name: 'West African CFA', symbol: 'Fr' },
-  { code: 'ZAR', name: 'South African Rand', symbol: 'R' },
-];
+  { code: 'AED', name: 'UAE Dirham', symbol: 'د.إ' }, { code: 'AFN', name: 'Afghan Afghani', symbol: '؋' },
+  { code: 'ALL', name: 'Albanian Lek', symbol: 'L' }, { code: 'AMD', name: 'Armenian Dram', symbol: '֏' },
+  { code: 'ANG', name: 'Netherlands Antillian Guilder', symbol: 'ƒ' }, { code: 'AOA', name: 'Angolan Kwanza', symbol: 'Kz' },
+  { code: 'ARS', name: 'Argentine Peso', symbol: '$' }, { code: 'AUD', name: 'Australian Dollar', symbol: '$' },
+  { code: 'AWG', name: 'Aruban Guilder', symbol: 'ƒ' }, { code: 'AZN', name: 'Azerbaijanian Manat', symbol: '₼' },
+  { code: 'BAM', name: 'Bosnia and Herzegovina Convertible Marks', symbol: 'KM' }, { code: 'BBD', name: 'Barbadian Dollar', symbol: '$' },
+  { code: 'BDT', name: 'Bangladeshi Taka', symbol: '৳' }, { code: 'BGN', name: 'Bulgarian Lev', symbol: 'лв' },
+  { code: 'BHD', name: 'Bahraini Dinar', symbol: '.د.ب' }, { code: 'BIF', name: 'Burundian Franc', symbol: 'FBu' },
+  { code: 'BMD', name: 'Bermudian Dollar (Bermuda Dollar)', symbol: '$' }, { code: 'BND', name: 'Brunei Dollar', symbol: '$' },
+  { code: 'BOB', name: 'Bolivian Boliviano', symbol: 'Bs' }, { code: 'BRL', name: 'Brazilian Real', symbol: 'R$' },
+  { code: 'BSD', name: 'Bahamian Dollar', symbol: '$' }, { code: 'BTN', name: 'Bhutanese Ngultrum', symbol: 'Nu.' },
+  { code: 'BWP', name: 'Botswana Pula', symbol: 'P' }, { code: 'BYN', name: 'Belarussian Ruble', symbol: 'Br' },
+  { code: 'BZD', name: 'Belize Dollar', symbol: '$' }, { code: 'CAD', name: 'Canadian Dollar', symbol: '$' },
+  { code: 'CDF', name: 'Congolese franc', symbol: 'FC' }, { code: 'CHF', name: 'Swiss Franc', symbol: 'Fr' },
+  { code: 'CLP', name: 'Chilean Peso', symbol: '$' }, { code: 'CNY', name: 'Yuan Renminbi', symbol: '¥' },
+  { code: 'COP', name: 'Colombian Peso', symbol: '$' }, { code: 'CRC', name: 'Costa Rican Colon', symbol: '₡' },
+  { code: 'CUC', name: 'Cuban Convertible Peso', symbol: '$' }, { code: 'CUP', name: 'Cuban Peso', symbol: '$' },
+  { code: 'CVE', name: 'Cape Verdean Escudo', symbol: '$' }, { code: 'CZK', name: 'Czech Koruna', symbol: 'Kč' },
+  { code: 'DJF', name: 'Djiboutian Franc', symbol: 'Fdj' }, { code: 'DKK', name: 'Danish Krone', symbol: 'kr' },
+  { code: 'DOP', name: 'Dominican Peso', symbol: 'RD$' }, { code: 'DZD', name: 'Algerian Dinar', symbol: 'د.ج' },
+  { code: 'EGP', name: 'Egyptian Pound', symbol: '£' }, { code: 'ERN', name: 'Eritrean Nakfa', symbol: 'Nfk' },
+  { code: 'ETB', name: 'Ethiopian Birr', symbol: 'Br' }, { code: 'EUR', name: 'Euro', symbol: '€' },
+  { code: 'FJD', name: 'Fijian Dollar', symbol: '$' }, { code: 'FKP', name: 'Falkland Islands Pound', symbol: '£' },
+  { code: 'GBP', name: 'Pound Sterling', symbol: '£' }, { code: 'GEL', name: 'Georgian Lari', symbol: '₾' },
+  { code: 'GGP', name: 'Guernsey Pound', symbol: '£' }, { code: 'GHS', name: 'Ghanaian Cedi', symbol: '₵' },
+  { code: 'GIP', name: 'Gibraltar Pound', symbol: '£' }, { code: 'GMD', name: 'Gambian Dalasi', symbol: 'D' },
+  { code: 'GNF', name: 'Guinean Franc', symbol: 'FG' }, { code: 'GTQ', name: 'Guatemalan Quetzal', symbol: 'Q' },
+  { code: 'GYD', name: 'Guyanese Dollar', symbol: '$' }, { code: 'HKD', name: 'Hong Kong Dollar', symbol: '$' },
+  { code: 'HNL', name: 'Honduran Lempira', symbol: 'L' }, { code: 'HRK', name: 'Croatian Kuna', symbol: 'kn' },
+  { code: 'HTG', name: 'Haitian Gourde', symbol: 'G' }, { code: 'HUF', name: 'Hungarian Forint', symbol: 'Ft' },
+  { code: 'IDR', name: 'Indonesian Rupiah', symbol: 'Rp' }, { code: 'ILS', name: 'Israeli new shekel', symbol: '₪' },
+  { code: 'IMP', name: 'Manx Pound', symbol: '£' }, { code: 'INR', name: 'Indian Rupee', symbol: '₹' },
+  { code: 'IQD', name: 'Iraqi Dinar', symbol: 'ع.د' }, { code: 'IRR', name: 'Iranian Rial', symbol: '﷼' },
+  { code: 'ISK', name: 'Icelandic Krona', symbol: 'kr' }, { code: 'JEP', name: 'Jersey Pound', symbol: '£' },
+  { code: 'JMD', name: 'Jamaican Dollar', symbol: '$' }, { code: 'JOD', name: 'Jordanian Dinar', symbol: 'د.ا' },
+  { code: 'JPY', name: 'Japanese Yen', symbol: '¥' }, { code: 'KES', name: 'Kenyan Shilling', symbol: 'KSh' },
+  { code: 'KGS', name: 'Kyrgyzstani Som', symbol: 'с' }, { code: 'KHR', name: 'Cambodian Riel', symbol: '៛' },
+  { code: 'KMF', name: 'Comorian Franc', symbol: 'CF' }, { code: 'KPW', name: 'North Korean Won', symbol: '₩' },
+  { code: 'KRW', name: 'South Korean Won', symbol: '₩' }, { code: 'KWD', name: 'Kuwaiti Dinar', symbol: 'د.ك' },
+  { code: 'KYD', name: 'Cayman Islands Dollar', symbol: '$' }, { code: 'KZT', name: 'Kazakhstani Tenge', symbol: '₸' },
+  { code: 'LAK', name: 'Lao Kip', symbol: '₭' }, { code: 'LBP', name: 'Lebanese Pound', symbol: 'ل.ل' },
+  { code: 'LKR', name: 'Sri Lankan Rupee', symbol: 'Rs' }, { code: 'LRD', name: 'Liberian Dollar', symbol: '$' },
+  { code: 'LSL', name: 'Lesotho Loti', symbol: 'L' }, { code: 'LYD', name: 'Libyan Dinar', symbol: 'ل.د' },
+  { code: 'MAD', name: 'Moroccan Dirham', symbol: 'د.م.' }, { code: 'MDL', name: 'Moldovan Leu', symbol: 'L' },
+  { code: 'MGA', name: 'Malagascy Ariary', symbol: 'Ar' }, { code: 'MKD', name: 'Macedonian Denar', symbol: 'ден' },
+  { code: 'MMK', name: 'Burmese Kyat', symbol: 'K' }, { code: 'MNT', name: 'Mongolian Tugrik', symbol: '₮' },
+  { code: 'MOP', name: 'Macanese Pataca', symbol: 'MOP$' }, { code: 'MRU', name: 'Ouguiya', symbol: 'UM' },
+  { code: 'MUR', name: 'Mauritian Rupee', symbol: '₨' }, { code: 'MVR', name: 'Maldivian Rufiyaa', symbol: 'Rf' },
+  { code: 'MWK', name: 'Malawian Kwacha', symbol: 'MK' }, { code: 'MXN', name: 'Mexican Peso', symbol: '$' },
+  { code: 'MYR', name: 'Malaysian Ringgit', symbol: 'RM' }, { code: 'MZN', name: 'Mozambican Metical', symbol: 'MT' },
+  { code: 'NAD', name: 'Namibian Dollar', symbol: '$' }, { code: 'NGN', name: 'Nigerian Naira', symbol: '₦' },
+  { code: 'NIO', name: 'Nicaraguan Cordoba Oro', symbol: 'C$' }, { code: 'NOK', name: 'Norwegian Krone', symbol: 'kr' },
+  { code: 'NPR', name: 'Nepalese Rupee', symbol: 'Rs' }, { code: 'NZD', name: 'New Zealand Dollar', symbol: '$' },
+  { code: 'OMR', name: 'Omani rial', symbol: '﷼' }, { code: 'PAB', name: 'Panamanian Balboa', symbol: 'B/.' },
+  { code: 'PEN', name: 'Peruvian Nuevo Sol', symbol: 'S/' }, { code: 'PGK', name: 'Papua New Guinean Kina', symbol: 'K' },
+  { code: 'PHP', name: 'Philippine Peso', symbol: '₱' }, { code: 'PKR', name: 'Pakistani Rupee', symbol: 'Rs' },
+  { code: 'PLN', name: 'Polish Zloty', symbol: 'zł' }, { code: 'PYG', name: 'Paraguayan Guarani', symbol: '₲' },
+  { code: 'QAR', name: 'Qatari Riyal', symbol: '﷼' }, { code: 'RON', name: 'Romanian Leu', symbol: 'lei' },
+  { code: 'RSD', name: 'Serbian Dinar', symbol: 'дин' }, { code: 'RUB', name: 'Russian Ruble', symbol: '₽' },
+  { code: 'RWF', name: 'Rwandan Franc', symbol: 'FRw' }, { code: 'SAR', name: 'Saudi Riyal', symbol: '﷼' },
+  { code: 'SBD', name: 'Solomon Islands Dollar', symbol: '$' }, { code: 'SCR', name: 'Seychellois Rupee', symbol: '₨' },
+  { code: 'SDG', name: 'Sudanese Pound', symbol: '£' }, { code: 'SEK', name: 'Swedish Krona', symbol: 'kr' },
+  { code: 'SGD', name: 'Singapore Dollar', symbol: 'S$' }, { code: 'SHP', name: 'Saint Helena Pound', symbol: '£' },
+  { code: 'SLE', name: 'Sierra Leonean Leone', symbol: 'Le' }, { code: 'SOS', name: 'Somali Shilling', symbol: 'Sh' },
+  { code: 'SRD', name: 'Surinamese Dollar', symbol: '$' }, { code: 'SSP', name: 'South Sudanese Pound', symbol: '£' },
+  { code: 'STN', name: 'Sao Tome and Principe Dobra', symbol: 'Db' }, { code: 'SYP', name: 'Syrian Pound', symbol: '£' },
+  { code: 'SZL', name: 'Swazi Lilangeni', symbol: 'L' }, { code: 'THB', name: 'Thai Baht', symbol: '฿' },
+  { code: 'TJS', name: 'Tajikistani Somoni', symbol: 'SM' }, { code: 'TMT', name: 'Turkmenistan Manat', symbol: 'T' },
+  { code: 'TND', name: 'Tunisian Dinar', symbol: 'د.ت' }, { code: 'TOP', name: 'Tongan Paanga', symbol: 'T$' },
+  { code: 'TRY', name: 'Turkish Lira', symbol: '₺' }, { code: 'TTD', name: 'Trinidad and Tobago Dollar', symbol: '$' },
+  { code: 'TWD', name: 'New Taiwan Dollar', symbol: 'NT$' }, { code: 'TZS', name: 'Tanzanian Shilling', symbol: 'Sh' },
+  { code: 'UAH', name: 'Ukrainian Hryvnia', symbol: '₴' }, { code: 'UGX', name: 'Ugandan Shilling', symbol: 'Sh' },
+  { code: 'USD', name: 'United States Dollar', symbol: '$' }, { code: 'UYU', name: 'Uruguayan peso', symbol: '$' },
+  { code: 'UZS', name: 'Uzbekistani Sum', symbol: 'Soʻm' }, { code: 'VES', name: 'Venezuelan Bolivar Soberano', symbol: 'Bs' },
+  { code: 'VND', name: 'Vietnamese Dong', symbol: '₫' }, { code: 'VUV', name: 'Vanuatu Vatu', symbol: 'VT' },
+  { code: 'WST', name: 'Samoan Tala', symbol: 'T' }, { code: 'XAF', name: 'Central African CFA Franc', symbol: 'Fr' },
+  { code: 'XCD', name: 'Eastern Caribbean Dollar', symbol: '$' }, { code: 'XOF', name: 'CFA Franc BCEAO', symbol: 'Fr' },
+  { code: 'XPF', name: 'CFP Franc', symbol: 'Fr' }, { code: 'YER', name: 'Yemeni Rial', symbol: '﷼' },
+  { code: 'ZAR', name: 'South African Rand', symbol: 'R' }, { code: 'ZMW', name: 'Zambian Kwacha', symbol: 'ZK' },
+  { code: 'ZWL', name: 'Zimbabwe Dollar', symbol: '$' },
+].sort((a, b) => a.code.localeCompare(b.code));
 
 export function CurrenciesPage() {
   const { form, handleSave, isPending, saved, error, setForm } = useSettingsForm('currencies', {
     baseCurrency: 'NGN',
     activeCurrencies: ['NGN', 'USD', 'EUR', 'GBP'],
     rates: {} as Record<string, number>,
+    customCurrencies: [] as { code: string; name: string; symbol: string; decimalPlaces: number; format: string }[],
   });
   const [editRate, setEditRate] = useState<string | null>(null);
   const [rateValue, setRateValue] = useState('');
+  const [newCurrencyOpen, setNewCurrencyOpen] = useState(false);
+  const [newCurrency, setNewCurrency] = useState({ code: '', name: '', symbol: '', decimalPlaces: 2, format: '{symbol}{amount}' });
 
   const activeSet = new Set(form.activeCurrencies || []);
   const base = form.baseCurrency || 'NGN';
   const rates = form.rates || {};
+  const customCurrencies = form.customCurrencies || [];
 
   function toggleCurrency(code: string) {
     const set = new Set(activeSet);
@@ -2371,9 +2427,33 @@ export function CurrenciesPage() {
     setEditRate(null);
   }
 
+  function addCustomCurrency() {
+    if (!newCurrency.code.trim() || !newCurrency.name.trim()) return;
+    const code = newCurrency.code.trim().toUpperCase();
+    if (ALL_CURRENCIES.some(c => c.code === code) || customCurrencies.some(c => c.code === code)) return;
+    const updated = [...customCurrencies, { ...newCurrency, code }];
+    setForm((p: any) => ({ ...p, customCurrencies: updated, activeCurrencies: [...(p.activeCurrencies || []), code] }));
+    setNewCurrencyOpen(false);
+    setNewCurrency({ code: '', name: '', symbol: '', decimalPlaces: 2, format: '{symbol}{amount}' });
+  }
+
+  function getAllCurrencies() {
+    const all = [...ALL_CURRENCIES];
+    customCurrencies.forEach(cc => { if (!all.some(c => c.code === cc.code)) all.push(cc); });
+    return all.sort((a, b) => a.code.localeCompare(b.code));
+  }
+
+  const allCurrencies = getAllCurrencies();
+
   return (
     <PageShell title="Currencies" desc="Manage currencies used in your account." icon={CreditCard}>
       <Section title="Active Currencies">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs text-slate-400">{activeSet.size} currency{activeSet.size !== 1 ? 'ies' : 'y'} active</p>
+          <button onClick={() => setNewCurrencyOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700 transition-colors">
+            <Plus size={14} /> New Currency
+          </button>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -2385,7 +2465,7 @@ export function CurrenciesPage() {
               </tr>
             </thead>
             <tbody>
-              {ALL_CURRENCIES.filter(c => activeSet.has(c.code)).map(c => (
+              {allCurrencies.filter(c => activeSet.has(c.code)).map(c => (
                 <tr key={c.code} className={`border-b border-slate-100 hover:bg-slate-50 ${c.code === base ? 'bg-indigo-50/50' : ''}`}>
                   <td className="py-3 pr-3">
                     <div className="flex items-center gap-2.5">
@@ -2425,12 +2505,12 @@ export function CurrenciesPage() {
             </tbody>
           </table>
         </div>
-        {activeSet.size === 0 && <p className="text-sm text-slate-400 py-4 text-center">No currencies selected. Add currencies below.</p>}
+        {activeSet.size === 0 && <p className="text-sm text-slate-400 py-4 text-center">No currencies selected. Add currencies below or create a new one.</p>}
       </Section>
 
       <Section title="Available Currencies">
         <div className="flex flex-wrap gap-2">
-          {ALL_CURRENCIES.filter(c => !activeSet.has(c.code)).map(c => (
+          {allCurrencies.filter(c => !activeSet.has(c.code)).map(c => (
             <button
               key={c.code}
               onClick={() => toggleCurrency(c.code)}
@@ -2444,6 +2524,28 @@ export function CurrenciesPage() {
       </Section>
 
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
+
+      {newCurrencyOpen && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <h2 className="text-base font-semibold text-slate-900">New Currency</h2>
+              <button onClick={() => setNewCurrencyOpen(false)} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
+            </div>
+            <div className="px-5 py-4 space-y-4">
+              <Field label="Currency Code" placeholder="e.g. ABC" value={newCurrency.code} onChange={e => setNewCurrency(p => ({ ...p, code: e.target.value }))} desc="3-letter ISO code" />
+              <Field label="Currency Symbol" placeholder="e.g. $" value={newCurrency.symbol} onChange={e => setNewCurrency(p => ({ ...p, symbol: e.target.value }))} />
+              <Field label="Currency Name" placeholder="e.g. Example Dollar" value={newCurrency.name} onChange={e => setNewCurrency(p => ({ ...p, name: e.target.value }))} />
+              <Field label="Decimal Places" type="number" placeholder="2" value={String(newCurrency.decimalPlaces)} onChange={e => setNewCurrency(p => ({ ...p, decimalPlaces: parseInt(e.target.value) || 2 }))} />
+              <Field label="Format" placeholder="{symbol}{amount}" value={newCurrency.format} onChange={e => setNewCurrency(p => ({ ...p, format: e.target.value }))} desc="Use {symbol} and {amount} placeholders" />
+              <div className="flex justify-end gap-2 pt-2">
+                <button onClick={() => setNewCurrencyOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
+                <button onClick={addCustomCurrency} className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700">Add Currency</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </PageShell>
   );
 }
