@@ -2737,11 +2737,11 @@ export function OpeningBalancesPage() {
         <ul className="space-y-2 text-xs text-blue-700">
           <li className="flex items-start gap-2">
             <span className="mt-0.5 w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />
-            Generate the Trial Balance report in your previous accounting software on the date you're migrating to Zoho Books.
+            Generate the Trial Balance report in your previous accounting software on the date you're migrating to SkyBooks.
           </li>
           <li className="flex items-start gap-2">
             <span className="mt-0.5 w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />
-            Add all your bank and credit card accounts in the Banking module of Zoho Books. Once added, you can enter their balances.
+            Add all your bank and credit card accounts in the Banking module of SkyBooks. Once added, you can enter their balances.
           </li>
           <li className="flex items-start gap-2">
             <span className="mt-0.5 w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />
