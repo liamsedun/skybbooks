@@ -330,7 +330,7 @@ export function OrganisationProfilePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FieldWithIcon icon={Hash} label="RC Number (CAC)" value={form.rcNumber} onChange={f('rcNumber')} placeholder="RC-1234567" hint="Companies and Allied Matters Act registration." />
             <FieldWithIcon icon={Receipt} label="VAT / TIN Number (FIRS)" value={form.vatNumber} onChange={f('vatNumber')} placeholder="TIN-00000000-0001" hint="Federal Inland Revenue Service tax ID." />
-            <FieldWithIcon icon={Calendar} label="Fiscal Year Start" value={form.fiscalYearStart} onChange={f('fiscalYearStart')} placeholder="01-01 (DD-MM)" hint="Day and month your financial year begins." />
+            <FieldWithIcon icon={Calendar} label="Fiscal Year Start" type="date" value={form.fiscalYearStart} onChange={f('fiscalYearStart')} hint="Day and month your financial year begins." />
           </div>
         </Section>
 
@@ -2713,7 +2713,7 @@ export function PaymentTermsPage() {
 export function OpeningBalancesPage() {
   const { form, handleSave, isPending, saved, error, setForm } = useSettingsForm('openingBalances', {
     location: '',
-    migrationDate: '01 Mar 2025',
+    migrationDate: '2025-03-01',
     accountsReceivable: 0,
     accountsPayable: 0,
     adjustmentAccount: 'Opening Balance Adjustments',
@@ -2765,7 +2765,7 @@ export function OpeningBalancesPage() {
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1.5">Migration Date</label>
-              <input type="text" value={form.migrationDate || ''} onChange={e => setForm((p: any) => ({ ...p, migrationDate: e.target.value }))} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-white text-slate-800" />
+              <input type="date" value={form.migrationDate || ''} onChange={e => setForm((p: any) => ({ ...p, migrationDate: e.target.value }))} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-white text-slate-800" />
               <p className="text-xs text-slate-400 mt-1">The date on which you generated the Trial Balance report in your previous accounting software while migrating.</p>
             </div>
           </div>

@@ -489,9 +489,9 @@ export function OrganisationSettingsPage() {
               <Field
                 icon={Calendar}
                 label="Fiscal Year Start"
+                type="date"
                 value={form.fiscalYearStart}
                 onChange={f('fiscalYearStart')}
-                placeholder="01-01 (DD-MM)"
                 hint="Day and month your financial year begins."
               />
             </div>
