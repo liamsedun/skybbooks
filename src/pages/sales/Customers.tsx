@@ -40,6 +40,7 @@ interface Customer {
   paymentTerms: number | null;
   creditLimit: number | null;
   balance: number;
+  outstanding?: number;
   currency: string;
   notes: string | null;
   isActive: boolean;
@@ -395,7 +396,7 @@ function CustomerList() {
                   <td className="py-2.5 pr-3 text-sm text-slate-500">
                     {[c.city, c.state].filter(Boolean).join(', ') || '—'}
                   </td>
-                  <td className="py-2.5 pr-3 text-sm text-slate-700">{formatNaira(c.balance)}</td>
+                  <td className="py-2.5 pr-3 text-sm text-slate-700">{formatNaira((c.balance || 0) + (c.outstanding || 0))}</td>
                   <td className="py-2.5 pr-3">
                     <span className={`text-xs font-medium ${c.isActive ? 'text-emerald-600' : 'text-slate-400'}`}>
                       {c.isActive ? 'Active' : 'Inactive'}
@@ -769,7 +770,7 @@ function CustomerDetail({ id }: { id: string }) {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div className="bg-white border border-slate-200 rounded-xl p-4">
           <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Outstanding Balance</p>
-          <p className="text-xl font-bold text-slate-900 mt-1">{formatNaira(customer.balance)}</p>
+          <p className="text-xl font-bold text-slate-900 mt-1">{formatNaira((customer.balance || 0) + (customer.outstanding || 0))}</p>
         </div>
         <div className="bg-white border border-slate-200 rounded-xl p-4">
           <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Credit Limit</p>

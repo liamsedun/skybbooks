@@ -618,7 +618,7 @@ router.get('/customers', async (req: AuthenticatedRequest, res: Response, next: 
       )
       .groupBy(invoices.customerId);
     const balanceMap = new Map(balances.map((b: any) => [b.customerId, Number(b.totalBalance)]));
-    const listWithBalance = list.map((c: any) => ({ ...c, balance: balanceMap.get(c.id) || 0 }));
+    const listWithBalance = list.map((c: any) => ({ ...c, outstanding: balanceMap.get(c.id) || 0 }));
     return res.status(200).json(listWithBalance);
   } catch (err) {
     return next(err);
@@ -663,12 +663,11 @@ router.get('/customers/:id', async (req: AuthenticatedRequest, res: Response, ne
       .limit(1);
 
     if (!customer) throw new AppError('Customer profile not found.', 404);
-    // Compute outstanding balance from unpaid invoices
     const [balResult] = await db
       .select({ total: sql`COALESCE(SUM(balance_due), 0)` })
       .from(invoices)
       .where(and(eq(invoices.customerId, id), eq(invoices.orgId, orgId), sql`status NOT IN ('paid', 'void')`));
-    return res.status(200).json({ ...customer, balance: Number(balResult?.total || 0) });
+    return res.status(200).json({ ...customer, outstanding: Number(balResult?.total || 0) });
   } catch (err) {
     return next(err);
   }
