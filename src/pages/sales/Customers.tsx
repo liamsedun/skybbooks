@@ -57,6 +57,7 @@ type CustomerFormState = {
   taxPin: string;
   paymentTerms: string;
   creditLimit: string;
+  balance: string;
   notes: string;
 };
 
@@ -71,6 +72,7 @@ const EMPTY_FORM: CustomerFormState = {
   taxPin: '',
   paymentTerms: '',
   creditLimit: '',
+  balance: '',
   notes: '',
 };
 
@@ -91,6 +93,7 @@ function buildPayload(form: CustomerFormState) {
     taxPin: form.taxPin.trim() || null,
     paymentTerms: form.paymentTerms ? parseInt(form.paymentTerms, 10) : null,
     creditLimit: form.creditLimit ? Math.round(parseFloat(form.creditLimit) * 100) : null,
+    balance: form.balance ? Math.round(parseFloat(form.balance) * 100) : null,
     notes: form.notes.trim() || null,
   };
 }
@@ -107,6 +110,7 @@ function formFromCustomer(c: Customer): CustomerFormState {
     taxPin: c.taxPin || '',
     paymentTerms: c.paymentTerms != null ? c.paymentTerms.toString() : '',
     creditLimit: c.creditLimit != null ? (c.creditLimit / 100).toString() : '',
+    balance: c.balance != null ? (c.balance / 100).toString() : '',
     notes: c.notes || '',
   };
 }
@@ -590,6 +594,17 @@ function CustomerFormModal({
                 className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
               />
             </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1">Opening Balance (₦)</label>
+            <input
+              type="number"
+              step="0.01"
+              value={form.balance}
+              onChange={(e) => setForm({ ...form, balance: e.target.value })}
+              placeholder="0.00"
+              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+            />
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-500 mb-1">Notes</label>
