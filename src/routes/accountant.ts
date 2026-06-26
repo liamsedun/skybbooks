@@ -8,6 +8,7 @@ import { db, accounts } from '../db/schema';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
 import { eq, and } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
+import { seedAccounts } from '../db/seedAccounts';
 
 const router = Router();
 router.use(authenticate);
@@ -77,6 +78,17 @@ router.patch('/accounts/:id', async (req: AuthenticatedRequest, res: Response, n
     if (err instanceof z.ZodError) {
       return next(new AppError(err.issues[0]?.message || 'Validation failed', 400));
     }
+    return next(err);
+  }
+});
+
+// POST /api/accountant/accounts/seed — Load Nigerian COA template
+router.post('/accounts/seed', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const result = await seedAccounts(orgId);
+    return res.status(result.seeded > 0 ? 201 : 200).json(result);
+  } catch (err) {
     return next(err);
   }
 });

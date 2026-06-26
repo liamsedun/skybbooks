@@ -15,6 +15,8 @@ import {
   X,
   Loader2,
   AlertCircle,
+  CheckCircle2,
+  Download,
 } from 'lucide-react';
 
 interface Account {
@@ -158,6 +160,13 @@ export function ChartOfAccountsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accountant', 'accounts'] });
       setDeleteTarget(null);
+    },
+  });
+
+  const seedMutation = useMutation({
+    mutationFn: () => api.post('/accountant/accounts/seed'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['accountant', 'accounts'] });
     },
   });
 
@@ -369,6 +378,49 @@ export function ChartOfAccountsPage() {
           <div className="flex items-center justify-center gap-2 py-16 text-rose-500 text-sm">
             <AlertCircle size={16} />
             Failed to load accounts. Check the API route.
+          </div>
+        ) : !accounts || accounts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 px-6">
+            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+              <Download size={28} className="text-slate-400" />
+            </div>
+            <h3 className="text-base font-semibold text-slate-800 mb-1">No Chart of Accounts</h3>
+            <p className="text-sm text-slate-500 mb-6 text-center max-w-md">
+              Load the Nigerian-compliant Chart of Accounts template (150+ accounts) compliant with IFRS, CAMA 2020, CITA, and FIRS regulations, or add accounts manually.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => seedMutation.mutate()}
+                disabled={seedMutation.isPending}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 disabled:opacity-50 transition-colors"
+              >
+                {seedMutation.isPending ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Download size={16} />
+                )}
+                {seedMutation.isPending ? 'Loading Template...' : 'Load Nigerian COA Template'}
+              </button>
+              <button
+                onClick={openAddModal}
+                className="inline-flex items-center gap-2 px-5 py-2.5 border border-slate-300 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors"
+              >
+                <Plus size={16} />
+                Add Manually
+              </button>
+            </div>
+            {seedMutation.isSuccess && (
+              <div className="flex items-center gap-2 mt-4 text-sm text-emerald-600">
+                <CheckCircle2 size={16} />
+                Template loaded successfully!
+              </div>
+            )}
+            {seedMutation.isError && (
+              <div className="flex items-center gap-2 mt-4 text-sm text-rose-500">
+                <AlertCircle size={16} />
+                Failed to load template. You may already have accounts.
+              </div>
+            )}
           </div>
         ) : (
           <table className="w-full">

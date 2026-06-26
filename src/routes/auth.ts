@@ -10,6 +10,7 @@ import multer from 'multer';
 import { eq, and } from 'drizzle-orm';
 import { db } from '../db/schema';
 import { users, organisations, sessions } from '../db/schema';
+import { seedAccounts } from '../db/seedAccounts';
 import { AppError } from '../lib/errors';
 import {
   generateAccessToken,
@@ -98,6 +99,13 @@ router.post('/register', async (req: AuthenticatedRequest, res: Response, next: 
 
       return { newUser, newOrg };
     });
+
+    // Seed default Nigerian COA
+    try {
+      await seedAccounts(result.newOrg.id);
+    } catch (seedErr) {
+      console.error('[Seed] Failed to seed COA:', seedErr);
+    }
 
     // Generate tokens
     const payload = {
