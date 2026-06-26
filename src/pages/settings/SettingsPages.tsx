@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../hooks/useAuth';
 import { useOrgSettings } from '../../hooks/useOrgSettings';
-import { orgApi, authApi } from '../../lib/api';
+import { orgApi, authApi, api } from '../../lib/api';
 
 function useSettingsForm(key: string, defaults?: Record<string, any>) {
   const { settings, save, isPending } = useOrgSettings();
@@ -3183,7 +3183,7 @@ const DEFAULT_TAX_RATES: { name: string; rate: number }[] = [
 ];
 
 export function TaxesPage() {
-  const { form, field, toggle, handleSave, isPending, saved, error } = useSettingsForm('taxes', {
+  const { form, field, toggle, handleSave, isPending, saved, error, setForm } = useSettingsForm('taxes', {
     taxRates: DEFAULT_TAX_RATES,
     whtRates: [],
     taxRegistrationNumber: 'TAX 2301110109017',
@@ -3199,6 +3199,15 @@ export function TaxesPage() {
     enableVatMoss: false,
   });
   const [activeTab, setActiveTab] = useState<'taxRates' | 'whtRates' | 'settings'>('taxRates');
+  const [taxModalOpen, setTaxModalOpen] = useState(false);
+  const [editingTaxIdx, setEditingTaxIdx] = useState<number | null>(null);
+  const [taxForm, setTaxForm] = useState({ name: '', rate: '' });
+
+  const { data: accounts } = useQuery<any[]>({
+    queryKey: ['accountant', 'accounts'],
+    queryFn: async () => { const r = await api.get('/accountant/accounts'); return r.data; },
+    staleTime: 60000,
+  });
 
   const tabs = [
     { key: 'taxRates' as const, label: 'Tax Rates' },
@@ -3206,9 +3215,31 @@ export function TaxesPage() {
     { key: 'settings' as const, label: 'Tax Settings' },
   ];
 
+  function openAddTax() { setEditingTaxIdx(null); setTaxForm({ name: '', rate: '' }); setTaxModalOpen(true); }
+  function openEditTax(i: number) { const t = form.taxRates?.[i]; if (t) { setEditingTaxIdx(i); setTaxForm({ name: t.name, rate: String(t.rate) }); setTaxModalOpen(true); } }
+
+  function saveTaxRate() {
+    if (!taxForm.name.trim() || !taxForm.rate.trim()) return;
+    const rate = parseFloat(taxForm.rate);
+    if (isNaN(rate)) return;
+    const rates = [...(form.taxRates || [])];
+    if (editingTaxIdx !== null) {
+      rates[editingTaxIdx] = { name: taxForm.name.trim(), rate };
+    } else {
+      rates.push({ name: taxForm.name.trim(), rate });
+    }
+    setForm((p: any) => ({ ...p, taxRates: rates }));
+    setTaxModalOpen(false);
+  }
+
+  function deleteTaxRate(i: number) {
+    const rates = [...(form.taxRates || [])];
+    rates.splice(i, 1);
+    setForm((p: any) => ({ ...p, taxRates: rates }));
+  }
+
   return (
     <PageShell title="Taxes" desc="Manage tax rates, WHT (TSD) rates, and tax settings." icon={Receipt}>
-      {/* Tab Bar */}
       <div className="flex gap-1 mb-6 bg-slate-100 rounded-lg p-1">
         {tabs.map(t => (
           <button
@@ -3241,14 +3272,14 @@ export function TaxesPage() {
                   <td className="py-3 pr-4 text-sm text-slate-800">{tax.name}</td>
                   <td className="py-3 px-4 text-sm text-slate-800">{tax.rate}%</td>
                   <td className="py-3 pl-4 text-right">
-                    <button className="text-slate-400 hover:text-indigo-600 transition mr-2"><Pencil size={14} /></button>
-                    <button className="text-slate-400 hover:text-red-500 transition"><Trash2 size={14} /></button>
+                    <button onClick={() => openEditTax(i)} className="text-slate-400 hover:text-indigo-600 transition mr-2"><Pencil size={14} /></button>
+                    <button onClick={() => deleteTaxRate(i)} className="text-slate-400 hover:text-red-500 transition"><Trash2 size={14} /></button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <button className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 transition">
+          <button onClick={openAddTax} className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 transition">
             <Plus size={16} /> Add Tax
           </button>
         </Section>
@@ -3264,8 +3295,24 @@ export function TaxesPage() {
               { value: 'purchases', label: 'Track in Purchases' },
               { value: 'both', label: 'Track in Both' },
             ]} value={form.whtTrackingPref || 'both'} onChange={field('whtTrackingPref')} />
-            <Field label="Account to Track WHT in Sales" placeholder="Select account" value={form.whtSalesAccount || ''} onChange={field('whtSalesAccount')} />
-            <Field label="Account to Track WHT in Purchases" placeholder="Select account" value={form.whtPurchasesAccount || ''} onChange={field('whtPurchasesAccount')} />
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1.5">Account to Track WHT in Sales</label>
+              <select value={form.whtSalesAccount || ''} onChange={field('whtSalesAccount')} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800">
+                <option value="">Select account</option>
+                {(accounts || []).filter((a: any) => a.isActive).map((a: any) => (
+                  <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1.5">Account to Track WHT in Purchases</label>
+              <select value={form.whtPurchasesAccount || ''} onChange={field('whtPurchasesAccount')} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800">
+                <option value="">Select account</option>
+                {(accounts || []).filter((a: any) => a.isActive).map((a: any) => (
+                  <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+                ))}
+              </select>
+            </div>
           </div>
         </Section>
       )}
@@ -3285,7 +3332,7 @@ export function TaxesPage() {
             {form.enableWht && (
               <>
                 <p className="text-xs text-slate-500 mb-2">
-                  TDS or the Tax Deducted at Source, can be associated with the customers, vendors or both in Zoho Books. You can enable TDS for a particular contact in the contact's create or edit page.
+                  TDS or the Tax Deducted at Source, can be associated with the customers, vendors or both. You can enable TDS for a particular contact in the contact's create or edit page.
                 </p>
                 <Select label="Enable TDS For" options={[
                   { value: 'customers', label: 'Customers' },
@@ -3311,14 +3358,14 @@ export function TaxesPage() {
           <Section title="Tax Tracking Account Preference">
             <div className="space-y-3">
               <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
-                <input type="radio" name="taxTrackingPref" value="single" checked={form.taxTrackingPreference !== 'separate'} onChange={() => {}} onClick={() => toggle('taxTrackingPreference')} className="text-indigo-600" />
+                <input type="radio" name="taxTrackingPref" value="single" checked={form.taxTrackingPreference === 'single'} onChange={() => setForm((p: any) => ({ ...p, taxTrackingPreference: 'single' }))} className="text-indigo-600" />
                 <div>
                   <p className="text-sm font-medium text-slate-700">Track taxes under a single account</p>
                   <p className="text-xs text-slate-400">The taxes applied on your sales and purchase transactions will be tracked under the Tax Payable account.</p>
                 </div>
               </label>
               <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
-                <input type="radio" name="taxTrackingPref" value="separate" checked={form.taxTrackingPreference === 'separate'} onChange={() => {}} onClick={() => toggle('taxTrackingPreference')} className="text-indigo-600" />
+                <input type="radio" name="taxTrackingPref" value="separate" checked={form.taxTrackingPreference === 'separate'} onChange={() => setForm((p: any) => ({ ...p, taxTrackingPreference: 'separate' }))} className="text-indigo-600" />
                 <div>
                   <p className="text-sm font-medium text-slate-700">Track taxes under separate accounts</p>
                   <p className="text-xs text-slate-400">The taxes applied on your sales and purchase transactions will be tracked under the Output Tax and Input Tax accounts respectively.</p>
@@ -3333,7 +3380,7 @@ export function TaxesPage() {
           </Section>
 
           <Section title="VAT MOSS, IOSS and Digital Services Export">
-            <ToggleRow label="Track VAT MOSS, OSS, IOSS, or the sale of digital services to overseas customers" checked={form.enableVatMoss} onClick={toggle('enableVatMoss')} desc="Enable this to track the sale of digital services to the EU member states using the VAT MOSS Report. Also, you can track the VAT collected on the sale of imported goods to buyers in the EU member states using IOSS Report, and track digital services export using the Overseas Digital Tax Summary report." />
+            <ToggleRow label="Track VAT MOSS, OSS, IOSS, or the sale of digital services to overseas customers" checked={form.enableVatMoss} onClick={toggle('enableVatMoss')} desc="Enable this to track the sale of digital services to the EU member states using the VAT MOSS Report. Also, you can track the VAT collected on the sale of imported goods to buyers in the EU member states using the IOSS Report, and track digital services export using the Overseas Digital Tax Summary report." />
           </Section>
 
           <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
@@ -3341,6 +3388,25 @@ export function TaxesPage() {
       )}
 
       {activeTab !== 'settings' && <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />}
+
+      {taxModalOpen && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <h2 className="text-base font-semibold text-slate-900">{editingTaxIdx !== null ? 'Edit Tax Rate' : 'Add Tax Rate'}</h2>
+              <button onClick={() => setTaxModalOpen(false)} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
+            </div>
+            <div className="px-5 py-4 space-y-4">
+              <Field label="Tax Name" placeholder="e.g. Value Added Tax" value={taxForm.name} onChange={e => setTaxForm(p => ({ ...p, name: e.target.value }))} />
+              <Field label="Rate (%)" type="number" placeholder="7.5" value={taxForm.rate} onChange={e => setTaxForm(p => ({ ...p, rate: e.target.value }))} />
+              <div className="flex justify-end gap-2 pt-2">
+                <button onClick={() => setTaxModalOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
+                <button onClick={saveTaxRate} className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700">{editingTaxIdx !== null ? 'Save' : 'Add'}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </PageShell>
   );
 }
