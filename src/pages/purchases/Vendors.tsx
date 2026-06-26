@@ -3,13 +3,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 import React, { useState, useMemo } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
 import {
   Plus, X, Loader2, AlertCircle, Search, Building2,
   Phone, Mail, Edit2, Trash2, Download, FileText,
-  CheckCircle2, ToggleLeft, ToggleRight, Upload
+  CheckCircle2, ToggleLeft, ToggleRight, Upload,
+  ArrowLeft, MapPin, Pencil
 } from 'lucide-react';
 
 interface Vendor {
@@ -92,6 +94,10 @@ function exportVendorsPDF(vendors: Vendor[]) {
 }
 
 export function VendorsPage() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  if (id) return <VendorDetail id={id} />;
+
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all'|'active'|'inactive'>('all');
@@ -246,12 +252,12 @@ export function VendorsPage() {
               {filtered.map(v => (
                 <tr key={v.id} className={`hover:bg-slate-50 transition-colors ${!v.isActive ? 'opacity-60' : ''}`}>
                   <td className="py-3 pl-4 pr-2">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate(`/purchases/vendors/${v.id}`)}>
                       <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${colorFor(v.name)}`}>
                         {initials(v.name)}
                       </div>
                       <div>
-                        <p className="font-medium text-slate-900">{v.name}</p>
+                        <p className="font-medium text-slate-900 hover:text-indigo-600 transition-colors">{v.name}</p>
                         {v.notes && <p className="text-xs text-slate-400 truncate max-w-[160px]">{v.notes}</p>}
                       </div>
                     </div>
@@ -383,6 +389,310 @@ export function VendorsPage() {
                 <button type="submit" disabled={isSaving} className="px-5 py-2 text-sm font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 disabled:opacity-50 flex items-center gap-2">
                   {isSaving && <Loader2 size={14} className="animate-spin"/>}
                   {editingId ? 'Save Changes' : 'Add Vendor'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function formatNaira(kobo: number | null | undefined): string {
+  if (kobo == null) return '₦0.00';
+  return `₦${(kobo / 100).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+// =========================================================================
+// VENDOR DETAIL VIEW (contact info + account statement)
+// =========================================================================
+
+interface StatementLine {
+  id: string; date: string; type: string; number: string;
+  reference: string; debit: number; credit: number; balance: number;
+}
+
+interface StatementResponse {
+  vendor: { id: string; name: string; email: string | null; phone: string | null; notes: string | null };
+  ledgerStatement: StatementLine[];
+  closingCreditorBalance: number;
+}
+
+function VendorDetail({ id }: { id: string }) {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [modalOpen, setModalOpen] = useState(false);
+  const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  const { data: vendor, isLoading: loadingVendor } = useQuery<Vendor>({
+    queryKey: ['purchases', 'vendor', id],
+    queryFn: async () => {
+      const res = await api.get(`/purchases/vendors/${id}`);
+      return res.data;
+    },
+  });
+
+  const { data: statement, isLoading: loadingStatement } = useQuery<StatementResponse>({
+    queryKey: ['purchases', 'vendor', id, 'statement'],
+    queryFn: async () => {
+      const res = await api.get(`/purchases/vendors/${id}/statement`);
+      return res.data;
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: (payload: any) => api.patch(`/purchases/vendors/${id}`, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['purchases', 'vendor', id] });
+      queryClient.invalidateQueries({ queryKey: ['vendors'] });
+      setModalOpen(false);
+    },
+    onError: (err: any) => setFormError(err?.response?.data?.error || 'Failed to update vendor.'),
+  });
+
+  function openEditModal() {
+    if (!vendor) return;
+    setForm({
+      name: vendor.name, email: vendor.email || '', phone: vendor.phone || '',
+      address: vendor.address || '', city: vendor.city || '', state: vendor.state || '',
+      country: vendor.country || 'Nigeria', taxPin: vendor.taxPin || '',
+      paymentTerms: vendor.paymentTerms?.toString() || '30',
+      creditLimit: vendor.creditLimit ? (vendor.creditLimit / 100).toString() : '',
+      balance: vendor.balance ? (vendor.balance / 100).toString() : '',
+      currency: vendor.currency || 'NGN', notes: vendor.notes || '',
+    });
+    setFormError(null);
+    setModalOpen(true);
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.name.trim()) { setFormError('Vendor name is required.'); return; }
+    updateMutation.mutate({
+      name: form.name, email: form.email || null, phone: form.phone || null,
+      address: form.address || null, city: form.city || null, state: form.state || null,
+      taxPin: form.taxPin || null, notes: form.notes || null,
+      creditLimit: form.creditLimit ? Math.round(parseFloat(form.creditLimit) * 100) : null,
+      balance: form.balance ? Math.round(parseFloat(form.balance) * 100) : null,
+      paymentTerms: parseInt(form.paymentTerms) || null,
+    });
+  }
+
+  if (loadingVendor) {
+    return (
+      <div className="max-w-5xl mx-auto px-6 py-16 flex items-center justify-center text-slate-400">
+        <Loader2 size={20} className="animate-spin mr-2" />
+        Loading vendor...
+      </div>
+    );
+  }
+
+  if (!vendor) {
+    return (
+      <div className="max-w-5xl mx-auto px-6 py-16 text-center text-slate-500">
+        Vendor not found.
+        <div className="mt-3">
+          <Link to="/purchases/vendors" className="text-indigo-600 hover:underline text-sm">
+            Back to vendors
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-5xl mx-auto px-6 py-8">
+      <button
+        onClick={() => navigate('/purchases/vendors')}
+        className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 mb-4"
+      >
+        <ArrowLeft size={14} />
+        Back to vendors
+      </button>
+
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">{vendor.name}</h1>
+          <div className="flex items-center gap-4 mt-1 text-sm text-slate-500">
+            {vendor.email && (
+              <span className="inline-flex items-center gap-1.5">
+                <Mail size={14} />
+                {vendor.email}
+              </span>
+            )}
+            {vendor.phone && (
+              <span className="inline-flex items-center gap-1.5">
+                <Phone size={14} />
+                {vendor.phone}
+              </span>
+            )}
+          </div>
+        </div>
+        <button
+          onClick={openEditModal}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors"
+        >
+          <Pencil size={14} />
+          Edit
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <div className="bg-white border border-slate-200 rounded-xl p-4">
+          <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Outstanding Balance</p>
+          <p className="text-xl font-bold text-slate-900 mt-1">{formatNaira((vendor.balance || 0) + (vendor.outstanding || 0))}</p>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-xl p-4">
+          <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Credit Limit</p>
+          <p className="text-xl font-bold text-slate-900 mt-1">{formatNaira(vendor.creditLimit)}</p>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-xl p-4">
+          <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Payment Terms</p>
+          <p className="text-xl font-bold text-slate-900 mt-1">
+            {vendor.paymentTerms != null ? `Net ${vendor.paymentTerms}` : '—'}
+          </p>
+        </div>
+      </div>
+
+      {(vendor.address || vendor.city || vendor.taxPin) && (
+        <div className="bg-white border border-slate-200 rounded-xl p-4 mb-6 flex items-start gap-2.5 text-sm text-slate-600">
+          <MapPin size={16} className="text-slate-400 mt-0.5 shrink-0" />
+          <div>
+            {[vendor.address, vendor.city, vendor.state, vendor.country].filter(Boolean).join(', ')}
+            {vendor.taxPin && <div className="text-xs text-slate-400 mt-0.5">Tax PIN: {vendor.taxPin}</div>}
+          </div>
+        </div>
+      )}
+
+      <h2 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
+        <FileText size={16} className="text-slate-400" />
+        Account Statement
+      </h2>
+      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        {loadingStatement ? (
+          <div className="flex items-center justify-center py-12 text-slate-400">
+            <Loader2 size={18} className="animate-spin mr-2" />
+            Loading statement...
+          </div>
+        ) : !statement || statement.ledgerStatement.length === 0 ? (
+          <div className="text-center py-12 text-sm text-slate-400">No transactions yet.</div>
+        ) : (
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-slate-100 text-left text-xs font-medium text-slate-400 uppercase tracking-wide">
+                <th className="py-2.5 pl-4 pr-3">Date</th>
+                <th className="py-2.5 pr-3">Type</th>
+                <th className="py-2.5 pr-3">Number</th>
+                <th className="py-2.5 pr-3">Reference</th>
+                <th className="py-2.5 pr-3 text-right">Debit</th>
+                <th className="py-2.5 pr-3 text-right">Credit</th>
+                <th className="py-2.5 pr-4 text-right">Balance</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {statement.ledgerStatement.map((line) => {
+                const isBill = line.type === 'bill';
+                return (
+                  <tr
+                    key={line.id}
+                    className={`hover:bg-slate-50 transition-colors ${isBill ? 'cursor-pointer hover:bg-indigo-50/60' : ''}`}
+                    onClick={() => isBill && navigate(`/purchases/bills/${line.id}`)}
+                  >
+                    <td className="py-2.5 pl-4 pr-3 text-sm text-slate-600">
+                      {new Date(line.date).toLocaleDateString('en-GB')}
+                    </td>
+                    <td className="py-2.5 pr-3">
+                      <span className={`text-xs font-medium capitalize ${isBill ? 'text-indigo-600' : 'text-slate-500'}`}>
+                        {line.type.replace('_', ' ')}
+                      </span>
+                    </td>
+                    <td className="py-2.5 pr-3 text-sm font-mono">
+                      {isBill ? (
+                        <span className="text-indigo-600 hover:underline font-medium">{line.number}</span>
+                      ) : (
+                        <span className="text-slate-600">{line.number}</span>
+                      )}
+                    </td>
+                    <td className="py-2.5 pr-3 text-sm text-slate-500">{line.reference}</td>
+                    <td className="py-2.5 pr-3 text-sm text-right text-slate-700">
+                      {line.debit > 0 ? formatNaira(line.debit) : '—'}
+                    </td>
+                    <td className="py-2.5 pr-3 text-sm text-right text-slate-700">
+                      {line.credit > 0 ? formatNaira(line.credit) : '—'}
+                    </td>
+                    <td className="py-2.5 pr-4 text-sm text-right font-medium text-slate-900">
+                      {formatNaira(line.balance)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {modalOpen && (
+        <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 px-4 py-8 overflow-y-auto" onClick={e => { if (e.target === e.currentTarget) setModalOpen(false); }}>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              <h2 className="text-base font-semibold text-slate-900">Edit Vendor</h2>
+              <button onClick={() => setModalOpen(false)} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
+            </div>
+            <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+              {formError && <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2 flex items-center gap-2"><AlertCircle size={14} /> {formError}</div>}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Vendor Name *</label>
+                  <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Email</label>
+                  <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Phone</label>
+                  <input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Address</label>
+                  <input value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">City</label>
+                  <input value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">State</label>
+                  <input value={form.state} onChange={e => setForm({ ...form, state: e.target.value })} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Tax PIN</label>
+                  <input value={form.taxPin} onChange={e => setForm({ ...form, taxPin: e.target.value })} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 font-mono" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Payment Terms (days)</label>
+                  <input type="number" min="0" value={form.paymentTerms} onChange={e => setForm({ ...form, paymentTerms: e.target.value })} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Opening Balance (NGN)</label>
+                  <input type="number" step="0.01" min="0" value={form.balance} onChange={e => setForm({ ...form, balance: e.target.value })} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Credit Limit (NGN)</label>
+                  <input type="number" step="0.01" min="0" value={form.creditLimit} onChange={e => setForm({ ...form, creditLimit: e.target.value })} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Notes</label>
+                  <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 resize-none" />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                <button type="button" onClick={() => setModalOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
+                <button type="submit" disabled={updateMutation.isPending} className="px-5 py-2 text-sm font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 disabled:opacity-50 flex items-center gap-2">
+                  {updateMutation.isPending && <Loader2 size={14} className="animate-spin" />}
+                  Save Changes
                 </button>
               </div>
             </form>
