@@ -95,9 +95,11 @@ function exportVendorsPDF(vendors: Vendor[]) {
 
 export function VendorsPage() {
   const { id } = useParams();
-  const navigate = useNavigate();
-  if (id) return <VendorDetail id={id} />;
+  return id ? <VendorDetail id={id} /> : <VendorList />;
+}
 
+function VendorList() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all'|'active'|'inactive'>('all');
