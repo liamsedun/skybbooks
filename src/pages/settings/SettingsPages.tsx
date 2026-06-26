@@ -2551,29 +2551,160 @@ export function CurrenciesPage() {
 }
 
 // ─── Payment Terms ─────────────────────────────────────────────────────────
+const DEFAULT_TERMS = [
+  { label: 'Due end of next month', value: 'end_of_next_month', days: 0, desc: 'Payment due at the end of the following month' },
+  { label: 'Due end of the month', value: 'end_of_month', days: 0, desc: 'Payment due at the end of the current month' },
+  { label: 'Default', value: 'default', days: 0, desc: 'Default payment terms' },
+  { label: 'Due on Receipt', value: 'dueonreceipt', days: 0, desc: 'Payment due immediately upon receipt' },
+  { label: 'Net 15', value: 'net15', days: 15, desc: 'Payment due within 15 days' },
+  { label: 'Net 30', value: 'net30', days: 30, desc: 'Payment due within 30 days' },
+  { label: 'Net 60', value: 'net60', days: 60, desc: 'Payment due within 60 days' },
+  { label: 'Net 90', value: 'net90', days: 90, desc: 'Payment due within 90 days' },
+];
+
 export function PaymentTermsPage() {
-  const { form, handleSave, isPending, saved, error } = useSettingsForm('paymentTerms', { defaultTerm: 'net30' });
+  const { form, handleSave, isPending, saved, error, setForm } = useSettingsForm('paymentTerms', {
+    defaultTerm: 'net30',
+    customTerms: DEFAULT_TERMS,
+  });
+  const [editTerm, setEditTerm] = useState<{ index: number; label: string; desc: string } | null>(null);
+  const [newTermOpen, setNewTermOpen] = useState(false);
+  const [newTerm, setNewTerm] = useState({ label: '', desc: '' });
+
+  const terms = form.customTerms || DEFAULT_TERMS;
+  const defaultTerm = form.defaultTerm || 'net30';
+
+  function setDefault(value: string) {
+    setForm((p: any) => ({ ...p, defaultTerm: value }));
+  }
+
+  function openEditTerm(i: number) {
+    const t = terms[i];
+    setEditTerm({ index: i, label: t.label, desc: t.desc || '' });
+  }
+
+  function saveEditTerm() {
+    if (!editTerm || !editTerm.label.trim()) return;
+    const updated = terms.map((t: any, i: number) =>
+      i === editTerm.index ? { ...t, label: editTerm.label.trim(), desc: editTerm.desc.trim() } : t
+    );
+    setForm((p: any) => ({ ...p, customTerms: updated }));
+    setEditTerm(null);
+  }
+
+  function deleteTerm(i: number) {
+    const updated = terms.filter((_: any, idx: number) => idx !== i);
+    setForm((p: any) => ({ ...p, customTerms: updated }));
+  }
+
+  function addTerm() {
+    if (!newTerm.label.trim()) return;
+    const value = 'custom_' + Date.now();
+    const updated = [...terms, { label: newTerm.label.trim(), value, days: 0, desc: newTerm.desc.trim() }];
+    setForm((p: any) => ({ ...p, customTerms: updated }));
+    setNewTermOpen(false);
+    setNewTerm({ label: '', desc: '' });
+  }
+
   return (
     <PageShell title="Payment Terms" desc="Define payment terms for customers and vendors." icon={Clock}>
-      <Section title="Default Payment Terms">
-        <div className="space-y-3">
-          {[
-            { label: 'Due on Receipt', value: 'dueonreceipt', days: 0 },
-            { label: 'Net 15', value: 'net15', days: 15 },
-            { label: 'Net 30', value: 'net30', days: 30 },
-            { label: 'Net 60', value: 'net60', days: 60 },
-          ].map(t => (
-            <label key={t.value} className="flex items-center justify-between border border-slate-100 rounded-lg px-4 py-3 cursor-pointer hover:bg-slate-50">
-              <div>
-                <p className="text-sm font-medium text-slate-700">{t.label}</p>
-                <p className="text-xs text-slate-400">Payment due within {t.days} day{t.days !== 1 ? 's' : ''}</p>
-              </div>
-              <input type="radio" name="default-term" value={t.value} checked={form.defaultTerm === t.value} onChange={() => {}} className="w-4 h-4 text-indigo-600" />
-            </label>
-          ))}
+      <Section title="Payment Terms">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs text-slate-400">{terms.length} terms</p>
+          <button onClick={() => setNewTermOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700 transition-colors">
+            <Plus size={14} /> New Term
+          </button>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-200 text-left">
+                <th className="py-2.5 pr-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Terms</th>
+                <th className="py-2.5 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
+                <th className="py-2.5 pl-3 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right">More Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {terms.map((t: any, i: number) => (
+                <tr key={t.value || i} className="border-b border-slate-100 hover:bg-slate-50">
+                  <td className="py-3 pr-3">
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-sm text-slate-800">{t.label}</span>
+                      {t.desc && <span className="text-xs text-slate-400 hidden sm:inline">— {t.desc}</span>}
+                    </div>
+                  </td>
+                  <td className="py-3 px-3">
+                    {t.value === defaultTerm ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 text-xs font-medium rounded-full">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Default
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded-full">
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500" /> Active
+                      </span>
+                    )}
+                  </td>
+                  <td className="py-3 pl-3 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      {t.value !== defaultTerm && (
+                        <button onClick={() => setDefault(t.value)} className="p-1.5 rounded text-slate-400 hover:text-indigo-600 hover:bg-indigo-50" title="Set as default">
+                          <Star size={14} />
+                        </button>
+                      )}
+                      <button onClick={() => openEditTerm(i)} className="p-1.5 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100" title="Edit term">
+                        <Pencil size={14} />
+                      </button>
+                      <button onClick={() => deleteTerm(i)} className="p-1.5 rounded text-slate-400 hover:text-red-500 hover:bg-red-50" title="Delete term">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </Section>
+
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
+
+      {editTerm && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <h2 className="text-base font-semibold text-slate-900">Edit Payment Term</h2>
+              <button onClick={() => setEditTerm(null)} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
+            </div>
+            <div className="px-5 py-4 space-y-4">
+              <Field label="Term Name" placeholder="e.g. Net 45" value={editTerm.label} onChange={e => setEditTerm(p => p ? { ...p, label: e.target.value } : null)} />
+              <Field label="Description" placeholder="e.g. Payment due within 45 days" value={editTerm.desc} onChange={e => setEditTerm(p => p ? { ...p, desc: e.target.value } : null)} />
+              <div className="flex justify-end gap-2 pt-2">
+                <button onClick={() => setEditTerm(null)} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
+                <button onClick={saveEditTerm} className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700">Save</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {newTermOpen && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <h2 className="text-base font-semibold text-slate-900">New Payment Term</h2>
+              <button onClick={() => setNewTermOpen(false)} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
+            </div>
+            <div className="px-5 py-4 space-y-4">
+              <Field label="Term Name" placeholder="e.g. Net 45" value={newTerm.label} onChange={e => setNewTerm(p => ({ ...p, label: e.target.value }))} />
+              <Field label="Description" placeholder="e.g. Payment due within 45 days" value={newTerm.desc} onChange={e => setNewTerm(p => ({ ...p, desc: e.target.value }))} />
+              <div className="flex justify-end gap-2 pt-2">
+                <button onClick={() => setNewTermOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
+                <button onClick={addTerm} className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700">Add Term</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </PageShell>
   );
 }
