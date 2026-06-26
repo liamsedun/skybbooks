@@ -2166,8 +2166,8 @@ export function GeneralPage() {
         <CheckboxGrid label="" options={moduleOptions} form={form} field={field} />
       </Section>
 
-      <Section title="Zoho Inventory Add-on">
-        <ToggleRow label="Enable Zoho Inventory modules in SkyBooks" checked={form.enableInventory} onClick={toggle('enableInventory')} desc="Enabling Zoho Inventory Add-on will allow you to use inventory management modules." />
+      <Section title="Inventory Add-on">
+        <ToggleRow label="Enable Inventory modules" checked={form.enableInventory} onClick={toggle('enableInventory')} desc="Enabling the Inventory Add-on will allow you to use inventory management modules." />
         {form.enableInventory && (
           <div className="mt-3 pl-4 border-l-2 border-indigo-200 space-y-2">
             <CheckboxGrid label="" options={inventoryModules} form={form} field={field} />
