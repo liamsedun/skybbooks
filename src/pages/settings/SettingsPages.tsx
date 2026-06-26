@@ -50,7 +50,7 @@ import {
   ShoppingCart, Receipt, ToggleLeft, Download, Upload, Link,
   Lightbulb, Eye, Pencil, Trash2, Plus, Check, X,
   Loader2, Save, CheckCircle2, AlertCircle, MapPin, Calendar, Phone, Search, Star,
-  ChevronLeft, ChevronRight, Activity, Code, Filter,
+  ChevronLeft, ChevronRight, Activity, Code, Filter, Info,
 } from 'lucide-react';
 
 function PageShell({ title, desc, icon: Icon, children }: { title: string; desc?: string; icon?: React.ComponentType<{ className?: string }>; children: React.ReactNode }) {
@@ -5265,119 +5265,450 @@ export function PackingSlipsSettingsPage() {
   );
 }
 
-// ─── Purchases Module Settings ─────────────────────────────────────────────
-function PurchasesModuleSection({ title, fields, form, toggle }: { title: string; fields: { key: string; label: string; desc: string }[]; form: Record<string, any>; toggle: (k: string) => () => void }) {
-  return (
-    <Section title={title} desc="Configure default settings for this transaction type.">
-      {fields.map(f => (
-        <ToggleRow key={f.key} label={f.label} desc={f.desc} checked={form[f.key]} onClick={toggle(f.key)} />
-      ))}
-    </Section>
-  );
-}
-
 export function ExpensesSettingsPage() {
-  const { form, toggle, handleSave, isPending, saved, error } = useSettingsForm('expenses', { autoGenerateNumbers: true, allowAttachments: true });
+  const { form, field, toggle, handleSave, isPending, saved, error, setForm } = useSettingsForm('expenses', {
+    associateEmployees: false, defaultMileageCategory: '', defaultUnit: 'km',
+    mileageRates: [] as { startDate: string; rate: string }[],
+  });
+  const [eTab, setETab] = useState('Preferences');
+  const eTabs = ['Preferences', 'Vehicle', 'Fields', 'Buttons', 'Related Lists'];
+  const [startDate, setStartDate] = useState('');
+  const [mileageRate, setMileageRate] = useState('');
+
+  function addMileageRate() {
+    if (!startDate || !mileageRate) return;
+    setForm((p: any) => ({ ...p, mileageRates: [...(p.mileageRates || []), { startDate, rate: mileageRate }] }));
+    setStartDate(''); setMileageRate('');
+  }
+  function removeMileageRate(i: number) {
+    setForm((p: any) => ({ ...p, mileageRates: (p.mileageRates || []).filter((_: any, j: number) => j !== i) }));
+  }
+
   return (
     <PageShell title="Expenses" desc="Configure default settings for expenses." icon={CreditCard}>
-      <PurchasesModuleSection title="Expense Settings" fields={[
-        { key: 'autoGenerateNumbers', label: 'Auto-generate expense numbers', desc: 'Automatically assign expense numbers.' },
-        { key: 'allowAttachments', label: 'Allow expense attachments', desc: 'Upload receipts and documents to expenses.' },
-        { key: 'requireApproval', label: 'Require expense approval', desc: 'Expenses require manager approval.' },
-        { key: 'enableMileageTracking', label: 'Enable mileage tracking', desc: 'Track business mileage in expenses.' },
-      ]} form={form} toggle={toggle} />
+      <div className="flex items-center gap-1 mb-5 bg-slate-100 rounded-lg p-1 w-fit">
+        {eTabs.map(t => (
+          <button key={t} onClick={() => setETab(t)}
+            className={`px-4 py-1.5 text-xs font-medium rounded-md transition ${eTab === t ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          >{t}</button>
+        ))}
+      </div>
+
+      {eTab === 'Preferences' && (
+        <div className="space-y-5">
+          <Section title="Expenses">
+            <ToggleRow label="Associate employees to expenses" checked={form.associateEmployees} onClick={toggle('associateEmployees')} />
+          </Section>
+        </div>
+      )}
+      {eTab === 'Vehicle' && (
+        <div className="space-y-5">
+          <Section title="Mileage Preference">
+            <Select label="Default Mileage Category" options={[{ value: '', label: 'Select...' }, { value: 'standard', label: 'Standard Mileage' }]} value={form.defaultMileageCategory || ''} onChange={field('defaultMileageCategory')} />
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-medium text-slate-600">Default Unit</span>
+              {['Km', 'Mile'].map(u => (
+                <label key={u} className="flex items-center gap-1.5 text-sm text-slate-700 cursor-pointer">
+                  <input type="radio" name="defaultUnit" checked={form.defaultUnit === u.toLowerCase()} onChange={() => setForm((p: any) => ({ ...p, defaultUnit: u.toLowerCase() }))} className="text-indigo-600" />
+                  {u}
+                </label>
+              ))}
+            </div>
+          </Section>
+          <Section title="Mileage Rates">
+            <p className="text-xs text-slate-500 mb-3">Any mileage expense recorded on or after the start date will have the corresponding mileage rate. You can create a default rate (created without specifying a date), which will be applicable for mileage expenses recorded before the initial start date.</p>
+            <div className="overflow-x-auto -mx-6 px-6">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-100">
+                    <th className="text-left py-3 pr-4 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Start Date</th>
+                    <th className="text-left py-3 pr-4 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Mileage Rate</th>
+                    <th className="text-right py-3 pr-4 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">More Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {(form.mileageRates || []).length === 0 ? (
+                    <tr><td colSpan={3} className="py-4 text-center text-xs text-slate-400">No mileage rates added yet.</td></tr>
+                  ) : (form.mileageRates || []).map((r: any, i: number) => (
+                    <tr key={i} className="hover:bg-slate-50/50">
+                      <td className="py-3 pr-4 text-xs text-slate-500">{r.startDate}</td>
+                      <td className="py-3 pr-4 text-xs text-slate-700 font-medium">{r.rate}</td>
+                      <td className="py-3 text-right"><button onClick={() => removeMileageRate(i)} className="p-1.5 text-slate-400 hover:text-red-500 rounded-lg hover:bg-slate-100"><Trash2 size={14} /></button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex items-center gap-3 mt-3 flex-wrap">
+              <span className="text-xs text-slate-400">dd MMM yyyy</span>
+              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white" />
+              <span className="text-xs text-slate-400">NGN</span>
+              <input type="number" value={mileageRate} onChange={e => setMileageRate(e.target.value)} placeholder="Rate" className="w-24 px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg bg-white" />
+              <button onClick={addMileageRate} disabled={!startDate || !mileageRate} className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-medium rounded-lg"><Plus size={12} /> Add Mileage Rate</button>
+            </div>
+          </Section>
+        </div>
+      )}
+      {eTab !== 'Preferences' && eTab !== 'Vehicle' && (
+        <Section title={eTab}><p className="text-sm text-slate-400 py-8 text-center">No {eTab.toLowerCase()} configured yet.</p></Section>
+      )}
+
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 export function RecurringExpensesSettingsPage() {
-  const { form, toggle, handleSave, isPending, saved, error } = useSettingsForm('recurringExpenses', { autoGenerateNumbers: true });
+  const { form, handleSave, isPending, saved, error, setForm } = useSettingsForm('recurringExpenses', { buttons: [] as { name: string; permission: string; location: string }[] });
+  const [rTab, setRTab] = useState('Buttons');
+  const rTabs = ['Buttons'];
+  const [btnName, setBtnName] = useState('');
+  const [btnPermission, setBtnPermission] = useState('all');
+  const [btnLocation, setBtnLocation] = useState('list');
+  const buttons = form.buttons || [];
+
+  function addButton() {
+    if (!btnName.trim()) return;
+    setForm((p: any) => ({ ...p, buttons: [...(p.buttons || []), { name: btnName.trim(), permission: btnPermission, location: btnLocation }] }));
+    setBtnName('');
+  }
+  function removeButton(i: number) {
+    setForm((p: any) => ({ ...p, buttons: (p.buttons || []).filter((_: any, j: number) => j !== i) }));
+  }
+
   return (
     <PageShell title="Recurring Expenses" desc="Configure default settings for recurring expenses." icon={Repeat}>
-      <PurchasesModuleSection title="Recurring Expense Settings" fields={[
-        { key: 'autoGenerateNumbers', label: 'Auto-generate expense numbers', desc: 'Automatically assign expense numbers.' },
-        { key: 'notifyBeforeGeneration', label: 'Notify before generation', desc: 'Send a reminder before the next expense is created.' },
-        { key: 'autoPostJournals', label: 'Auto-post journal entries', desc: 'Automatically post to the general ledger.' },
-      ]} form={form} toggle={toggle} />
+      <div className="flex items-center gap-3 mb-5">
+        <a href="#" className="text-xs text-indigo-600 hover:underline">What's this?</a>
+        <a href="#" className="text-xs text-indigo-600 hover:underline">View Logs</a>
+      </div>
+      <div className="flex items-center gap-1 mb-5 bg-slate-100 rounded-lg p-1 w-fit">
+        {rTabs.map(t => (
+          <button key={t} onClick={() => setRTab(t)}
+            className={`px-4 py-1.5 text-xs font-medium rounded-md transition ${rTab === t ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          >{t}</button>
+        ))}
+      </div>
+
+      {rTab === 'Buttons' && (
+        <Section title="Buttons">
+          <div className="mb-4">
+            <input type="text" value={btnName} onChange={e => setBtnName(e.target.value)} placeholder="Search Custom Button Name" className="w-full max-w-xs px-3 py-2.5 text-sm border border-slate-200 rounded-lg bg-white" />
+          </div>
+          <div className="overflow-x-auto -mx-6 px-6">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100">
+                  {['Info', 'Button Name', 'Access Permission', 'Location', 'More Actions'].map(h => (
+                    <th key={h} className="text-left py-3 pr-4 text-[11px] font-semibold text-slate-500 uppercase tracking-wider last:text-right last:pr-0">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {buttons.length === 0 ? (
+                  <tr><td colSpan={5} className="py-12 text-center">
+                    <p className="text-sm text-slate-400">Create buttons which perform actions set by you. <a href="#" className="text-indigo-600 hover:underline">What are you waiting for!</a></p>
+                  </td></tr>
+                ) : buttons.map((b: any, i: number) => (
+                  <tr key={i} className="hover:bg-slate-50/50">
+                    <td className="py-3 pr-4"><Info size={14} className="text-slate-300" /></td>
+                    <td className="py-3 pr-4 text-sm font-medium text-slate-700">{b.name}</td>
+                    <td className="py-3 pr-4 text-xs text-slate-500">{b.permission}</td>
+                    <td className="py-3 pr-4 text-xs text-slate-500">{b.location}</td>
+                    <td className="py-3 text-right"><button onClick={() => removeButton(i)} className="p-1.5 text-slate-400 hover:text-red-500 rounded-lg hover:bg-slate-100"><Trash2 size={14} /></button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex items-center gap-3 mt-4">
+            <input type="text" value={btnName} onChange={e => setBtnName(e.target.value)} placeholder="Button name" className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white" />
+            <select value={btnPermission} onChange={e => setBtnPermission(e.target.value)} className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white">
+              <option value="all">All Users</option>
+              <option value="admin">Admin Only</option>
+              <option value="manager">Manager</option>
+            </select>
+            <select value={btnLocation} onChange={e => setBtnLocation(e.target.value)} className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white">
+              <option value="list">List View</option>
+              <option value="detail">Detail View</option>
+              <option value="both">Both</option>
+            </select>
+            <button onClick={addButton} disabled={!btnName.trim()} className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg"><Plus size={14} /> Add</button>
+          </div>
+        </Section>
+      )}
+
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 export function PurchaseOrdersSettingsPage() {
-  const { form, field, toggle, handleSave, isPending, saved, error } = useSettingsForm('purchaseOrders', { autoGenerateNumbers: true });
+  const { form, field, handleSave, isPending, saved, error, setForm } = useSettingsForm('purchaseOrders', {
+    closeWhen: 'receive', terms: '', notes: '',
+  });
+  const [poTab, setPoTab] = useState('Preferences');
+  const poTabs = ['Preferences', 'Approvals', 'Fields', 'Validation Rules', 'Buttons', 'Related Lists'];
+
   return (
     <PageShell title="Purchase Orders" desc="Configure default settings for purchase orders." icon={ShoppingCart}>
-      <PurchasesModuleSection title="Purchase Order Settings" fields={[
-        { key: 'autoGenerateNumbers', label: 'Auto-generate PO numbers', desc: 'Automatically assign purchase order numbers.' },
-        { key: 'allowPartialReceipts', label: 'Allow partial receipts', desc: 'Receive items in multiple batches.' },
-        { key: 'requireApproval', label: 'Require PO approval', desc: 'Purchase orders require approval before sending.' },
-      ]} form={form} toggle={toggle} />
-      <Select label="Default Status" options={[{ value: 'draft', label: 'Draft' }, { value: 'sent', label: 'Sent' }]} value={form.defaultStatus || 'draft'} />
+      <div className="flex items-center gap-1 mb-5 bg-slate-100 rounded-lg p-1 w-fit">
+        {poTabs.map(t => (
+          <button key={t} onClick={() => setPoTab(t)}
+            className={`px-4 py-1.5 text-xs font-medium rounded-md transition ${poTab === t ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          >{t}</button>
+        ))}
+      </div>
+
+      {poTab === 'Preferences' && (
+        <div className="space-y-5">
+          <Section title="Purchase Orders">
+            <p className="text-xs font-semibold text-slate-600 mb-3">When do you want your Purchase Orders to be closed?</p>
+            {[
+              { value: 'receive', label: 'When a Purchase Receive is recorded' },
+              { value: 'bill', label: 'When a Bill is created' },
+              { value: 'both', label: 'When Receives and Bills are recorded' },
+            ].map(o => (
+              <label key={o.value} className="flex items-center gap-3 px-3 py-2.5 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 mb-2">
+                <input type="radio" name="closeWhen" checked={form.closeWhen === o.value} onChange={() => setForm((p: any) => ({ ...p, closeWhen: o.value }))} className="text-indigo-600" />
+                <span className="text-sm text-slate-700">{o.label}</span>
+              </label>
+            ))}
+          </Section>
+
+          <Section title="Terms & Conditions">
+            <textarea value={form.terms || ''} onChange={e => setForm((p: any) => ({ ...p, terms: e.target.value }))}
+              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg bg-white min-h-[80px] resize-y" placeholder="Enter terms and conditions..." />
+          </Section>
+
+          <Section title="Notes">
+            <textarea value={form.notes || ''} onChange={e => setForm((p: any) => ({ ...p, notes: e.target.value }))}
+              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg bg-white min-h-[80px] resize-y" placeholder="Enter notes..." />
+          </Section>
+        </div>
+      )}
+      {poTab !== 'Preferences' && (
+        <Section title={poTab}><p className="text-sm text-slate-400 py-8 text-center">No {poTab.toLowerCase()} configured yet.</p></Section>
+      )}
+
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
+
 export function BillsSettingsPage() {
-  const { form, field, toggle, handleSave, isPending, saved, error } = useSettingsForm('bills', { autoGenerateNumbers: true, allowAttachments: true });
+  const { form, handleSave, isPending, saved, error, setForm } = useSettingsForm('bills', {
+    approvalType: 'none',
+  });
+  const [bTab, setBTab] = useState('Approvals');
+  const bTabs = ['Approvals', 'Fields', 'Validation Rules', 'Buttons', 'Related Lists'];
+
   return (
     <PageShell title="Bills" desc="Configure default settings for bills." icon={FileText}>
-      <PurchasesModuleSection title="Bill Settings" fields={[
-        { key: 'autoGenerateNumbers', label: 'Auto-generate bill numbers', desc: 'Automatically assign bill numbers.' },
-        { key: 'allowAttachments', label: 'Allow bill attachments', desc: 'Upload vendor invoices to bills.' },
-        { key: 'requireApproval', label: 'Require bill approval', desc: 'Bills require approval before payment.' },
-        { key: 'enableRecurring', label: 'Enable recurring bills', desc: 'Allow recurring bill templates.' },
-      ]} form={form} toggle={toggle} />
-      <Select label="Default Payment Term" options={[{ value: 'net30', label: 'Net 30' }, { value: 'net15', label: 'Net 15' }, { value: 'dueonreceipt', label: 'Due on Receipt' }]} value={form.defaultPaymentTerm || 'net30'} />
+      <div className="flex items-center gap-1 mb-5 bg-slate-100 rounded-lg p-1 w-fit">
+        {bTabs.map(t => (
+          <button key={t} onClick={() => setBTab(t)}
+            className={`px-4 py-1.5 text-xs font-medium rounded-md transition ${bTab === t ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          >{t}</button>
+        ))}
+      </div>
+
+      {bTab === 'Approvals' && (
+        <Section title="Approval Type">
+          {[
+            { value: 'none', label: 'No Approval', desc: 'Create Bill and perform further actions without approval.' },
+            { value: 'simple', label: 'Simple Approval', desc: 'Any user with approve permission can approve the Bill.' },
+            { value: 'multi', label: 'Multi-Level Approval', desc: 'Set many levels of approval. The Bill will be approved only when all the approvers approve.' },
+            { value: 'custom', label: 'Custom Approval', desc: 'Create a customized approval flow by adding one or more criteria.' },
+          ].map(o => (
+            <label key={o.value} className="flex items-start gap-3 px-3 py-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 mb-2">
+              <input type="radio" name="approvalType" checked={form.approvalType === o.value} onChange={() => setForm((p: any) => ({ ...p, approvalType: o.value }))} className="text-indigo-600 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-slate-700">{o.label}</p>
+                <p className="text-xs text-slate-400">{o.desc}</p>
+              </div>
+            </label>
+          ))}
+        </Section>
+      )}
+      {bTab !== 'Approvals' && (
+        <Section title={bTab}><p className="text-sm text-slate-400 py-8 text-center">No {bTab.toLowerCase()} configured yet.</p></Section>
+      )}
+
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 export function RecurringBillsSettingsPage() {
-  const { form, toggle, handleSave, isPending, saved, error } = useSettingsForm('recurringBills', { autoGenerateNumbers: true });
+  const { form, handleSave, isPending, saved, error, setForm } = useSettingsForm('recurringBills', { buttons: [] as { name: string; permission: string; location: string }[] });
+  const [rbTab, setRbTab] = useState('Buttons');
+  const rbTabs = ['Buttons'];
+  const [btnName, setBtnName] = useState('');
+  const [btnPermission, setBtnPermission] = useState('all');
+  const [btnLocation, setBtnLocation] = useState('list');
+  const buttons = form.buttons || [];
+
+  function addButton() {
+    if (!btnName.trim()) return;
+    setForm((p: any) => ({ ...p, buttons: [...(p.buttons || []), { name: btnName.trim(), permission: btnPermission, location: btnLocation }] }));
+    setBtnName('');
+  }
+  function removeButton(i: number) {
+    setForm((p: any) => ({ ...p, buttons: (p.buttons || []).filter((_: any, j: number) => j !== i) }));
+  }
+
   return (
     <PageShell title="Recurring Bills" desc="Configure default settings for recurring bills." icon={FileClock}>
-      <PurchasesModuleSection title="Recurring Bill Settings" fields={[
-        { key: 'autoGenerateNumbers', label: 'Auto-generate bill numbers', desc: 'Automatically assign bill numbers.' },
-        { key: 'notifyBeforeGeneration', label: 'Notify before generation', desc: 'Send a reminder before the next bill is created.' },
-        { key: 'autoCreatePayment', label: 'Auto-create payment', desc: 'Automatically create a payment for recurring bills.' },
-      ]} form={form} toggle={toggle} />
+      <div className="flex items-center gap-3 mb-5">
+        <a href="#" className="text-xs text-indigo-600 hover:underline">What's this?</a>
+        <a href="#" className="text-xs text-indigo-600 hover:underline">View Logs</a>
+      </div>
+      <div className="flex items-center gap-1 mb-5 bg-slate-100 rounded-lg p-1 w-fit">
+        {rbTabs.map(t => (
+          <button key={t} onClick={() => setRbTab(t)}
+            className={`px-4 py-1.5 text-xs font-medium rounded-md transition ${rbTab === t ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          >{t}</button>
+        ))}
+      </div>
+
+      {rbTab === 'Buttons' && (
+        <Section title="Buttons">
+          <div className="mb-4">
+            <input type="text" value={btnName} onChange={e => setBtnName(e.target.value)} placeholder="Search Custom Button Name" className="w-full max-w-xs px-3 py-2.5 text-sm border border-slate-200 rounded-lg bg-white" />
+          </div>
+          <div className="overflow-x-auto -mx-6 px-6">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100">
+                  {['Info', 'Button Name', 'Access Permission', 'Location', 'More Actions'].map(h => (
+                    <th key={h} className="text-left py-3 pr-4 text-[11px] font-semibold text-slate-500 uppercase tracking-wider last:text-right last:pr-0">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {buttons.length === 0 ? (
+                  <tr><td colSpan={5} className="py-12 text-center">
+                    <p className="text-sm text-slate-400">Create buttons which perform actions set by you. <a href="#" className="text-indigo-600 hover:underline">What are you waiting for!</a></p>
+                  </td></tr>
+                ) : buttons.map((b: any, i: number) => (
+                  <tr key={i} className="hover:bg-slate-50/50">
+                    <td className="py-3 pr-4"><Info size={14} className="text-slate-300" /></td>
+                    <td className="py-3 pr-4 text-sm font-medium text-slate-700">{b.name}</td>
+                    <td className="py-3 pr-4 text-xs text-slate-500">{b.permission}</td>
+                    <td className="py-3 pr-4 text-xs text-slate-500">{b.location}</td>
+                    <td className="py-3 text-right"><button onClick={() => removeButton(i)} className="p-1.5 text-slate-400 hover:text-red-500 rounded-lg hover:bg-slate-100"><Trash2 size={14} /></button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex items-center gap-3 mt-4">
+            <input type="text" value={btnName} onChange={e => setBtnName(e.target.value)} placeholder="Button name" className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white" />
+            <select value={btnPermission} onChange={e => setBtnPermission(e.target.value)} className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white">
+              <option value="all">All Users</option>
+              <option value="admin">Admin Only</option>
+              <option value="manager">Manager</option>
+            </select>
+            <select value={btnLocation} onChange={e => setBtnLocation(e.target.value)} className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white">
+              <option value="list">List View</option>
+              <option value="detail">Detail View</option>
+              <option value="both">Both</option>
+            </select>
+            <button onClick={addButton} disabled={!btnName.trim()} className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg"><Plus size={14} /> Add</button>
+          </div>
+        </Section>
+      )}
+
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 export function PaymentsMadeSettingsPage() {
-  const { form, toggle, handleSave, isPending, saved, error } = useSettingsForm('paymentsMade', { autoGenerateNumbers: true, autoAllocate: true });
+  const { form, handleSave, isPending, saved, error, setForm } = useSettingsForm('paymentsMade', {
+    approvalType: 'none',
+  });
+  const [pmTab, setPmTab] = useState('Approvals');
+  const pmTabs = ['Approvals', 'Fields', 'Buttons'];
+
   return (
     <PageShell title="Payments Made" desc="Configure default settings for payments made." icon={Wallet}>
-      <PurchasesModuleSection title="Payment Settings" fields={[
-        { key: 'autoGenerateNumbers', label: 'Auto-generate payment numbers', desc: 'Automatically assign payment numbers.' },
-        { key: 'autoAllocate', label: 'Auto-allocate payments', desc: 'Automatically allocate to outstanding bills.' },
-        { key: 'sendConfirmation', label: 'Send payment confirmation to vendor', desc: 'Email payment confirmation.' },
-      ]} form={form} toggle={toggle} />
-      <Select label="Default Payment Method" options={[
-        { value: 'bank', label: 'Bank Transfer' },
-        { value: 'cheque', label: 'Cheque' },
-        { value: 'cash', label: 'Cash' },
-      ]} value={form.defaultPaymentMethod || 'bank'} />
+      <div className="flex items-center gap-1 mb-5 bg-slate-100 rounded-lg p-1 w-fit">
+        {pmTabs.map(t => (
+          <button key={t} onClick={() => setPmTab(t)}
+            className={`px-4 py-1.5 text-xs font-medium rounded-md transition ${pmTab === t ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          >{t}</button>
+        ))}
+      </div>
+
+      {pmTab === 'Approvals' && (
+        <Section title="Approval Type">
+          {[
+            { value: 'none', label: 'No Approval', desc: 'Create Vendor Payment and perform further actions without approval.' },
+            { value: 'simple', label: 'Simple Approval', desc: 'Any user with approve permission can approve the Vendor Payment.' },
+            { value: 'multi', label: 'Multi-Level Approval', desc: 'Set many levels of approval. The Vendor Payment will be approved only when all the approvers approve.' },
+            { value: 'custom', label: 'Custom Approval', desc: 'Create a customized approval flow by adding one or more criteria.' },
+          ].map(o => (
+            <label key={o.value} className="flex items-start gap-3 px-3 py-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 mb-2">
+              <input type="radio" name="approvalType" checked={form.approvalType === o.value} onChange={() => setForm((p: any) => ({ ...p, approvalType: o.value }))} className="text-indigo-600 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-slate-700">{o.label}</p>
+                <p className="text-xs text-slate-400">{o.desc}</p>
+              </div>
+            </label>
+          ))}
+        </Section>
+      )}
+      {pmTab !== 'Approvals' && (
+        <Section title={pmTab}><p className="text-sm text-slate-400 py-8 text-center">No {pmTab.toLowerCase()} configured yet.</p></Section>
+      )}
+
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
 export function VendorCreditsSettingsPage() {
-  const { form, toggle, handleSave, isPending, saved, error } = useSettingsForm('vendorCredits', { autoGenerateNumbers: true });
+  const { form, handleSave, isPending, saved, error, setForm } = useSettingsForm('vendorCredits', {
+    approvalType: 'none',
+  });
+  const [vcTab, setVcTab] = useState('Approvals');
+  const vcTabs = ['Approvals', 'Fields', 'Validation Rules', 'Buttons', 'Related Lists'];
+
   return (
     <PageShell title="Vendor Credits" desc="Configure default settings for vendor credits." icon={Banknote}>
-      <PurchasesModuleSection title="Vendor Credit Settings" fields={[
-        { key: 'autoGenerateNumbers', label: 'Auto-generate credit note numbers', desc: 'Automatically assign vendor credit numbers.' },
-        { key: 'allowWithoutBill', label: 'Allow credits without bill', desc: 'Create standalone vendor credits.' },
-        { key: 'autoApplyToBills', label: 'Auto-apply to future bills', desc: 'Automatically apply credits to new bills.' },
-      ]} form={form} toggle={toggle} />
+      <div className="flex items-center gap-1 mb-5 bg-slate-100 rounded-lg p-1 w-fit">
+        {vcTabs.map(t => (
+          <button key={t} onClick={() => setVcTab(t)}
+            className={`px-4 py-1.5 text-xs font-medium rounded-md transition ${vcTab === t ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          >{t}</button>
+        ))}
+      </div>
+
+      {vcTab === 'Approvals' && (
+        <Section title="Approval Type">
+          {[
+            { value: 'none', label: 'No Approval', desc: 'Create Vendor Credits and perform further actions without approval.' },
+            { value: 'simple', label: 'Simple Approval', desc: 'Any user with approve permission can approve the Vendor Credits.' },
+            { value: 'multi', label: 'Multi-Level Approval', desc: 'Set many levels of approval. The Vendor Credits will be approved only when all the approvers approve.' },
+            { value: 'custom', label: 'Custom Approval', desc: 'Create a customized approval flow by adding one or more criteria.' },
+          ].map(o => (
+            <label key={o.value} className="flex items-start gap-3 px-3 py-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 mb-2">
+              <input type="radio" name="approvalType" checked={form.approvalType === o.value} onChange={() => setForm((p: any) => ({ ...p, approvalType: o.value }))} className="text-indigo-600 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-slate-700">{o.label}</p>
+                <p className="text-xs text-slate-400">{o.desc}</p>
+              </div>
+            </label>
+          ))}
+        </Section>
+      )}
+      {vcTab !== 'Approvals' && (
+        <Section title={vcTab}><p className="text-sm text-slate-400 py-8 text-center">No {vcTab.toLowerCase()} configured yet.</p></Section>
+      )}
+
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
@@ -5385,26 +5716,97 @@ export function VendorCreditsSettingsPage() {
 
 // ─── Custom Modules ────────────────────────────────────────────────────────
 export function CustomModulesPage() {
-  const { form, handleSave, isPending, saved, error } = useSettingsForm('customModules');
-  const modules = form.modules || [];
+  const { form, handleSave, isPending, saved, error, setForm } = useSettingsForm('customModules', { modules: [] as { name: string; plural: string; desc: string; primaryField: string }[] });
+  const [showForm, setShowForm] = useState(false);
+  const [step, setStep] = useState(1);
+  const [modName, setModName] = useState('');
+  const [modPlural, setModPlural] = useState('');
+  const [modDesc, setModDesc] = useState('');
+  const [primaryField, setPrimaryField] = useState('');
+
+  function createModule() {
+    if (!modName.trim() || step === 1) return;
+    setForm((p: any) => ({ ...p, modules: [...(p.modules || []), { name: modName.trim(), plural: modPlural.trim() || modName.trim(), desc: modDesc, primaryField: primaryField || 'Name' }] }));
+    setModName(''); setModPlural(''); setModDesc(''); setPrimaryField(''); setStep(1); setShowForm(false);
+  }
+
   return (
     <PageShell title="Custom Modules" desc="Manage custom modules and integrations." icon={PuzzleIcon}>
-      <Section title="Installed Modules">
-        {modules.length === 0 ? (
-          <p className="text-sm text-slate-400 py-4 text-center">No custom modules installed.</p>
-        ) : modules.map((m: any, i: number) => (
-          <div key={i} className="flex items-center justify-between border border-slate-200 rounded-lg p-4 mb-2">
-            <div>
-              <p className="text-sm font-semibold text-slate-800">{m.name}</p>
-              <p className="text-xs text-slate-400">{m.desc}</p>
-            </div>
-            {m.installed
-              ? <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-full uppercase">Installed</span>
-              : <button className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700">Install</button>
-            }
+      <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-100 rounded-xl p-6 mb-5">
+        <h3 className="text-sm font-bold text-indigo-800 mb-1">Introducing Custom Modules</h3>
+        <p className="text-xs text-slate-500 mb-4">Create Custom Modules to record and track information that cannot be recorded in the pre-defined modules of SkyBooks.</p>
+        <button onClick={() => setShowForm(true)} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition">Create Module</button>
+      </div>
+
+      {showForm && (
+        <Section title="Create Custom Module">
+          <div className="flex items-center gap-1 text-xs font-medium mb-4">
+            {[{ n: 1, label: 'Module Details' }, { n: 2, label: 'Primary Field Properties' }].map((s, i) => (
+              <div key={s.n} className="flex items-center gap-1.5">
+                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${step >= s.n ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-400'}`}>{s.n}</span>
+                <span className={`text-xs ${step >= s.n ? 'text-indigo-700 font-medium' : 'text-slate-400'}`}>{s.label}</span>
+                {i === 0 && <ChevronRight size={14} className="text-slate-300 mx-1" />}
+              </div>
+            ))}
           </div>
-        ))}
-      </Section>
+
+          {step === 1 && (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">Module Name</label>
+                <input type="text" value={modName} onChange={e => setModName(e.target.value)} placeholder="e.g. Assets" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg bg-white" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">Plural Name</label>
+                <input type="text" value={modPlural} onChange={e => setModPlural(e.target.value)} placeholder="e.g. Assets" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg bg-white" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">Description</label>
+                <textarea value={modDesc} onChange={e => setModDesc(e.target.value)} placeholder="Describe this module..." className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg bg-white min-h-[60px] resize-y" />
+              </div>
+              <p className="text-xs text-amber-600">Note: Only admins and users with relevant permission can access the records of this custom module.</p>
+              <div className="flex items-center gap-3 pt-2">
+                <button onClick={() => { if (modName.trim()) setStep(2); }} disabled={!modName.trim()} className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg">Next</button>
+                <button onClick={() => setShowForm(false)} className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
+              </div>
+            </div>
+          )}
+
+          {step === 2 && (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">Primary Field Properties</label>
+                <Select label="Field Type" options={[
+                  { value: 'text', label: 'Text' },
+                  { value: 'number', label: 'Number' },
+                  { value: 'date', label: 'Date' },
+                  { value: 'dropdown', label: 'Dropdown' },
+                ]} value={primaryField || 'text'} onChange={(v: any) => setPrimaryField(v)} />
+              </div>
+              <p className="text-xs text-slate-400">The primary field is the main field used to identify records in this module.</p>
+              <div className="flex items-center gap-3 pt-2">
+                <button onClick={createModule} disabled={!modName.trim()} className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg">Create Module</button>
+                <button onClick={() => setStep(1)} className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Back</button>
+              </div>
+            </div>
+          )}
+        </Section>
+      )}
+
+      {(form.modules || []).length > 0 && (
+        <Section title="Installed Modules">
+          {(form.modules || []).map((m: any, i: number) => (
+            <div key={i} className="flex items-center justify-between border border-slate-200 rounded-lg p-4 mb-2">
+              <div>
+                <p className="text-sm font-semibold text-slate-800">{m.name}</p>
+                <p className="text-xs text-slate-400">{m.desc || 'No description'}</p>
+              </div>
+              <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-full uppercase">Active</span>
+            </div>
+          ))}
+        </Section>
+      )}
+
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
