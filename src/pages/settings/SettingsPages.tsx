@@ -2085,16 +2085,190 @@ export function UserPreferencesPage() {
 }
 
 // ─── General ───────────────────────────────────────────────────────────────
+function CheckboxGrid({ label, options, form, field }: { label: string; options: { key: string; label: string }[]; form: Record<string, any>; field: (n: string) => any }) {
+  return (
+    <div>
+      <p className="text-xs font-medium text-slate-600 mb-2">{label}</p>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+        {options.map(o => (
+          <label key={o.key} className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-slate-50">
+            <input type="checkbox" checked={!!form[o.key]} onChange={field(o.key)} className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+            <span className="text-xs text-slate-700">{o.label}</span>
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RadioGroup({ label, name, options, form, field }: { label: string; name: string; options: { value: string; label: string }[]; form: Record<string, any>; field: (n: string) => any }) {
+  return (
+    <div>
+      <p className="text-xs font-medium text-slate-600 mb-2">{label}</p>
+      <div className="space-y-2">
+        {options.map(o => (
+          <label key={o.value} className="flex items-center gap-2 cursor-pointer">
+            <input type="radio" name={name} value={o.value} checked={form[name] === o.value} onChange={field(name)} className="border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+            <span className="text-xs text-slate-700">{o.label}</span>
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function GeneralPage() {
   const { form, field, toggle, handleSave, isPending, saved, error } = useSettingsForm('general');
+
+  const moduleOptions = [
+    { key: 'moduleQuotes', label: 'Quotes' }, { key: 'moduleSalesOrders', label: 'Sales Orders' },
+    { key: 'moduleSalesReceipts', label: 'Sales Receipts' }, { key: 'modulePurchaseOrders', label: 'Purchase Orders' },
+    { key: 'moduleTimeTracking', label: 'Time Tracking' }, { key: 'moduleRetainerInvoices', label: 'Retainer Invoices' },
+    { key: 'moduleRecurringInvoice', label: 'Recurring Invoice' }, { key: 'moduleRecurringExpense', label: 'Recurring Expense' },
+    { key: 'moduleRecurringBills', label: 'Recurring Bills' }, { key: 'moduleRecurringJournals', label: 'Recurring Journals' },
+    { key: 'moduleCreditNote', label: 'Credit Note' }, { key: 'moduleDebitNote', label: 'Debit Note' },
+    { key: 'modulePaymentLinks', label: 'Payment Links' }, { key: 'moduleTasks', label: 'Tasks' },
+    { key: 'moduleSelfBilledInvoice', label: 'Self Billed Invoice' }, { key: 'moduleSelfBilledCreditNote', label: 'Self Billed Credit Note' },
+    { key: 'moduleSelfBilledDebitNote', label: 'Self Billed Debit Note' }, { key: 'moduleFixedAsset', label: 'Fixed Asset' },
+  ];
+
+  const inventoryModules = [
+    { key: 'invCompositeItems', label: 'Composite Items' }, { key: 'invPackages', label: 'Packages' },
+    { key: 'invPicklists', label: 'Picklists' }, { key: 'invShipments', label: 'Shipments' },
+    { key: 'invPurchaseReceive', label: 'Purchase Receive' }, { key: 'invSalesReturns', label: 'Sales Returns' },
+    { key: 'invTransferOrders', label: 'Transfer Orders' },
+  ];
+
+  const docCopyOptions = [
+    { value: 'original_duplicate', label: 'Two Copies (Original & Duplicate)' },
+    { value: 'three_copies', label: 'Three Copies (Original, Duplicate & Triplicate)' },
+    { value: 'four_five_copies', label: 'Four/Five Copies' },
+  ];
+
   return (
     <PageShell title="General" desc="Configure general system settings." icon={Settings}>
       <Section title="General Settings">
-        <Select label="Default Currency" options={[{ value: 'NGN', label: 'NGN - Nigerian Naira' }, { value: 'USD', label: 'USD - US Dollar' }]} value={form.defaultCurrency || 'NGN'} />
+        <Select label="Default Currency" options={[
+          { value: 'NGN', label: 'NGN - Nigerian Naira' }, { value: 'USD', label: 'USD - US Dollar' },
+          { value: 'EUR', label: 'EUR - Euro' }, { value: 'GBP', label: 'GBP - British Pound' },
+          { value: 'KES', label: 'KES - Kenyan Shilling' }, { value: 'GHS', label: 'GHS - Ghanaian Cedi' },
+          { value: 'ZAR', label: 'ZAR - South African Rand' }, { value: 'XOF', label: 'XOF - West African CFA' },
+        ]} value={form.defaultCurrency || 'NGN'} onChange={field('defaultCurrency')} />
         <Field label="Default Tax Rate (%)" type="number" placeholder="7.5" value={form.defaultTaxRate || ''} onChange={field('defaultTaxRate')} desc="Default VAT rate for new transactions." />
         <ToggleRow label="Auto-generate transaction numbers" checked={form.autoGenerateNumbers} onClick={toggle('autoGenerateNumbers')} />
         <ToggleRow label="Allow negative inventory" desc="Permit inventory to go below zero temporarily." checked={form.allowNegativeInventory} onClick={toggle('allowNegativeInventory')} />
       </Section>
+
+      <Section title="Modules">
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-xs text-amber-800 mb-4">
+          Select the modules you would like to enable.
+        </div>
+        <CheckboxGrid label="" options={moduleOptions} form={form} field={field} />
+      </Section>
+
+      <Section title="Zoho Inventory Add-on">
+        <ToggleRow label="Enable Zoho Inventory modules in SkyBooks" checked={form.enableInventory} onClick={toggle('enableInventory')} desc="Enabling Zoho Inventory Add-on will allow you to use inventory management modules." />
+        {form.enableInventory && (
+          <div className="mt-3 pl-4 border-l-2 border-indigo-200 space-y-2">
+            <CheckboxGrid label="" options={inventoryModules} form={form} field={field} />
+          </div>
+        )}
+      </Section>
+
+      <Section title="Work Week">
+        <Select label="First day of work week" options={[
+          { value: 'monday', label: 'Monday' }, { value: 'tuesday', label: 'Tuesday' },
+          { value: 'wednesday', label: 'Wednesday' }, { value: 'thursday', label: 'Thursday' },
+          { value: 'friday', label: 'Friday' }, { value: 'saturday', label: 'Saturday' },
+          { value: 'sunday', label: 'Sunday' },
+        ]} value={form.firstDayOfWeek || 'monday'} onChange={field('firstDayOfWeek')} />
+      </Section>
+
+      <Section title="PDF Attachment">
+        <ToggleRow label="Attach PDF with invoice & quote emails" checked={form.pdfAttachInvoice} onClick={toggle('pdfAttachInvoice')} />
+        <ToggleRow label="Attach payment receipt PDF to thank-you email" checked={form.pdfAttachReceipt} onClick={toggle('pdfAttachReceipt')} />
+        <ToggleRow label="Encrypt PDF files (prevents editing/conversion)" checked={form.pdfEncrypt} onClick={toggle('pdfEncrypt')} />
+      </Section>
+
+      <Section title="Discounts">
+        <RadioGroup label="Do you give discounts?" name="discountType" options={[
+          { value: 'none', label: "I don't give discounts" },
+          { value: 'line_item', label: 'At Line Item Level' },
+          { value: 'transaction', label: 'At Transaction Level' },
+        ]} form={form} field={field} />
+      </Section>
+
+      <Section title="Additional Charges">
+        <CheckboxGrid label="Select additional charges" options={[
+          { key: 'chargeAdjustments', label: 'Adjustments' },
+          { key: 'chargeShipping', label: 'Shipping Charges' },
+        ]} form={form} field={field} />
+        {form.chargeShipping && (
+          <div className="mt-3 pl-4 border-l-2 border-indigo-200">
+            <ToggleRow label="Enable tax automation for shipping charges" checked={form.shippingTaxAuto} onClick={toggle('shippingTaxAuto')} desc="The tax rate associated with a customer will be applied to the shipping charge." />
+          </div>
+        )}
+      </Section>
+
+      <Section title="Tax Configuration">
+        <RadioGroup label="Do you sell items at rates inclusive of tax?" name="taxMode" options={[
+          { value: 'exclusive', label: 'Tax Exclusive' },
+          { value: 'inclusive', label: 'Tax Inclusive' },
+        ]} form={form} field={field} />
+        <div className="mt-4">
+          <p className="text-xs font-medium text-slate-600 mb-2">Rounding off in Sales Transactions</p>
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="radio" name="roundingMode" value="none" checked={!form.roundingMode || form.roundingMode === 'none'} onChange={field('roundingMode')} className="border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+              <span className="text-xs text-slate-700">No Rounding</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="radio" name="roundingMode" value="nearest_whole" checked={form.roundingMode === 'nearest_whole'} onChange={field('roundingMode')} className="border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+              <span className="text-xs text-slate-700">Round off the total to the nearest whole number</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="radio" name="roundingMode" value="nearest_incremental" checked={form.roundingMode === 'nearest_incremental'} onChange={field('roundingMode')} className="border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+              <span className="text-xs text-slate-700">Round off the total to the nearest incremental value</span>
+            </label>
+          </div>
+        </div>
+      </Section>
+
+      <Section title="Salesperson & Profit Margin">
+        <ToggleRow label="Add a field for salesperson" checked={form.enableSalesperson} onClick={toggle('enableSalesperson')} />
+        <ToggleRow label="Enable Profit Margin estimation" checked={form.enableProfitMargin} onClick={toggle('enableProfitMargin')} desc="Shows profit margin estimate for each line item and overall transaction." />
+      </Section>
+
+      <Section title="Billable Expenses">
+        <ToggleRow label="Track billable bills and expenses while invoicing" checked={form.trackBillable} onClick={toggle('trackBillable')} />
+        {form.trackBillable && (
+          <Field label="Default Markup Percentage (%)" type="number" placeholder="0" value={form.defaultMarkup || ''} onChange={field('defaultMarkup')} />
+        )}
+      </Section>
+
+      <Section title="Document Copies">
+        <RadioGroup label="Default print preferences" name="docCopyMode" options={docCopyOptions} form={form} field={field} />
+      </Section>
+
+      <Section title="Weekly Summary">
+        <ToggleRow label="Send Weekly Summary report" checked={form.weeklySummary} onClick={toggle('weeklySummary')} desc="All users with Admin access will receive a summary of all business transactions for each week." />
+      </Section>
+
+      <Section title="Payment Retention">
+        <ToggleRow label="Allow customers to retain a portion of invoice amount" checked={form.paymentRetention} onClick={toggle('paymentRetention')} desc="Enable this option to allow your customers to retain a part of their total invoice amount." />
+      </Section>
+
+      <Section title="Organization Address Format">
+        <p className="text-xs text-slate-500 mb-2">Displayed in PDF only</p>
+        <textarea value={form.addressFormat || ''} onChange={field('addressFormat')} rows={8}
+          className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-mono text-xs"
+          placeholder={`\${ORGANIZATION.COMPANYID_LABEL} \${ORGANIZATION.COMPANYID_VALUE}\n\${ORGANIZATION.COMPANYTAXID_LABEL} \${ORGANIZATION.COMPANYTAXID_VALUE}\n\${ORGANIZATION.STREET_ADDRESS_1}\n\${ORGANIZATION.STREET_ADDRESS_2}\n\${ORGANIZATION.CITY} \${ORGANIZATION.STATE} \${ORGANIZATION.POSTAL_CODE}\n\${ORGANIZATION.COUNTRY}\n\${ORGANIZATION.PHONE}\n\${ORGANIZATION.EMAIL}\n\${ORGANIZATION.WEBSITE}`} />
+        <div className="flex items-center gap-2 mt-2">
+          <button type="button" onClick={() => { /* insert placeholder */ }} className="text-xs text-indigo-600 hover:underline">Insert Placeholders</button>
+          <button type="button" onClick={() => { /* preview */ }} className="text-xs text-slate-500 hover:underline">Preview</button>
+        </div>
+      </Section>
+
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
