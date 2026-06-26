@@ -4485,6 +4485,7 @@ export function ContactsSettingsPage() {
   const { form, toggle, handleSave, isPending, saved, error, setForm, field } = useSettingsForm('contacts', {
     allowDuplicates: false, enableCustomerNumbers: true, enableVendorNumbers: true,
     defaultCustomerType: 'business', creditLimit: 'disabled',
+    creditExceedAction: 'restrict', creditIncludeSalesOrders: false,
     billingFormat: ['${CONTACT.CONTACT_DISPLAYNAME}', '${CONTACT.CONTACT_ADDRESS}', '${CONTACT.CONTACT_CITY}', '${CONTACT.CONTACT_CODE} ${CONTACT.CONTACT_STATE}', '${CONTACT.CONTACT_COUNTRY}'].join('\n'),
     shippingFormat: ['${CONTACT.CONTACT_ADDRESS}', '${CONTACT.CONTACT_CITY}', '${CONTACT.CONTACT_CODE} ${CONTACT.CONTACT_STATE}', '${CONTACT.CONTACT_COUNTRY}'].join('\n'),
   });
@@ -4527,7 +4528,25 @@ export function ContactsSettingsPage() {
 
           <Section title="Customer Credit Limit">
             <p className="text-xs text-slate-500 mb-3">Credit Limit enables you to set limit on the outstanding receivable amount of the customers.</p>
-            <Select label="" options={[{ value: 'disabled', label: 'Disabled' }]} value={form.creditLimit || 'disabled'} onChange={field('creditLimit')} />
+            <Select label="" options={[{ value: 'disabled', label: 'Disabled' }, { value: 'enabled', label: 'Enabled' }]} value={form.creditLimit || 'disabled'} onChange={field('creditLimit')} />
+            {form.creditLimit === 'enabled' && (
+              <div className="mt-4 space-y-4 pl-2">
+                <div>
+                  <p className="text-xs font-medium text-slate-700 mb-2">What do you want to do when credit limit is exceeded?</p>
+                  <label className="flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 text-sm text-slate-700 mb-2">
+                    <input type="radio" name="creditExceedAction" checked={form.creditExceedAction === 'restrict'} onChange={() => setForm((p: any) => ({ ...p, creditExceedAction: 'restrict' }))} className="text-indigo-600" />
+                    Restrict creating or updating invoices
+                  </label>
+                  <label className="flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 text-sm text-slate-700">
+                    <input type="radio" name="creditExceedAction" checked={form.creditExceedAction === 'warn'} onChange={() => setForm((p: any) => ({ ...p, creditExceedAction: 'warn' }))} className="text-indigo-600" />
+                    Show a warning and allow users to proceed
+                  </label>
+                </div>
+                <ToggleRow label="Include sales orders' amount in limiting the credit given to customers" checked={form.creditIncludeSalesOrders} onClick={toggle('creditIncludeSalesOrders')} />
+                <p className="text-xs text-slate-400 italic">Go to the respective customer's contact details to set the credit limit.</p>
+                <p className="text-xs text-slate-400 italic">Credit Limit will not affect recurring invoices.</p>
+              </div>
+            )}
           </Section>
 
           <Section title="Customer and Vendor Billing Address Format (Displayed in PDF only)">
