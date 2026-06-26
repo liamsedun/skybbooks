@@ -3677,22 +3677,157 @@ export function PdfTemplatesPage() {
 }
 
 // ─── Email Notifications ───────────────────────────────────────────────────
+const EMAIL_GROUPS = [
+  { label: 'General', items: ['Customer Review Notification', 'Item Notification', 'Task Notification'] },
+  { label: 'Sales', items: ['Customer Notification', 'Customer Statement', 'Quote Notification', 'Sales Order Notification', 'Invoice Notification', 'Sales Receipt Notification', 'Recurring Invoice Notification', 'Credit Note Notification', 'Customer Portal Invitation', 'Customer Portal Link', 'Late Fee Notification'] },
+  { label: 'Purchases', items: ['Vendor Statement', 'Vendor Credit Notification', 'Vendor Portal Invitation', 'Expense Notification', 'Recurring Expense Notification', 'Expense Refund Notification', 'Purchase Order Notification', 'Bill Notification', 'Recurring Bill Notification'] },
+  { label: 'Time Tracking', items: ['Project Notification', 'Timesheet Notification'] },
+  { label: 'Accounting', items: ['Chart of Accounts Notification', 'Budget Notification', 'Transfer Fund Notification', 'Deposit Notification', 'Owner Drawings Notification', 'Owner Contribution Notification', 'Other Income Notification', 'Interest Income Notification'] },
+  { label: 'Customer Payments', items: ['Payment Thank-you', 'Payment Initiated', 'Payment Refund', 'Card Payment Notification', 'Refund/Credit Notification'] },
+  { label: 'Vendor Payments', items: ['Payment Made Notification', 'Payment Refund'] },
+];
+
 export function EmailNotificationsPage() {
-  const { form, toggle, handleSave, isPending, saved, error } = useSettingsForm('emailNotifications');
-  const triggers = ['Invoice Sent', 'Payment Received', 'Invoice Overdue', 'Credit Note Issued', 'Purchase Order Received', 'Bill Due Reminder', 'Quote Accepted', 'Account Statement'];
+  const { form, handleSave, isPending, saved, error, setForm } = useSettingsForm('emailNotifications', {
+    content: {} as Record<string, { subject: string; content: string; enabled: boolean }>,
+  });
+
+  const [sidebarTab, setSidebarTab] = useState('Templates');
+  const [selectedNotif, setSelectedNotif] = useState('Payment Refund');
+  const content = form.content || {};
+
+  function getNotif(key: string) {
+    return content[key] || { subject: 'Payment Refund', content: '', enabled: true };
+  }
+
+  function updateNotif(key: string, field: string, val: any) {
+    setForm((p: any) => ({
+      ...p,
+      content: { ...(p.content || {}), [key]: { ...getNotif(key), [field]: val } },
+    }));
+  }
+
+  const topTabs = ['Preferences', 'Sender Email Preferences', 'Email Insights', 'Templates'];
+
   return (
     <PageShell title="Email Notifications" desc="Configure email notifications sent to customers and vendors." icon={Mail}>
-      <Section title="Notification Triggers">
-        {triggers.map(n => {
-          const key = n.toLowerCase().replace(/ /g, '');
-          return (
-            <div key={n} className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
-              <span className="text-sm text-slate-700">{n}</span>
-              <ToggleRow label="" checked={form[key]} onClick={toggle(key)} />
-            </div>
-          );
-        })}
-      </Section>
+      <div className="flex gap-6 items-start">
+        {/* Sidebar */}
+        <div className="w-56 shrink-0 self-start sticky top-6">
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+            {topTabs.map(tab => (
+              <button
+                key={tab}
+                onClick={() => setSidebarTab(tab)}
+                className={`w-full text-left px-4 py-2.5 text-sm font-medium border-b border-slate-100 last:border-0 transition ${
+                  sidebarTab === tab ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
+            {sidebarTab === 'Templates' && (
+              <div className="border-t border-slate-200">
+                {EMAIL_GROUPS.map(group => (
+                  <div key={group.label}>
+                    <div className="px-4 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider bg-slate-50">{group.label}</div>
+                    {group.items.map(item => (
+                      <button
+                        key={item}
+                        onClick={() => setSelectedNotif(item)}
+                        className={`w-full text-left px-4 py-2 text-xs font-medium border-b border-slate-50 last:border-0 transition ${
+                          selectedNotif === item ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        {item}
+                      </button>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          {sidebarTab === 'Preferences' && (
+            <Section title="Email Preferences">
+              <p className="text-sm text-slate-400">Configure your email preferences here.</p>
+            </Section>
+          )}
+          {sidebarTab === 'Sender Email Preferences' && (
+            <Section title="Sender Email Preferences">
+              <p className="text-sm text-slate-400">Configure sender email address and display name.</p>
+            </Section>
+          )}
+          {sidebarTab === 'Email Insights' && (
+            <Section title="Email Insights">
+              <p className="text-sm text-slate-400">View email delivery statistics and insights.</p>
+            </Section>
+          )}
+          {sidebarTab === 'Templates' && (
+            <>
+              <div className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 mb-5">
+                <p className="text-xs text-slate-500">
+                  Sent when a payment is refunded.
+                </p>
+              </div>
+              <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                        <th className="px-4 py-3 w-32">Name</th>
+                        <th className="px-4 py-3">Subject and Content</th>
+                        <th className="px-4 py-3 w-24 text-right">More Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-t border-slate-100">
+                        <td className="px-4 py-3 text-sm font-medium text-slate-800">Default Default</td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-slate-700">{getNotif(selectedNotif).subject}</span>
+                            <button
+                              onClick={() => updateNotif(selectedNotif, 'showContent', !getNotif(selectedNotif).showContent)}
+                              className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-700 transition"
+                            >
+                              {getNotif(selectedNotif).showContent ? 'Hide Mail Content' : 'Show Mail Content'}
+                              <ChevronRight size={14} className={getNotif(selectedNotif).showContent ? 'rotate-90' : ''} />
+                            </button>
+                          </div>
+                          {getNotif(selectedNotif).showContent && (
+                            <div className="mt-3 border border-slate-200 rounded-lg p-4 bg-slate-50">
+                              <p className="text-xs text-slate-400 mb-2">Email Subject:</p>
+                              <input
+                                type="text" value={getNotif(selectedNotif).subject}
+                                onChange={e => updateNotif(selectedNotif, 'subject', e.target.value)}
+                                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg mb-3 bg-white"
+                              />
+                              <p className="text-xs text-slate-400 mb-2">Email Body:</p>
+                              <textarea
+                                value={getNotif(selectedNotif).content}
+                                onChange={e => updateNotif(selectedNotif, 'content', e.target.value)}
+                                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white min-h-[120px] resize-y"
+                                placeholder="Email content..."
+                              />
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <button className="text-slate-400 hover:text-slate-600"><Pencil size={14} /></button>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
