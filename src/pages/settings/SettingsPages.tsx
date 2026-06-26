@@ -49,7 +49,7 @@ import {
   FileCheck, Truck, ClipboardList, ArrowLeftRight, Wallet, PuzzleIcon,
   ShoppingCart, Receipt, ToggleLeft, Download, Upload, Link,
   Lightbulb, Eye, Pencil, Trash2, Plus, Check, X,
-  Loader2, Save, CheckCircle2, AlertCircle, MapPin, Calendar, Phone, Search,
+  Loader2, Save, CheckCircle2, AlertCircle, MapPin, Calendar, Phone, Search, Star,
 } from 'lucide-react';
 
 function PageShell({ title, desc, icon: Icon, children }: { title: string; desc?: string; icon?: React.ComponentType<{ className?: string }>; children: React.ReactNode }) {
@@ -2301,29 +2301,148 @@ export function GeneralPage() {
 }
 
 // ─── Currencies ────────────────────────────────────────────────────────────
+const ALL_CURRENCIES = [
+  { code: 'AED', name: 'UAE Dirham', symbol: 'د.إ' },
+  { code: 'ARS', name: 'Argentine Peso', symbol: '$' },
+  { code: 'AUD', name: 'Australian Dollar', symbol: '$' },
+  { code: 'BRL', name: 'Brazilian Real', symbol: 'R$' },
+  { code: 'CAD', name: 'Canadian Dollar', symbol: '$' },
+  { code: 'CHF', name: 'Swiss Franc', symbol: 'Fr' },
+  { code: 'CNY', name: 'Chinese Yuan', symbol: '¥' },
+  { code: 'DKK', name: 'Danish Krone', symbol: 'kr' },
+  { code: 'EUR', name: 'Euro', symbol: '€' },
+  { code: 'GBP', name: 'British Pound', symbol: '£' },
+  { code: 'GHS', name: 'Ghanaian Cedi', symbol: '₵' },
+  { code: 'INR', name: 'Indian Rupee', symbol: '₹' },
+  { code: 'JPY', name: 'Japanese Yen', symbol: '¥' },
+  { code: 'KES', name: 'Kenyan Shilling', symbol: 'KSh' },
+  { code: 'KRW', name: 'South Korean Won', symbol: '₩' },
+  { code: 'MAD', name: 'Moroccan Dirham', symbol: 'د.م.' },
+  { code: 'NGN', name: 'Nigerian Naira', symbol: '₦' },
+  { code: 'NOK', name: 'Norwegian Krone', symbol: 'kr' },
+  { code: 'NZD', name: 'New Zealand Dollar', symbol: '$' },
+  { code: 'RUB', name: 'Russian Ruble', symbol: '₽' },
+  { code: 'SAR', name: 'Saudi Riyal', symbol: '﷼' },
+  { code: 'SEK', name: 'Swedish Krona', symbol: 'kr' },
+  { code: 'SGD', name: 'Singapore Dollar', symbol: 'S$' },
+  { code: 'TRY', name: 'Turkish Lira', symbol: '₺' },
+  { code: 'USD', name: 'US Dollar', symbol: '$' },
+  { code: 'XAF', name: 'Central African CFA', symbol: 'Fr' },
+  { code: 'XOF', name: 'West African CFA', symbol: 'Fr' },
+  { code: 'ZAR', name: 'South African Rand', symbol: 'R' },
+];
+
 export function CurrenciesPage() {
-  const { form, handleSave, isPending, saved, error } = useSettingsForm('currencies');
+  const { form, handleSave, isPending, saved, error, setForm } = useSettingsForm('currencies', {
+    baseCurrency: 'NGN',
+    activeCurrencies: ['NGN', 'USD', 'EUR', 'GBP'],
+    rates: {} as Record<string, number>,
+  });
+  const [editRate, setEditRate] = useState<string | null>(null);
+  const [rateValue, setRateValue] = useState('');
+
+  const activeSet = new Set(form.activeCurrencies || []);
+  const base = form.baseCurrency || 'NGN';
+  const rates = form.rates || {};
+
+  function toggleCurrency(code: string) {
+    const set = new Set(activeSet);
+    if (code === base) return;
+    if (set.has(code)) set.delete(code); else set.add(code);
+    setForm((p: any) => ({ ...p, activeCurrencies: Array.from(set) }));
+  }
+
+  function setBase(code: string) {
+    const set = new Set(activeSet);
+    set.add(code);
+    setForm((p: any) => ({ ...p, baseCurrency: code, activeCurrencies: Array.from(set) }));
+  }
+
+  function openRate(code: string) {
+    setEditRate(code);
+    setRateValue(String(rates[code] || ''));
+  }
+
+  function saveRate() {
+    if (!editRate) return;
+    const val = parseFloat(rateValue);
+    if (isNaN(val) || val <= 0) return;
+    setForm((p: any) => ({ ...p, rates: { ...(p.rates || {}), [editRate]: val } }));
+    setEditRate(null);
+  }
+
   return (
     <PageShell title="Currencies" desc="Manage currencies used in your account." icon={CreditCard}>
       <Section title="Active Currencies">
-        {!form.activeCurrencies || form.activeCurrencies.length === 0 ? (
-          <p className="text-sm text-slate-400 py-4 text-center">No currencies configured.</p>
-        ) : (
-          <div className="space-y-2">
-            {form.activeCurrencies.map((c: any) => (
-              <div key={c.code} className="flex items-center justify-between border border-slate-100 rounded-lg px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <span className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-sm font-bold">{c.symbol}</span>
-                  <div>
-                    <p className="text-sm font-medium text-slate-700">{c.code} — {c.name}</p>
-                    <p className="text-xs text-slate-400">1 {c.code} = ₦{c.rate}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-200 text-left">
+                <th className="py-2.5 pr-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Name</th>
+                <th className="py-2.5 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Symbol</th>
+                <th className="py-2.5 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Rate (1 {base})</th>
+                <th className="py-2.5 pl-3 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right">More Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ALL_CURRENCIES.filter(c => activeSet.has(c.code)).map(c => (
+                <tr key={c.code} className={`border-b border-slate-100 hover:bg-slate-50 ${c.code === base ? 'bg-indigo-50/50' : ''}`}>
+                  <td className="py-3 pr-3">
+                    <div className="flex items-center gap-2.5">
+                      <span className={`text-sm ${c.code === base ? 'font-semibold text-indigo-700' : 'text-slate-800'}`}>{c.code} — {c.name}</span>
+                      {c.code === base && <span className="px-1.5 py-0.5 bg-indigo-100 text-indigo-700 text-[10px] font-bold rounded uppercase">Base</span>}
+                    </div>
+                  </td>
+                  <td className="py-3 px-3 text-lg text-slate-600">{c.symbol}</td>
+                  <td className="py-3 px-3">
+                    {editRate === c.code ? (
+                      <div className="flex items-center gap-1">
+                        <input type="number" step="0.01" min="0" value={rateValue} onChange={e => setRateValue(e.target.value)} className="w-24 px-2 py-1 text-xs border border-slate-200 rounded" autoFocus />
+                        <button onClick={saveRate} className="p-1 text-emerald-600 hover:text-emerald-700"><Check size={14} /></button>
+                        <button onClick={() => setEditRate(null)} className="p-1 text-slate-400 hover:text-slate-600"><X size={14} /></button>
+                      </div>
+                    ) : (
+                      <span className="text-sm text-slate-600">{rates[c.code] ? `1 ${c.code} = ${rates[c.code]} ${base}` : '—'}</span>
+                    )}
+                  </td>
+                  <td className="py-3 pl-3 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      {c.code !== base && (
+                        <button onClick={() => setBase(c.code)} className="p-1.5 rounded text-slate-400 hover:text-indigo-600 hover:bg-indigo-50" title="Set as base currency">
+                          <Star size={14} />
+                        </button>
+                      )}
+                      <button onClick={() => openRate(c.code)} className="p-1.5 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100" title="Set exchange rate">
+                        <Settings size={14} />
+                      </button>
+                      <button onClick={() => toggleCurrency(c.code)} className="p-1.5 rounded text-slate-400 hover:text-red-500 hover:bg-red-50" title="Remove currency">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {activeSet.size === 0 && <p className="text-sm text-slate-400 py-4 text-center">No currencies selected. Add currencies below.</p>}
       </Section>
+
+      <Section title="Available Currencies">
+        <div className="flex flex-wrap gap-2">
+          {ALL_CURRENCIES.filter(c => !activeSet.has(c.code)).map(c => (
+            <button
+              key={c.code}
+              onClick={() => toggleCurrency(c.code)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-600 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+            >
+              <span className="text-sm">{c.symbol}</span>
+              <span>{c.code}</span>
+            </button>
+          ))}
+        </div>
+      </Section>
+
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
