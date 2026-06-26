@@ -3572,28 +3572,105 @@ export function TxnNumberingPage() {
 }
 
 // ─── PDF Templates ─────────────────────────────────────────────────────────
+const TEMPLATE_CATEGORIES = [
+  'Quotes', 'Sales Orders', 'Invoices', 'Sales Receipts', 'Credit Notes',
+  'Purchase Orders', 'Payment Receipts', 'Customer Statements', 'Bills',
+  'Expenses', 'Vendor Credits', 'Vendor Payments', 'Vendor Statements',
+  'Journals', 'Quantity Adjustments', 'Value Adjustments',
+];
+
 export function PdfTemplatesPage() {
-  const { form, handleSave, isPending, saved, error } = useSettingsForm('pdfTemplates');
+  const { form, handleSave, isPending, saved, error, setForm } = useSettingsForm('pdfTemplates', {
+    templates: {} as Record<string, { active: string; list: { name: string; content: string }[] }>,
+  });
+
+  const [activeCat, setActiveCat] = useState('Invoices');
+  const templates = form.templates || {};
+
+  function getCatTemplates(cat: string) {
+    return templates[cat] || { active: 'Standard', list: [
+      { name: 'Default', content: '' },
+      { name: 'Standard', content: '' },
+    ]};
+  }
+
+  function setCatTemplates(cat: string, data: { active: string; list: { name: string; content: string }[] }) {
+    setForm((p: any) => ({ ...p, templates: { ...(p.templates || {}), [cat]: data } }));
+  }
+
+  const catData = getCatTemplates(activeCat);
+
+  function addTemplate() {
+    const newList = [...catData.list, { name: 'New Template', content: '' }];
+    setCatTemplates(activeCat, { ...catData, list: newList, active: 'New Template' });
+  }
+
   return (
     <PageShell title="PDF Templates" desc="Customize the layout of your PDF documents." icon={LayoutTemplate}>
-      <Section title="Document Templates">
-        {['Invoice', 'Quote', 'Sales Order', 'Purchase Order', 'Bill', 'Credit Note'].map(t => {
-          const key = t.toLowerCase().replace(/ /g, '');
-          return (
-            <div key={t} className="flex items-center justify-between border border-slate-100 rounded-lg px-4 py-3 mb-2">
-              <div className="flex items-center gap-3">
-                <FileText size={16} className="text-slate-400" />
-                <span className="text-sm text-slate-700">{t} Template</span>
-              </div>
-              <select value={form[key] || 'default'} onChange={field(key)} className="text-xs border border-slate-200 rounded px-2 py-1">
-                <option value="default">Default</option>
-                <option value="modern">Modern</option>
-                <option value="classic">Classic</option>
+      <div className="flex items-center gap-2 mb-5 flex-wrap">
+        {TEMPLATE_CATEGORIES.map(cat => (
+          <button
+            key={cat}
+            onClick={() => setActiveCat(cat)}
+            className={`px-3 py-1.5 text-xs font-medium rounded-full transition ${
+              activeCat === cat ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+            }`}
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
+
+      <Section title={`All ${activeCat} Templates`}>
+        <div className="border border-slate-200 rounded-xl overflow-hidden mb-4">
+          <div className="bg-slate-50 px-5 py-4 border-b border-slate-200 flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-slate-500">Preview of</span>
+              <select
+                value={catData.active}
+                onChange={e => setCatTemplates(activeCat, { ...catData, active: e.target.value })}
+                className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-medium text-slate-800"
+              >
+                {catData.list.map((t: any) => (
+                  <option key={t.name} value={t.name}>{t.name} Template</option>
+                ))}
               </select>
             </div>
-          );
-        })}
+            <span className="text-xs text-slate-400 bg-white px-3 py-1.5 border border-slate-200 rounded-lg">
+              Preview of <strong className="text-slate-600">{catData.active}</strong> template
+            </span>
+          </div>
+          <div className="p-10 flex items-center justify-center bg-white min-h-[200px]">
+            <div className="text-center">
+              <FileText size={48} className="mx-auto text-slate-200 mb-3" />
+              <p className="text-sm text-slate-400">{catData.active} template preview</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            {catData.list.map((t: any) => (
+              <button
+                key={t.name}
+                onClick={() => setCatTemplates(activeCat, { ...catData, active: t.name })}
+                className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition ${
+                  catData.active === t.name
+                    ? 'border-indigo-300 bg-indigo-50 text-indigo-700'
+                    : 'border-slate-200 text-slate-500 hover:bg-slate-50'
+                }`}
+              >
+                {t.name}
+              </button>
+            ))}
+          </div>
+          <button onClick={addTemplate} className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-700 transition">
+            <Plus size={14} /> New Template
+          </button>
+        </div>
+        <p className="text-xs text-slate-400 mt-3">Click to add a template from our gallery. You can customize the template title, columns, and headers in line item table.</p>
       </Section>
+
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
