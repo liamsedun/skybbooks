@@ -5637,22 +5637,10 @@ export function ExpensesSettingsPage() {
 }
 
 export function RecurringExpensesSettingsPage() {
-  const { form, handleSave, isPending, saved, error, setForm } = useSettingsForm('recurringExpenses', { buttons: [] as { name: string; permission: string; location: string }[] });
+  const { form, handleSave, isPending, saved, error, setForm } = useSettingsForm('recurringExpenses', { buttons: [] as any[] });
   const [rTab, setRTab] = useState('Buttons');
   const rTabs = ['Buttons'];
-  const [btnName, setBtnName] = useState('');
-  const [btnPermission, setBtnPermission] = useState('all');
-  const [btnLocation, setBtnLocation] = useState('list');
-  const buttons = form.buttons || [];
-
-  function addButton() {
-    if (!btnName.trim()) return;
-    setForm((p: any) => ({ ...p, buttons: [...(p.buttons || []), { name: btnName.trim(), permission: btnPermission, location: btnLocation }] }));
-    setBtnName('');
-  }
-  function removeButton(i: number) {
-    setForm((p: any) => ({ ...p, buttons: (p.buttons || []).filter((_: any, j: number) => j !== i) }));
-  }
+  const reButtons = form.buttons || [];
 
   return (
     <PageShell title="Recurring Expenses" desc="Configure default settings for recurring expenses." icon={Repeat}>
@@ -5668,65 +5656,164 @@ export function RecurringExpensesSettingsPage() {
         ))}
       </div>
 
-      {rTab === 'Buttons' && (
-        <Section title="Buttons">
-          <div className="mb-4">
-            <input type="text" value={btnName} onChange={e => setBtnName(e.target.value)} placeholder="Search Custom Button Name" className="w-full max-w-xs px-3 py-2.5 text-sm border border-slate-200 rounded-lg bg-white" />
-          </div>
-          <div className="overflow-x-auto -mx-6 px-6">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-100">
-                  {['Info', 'Button Name', 'Access Permission', 'Location', 'More Actions'].map(h => (
-                    <th key={h} className="text-left py-3 pr-4 text-[11px] font-semibold text-slate-500 uppercase tracking-wider last:text-right last:pr-0">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {buttons.length === 0 ? (
-                  <tr><td colSpan={5} className="py-12 text-center">
-                    <p className="text-sm text-slate-400">Create buttons which perform actions set by you. <a href="#" className="text-indigo-600 hover:underline">What are you waiting for!</a></p>
-                  </td></tr>
-                ) : buttons.map((b: any, i: number) => (
-                  <tr key={i} className="hover:bg-slate-50/50">
-                    <td className="py-3 pr-4"><Info size={14} className="text-slate-300" /></td>
-                    <td className="py-3 pr-4 text-sm font-medium text-slate-700">{b.name}</td>
-                    <td className="py-3 pr-4 text-xs text-slate-500">{b.permission}</td>
-                    <td className="py-3 pr-4 text-xs text-slate-500">{b.location}</td>
-                    <td className="py-3 text-right"><button onClick={() => removeButton(i)} className="p-1.5 text-slate-400 hover:text-red-500 rounded-lg hover:bg-slate-100"><Trash2 size={14} /></button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="flex items-center gap-3 mt-4">
-            <input type="text" value={btnName} onChange={e => setBtnName(e.target.value)} placeholder="Button name" className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white" />
-            <select value={btnPermission} onChange={e => setBtnPermission(e.target.value)} className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white">
-              <option value="all">All Users</option>
-              <option value="admin">Admin Only</option>
-              <option value="manager">Manager</option>
-            </select>
-            <select value={btnLocation} onChange={e => setBtnLocation(e.target.value)} className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white">
-              <option value="list">List View</option>
-              <option value="detail">Detail View</option>
-              <option value="both">Both</option>
-            </select>
-            <button onClick={addButton} disabled={!btnName.trim()} className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg"><Plus size={14} /> Add</button>
-          </div>
-        </Section>
-      )}
+      {rTab === 'Buttons' && <PurchasesButtonsSection buttons={reButtons} setButtons={b => setForm((p: any) => ({ ...p, buttons: b }))} />}
 
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
 
+const approvalOptions = [
+  { value: 'none', label: 'No Approval', desc: 'Create and perform further actions without approval.' },
+  { value: 'simple', label: 'Simple Approval', desc: 'Any user with approve permission can approve.' },
+  { value: 'multi', label: 'Multi-Level Approval', desc: 'Set many levels of approval. The transaction will be approved only when all the approvers approve.' },
+  { value: 'custom', label: 'Custom Approval', desc: 'Create a customized approval flow by adding one or more criteria.' },
+];
+
+function PurchasesFieldTable({ fields, setFields }: { fields: any[]; setFields: (f: any[]) => void }) {
+  const [search, setSearch] = useState('');
+  const [showModal, setShowModal] = useState(false);
+  const [editIdx, setEditIdx] = useState<number | null>(null);
+  const [fieldForm, setFieldForm] = useState({ labelName: '', dataType: 'text', mandatory: false, showInPdf: true, status: 'active' });
+  const filtered = fields.filter((f: any) => !search || f.labelName?.toLowerCase().includes(search.toLowerCase()));
+  const dataTypes = ['Text Box (Single Line)', 'Text Box (Multi-line)', 'Date', 'Number', 'Dropdown', 'Checkbox'];
+  return (
+    <Section title="Fields">
+      <div className="mb-4">
+        <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search Field Name"
+          className="w-full max-w-xs px-3 py-2.5 text-sm border border-slate-200 rounded-lg bg-white" />
+      </div>
+      <div className="overflow-x-auto -mx-6 px-6">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-slate-100">
+              {['Field Name', 'Data Type', 'Mandatory', 'Show in All PDFs', 'Status', 'More Actions'].map(h => (
+                <th key={h} className="text-left py-3 pr-4 text-[11px] font-semibold text-slate-500 uppercase tracking-wider last:text-right last:pr-0">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-50">
+            {filtered.length === 0 && <tr><td colSpan={6} className="py-8 text-center text-xs text-slate-400">No fields configured yet.</td></tr>}
+            {filtered.map((f: any, i: number) => (
+              <tr key={f.id || i} className="hover:bg-slate-50/50">
+                <td className="py-3 pr-4 text-sm font-medium text-slate-700">{f.labelName}</td>
+                <td className="py-3 pr-4 text-xs text-slate-500">{f.dataType}</td>
+                <td className="py-3 pr-4"><span className={`text-xs ${f.mandatory ? 'text-green-600 font-medium' : 'text-slate-400'}`}>{f.mandatory ? 'Yes' : 'No'}</span></td>
+                <td className="py-3 pr-4"><span className={`text-xs ${f.showInPdf ? 'text-green-600 font-medium' : 'text-slate-400'}`}>{f.showInPdf ? 'Yes' : 'No'}</span></td>
+                <td className="py-3 pr-4"><span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${f.status === 'active' ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-500'}`}>{f.status}</span></td>
+                <td className="py-3 text-right">
+                  <button onClick={() => { setEditIdx(i); setFieldForm({ labelName: f.labelName, dataType: f.dataType, mandatory: f.mandatory, showInPdf: f.showInPdf, status: f.status }); setShowModal(true); }} className="text-indigo-600 hover:underline text-xs mr-2">Edit</button>
+                  <button onClick={() => setFields(fields.filter((_: any, j: number) => j !== i))} className="text-red-500 hover:underline text-xs">Delete</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-xs text-slate-400 mt-3">Do you have information that doesn't go under any existing field? Go ahead and{' '}
+        <button className="text-indigo-600 hover:underline" onClick={() => { setEditIdx(null); setFieldForm({ labelName: '', dataType: 'Text Box (Single Line)', mandatory: false, showInPdf: true, status: 'active' }); setShowModal(true); }}>create a new field</button>.
+      </p>
+      {showModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={() => setShowModal(false)}>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 p-6" onClick={e => e.stopPropagation()}>
+            <h3 className="text-sm font-semibold text-slate-800 mb-4">{editIdx !== null ? 'Edit' : 'New'} Field</h3>
+            <div className="space-y-4">
+              <div><p className="text-xs font-medium text-slate-700 mb-1">Label Name</p>
+                <input type="text" className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg" value={fieldForm.labelName} onChange={e => setFieldForm(p => ({ ...p, labelName: e.target.value }))} /></div>
+              <div><p className="text-xs font-medium text-slate-700 mb-1">Data Type</p>
+                <select className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white" value={fieldForm.dataType} onChange={e => setFieldForm(p => ({ ...p, dataType: e.target.value }))}>
+                  {dataTypes.map(dt => <option key={dt} value={dt}>{dt}</option>)}
+                </select></div>
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer"><input type="radio" name="fMandatory" checked={fieldForm.mandatory} onChange={() => setFieldForm(p => ({ ...p, mandatory: true }))} className="text-indigo-600" /> Yes</label>
+                <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer"><input type="radio" name="fMandatory" checked={!fieldForm.mandatory} onChange={() => setFieldForm(p => ({ ...p, mandatory: false }))} className="text-indigo-600" /> No</label>
+              </div>
+              <div className="flex items-center gap-2"><input type="checkbox" checked={fieldForm.showInPdf} onChange={e => setFieldForm(p => ({ ...p, showInPdf: e.target.checked }))} className="text-indigo-600" /><span className="text-xs text-slate-700">Show in All PDFs</span></div>
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer"><input type="radio" name="fStatus" checked={fieldForm.status === 'active'} onChange={() => setFieldForm(p => ({ ...p, status: 'active' }))} className="text-indigo-600" /> Active</label>
+                <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer"><input type="radio" name="fStatus" checked={fieldForm.status === 'inactive'} onChange={() => setFieldForm(p => ({ ...p, status: 'inactive' }))} className="text-indigo-600" /> Inactive</label>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button onClick={() => setShowModal(false)} className="px-4 py-2 text-xs font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200">Cancel</button>
+                <button onClick={() => {
+                  const list = [...fields];
+                  if (editIdx !== null) list[editIdx] = fieldForm;
+                  else list.push({ ...fieldForm, id: Date.now().toString() });
+                  setFields(list);
+                  setShowModal(false);
+                }} className="px-4 py-2 text-xs font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700">Save</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </Section>
+  );
+}
+
+function PurchasesButtonsSection({ buttons, setButtons }: { buttons: any[]; setButtons: (b: any[]) => void }) {
+  const [search, setSearch] = useState('');
+  const [name, setName] = useState('');
+  const [permission, setPermission] = useState('all');
+  const [location, setLocation] = useState('list');
+  const filtered = buttons.filter((b: any) => !search || b.name?.toLowerCase().includes(search.toLowerCase()));
+  return (
+    <Section title="Buttons">
+      <div className="mb-4">
+        <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search Custom Button Name"
+          className="w-full max-w-xs px-3 py-2.5 text-sm border border-slate-200 rounded-lg bg-white" />
+      </div>
+      <div className="overflow-x-auto -mx-6 px-6">
+        <table className="w-full text-sm">
+          <thead><tr className="border-b border-slate-100">
+            {['Info', 'Button Name', 'Access Permission', 'Location', 'More Actions'].map(h => (
+              <th key={h} className="text-left py-3 pr-4 text-[11px] font-semibold text-slate-500 uppercase tracking-wider last:text-right last:pr-0">{h}</th>
+            ))}
+          </tr></thead>
+          <tbody className="divide-y divide-slate-50">
+            {filtered.length === 0 ? (
+              <tr><td colSpan={5} className="py-12 text-center"><p className="text-sm text-slate-400">Create buttons which perform actions set by you. <a href="#" className="text-indigo-600 hover:underline">What are you waiting for!</a></p></td></tr>
+            ) : filtered.map((b: any, i: number) => (
+              <tr key={i} className="hover:bg-slate-50/50">
+                <td className="py-3 pr-4"><Info size={14} className="text-slate-300" /></td>
+                <td className="py-3 pr-4 text-sm font-medium text-slate-700">{b.name}</td>
+                <td className="py-3 pr-4 text-xs text-slate-500">{b.permission}</td>
+                <td className="py-3 pr-4 text-xs text-slate-500">{b.location}</td>
+                <td className="py-3 text-right"><button onClick={() => setButtons(buttons.filter((_: any, j: number) => j !== i))} className="p-1.5 text-slate-400 hover:text-red-500 rounded-lg hover:bg-slate-100"><Trash2 size={14} /></button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="flex items-center gap-3 mt-4 flex-wrap">
+        <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Button name" className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white" />
+        <select value={permission} onChange={e => setPermission(e.target.value)} className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white">
+          <option value="All Users">All Users</option>
+          <option value="Admin Only">Admin Only</option>
+          <option value="Manager">Manager</option>
+        </select>
+        <select value={location} onChange={e => setLocation(e.target.value)} className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white">
+          <option value="List View">List View</option>
+          <option value="Detail View">Detail View</option>
+          <option value="Both">Both</option>
+        </select>
+        <button onClick={() => { if (!name.trim()) return; setButtons([...buttons, { name: name.trim(), permission, location }]); setName(''); }}
+          disabled={!name.trim()} className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg"><Plus size={14} /> Add</button>
+      </div>
+    </Section>
+  );
+}
+
 export function PurchaseOrdersSettingsPage() {
-  const { form, field, handleSave, isPending, saved, error, setForm } = useSettingsForm('purchaseOrders', {
-    closeWhen: 'receive', terms: '', notes: '',
+  const { form, handleSave, isPending, saved, error, setForm } = useSettingsForm('purchaseOrders', {
+    closeWhen: 'receive', terms: '', notes: '', approvalType: 'none',
+    fields: [{ id: '1', labelName: 'Purchase Order#', dataType: 'Text Box (Single Line)', mandatory: false, showInPdf: true, status: 'active' }],
+    buttons: [] as any[],
   });
   const [poTab, setPoTab] = useState('Preferences');
   const poTabs = ['Preferences', 'Approvals', 'Fields', 'Validation Rules', 'Buttons', 'Related Lists'];
+  const poFields = form.fields || [];
+  const poButtons = form.buttons || [];
 
   return (
     <PageShell title="Purchase Orders" desc="Configure default settings for purchase orders." icon={ShoppingCart}>
@@ -5753,20 +5840,36 @@ export function PurchaseOrdersSettingsPage() {
               </label>
             ))}
           </Section>
-
           <Section title="Terms & Conditions">
             <textarea value={form.terms || ''} onChange={e => setForm((p: any) => ({ ...p, terms: e.target.value }))}
               className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg bg-white min-h-[80px] resize-y" placeholder="Enter terms and conditions..." />
           </Section>
-
           <Section title="Notes">
             <textarea value={form.notes || ''} onChange={e => setForm((p: any) => ({ ...p, notes: e.target.value }))}
               className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg bg-white min-h-[80px] resize-y" placeholder="Enter notes..." />
           </Section>
         </div>
       )}
-      {poTab !== 'Preferences' && (
-        <Section title={poTab}><p className="text-sm text-slate-400 py-8 text-center">No {poTab.toLowerCase()} configured yet.</p></Section>
+      {poTab === 'Approvals' && (
+        <Section title="Approval Type">
+          {approvalOptions.map(o => (
+            <label key={o.value} className="flex items-start gap-3 px-3 py-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 mb-2">
+              <input type="radio" name="poApproval" checked={form.approvalType === o.value} onChange={() => setForm((p: any) => ({ ...p, approvalType: o.value }))} className="text-indigo-600 mt-0.5" />
+              <div><p className="text-sm font-medium text-slate-700">{o.label}</p><p className="text-xs text-slate-400">{o.desc}</p></div>
+            </label>
+          ))}
+        </Section>
+      )}
+      {poTab === 'Fields' && <PurchasesFieldTable fields={poFields} setFields={f => setForm((p: any) => ({ ...p, fields: f }))} />}
+      {poTab === 'Validation Rules' && (
+        <Section title="Create Validation Rules">
+          <p className="text-xs text-slate-500 mb-4">Validation Rules helps you to validate the data entered while creating, editing, or converting transactions and to prevent users from performing specific actions.</p>
+          <div className="text-center py-12 text-sm text-slate-400 border border-dashed border-slate-200 rounded-lg">No results found</div>
+        </Section>
+      )}
+      {poTab === 'Buttons' && <PurchasesButtonsSection buttons={poButtons} setButtons={b => setForm((p: any) => ({ ...p, buttons: b }))} />}
+      {poTab === 'Related Lists' && (
+        <Section title="Related Lists"><p className="text-sm text-slate-400 py-8 text-center">No related lists configured yet.</p></Section>
       )}
 
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
@@ -5778,9 +5881,20 @@ export function PurchaseOrdersSettingsPage() {
 export function BillsSettingsPage() {
   const { form, handleSave, isPending, saved, error, setForm } = useSettingsForm('bills', {
     approvalType: 'none',
+    fields: [
+      { id: '1', labelName: 'Order Number', dataType: 'Text Box (Single Line)', mandatory: false, showInPdf: true, status: 'active' },
+      { id: '2', labelName: 'Bill#', dataType: 'Text Box (Single Line)', mandatory: true, showInPdf: true, status: 'active' },
+      { id: '3', labelName: 'Bill Date', dataType: 'Date', mandatory: true, showInPdf: true, status: 'active' },
+      { id: '4', labelName: 'Transaction Posting Date', dataType: 'Date', mandatory: false, showInPdf: false, status: 'inactive' },
+      { id: '5', labelName: 'Subject', dataType: 'Text Box (Single Line)', mandatory: false, showInPdf: true, status: 'active' },
+      { id: '6', labelName: 'Notes', dataType: 'Text Box (Multi-line)', mandatory: false, showInPdf: false, status: 'active' },
+    ] as any[],
+    buttons: [] as any[],
   });
   const [bTab, setBTab] = useState('Approvals');
   const bTabs = ['Approvals', 'Fields', 'Validation Rules', 'Buttons', 'Related Lists'];
+  const bFields = form.fields || [];
+  const bButtons = form.buttons || [];
 
   return (
     <PageShell title="Bills" desc="Configure default settings for bills." icon={FileText}>
@@ -5801,17 +5915,22 @@ export function BillsSettingsPage() {
             { value: 'custom', label: 'Custom Approval', desc: 'Create a customized approval flow by adding one or more criteria.' },
           ].map(o => (
             <label key={o.value} className="flex items-start gap-3 px-3 py-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 mb-2">
-              <input type="radio" name="approvalType" checked={form.approvalType === o.value} onChange={() => setForm((p: any) => ({ ...p, approvalType: o.value }))} className="text-indigo-600 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-slate-700">{o.label}</p>
-                <p className="text-xs text-slate-400">{o.desc}</p>
-              </div>
+              <input type="radio" name="bApprovalType" checked={form.approvalType === o.value} onChange={() => setForm((p: any) => ({ ...p, approvalType: o.value }))} className="text-indigo-600 mt-0.5" />
+              <div><p className="text-sm font-medium text-slate-700">{o.label}</p><p className="text-xs text-slate-400">{o.desc}</p></div>
             </label>
           ))}
         </Section>
       )}
-      {bTab !== 'Approvals' && (
-        <Section title={bTab}><p className="text-sm text-slate-400 py-8 text-center">No {bTab.toLowerCase()} configured yet.</p></Section>
+      {bTab === 'Fields' && <PurchasesFieldTable fields={bFields} setFields={f => setForm((p: any) => ({ ...p, fields: f }))} />}
+      {bTab === 'Validation Rules' && (
+        <Section title="Create Validation Rules">
+          <p className="text-xs text-slate-500 mb-4">Validation Rules helps you to validate the data entered while creating, editing, or converting transactions and to prevent users from performing specific actions.</p>
+          <div className="text-center py-12 text-sm text-slate-400 border border-dashed border-slate-200 rounded-lg">No results found</div>
+        </Section>
+      )}
+      {bTab === 'Buttons' && <PurchasesButtonsSection buttons={bButtons} setButtons={b => setForm((p: any) => ({ ...p, buttons: b }))} />}
+      {bTab === 'Related Lists' && (
+        <Section title="Related Lists"><p className="text-sm text-slate-400 py-8 text-center">No related lists configured yet.</p></Section>
       )}
 
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
@@ -5820,22 +5939,10 @@ export function BillsSettingsPage() {
 }
 
 export function RecurringBillsSettingsPage() {
-  const { form, handleSave, isPending, saved, error, setForm } = useSettingsForm('recurringBills', { buttons: [] as { name: string; permission: string; location: string }[] });
+  const { form, handleSave, isPending, saved, error, setForm } = useSettingsForm('recurringBills', { buttons: [] as any[] });
   const [rbTab, setRbTab] = useState('Buttons');
   const rbTabs = ['Buttons'];
-  const [btnName, setBtnName] = useState('');
-  const [btnPermission, setBtnPermission] = useState('all');
-  const [btnLocation, setBtnLocation] = useState('list');
-  const buttons = form.buttons || [];
-
-  function addButton() {
-    if (!btnName.trim()) return;
-    setForm((p: any) => ({ ...p, buttons: [...(p.buttons || []), { name: btnName.trim(), permission: btnPermission, location: btnLocation }] }));
-    setBtnName('');
-  }
-  function removeButton(i: number) {
-    setForm((p: any) => ({ ...p, buttons: (p.buttons || []).filter((_: any, j: number) => j !== i) }));
-  }
+  const rbButtons = form.buttons || [];
 
   return (
     <PageShell title="Recurring Bills" desc="Configure default settings for recurring bills." icon={FileClock}>
@@ -5851,53 +5958,7 @@ export function RecurringBillsSettingsPage() {
         ))}
       </div>
 
-      {rbTab === 'Buttons' && (
-        <Section title="Buttons">
-          <div className="mb-4">
-            <input type="text" value={btnName} onChange={e => setBtnName(e.target.value)} placeholder="Search Custom Button Name" className="w-full max-w-xs px-3 py-2.5 text-sm border border-slate-200 rounded-lg bg-white" />
-          </div>
-          <div className="overflow-x-auto -mx-6 px-6">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-100">
-                  {['Info', 'Button Name', 'Access Permission', 'Location', 'More Actions'].map(h => (
-                    <th key={h} className="text-left py-3 pr-4 text-[11px] font-semibold text-slate-500 uppercase tracking-wider last:text-right last:pr-0">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {buttons.length === 0 ? (
-                  <tr><td colSpan={5} className="py-12 text-center">
-                    <p className="text-sm text-slate-400">Create buttons which perform actions set by you. <a href="#" className="text-indigo-600 hover:underline">What are you waiting for!</a></p>
-                  </td></tr>
-                ) : buttons.map((b: any, i: number) => (
-                  <tr key={i} className="hover:bg-slate-50/50">
-                    <td className="py-3 pr-4"><Info size={14} className="text-slate-300" /></td>
-                    <td className="py-3 pr-4 text-sm font-medium text-slate-700">{b.name}</td>
-                    <td className="py-3 pr-4 text-xs text-slate-500">{b.permission}</td>
-                    <td className="py-3 pr-4 text-xs text-slate-500">{b.location}</td>
-                    <td className="py-3 text-right"><button onClick={() => removeButton(i)} className="p-1.5 text-slate-400 hover:text-red-500 rounded-lg hover:bg-slate-100"><Trash2 size={14} /></button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="flex items-center gap-3 mt-4">
-            <input type="text" value={btnName} onChange={e => setBtnName(e.target.value)} placeholder="Button name" className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white" />
-            <select value={btnPermission} onChange={e => setBtnPermission(e.target.value)} className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white">
-              <option value="all">All Users</option>
-              <option value="admin">Admin Only</option>
-              <option value="manager">Manager</option>
-            </select>
-            <select value={btnLocation} onChange={e => setBtnLocation(e.target.value)} className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white">
-              <option value="list">List View</option>
-              <option value="detail">Detail View</option>
-              <option value="both">Both</option>
-            </select>
-            <button onClick={addButton} disabled={!btnName.trim()} className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg"><Plus size={14} /> Add</button>
-          </div>
-        </Section>
-      )}
+      {rbTab === 'Buttons' && <PurchasesButtonsSection buttons={rbButtons} setButtons={b => setForm((p: any) => ({ ...p, buttons: b }))} />}
 
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
@@ -5907,9 +5968,17 @@ export function RecurringBillsSettingsPage() {
 export function PaymentsMadeSettingsPage() {
   const { form, handleSave, isPending, saved, error, setForm } = useSettingsForm('paymentsMade', {
     approvalType: 'none',
+    fields: [
+      { id: '1', labelName: 'Payment#', dataType: 'Text Box (Single Line)', mandatory: true, showInPdf: true, status: 'active' },
+      { id: '2', labelName: 'Payment Date', dataType: 'Date', mandatory: true, showInPdf: true, status: 'active' },
+      { id: '3', labelName: 'Reference#', dataType: 'Text Box (Single Line)', mandatory: false, showInPdf: true, status: 'active' },
+    ] as any[],
+    buttons: [] as any[],
   });
   const [pmTab, setPmTab] = useState('Approvals');
   const pmTabs = ['Approvals', 'Fields', 'Buttons'];
+  const pmFields = form.fields || [];
+  const pmButtons = form.buttons || [];
 
   return (
     <PageShell title="Payments Made" desc="Configure default settings for payments made." icon={Wallet}>
@@ -5930,18 +5999,14 @@ export function PaymentsMadeSettingsPage() {
             { value: 'custom', label: 'Custom Approval', desc: 'Create a customized approval flow by adding one or more criteria.' },
           ].map(o => (
             <label key={o.value} className="flex items-start gap-3 px-3 py-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 mb-2">
-              <input type="radio" name="approvalType" checked={form.approvalType === o.value} onChange={() => setForm((p: any) => ({ ...p, approvalType: o.value }))} className="text-indigo-600 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-slate-700">{o.label}</p>
-                <p className="text-xs text-slate-400">{o.desc}</p>
-              </div>
+              <input type="radio" name="pmApprovalType" checked={form.approvalType === o.value} onChange={() => setForm((p: any) => ({ ...p, approvalType: o.value }))} className="text-indigo-600 mt-0.5" />
+              <div><p className="text-sm font-medium text-slate-700">{o.label}</p><p className="text-xs text-slate-400">{o.desc}</p></div>
             </label>
           ))}
         </Section>
       )}
-      {pmTab !== 'Approvals' && (
-        <Section title={pmTab}><p className="text-sm text-slate-400 py-8 text-center">No {pmTab.toLowerCase()} configured yet.</p></Section>
-      )}
+      {pmTab === 'Fields' && <PurchasesFieldTable fields={pmFields} setFields={f => setForm((p: any) => ({ ...p, fields: f }))} />}
+      {pmTab === 'Buttons' && <PurchasesButtonsSection buttons={pmButtons} setButtons={b => setForm((p: any) => ({ ...p, buttons: b }))} />}
 
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
@@ -5951,9 +6016,17 @@ export function PaymentsMadeSettingsPage() {
 export function VendorCreditsSettingsPage() {
   const { form, handleSave, isPending, saved, error, setForm } = useSettingsForm('vendorCredits', {
     approvalType: 'none',
+    fields: [
+      { id: '1', labelName: 'Vendor Credit#', dataType: 'Text Box (Single Line)', mandatory: true, showInPdf: true, status: 'active' },
+      { id: '2', labelName: 'Credit Date', dataType: 'Date', mandatory: true, showInPdf: true, status: 'active' },
+      { id: '3', labelName: 'Reference#', dataType: 'Text Box (Single Line)', mandatory: false, showInPdf: true, status: 'active' },
+    ] as any[],
+    buttons: [] as any[],
   });
   const [vcTab, setVcTab] = useState('Approvals');
   const vcTabs = ['Approvals', 'Fields', 'Validation Rules', 'Buttons', 'Related Lists'];
+  const vcFields = form.fields || [];
+  const vcButtons = form.buttons || [];
 
   return (
     <PageShell title="Vendor Credits" desc="Configure default settings for vendor credits." icon={Banknote}>
@@ -5974,17 +6047,22 @@ export function VendorCreditsSettingsPage() {
             { value: 'custom', label: 'Custom Approval', desc: 'Create a customized approval flow by adding one or more criteria.' },
           ].map(o => (
             <label key={o.value} className="flex items-start gap-3 px-3 py-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 mb-2">
-              <input type="radio" name="approvalType" checked={form.approvalType === o.value} onChange={() => setForm((p: any) => ({ ...p, approvalType: o.value }))} className="text-indigo-600 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-slate-700">{o.label}</p>
-                <p className="text-xs text-slate-400">{o.desc}</p>
-              </div>
+              <input type="radio" name="vcApprovalType" checked={form.approvalType === o.value} onChange={() => setForm((p: any) => ({ ...p, approvalType: o.value }))} className="text-indigo-600 mt-0.5" />
+              <div><p className="text-sm font-medium text-slate-700">{o.label}</p><p className="text-xs text-slate-400">{o.desc}</p></div>
             </label>
           ))}
         </Section>
       )}
-      {vcTab !== 'Approvals' && (
-        <Section title={vcTab}><p className="text-sm text-slate-400 py-8 text-center">No {vcTab.toLowerCase()} configured yet.</p></Section>
+      {vcTab === 'Fields' && <PurchasesFieldTable fields={vcFields} setFields={f => setForm((p: any) => ({ ...p, fields: f }))} />}
+      {vcTab === 'Validation Rules' && (
+        <Section title="Create Validation Rules">
+          <p className="text-xs text-slate-500 mb-4">Validation Rules helps you to validate the data entered while creating, editing, or converting transactions and to prevent users from performing specific actions.</p>
+          <div className="text-center py-12 text-sm text-slate-400 border border-dashed border-slate-200 rounded-lg">No results found</div>
+        </Section>
+      )}
+      {vcTab === 'Buttons' && <PurchasesButtonsSection buttons={vcButtons} setButtons={b => setForm((p: any) => ({ ...p, buttons: b }))} />}
+      {vcTab === 'Related Lists' && (
+        <Section title="Related Lists"><p className="text-sm text-slate-400 py-8 text-center">No related lists configured yet.</p></Section>
       )}
 
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
