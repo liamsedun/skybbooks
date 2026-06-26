@@ -630,7 +630,7 @@ export const payrollApi = {
 // 7. Accountant Endpoints
 export const accountantApi = {
   getAccounts: async () => {
-    const res = await api.get('/api/accountant/accounts');
+    const res = await api.get('/accountant/accounts');
     return res.data;
   },
 };
