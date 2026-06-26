@@ -29,8 +29,8 @@ function useSettingsForm(key: string, defaults?: Record<string, any>) {
   }, [key, form, save]);
 
   function field(name: string) {
-    return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-      const value = e.target.type === 'checkbox' ? (e.target as HTMLInputElement).checked : e.target.value;
+    return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement> | string) => {
+      const value = typeof e === 'string' ? e : e.target.type === 'checkbox' ? (e.target as HTMLInputElement).checked : e.target.value;
       setForm((p: Record<string, any>) => ({ ...p, [name]: value }));
     };
   }
