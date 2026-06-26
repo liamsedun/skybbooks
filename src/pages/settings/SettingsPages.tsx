@@ -3835,25 +3835,176 @@ export function EmailNotificationsPage() {
 
 // ─── Reporting Tags ────────────────────────────────────────────────────────
 export function ReportingTagsPage() {
-  const { form, handleSave, isPending, saved, error } = useSettingsForm('reportingTags');
+  const { form, handleSave, isPending, saved, error, setForm } = useSettingsForm('reportingTags', {
+    tags: [] as { name: string; desc: string; modules: string[]; level: 'transaction' | 'line'; extraModules: string[]; mandatory: boolean }[],
+  });
+
+  const [tagName, setTagName] = useState('');
+  const [tagDesc, setTagDesc] = useState('');
+  const [assocModules, setAssocModules] = useState<string[]>([]);
+  const [tagLevel, setTagLevel] = useState<'transaction' | 'line'>('transaction');
+  const [extraModules, setExtraModules] = useState<string[]>([]);
+  const [mandatory, setMandatory] = useState(false);
+  const [editingIdx, setEditingIdx] = useState<number | null>(null);
+
   const tags = form.tags || [];
+
+  function toggleModule(mod: string, list: string[], setter: any) {
+    setter(list.includes(mod) ? list.filter(m => m !== mod) : [...list, mod]);
+  }
+
+  function saveTag() {
+    if (!tagName.trim()) return;
+    const newTag = { name: tagName.trim(), desc: tagDesc, modules: assocModules, level: tagLevel, extraModules, mandatory };
+    if (editingIdx !== null) {
+      setForm((p: any) => ({
+        ...p,
+        tags: (p.tags || []).map((t: any, i: number) => i === editingIdx ? newTag : t),
+      }));
+    } else {
+      setForm((p: any) => ({ ...p, tags: [...(p.tags || []), newTag] }));
+    }
+    resetForm();
+  }
+
+  function editTag(i: number) {
+    const t = tags[i];
+    setTagName(t.name);
+    setTagDesc(t.desc);
+    setAssocModules(t.modules || []);
+    setTagLevel(t.level || 'transaction');
+    setExtraModules(t.extraModules || []);
+    setMandatory(t.mandatory || false);
+    setEditingIdx(i);
+  }
+
+  function deleteTag(i: number) {
+    setForm((p: any) => ({ ...p, tags: (p.tags || []).filter((_: any, j: number) => j !== i) }));
+    if (editingIdx === i) resetForm();
+  }
+
+  function resetForm() {
+    setTagName(''); setTagDesc(''); setAssocModules([]); setTagLevel('transaction'); setExtraModules([]); setMandatory(false); setEditingIdx(null);
+  }
+
+  const moduleChecks = ['Sales', 'Purchases', 'Journals', 'Inventory'];
+  const extraChecks = ['Customers', 'Vendors', 'Items', 'Fixed Assets', 'Banking', 'Configurations'];
+
   return (
     <PageShell title="Reporting Tags" desc="Create and manage tags for categorizing transactions." icon={Tag}>
-      <Section title="Tags">
-        <div className="flex flex-wrap gap-2">
-          {tags.length === 0 ? (
-            <p className="text-sm text-slate-400 py-2">No tags defined yet.</p>
-          ) : tags.map((t: string, i: number) => (
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 mb-5">
+        <p className="text-xs text-blue-700">Reporting tags are labels that can be associated with your transactions, records and reports. You can use these tags to filter reports and gain insights into your business.</p>
+      </div>
+
+      {/* Existing tags */}
+      {tags.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-5">
+          {tags.map((t: any, i: number) => (
             <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-700 rounded-full text-xs font-medium">
-              <Tag size={12} /> {t}
+              <Tag size={12} /> {t.name}
+              <button onClick={() => editTag(i)} className="text-slate-400 hover:text-indigo-600 ml-0.5"><Pencil size={12} /></button>
+              <button onClick={() => deleteTag(i)} className="text-slate-400 hover:text-red-500"><X size={12} /></button>
             </span>
           ))}
         </div>
-        <div className="flex gap-2 mt-3">
-          <input type="text" placeholder="New tag name..." className="flex-1 px-3 py-2 text-sm border border-slate-200 rounded-lg" />
-          <button className="px-3 py-2 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700"><Plus size={14} /></button>
+      )}
+
+      <Section title={editingIdx !== null ? 'Edit Reporting Tag' : 'Create Reporting Tag'}>
+        <div className="space-y-5">
+          {/* Step indicator */}
+          <div className="flex items-center gap-1 text-xs font-medium">
+            {[{ n: 1, label: 'Create Reporting Tag' }, { n: 2, label: 'Configure Options' }].map((s, i) => (
+              <div key={s.n} className="flex items-center gap-1.5">
+                <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-[10px] font-bold">{s.n}</span>
+                <span className="text-slate-600">{s.label}</span>
+                {i === 0 && <ChevronRight size={14} className="text-slate-300 mx-1" />}
+              </div>
+            ))}
+          </div>
+
+          {/* Step 1: Name & Description */}
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1.5">Reporting Tag Name</label>
+            <input type="text" value={tagName} onChange={e => setTagName(e.target.value)} placeholder="e.g. Marketing Campaign" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-white" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1.5">Description</label>
+            <textarea value={tagDesc} onChange={e => setTagDesc(e.target.value)} placeholder="Describe this reporting tag..." className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-white min-h-[60px] resize-y" />
+          </div>
+
+          {/* Step 2: Configure Options */}
+          <div className="border-t border-slate-100 pt-4">
+            <p className="text-xs font-semibold text-slate-500 mb-3">Associate This Reporting Tag To</p>
+            <p className="text-xs text-slate-400 mb-3">You can select the modules for which you want to associate reporting tags.</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {moduleChecks.map(m => (
+                <label key={m} className="flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 text-sm text-slate-700">
+                  <input type="checkbox" checked={assocModules.includes(m)} onChange={() => toggleModule(m, assocModules, setAssocModules)} className="text-indigo-600 rounded" />
+                  {m}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="border-t border-slate-100 pt-4">
+            <p className="text-xs font-semibold text-slate-500 mb-3">Tag Application Level</p>
+            <div className="space-y-2">
+              <label className="flex items-center gap-3 px-3 py-2.5 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
+                <input type="radio" name="tagLevel" checked={tagLevel === 'transaction'} onChange={() => setTagLevel('transaction')} className="text-indigo-600" />
+                <div>
+                  <p className="text-sm font-medium text-slate-700">At Transaction Level</p>
+                  <p className="text-xs text-slate-400">The reporting tag is applied to the entire transaction.</p>
+                </div>
+              </label>
+              <label className="flex items-center gap-3 px-3 py-2.5 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
+                <input type="radio" name="tagLevel" checked={tagLevel === 'line'} onChange={() => setTagLevel('line')} className="text-indigo-600" />
+                <div>
+                  <p className="text-sm font-medium text-slate-700">At Line Item Level</p>
+                  <p className="text-xs text-slate-400">The reporting tag is applied to individual line items within a transaction.</p>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <div className="border-t border-slate-100 pt-4">
+            <p className="text-xs font-semibold text-slate-500 mb-3">Additional Associations</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {extraChecks.map(m => (
+                <label key={m} className="flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 text-sm text-slate-700">
+                  <input type="checkbox" checked={extraModules.includes(m)} onChange={() => toggleModule(m, extraModules, setExtraModules)} className="text-indigo-600 rounded" />
+                  {m}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="border-t border-slate-100 pt-4">
+            <div className="flex items-start justify-between py-2 flex-wrap gap-2">
+              <div>
+                <p className="text-sm font-medium text-slate-700">Make this reporting tag as mandatory</p>
+                <p className="text-xs text-slate-400">Requires you to provide input for the reporting tag field. However, it will be skipped for auto-created transactions and in certain apps where this field is not present.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMandatory(!mandatory)}
+                className={`relative w-10 h-5 rounded-full transition-colors shrink-0 ${mandatory ? 'bg-indigo-600' : 'bg-slate-300'}`}
+              >
+                <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${mandatory ? 'translate-x-5' : 'translate-x-0.5'}`} />
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
+            <button onClick={saveTag} disabled={!tagName.trim()} className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition">
+              {editingIdx !== null ? 'Update Tag' : 'Create Tag'}
+            </button>
+            {editingIdx !== null && (
+              <button onClick={resetForm} className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg transition">Cancel</button>
+            )}
+          </div>
         </div>
       </Section>
+
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
