@@ -4012,29 +4012,131 @@ export function ReportingTagsPage() {
 
 // ─── Web Tabs ──────────────────────────────────────────────────────────────
 export function WebTabsPage() {
-  const { form, handleSave, isPending, saved, error } = useSettingsForm('webTabs');
+  const { form, handleSave, isPending, saved, error, setForm } = useSettingsForm('webTabs', { tabs: [] as { name: string; url: string; visibility: 'me' | 'selected' | 'everyone'; selectedRoles: string[]; createdAt: string }[] });
+  const [showForm, setShowForm] = useState(false);
+  const [name, setName] = useState('');
+  const [url, setUrl] = useState('');
+  const [visibility, setVisibility] = useState<'me' | 'selected' | 'everyone'>('everyone');
+  const [editingIdx, setEditingIdx] = useState<number | null>(null);
+
+  const tabs = form.tabs || [];
+
+  function saveTab() {
+    if (!name.trim() || !url.trim()) return;
+    const entry = { name: name.trim(), url: url.trim(), visibility, selectedRoles: [], createdAt: new Date().toISOString() };
+    if (editingIdx !== null) {
+      setForm((p: any) => ({ ...p, tabs: (p.tabs || []).map((t: any, i: number) => i === editingIdx ? entry : t) }));
+    } else {
+      setForm((p: any) => ({ ...p, tabs: [...(p.tabs || []), entry] }));
+    }
+    resetForm();
+  }
+
+  function editTab(i: number) {
+    const t = tabs[i];
+    setName(t.name); setUrl(t.url); setVisibility(t.visibility || 'everyone'); setEditingIdx(i); setShowForm(true);
+  }
+
+  function deleteTab(i: number) {
+    setForm((p: any) => ({ ...p, tabs: (p.tabs || []).filter((_: any, j: number) => j !== i) }));
+    if (editingIdx === i) resetForm();
+  }
+
+  function resetForm() {
+    setName(''); setUrl(''); setVisibility('everyone'); setEditingIdx(null); setShowForm(false);
+  }
+
   return (
     <PageShell title="Web Tabs" desc="Manage custom web tabs in your sidebar navigation." icon={Layers}>
-      <Section title="Custom Web Tabs">
-        <p className="text-xs text-slate-500 mb-3">Add custom links to external tools in your SkyBooks sidebar.</p>
-        {(form.tabs || []).length === 0 ? (
-          <p className="text-sm text-slate-400 py-4 text-center">No web tabs configured.</p>
-        ) : (
-          <div className="space-y-2">
-            {(form.tabs || []).map((tab: any, i: number) => (
-              <div key={i} className="flex items-center justify-between border border-slate-100 rounded-lg px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <Link size={14} className="text-slate-400" />
-                  <div>
-                    <p className="text-sm font-medium text-slate-700">{tab.label}</p>
-                    <p className="text-xs text-slate-400">{tab.url}</p>
-                  </div>
-                </div>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-xs text-slate-500">Add custom links to external tools in your SkyBooks sidebar. <a href="#" className="text-indigo-600 hover:underline">Learn more about Web Tabs</a></p>
+        <button onClick={() => setShowForm(true)} className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition">
+          <Plus size={14} /> New Web Tab
+        </button>
+      </div>
+
+      {/* Table */}
+      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden mb-5">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-100 bg-slate-50/50">
+                <th className="text-left px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Info</th>
+                <th className="text-left px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Name</th>
+                <th className="text-left px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">URL</th>
+                <th className="text-left px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Last Updated</th>
+                <th className="text-left px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                <th className="text-right px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">More Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tabs.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-12 text-center">
+                    <div className="flex flex-col items-center gap-3">
+                      <Globe size={32} className="text-slate-200" />
+                      <p className="text-sm text-slate-400">You haven't created any web tabs yet.</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : tabs.map((tab: any, i: number) => (
+                <tr key={i} className="border-b border-slate-50 hover:bg-slate-50/50">
+                  <td className="px-4 py-3"><Globe size={14} className="text-slate-300" /></td>
+                  <td className="px-4 py-3 text-sm font-medium text-slate-700">{tab.name}</td>
+                  <td className="px-4 py-3 text-xs text-indigo-600"><a href={tab.url} target="_blank" rel="noreferrer">{tab.url}</a></td>
+                  <td className="px-4 py-3 text-xs text-slate-400">{tab.createdAt ? new Date(tab.createdAt).toLocaleDateString() : '-'}</td>
+                  <td className="px-4 py-3"><span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-full uppercase">Active</span></td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <button onClick={() => editTab(i)} className="p-1.5 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-slate-100"><Pencil size={14} /></button>
+                      <button onClick={() => deleteTab(i)} className="p-1.5 text-slate-400 hover:text-red-500 rounded-lg hover:bg-slate-100"><Trash2 size={14} /></button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* New/Edit Form */}
+      {showForm && (
+        <Section title={editingIdx !== null ? 'Edit Web Tab' : 'New Web Tab'}>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1.5">Tab Name</label>
+              <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. CRM Dashboard" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-white" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1.5">URL</label>
+              <input type="text" value={url} onChange={e => setUrl(e.target.value)} placeholder="https://example.com" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-white" />
+              <p className="text-xs text-amber-600 mt-1">This URL belongs to a Sky app or website.</p>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-2">Visibility</label>
+              <div className="space-y-2">
+                {[
+                  { value: 'me', label: 'Only Me' },
+                  { value: 'selected', label: 'Only Selected Users & Roles' },
+                  { value: 'everyone', label: 'Everyone' },
+                ].map(v => (
+                  <label key={v.value} className="flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 text-sm text-slate-700">
+                    <input type="radio" name="visibility" checked={visibility === v.value} onChange={() => setVisibility(v.value as any)} className="text-indigo-600" />
+                    {v.label}
+                  </label>
+                ))}
               </div>
-            ))}
+            </div>
+            <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
+              <button onClick={saveTab} disabled={!name.trim() || !url.trim()} className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition">
+                {editingIdx !== null ? 'Update Tab' : 'Create Tab'}
+              </button>
+              <button onClick={resetForm} className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg transition">Cancel</button>
+            </div>
           </div>
-        )}
-      </Section>
+        </Section>
+      )}
+
       <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
