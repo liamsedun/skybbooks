@@ -4528,7 +4528,7 @@ export function ContactsSettingsPage() {
 
           <Section title="Customer Credit Limit">
             <p className="text-xs text-slate-500 mb-3">Credit Limit enables you to set limit on the outstanding receivable amount of the customers.</p>
-            <Select label="" options={[{ value: 'disabled', label: 'Disabled' }, { value: 'enabled', label: 'Enabled' }]} value={form.creditLimit || 'disabled'} onChange={field('creditLimit')} />
+            <ToggleRow label="Enabled" checked={form.creditLimit === 'enabled'} onClick={() => setForm((p: any) => ({ ...p, creditLimit: p.creditLimit === 'enabled' ? 'disabled' : 'enabled' }))} />
             {form.creditLimit === 'enabled' && (
               <div className="mt-4 space-y-4 pl-2">
                 <div>
