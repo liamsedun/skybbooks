@@ -3333,7 +3333,7 @@ export function CustomerPortalPage() {
         <div className="flex items-start justify-between py-2 flex-wrap gap-3">
           <div>
             <p className="text-sm font-medium text-slate-700">Provide instant support to customers</p>
-            <p className="text-xs text-slate-400 mt-0.5">Reach your customers instantly when they're in need! Connect with Zoho SalesIQ to answer customer queries through a live chat option.</p>
+            <p className="text-xs text-slate-400 mt-0.5">Reach your customers instantly when they're in need! Connect with a live chat service to answer customer queries.</p>
           </div>
           <button className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition shrink-0">
             Connect Now
