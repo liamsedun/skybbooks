@@ -199,7 +199,7 @@ const createCustomerSchema = z.object({
   taxPin: z.string().optional().nullable(),
   paymentTerms: z.number().optional().nullable(),
   creditLimit: z.number().optional().nullable(),
-  balance: z.number().int().optional().nullable(),
+  balance: z.number().int().optional().nullable().transform(v => v ?? 0),
   currency: z.string().default('NGN'),
   notes: z.string().optional().nullable()
 });

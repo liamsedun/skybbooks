@@ -117,11 +117,13 @@ function formFromCustomer(c: Customer): CustomerFormState {
 }
 
 function exportCustomersCSV(customers: Customer[]) {
-  const headers = ['Name','Email','Phone','Address','City','State','Country','Tax PIN','Payment Terms','Credit Limit','Currency','Notes','Status'];
+  const headers = ['Name','Email','Phone','Address','City','State','Country','Tax PIN','Payment Terms','Credit Limit','Opening Balance','Outstanding','Currency','Notes','Status'];
   const rows = customers.map(c => [
     c.name, c.email||'', c.phone||'', c.address||'', c.city||'', c.state||'',
     c.country, c.taxPin||'', c.paymentTerms ? `Net ${c.paymentTerms}` : '',
     c.creditLimit ? `₦${(c.creditLimit/100).toLocaleString('en-NG')}` : '',
+    c.balance ? `₦${(c.balance/100).toLocaleString('en-NG')}` : '',
+    c.outstanding ? `₦${(c.outstanding/100).toLocaleString('en-NG')}` : '',
     c.currency, c.notes||'', c.isActive ? 'Active' : 'Inactive'
   ]);
   const csv = [headers,...rows].map(r => r.map(val => `"${val}"`).join(',')).join('\n');
