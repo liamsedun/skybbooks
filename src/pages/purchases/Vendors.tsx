@@ -313,8 +313,8 @@ export function VendorsPage() {
               country: map['country'] || 'Nigeria',
               taxPin: map['tax pin'] || map['taxpin'] || null,
               paymentTerms: map['payment terms (days)'] ? parseInt(map['payment terms (days)'], 10) : null,
-              creditLimit: map['credit limit (ngn)'] ? Math.round(parseFloat(map['credit limit (ngn)'])*100) : null,
-              balance: map['opening balance (ngn)'] ? Math.round(parseFloat(map['opening balance (ngn)'])*100) : null,
+              creditLimit: map['creditlimit (ngn)'] ? Math.round(parseFloat(map['creditlimit (ngn)'])*100) : null,
+              balance: map['openingbalance (ngn)'] ? Math.round(parseFloat(map['openingbalance (ngn)'])*100) : null,
               currency: map['currency'] || 'NGN',
               notes: map['notes'] || null,
             };
