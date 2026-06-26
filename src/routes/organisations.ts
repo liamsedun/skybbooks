@@ -488,6 +488,35 @@ router.post('/invite', requireRole('owner', 'admin'), async (req: AuthenticatedR
 });
 
 // ==========================================
+// 8b. POST /org/invites/clear — Clear pending invites
+// ==========================================
+router.post('/invites/clear', requireRole('owner', 'admin'), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+
+    const [org] = await db
+      .select({ settings: organisations.settings })
+      .from(organisations)
+      .where(eq(organisations.id, orgId))
+      .limit(1);
+
+    if (!org) throw new AppError('Organisation not found.', 404);
+
+    const existingSettings = typeof org.settings === 'object' && org.settings !== null ? org.settings : {};
+
+    const { invites, ...rest } = existingSettings as any;
+
+    await db.update(organisations).set({ settings: rest }).where(eq(organisations.id, orgId));
+
+    await db.delete(users).where(and(eq(users.organisationId, orgId), eq(users.isActive, false)));
+
+    return res.status(200).json({ message: 'All pending invites cleared successfully.' });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// ==========================================
 // 8. POST /org/users/manual — Manually create a user (bypass invite)
 // ==========================================
 const manualUserSchema = z.object({

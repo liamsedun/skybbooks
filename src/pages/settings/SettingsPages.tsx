@@ -1030,6 +1030,19 @@ export function UsersPage() {
           <button onClick={handleExportPdf} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 hover:border-slate-300 text-slate-700 text-xs font-medium rounded-lg transition">
             <Download size={14} /> PDF
           </button>
+          <button onClick={async () => {
+            if (!confirm('Clear all pending invites? This cannot be undone.')) return;
+            try {
+              await orgApi.clearInvites();
+              setInviteSuccess('Pending invites cleared. You can now resend invites.');
+              setTimeout(() => setInviteSuccess(null), 3000);
+            } catch (err: any) {
+              setInviteError(err?.response?.data?.error || err?.message || 'Failed to clear invites.');
+              setTimeout(() => setInviteError(null), 3000);
+            }
+          }} className="inline-flex items-center gap-1.5 px-3 py-2 border border-red-200 hover:border-red-300 text-red-600 text-xs font-medium rounded-lg transition">
+            <X size={14} /> Clear Pending Invites
+          </button>
         </div>
       </div>
 

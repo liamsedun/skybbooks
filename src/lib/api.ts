@@ -206,6 +206,10 @@ export const orgApi = {
     const res = await api.post('/org/invite', data);
     return res.data;
   },
+  clearInvites: async () => {
+    const res = await api.post('/org/invites/clear');
+    return res.data;
+  },
   getOrg: async () => {
     const res = await api.get('/org');
     return res.data;
