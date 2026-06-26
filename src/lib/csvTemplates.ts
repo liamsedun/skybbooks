@@ -10,7 +10,8 @@ export function downloadCsv(filename: string, headers: string[], sampleRow: stri
 }
 
 export function parseCsv(text: string): { headers: string[]; rows: string[][] } {
-  const lines = text.split(/\r?\n/).filter(Boolean);
+  const cleaned = text.replace(/^\uFEFF/, '').replace(/\r$/, '');
+  const lines = cleaned.split(/\n/).filter(Boolean);
   if (lines.length < 2) throw new Error('CSV must have a header row and at least one data row.');
   const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
   const rows = lines.slice(1).map(line => line.split(',').map(c => c.trim().replace(/^"|"$/g, '')));

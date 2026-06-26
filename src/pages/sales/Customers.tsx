@@ -443,19 +443,22 @@ function CustomerList() {
           endpoint="/sales/customers"
           onClose={() => setImportOpen(false)}
           onSuccess={() => queryClient.invalidateQueries({ queryKey: ['sales', 'customers'] })}
-          transformRow={(row, headers) => ({
-            name: row[headers.indexOf('name')] || '',
-            email: row[headers.indexOf('email')] || null,
-            phone: row[headers.indexOf('phone')] || null,
-            address: row[headers.indexOf('address')] || null,
-            city: row[headers.indexOf('city')] || null,
-            state: row[headers.indexOf('state')] || null,
-            country: row[headers.indexOf('country')] || 'Nigeria',
-            taxPin: row[headers.indexOf('taxPin')] || null,
-            paymentTerms: row[headers.indexOf('paymentTerms (days)')] ? parseInt(row[headers.indexOf('paymentTerms (days)')], 10) : null,
-            creditLimit: row[headers.indexOf('creditLimit (NGN)')] ? Math.round(parseFloat(row[headers.indexOf('creditLimit (NGN)')]) * 100) : null,
-            notes: row[headers.indexOf('notes')] || null,
-          })}
+          transformRow={(row, headers) => {
+            const h = Object.fromEntries(headers.map((k, i) => [k.toLowerCase(), i]));
+            return {
+              name: row[h['name']] || '',
+              email: row[h['email']] || null,
+              phone: row[h['phone']] || null,
+              address: row[h['address']] || null,
+              city: row[h['city']] || null,
+              state: row[h['state']] || null,
+              country: row[h['country']] || 'Nigeria',
+              taxPin: row[h['taxpin']] || null,
+              paymentTerms: row[h['paymentterms (days)']] ? parseInt(row[h['paymentterms (days)']], 10) : null,
+              creditLimit: row[h['creditlimit (ngn)']] ? Math.round(parseFloat(row[h['creditlimit (ngn)']]) * 100) : null,
+              notes: row[h['notes']] || null,
+            };
+          }}
         />
       )}
     </div>

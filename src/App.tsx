@@ -37,7 +37,6 @@ import {
   BillsPage,
   PaymentsMadePage,
   InventoryPage,
-  EmployeesPage,
   ChartOfAccountsPage,
   JournalsPage,
   BudgetsPage,

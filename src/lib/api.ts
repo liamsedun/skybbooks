@@ -635,6 +635,78 @@ export const accountantApi = {
   },
 };
 
+// 7b. Journals Endpoints
+export const journalsApi = {
+  getJournals: async () => {
+    const res = await api.get('/journals');
+    return res.data;
+  },
+  getJournal: async (id: string) => {
+    const res = await api.get(`/journals/${id}`);
+    return res.data;
+  },
+  createJournal: async (data: any) => {
+    const res = await api.post('/journals', data);
+    return res.data;
+  },
+};
+
+// 7c. Budgets Endpoints
+export const budgetsApi = {
+  getBudgets: async () => {
+    const res = await api.get('/budgets');
+    return res.data;
+  },
+  getBudget: async (id: string) => {
+    const res = await api.get(`/budgets/${id}`);
+    return res.data;
+  },
+  createBudget: async (data: any) => {
+    const res = await api.post('/budgets', data);
+    return res.data;
+  },
+  updateBudget: async (id: string, data: any) => {
+    const res = await api.patch(`/budgets/${id}`, data);
+    return res.data;
+  },
+  deleteBudget: async (id: string) => {
+    const res = await api.delete(`/budgets/${id}`);
+    return res.data;
+  },
+};
+
+// 7d. Fixed Assets Endpoints
+export const fixedAssetsApi = {
+  getAssets: async () => {
+    const res = await api.get('/fixed-assets');
+    return res.data;
+  },
+  getAsset: async (id: string) => {
+    const res = await api.get(`/fixed-assets/${id}`);
+    return res.data;
+  },
+  createAsset: async (data: any) => {
+    const res = await api.post('/fixed-assets', data);
+    return res.data;
+  },
+  updateAsset: async (id: string, data: any) => {
+    const res = await api.patch(`/fixed-assets/${id}`, data);
+    return res.data;
+  },
+  deleteAsset: async (id: string) => {
+    const res = await api.delete(`/fixed-assets/${id}`);
+    return res.data;
+  },
+};
+
+// 7e. Audit Log Endpoints
+export const auditLogApi = {
+  getLogs: async (params?: any) => {
+    const res = await api.get('/audit-log', { params });
+    return res.data;
+  },
+};
+
 // 8. Reports Endpoints
 export const reportsApi = {
   getTrialBalance: async (params: { startDate: string; endDate: string; format?: 'json' | 'pdf' | 'excel' }) => {
