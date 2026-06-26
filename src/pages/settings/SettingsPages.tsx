@@ -2727,106 +2727,20 @@ function parseCSV(text: string): string[][] {
   );
 }
 
-const ACCOUNT_GROUPS = [
-  { key: 'asset', label: 'Accounts', types: ['asset'] },
-  { key: 'expense', label: 'Accounts', types: ['expense'] },
-  { key: 'bank', label: 'Accounts', types: ['bank'] },
-  { key: 'liability', label: 'Accounts', types: ['liability'] },
-  { key: 'equity', label: 'Accounts', types: ['equity'] },
-  { key: 'revenue', label: 'Accounts', types: ['revenue'] },
-] as const;
-
 export function OpeningBalancesPage() {
   const { form, handleSave, isPending, saved, error, setForm } = useSettingsForm('openingBalances', {
     location: '',
     migrationDate: '2025-03-01',
     arTotal: 0,
     apTotal: 0,
-    accountBalances: {} as Record<string, { debit: number; credit: number }>,
-    customAccounts: [] as { id: string; name: string; type: string; debit: number; credit: number }[],
     adjustmentAccount: 'Opening Balance Adjustments',
     adjustmentAmount: 0,
   });
 
-  const { data: accounts } = useQuery<any[]>({
-    queryKey: ['accounts'],
-    queryFn: async () => { const r = await api.get('/accountant/accounts'); return r.data; },
-  });
-
-  const balMap: Record<string, { debit: number; credit: number }> = form.accountBalances || {};
-  const customAccts: { id: string; name: string; type: string; debit: number; credit: number }[] = form.customAccounts || [];
+  const ar = form.arTotal || 0;
+  const ap = form.apTotal || 0;
   const adj = form.adjustmentAmount || 0;
-
-  function setBalance(id: string, field: 'debit' | 'credit', val: number) {
-    const current = balMap[id] || { debit: 0, credit: 0 };
-    setForm((p: any) => ({
-      ...p, accountBalances: { ...p.accountBalances, [id]: { ...current, [field]: val } }
-    }));
-  }
-
-  function addCustomAccount(type: string) {
-    const id = 'custom_' + Date.now();
-    const newAcct = { id, name: '', type, debit: 0, credit: 0 };
-    setForm((p: any) => ({ ...p, customAccounts: [...(p.customAccounts || []), newAcct] }));
-  }
-
-  function updateCustomAccount(id: string, field: string, val: any) {
-    setForm((p: any) => ({
-      ...p,
-      customAccounts: (p.customAccounts || []).map((a: any) => a.id === id ? { ...a, [field]: val } : a)
-    }));
-  }
-
-  function removeCustomAccount(id: string) {
-    setForm((p: any) => ({
-      ...p,
-      customAccounts: (p.customAccounts || []).filter((a: any) => a.id !== id)
-    }));
-  }
-
-  function getAccountsForGroup(groupType: string) {
-    let list: any[] = [];
-    if (groupType === 'bank') {
-      list = (accounts || []).filter((a: any) =>
-        a.type === 'asset' && (a.name.toLowerCase().includes('bank') || a.subType === 'Cash at Bank')
-      );
-    } else {
-      list = (accounts || []).filter((a: any) => a.type === groupType);
-    }
-    const custom = customAccts.filter((a: any) => a.type === groupType);
-    return [...list, ...custom];
-  }
-
-  function totalFor(groupType: string): { debit: number; credit: number } {
-    const accts = getAccountsForGroup(groupType);
-    let d = 0, c = 0;
-    for (const a of accts) {
-      const b = (a.id ? balMap[a.id] : null) || { debit: 0, credit: 0 };
-      d += b.debit || 0;
-      c += b.credit || 0;
-    }
-    return { debit: d, credit: c };
-  }
-
-  function grandTotalDebit() {
-    let t = 0;
-    for (const g of ACCOUNT_GROUPS) {
-      t += totalFor(g.key).debit;
-    }
-    return t;
-  }
-
-  function grandTotalCredit() {
-    let t = 0;
-    for (const g of ACCOUNT_GROUPS) {
-      t += totalFor(g.key).credit;
-    }
-    return t;
-  }
-
-  const totalDebit = grandTotalDebit();
-  const totalCredit = grandTotalCredit();
-  const grandTotalVal = totalDebit - totalCredit + adj;
+  const grandTotalVal = ar - ap + adj;
 
   function formatMoney(val: number) {
     return val.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -2841,126 +2755,17 @@ export function OpeningBalancesPage() {
       const rows = parseCSV(text);
       if (rows.length < 2) return;
       const header = rows[0];
-      const nameIdx = header.findIndex(h => h.toLowerCase().includes('name') || h.toLowerCase().includes('account'));
-      const debitIdx = header.findIndex(h => h.toLowerCase().includes('debit'));
-      const creditIdx = header.findIndex(h => h.toLowerCase().includes('credit'));
       const amountIdx = header.findIndex(h => h.toLowerCase().includes('amount') || h.toLowerCase().includes('balance'));
-
-      if (type === 'ar' || type === 'ap') {
-        const contactIdx = header.findIndex(h => h.toLowerCase().includes('name') || h.toLowerCase().includes('contact') || h.toLowerCase().includes('customer') || h.toLowerCase().includes('vendor'));
-        if (contactIdx === -1 || amountIdx === -1) return;
-        let total = 0;
-        for (let i = 1; i < rows.length; i++) {
-          total += parseFloat(rows[i][amountIdx]) || 0;
-        }
-        setForm((p: any) => ({ ...p, [type === 'ar' ? 'arTotal' : 'apTotal']: total }));
-      } else {
-        if (nameIdx === -1) return;
-        for (let i = 1; i < rows.length; i++) {
-          const name = rows[i][nameIdx]?.toLowerCase().trim();
-          const debit = parseFloat(rows[i][debitIdx]) || 0;
-          const credit = parseFloat(rows[i][creditIdx]) || 0;
-          const account = (accounts || []).find((a: any) => a.name.toLowerCase() === name);
-          if (account) {
-            setBalance(account.id, 'debit', debit);
-            setBalance(account.id, 'credit', credit);
-          }
-        }
+      const contactIdx = header.findIndex(h => h.toLowerCase().includes('name') || h.toLowerCase().includes('contact') || h.toLowerCase().includes('customer') || h.toLowerCase().includes('vendor'));
+      if (contactIdx === -1 || amountIdx === -1) return;
+      let total = 0;
+      for (let i = 1; i < rows.length; i++) {
+        total += parseFloat(rows[i][amountIdx]) || 0;
       }
+      setForm((p: any) => ({ ...p, [type === 'ar' ? 'arTotal' : 'apTotal']: total }));
     };
     reader.readAsText(file);
     e.target.value = '';
-  }
-
-  function renderAccountGroup(groupKey: string) {
-    const label = groupKey === 'bank' ? 'Bank' : groupKey.charAt(0).toUpperCase() + groupKey.slice(1);
-    const accts = getAccountsForGroup(groupKey);
-    const subtotals = totalFor(groupKey);
-
-    return (
-      <div key={groupKey} className="border border-slate-200 rounded-xl overflow-hidden mb-5">
-        <div className="bg-slate-50 px-4 py-3 border-b border-slate-200">
-          <h3 className="text-sm font-semibold text-slate-700">{label} Accounts</h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                <th className="px-4 py-2.5">Account Name</th>
-                <th className="px-4 py-2.5 text-right">Available Balance</th>
-                <th className="px-4 py-2.5 text-right">Debit (NGN)</th>
-                <th className="px-4 py-2.5 text-right">Credit (NGN)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {accts.map((a: any) => {
-                const bal = (a.id ? balMap[a.id] : null) || { debit: 0, credit: 0 };
-                const available = (bal.debit || 0) - (bal.credit || 0);
-                const isCustom = !a.code;
-                return (
-                  <tr key={a.id || a.name} className="border-t border-slate-100 hover:bg-slate-50">
-                    <td className="px-4 py-2 text-sm text-slate-700 max-w-0 w-full">
-                      <div className="flex items-center gap-2">
-                        {isCustom ? (
-                          <input
-                            type="text" value={a.name || ''}
-                            onChange={e => updateCustomAccount(a.id, 'name', e.target.value)}
-                            placeholder="Account name..."
-                            className="w-full px-2 py-1 text-sm border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500/20 bg-white"
-                          />
-                        ) : (
-                          <span className="truncate block">{a.name}</span>
-                        )}
-                        {isCustom && (
-                          <button onClick={() => removeCustomAccount(a.id)} className="text-slate-400 hover:text-red-500 shrink-0"><Trash2 size={14} /></button>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-2 text-sm text-right font-mono text-slate-800">{available !== 0 ? formatMoney(available) : '-'}</td>
-                    <td className="px-4 py-2">
-                      <input
-                        type="number" value={bal.debit || ''}
-                        onChange={e => { if (a.id) setBalance(a.id, 'debit', parseFloat(e.target.value) || 0); }}
-                        className="w-full px-2 py-1 text-sm border border-slate-200 rounded text-right font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500/20 bg-white"
-                        placeholder="0.00"
-                      />
-                    </td>
-                    <td className="px-4 py-2">
-                      <input
-                        type="number" value={bal.credit || ''}
-                        onChange={e => { if (a.id) setBalance(a.id, 'credit', parseFloat(e.target.value) || 0); }}
-                        className="w-full px-2 py-1 text-sm border border-slate-200 rounded text-right font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500/20 bg-white"
-                        placeholder="0.00"
-                      />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-            <tfoot>
-              <tr className="border-t border-slate-200 bg-slate-50 font-semibold text-slate-800">
-                <td className="px-4 py-2 text-xs">TOTAL</td>
-                <td className="px-4 py-2 text-right text-sm font-mono">{formatMoney(subtotals.debit - subtotals.credit)}</td>
-                <td className="px-4 py-2 text-right text-sm font-mono">{formatMoney(subtotals.debit)}</td>
-                <td className="px-4 py-2 text-right text-sm font-mono">{formatMoney(subtotals.credit)}</td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-        <div className="px-4 py-2 border-t border-slate-100 bg-white">
-          <button onClick={() => addCustomAccount(groupKey)} className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-700 transition">
-            <Plus size={14} /> New Account
-          </button>
-          <label className="ml-3 inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-700 transition cursor-pointer">
-            <Upload size={14} /> Import CSV
-            <input type="file" accept=".csv" className="hidden" onChange={e => handleCSVImport(groupKey, e)} />
-          </label>
-          <button onClick={() => downloadSampleCSV(`opening_balances_${groupKey}.csv`, ['Account Name', 'Debit', 'Credit'], [['Sample Account', '10000', '0']])} className="ml-3 inline-flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-slate-600 transition">
-            <Download size={14} /> Sample CSV
-          </button>
-        </div>
-      </div>
-    );
   }
 
   return (
@@ -3002,7 +2807,7 @@ export function OpeningBalancesPage() {
                   <Download size={12} /> Sample CSV
                 </button>
               </div>
-              <input type="number" value={form.arTotal || 0} onChange={e => setForm((p: any) => ({ ...p, arTotal: parseFloat(e.target.value) || 0 }))} className="w-40 px-3 py-2 text-sm border border-slate-200 rounded-lg text-right font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+              <input type="number" value={ar} onChange={e => setForm((p: any) => ({ ...p, arTotal: parseFloat(e.target.value) || 0 }))} className="w-40 px-3 py-2 text-sm border border-slate-200 rounded-lg text-right font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
             </div>
             <div className="flex items-center justify-between py-2 flex-wrap gap-2">
               <div className="flex items-center gap-3">
@@ -3014,12 +2819,8 @@ export function OpeningBalancesPage() {
                   <Download size={12} /> Sample CSV
                 </button>
               </div>
-              <input type="number" value={form.apTotal || 0} onChange={e => setForm((p: any) => ({ ...p, apTotal: parseFloat(e.target.value) || 0 }))} className="w-40 px-3 py-2 text-sm border border-slate-200 rounded-lg text-right font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+              <input type="number" value={ap} onChange={e => setForm((p: any) => ({ ...p, apTotal: parseFloat(e.target.value) || 0 }))} className="w-40 px-3 py-2 text-sm border border-slate-200 rounded-lg text-right font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
             </div>
-          </div>
-
-          <div className="border-t border-slate-100 pt-4">
-            {ACCOUNT_GROUPS.map(g => renderAccountGroup(g.key))}
           </div>
 
           <div className="border-t border-slate-100 pt-4 space-y-3">
@@ -3038,20 +2839,16 @@ export function OpeningBalancesPage() {
               <span className="text-lg font-mono font-bold text-slate-900">₦{formatMoney(grandTotalVal)}</span>
             </div>
             <div className="flex items-center justify-between text-xs text-slate-400 mt-1">
-              <span>Opening Balance Total</span>
-              <span>₦{formatMoney(totalDebit - totalCredit)}</span>
+              <span>Accounts Receivable</span>
+              <span>₦{formatMoney(ar)}</span>
+            </div>
+            <div className="flex items-center justify-between text-xs text-slate-400">
+              <span>Accounts Payable</span>
+              <span>₦{formatMoney(ap)}</span>
             </div>
             <div className="flex items-center justify-between text-xs text-slate-400">
               <span>Adjustment</span>
               <span>₦{formatMoney(adj)}</span>
-            </div>
-            <div className="flex items-center justify-between text-xs text-slate-400">
-              <span>Total Debit</span>
-              <span>₦{formatMoney(totalDebit)}</span>
-            </div>
-            <div className="flex items-center justify-between text-xs text-slate-400">
-              <span>Total Credit</span>
-              <span>₦{formatMoney(totalCredit)}</span>
             </div>
           </div>
         </div>
