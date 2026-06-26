@@ -93,8 +93,8 @@ export const CSV_TEMPLATES: Record<string, { headers: string[]; sample: string[]
   // Purchases module
   vendors: {
     filename: 'vendors-template.csv',
-    headers: ['name', 'email', 'phone', 'address', 'city', 'state', 'country', 'taxPin', 'paymentTerms (days)', 'currency', 'notes'],
-    sample: ['Supply Corp', 'supply@example.com', '+2348012345678', '456 Industrial Ave', 'Lagos', 'Lagos', 'Nigeria', 'VAT-001', '30', 'NGN', 'Preferred vendor'],
+    headers: ['name', 'email', 'phone', 'address', 'city', 'state', 'country', 'taxPin', 'paymentTerms (days)', 'creditLimit (NGN)', 'openingBalance (NGN)', 'currency', 'notes'],
+    sample: ['Supply Corp', 'supply@example.com', '+2348012345678', '456 Industrial Ave', 'Lagos', 'Lagos', 'Nigeria', 'VAT-001', '30', '500000', '0', 'NGN', 'Preferred vendor'],
   },
   expenses: {
     filename: 'expenses-template.csv',

@@ -16,19 +16,20 @@ interface Vendor {
   id: string; name: string; email: string | null; phone: string | null;
   address: string | null; city: string | null; state: string | null;
   country: string; taxPin: string | null; paymentTerms: number | null;
+  creditLimit?: number | null; balance?: number; outstanding?: number;
   currency: string; notes: string | null; isActive: boolean; createdAt: string;
 }
 
 type FormState = {
   name: string; email: string; phone: string; address: string;
   city: string; state: string; country: string; taxPin: string;
-  paymentTerms: string; currency: string; notes: string;
+  paymentTerms: string; creditLimit: string; balance: string; currency: string; notes: string;
 };
 
 const EMPTY_FORM: FormState = {
   name: '', email: '', phone: '', address: '',
   city: '', state: '', country: 'Nigeria',
-  taxPin: '', paymentTerms: '30', currency: 'NGN', notes: '',
+  taxPin: '', paymentTerms: '30', creditLimit: '', balance: '', currency: 'NGN', notes: '',
 };
 
 function initials(name: string) { return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2); }
@@ -36,11 +37,11 @@ const COLORS = ['bg-violet-100 text-violet-700','bg-blue-100 text-blue-700','bg-
 function colorFor(name: string) { return COLORS[name.charCodeAt(0) % COLORS.length]; }
 
 function exportVendorsCSV(vendors: Vendor[]) {
-  const headers = ['Name','Email','Phone','Address','City','State','Country','Tax PIN','Payment Terms','Currency','Notes','Status'];
+  const headers = ['Name','Email','Phone','Address','City','State','Country','Tax PIN','Payment Terms (days)','Currency','Opening Balance (NGN)','Credit Limit (NGN)','Notes','Status'];
   const rows = vendors.map(v => [
     v.name, v.email||'', v.phone||'', v.address||'', v.city||'', v.state||'',
-    v.country, v.taxPin||'', v.paymentTerms ? `Net ${v.paymentTerms}` : '',
-    v.currency, v.notes||'', v.isActive ? 'Active' : 'Inactive'
+    v.country, v.taxPin||'', v.paymentTerms ? `${v.paymentTerms}` : '',
+    v.currency, v.balance ? `${(v.balance/100).toFixed(2)}` : '', v.creditLimit ? `${(v.creditLimit/100).toFixed(2)}` : '', v.notes||'', v.isActive ? 'Active' : 'Inactive'
   ]);
   const csv = [headers,...rows].map(r => r.map(val => `"${val}"`).join(',')).join('\n');
   const blob = new Blob([csv],{type:'text/csv'});
@@ -146,6 +147,8 @@ export function VendorsPage() {
     setForm({ name:v.name, email:v.email||'', phone:v.phone||'', address:v.address||'',
       city:v.city||'', state:v.state||'', country:v.country||'Nigeria',
       taxPin:v.taxPin||'', paymentTerms:v.paymentTerms?.toString()||'30',
+      creditLimit:v.creditLimit ? (v.creditLimit/100).toString() : '',
+      balance:v.balance ? (v.balance/100).toString() : '',
       currency:v.currency||'NGN', notes:v.notes||'' });
     setFormError(null); setModalOpen(true);
   }
@@ -157,6 +160,8 @@ export function VendorsPage() {
     const payload = { ...form, email:form.email||null, phone:form.phone||null,
       address:form.address||null, city:form.city||null, state:form.state||null,
       taxPin:form.taxPin||null, notes:form.notes||null,
+      creditLimit:form.creditLimit ? Math.round(parseFloat(form.creditLimit)*100) : null,
+      balance:form.balance ? Math.round(parseFloat(form.balance)*100) : null,
       paymentTerms:parseInt(form.paymentTerms)||null };
     if (editingId) updateMutation.mutate({ id: editingId, p: payload });
     else createMutation.mutate(payload);
@@ -297,7 +302,7 @@ export function VendorsPage() {
           onSuccess={() => queryClient.invalidateQueries({ queryKey: ['vendors'] })}
           transformRow={(row, headers) => {
             const map: Record<string, string> = {};
-            headers.forEach((h, i) => { map[h.trim()] = row[i]?.trim() || ''; });
+            headers.forEach((h, i) => { map[h.toLowerCase().trim()] = row[i]?.trim() || ''; });
             return {
               name: map['name'],
               email: map['email'] || null,
@@ -306,8 +311,10 @@ export function VendorsPage() {
               city: map['city'] || null,
               state: map['state'] || null,
               country: map['country'] || 'Nigeria',
-              taxPin: map['taxPin'] || null,
-              paymentTerms: map['paymentTerms (days)'] ? parseInt(map['paymentTerms (days)'], 10) : null,
+              taxPin: map['tax pin'] || map['taxpin'] || null,
+              paymentTerms: map['payment terms (days)'] ? parseInt(map['payment terms (days)'], 10) : null,
+              creditLimit: map['credit limit (ngn)'] ? Math.round(parseFloat(map['credit limit (ngn)'])*100) : null,
+              balance: map['opening balance (ngn)'] ? Math.round(parseFloat(map['opening balance (ngn)'])*100) : null,
               currency: map['currency'] || 'NGN',
               notes: map['notes'] || null,
             };
@@ -357,6 +364,14 @@ export function VendorsPage() {
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Payment Terms (days)</label>
                   <input type="number" min="0" value={form.paymentTerms} onChange={e=>setForm({...form,paymentTerms:e.target.value})} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"/>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Opening Balance (NGN)</label>
+                  <input type="number" step="0.01" min="0" value={form.balance} onChange={e=>setForm({...form,balance:e.target.value})} placeholder="0.00" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"/>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Credit Limit (NGN)</label>
+                  <input type="number" step="0.01" min="0" value={form.creditLimit} onChange={e=>setForm({...form,creditLimit:e.target.value})} placeholder="0.00" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"/>
                 </div>
                 <div className="col-span-2">
                   <label className="block text-xs font-medium text-slate-500 mb-1">Notes</label>
