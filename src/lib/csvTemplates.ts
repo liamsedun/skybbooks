@@ -21,8 +21,8 @@ export function parseCsv(text: string): { headers: string[]; rows: string[][] } 
 export const CSV_TEMPLATES: Record<string, { headers: string[]; sample: string[]; filename: string }> = {
   customers: {
     filename: 'customers-template.csv',
-    headers: ['name', 'email', 'phone', 'address', 'city', 'state', 'country', 'taxPin', 'paymentTerms (days)', 'creditLimit (NGN)', 'currency', 'notes'],
-    sample: ['Acme Corp', 'contact@acme.com', '+2348012345678', '123 Main St', 'Lagos', 'Lagos', 'Nigeria', 'PST-001', '30', '500000', 'NGN', 'Preferred customer'],
+    headers: ['name', 'email', 'phone', 'address', 'city', 'state', 'country', 'taxPin', 'paymentTerms (days)', 'creditLimit (NGN)', 'openingBalance (NGN)', 'currency', 'notes'],
+    sample: ['Acme Corp', 'contact@acme.com', '+2348012345678', '123 Main St', 'Lagos', 'Lagos', 'Nigeria', 'PST-001', '30', '500000', '0', 'NGN', 'Preferred customer'],
   },
   quotes: {
     filename: 'quotes-template.csv',

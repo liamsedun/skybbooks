@@ -456,6 +456,7 @@ function CustomerList() {
               taxPin: row[h['taxpin']] || null,
               paymentTerms: row[h['paymentterms (days)']] ? parseInt(row[h['paymentterms (days)']], 10) : null,
               creditLimit: row[h['creditlimit (ngn)']] ? Math.round(parseFloat(row[h['creditlimit (ngn)']]) * 100) : null,
+              balance: row[h['openingbalance (ngn)']] ? Math.round(parseFloat(row[h['openingbalance (ngn)']]) * 100) : null,
               notes: row[h['notes']] || null,
             };
           }}
