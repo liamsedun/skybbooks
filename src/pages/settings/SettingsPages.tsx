@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../hooks/useAuth';
 import { useOrgSettings } from '../../hooks/useOrgSettings';
-import { orgApi, authApi, api } from '../../lib/api';
+import { orgApi, authApi, accountantApi, api } from '../../lib/api';
 
 function useSettingsForm(key: string, defaults?: Record<string, any>) {
   const { settings, save, isPending } = useOrgSettings();
@@ -4704,6 +4704,15 @@ export function AccountantSettingsPage() {
   const [aTab, setATab] = useState('Preferences');
   const aTabs = ['Preferences', 'Default Account Tracking', 'Journal Approvals', 'Journal Validation Rules', 'Journal Fields', 'Chart of Accounts Fields', 'Fixed Asset Fields'];
 
+  const { data: accounts } = useQuery<any[]>({
+    queryKey: ['accounts'],
+    queryFn: accountantApi.getAccounts,
+  });
+  const accountOptions = (accounts || []).map((a: any) => ({
+    value: a.id,
+    label: `${a.code} — ${a.name}`,
+  }));
+
   return (
     <PageShell title="Accountant" desc="Configure settings for your accounting module." icon={FileText}>
       <div className="flex items-center gap-1 mb-5 bg-slate-100 rounded-lg p-1 w-fit overflow-x-auto">
@@ -4740,7 +4749,7 @@ export function AccountantSettingsPage() {
             <p className="text-xs text-slate-500 mb-3">When transactions are created in foreign currencies, there may be decimal value variations between the debit and credit amounts while the journal entries are being posted. These variations are recorded as adjustments. Select the default account using which these adjustments must be recorded.</p>
             <Select label="" options={[
               { value: '', label: 'Select an account...' },
-              { value: 'adj', label: 'Exchange Adjustment Account' },
+              ...accountOptions,
             ]} value={form.exchangeAdjustmentAccount || ''} onChange={field('exchangeAdjustmentAccount')} />
           </Section>
 

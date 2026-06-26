@@ -627,7 +627,15 @@ export const payrollApi = {
   },
 };
 
-// 7. Reports Endpoints
+// 7. Accountant Endpoints
+export const accountantApi = {
+  getAccounts: async () => {
+    const res = await api.get('/api/accountant/accounts');
+    return res.data;
+  },
+};
+
+// 8. Reports Endpoints
 export const reportsApi = {
   getTrialBalance: async (params: { startDate: string; endDate: string; format?: 'json' | 'pdf' | 'excel' }) => {
     const res = await api.get('/reports/trial-balance', { params });
