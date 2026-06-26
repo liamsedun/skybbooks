@@ -517,6 +517,119 @@ router.post('/invites/clear', requireRole('owner', 'admin'), async (req: Authent
 });
 
 // ==========================================
+// 8c. GET /org/invite/:token — Look up an invite by token
+// ==========================================
+router.get('/invite/:token', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { token } = req.params;
+
+    const orgs = await db
+      .select({ id: organisations.id, name: organisations.name, settings: organisations.settings })
+      .from(organisations);
+
+    for (const org of orgs) {
+      const settings = typeof org.settings === 'object' && org.settings !== null ? org.settings : {};
+      const invites = Array.isArray((settings as any).invites) ? (settings as any).invites : [];
+      const invite = invites.find((i: any) => i.token === token && i.status === 'pending');
+      if (invite) {
+        return res.status(200).json({
+          orgId: org.id,
+          orgName: org.name,
+          name: invite.name,
+          email: invite.email,
+          role: invite.role,
+          token,
+        });
+      }
+    }
+
+    throw new AppError('Invalid or expired invitation token.', 404);
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// ==========================================
+// 8d. POST /org/invite/:token/accept — Accept an invite and create account
+// ==========================================
+const acceptInviteSchema = z.object({
+  password: z.string().min(6, 'Password must be at least 6 characters.'),
+});
+
+router.post('/invite/:token/accept', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { token } = req.params;
+    const { password } = acceptInviteSchema.parse(req.body);
+
+    const orgs = await db
+      .select({ id: organisations.id, name: organisations.name, settings: organisations.settings })
+      .from(organisations);
+
+    let foundOrg: any = null;
+    let foundInvite: any = null;
+
+    for (const org of orgs) {
+      const settings = typeof org.settings === 'object' && org.settings !== null ? org.settings : {};
+      const invites = Array.isArray((settings as any).invites) ? (settings as any).invites : [];
+      const invite = invites.find((i: any) => i.token === token && i.status === 'pending');
+      if (invite) {
+        foundOrg = org;
+        foundInvite = invite;
+        break;
+      }
+    }
+
+    if (!foundOrg || !foundInvite) {
+      throw new AppError('Invalid or expired invitation token.', 404);
+    }
+
+    const existingUser = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, foundInvite.email))
+      .limit(1);
+
+    if (existingUser.length > 0) {
+      throw new AppError('A user with this email already exists.', 400);
+    }
+
+    const saltRounds = 12;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+    const [newUser] = await db
+      .insert(users)
+      .values({
+        email: foundInvite.email,
+        passwordHash: hashedPassword,
+        fullName: foundInvite.name,
+        role: foundInvite.role,
+        organisationId: foundOrg.id,
+        isActive: true,
+      })
+      .returning();
+
+    // Mark invite as accepted
+    const settings = typeof foundOrg.settings === 'object' && foundOrg.settings !== null ? foundOrg.settings : {};
+    const invites = Array.isArray((settings as any).invites) ? (settings as any).invites : [];
+    const updatedInvites = invites.map((i: any) =>
+      i.token === token ? { ...i, status: 'accepted' } : i
+    );
+
+    await db
+      .update(organisations)
+      .set({ settings: { ...settings, invites: updatedInvites } })
+      .where(eq(organisations.id, foundOrg.id));
+
+    return res.status(201).json({ message: 'Account created successfully. You can now log in.' });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return next(new AppError(error.issues[0]?.message || 'Validation failed', 400));
+    }
+    return next(error);
+  }
+});
+
+// ==========================================
 // 8. POST /org/users/manual — Manually create a user (bypass invite)
 // ==========================================
 const manualUserSchema = z.object({

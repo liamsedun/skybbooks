@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { authApi } from '../lib/api';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
+import { authApi, api } from '../lib/api';
 import {
   Mail,
   Lock,
@@ -552,6 +552,92 @@ export function ForgotPasswordPage() {
           Back to sign in
         </Link>
       </p>
+    </AuthShell>
+  );
+}
+
+// =========================================================================
+// ACCEPT INVITE — Complete registration from invitation link
+// =========================================================================
+
+export function AcceptInvitePage() {
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get('token');
+  const navigate = useNavigate();
+
+  const [loading, setLoading] = useState(true);
+  const [accepting, setAccepting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [invite, setInvite] = useState<{ name: string; email: string; role: string; orgName: string } | null>(null);
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    if (!token) { setError('No invitation token found.'); setLoading(false); return; }
+    api.get(`/org/invite/${token}`)
+      .then(res => { setInvite(res.data); setLoading(false); })
+      .catch(err => { setError(err?.response?.data?.error || 'Invalid or expired invitation.'); setLoading(false); });
+  }, [token]);
+
+  async function handleAccept(e: React.FormEvent) {
+    e.preventDefault();
+    if (!token || !password || password.length < 6) { setError('Password must be at least 6 characters.'); return; }
+    setAccepting(true); setError(null);
+    try {
+      const res = await api.post(`/org/invite/${token}/accept`, { password });
+      setSuccess(res.data.message || 'Account created! You can now log in.');
+      setTimeout(() => navigate('/login'), 2500);
+    } catch (err: any) {
+      setError(err?.response?.data?.error || err?.message || 'Failed to accept invitation.');
+    } finally { setAccepting(false); }
+  }
+
+  return (
+    <AuthShell>
+      {loading ? (
+        <div className="flex items-center justify-center py-12"><Loader2 size={24} className="animate-spin text-indigo-600" /></div>
+      ) : error ? (
+        <div className="p-4 bg-red-50 border border-red-100 rounded-xl text-red-700 text-sm text-center">{error}</div>
+      ) : success ? (
+        <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-700 text-sm text-center">{success}</div>
+      ) : invite ? (
+        <>
+          <h2 className="text-2xl font-bold text-slate-900 mb-1">Accept Invitation</h2>
+          <p className="text-slate-500 text-sm mb-2">
+            You've been invited to join <strong>{invite.orgName}</strong> as a <strong className="capitalize">{invite.role}</strong>.
+          </p>
+          <p className="text-slate-400 text-xs mb-7">Set your password to activate your account.</p>
+
+          <form onSubmit={handleAccept} className="space-y-4">
+            <TextField icon={User} label="Name" value={invite.name} disabled />
+            <TextField icon={Mail} label="Email" type="email" value={invite.email} disabled />
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Password</label>
+              <div className="relative">
+                <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="Create a password (min 6 characters)"
+                  className="w-full pl-10 pr-10 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 placeholder-slate-400"
+                  required
+                  minLength={6}
+                />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+            <SubmitButton loading={accepting} idleLabel="Accept & Create Account" loadingLabel="Creating account..." />
+          </form>
+
+          <p className="text-center text-sm text-slate-500 mt-7">
+            <Link to="/login" className="text-indigo-600 font-medium hover:underline">Back to sign in</Link>
+          </p>
+        </>
+      ) : null}
     </AuthShell>
   );
 }

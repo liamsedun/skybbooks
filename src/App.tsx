@@ -26,7 +26,7 @@ import { Reconciliation } from './pages/banking/Reconciliation';
 import { BankRules } from './pages/banking/BankRules';
 
 // Public & Protected Route Component Placeholders
-import { LoginPage, RegisterPage, ForgotPasswordPage } from './pages/AuthPages';
+import { LoginPage, RegisterPage, ForgotPasswordPage, AcceptInvitePage } from './pages/AuthPages';
 import {
   NotFoundPage,
   CustomersPage,
@@ -208,6 +208,7 @@ function AppRoutes() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/accept-invite" element={<AcceptInvitePage />} />
 
         {/* Protected general ledger system */}
         <Route element={<ProtectedRoute />}>
