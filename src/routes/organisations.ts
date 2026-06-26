@@ -159,11 +159,14 @@ router.post('/invite/:token/accept', async (req: AuthenticatedRequest, res: Resp
       .where(eq(organisations.id, foundOrg.id));
 
     return res.status(201).json({ message: 'Account created successfully. You can now log in.' });
-  } catch (error) {
+  } catch (error: any) {
+    console.error('[Accept Invite] Full error:', error?.message || error);
+    console.error('[Accept Invite] Error stack:', error?.stack);
+    if (error?.code) console.error('[Accept Invite] PG code:', error.code, 'detail:', error.detail, 'constraint:', error.constraint);
     if (error instanceof z.ZodError) {
       return next(new AppError(error.issues[0]?.message || 'Validation failed', 400));
     }
-    return next(error);
+    return next(new AppError(error?.message || 'Failed to accept invitation. Please try again.', 500));
   }
 });
 
