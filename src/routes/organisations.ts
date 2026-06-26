@@ -530,6 +530,8 @@ router.get('/invite/:token', async (req: AuthenticatedRequest, res: Response, ne
     for (const org of orgs) {
       const settings = typeof org.settings === 'object' && org.settings !== null ? org.settings : {};
       const invites = Array.isArray((settings as any).invites) ? (settings as any).invites : [];
+      console.log(`[Invite Lookup] Org ${org.name}: ${invites.length} invites, checking token: ${token}`);
+      invites.forEach((i: any) => console.log(`  - token: ${i.token.substring(0, 16)}..., status: ${i.status}`));
       const invite = invites.find((i: any) => i.token === token && i.status === 'pending');
       if (invite) {
         return res.status(200).json({
