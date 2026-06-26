@@ -452,6 +452,7 @@ function CustomerList() {
           onSuccess={() => queryClient.invalidateQueries({ queryKey: ['sales', 'customers'] })}
           transformRow={(row, headers) => {
             const h = Object.fromEntries(headers.map((k, i) => [k.toLowerCase(), i]));
+            const num = (key: string) => parseFloat((row[h[key]] || '').replace(/,/g, ''));
             return {
               name: row[h['name']] || '',
               email: row[h['email']] || null,
@@ -461,9 +462,9 @@ function CustomerList() {
               state: row[h['state']] || null,
               country: row[h['country']] || 'Nigeria',
               taxPin: row[h['taxpin']] || null,
-              paymentTerms: row[h['paymentterms (days)']] ? parseInt(row[h['paymentterms (days)']], 10) : null,
-              creditLimit: row[h['creditlimit (ngn)']] ? Math.round(parseFloat(row[h['creditlimit (ngn)']]) * 100) : null,
-              balance: row[h['openingbalance (ngn)']] ? Math.round(parseFloat(row[h['openingbalance (ngn)']]) * 100) : null,
+              paymentTerms: num('paymentterms (days)') ? parseInt(String(num('paymentterms (days)')), 10) : null,
+              creditLimit: num('creditlimit (ngn)') ? Math.round(num('creditlimit (ngn)') * 100) : null,
+              balance: num('openingbalance (ngn)') ? Math.round(num('openingbalance (ngn)') * 100) : null,
               notes: row[h['notes']] || null,
             };
           }}

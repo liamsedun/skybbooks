@@ -1,7 +1,11 @@
 const BOM = '\uFEFF';
 
+function csvEscape(val: string): string {
+  return val.includes(',') || val.includes('"') ? `"${val.replace(/"/g, '""')}"` : val;
+}
+
 export function downloadCsv(filename: string, headers: string[], sampleRow: string[]) {
-  const csv = [headers.join(','), sampleRow.join(',')].join('\n');
+  const csv = [headers.map(csvEscape).join(','), sampleRow.map(csvEscape).join(',')].join('\n');
   const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -9,12 +13,44 @@ export function downloadCsv(filename: string, headers: string[], sampleRow: stri
   URL.revokeObjectURL(url);
 }
 
+function parseCsvLine(line: string): string[] {
+  const fields: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (i + 1 < line.length && line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        current += ch;
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === ',') {
+        fields.push(current.trim());
+        current = '';
+      } else {
+        current += ch;
+      }
+    }
+  }
+  fields.push(current.trim());
+  return fields;
+}
+
 export function parseCsv(text: string): { headers: string[]; rows: string[][] } {
   const cleaned = text.replace(/^\uFEFF/, '').replace(/\r$/, '');
   const lines = cleaned.split(/\n/).filter(Boolean);
   if (lines.length < 2) throw new Error('CSV must have a header row and at least one data row.');
-  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-  const rows = lines.slice(1).map(line => line.split(',').map(c => c.trim().replace(/^"|"$/g, '')));
+  const headers = parseCsvLine(lines[0]);
+  const rows = lines.slice(1).map(line => parseCsvLine(line));
   return { headers, rows };
 }
 
