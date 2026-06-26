@@ -162,7 +162,12 @@ router.post('/invite/:token/accept', async (req: AuthenticatedRequest, res: Resp
   } catch (error: any) {
     console.error('[Accept Invite] Full error:', error?.message || error);
     console.error('[Accept Invite] Error stack:', error?.stack);
-    if (error?.code) console.error('[Accept Invite] PG code:', error.code, 'detail:', error.detail, 'constraint:', error.constraint);
+    console.error('[Accept Invite] Error cause:', error?.cause);
+    console.error('[Accept Invite] Error detail:', error?.detail || error?.constraint || error?.code);
+    if (error?.cause) {
+      console.error('[Accept Invite] Cause message:', error.cause?.message);
+      console.error('[Accept Invite] Cause code:', error.cause?.code, 'detail:', error.cause?.detail, 'constraint:', error.cause?.constraint);
+    }
     if (error instanceof z.ZodError) {
       return next(new AppError(error.issues[0]?.message || 'Validation failed', 400));
     }

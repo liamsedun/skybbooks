@@ -27,6 +27,14 @@ export async function runMigration() {
     await db.execute(`ALTER TABLE organisations ADD COLUMN IF NOT EXISTS settings jsonb DEFAULT '{}'::jsonb NOT NULL`);
     // Ensure avatar_url column exists on users
     await db.execute(`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url text`);
+    // Add 'admin' to user_role enum if not present (PG doesn't support ADD VALUE IF NOT EXISTS)
+    await db.execute(`
+      DO $$ BEGIN
+        ALTER TYPE user_role ADD VALUE 'admin';
+      EXCEPTION
+        WHEN duplicate_object THEN NULL;
+      END $$;
+    `);
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema push:', err);

@@ -25,7 +25,7 @@ import pg from 'pg';
 // 1. ENUMS DEFINITIONS (at the top of file)
 // ==========================================
 
-export const userRoleEnum = pgEnum('user_role', ['owner', 'accountant', 'staff']);
+export const userRoleEnum = pgEnum('user_role', ['owner', 'admin', 'accountant', 'staff']);
 
 export const accountTypeEnum = pgEnum('account_type', [
   'asset',
