@@ -154,7 +154,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     'INVENTORY': false,
     'PAYROLL': true,
     'BANKING': true,
-    'Accounting Ledgers': true,
+    'Accountant': true,
     'REPORTS': true,
     'SETTINGS': true,
   });
@@ -218,7 +218,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
       ],
     },
     {
-      title: 'Accounting Ledgers',
+      title: 'Accountant',
       items: [
         { name: 'Chart of Accounts', id: 'chart_accounts', icon: BookOpen },
         { name: 'Manual Journals', id: 'manual_journals', icon: FileCode },
@@ -276,7 +276,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
         'INVENTORY': true,
         'PAYROLL': true,
         'BANKING': true,
-        'Accounting Ledgers': true,
+        'Accountant': true,
         'REPORTS': true,
         'SETTINGS': true,
       };

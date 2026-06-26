@@ -2161,9 +2161,35 @@ export function GeneralPage() {
 
       <Section title="Modules">
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-xs text-amber-800 mb-4">
-          Select the modules you would like to enable.
+          Select the modules you would like to enable. Click a module name to configure its settings.
         </div>
-        <CheckboxGrid label="" options={moduleOptions} form={form} field={field} />
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+          {[
+            { key: 'moduleQuotes', label: 'Quotes', link: '/settings/quotes' },
+            { key: 'moduleSalesOrders', label: 'Sales Orders', link: '/settings/sales-orders' },
+            { key: 'moduleSalesReceipts', label: 'Sales Receipts', link: '/settings/sales-receipts' },
+            { key: 'modulePurchaseOrders', label: 'Purchase Orders', link: '/settings/purchase-orders' },
+            { key: 'moduleTimeTracking', label: 'Time Tracking', link: '/settings/timesheet' },
+            { key: 'moduleRetainerInvoices', label: 'Retainer Invoices', link: '/settings/invoices' },
+            { key: 'moduleRecurringInvoice', label: 'Recurring Invoice', link: '/settings/recurring-invoices' },
+            { key: 'moduleRecurringExpense', label: 'Recurring Expense', link: '/settings/recurring-expenses' },
+            { key: 'moduleRecurringBills', label: 'Recurring Bills', link: '/settings/recurring-bills' },
+            { key: 'moduleRecurringJournals', label: 'Recurring Journals', link: '/settings/accountant' },
+            { key: 'moduleCreditNote', label: 'Credit Note', link: '/settings/credit-notes' },
+            { key: 'moduleDebitNote', label: 'Debit Note', link: '/settings/credit-notes' },
+            { key: 'modulePaymentLinks', label: 'Payment Links', link: '/settings/payment-gateways' },
+            { key: 'moduleTasks', label: 'Tasks', link: '/settings/tasks' },
+            { key: 'moduleSelfBilledInvoice', label: 'Self Billed Invoice', link: '/settings/invoices' },
+            { key: 'moduleSelfBilledCreditNote', label: 'Self Billed Credit Note', link: '/settings/credit-notes' },
+            { key: 'moduleSelfBilledDebitNote', label: 'Self Billed Debit Note', link: '/settings/credit-notes' },
+            { key: 'moduleFixedAsset', label: 'Fixed Asset', link: '/settings/inventory-adjustments' },
+          ].map(o => (
+            <label key={o.key} className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-slate-50 group">
+              <input type="checkbox" checked={!!form[o.key]} onChange={field(o.key)} className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+              <a href={o.link} onClick={e => e.stopPropagation()} className="text-xs text-slate-700 group-hover:text-indigo-600 hover:underline">{o.label}</a>
+            </label>
+          ))}
+        </div>
       </Section>
 
       <Section title="Inventory Add-on">
