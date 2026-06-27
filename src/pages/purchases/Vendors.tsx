@@ -447,6 +447,16 @@ function VendorDetail({ id }: { id: string }) {
     },
   });
 
+  // Fallback: fetch bills directly to build local statement when API errors
+  const { data: vendorBills = [] } = useQuery<any[]>({
+    queryKey: ['purchases', 'bills', 'vendor', id],
+    queryFn: async () => {
+      const res = await api.get('/purchases/bills', { params: { vendorId: id, limit: 100 } });
+      return res.data?.bills || res.data || [];
+    },
+    enabled: !!vendor && (statementError || !statement),
+  });
+
   const updateMutation = useMutation({
     mutationFn: (payload: any) => api.patch(`/purchases/vendors/${id}`, payload),
     onSuccess: () => {
@@ -582,30 +592,7 @@ function VendorDetail({ id }: { id: string }) {
             Loading statement...
           </div>
         ) : !statement || statementError ? (
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-slate-100 text-left text-xs font-medium text-slate-400 uppercase tracking-wide">
-                <th className="py-2.5 pl-4 pr-3">Date</th>
-                <th className="py-2.5 pr-3">Type</th>
-                <th className="py-2.5 pr-3">Number</th>
-                <th className="py-2.5 pr-3">Reference</th>
-                <th className="py-2.5 pr-3 text-right">Debit</th>
-                <th className="py-2.5 pr-3 text-right">Credit</th>
-                <th className="py-2.5 pr-4 text-right">Balance</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              <tr className="bg-slate-50 font-medium">
-                <td className="py-2.5 pl-4 pr-3 text-sm text-slate-600">—</td>
-                <td className="py-2.5 pr-3"><span className="text-xs font-medium capitalize text-slate-800">Opening Balance</span></td>
-                <td className="py-2.5 pr-3 text-sm font-mono text-slate-600">—</td>
-                <td className="py-2.5 pr-3 text-sm text-slate-500">Opening Balance</td>
-                <td className="py-2.5 pr-3 text-sm text-right text-slate-700">—</td>
-                <td className="py-2.5 pr-3 text-sm text-right text-slate-700">{formatNaira((vendor.balance || 0) + (vendor.outstanding || 0))}</td>
-                <td className="py-2.5 pr-4 text-sm text-right font-medium text-slate-900">{formatNaira((vendor.balance || 0) + (vendor.outstanding || 0))}</td>
-              </tr>
-            </tbody>
-          </table>
+          <LocalVendorStatement vendor={vendor} bills={vendorBills} navigate={navigate} />
         ) : (
           <table className="w-full">
             <thead>
@@ -729,5 +716,72 @@ function VendorDetail({ id }: { id: string }) {
         </div>
       )}
     </div>
+  );
+}
+
+// Fallback statement component: builds a local ledger from vendor.balance + bills
+function LocalVendorStatement({ vendor, bills, navigate }: { vendor: Vendor; bills: any[]; navigate: any }) {
+  const fmtDate = (d: string | null) => {
+    if (!d) return '\u2014';
+    return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  };
+  const formatNaira = (kobo: number) => `\u20a6${(kobo / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
+
+  const lines: StatementLine[] = [];
+  const openingBalance = vendor.balance || 0;
+  lines.push({
+    id: 'opening', date: '', type: 'opening_balance', number: '',
+    reference: 'Opening Balance', debit: 0, credit: openingBalance, balance: openingBalance,
+  });
+
+  let running = openingBalance;
+  const validBills = (bills || []).filter((b: any) => b.status !== 'draft' && b.status !== 'void');
+  for (const bill of validBills) {
+    running += bill.total;
+    lines.push({
+      id: bill.id, date: bill.date, type: 'bill', number: bill.billNumber,
+      reference: 'Supplier Purchase Invoice', debit: 0, credit: bill.total, balance: running,
+    });
+  }
+
+  return (
+    <table className="w-full">
+      <thead>
+        <tr className="border-b border-slate-100 text-left text-xs font-medium text-slate-400 uppercase tracking-wide">
+          <th className="py-2.5 pl-4 pr-3">Date</th>
+          <th className="py-2.5 pr-3">Type</th>
+          <th className="py-2.5 pr-3">Number</th>
+          <th className="py-2.5 pr-3">Reference</th>
+          <th className="py-2.5 pr-3 text-right">Debit</th>
+          <th className="py-2.5 pr-3 text-right">Credit</th>
+          <th className="py-2.5 pr-4 text-right">Balance</th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-slate-50">
+        {lines.map((line) => {
+          const isBill = line.type === 'bill';
+          const isOpening = line.type === 'opening_balance';
+          return (
+            <tr key={line.id}
+              className={`hover:bg-slate-50 transition-colors ${isBill ? 'cursor-pointer hover:bg-indigo-50/60' : ''} ${isOpening ? 'bg-slate-50 font-medium' : ''}`}
+              onClick={() => isBill && navigate(`/purchases/bills/${line.id}`)}>
+              <td className="py-2.5 pl-4 pr-3 text-sm text-slate-600">{isOpening ? '—' : fmtDate(line.date)}</td>
+              <td className="py-2.5 pr-3">
+                <span className={`text-xs font-medium capitalize ${isBill ? 'text-indigo-600' : isOpening ? 'text-slate-800' : 'text-slate-500'}`}>
+                  {line.type.replace('_', ' ')}
+                </span>
+              </td>
+              <td className="py-2.5 pr-3 text-sm font-mono">
+                {isBill ? <span className="text-indigo-600 hover:underline font-medium">{line.number}</span> : <span className="text-slate-600">{line.number || '—'}</span>}
+              </td>
+              <td className="py-2.5 pr-3 text-sm text-slate-500">{line.reference}</td>
+              <td className="py-2.5 pr-3 text-sm text-right text-slate-700">{line.debit > 0 ? formatNaira(line.debit) : '—'}</td>
+              <td className="py-2.5 pr-3 text-sm text-right text-slate-700">{line.credit > 0 ? formatNaira(line.credit) : '—'}</td>
+              <td className="py-2.5 pr-4 text-sm text-right font-medium text-slate-900">{formatNaira(line.balance)}</td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
   );
 }
