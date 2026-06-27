@@ -41,7 +41,7 @@ router.get('/items', async (req: AuthenticatedRequest, res: Response, next: Next
     const stockRows = await db
       .select({
         itemId: inventoryLots.itemId,
-        total: sql<number>`coalesce(sum(cast(${inventoryLots.quantity} as integer)), 0)`
+        total: sql<number>`coalesce(sum(${inventoryLots.quantity}::numeric), 0)`
       })
       .from(inventoryLots)
       .where(eq(inventoryLots.orgId, orgId))
@@ -266,27 +266,24 @@ router.get('/valuation-statement', async (req: AuthenticatedRequest, res: Respon
     const result = [];
 
     for (const item of itemList) {
-      // Fetch all lots for this item (opening balances)
+      // Fetch all lots for this item
       const lots = await db
         .select()
         .from(inventoryLots)
         .where(and(eq(inventoryLots.itemId, item.id), eq(inventoryLots.orgId, orgId)))
         .orderBy(inventoryLots.receivedDate);
 
-      // Fetch all transactions for this item
-      const txns = await db
-        .select()
-        .from(inventoryTransactions)
-        .where(and(eq(inventoryTransactions.itemId, item.id), eq(inventoryTransactions.orgId, orgId)))
-        .orderBy(inventoryTransactions.date);
-
-      // Build ledger: lots as opening → transactions
+      // Build ledger: opening stock lots → bill purchase lots
       const lines: any[] = [];
       let openingQty = 0;
       let openingValue = 0;
 
-      // Aggregate all lots as opening balance
-      for (const lot of lots) {
+      // Separate lots into opening stock vs bill purchases
+      const openingLots = lots.filter(l => (l.reference || '').toLowerCase() === 'opening stock');
+      const purchaseLots = lots.filter(l => (l.reference || '').toLowerCase() !== 'opening stock');
+
+      // Opening balance from opening stock lots only
+      for (const lot of openingLots) {
         openingQty += Number(lot.quantity);
         openingValue += Number(lot.quantity) * (lot.costPerUnit || 0);
       }
@@ -308,46 +305,42 @@ router.get('/valuation-statement', async (req: AuthenticatedRequest, res: Respon
       let runningQty = openingQty;
       let runningValue = openingValue;
 
-      // Transactions (skip opening_stock refType — lots already represent them)
-      for (const txn of txns) {
-        if (txn.referenceType === 'opening_stock') continue;
-        const qty = Number(txn.quantity);
-        const isIn = txn.type === 'purchase';
-        const isOut = txn.type === 'sale' || txn.type === 'adjustment';
-        const unitCost = txn.unitCost || 0;
-
-        const inQty = isIn ? qty : 0;
-        const outQty = isOut ? qty : 0;
-        const qtyChange = (isIn ? qty : -qty);
-
-        runningQty += qtyChange;
-        runningValue += qtyChange * unitCost;
-
+      // Purchase lots (from bill approvals) as individual purchase lines
+      for (const lot of purchaseLots) {
+        const qty = Number(lot.quantity);
+        const cost = lot.costPerUnit || 0;
+        const val = qty * cost;
+        runningQty += qty;
+        runningValue += val;
         lines.push({
-          date: txn.date,
-          type: txn.type,
-          reference: txn.referenceType || txn.type,
-          referenceId: txn.referenceId,
-          inQty,
-          outQty,
-          unitCost,
-          value: Math.abs(qtyChange * unitCost),
+          date: lot.receivedDate,
+          type: 'purchase',
+          reference: lot.reference || 'Bill Purchase',
+          referenceId: lot.id,
+          inQty: qty,
+          outQty: 0,
+          unitCost: cost,
+          value: val,
           balanceQty: runningQty,
           balanceValue: runningValue
         });
       }
 
-      // Sort all but opening by date, then rebuild running balances
-      const openingLine = lines[0];
-      const txnLines = lines.slice(1).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      // Sort purchase lines chronologically (opening_balance stays first)
+      const sortedLines = [
+        lines[0],
+        ...lines.slice(1).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      ];
+
+      // Recompute running balances after sort
       runningQty = openingQty;
       runningValue = openingValue;
-      const sortedLines = [openingLine];
-      for (const l of txnLines) {
+      for (let i = 1; i < sortedLines.length; i++) {
+        const l = sortedLines[i];
         const qtyChange = l.inQty - l.outQty;
         runningQty += qtyChange;
         runningValue += qtyChange * l.unitCost;
-        sortedLines.push({ ...l, balanceQty: runningQty, balanceValue: runningValue });
+        sortedLines[i] = { ...l, balanceQty: runningQty, balanceValue: runningValue };
       }
 
       result.push({
