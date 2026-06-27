@@ -21,6 +21,7 @@ export function FixedAssetsPage() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [viewId, setViewId] = useState<string | null>(null);
+  const [editAsset, setEditAsset] = useState<any | null>(null);
   const [showImport, setShowImport] = useState(false);
   const [csvText, setCsvText] = useState('');
   const [importMsg, setImportMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -106,8 +107,10 @@ export function FixedAssetsPage() {
 
       {showForm ? (
         <AssetForm onDone={() => { setShowForm(false); queryClient.invalidateQueries({ queryKey: ['fixed-assets'] }); }} />
+      ) : editAsset ? (
+        <AssetForm initialData={editAsset} onDone={() => { setEditAsset(null); queryClient.invalidateQueries({ queryKey: ['fixed-assets'] }); }} />
       ) : viewId ? (
-        <AssetDetailView assetId={viewId} onBack={() => setViewId(null)} />
+        <AssetDetailView assetId={viewId} onBack={() => setViewId(null)} onEdit={(a) => { setViewId(null); setEditAsset(a); }} />
       ) : isLoading ? (
         <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>
       ) : (
@@ -174,7 +177,7 @@ export function FixedAssetsPage() {
   );
 }
 
-function AssetDetailView({ assetId, onBack }: { assetId: string; onBack: () => void }) {
+function AssetDetailView({ assetId, onBack, onEdit }: { assetId: string; onBack: () => void; onEdit: (a: any) => void }) {
   const { data: asset, isLoading } = useQuery({
     queryKey: ['fixed-asset', assetId],
     queryFn: () => fixedAssetsApi.getAsset(assetId),
@@ -185,7 +188,10 @@ function AssetDetailView({ assetId, onBack }: { assetId: string; onBack: () => v
 
   return (
     <div className="space-y-4">
-      <button onClick={onBack} className="text-sm text-blue-600 hover:text-blue-800">&larr; Back to assets</button>
+      <div className="flex items-center justify-between">
+        <button onClick={onBack} className="text-sm text-blue-600 hover:text-blue-800">&larr; Back to assets</button>
+        <button onClick={() => onEdit(asset)} className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg> Edit</button>
+      </div>
       <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div><span className="text-xs font-semibold text-slate-500 uppercase">Asset #</span><p className="text-sm font-medium text-slate-800 font-mono">{asset.assetNumber}</p></div>
@@ -205,16 +211,17 @@ function AssetDetailView({ assetId, onBack }: { assetId: string; onBack: () => v
   );
 }
 
-function AssetForm({ onDone }: { onDone: () => void }) {
-  const [assetNumber, setAssetNumber] = useState(`FA-${Date.now()}`);
-  const [name, setName] = useState('');
-  const [category, setCategory] = useState('');
-  const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split('T')[0]);
-  const [purchaseCost, setPurchaseCost] = useState('');
-  const [depreciationMethod, setDepreciationMethod] = useState<'straight_line' | 'declining_balance' | 'no_depreciation'>('straight_line');
-  const [usefulLifeMonths, setUsefulLifeMonths] = useState('60');
-  const [residualValue, setResidualValue] = useState('0');
-  const [accountId, setAccountId] = useState('');
+function AssetForm({ initialData, onDone }: { initialData?: any; onDone: () => void }) {
+  const isEdit = !!initialData;
+  const [assetNumber, setAssetNumber] = useState(initialData?.assetNumber || `FA-${Date.now()}`);
+  const [name, setName] = useState(initialData?.name || '');
+  const [category, setCategory] = useState(initialData?.category || '');
+  const [purchaseDate, setPurchaseDate] = useState(initialData?.purchaseDate ? new Date(initialData.purchaseDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
+  const [purchaseCost, setPurchaseCost] = useState(initialData ? String(initialData.purchaseCost / 100) : '');
+  const [depreciationMethod, setDepreciationMethod] = useState<'straight_line' | 'declining_balance' | 'no_depreciation'>(initialData?.depreciationMethod || 'straight_line');
+  const [usefulLifeMonths, setUsefulLifeMonths] = useState(String(initialData?.usefulLifeMonths || '60'));
+  const [residualValue, setResidualValue] = useState(initialData ? String(initialData.residualValue / 100) : '0');
+  const [accountId, setAccountId] = useState(initialData?.accountId || '');
   const [error, setError] = useState('');
 
   const { data: accounts } = useQuery({
@@ -223,9 +230,9 @@ function AssetForm({ onDone }: { onDone: () => void }) {
   });
 
   const mutation = useMutation({
-    mutationFn: (data: any) => fixedAssetsApi.createAsset(data),
+    mutationFn: (data: any) => isEdit ? fixedAssetsApi.updateAsset(initialData.id, data) : fixedAssetsApi.createAsset(data),
     onSuccess: onDone,
-    onError: (err: any) => setError(err.response?.data?.error || err.message || 'Failed to create.'),
+    onError: (err: any) => setError(err.response?.data?.error || err.message || (isEdit ? 'Failed to update.' : 'Failed to create.')),
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -249,6 +256,7 @@ function AssetForm({ onDone }: { onDone: () => void }) {
 
   return (
     <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
+      <h2 className="text-lg font-bold text-slate-900">{isEdit ? 'Edit Asset' : 'New Asset'}</h2>
       {error && <div className="flex items-center gap-2 p-3 bg-red-50 text-red-700 rounded-lg text-sm"><AlertCircle className="w-4 h-4" /> {error}</div>}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <div><label className="text-xs font-semibold text-slate-500 uppercase">Asset #</label><input value={assetNumber} onChange={e => setAssetNumber(e.target.value)} className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm mt-1" /></div>
@@ -277,7 +285,7 @@ function AssetForm({ onDone }: { onDone: () => void }) {
       <div className="flex justify-end gap-3 pt-2">
         <button type="button" onClick={onDone} className="px-4 py-2 text-sm font-semibold text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200">Cancel</button>
         <button type="submit" disabled={mutation.isPending} className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50">
-          {mutation.isPending ? <Loader2 className="w-4 h-4 animate-spin inline" /> : null} Create Asset
+          {mutation.isPending ? <Loader2 className="w-4 h-4 animate-spin inline" /> : null} {isEdit ? 'Update Asset' : 'Create Asset'}
         </button>
       </div>
     </form>
