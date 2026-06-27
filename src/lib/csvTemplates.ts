@@ -143,4 +143,9 @@ export const CSV_TEMPLATES: Record<string, { headers: string[]; sample: string[]
     headers: ['bankName (or accountNumber)', 'openingBalance (NGN)'],
     sample: ['Guaranty Trust Bank • ****6789', '5000000'],
   },
+  trialBalanceOpeningBalances: {
+    filename: 'trial-balance-opening-balances-template.csv',
+    headers: ['accountCode', 'accountName', 'debit (NGN)', 'credit (NGN)'],
+    sample: ['100000', 'Cash and Cash Equivalents', '5000000', '0'],
+  },
 };

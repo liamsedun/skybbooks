@@ -721,8 +721,16 @@ export const auditLogApi = {
 
 // 8. Reports Endpoints
 export const reportsApi = {
-  getTrialBalance: async (params: { startDate: string; endDate: string; format?: 'json' | 'pdf' | 'excel' }) => {
-    const res = await api.get('/reports/trial-balance', { params });
+  getTrialBalance: async (params: { startDate: string; endDate: string; format?: 'json' | 'pdf' | 'excel' | 'csv' }) => {
+    const res = await api.get('/reports/trial-balance', { params, responseType: params.format === 'csv' ? 'blob' : undefined });
+    return res.data;
+  },
+  importTrialBalanceOpeningBalances: async (data: { csvData: string }) => {
+    const res = await api.post('/reports/trial-balance/import-opening-balances', data);
+    return res.data;
+  },
+  recordTrialBalanceOpeningBalances: async (data: { lines: { accountCode: string; debit: number; credit: number }[] }) => {
+    const res = await api.post('/reports/trial-balance/record-opening-balances', data);
     return res.data;
   },
   getIncomeStatement: async (params: { startDate: string; endDate: string; format?: 'json' | 'pdf' | 'excel' }) => {

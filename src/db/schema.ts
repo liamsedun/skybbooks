@@ -41,7 +41,8 @@ export const journalSourceEnum = pgEnum('journal_source', [
   'bill',
   'payment',
   'payroll',
-  'bank_feed'
+  'bank_feed',
+  'opening_balance'
 ]);
 
 export const contactTypeEnum = pgEnum('contact_type', ['customer', 'vendor', 'both']);
@@ -228,6 +229,7 @@ export const accounts = pgTable('accounts', {
   isSystem: boolean('is_system').default(false).notNull(),
   isActive: boolean('is_active').default(true).notNull(),
   description: text('description'),
+  openingBalance: bigint('opening_balance').default('0').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 

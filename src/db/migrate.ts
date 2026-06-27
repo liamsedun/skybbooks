@@ -53,6 +53,16 @@ export async function runMigration() {
     if (voidLotCleanup.rowCount && voidLotCleanup.rowCount > 0) {
       console.log(`[Migration] Removed ${voidLotCleanup.rowCount} inventory lot(s) from voided bills.`);
     }
+    // Add opening_balance to journal_source enum
+    await db.execute(`
+      DO $$ BEGIN
+        ALTER TYPE journal_source ADD VALUE 'opening_balance';
+      EXCEPTION
+        WHEN duplicate_object THEN NULL;
+      END $$;
+    `);
+    // Add opening_balance column to accounts
+    await db.execute(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS opening_balance bigint DEFAULT 0 NOT NULL`);
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema push:', err);

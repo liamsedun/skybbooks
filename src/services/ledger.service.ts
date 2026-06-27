@@ -26,7 +26,7 @@ export type CreateJournalEntryInput = {
   date: Date;
   description: string;
   reference?: string;
-  source: 'manual' | 'invoice' | 'bill' | 'payment' | 'payroll' | 'bank_feed';
+  source: 'manual' | 'invoice' | 'bill' | 'payment' | 'payroll' | 'bank_feed' | 'opening_balance';
   sourceId?: string;
   createdBy: string;
   lines: JournalLineInput[];
@@ -347,6 +347,17 @@ export async function getTrialBalance(
     let openingCredits = 0;
     let periodDebits = 0;
     let periodCredits = 0;
+
+    // Include manually-set opening balance from accounts table
+    const ob = Number(acct.openingBalance || 0);
+    if (ob > 0) {
+      const isDebitBook = acct.type === 'asset' || acct.type === 'expense';
+      if (isDebitBook) {
+        openingDebits += ob;
+      } else {
+        openingCredits += ob;
+      }
+    }
 
     const matchedLines = txLines.filter((l) => l.accountId === acct.id);
 
