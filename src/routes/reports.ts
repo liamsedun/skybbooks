@@ -203,6 +203,12 @@ router.post(
         const account = accountMap.get(code);
         if (!account) { errors.push(`Row ${i + 2}: account code "${code}" not found`); continue; }
 
+        // Opening balances only valid for balance sheet accounts
+        if (account.type === 'expense' || account.type === 'revenue') {
+          errors.push(`Row ${i + 2}: "${code}" is a P&L account (${account.type}) — opening balances cannot be set on income/expense accounts`);
+          continue;
+        }
+
         const debit = debitIdx >= 0 ? Math.round(parseFloat(row[debitIdx]?.replace(/[₦,]/g, '') || '0') * 100) : 0;
         const credit = creditIdx >= 0 ? Math.round(parseFloat(row[creditIdx]?.replace(/[₦,]/g, '') || '0') * 100) : 0;
 
@@ -291,6 +297,12 @@ router.post(
         const item = lines[i];
         const account = accountMap.get(item.accountCode);
         if (!account) { errors.push(`Row ${i + 1}: account code "${item.accountCode}" not found`); continue; }
+
+        // Opening balances only valid for balance sheet accounts
+        if (account.type === 'expense' || account.type === 'revenue') {
+          errors.push(`Row ${i + 1}: "${item.accountCode}" is a P&L account (${account.type}) — opening balances cannot be set on income/expense accounts`);
+          continue;
+        }
 
         const debit = Math.round(item.debit * 100);
         const credit = Math.round(item.credit * 100);

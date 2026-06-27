@@ -386,9 +386,10 @@ export async function getTrialBalance(
     let periodDebits = 0;
     let periodCredits = 0;
 
-    const ob = Number(acct.openingBalance || 0);
+    // Opening balances only apply to balance sheet accounts (asset, liability, equity)
+    const ob = (acct.type === 'expense' || acct.type === 'revenue') ? 0 : Number(acct.openingBalance || 0);
     if (ob > 0) {
-      (acct.type === 'asset' || acct.type === 'expense') ? openingDebits += ob : openingCredits += ob;
+      acct.type === 'asset' ? openingDebits += ob : openingCredits += ob;
     }
 
     const matchedLines = txLines.filter(l => l.accountId === acct.id);
