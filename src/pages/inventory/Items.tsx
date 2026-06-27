@@ -796,12 +796,13 @@ function ValuationStatementModal({
   onSelectItem: (id: string) => void;
   onClose: () => void;
 }) {
+  const [asOfDate, setAsOfDate] = useState(new Date().toISOString().split('T')[0]);
   const { data: raw, isLoading } = useQuery({
-    queryKey: ['inventory', 'valuation', selectedItemId],
+    queryKey: ['inventory', 'valuation', selectedItemId, asOfDate],
     queryFn: () =>
       api
         .get('/inventory/valuation-statement', {
-          params: selectedItemId ? { itemId: selectedItemId } : {},
+          params: { endDate: asOfDate, ...(selectedItemId ? { itemId: selectedItemId } : {}) },
         })
         .then((r) => r.data as ValuationItem[]),
   });
@@ -840,7 +841,7 @@ function ValuationStatementModal({
     const blob = new Blob([csv],{type:'text/csv'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href=url;
-    a.download=`valuation-statement-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download=`valuation-statement-${asOfDate}.csv`;
     a.click(); URL.revokeObjectURL(url);
   }
 
@@ -893,7 +894,7 @@ function ValuationStatementModal({
     </style></head><body>
     <div class="header">
       <div><div class="company">SkyBooks</div><div class="subtitle">By Skyhouse Accountants &amp; Technologies</div></div>
-      <div style="text-align:right"><div class="title">Inventory Valuation Statement</div><div class="date">Generated: ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}</div><div class="date">${filtered.length} item(s)</div></div>
+      <div style="text-align:right"><div class="title">Inventory Valuation Statement</div><div class="date">As of: ${new Date(asOfDate).toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}</div><div class="date">${filtered.length} item(s)</div></div>
     </div>
     ${blocks}
     <div class="footer">SkyBooks By Skyhouse Accountants &amp; Technologies (Olalekan Williams Edun) &bull; Confidential</div>
@@ -920,11 +921,11 @@ function ValuationStatementModal({
           </div>
         </div>
 
-        <div className="px-6 py-4 border-b border-slate-100">
+        <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-3">
           <select
             value={selectedItemId}
             onChange={(e) => onSelectItem(e.target.value)}
-            className="w-full max-w-xs px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+            className="max-w-xs px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
           >
             <option value="">All tracked items</option>
             {itemsWithStock.map((it) => (
@@ -933,6 +934,15 @@ function ValuationStatementModal({
               </option>
             ))}
           </select>
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-medium text-slate-500">As of:</label>
+            <input
+              type="date"
+              value={asOfDate}
+              onChange={(e) => setAsOfDate(e.target.value)}
+              className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+            />
+          </div>
         </div>
 
         <div className="px-6 py-5 max-h-[65vh] overflow-y-auto space-y-6">

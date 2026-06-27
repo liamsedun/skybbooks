@@ -253,6 +253,7 @@ router.get('/valuation-statement', async (req: AuthenticatedRequest, res: Respon
   try {
     const orgId = req.user!.orgId!;
     const itemId = req.query.itemId as string | undefined;
+    const endDate = req.query.endDate as string | undefined;
 
     const itemConditions = [eq(items.orgId, orgId), eq(items.trackInventory, true)];
     if (itemId) itemConditions.push(eq(items.id, itemId));
@@ -266,11 +267,13 @@ router.get('/valuation-statement', async (req: AuthenticatedRequest, res: Respon
     const result = [];
 
     for (const item of itemList) {
-      // Fetch all lots for this item
+      // Fetch lots up to endDate (or all if not specified)
+      const lotConditions: any[] = [eq(inventoryLots.itemId, item.id), eq(inventoryLots.orgId, orgId)];
+      if (endDate) lotConditions.push(lte(inventoryLots.receivedDate, new Date(endDate)));
       const lots = await db
         .select()
         .from(inventoryLots)
-        .where(and(eq(inventoryLots.itemId, item.id), eq(inventoryLots.orgId, orgId)))
+        .where(and(...lotConditions))
         .orderBy(inventoryLots.receivedDate);
 
       // Build ledger: opening stock lots → bill purchase lots
