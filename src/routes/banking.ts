@@ -55,7 +55,10 @@ const patchBankAccountSchema = z.object({
   accountNumber: z.string().optional(),
   bankName: z.string().optional(),
   bankCode: z.string().optional(),
-  isActive: z.boolean().optional()
+  isActive: z.boolean().optional(),
+  accountId: z.string().uuid().optional(),
+  currentBalance: z.number().optional(),
+  type: z.string().optional(),
 });
 
 const flutterwaveCallbackSchema = z.object({
