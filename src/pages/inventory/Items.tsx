@@ -8,7 +8,7 @@ import { api } from '../../lib/api';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
 import {
   Plus, Search, Pencil, Trash2, X, Loader2, AlertCircle, Package, Briefcase,
-  Upload, Database, CheckCircle2
+  Upload, Database, CheckCircle2, BarChart3
 } from 'lucide-react';
 
 interface GLAccount {
@@ -88,6 +88,8 @@ export function ItemsPage() {
   const [stockForm, setStockForm] = useState({ itemId: '', quantity: '', unitCost: '' });
   const [stockSuccess, setStockSuccess] = useState<string | null>(null);
   const [stockError, setStockError] = useState<string | null>(null);
+  const [valuationOpen, setValuationOpen] = useState(false);
+  const [valuationItemId, setValuationItemId] = useState('');
 
   const { data: items, isLoading, isError } = useQuery<Item[]>({
     queryKey: ['inventory', 'items'],
@@ -260,6 +262,13 @@ export function ItemsPage() {
         >
           <Database size={16} />
           Record Opening Stock
+        </button>
+        <button
+          onClick={() => setValuationOpen(true)}
+          className="inline-flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors"
+        >
+          <BarChart3 size={16} />
+          Valuation Statement
         </button>
       </div>
 
@@ -686,6 +695,177 @@ export function ItemsPage() {
           </div>
         </div>
       )}
+
+      {valuationOpen && (
+        <ValuationStatementModal
+          items={items || []}
+          selectedItemId={valuationItemId}
+          onSelectItem={setValuationItemId}
+          onClose={() => { setValuationOpen(false); setValuationItemId(''); }}
+        />
+      )}
+    </div>
+  );
+}
+
+interface ValuationLine {
+  date: string | null;
+  type: string;
+  reference: string;
+  referenceId: string | null;
+  inQty: number;
+  outQty: number;
+  unitCost: number;
+  value: number;
+  balanceQty: number;
+  balanceValue: number;
+}
+
+interface ValuationItem {
+  item: { id: string; name: string; sku: string | null; unit: string | null; type: string };
+  lines: ValuationLine[];
+  openingQty: number;
+  openingValue: number;
+  closingQty: number;
+  closingValue: number;
+}
+
+function ValuationStatementModal({
+  items,
+  selectedItemId,
+  onSelectItem,
+  onClose,
+}: {
+  items: Item[];
+  selectedItemId: string;
+  onSelectItem: (id: string) => void;
+  onClose: () => void;
+}) {
+  const { data: raw, isLoading } = useQuery({
+    queryKey: ['inventory', 'valuation', selectedItemId],
+    queryFn: () =>
+      api
+        .get('/inventory/valuation-statement', {
+          params: selectedItemId ? { itemId: selectedItemId } : {},
+        })
+        .then((r) => r.data as ValuationItem[]),
+  });
+
+  const itemsWithStock = items.filter((i) => i.trackInventory);
+  const filtered = selectedItemId
+    ? (raw || []).filter((v) => v.item.id === selectedItemId)
+    : raw || [];
+
+  function formatNaira(kobo: number) {
+    return `\u20a6${(kobo / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
+  }
+
+  function fmtDate(d: string | null) {
+    if (!d) return '\u2014';
+    return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 px-4 py-8 overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl my-auto">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <h2 className="text-base font-bold text-slate-900">Inventory Valuation Statement</h2>
+          <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors">
+            <X size={18} className="text-slate-500" />
+          </button>
+        </div>
+
+        <div className="px-6 py-4 border-b border-slate-100">
+          <select
+            value={selectedItemId}
+            onChange={(e) => onSelectItem(e.target.value)}
+            className="w-full max-w-xs px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+          >
+            <option value="">All tracked items</option>
+            {itemsWithStock.map((it) => (
+              <option key={it.id} value={it.id}>
+                {it.name} ({it.sku || 'no SKU'})
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="px-6 py-5 max-h-[65vh] overflow-y-auto space-y-6">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12 gap-2 text-slate-400">
+              <Loader2 size={18} className="animate-spin" /> Loading valuation...
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-12 text-sm text-slate-400">No inventory items with tracked stock found.</div>
+          ) : (
+            filtered.map((vi) => (
+              <div key={vi.item.id} className="border border-slate-200 rounded-xl overflow-hidden">
+                <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                  <div>
+                    <span className="font-semibold text-slate-900">{vi.item.name}</span>
+                    <span className="text-xs text-slate-400 ml-2">
+                      {vi.item.sku || ''} | {vi.item.unit || '—'}
+                    </span>
+                  </div>
+                  <div className="text-xs text-slate-500 space-x-4">
+                    <span>
+                      Opening: <strong>{vi.openingQty}</strong> units /
+                      {formatNaira(vi.openingValue)}
+                    </span>
+                    <span>
+                      Closing: <strong>{vi.closingQty}</strong> units /
+                      {formatNaira(vi.closingValue)}
+                    </span>
+                  </div>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="bg-slate-50 text-xs font-medium text-slate-500 uppercase tracking-wide">
+                        <th className="px-3 py-2 text-left">Date</th>
+                        <th className="px-3 py-2 text-left">Type</th>
+                        <th className="px-3 py-2 text-left">Reference</th>
+                        <th className="px-3 py-2 text-right">In Qty</th>
+                        <th className="px-3 py-2 text-right">Out Qty</th>
+                        <th className="px-3 py-2 text-right">Unit Cost</th>
+                        <th className="px-3 py-2 text-right">Value</th>
+                        <th className="px-3 py-2 text-right">Bal Qty</th>
+                        <th className="px-3 py-2 text-right">Bal Value</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {vi.lines.map((line, i) => {
+                        const isOpening = line.type === 'opening_balance';
+                        return (
+                          <tr key={i} className={`${isOpening ? 'bg-slate-50 font-medium' : 'hover:bg-slate-50/60'}`}>
+                            <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{fmtDate(line.date)}</td>
+                            <td className="px-3 py-2">
+                              <span className={`capitalize ${isOpening ? 'text-slate-800' : 'text-slate-600'}`}>
+                                {line.type.replace('_', ' ')}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2 text-slate-500">{line.reference}</td>
+                            <td className="px-3 py-2 text-right text-slate-700">{line.inQty > 0 ? line.inQty : '—'}</td>
+                            <td className="px-3 py-2 text-right text-slate-700">{line.outQty > 0 ? line.outQty : '—'}</td>
+                            <td className="px-3 py-2 text-right text-slate-700">
+                              {line.unitCost > 0 ? formatNaira(line.unitCost) : '—'}
+                            </td>
+                            <td className="px-3 py-2 text-right text-slate-700">
+                              {line.value > 0 ? formatNaira(line.value) : '—'}
+                            </td>
+                            <td className="px-3 py-2 text-right font-semibold text-slate-900">{line.balanceQty}</td>
+                            <td className="px-3 py-2 text-right font-semibold text-slate-900">{formatNaira(line.balanceValue)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
     </div>
   );
 }

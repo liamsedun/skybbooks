@@ -248,4 +248,128 @@ router.post('/items/record-opening-stock', async (req: AuthenticatedRequest, res
   }
 });
 
+// GET /api/inventory/valuation-statement — inventory valuation statement per item
+router.get('/valuation-statement', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const itemId = req.query.itemId as string | undefined;
+
+    const itemConditions = [eq(items.orgId, orgId), eq(items.trackInventory, true)];
+    if (itemId) itemConditions.push(eq(items.id, itemId));
+
+    const itemList = await db
+      .select()
+      .from(items)
+      .where(and(...itemConditions))
+      .orderBy(items.name);
+
+    const result = [];
+
+    for (const item of itemList) {
+      // Fetch all lots for this item (opening balances)
+      const lots = await db
+        .select()
+        .from(inventoryLots)
+        .where(and(eq(inventoryLots.itemId, item.id), eq(inventoryLots.orgId, orgId)))
+        .orderBy(inventoryLots.receivedDate);
+
+      // Fetch all transactions for this item
+      const txns = await db
+        .select()
+        .from(inventoryTransactions)
+        .where(and(eq(inventoryTransactions.itemId, item.id), eq(inventoryTransactions.orgId, orgId)))
+        .orderBy(inventoryTransactions.date);
+
+      // Build ledger: lots as opening → transactions
+      const lines: any[] = [];
+      let openingQty = 0;
+      let openingValue = 0;
+
+      // Aggregate all lots as opening balance
+      for (const lot of lots) {
+        openingQty += Number(lot.quantity);
+        openingValue += Number(lot.quantity) * (lot.costPerUnit || 0);
+      }
+
+      // Opening balance row
+      lines.push({
+        date: null,
+        type: 'opening_balance',
+        reference: 'Opening Balance',
+        referenceId: null,
+        inQty: 0,
+        outQty: 0,
+        unitCost: 0,
+        value: 0,
+        balanceQty: openingQty,
+        balanceValue: openingValue
+      });
+
+      let runningQty = openingQty;
+      let runningValue = openingValue;
+
+      // Transactions (skip opening_stock refType — lots already represent them)
+      for (const txn of txns) {
+        if (txn.referenceType === 'opening_stock') continue;
+        const qty = Number(txn.quantity);
+        const isIn = txn.type === 'purchase';
+        const isOut = txn.type === 'sale' || txn.type === 'adjustment';
+        const unitCost = txn.unitCost || 0;
+
+        const inQty = isIn ? qty : 0;
+        const outQty = isOut ? qty : 0;
+        const qtyChange = (isIn ? qty : -qty);
+
+        runningQty += qtyChange;
+        runningValue += qtyChange * unitCost;
+
+        lines.push({
+          date: txn.date,
+          type: txn.type,
+          reference: txn.referenceType || txn.type,
+          referenceId: txn.referenceId,
+          inQty,
+          outQty,
+          unitCost,
+          value: Math.abs(qtyChange * unitCost),
+          balanceQty: runningQty,
+          balanceValue: runningValue
+        });
+      }
+
+      // Sort all but opening by date, then rebuild running balances
+      const openingLine = lines[0];
+      const txnLines = lines.slice(1).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      runningQty = openingQty;
+      runningValue = openingValue;
+      const sortedLines = [openingLine];
+      for (const l of txnLines) {
+        const qtyChange = l.inQty - l.outQty;
+        runningQty += qtyChange;
+        runningValue += qtyChange * l.unitCost;
+        sortedLines.push({ ...l, balanceQty: runningQty, balanceValue: runningValue });
+      }
+
+      result.push({
+        item: {
+          id: item.id,
+          name: item.name,
+          sku: item.sku,
+          unit: item.unit,
+          type: item.type
+        },
+        lines: sortedLines,
+        openingQty,
+        openingValue,
+        closingQty: runningQty,
+        closingValue: runningValue
+      });
+    }
+
+    return res.status(200).json(result);
+  } catch (err) {
+    return next(err);
+  }
+});
+
 export default router;
