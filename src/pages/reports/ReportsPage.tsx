@@ -1,8 +1,44 @@
 import React, { useState, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { reportsApi } from '../../lib/api';
-import { Loader2, AlertCircle, Download, Search, Upload, FileText, X, RefreshCw } from 'lucide-react';
+import { Loader2, AlertCircle, Download, Search, Upload, FileText, X, RefreshCw, ExternalLink } from 'lucide-react';
 import { downloadCsv } from '../../lib/csvTemplates';
+
+const MODULE_LINKS: { prefix: string; path: string; label: string }[] = [
+  { prefix: '1002', path: '/banking', label: 'Banking' },
+  { prefix: '1003', path: '/banking', label: 'Banking' },
+  { prefix: '1004', path: '/banking', label: 'Banking' },
+  { prefix: '1005', path: '/banking', label: 'Banking' },
+  { prefix: '1011', path: '/sales/customers', label: 'Customers' },
+  { prefix: '102', path: '/purchases/items', label: 'Items' },
+  { prefix: '200', path: '/accountant/fixed-assets', label: 'Fixed Assets' },
+  { prefix: '201', path: '/accountant/fixed-assets', label: 'Fixed Assets' },
+  { prefix: '202', path: '/accountant/fixed-assets', label: 'Fixed Assets' },
+  { prefix: '203', path: '/accountant/fixed-assets', label: 'Fixed Assets' },
+  { prefix: '204', path: '/accountant/fixed-assets', label: 'Fixed Assets' },
+  { prefix: '205', path: '/accountant/fixed-assets', label: 'Fixed Assets' },
+  { prefix: '206', path: '/accountant/fixed-assets', label: 'Fixed Assets' },
+  { prefix: '3001', path: '/purchases/bills', label: 'Bills' },
+  { prefix: '500', path: '/accountant/manual-journals', label: 'Manual Journals' },
+  { prefix: '501', path: '/accountant/manual-journals', label: 'Manual Journals' },
+  { prefix: '502', path: '/accountant/manual-journals', label: 'Manual Journals' },
+  { prefix: '503', path: '/accountant/manual-journals', label: 'Manual Journals' },
+  { prefix: '504', path: '/accountant/manual-journals', label: 'Manual Journals' },
+  { prefix: '505', path: '/accountant/manual-journals', label: 'Manual Journals' },
+  { prefix: '600', path: '/sales', label: 'Sales' },
+  { prefix: '601', path: '/sales', label: 'Sales' },
+  { prefix: '700', path: '/purchases/items', label: 'Items' },
+  { prefix: '900', path: '/sales', label: 'Sales' },
+];
+
+function getAccountModuleLink(code: string): { path: string; label: string } | null {
+  const c = code.toString().trim();
+  for (const m of MODULE_LINKS) {
+    if (c.startsWith(m.prefix)) return { path: m.path, label: m.label };
+  }
+  return null;
+}
 
 type ReportType = 'trial-balance' | 'income-statement' | 'balance-sheet' | 'cash-flow' | 'aged-receivables' | 'aged-payables';
 
@@ -30,6 +66,7 @@ function getDefaultDateRange() {
 }
 
 export function TrialBalancePage() {
+  const navigate = useNavigate();
   const { startDate, endDate } = getDefaultDateRange();
   const [sDate, setSDate] = useState(startDate);
   const [eDate, setEDate] = useState(endDate);
@@ -157,15 +194,27 @@ export function TrialBalancePage() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((row: any, i: number) => (
+              {rows.map((row: any, i: number) => {
+                const link = getAccountModuleLink(row.accountCode || row.code || '');
+                return (
                 <tr key={i} className="border-t border-slate-100 hover:bg-slate-50 cursor-pointer" onClick={() => setDrillDown(row)}>
                   <td className="px-4 py-3 text-slate-600 font-mono">{row.accountCode || row.code || '—'}</td>
-                  <td className="px-4 py-3 font-medium text-slate-800">{row.accountName || row.name || `Account ${i + 1}`}</td>
+                  <td className="px-4 py-3">
+                    <span className="font-medium text-slate-800">{row.accountName || row.name || `Account ${i + 1}`}</span>
+                    {link && (
+                      <button
+                        onClick={e => { e.stopPropagation(); navigate(link.path); }}
+                        className="ml-2 inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800"
+                        title={`Go to ${link.label}`}
+                      ><ExternalLink className="w-3 h-3" /> {link.label}</button>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-right text-slate-500 capitalize">{row.accountType || row.type || '—'}</td>
                   <td className="px-4 py-3 text-right text-slate-600">{fmtNaira(row.closingDebit || row.debit || 0)}</td>
                   <td className="px-4 py-3 text-right text-slate-600">{fmtNaira(row.closingCredit || row.credit || 0)}</td>
                 </tr>
-              ))}
+                );
+              })}
               {rows.length === 0 && (
                 <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-400">{searchQuery ? 'No accounts match your search.' : 'No data available.'}</td></tr>
               )}
@@ -400,6 +449,8 @@ function ReportTable({ data, reportType }: { data: any; reportType: ReportType }
 }
 
 function AccountDrilldownModal({ account, sDate, eDate, onClose }: { account: any; sDate: string; eDate: string; onClose: () => void }) {
+  const navigate = useNavigate();
+  const link = getAccountModuleLink(account.accountCode || account.code || '');
   const { data, isLoading } = useQuery({
     queryKey: ['general-ledger', account.accountId, sDate, eDate],
     queryFn: async () => {
@@ -421,7 +472,12 @@ function AccountDrilldownModal({ account, sDate, eDate, onClose }: { account: an
             <h2 className="text-lg font-bold text-slate-900">{account.accountName || account.name}</h2>
             <p className="text-xs text-slate-500">{account.accountCode || account.code} &middot; {account.accountType || account.type} &middot; Bal: {fmtNaira((account.closingDebit || account.debit || 0) - (account.closingCredit || account.credit || 0))}</p>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+          <div className="flex items-center gap-2">
+            {link && (
+              <button onClick={() => navigate(link.path)} className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100"><ExternalLink className="w-3 h-3" /> View in {link.label}</button>
+            )}
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+          </div>
         </div>
         <div className="overflow-auto flex-1 p-4">
           {account.accountId === 'suspense' ? (
