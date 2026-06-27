@@ -152,13 +152,13 @@ router.post('/import-csv', async (req: AuthenticatedRequest, res: Response, next
     const dataRows = lines.slice(1).map(l => parseCsvLine(l));
 
     const nameIdx = headers.findIndex(h => h === 'name' || h === 'asset name' || h === 'asset_name');
-    const costIdx = headers.findIndex(h => h.includes('cost') || h.includes('purchase'));
-    const dateIdx = headers.findIndex(h => h.includes('date') || h.includes('purchase date') || h.includes('purchase_date'));
-    const methodIdx = headers.findIndex(h => h.includes('method') || h.includes('depreciation'));
-    const lifeIdx = headers.findIndex(h => h.includes('life') || h.includes('months'));
-    const residualIdx = headers.findIndex(h => h.includes('residual') || h.includes('salvage'));
+    const costIdx = headers.findIndex(h => h.startsWith('purchase cost') || h.startsWith('cost') || h.includes('cost (ngn)') || h === 'cost');
+    const dateIdx = headers.findIndex(h => h.startsWith('purchase date') || h === 'date' || h === 'purchase_date');
+    const methodIdx = headers.findIndex(h => h.startsWith('depreciation method') || h.startsWith('depreciation') || h === 'method' || h === 'depreciation_method');
+    const lifeIdx = headers.findIndex(h => h.startsWith('useful life') || h.startsWith('life') || h === 'months' || h === 'useful_life_months');
+    const residualIdx = headers.findIndex(h => h.startsWith('residual') || h.startsWith('salvage'));
     const categoryIdx = headers.findIndex(h => h === 'category' || h === 'class');
-    const accCodeIdx = headers.findIndex(h => h.includes('account code') || h.includes('account_code') || h.includes('account'));
+    const accCodeIdx = headers.findIndex(h => h === 'account code' || h === 'account_code' || h === 'account');
 
     if (nameIdx === -1) throw new AppError('CSV must contain a "name" column.', 400);
     if (costIdx === -1) throw new AppError('CSV must contain a "cost" column.', 400);
@@ -257,6 +257,24 @@ router.get('/export-csv', async (req: AuthenticatedRequest, res: Response, next:
     res.setHeader('Content-Type', 'text/csv;charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename="fixed_assets.csv"');
     return res.end(csv);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Bulk delete (for clearing last import)
+router.post('/bulk-delete', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      throw new AppError('ids array is required.', 400);
+    }
+    const deleted = await db
+      .delete(fixedAssets)
+      .where(and(eq(fixedAssets.orgId, orgId), sql`${fixedAssets.id} = ANY(${ids}::uuid[])`))
+      .returning({ id: fixedAssets.id });
+    return res.status(200).json({ message: `Deleted ${deleted.length} asset(s).`, count: deleted.length });
   } catch (err) {
     next(err);
   }

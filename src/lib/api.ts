@@ -717,6 +717,10 @@ export const fixedAssetsApi = {
     const res = await api.delete(`/fixed-assets/${id}`);
     return res.data;
   },
+  bulkDeleteAssets: async (ids: string[]) => {
+    const res = await api.post('/fixed-assets/bulk-delete', { ids });
+    return res.data;
+  },
   importAssetsCsv: async (data: { csvData: string }) => {
     const res = await api.post('/fixed-assets/import-csv', data);
     return res.data;

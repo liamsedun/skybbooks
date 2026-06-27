@@ -25,6 +25,8 @@ export function FixedAssetsPage() {
   const [csvText, setCsvText] = useState('');
   const [importMsg, setImportMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [importing, setImporting] = useState(false);
+  const [lastImportIds, setLastImportIds] = useState<string[]>([]);
+  const [clearing, setClearing] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const { data: assets, isLoading } = useQuery({
@@ -49,6 +51,17 @@ export function FixedAssetsPage() {
 
   const handlePrintPdf = () => window.print();
 
+  const handleClearLastImport = async () => {
+    if (!lastImportIds.length || !confirm('Delete all assets from the last import?')) return;
+    setClearing(true);
+    try {
+      await fixedAssetsApi.bulkDeleteAssets(lastImportIds);
+      setLastImportIds([]);
+      queryClient.invalidateQueries({ queryKey: ['fixed-assets'] });
+    } catch { /* ignore */ }
+    finally { setClearing(false); }
+  };
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -65,6 +78,7 @@ export function FixedAssetsPage() {
     try {
       const res = await fixedAssetsApi.importAssetsCsv({ csvData: csvText });
       setImportMsg({ type: 'success', text: res.message || 'Assets imported successfully.' });
+      setLastImportIds((res.created || []).map((a: any) => a.id));
       setCsvText('');
       queryClient.invalidateQueries({ queryKey: ['fixed-assets'] });
     } catch (err: any) {
@@ -81,6 +95,9 @@ export function FixedAssetsPage() {
         <div className="flex gap-2">
           <button onClick={() => downloadCsv('fixed-assets-template.csv', ['name', 'purchase date (YYYY-MM-DD)', 'purchase cost (NGN)', 'depreciation method', 'useful life (months)', 'residual value (NGN)', 'category', 'account code'], ['Office Building', '2024-01-15', '50000000', 'No Depreciation', '0', '0', 'Buildings', '200200'])} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-slate-500 rounded-lg hover:bg-slate-600"><FileText className="w-3.5 h-3.5" /> Sample CSV</button>
           <button onClick={() => setShowImport(true)} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700"><Upload className="w-3.5 h-3.5" /> Import CSV</button>
+          {lastImportIds.length > 0 && (
+            <button onClick={handleClearLastImport} disabled={clearing} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-rose-600 rounded-lg hover:bg-rose-700 disabled:opacity-50"><X className="w-3.5 h-3.5" /> {clearing ? 'Clearing...' : 'Clear Last Import'}</button>
+          )}
           <button onClick={handleExportCsv} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700"><Download className="w-3.5 h-3.5" /> CSV</button>
           <button onClick={handlePrintPdf} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700"><Printer className="w-3.5 h-3.5" /> PDF</button>
           <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700"><Plus className="w-4 h-4" /> New Asset</button>
