@@ -11,6 +11,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { FlutterwaveConnectButton } from '../../components/banking/FlutterwaveConnectButton';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
 import { CSV_TEMPLATES, downloadCsv } from '../../lib/csvTemplates';
+import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
 import {
   Plus,
   RefreshCw,
@@ -627,19 +628,12 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                     <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
                       Pair with General Ledger Cash Asset Account
                     </label>
-                    <select
-                      required
+                    <AccountSearchSelect
+                      accounts={cashGLAccounts}
                       value={manualForm.accountId}
-                      onChange={(e) => setManualForm({ ...manualForm, accountId: e.target.value })}
-                      className="w-full text-xs font-sans border border-slate-200 focus:border-indigo-500 rounded px-3 py-2 bg-white text-slate-800 focus:outline-none"
-                    >
-                      <option value="">-- Choose General Ledger Target Account --</option>
-                      {cashGLAccounts.map((acc: any) => (
-                        <option key={acc.id} value={acc.id}>
-                          {acc.code ? `${acc.code} ` : ''}{acc.name} ({acc.type})
-                        </option>
-                      ))}
-                    </select>
+                      onChange={id => setManualForm({ ...manualForm, accountId: id })}
+                      placeholder="-- Choose General Ledger Target Account --"
+                    />
                     <p className="text-[10px] text-slate-400 mt-1">
                       Double-entry transactions matching this bank feed will book to this Cash GL ledger line.
                     </p>

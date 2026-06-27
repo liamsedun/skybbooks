@@ -9,6 +9,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { bankingApi } from '../../lib/api';
 import { useCurrency } from '../../hooks/useCurrency';
 import { useAuth } from '../../hooks/useAuth';
+import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
 import {
   Plus,
   ToggleLeft,
@@ -566,19 +567,12 @@ export function BankRules() {
                       <label className="text-[10px] font-bold uppercase tracking-wide text-slate-400 block mb-1">
                         General Ledger Account Assignment
                       </label>
-                      <select
-                        required
+                      <AccountSearchSelect
+                        accounts={expenseGLAccounts}
                         value={actionAccountId}
-                        onChange={(e) => setActionAccountId(e.target.value)}
-                        className="w-full text-xs font-sans border border-slate-200 bg-white rounded px-3 py-2 text-slate-800 focus:outline-none"
-                      >
-                        <option value="">-- Select double-entry ledger assignment --</option>
-                        {expenseGLAccounts.map((acc: any) => (
-                          <option key={acc.id} value={acc.id}>
-                            {acc.code ? `${acc.code} ` : ''}{acc.name} ({acc.type})
-                          </option>
-                        ))}
-                      </select>
+                        onChange={setActionAccountId}
+                        placeholder="-- Select double-entry ledger assignment --"
+                      />
                     </div>
 
                     <div className="col-span-2">

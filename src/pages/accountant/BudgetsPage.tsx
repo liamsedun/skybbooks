@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { budgetsApi, accountantApi } from '../../lib/api';
+import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
 import { Plus, X, Loader2, AlertCircle, CheckCircle2, Trash2 } from 'lucide-react';
 
 function fmtNaira(v: number): string {
@@ -134,10 +135,12 @@ function BudgetForm({ onDone }: { onDone: () => void }) {
         </div>
         {lines.map((line, i) => (
           <div key={i} className="flex gap-2 items-start">
-            <select value={line.accountId} onChange={e => updateLine(i, 'accountId', e.target.value)} className="flex-1 border border-slate-300 rounded-lg px-3 py-1.5 text-sm">
-              <option value="">Select account</option>
-              {accList.map((a: any) => <option key={a.id} value={a.id}>{a.code} - {a.name}</option>)}
-            </select>
+            <AccountSearchSelect
+              accounts={accList}
+              value={line.accountId}
+              onChange={id => updateLine(i, 'accountId', id)}
+              placeholder="Select account"
+            />
             <input type="number" value={line.period} onChange={e => updateLine(i, 'period', e.target.value)} min={1} max={12} className="w-20 border border-slate-300 rounded-lg px-3 py-1.5 text-sm" placeholder="Period" />
             <input type="number" value={line.amount || ''} onChange={e => updateLine(i, 'amount', e.target.value)} className="w-32 border border-slate-300 rounded-lg px-3 py-1.5 text-sm" placeholder="Amount (₦)" />
             {lines.length > 1 && <button type="button" onClick={() => removeLine(i)} className="p-1.5 text-red-500 hover:text-red-700"><X className="w-4 h-4" /></button>}

@@ -12,6 +12,7 @@ import {
   Pencil, Trash2, Copy, Upload, Package, ArrowLeft, Eye
 } from 'lucide-react';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
+import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
 
 interface Vendor { id: string; name: string; }
 interface Account { id: string; name: string; type: string; }
@@ -610,11 +611,13 @@ function BillList() {
                                   className="w-14 text-xs px-2 py-1.5 border border-slate-200 rounded focus:outline-none focus:border-primary" />
                               </td>
                               <td className="px-3 py-2">
-                                <select value={line.accountId || ''} onChange={e => setLine(i, { accountId: e.target.value || null })}
-                                  className="w-full text-xs px-2 py-1.5 border border-slate-200 rounded focus:outline-none focus:border-primary">
-                                  <option value="">No account</option>
-                                  {expenseAccounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                                </select>
+                                <AccountSearchSelect
+                                  accounts={expenseAccounts}
+                                  value={line.accountId || ''}
+                                  onChange={id => setLine(i, { accountId: id || null })}
+                                  placeholder="No account"
+                                  searchPlaceholder="Search expense accounts..."
+                                />
                               </td>
                               <td className="px-3 py-2 text-right text-xs font-semibold text-slate-700 whitespace-nowrap">
                                 {lineTotal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}

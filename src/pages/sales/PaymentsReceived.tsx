@@ -11,6 +11,7 @@ import {
   Banknote, Smartphone, Building2, Receipt, Trash2, X,
   FileText, ChevronRight, Download, Upload,
 } from 'lucide-react';
+import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
 
 // ── Interfaces ──────────────────────────────────────────────────────────────
@@ -799,24 +800,23 @@ export function PaymentsReceivedPage() {
 
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">Deposit Into (Bank Account / GL)</label>
-                <select value={addForm.accountId} onChange={e => setAddForm(f => ({ ...f, accountId: e.target.value }))}
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10">
-                  <option value="">Select account...</option>
-                  {(bankAccounts || []).map((ba: any) => (
-                    <option key={ba.accountId} value={ba.accountId}>{ba.bankName} — {ba.name}</option>
-                  ))}
-                  {assetAccounts.map(a => <option key={a.id} value={a.id}>{a.code} — {a.name}</option>)}
-                </select>
+                <AccountSearchSelect
+                  accounts={[...(bankAccounts||[]).map((ba:any) => ({ id: ba.accountId, name: `${ba.bankName} — ${ba.name}`, code: 'Bank' })), ...assetAccounts]}
+                  value={addForm.accountId}
+                  onChange={id => setAddForm(f => ({ ...f, accountId: id }))}
+                  placeholder="Select account..."
+                />
               </div>
 
               {addForm.category === 'other_income' && (
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Income Account (Revenue GL)</label>
-                  <select value={addForm.incomeAccountId} onChange={e => setAddForm(f => ({ ...f, incomeAccountId: e.target.value }))}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10">
-                    <option value="">Select income account...</option>
-                    {revenueAccounts.map(a => <option key={a.id} value={a.id}>{a.code} — {a.name}</option>)}
-                  </select>
+                  <AccountSearchSelect
+                    accounts={revenueAccounts}
+                    value={addForm.incomeAccountId}
+                    onChange={id => setAddForm(f => ({ ...f, incomeAccountId: id }))}
+                    placeholder="Select income account..."
+                  />
                 </div>
               )}
 

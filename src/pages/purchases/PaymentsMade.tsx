@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
+import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
 import {
   Upload, Plus, X, Loader2, AlertCircle, Search, CreditCard,
   CheckCircle2, Download, FileText, Eye, Pencil, Save, Trash2
@@ -409,10 +410,12 @@ export function PaymentsMadePage() {
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Paid From Account *</label>
-                  <select value={form.accountId} onChange={e => setForm({ ...form, accountId: e.target.value })} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 bg-white">
-                    <option value="">Select account...</option>
-                    {assetAccounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                  </select>
+                  <AccountSearchSelect
+                    accounts={assetAccounts}
+                    value={form.accountId}
+                    onChange={id => setForm({ ...form, accountId: id })}
+                    placeholder="Select account..."
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Reference</label>
@@ -531,11 +534,12 @@ export function PaymentsMadePage() {
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-slate-500 mb-1">Paid From Account</label>
-                    <select value={detailForm.accountId} onChange={e => setDetailForm({ ...detailForm, accountId: e.target.value })}
-                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 bg-white">
-                      <option value="">Select account...</option>
-                      {assetAccounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                    </select>
+                    <AccountSearchSelect
+                      accounts={assetAccounts}
+                      value={detailForm.accountId}
+                      onChange={id => setDetailForm({ ...detailForm, accountId: id })}
+                      placeholder="Select account..."
+                    />
                   </div>
                   <div className="col-span-2">
                     <label className="block text-xs font-medium text-slate-500 mb-1">Reference</label>

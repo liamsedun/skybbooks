@@ -53,6 +53,8 @@ import {
   ChevronLeft, ChevronRight, Activity, Code, Filter, Info,
 } from 'lucide-react';
 
+import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
+
 function PageShell({ title, desc, icon: Icon, children }: { title: string; desc?: string; icon?: React.ComponentType<{ className?: string }>; children: React.ReactNode }) {
   return (
     <div>
@@ -6294,21 +6296,21 @@ export function TaxesPage() {
             ]} value={form.whtTrackingPref || 'both'} onChange={field('whtTrackingPref')} />
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1.5">Account to Track WHT in Sales</label>
-              <select value={form.whtSalesAccount || ''} onChange={field('whtSalesAccount')} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800">
-                <option value="">Select account</option>
-                {(accounts || []).filter((a: any) => a.isActive).map((a: any) => (
-                  <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
-                ))}
-              </select>
+              <AccountSearchSelect
+                accounts={(accounts || []).filter((a: any) => a.isActive)}
+                value={form.whtSalesAccount || ''}
+                onChange={id => setForm({ ...form, whtSalesAccount: id })}
+                placeholder="Select account"
+              />
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1.5">Account to Track WHT in Purchases</label>
-              <select value={form.whtPurchasesAccount || ''} onChange={field('whtPurchasesAccount')} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800">
-                <option value="">Select account</option>
-                {(accounts || []).filter((a: any) => a.isActive).map((a: any) => (
-                  <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
-                ))}
-              </select>
+              <AccountSearchSelect
+                accounts={(accounts || []).filter((a: any) => a.isActive)}
+                value={form.whtPurchasesAccount || ''}
+                onChange={id => setForm({ ...form, whtPurchasesAccount: id })}
+                placeholder="Select account"
+              />
             </div>
           </div>
         </Section>

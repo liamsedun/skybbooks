@@ -9,6 +9,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { bankingApi, salesApi } from '../../lib/api';
 import { useCurrency } from '../../hooks/useCurrency';
 import { useAuth } from '../../hooks/useAuth';
+import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
 import {
   RefreshCw,
   Search,
@@ -835,58 +836,18 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
                     <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
                       Journal Category Account (GL Mapping)
                     </label>
-                    <select
-                      required
+                    <AccountSearchSelect
+                      accounts={
+                        quickCreateForm.type === 'expense' ? glAccounts.filter((acc: any) => acc.type === 'expense') :
+                        quickCreateForm.type === 'payment_made' ? glAccounts.filter((acc: any) => acc.type === 'liability') :
+                        quickCreateForm.type === 'payment_received' ? glAccounts.filter((acc: any) => acc.type === 'revenue' || acc.type === 'asset') :
+                        quickCreateForm.type === 'transfer' ? glAccounts.filter((acc: any) => acc.type === 'asset' || acc.code?.startsWith('10')) :
+                        []
+                      }
                       value={quickCreateForm.accountId}
-                      onChange={(e) => setQuickCreateForm({ ...quickCreateForm, accountId: e.target.value })}
-                      className="w-full text-xs font-sans border border-slate-200 rounded px-3 py-2 bg-white text-slate-800 focus:outline-none"
-                    >
-                      <option value="">-- Choose target General Ledger account --</option>
-                      {quickCreateForm.type === 'expense' && (
-                        <optgroup label="Expense General Accounts">
-                          {glAccounts
-                            .filter((acc: any) => acc.type === 'expense')
-                            .map((acc: any) => (
-                              <option key={acc.id} value={acc.id}>
-                                {acc.code ? `${acc.code} ` : ''}{acc.name}
-                              </option>
-                            ))}
-                        </optgroup>
-                      )}
-                      {quickCreateForm.type === 'payment_made' && (
-                        <optgroup label="Liability Accounts (Accounts Payable)">
-                          {glAccounts
-                            .filter((acc: any) => acc.type === 'liability')
-                            .map((acc: any) => (
-                              <option key={acc.id} value={acc.id}>
-                                {acc.code ? `${acc.code} ` : ''}{acc.name}
-                              </option>
-                            ))}
-                        </optgroup>
-                      )}
-                      {quickCreateForm.type === 'payment_received' && (
-                        <optgroup label="Revenue / Allocation Accounts">
-                          {glAccounts
-                            .filter((acc: any) => acc.type === 'revenue' || acc.type === 'asset')
-                            .map((acc: any) => (
-                              <option key={acc.id} value={acc.id}>
-                                {acc.code ? `${acc.code} ` : ''}{acc.name}
-                              </option>
-                            ))}
-                        </optgroup>
-                      )}
-                      {quickCreateForm.type === 'transfer' && (
-                        <optgroup label="Cash & Bank Accounts">
-                          {glAccounts
-                            .filter((acc: any) => acc.type === 'asset' || acc.code?.startsWith('10'))
-                            .map((acc: any) => (
-                              <option key={acc.id} value={acc.id}>
-                                {acc.code ? `${acc.code} ` : ''}{acc.name}
-                              </option>
-                            ))}
-                        </optgroup>
-                      )}
-                    </select>
+                      onChange={id => setQuickCreateForm({ ...quickCreateForm, accountId: id })}
+                      placeholder="-- Choose target General Ledger account --"
+                    />
                     <p className="text-[10px] text-slate-400 mt-1">
                       This selects the double-entry matching leg on general ledger records.
                     </p>

@@ -6,6 +6,7 @@ import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
+import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
 import {
   Plus, Search, Pencil, Trash2, X, Loader2, AlertCircle, Package, Briefcase,
   Upload, Database, CheckCircle2, BarChart3, FileText, Download
@@ -566,33 +567,21 @@ export function ItemsPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Sales Account (Revenue)</label>
-                  <select
+                  <AccountSearchSelect
+                    accounts={revenueAccounts}
                     value={form.salesAccountId}
-                    onChange={(e) => setForm({ ...form, salesAccountId: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
-                  >
-                    <option value="">None</option>
-                    {revenueAccounts.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.code} — {a.name}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={id => setForm({ ...form, salesAccountId: id })}
+                    placeholder="None"
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Purchase Account (Expense)</label>
-                  <select
+                  <AccountSearchSelect
+                    accounts={expenseAccounts}
                     value={form.purchaseAccountId}
-                    onChange={(e) => setForm({ ...form, purchaseAccountId: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
-                  >
-                    <option value="">None</option>
-                    {expenseAccounts.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.code} — {a.name}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={id => setForm({ ...form, purchaseAccountId: id })}
+                    placeholder="None"
+                  />
                 </div>
               </div>
 
@@ -612,18 +601,12 @@ export function ItemsPage() {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="block text-xs font-medium text-slate-500 mb-1">Inventory Account (Asset)</label>
-                        <select
+                        <AccountSearchSelect
+                          accounts={assetAccounts}
                           value={form.inventoryAccountId}
-                          onChange={(e) => setForm({ ...form, inventoryAccountId: e.target.value })}
-                          className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
-                        >
-                          <option value="">None</option>
-                          {assetAccounts.map((a) => (
-                            <option key={a.id} value={a.id}>
-                              {a.code} — {a.name}
-                            </option>
-                          ))}
-                        </select>
+                          onChange={id => setForm({ ...form, inventoryAccountId: id })}
+                          placeholder="None"
+                        />
                       </div>
                       <div>
                         <label className="block text-xs font-medium text-slate-500 mb-1">Reorder Point</label>

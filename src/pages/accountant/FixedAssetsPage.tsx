@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fixedAssetsApi, accountantApi } from '../../lib/api';
+import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
 import { Plus, X, Loader2, AlertCircle, CheckCircle2, Trash2, Eye } from 'lucide-react';
 
 function fmtNaira(v: number): string {
@@ -178,10 +179,12 @@ function AssetForm({ onDone }: { onDone: () => void }) {
         </div>
         <div><label className="text-xs font-semibold text-slate-500 uppercase">Useful Life (months)</label><input type="number" value={usefulLifeMonths} onChange={e => setUsefulLifeMonths(e.target.value)} className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm mt-1" /></div>
         <div><label className="text-xs font-semibold text-slate-500 uppercase">Asset Account</label>
-          <select value={accountId} onChange={e => setAccountId(e.target.value)} className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm mt-1">
-            <option value="">Select account</option>
-            {accList.map((a: any) => <option key={a.id} value={a.id}>{a.code} - {a.name}</option>)}
-          </select>
+          <AccountSearchSelect
+            accounts={accList}
+            value={accountId}
+            onChange={setAccountId}
+            placeholder="Select account"
+          />
         </div>
       </div>
       <div className="flex justify-end gap-3 pt-2">

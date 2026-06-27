@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { journalsApi, accountantApi } from '../../lib/api';
+import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
 import { Plus, X, Loader2, AlertCircle, CheckCircle2, Eye } from 'lucide-react';
 
 function fmtNaira(v: number): string {
@@ -197,10 +198,12 @@ function JournalForm({ onDone }: { onDone: () => void }) {
         </div>
         {lines.map((line, i) => (
           <div key={i} className="flex gap-2 items-start">
-            <select value={line.accountId} onChange={e => updateLine(i, 'accountId', e.target.value)} className="flex-1 border border-slate-300 rounded-lg px-3 py-1.5 text-sm">
-              <option value="">Select account</option>
-              {accList.map((a: any) => <option key={a.id} value={a.id}>{a.code} - {a.name}</option>)}
-            </select>
+            <AccountSearchSelect
+              accounts={accList}
+              value={line.accountId}
+              onChange={id => updateLine(i, 'accountId', id)}
+              placeholder="Select account"
+            />
             <input placeholder="Debit (₦)" type="number" value={line.debitAmount || ''} onChange={e => updateLine(i, 'debitAmount', e.target.value)} className="w-32 border border-slate-300 rounded-lg px-3 py-1.5 text-sm" />
             <input placeholder="Credit (₦)" type="number" value={line.creditAmount || ''} onChange={e => updateLine(i, 'creditAmount', e.target.value)} className="w-32 border border-slate-300 rounded-lg px-3 py-1.5 text-sm" />
             <input placeholder="Description" value={line.description} onChange={e => updateLine(i, 'description', e.target.value)} className="flex-1 border border-slate-300 rounded-lg px-3 py-1.5 text-sm" />
