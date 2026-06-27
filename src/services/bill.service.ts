@@ -484,6 +484,44 @@ export async function voidBill(billId: string, userId: string): Promise<any> {
       await reverseJournalEntry(bill.journalEntryId, new Date(), userId);
     }
 
+    // Reverse inventory lots and transactions created by bill approval
+    const billTxns = await tx
+      .select()
+      .from(inventoryTransactions)
+      .where(and(
+        eq(inventoryTransactions.referenceType, 'bill'),
+        eq(inventoryTransactions.referenceId, billId)
+      ));
+
+    for (const txn of billTxns) {
+      // Delete the transaction
+      await tx.delete(inventoryTransactions)
+        .where(eq(inventoryTransactions.id, txn.id));
+
+      // Reduce or delete the associated lot
+      if (txn.lotId) {
+        const [lot] = await tx
+          .select()
+          .from(inventoryLots)
+          .where(eq(inventoryLots.id, txn.lotId))
+          .limit(1);
+
+        if (lot) {
+          const lotQty = Number(lot.quantity);
+          const txnQty = Number(txn.quantity);
+          const remaining = lotQty - txnQty;
+
+          if (remaining <= 0) {
+            await tx.delete(inventoryLots).where(eq(inventoryLots.id, txn.lotId));
+          } else {
+            await tx.update(inventoryLots)
+              .set({ quantity: String(remaining) })
+              .where(eq(inventoryLots.id, txn.lotId));
+          }
+        }
+      }
+    }
+
     // Reset status and outstanding values
     const [voided] = await tx
       .update(bills)

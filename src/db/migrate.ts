@@ -40,6 +40,19 @@ export async function runMigration() {
     if (voidFix.rowCount && voidFix.rowCount > 0) {
       console.log(`[Migration] Fixed ${voidFix.rowCount} voided bill(s) with non-zero totals.`);
     }
+    // Clean up inventory transactions and lots orphaned by voided bills
+    const voidTxnCleanup = await db.execute(
+      `DELETE FROM inventory_transactions WHERE reference_type = 'bill' AND reference_id IN (SELECT id FROM bills WHERE status = 'void')`
+    );
+    if (voidTxnCleanup.rowCount && voidTxnCleanup.rowCount > 0) {
+      console.log(`[Migration] Removed ${voidTxnCleanup.rowCount} inventory transaction(s) from voided bills.`);
+    }
+    const voidLotCleanup = await db.execute(
+      `DELETE FROM inventory_lots WHERE reference IN (SELECT bill_number FROM bills WHERE status = 'void')`
+    );
+    if (voidLotCleanup.rowCount && voidLotCleanup.rowCount > 0) {
+      console.log(`[Migration] Removed ${voidLotCleanup.rowCount} inventory lot(s) from voided bills.`);
+    }
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema push:', err);
