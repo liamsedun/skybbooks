@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { reportsApi } from '../../lib/api';
-import { Loader2, AlertCircle, Download, Search, Upload, FileText, X } from 'lucide-react';
+import { Loader2, AlertCircle, Download, Search, Upload, FileText, X, RefreshCw } from 'lucide-react';
 import { downloadCsv } from '../../lib/csvTemplates';
 
 type ReportType = 'trial-balance' | 'income-statement' | 'balance-sheet' | 'cash-flow' | 'aged-receivables' | 'aged-payables';
@@ -41,12 +41,15 @@ export function TrialBalancePage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [drillDown, setDrillDown] = useState<any | null>(null);
 
-  const { data, isLoading, error, refetch } = useQuery({
+  const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ['report', 'trial-balance', sDate, eDate],
     queryFn: async () => {
       const res = await reportsApi.getTrialBalance({ startDate: sDate, endDate: eDate, format: 'json' });
       return res.data || res;
     },
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
   const rawRows: any[] = Array.isArray(data) ? data : [];
@@ -107,6 +110,7 @@ export function TrialBalancePage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-slate-900">Trial Balance</h1>
         <div className="flex gap-2">
+          <button onClick={() => refetch()} disabled={isFetching} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 disabled:opacity-50"><RefreshCw className={`w-3.5 h-3.5 ${isFetching ? 'animate-spin' : ''}`} /> Refresh</button>
           <button onClick={() => { downloadCsv('trial-balance-opening-balances-template.csv', ['accountCode', 'accountName', 'debit (NGN)', 'credit (NGN)'], ['100000', 'Cash and Cash Equivalents', '5000000', '0']); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-slate-600 rounded-lg hover:bg-slate-700"><FileText className="w-3.5 h-3.5" /> Sample CSV</button>
           <button onClick={() => setShowImport(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700"><Upload className="w-3.5 h-3.5" /> Import Opening Balances</button>
           <button onClick={() => handleExport('pdf')} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700"><Download className="w-3.5 h-3.5" /> PDF</button>
