@@ -3,12 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 import React, { useState, useMemo } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import {
   Plus, X, Loader2, AlertCircle, Search, FileText,
   CheckCircle2, Download, Ban, ChevronDown, ChevronUp,
-  Pencil, Trash2, Copy, Upload, Package
+  Pencil, Trash2, Copy, Upload, Package, ArrowLeft, Eye
 } from 'lucide-react';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
 
@@ -37,6 +38,7 @@ interface Bill {
   balanceDue: number;
   currency: string;
   notes: string | null;
+  vendorName?: string;
 }
 
 const EMPTY_LINE: BillLine = { itemId: null, description: '', quantity: 1, unitPrice: 0, taxRate: 7.5, accountId: null };
@@ -99,7 +101,15 @@ const EMPTY_FORM: FormState = {
 };
 
 export function BillsPage() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  if (id) return <BillDetail id={id} onBack={() => navigate('/purchases/bills')} />;
+  return <BillList />;
+}
+
+function BillList() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [search, setSearch]           = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [expandedId, setExpandedId]   = useState<string | null>(null);
@@ -379,11 +389,16 @@ export function BillsPage() {
                     <tr className="hover:bg-slate-50/60 transition-colors">
                       {/* Bill number + expand */}
                       <td className="px-4 py-3 font-mono text-xs font-semibold text-slate-700">
-                        <button onClick={() => setExpandedId(expandedId === bill.id ? null : bill.id)}
-                          className="flex items-center gap-1 hover:text-primary transition-colors">
-                          {expandedId === bill.id ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                          {bill.billNumber}
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => setExpandedId(expandedId === bill.id ? null : bill.id)}
+                            className="flex items-center gap-1 hover:text-primary transition-colors">
+                            {expandedId === bill.id ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                          </button>
+                          <button onClick={() => navigate(`/purchases/bills/${bill.id}`)}
+                            className="hover:text-primary transition-colors">
+                            {bill.billNumber}
+                          </button>
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-slate-700">{vendorMap.get(bill.vendorId) || '—'}</td>
                       <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{fmtDate(bill.date)}</td>
@@ -399,6 +414,13 @@ export function BillsPage() {
                       {/* ── Action buttons ── */}
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-center gap-1 flex-wrap">
+
+                          {/* View — always */}
+                          <button onClick={() => navigate(`/purchases/bills/${bill.id}`)}
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-md transition-colors"
+                            title="View bill details">
+                            <Eye size={12} /> View
+                          </button>
 
                           {/* Edit — all except paid and void */}
                           {!['paid', 'void'].includes(bill.status) && (
@@ -715,6 +737,203 @@ export function BillsPage() {
         </div>
       )}
 
+    </div>
+  );
+
+}
+
+interface DetailBill extends Bill {
+  vendor?: Vendor;
+  lines?: (BillLine & { id: string })[];
+}
+
+function BillDetail({ id, onBack }: { id: string; onBack: () => void }) {
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+  const { data: billRaw, isLoading, error } = useQuery({
+    queryKey: ['bill', id],
+    queryFn: () => api.get(`/purchases/bills/${id}`).then(r => r.data),
+  });
+
+  const { data: items = [] } = useQuery<Item[]>({
+    queryKey: ['items'],
+    queryFn: async () => { const r = await api.get('/inventory/items'); return r.data; },
+  });
+
+  const voidMutation = useMutation({
+    mutationFn: (bid: string) => api.post(`/purchases/bills/${bid}/void`).then(r => r.data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['bill', id] }); qc.invalidateQueries({ queryKey: ['bills'] }); },
+    onError: (e: any) => alert(e?.response?.data?.message || 'Failed to void bill'),
+  });
+  const approveMutation = useMutation({
+    mutationFn: (bid: string) => api.post(`/purchases/bills/${bid}/approve`).then(r => r.data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['bill', id] }); qc.invalidateQueries({ queryKey: ['bills'] }); },
+    onError: (e: any) => alert(e?.response?.data?.message || 'Failed to approve bill'),
+  });
+  const duplicateMutation = useMutation({
+    mutationFn: (bid: string) => api.post(`/purchases/bills/${bid}/duplicate`).then(r => r.data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['bills'] }); navigate('/purchases/bills'); },
+    onError: (e: any) => alert(e?.response?.data?.message || 'Failed to duplicate bill'),
+  });
+  const deleteMutation = useMutation({
+    mutationFn: (bid: string) => api.delete(`/purchases/bills/${bid}`).then(r => r.data),
+    onSuccess: () => navigate('/purchases/bills'),
+    onError: (e: any) => alert(e?.response?.data?.message || 'Failed to delete bill'),
+  });
+
+  const bill = billRaw as DetailBill | undefined;
+  const vendorName = bill?.vendor?.name || 'Unknown Vendor';
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-16 gap-3 text-slate-400">
+        <Loader2 size={20} className="animate-spin" /> Loading bill...
+      </div>
+    );
+  }
+  if (error || !bill) {
+    return (
+      <div className="flex items-center justify-center py-16 gap-2 text-red-500">
+        <AlertCircle size={18} /> Failed to load bill
+        <button onClick={onBack} className="ml-4 text-sm text-primary hover:underline">Go back</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+            <ArrowLeft size={18} className="text-slate-500" />
+          </button>
+          <div>
+            <h1 className="text-xl font-bold text-slate-900">{bill.billNumber}</h1>
+            <p className="text-sm text-slate-500 mt-0.5">{vendorName}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_STYLES[bill.status] || 'bg-slate-100 text-slate-600'}`}>
+            {bill.status}
+          </span>
+          {bill.status === 'draft' && (
+            <button onClick={() => approveMutation.mutate(bill.id)}
+              disabled={approveMutation.isPending}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 rounded-lg disabled:opacity-50">
+              <CheckCircle2 size={14} /> Approve
+            </button>
+          )}
+          {['draft', 'open', 'partial', 'overdue'].includes(bill.status) && (
+            <button onClick={() => { if (window.confirm('Void this bill? This cannot be undone.')) voidMutation.mutate(bill.id); }}
+              disabled={voidMutation.isPending}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-lg disabled:opacity-50">
+              <Ban size={14} /> Void
+            </button>
+          )}
+          <button onClick={() => { if (window.confirm('Duplicate this bill as a new draft?')) duplicateMutation.mutate(bill.id); }}
+            disabled={duplicateMutation.isPending}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg disabled:opacity-50">
+            <Copy size={14} /> Copy
+          </button>
+          {bill.status === 'draft' && (
+            <button onClick={() => { if (window.confirm('Permanently delete this draft bill?')) deleteMutation.mutate(bill.id); }}
+              disabled={deleteMutation.isPending}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg disabled:opacity-50">
+              <Trash2 size={14} /> Delete
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="bg-white border border-slate-200 rounded-xl p-4">
+          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Total</p>
+          <p className="text-lg font-bold mt-1 text-slate-900">{formatNaira(bill.total)}</p>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-xl p-4">
+          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Amount Paid</p>
+          <p className="text-lg font-bold mt-1 text-green-600">{formatNaira(bill.amountPaid)}</p>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-xl p-4">
+          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Balance Due</p>
+          <p className="text-lg font-bold mt-1 text-blue-600">{formatNaira(bill.balanceDue)}</p>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-xl p-4">
+          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Due Date</p>
+          <p className="text-lg font-bold mt-1 text-slate-900">{fmtDate(bill.dueDate)}</p>
+        </div>
+      </div>
+
+      {/* Bill details + Line Items */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Info panel */}
+        <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-3 text-sm">
+          <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wide">Bill Info</h3>
+          <div className="space-y-2">
+            <div><span className="text-slate-400 text-xs block">Bill Number</span><span className="font-medium">{bill.billNumber}</span></div>
+            <div><span className="text-slate-400 text-xs block">Vendor</span><span className="font-medium">{vendorName}</span></div>
+            <div><span className="text-slate-400 text-xs block">Date</span><span className="font-medium">{fmtDate(bill.date)}</span></div>
+            <div><span className="text-slate-400 text-xs block">Due Date</span><span className="font-medium">{fmtDate(bill.dueDate)}</span></div>
+            <div><span className="text-slate-400 text-xs block">Status</span><span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_STYLES[bill.status] || 'bg-slate-100 text-slate-600'}`}>{bill.status}</span></div>
+            <div><span className="text-slate-400 text-xs block">Currency</span><span className="font-medium">{bill.currency}</span></div>
+            {bill.notes && <div><span className="text-slate-400 text-xs block">Notes</span><span className="font-medium italic">{bill.notes}</span></div>}
+          </div>
+        </div>
+
+        {/* Line items table */}
+        <div className="lg:col-span-2 bg-white border border-slate-200 rounded-xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-100">
+            <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wide">Line Items</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-slate-50 text-xs font-medium text-slate-500 uppercase tracking-wide">
+                  <th className="px-4 py-2.5 text-left">Item</th>
+                  <th className="px-4 py-2.5 text-left">Description</th>
+                  <th className="px-4 py-2.5 text-right">Qty</th>
+                  <th className="px-4 py-2.5 text-right">Unit Price</th>
+                  <th className="px-4 py-2.5 text-right">Tax %</th>
+                  <th className="px-4 py-2.5 text-right">Total</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {(bill.lines || []).map((line, i) => {
+                  const base = line.quantity * line.unitPrice;
+                  const tax = base * (line.taxRate / 100);
+                  const lineTotal = base + tax;
+                  return (
+                    <tr key={line.id || i} className="hover:bg-slate-50/60">
+                      <td className="px-4 py-2.5 text-slate-700 font-medium">{items.find(it => it.id === line.itemId)?.name || '—'}</td>
+                      <td className="px-4 py-2.5 text-slate-500">{line.description || '—'}</td>
+                      <td className="px-4 py-2.5 text-right text-slate-700 font-medium">{line.quantity}</td>
+                      <td className="px-4 py-2.5 text-right text-slate-700">{formatNaira(line.unitPrice)}</td>
+                      <td className="px-4 py-2.5 text-right text-slate-700">{line.taxRate}%</td>
+                      <td className="px-4 py-2.5 text-right font-semibold text-slate-900">{formatNaira(Math.round(lineTotal))}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="bg-slate-50 border-t border-slate-200 text-sm font-semibold">
+                  <td colSpan={5} className="px-4 py-2.5 text-slate-600 text-right">Subtotal</td>
+                  <td className="px-4 py-2.5 text-right text-slate-700">{formatNaira(bill.subtotal)}</td>
+                </tr>
+                <tr className="bg-slate-50 text-sm">
+                  <td colSpan={5} className="px-4 py-2.5 text-slate-600 text-right">Tax</td>
+                  <td className="px-4 py-2.5 text-right text-slate-700">{formatNaira(bill.taxAmount)}</td>
+                </tr>
+                <tr className="bg-slate-50 border-t border-slate-200 text-sm font-bold">
+                  <td colSpan={5} className="px-4 py-2.5 text-slate-900 text-right">Total</td>
+                  <td className="px-4 py-2.5 text-right text-slate-900">{formatNaira(bill.total)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

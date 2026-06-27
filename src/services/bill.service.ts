@@ -489,7 +489,10 @@ export async function voidBill(billId: string, userId: string): Promise<any> {
       .update(bills)
       .set({
         status: 'void',
-        balanceDue: 0
+        balanceDue: 0,
+        total: 0,
+        subtotal: 0,
+        taxAmount: 0
       })
       .where(eq(bills.id, billId))
       .returning();
