@@ -4,7 +4,7 @@
  */
 import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { db, items, inventoryLots } from '../db/schema';
+import { db, items, inventoryLots, inventoryTransactions } from '../db/schema';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
 import { eq, and, sql } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
@@ -147,6 +147,102 @@ router.delete('/items/:id', async (req: AuthenticatedRequest, res: Response, nex
     }
 
     return res.status(200).json({ message: 'Item deleted.' });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// POST /api/inventory/items/import-opening-stock — single row from CSV import
+router.post('/items/import-opening-stock', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { itemName, quantity, unitCost } = req.body;
+    if (!itemName) throw new AppError('itemName is required.', 400);
+
+    const [item] = await db
+      .select()
+      .from(items)
+      .where(and(eq(items.orgId, orgId), eq(items.name, itemName)))
+      .limit(1);
+
+    if (!item) throw new AppError(`Item "${itemName}" not found.`, 404);
+
+    const qty = parseInt(quantity, 10);
+    if (isNaN(qty) || qty <= 0) throw new AppError('Invalid quantity.', 400);
+    const cost = unitCost ? Math.round(parseFloat(unitCost) * 100) : 0;
+
+    const [lot] = await db
+      .insert(inventoryLots)
+      .values({
+        itemId: item.id,
+        orgId,
+        quantity: String(qty),
+        costPerUnit: cost,
+        receivedDate: new Date(),
+        reference: 'Opening Stock'
+      })
+      .returning();
+
+    await db.insert(inventoryTransactions).values({
+      itemId: item.id,
+      orgId,
+      lotId: lot.id,
+      type: 'purchase',
+      quantity: String(qty),
+      unitCost: cost,
+      referenceType: 'opening_stock',
+      referenceId: lot.id,
+      date: new Date()
+    });
+
+    return res.status(201).json({ message: 'Opening stock recorded.', item: item.name });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// POST /api/inventory/items/record-opening-stock — single item
+router.post('/items/record-opening-stock', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { itemId, quantity, unitCost } = req.body;
+    if (!itemId) throw new AppError('itemId is required.', 400);
+    const qty = parseInt(quantity, 10);
+    if (isNaN(qty) || qty <= 0) throw new AppError('Quantity must be a positive number.', 400);
+    const cost = Math.round(parseFloat(unitCost || '0') * 100);
+
+    const [item] = await db
+      .select()
+      .from(items)
+      .where(and(eq(items.id, itemId), eq(items.orgId, orgId)))
+      .limit(1);
+    if (!item) throw new AppError('Item not found.', 404);
+
+    const [lot] = await db
+      .insert(inventoryLots)
+      .values({
+        itemId,
+        orgId,
+        quantity: String(qty),
+        costPerUnit: cost,
+        receivedDate: new Date(),
+        reference: 'Opening Stock'
+      })
+      .returning();
+
+    await db.insert(inventoryTransactions).values({
+      itemId,
+      orgId,
+      lotId: lot.id,
+      type: 'purchase',
+      quantity: String(qty),
+      unitCost: cost,
+      referenceType: 'opening_stock',
+      referenceId: lot.id,
+      date: new Date()
+    });
+
+    return res.status(201).json({ message: 'Opening stock recorded.', lot });
   } catch (err) {
     return next(err);
   }

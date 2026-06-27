@@ -131,4 +131,10 @@ export const CSV_TEMPLATES: Record<string, { headers: string[]; sample: string[]
     headers: ['vendorId (or name)', 'date (YYYY-MM-DD)', 'subtotal (NGN)', 'tax (NGN)', 'notes', 'billNumber (optional)'],
     sample: ['Supply Corp', '2026-06-24', '50000', '3750', 'Returned damaged goods', 'BILL-0001'],
   },
+  // Inventory module
+  inventoryOpeningStock: {
+    filename: 'inventory-opening-stock-template.csv',
+    headers: ['itemName (or SKU)', 'quantity', 'unitCost (NGN)', 'total (NGN)'],
+    sample: ['Android Mobile POS', '100', '152500', '15250000'],
+  },
 };

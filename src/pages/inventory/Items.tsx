@@ -5,7 +5,11 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
-import { Plus, Search, Pencil, Trash2, X, Loader2, AlertCircle, Package, Briefcase } from 'lucide-react';
+import { CsvImportModal } from '../../components/ui/CsvImportModal';
+import {
+  Plus, Search, Pencil, Trash2, X, Loader2, AlertCircle, Package, Briefcase,
+  Upload, Database, CheckCircle2
+} from 'lucide-react';
 
 interface GLAccount {
   id: string;
@@ -79,6 +83,11 @@ export function ItemsPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Item | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [openStockModal, setOpenStockModal] = useState(false);
+  const [stockForm, setStockForm] = useState({ itemId: '', quantity: '', unitCost: '' });
+  const [stockSuccess, setStockSuccess] = useState<string | null>(null);
+  const [stockError, setStockError] = useState<string | null>(null);
 
   const { data: items, isLoading, isError } = useQuery<Item[]>({
     queryKey: ['inventory', 'items'],
@@ -127,6 +136,18 @@ export function ItemsPage() {
       setDeleteError(null);
     },
     onError: (err: any) => setDeleteError(err?.response?.data?.error || 'Failed to delete item.'),
+  });
+
+  const recordStockMutation = useMutation({
+    mutationFn: (payload: any) => api.post('/inventory/items/record-opening-stock', payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inventory', 'items'] });
+      setStockForm({ itemId: '', quantity: '', unitCost: '' });
+      setStockError(null);
+      setStockSuccess('Opening stock recorded.');
+      setTimeout(() => { setStockSuccess(null); setOpenStockModal(false); }, 2000);
+    },
+    onError: (err: any) => setStockError(err?.response?.data?.error || 'Failed to record stock.'),
   });
 
   const filteredItems = useMemo(() => {
@@ -225,6 +246,20 @@ export function ItemsPage() {
         >
           <Plus size={16} />
           Add Item
+        </button>
+        <button
+          onClick={() => setImportOpen(true)}
+          className="inline-flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors"
+        >
+          <Upload size={16} />
+          Import Opening Stock
+        </button>
+        <button
+          onClick={() => { setStockForm({ itemId: '', quantity: '', unitCost: '' }); setStockError(null); setStockSuccess(null); setOpenStockModal(true); }}
+          className="inline-flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors"
+        >
+          <Database size={16} />
+          Record Opening Stock
         </button>
       </div>
 
@@ -575,6 +610,79 @@ export function ItemsPage() {
                 {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {importOpen && (
+        <CsvImportModal
+          entity="inventoryOpeningStock"
+          endpoint="/inventory/items/import-opening-stock"
+          onClose={() => setImportOpen(false)}
+          onSuccess={() => queryClient.invalidateQueries({ queryKey: ['inventory', 'items'] })}
+          transformRow={(row, headers) => {
+            const map: Record<string, string> = {};
+            headers.forEach((h, i) => { map[h.toLowerCase().trim()] = row[i]?.trim() || ''; });
+            return {
+              itemName: map['itemname (or sku)'] || map['itemname'] || '',
+              quantity: map['quantity'] || '0',
+              unitCost: map['unitcost (ngn)'] || map['unitcost'] || '0',
+              total: map['total (ngn)'] || map['total'] || '0',
+            };
+          }}
+        />
+      )}
+
+      {openStockModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-semibold text-slate-900">Record Opening Stock</h2>
+              <button onClick={() => setOpenStockModal(false)} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
+            </div>
+            {stockSuccess && (
+              <div className="flex items-center gap-2 px-3 py-2 mb-3 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg">
+                <CheckCircle2 size={14} /> {stockSuccess}
+              </div>
+            )}
+            {stockError && (
+              <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2 mb-3">{stockError}</div>
+            )}
+            <form onSubmit={(e) => { e.preventDefault(); recordStockMutation.mutate(stockForm); }} className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Item</label>
+                <select
+                  value={stockForm.itemId}
+                  onChange={(e) => setStockForm({ ...stockForm, itemId: e.target.value })}
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                >
+                  <option value="">Select item...</option>
+                  {(items || []).filter(i => i.trackInventory).map(i => (
+                    <option key={i.id} value={i.id}>{i.name} ({i.sku || 'no SKU'})</option>
+                  ))}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Quantity</label>
+                  <input type="number" min="1" value={stockForm.quantity} onChange={(e) => setStockForm({ ...stockForm, quantity: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Unit Cost (₦)</label>
+                  <input type="number" step="0.01" min="0" value={stockForm.unitCost} onChange={(e) => setStockForm({ ...stockForm, unitCost: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button type="button" onClick={() => setOpenStockModal(false)}
+                  className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
+                <button type="submit" disabled={recordStockMutation.isPending || !stockForm.itemId || !stockForm.quantity}
+                  className="px-4 py-2 text-sm font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 disabled:opacity-50">
+                  {recordStockMutation.isPending ? 'Saving...' : 'Record Stock'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
