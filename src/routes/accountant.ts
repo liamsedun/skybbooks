@@ -194,7 +194,7 @@ router.post('/accounts/import-csv', async (req: AuthenticatedRequest, res: Respo
 
       const [account] = await db
         .insert(accounts)
-        .values({ orgId, code, name, type, subType, parentId, description, isActive, isSystem: false, openingBalance: openingBalance.toString() })
+        .values({ orgId, code, name, type, subType, parentId, description, isActive, isSystem: false, openingBalance })
         .returning();
 
       created.push(account);
