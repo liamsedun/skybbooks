@@ -115,48 +115,51 @@ export function FixedAssetsPage() {
         <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>
       ) : (
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-xs">
             <thead className="bg-slate-50">
               <tr>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Asset #</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Name</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Category</th>
-                <th className="text-right px-4 py-3 font-semibold text-slate-600">Cost</th>
-                <th className="text-right px-4 py-3 font-semibold text-slate-600">Depreciation</th>
-                <th className="text-right px-4 py-3 font-semibold text-slate-600">Book Value</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Status</th>
-                <th className="text-right px-4 py-3 font-semibold text-slate-600">Actions</th>
+                <th className="text-left px-3 py-2 font-semibold text-slate-600">Asset #</th>
+                <th className="text-left px-3 py-2 font-semibold text-slate-600">Name</th>
+                <th className="text-left px-3 py-2 font-semibold text-slate-600">Category</th>
+                <th className="text-right px-3 py-2 font-semibold text-slate-600">Cost</th>
+                <th className="text-right px-3 py-2 font-semibold text-slate-600">Depreciation</th>
+                <th className="text-right px-3 py-2 font-semibold text-slate-600">Residual</th>
+                <th className="text-right px-3 py-2 font-semibold text-slate-600">Book Value</th>
+                <th className="text-left px-3 py-2 font-semibold text-slate-600">Status</th>
+                <th className="text-right px-3 py-2 font-semibold text-slate-600">Actions</th>
               </tr>
             </thead>
             <tbody>
               {(Array.isArray(assets) ? assets : []).map((asset: any) => (
                 <tr key={asset.id} className="border-t border-slate-100 hover:bg-slate-50">
-                  <td className="px-4 py-3 font-mono font-medium text-slate-800">{asset.assetNumber}</td>
-                  <td className="px-4 py-3 text-slate-800">{asset.name}</td>
-                  <td className="px-4 py-3 text-slate-600">{asset.category || '—'}</td>
-                  <td className="px-4 py-3 text-right text-slate-600">{fmtNaira(asset.purchaseCost)}</td>
-                  <td className="px-4 py-3 text-right text-slate-600">{fmtNaira(asset.accumulatedDepreciation)}</td>
-                  <td className="px-4 py-3 text-right font-semibold text-slate-800">{fmtNaira(asset.bookValue)}</td>
-                  <td className="px-4 py-3"><span className={`inline-block px-2 py-0.5 text-xs font-semibold rounded-full ${STATUS_COLORS[asset.status] || 'bg-slate-100 text-slate-600'}`}>{STATUS_LABELS[asset.status] || asset.status}</span></td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-3 py-2 font-mono font-medium text-slate-800">{asset.assetNumber}</td>
+                  <td className="px-3 py-2 text-slate-800">{asset.name}</td>
+                  <td className="px-3 py-2 text-slate-600">{asset.category || '—'}</td>
+                  <td className="px-3 py-2 text-right text-slate-600">{fmtNaira(asset.purchaseCost)}</td>
+                  <td className="px-3 py-2 text-right text-slate-600">{fmtNaira(asset.accumulatedDepreciation)}</td>
+                  <td className="px-3 py-2 text-right text-slate-600">{fmtNaira(asset.residualValue)}</td>
+                  <td className="px-3 py-2 text-right font-semibold text-slate-800">{fmtNaira(asset.bookValue)}</td>
+                  <td className="px-3 py-2"><span className={`inline-block px-2 py-0.5 text-[10px] font-semibold rounded-full ${STATUS_COLORS[asset.status] || 'bg-slate-100 text-slate-600'}`}>{STATUS_LABELS[asset.status] || asset.status}</span></td>
+                  <td className="px-3 py-2 text-right">
                     <div className="flex justify-end gap-2">
-                      <button onClick={() => setViewId(asset.id)} className="text-blue-600 hover:text-blue-800"><Eye className="w-4 h-4" /></button>
-                      <button onClick={() => deleteMutation.mutate(asset.id)} className="text-red-500 hover:text-red-700"><Trash2 className="w-4 h-4" /></button>
+                      <button onClick={() => setViewId(asset.id)} className="text-blue-600 hover:text-blue-800"><Eye className="w-3.5 h-3.5" /></button>
+                      <button onClick={() => deleteMutation.mutate(asset.id)} className="text-red-500 hover:text-red-700"><Trash2 className="w-3.5 h-3.5" /></button>
                     </div>
                   </td>
                 </tr>
               ))}
               {(!assets || assets.length === 0) && (
-                <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-400">No fixed assets recorded.</td></tr>
+                <tr><td colSpan={9} className="px-3 py-8 text-center text-slate-400">No fixed assets recorded.</td></tr>
               )}
             </tbody>
             {assets && assets.length > 0 && (
             <tfoot>
               <tr className="border-t-2 border-slate-300 bg-slate-50">
-                <td colSpan={3} className="px-4 py-3 text-sm font-bold text-slate-800">Total</td>
-                <td className="px-4 py-3 text-right font-bold text-slate-800">{fmtNaira(assets.reduce((s: number, a: any) => s + a.purchaseCost, 0))}</td>
-                <td className="px-4 py-3 text-right font-bold text-slate-800">{fmtNaira(assets.reduce((s: number, a: any) => s + a.accumulatedDepreciation, 0))}</td>
-                <td className="px-4 py-3 text-right font-bold text-slate-800">{fmtNaira(assets.reduce((s: number, a: any) => s + a.bookValue, 0))}</td>
+                <td colSpan={3} className="px-3 py-2 text-xs font-bold text-slate-800">Total</td>
+                <td className="px-3 py-2 text-right font-bold text-slate-800">{fmtNaira(assets.reduce((s: number, a: any) => s + a.purchaseCost, 0))}</td>
+                <td className="px-3 py-2 text-right font-bold text-slate-800">{fmtNaira(assets.reduce((s: number, a: any) => s + a.accumulatedDepreciation, 0))}</td>
+                <td className="px-3 py-2 text-right font-bold text-slate-800">{fmtNaira(assets.reduce((s: number, a: any) => s + a.residualValue, 0))}</td>
+                <td className="px-3 py-2 text-right font-bold text-slate-800">{fmtNaira(assets.reduce((s: number, a: any) => s + a.bookValue, 0))}</td>
                 <td colSpan={2}></td>
               </tr>
             </tfoot>
