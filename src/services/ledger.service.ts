@@ -4,7 +4,7 @@
  */
 
 import { eq, and, lte, gte, sql } from 'drizzle-orm';
-import { db, accounts, journalEntries, journalLines, bankAccounts, fixedAssets, contacts } from '../db/schema';
+import { db, accounts, journalEntries, journalLines, bankAccounts, fixedAssets, contacts, inventoryLots } from '../db/schema';
 import { AppError } from '../lib/errors';
 import { toNgn } from './currency.service';
 
@@ -341,7 +341,7 @@ export async function getTrialBalance(
     .where(eq(journalEntries.orgId, orgId));
 
   // 3. Load module balances
-  const [faByAccount, bankByAccount, customerBal, vendorBal] = await Promise.all([
+  const [faByAccount, bankByAccount, customerBal, vendorBal, invBalance] = await Promise.all([
     db.select({
       accountId: fixedAssets.accountId,
       totalCost: sql<number>`coalesce(sum(${fixedAssets.purchaseCost}), 0)`,
@@ -354,7 +354,11 @@ export async function getTrialBalance(
     db.select({ totalBalance: sql<number>`coalesce(sum(${contacts.balance}), 0)` })
       .from(contacts).where(and(eq(contacts.orgId, orgId), eq(contacts.type, 'customer'))),
     db.select({ totalBalance: sql<number>`coalesce(sum(${contacts.balance}), 0)` })
-      .from(contacts).where(and(eq(contacts.orgId, orgId), eq(contacts.type, 'vendor')))
+      .from(contacts).where(and(eq(contacts.orgId, orgId), eq(contacts.type, 'vendor'))),
+    db.select({
+      totalValue: sql<number>`coalesce(sum(${inventoryLots.quantity}::numeric * ${inventoryLots.costPerUnit}), 0)`
+    }).from(inventoryLots)
+      .where(and(eq(inventoryLots.orgId, orgId), lte(inventoryLots.receivedDate, endDate)))
   ]);
 
   const faMap = new Map<string, { totalCost: number; totalDepr: number }>();
@@ -365,10 +369,12 @@ export async function getTrialBalance(
 
   const customerOB = Number(customerBal[0]?.totalBalance || 0);
   const vendorOB = Number(vendorBal[0]?.totalBalance || 0);
+  const inventoryValue = Number(invBalance[0]?.totalValue || 0);
 
-  // Identify single AR and AP accounts
+  // Identify single AR, AP, and Inventory accounts
   const arAccount = orgAccounts.find(a => a.type === 'asset' && (a.name.toLowerCase().includes('receivable') || a.code.startsWith('12')));
   const apAccount = orgAccounts.find(a => a.type === 'liability' && (a.name.toLowerCase().includes('payable') || a.code.startsWith('20')));
+  const invAccount = orgAccounts.find(a => a.code.startsWith('102') && !a.name.toLowerCase().includes('contra'));
 
   const resultList: TrialBalanceRow[] = [];
   let suspenseDr = 0;
@@ -411,6 +417,14 @@ export async function getTrialBalance(
     if (bankBal !== undefined && acct.type === 'asset') {
       const jeBalance = (openingDebits + periodDebits) - (openingCredits + periodCredits);
       const diff = bankBal - jeBalance;
+      if (diff > 0) { periodDebits += diff; suspenseCr += diff; }
+      else if (diff < 0) { periodCredits += Math.abs(diff); suspenseDr += Math.abs(diff); }
+    }
+
+    // Inventory: force balance to stock valuation
+    if (inventoryValue > 0 && invAccount && acct.id === invAccount.id) {
+      const jeBalance = (openingDebits + periodDebits) - (openingCredits + periodCredits);
+      const diff = inventoryValue - jeBalance;
       if (diff > 0) { periodDebits += diff; suspenseCr += diff; }
       else if (diff < 0) { periodCredits += Math.abs(diff); suspenseDr += Math.abs(diff); }
     }
