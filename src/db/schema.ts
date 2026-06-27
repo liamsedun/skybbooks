@@ -150,7 +150,8 @@ export const payrollRunStatusEnum = pgEnum('payroll_run_status', [
 
 export const depreciationMethodEnum = pgEnum('depreciation_method', [
   'straight_line',
-  'declining_balance'
+  'declining_balance',
+  'no_depreciation'
 ]);
 
 export const fixedAssetStatusEnum = pgEnum('fixed_asset_status', [

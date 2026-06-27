@@ -63,6 +63,14 @@ export async function runMigration() {
     `);
     // Add opening_balance column to accounts
     await db.execute(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS opening_balance bigint DEFAULT 0 NOT NULL`);
+    // Add no_depreciation to depreciation_method enum
+    await db.execute(`
+      DO $$ BEGIN
+        ALTER TYPE depreciation_method ADD VALUE 'no_depreciation';
+      EXCEPTION
+        WHEN duplicate_object THEN NULL;
+      END $$;
+    `);
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema push:', err);

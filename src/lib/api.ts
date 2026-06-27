@@ -717,6 +717,14 @@ export const fixedAssetsApi = {
     const res = await api.delete(`/fixed-assets/${id}`);
     return res.data;
   },
+  importAssetsCsv: async (data: { csvData: string }) => {
+    const res = await api.post('/fixed-assets/import-csv', data);
+    return res.data;
+  },
+  exportAssetsCsv: async () => {
+    const res = await api.get('/fixed-assets/export-csv', { responseType: 'blob' });
+    return res.data;
+  },
 };
 
 // 7e. Audit Log Endpoints

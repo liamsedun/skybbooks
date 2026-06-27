@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fixedAssetsApi, accountantApi } from '../../lib/api';
 import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
-import { Plus, X, Loader2, AlertCircle, CheckCircle2, Trash2, Eye } from 'lucide-react';
+import { Plus, X, Loader2, AlertCircle, CheckCircle2, Trash2, Eye, Download, Upload, FileText, Printer } from 'lucide-react';
+import { downloadCsv } from '../../lib/csvTemplates';
 
 function fmtNaira(v: number): string {
   return `₦${(v / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
@@ -14,12 +15,17 @@ function fmtDate(d: string): string {
 
 const STATUS_LABELS: Record<string, string> = { active: 'Active', disposed: 'Disposed', fully_depreciated: 'Fully Depreciated' };
 const STATUS_COLORS: Record<string, string> = { active: 'bg-emerald-100 text-emerald-700', disposed: 'bg-red-100 text-red-700', fully_depreciated: 'bg-slate-100 text-slate-600' };
-const DEPR_LABELS: Record<string, string> = { straight_line: 'Straight Line', declining_balance: 'Declining Balance' };
+const DEPR_LABELS: Record<string, string> = { straight_line: 'Straight Line', declining_balance: 'Declining Balance', no_depreciation: 'No Depreciation' };
 
 export function FixedAssetsPage() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [viewId, setViewId] = useState<string | null>(null);
+  const [showImport, setShowImport] = useState(false);
+  const [csvText, setCsvText] = useState('');
+  const [importMsg, setImportMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [importing, setImporting] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const { data: assets, isLoading } = useQuery({
     queryKey: ['fixed-assets'],
@@ -31,11 +37,54 @@ export function FixedAssetsPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['fixed-assets'] }),
   });
 
+  const handleExportCsv = async () => {
+    try {
+      const blob = await fixedAssetsApi.exportAssetsCsv();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'fixed_assets.csv'; a.click();
+      URL.revokeObjectURL(url);
+    } catch { /* ignore */ }
+  };
+
+  const handlePrintPdf = () => window.print();
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => setCsvText(ev.target?.result as string || '');
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleImport = async () => {
+    if (!csvText.trim()) return;
+    setImporting(true);
+    setImportMsg(null);
+    try {
+      const res = await fixedAssetsApi.importAssetsCsv({ csvData: csvText });
+      setImportMsg({ type: 'success', text: res.message || 'Assets imported successfully.' });
+      setCsvText('');
+      queryClient.invalidateQueries({ queryKey: ['fixed-assets'] });
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Import failed.';
+      const errors = err?.response?.data?.errors;
+      setImportMsg({ type: 'error', text: errors ? `${msg}: ${errors.join(', ')}` : msg });
+    } finally { setImporting(false); }
+  };
+
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-slate-900">Fixed Assets</h1>
-        <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700"><Plus className="w-4 h-4" /> New Asset</button>
+        <div className="flex gap-2">
+          <button onClick={() => downloadCsv('fixed-assets-template.csv', ['name', 'purchase date (YYYY-MM-DD)', 'purchase cost (NGN)', 'depreciation method', 'useful life (months)', 'residual value (NGN)', 'category', 'account code'], ['Office Building', '2024-01-15', '50000000', 'No Depreciation', '0', '0', 'Buildings', '200200'])} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-slate-500 rounded-lg hover:bg-slate-600"><FileText className="w-3.5 h-3.5" /> Sample CSV</button>
+          <button onClick={() => setShowImport(true)} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700"><Upload className="w-3.5 h-3.5" /> Import CSV</button>
+          <button onClick={handleExportCsv} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700"><Download className="w-3.5 h-3.5" /> CSV</button>
+          <button onClick={handlePrintPdf} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700"><Printer className="w-3.5 h-3.5" /> PDF</button>
+          <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700"><Plus className="w-4 h-4" /> New Asset</button>
+        </div>
       </div>
 
       {showForm ? (
@@ -84,6 +133,26 @@ export function FixedAssetsPage() {
           </table>
         </div>
       )}
+
+      {showImport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowImport(false)}>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 p-6 space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-slate-900">Import Fixed Assets</h2>
+              <button onClick={() => setShowImport(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+            </div>
+            <p className="text-sm text-slate-500">Upload a CSV file exported from your previous accounting system. Required columns: <code className="text-xs bg-slate-100 px-1 rounded">name</code>, <code className="text-xs bg-slate-100 px-1 rounded">purchase cost (NGN)</code>. Optional: <code className="text-xs bg-slate-100 px-1 rounded">purchase date</code>, <code className="text-xs bg-slate-100 px-1 rounded">depreciation method</code>, <code className="text-xs bg-slate-100 px-1 rounded">useful life (months)</code>, <code className="text-xs bg-slate-100 px-1 rounded">residual value (NGN)</code>, <code className="text-xs bg-slate-100 px-1 rounded">category</code>, <code className="text-xs bg-slate-100 px-1 rounded">account code</code>.</p>
+            <p className="text-xs text-slate-400">Click "Sample CSV" above to download a template.</p>
+            <input ref={fileRef} type="file" accept=".csv" onChange={handleFileUpload} className="block w-full text-sm text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
+            {csvText && <div className="text-xs text-slate-500 bg-slate-50 rounded p-2 max-h-24 overflow-auto">{csvText.slice(0, 500)}{csvText.length > 500 ? '...' : ''}</div>}
+            {importMsg && <div className={`text-sm p-2 rounded ${importMsg.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>{importMsg.text}</div>}
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setShowImport(false)} className="px-4 py-2 text-sm border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50">Cancel</button>
+              <button onClick={handleImport} disabled={!csvText.trim() || importing} className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50">{importing ? 'Importing...' : 'Import'}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -125,7 +194,7 @@ function AssetForm({ onDone }: { onDone: () => void }) {
   const [category, setCategory] = useState('');
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split('T')[0]);
   const [purchaseCost, setPurchaseCost] = useState('');
-  const [depreciationMethod, setDepreciationMethod] = useState<'straight_line' | 'declining_balance'>('straight_line');
+  const [depreciationMethod, setDepreciationMethod] = useState<'straight_line' | 'declining_balance' | 'no_depreciation'>('straight_line');
   const [usefulLifeMonths, setUsefulLifeMonths] = useState('60');
   const [residualValue, setResidualValue] = useState('0');
   const [accountId, setAccountId] = useState('');
@@ -175,6 +244,7 @@ function AssetForm({ onDone }: { onDone: () => void }) {
           <select value={depreciationMethod} onChange={e => setDepreciationMethod(e.target.value as any)} className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm mt-1">
             <option value="straight_line">Straight Line</option>
             <option value="declining_balance">Declining Balance</option>
+            <option value="no_depreciation">No Depreciation (e.g. Land)</option>
           </select>
         </div>
         <div><label className="text-xs font-semibold text-slate-500 uppercase">Useful Life (months)</label><input type="number" value={usefulLifeMonths} onChange={e => setUsefulLifeMonths(e.target.value)} className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm mt-1" /></div>

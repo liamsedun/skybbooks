@@ -153,4 +153,9 @@ export const CSV_TEMPLATES: Record<string, { headers: string[]; sample: string[]
     headers: ['code', 'name', 'type', 'sub-type', 'parent code', 'description', 'active', 'opening balance (NGN)'],
     sample: ['100000', 'Cash and Cash Equivalents', 'asset', 'Current Assets', '', '', 'Yes', '5000000'],
   },
+  fixedAssets: {
+    filename: 'fixed-assets-template.csv',
+    headers: ['name', 'purchase date (YYYY-MM-DD)', 'purchase cost (NGN)', 'depreciation method', 'useful life (months)', 'residual value (NGN)', 'category', 'account code'],
+    sample: ['Office Building', '2024-01-15', '50000000', 'No Depreciation', '0', '0', 'Buildings', '200200'],
+  },
 };
