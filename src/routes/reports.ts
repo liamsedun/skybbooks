@@ -7,7 +7,7 @@ import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
 import { AppError } from '../lib/errors';
-import { db, accounts, journalEntries, journalLines } from '../db/schema';
+import { db, accounts, journalEntries, journalLines, fixedAssets, bankAccounts, contacts } from '../db/schema';
 import { eq, and, asc, sql } from 'drizzle-orm';
 import {
   getTrialBalance,
@@ -68,7 +68,7 @@ const generalLedgerQuerySchema = z.object({
   accountId: z.string().uuid('Invalid account ID.'),
   startDate: z.string().transform((val) => new Date(val)),
   endDate: z.string().transform((val) => new Date(val)),
-  format: z.enum(['pdf', 'excel']).default('excel')
+  format: z.enum(['pdf', 'excel', 'json']).default('excel')
 });
 
 const agedReportQuerySchema = z.object({
@@ -451,6 +451,35 @@ router.get(
 
       if (!acc) {
         throw new AppError('Ledger account structure was not found.', 404);
+      }
+
+      if (format === 'json') {
+        const lines = await db
+          .select({
+            date: journalEntries.date,
+            entryNumber: journalEntries.entryNumber,
+            description: journalEntries.description,
+            debit: journalLines.debitAmount,
+            credit: journalLines.creditAmount,
+            currency: journalLines.currency,
+            fxRate: journalLines.fxRate,
+            source: journalEntries.source,
+          })
+          .from(journalLines)
+          .innerJoin(journalEntries, eq(journalLines.entryId, journalEntries.id))
+          .where(and(
+            eq(journalLines.accountId, accountId),
+            eq(journalEntries.orgId, orgId),
+            gte(journalEntries.date, startDate),
+            lte(journalEntries.date, endDate)
+          ))
+          .orderBy(journalEntries.date, journalEntries.entryNumber);
+
+        return res.status(200).json({
+          success: true,
+          account: acc,
+          lines,
+        });
       }
 
       if (format === 'excel') {

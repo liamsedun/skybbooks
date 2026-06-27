@@ -39,6 +39,7 @@ export function TrialBalancePage() {
   const [importMsg, setImportMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [importing, setImporting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [drillDown, setDrillDown] = useState<any | null>(null);
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['report', 'trial-balance', sDate, eDate],
@@ -153,7 +154,7 @@ export function TrialBalancePage() {
             </thead>
             <tbody>
               {rows.map((row: any, i: number) => (
-                <tr key={i} className="border-t border-slate-100 hover:bg-slate-50">
+                <tr key={i} className="border-t border-slate-100 hover:bg-slate-50 cursor-pointer" onClick={() => setDrillDown(row)}>
                   <td className="px-4 py-3 text-slate-600 font-mono">{row.accountCode || row.code || '—'}</td>
                   <td className="px-4 py-3 font-medium text-slate-800">{row.accountName || row.name || `Account ${i + 1}`}</td>
                   <td className="px-4 py-3 text-right text-slate-500 capitalize">{row.accountType || row.type || '—'}</td>
@@ -191,6 +192,8 @@ export function TrialBalancePage() {
           </div>
         </div>
       )}
+
+      {drillDown && <AccountDrilldownModal account={drillDown} sDate={sDate} eDate={eDate} onClose={() => setDrillDown(null)} />}
     </div>
   );
 }
@@ -388,6 +391,76 @@ function ReportTable({ data, reportType }: { data: any; reportType: ReportType }
           )}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function AccountDrilldownModal({ account, sDate, eDate, onClose }: { account: any; sDate: string; eDate: string; onClose: () => void }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ['general-ledger', account.accountId, sDate, eDate],
+    queryFn: async () => {
+      const res = await reportsApi.getGeneralLedger({ accountId: account.accountId, startDate: sDate, endDate: eDate, format: 'json' });
+      return res;
+    },
+    enabled: !!account.accountId && account.accountId !== 'suspense',
+  });
+
+  const lines = data?.lines || [];
+  const totalDr = lines.reduce((s: number, l: any) => s + Number(l.debit), 0);
+  const totalCr = lines.reduce((s: number, l: any) => s + Number(l.credit), 0);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl mx-4 max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-4 border-b border-slate-200">
+          <div>
+            <h2 className="text-lg font-bold text-slate-900">{account.accountName || account.name}</h2>
+            <p className="text-xs text-slate-500">{account.accountCode || account.code} &middot; {account.accountType || account.type} &middot; Bal: {fmtNaira((account.closingDebit || account.debit || 0) - (account.closingCredit || account.credit || 0))}</p>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+        </div>
+        <div className="overflow-auto flex-1 p-4">
+          {account.accountId === 'suspense' ? (
+            <p className="text-sm text-slate-500 p-4">This is a system-generated suspense account balancing unreconciled module differences. No journal entries back it.</p>
+          ) : isLoading ? (
+            <div className="flex items-center justify-center py-10"><Loader2 className="w-5 h-5 animate-spin text-slate-400" /></div>
+          ) : lines.length === 0 ? (
+            <p className="text-sm text-slate-500 p-4">No journal entries in this period. The balance may come from module data (fixed assets, bank accounts, or contacts) or opening balances.</p>
+          ) : (
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-slate-200">
+                  <th className="text-left px-3 py-2 font-semibold text-slate-600">Date</th>
+                  <th className="text-left px-3 py-2 font-semibold text-slate-600">Entry</th>
+                  <th className="text-left px-3 py-2 font-semibold text-slate-600">Description</th>
+                  <th className="text-left px-3 py-2 font-semibold text-slate-600">Source</th>
+                  <th className="text-right px-3 py-2 font-semibold text-slate-600">Debit</th>
+                  <th className="text-right px-3 py-2 font-semibold text-slate-600">Credit</th>
+                </tr>
+              </thead>
+              <tbody>
+                {lines.map((l: any, i: number) => (
+                  <tr key={i} className="border-b border-slate-100">
+                    <td className="px-3 py-2 text-slate-600">{new Date(l.date).toLocaleDateString('en-GB')}</td>
+                    <td className="px-3 py-2 text-slate-800 font-mono">{l.entryNumber}</td>
+                    <td className="px-3 py-2 text-slate-600 max-w-[200px] truncate">{l.description || '—'}</td>
+                    <td className="px-3 py-2"><span className="inline-block px-1.5 py-0.5 text-[10px] font-semibold bg-slate-100 text-slate-600 rounded">{l.source}</span></td>
+                    <td className="px-3 py-2 text-right text-slate-600">{l.debit > 0 ? fmtNaira(l.debit) : '—'}</td>
+                    <td className="px-3 py-2 text-right text-slate-600">{l.credit > 0 ? fmtNaira(l.credit) : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-slate-300 bg-slate-50 font-semibold">
+                  <td colSpan={4} className="px-3 py-2 text-slate-800">Total</td>
+                  <td className="px-3 py-2 text-right text-slate-800">{fmtNaira(totalDr)}</td>
+                  <td className="px-3 py-2 text-right text-slate-800">{fmtNaira(totalCr)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

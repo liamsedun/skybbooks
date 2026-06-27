@@ -765,7 +765,7 @@ export const reportsApi = {
     const res = await api.get('/reports/cash-flow', { params });
     return res.data;
   },
-  getGeneralLedger: async (params: { accountId: string; startDate: string; endDate: string; format?: 'pdf' | 'excel' }) => {
+  getGeneralLedger: async (params: { accountId: string; startDate: string; endDate: string; format?: 'pdf' | 'excel' | 'json' }) => {
     const res = await api.get('/reports/general-ledger', { params });
     return res.data;
   },
