@@ -17,6 +17,7 @@ import {
 } from '../db/schema';
 import { AppError } from '../lib/errors';
 import { createJournalEntry, reverseJournalEntry } from './ledger.service';
+import { populateFxRate } from './currency.service';
 
 // ==========================================
 // HELPER FUNCTIONS
@@ -156,7 +157,7 @@ export async function recordPaymentReceived(input: any, createdBy: string): Prom
         date: new Date(input.date || new Date()),
         amount,
         currency: input.currency || 'NGN',
-        fxRate: input.fxRate ? String(input.fxRate) : '1.00000000',
+        fxRate: input.fxRate ? String(input.fxRate) : await populateFxRate(orgId, input.currency || 'NGN', input.date),
         paymentMethod: input.paymentMethod || 'bank_transfer',
         reference: input.reference || null,
         accountId: input.accountId, // Selected asset bank account

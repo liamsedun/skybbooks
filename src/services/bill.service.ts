@@ -18,6 +18,7 @@ import {
 } from '../db/schema';
 import { AppError } from '../lib/errors';
 import { createJournalEntry, reverseJournalEntry } from './ledger.service';
+import { populateFxRate } from './currency.service';
 
 // ==========================================
 // 1. HELPER FUNCTIONS & ACCOUNTS RESOLUTION
@@ -260,7 +261,7 @@ export async function createBill(input: any, createdBy: string): Promise<any> {
         dueDate: input.dueDate ? new Date(input.dueDate) : new Date(),
         status: 'draft', // always starts as draft
         currency: input.currency || 'NGN',
-        fxRate: String(input.fxRate || 1.0),
+        fxRate: input.fxRate ? String(input.fxRate) : await populateFxRate(orgId, input.currency || 'NGN', input.date),
         subtotal,
         taxAmount: totalTax,
         total,

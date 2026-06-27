@@ -16,6 +16,7 @@ import {
 } from '../db/schema';
 import { AppError } from '../lib/errors';
 import { createJournalEntry, reverseJournalEntry } from './ledger.service';
+import { populateFxRate } from './currency.service';
 
 // ==========================================
 // 1. HELPER FUNCTIONS & ACCOUNTS RESOLUTION
@@ -269,7 +270,7 @@ export async function createInvoice(input: any, createdBy: string): Promise<any>
         dueDate: new Date(input.dueDate || new Date()),
         status: input.status || 'draft',
         currency: input.currency || 'NGN',
-        fxRate: input.fxRate ? String(input.fxRate) : '1.00000000',
+        fxRate: input.fxRate ? String(input.fxRate) : await populateFxRate(orgId, input.currency || 'NGN', input.date),
         subtotal,
         discountAmount: totalDiscount,
         taxAmount: totalTax,

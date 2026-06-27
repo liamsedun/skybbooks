@@ -6,6 +6,7 @@
 import { eq, and, lte, gte, sql } from 'drizzle-orm';
 import { db, accounts, journalEntries, journalLines, bankAccounts } from '../db/schema';
 import { AppError } from '../lib/errors';
+import { toNgn } from './currency.service';
 
 // ==========================================
 // 1. TYPES EXPORT DEFINITIONS
@@ -331,7 +332,9 @@ export async function getTrialBalance(
       accountId: journalLines.accountId,
       date: journalEntries.date,
       debitAmount: journalLines.debitAmount,
-      creditAmount: journalLines.creditAmount
+      creditAmount: journalLines.creditAmount,
+      currency: journalLines.currency,
+      fxRate: journalLines.fxRate
     })
     .from(journalLines)
     .innerJoin(journalEntries, eq(journalLines.entryId, journalEntries.id))
@@ -349,8 +352,8 @@ export async function getTrialBalance(
 
     for (const line of matchedLines) {
       const lineDate = new Date(line.date);
-      const deb = line.debitAmount;
-      const cred = line.creditAmount;
+      const deb = line.currency && line.currency !== 'NGN' ? toNgn(line.debitAmount, line.fxRate) : line.debitAmount;
+      const cred = line.currency && line.currency !== 'NGN' ? toNgn(line.creditAmount, line.fxRate) : line.creditAmount;
 
       if (lineDate < startDate) {
         openingDebits += deb;
@@ -436,7 +439,9 @@ export async function getIncomeStatement(
     .select({
       accountId: journalLines.accountId,
       debitAmount: journalLines.debitAmount,
-      creditAmount: journalLines.creditAmount
+      creditAmount: journalLines.creditAmount,
+      currency: journalLines.currency,
+      fxRate: journalLines.fxRate
     })
     .from(journalLines)
     .innerJoin(journalEntries, eq(journalLines.entryId, journalEntries.id))
@@ -458,8 +463,8 @@ export async function getIncomeStatement(
 
   for (const acct of orgAccounts) {
     const matchedLines = records.filter((r) => r.accountId === acct.id);
-    const drSum = matchedLines.reduce((sum, curr) => sum + curr.debitAmount, 0);
-    const crSum = matchedLines.reduce((sum, curr) => sum + curr.creditAmount, 0);
+    const drSum = matchedLines.reduce((sum, curr) => sum + (curr.currency && curr.currency !== 'NGN' ? toNgn(curr.debitAmount, curr.fxRate) : curr.debitAmount), 0);
+    const crSum = matchedLines.reduce((sum, curr) => sum + (curr.currency && curr.currency !== 'NGN' ? toNgn(curr.creditAmount, curr.fxRate) : curr.creditAmount), 0);
 
     if (acct.type === 'revenue') {
       const balance = crSum - drSum; // Cr increases Revenue
@@ -544,7 +549,9 @@ export async function getBalanceSheet(
     .select({
       accountId: journalLines.accountId,
       debitAmount: journalLines.debitAmount,
-      creditAmount: journalLines.creditAmount
+      creditAmount: journalLines.creditAmount,
+      currency: journalLines.currency,
+      fxRate: journalLines.fxRate
     })
     .from(journalLines)
     .innerJoin(journalEntries, eq(journalLines.entryId, journalEntries.id))
@@ -566,8 +573,8 @@ export async function getBalanceSheet(
 
   for (const acct of orgAccounts) {
     const matched = records.filter((r) => r.accountId === acct.id);
-    const dr = matched.reduce((sum, curr) => sum + curr.debitAmount, 0);
-    const cr = matched.reduce((sum, curr) => sum + curr.creditAmount, 0);
+    const dr = matched.reduce((sum, curr) => sum + (curr.currency && curr.currency !== 'NGN' ? toNgn(curr.debitAmount, curr.fxRate) : curr.debitAmount), 0);
+    const cr = matched.reduce((sum, curr) => sum + (curr.currency && curr.currency !== 'NGN' ? toNgn(curr.creditAmount, curr.fxRate) : curr.creditAmount), 0);
 
     const item = {
       accountId: acct.id,
@@ -694,7 +701,9 @@ export async function getCashFlowStatement(
     .select({
       accountId: journalLines.accountId,
       debitAmount: journalLines.debitAmount,
-      creditAmount: journalLines.creditAmount
+      creditAmount: journalLines.creditAmount,
+      currency: journalLines.currency,
+      fxRate: journalLines.fxRate
     })
     .from(journalLines)
     .innerJoin(journalEntries, eq(journalLines.entryId, journalEntries.id))
@@ -719,8 +728,8 @@ export async function getCashFlowStatement(
 
   for (const acct of nonCashAccountsList) {
     const matched = records.filter((r) => r.accountId === acct.id);
-    const dr = matched.reduce((sum, curr) => sum + curr.debitAmount, 0);
-    const cr = matched.reduce((sum, curr) => sum + curr.creditAmount, 0);
+    const dr = matched.reduce((sum, curr) => sum + (curr.currency && curr.currency !== 'NGN' ? toNgn(curr.debitAmount, curr.fxRate) : curr.debitAmount), 0);
+    const cr = matched.reduce((sum, curr) => sum + (curr.currency && curr.currency !== 'NGN' ? toNgn(curr.creditAmount, curr.fxRate) : curr.creditAmount), 0);
 
     const netPeriodDebitDiff = dr - cr; 
     const netPeriodCreditDiff = cr - dr;
