@@ -318,7 +318,11 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
         {/* Brand visual header area */}
         <div className="h-16 px-5 border-b border-slate-50 flex items-center justify-between">
           <div className="flex items-center space-x-3 select-none">
-            <SkyhouseLogo className="w-9 h-9 drop-shadow-sm shrink-0" />
+            {organisation?.logoUrl ? (
+              <img src={organisation.logoUrl} alt="Logo" className="w-9 h-9 rounded-xl object-contain border border-slate-100 bg-white p-1 shrink-0" />
+            ) : (
+              <SkyhouseLogo className="w-9 h-9 drop-shadow-sm shrink-0" />
+            )}
             <div>
               <h2 className="text-sm font-extrabold text-slate-800 uppercase tracking-widest leading-none">SkyBooks</h2>
               <span className="text-[10px] text-slate-400 font-bold tracking-widest font-mono uppercase mt-1 inline-block">Books Engine</span>

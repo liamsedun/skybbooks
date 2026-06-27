@@ -6,15 +6,21 @@
 import React from 'react';
 import { Mail, Phone, Twitter, Linkedin, Facebook, Globe } from 'lucide-react';
 import { SkyhouseLogo } from '../ui/SkyhouseLogo';
+import { useAuth } from '../../hooks/useAuth';
 
 export function Footer() {
+  const { organisation } = useAuth();
   return (
     <footer className="border-t border-slate-100 bg-white/70 backdrop-blur-md mt-16 py-8 px-6 md:px-8" id="corporate-skyhouse-footer">
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
         
         {/* Skyhouse Rebranded Identity Info */}
         <div className="flex items-center space-x-2.5 select-none">
-          <SkyhouseLogo className="w-6 h-6 sm:w-8 sm:h-8 drop-shadow-sm shrink-0" />
+          {organisation?.logoUrl ? (
+            <img src={organisation.logoUrl} alt="Logo" className="w-8 h-8 rounded-lg object-contain border border-slate-100 bg-white p-0.5 shrink-0" />
+          ) : (
+            <SkyhouseLogo className="w-6 h-6 sm:w-8 sm:h-8 drop-shadow-sm shrink-0" />
+          )}
           <div>
             <h4 className="text-xs sm:text-sm font-black text-slate-800 tracking-tight leading-none">SkyBooks</h4>
             <p className="text-[8px] sm:text-[10px] text-slate-400 mt-1 uppercase tracking-wider font-bold">
