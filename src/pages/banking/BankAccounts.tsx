@@ -386,22 +386,22 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                 {/* Upper Body */}
                 <div className="p-5 space-y-4">
                   {/* Account Metadata Row */}
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-2.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
                       <div className={`w-9 h-9 rounded-lg border flex items-center justify-center text-xs font-bold leading-none shrink-0 ${logoColorClass}`}>
                         {account.bankName ? account.bankName.substring(0, 2).toUpperCase() : 'BK'}
                       </div>
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <h3 className="font-sans font-bold text-slate-900 text-xs truncate" title={account.name}>
                           {account.name}
                         </h3>
-                        <p className="font-sans text-[10px] text-slate-400 font-medium">
+                        <p className="font-sans text-[10px] text-slate-400 font-medium truncate" title={`${account.bankName} • ${maskAccountNumber(account.accountNumber)}`}>
                           {account.bankName} • {maskAccountNumber(account.accountNumber)}
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 shrink-0">
                       <button
                         type="button"
                         onClick={() => {
