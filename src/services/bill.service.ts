@@ -11,7 +11,10 @@ import {
   journalLines,
   bills,
   billLines,
-  contacts
+  contacts,
+  items,
+  inventoryLots,
+  inventoryTransactions
 } from '../db/schema';
 import { AppError } from '../lib/errors';
 import { createJournalEntry, reverseJournalEntry } from './ledger.service';
@@ -407,6 +410,46 @@ export async function approveBill(billId: string, userId: string): Promise<any> 
       .set({ journalEntryId: journalId })
       .where(eq(bills.id, billId))
       .returning();
+
+    // 5. Add inventory lots for tracked items on the bill
+    const billLinesData = await tx
+      .select()
+      .from(billLines)
+      .where(eq(billLines.billId, billId));
+
+    for (const bl of billLinesData) {
+      if (!bl.itemId) continue;
+      const [item] = await tx
+        .select()
+        .from(items)
+        .where(eq(items.id, bl.itemId))
+        .limit(1);
+      if (!item || !item.trackInventory) continue;
+      const qty = Number(bl.quantity || 0);
+      if (qty <= 0) continue;
+      const [lot] = await tx
+        .insert(inventoryLots)
+        .values({
+          itemId: bl.itemId,
+          orgId: approvedBill.orgId,
+          quantity: String(qty),
+          costPerUnit: bl.unitPrice,
+          receivedDate: new Date(),
+          reference: finalBill.billNumber
+        })
+        .returning();
+      await tx.insert(inventoryTransactions).values({
+        itemId: bl.itemId,
+        orgId: approvedBill.orgId,
+        lotId: lot.id,
+        type: 'purchase',
+        quantity: String(qty),
+        unitCost: bl.unitPrice,
+        referenceType: 'bill',
+        referenceId: billId,
+        date: new Date()
+      });
+    }
 
     const finalLines = await tx
       .select()

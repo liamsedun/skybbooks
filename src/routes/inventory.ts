@@ -4,9 +4,9 @@
  */
 import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { db, items } from '../db/schema';
+import { db, items, inventoryLots } from '../db/schema';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
 
 const router = Router();
@@ -37,7 +37,24 @@ router.get('/items', async (req: AuthenticatedRequest, res: Response, next: Next
       .from(items)
       .where(eq(items.orgId, orgId))
       .orderBy(items.name);
-    return res.status(200).json(list);
+
+    const stockRows = await db
+      .select({
+        itemId: inventoryLots.itemId,
+        total: sql<number>`coalesce(sum(cast(${inventoryLots.quantity} as integer)), 0)`
+      })
+      .from(inventoryLots)
+      .where(eq(inventoryLots.orgId, orgId))
+      .groupBy(inventoryLots.itemId);
+
+    const stockMap = new Map(stockRows.map(r => [r.itemId, r.total]));
+
+    const listWithStock = list.map(item => ({
+      ...item,
+      stockOnHand: stockMap.get(item.id) || 0
+    }));
+
+    return res.status(200).json(listWithStock);
   } catch (err) {
     return next(err);
   }

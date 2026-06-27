@@ -30,6 +30,7 @@ interface Item {
   inventoryAccountId: string | null;
   trackInventory: boolean;
   reorderPoint: number | null;
+  stockOnHand?: number;
   createdAt: string;
 }
 
@@ -322,7 +323,7 @@ export function ItemsPage() {
                   <td className="py-2.5 pr-3 text-xs text-slate-500">
                     {item.trackInventory ? (
                       <span className="text-emerald-600 font-medium">
-                        Tracked{item.reorderPoint != null ? ` · reorder @ ${item.reorderPoint}` : ''}
+                        {(item.stockOnHand ?? 0)} in stock{item.reorderPoint != null ? ` · reorder @ ${item.reorderPoint}` : ''}
                       </span>
                     ) : (
                       <span className="text-slate-400">Not tracked</span>
