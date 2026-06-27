@@ -137,4 +137,10 @@ export const CSV_TEMPLATES: Record<string, { headers: string[]; sample: string[]
     headers: ['itemName (or SKU)', 'quantity', 'unitCost (NGN)', 'total (NGN)'],
     sample: ['Android Mobile POS', '100', '152500', '15250000'],
   },
+  // Banking module
+  bankOpeningBalances: {
+    filename: 'bank-opening-balances-template.csv',
+    headers: ['bankName (or accountNumber)', 'openingBalance (NGN)'],
+    sample: ['Guaranty Trust Bank • ****6789', '5000000'],
+  },
 };

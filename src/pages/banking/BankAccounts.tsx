@@ -9,6 +9,8 @@ import { bankingApi } from '../../lib/api';
 import { useCurrency } from '../../hooks/useCurrency';
 import { useAuth } from '../../hooks/useAuth';
 import { FlutterwaveConnectButton } from '../../components/banking/FlutterwaveConnectButton';
+import { CsvImportModal } from '../../components/ui/CsvImportModal';
+import { CSV_TEMPLATES, downloadCsv } from '../../lib/csvTemplates';
 import {
   Plus,
   RefreshCw,
@@ -23,7 +25,9 @@ import {
   ArrowRight,
   UploadCloud,
   FileUp,
-  Loader2
+  Loader2,
+  Download,
+  Database
 } from 'lucide-react';
 
 interface BankAccountsProps {
@@ -79,6 +83,13 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+
+  // Opening Balance States
+  const [importOpen, setImportOpen] = useState(false);
+  const [balanceModalOpen, setBalanceModalOpen] = useState(false);
+  const [balanceForm, setBalanceForm] = useState({ bankAccountId: '', openingBalance: '' });
+  const [balanceSuccess, setBalanceSuccess] = useState<string | null>(null);
+  const [balanceError, setBalanceError] = useState<string | null>(null);
 
   // Form states for manual add
   const [manualForm, setManualForm] = useState({
@@ -137,7 +148,22 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
     }
   });
 
-  // 5. Delete/purge bank account mutation
+  // 5. Update balance mutation
+  const updateBalanceMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => bankingApi.updateBalance(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bankAccounts'] });
+      setBalanceForm({ bankAccountId: '', openingBalance: '' });
+      setBalanceError(null);
+      setBalanceSuccess('Opening balance updated.');
+      setTimeout(() => { setBalanceSuccess(null); setBalanceModalOpen(false); }, 2000);
+    },
+    onError: (err: any) => {
+      setBalanceError(err?.response?.data?.message || err.message || 'Failed to update balance.');
+    }
+  });
+
+  // 6. Delete/purge bank account mutation
   const deleteAccountMutation = useMutation({
     mutationFn: bankingApi.deleteAccount,
     onSuccess: () => {
@@ -261,17 +287,33 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
           </p>
         </div>
 
-        <button
-          id="btn-add-bank-account"
-          onClick={() => {
-            setConnectMethod('select');
-            setShowConnectModal(true);
-          }}
-          className="inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg bg-orange-500 text-white hover:bg-orange-600 transition-colors cursor-pointer self-start sm:self-center font-sans shadow-sm"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Connect Account</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setImportOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
+          >
+            <Download size={14} />
+            Import Opening Balances
+          </button>
+          <button
+            onClick={() => { setBalanceForm({ bankAccountId: '', openingBalance: '' }); setBalanceError(null); setBalanceSuccess(null); setBalanceModalOpen(true); }}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
+          >
+            <Database size={14} />
+            Record Opening Balance
+          </button>
+          <button
+            id="btn-add-bank-account"
+            onClick={() => {
+              setConnectMethod('select');
+              setShowConnectModal(true);
+            }}
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg bg-orange-500 text-white hover:bg-orange-600 transition-colors cursor-pointer self-start sm:self-center font-sans shadow-sm"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Connect Account</span>
+          </button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -745,6 +787,75 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                   ) : (
                     'Extract & Sync'
                   )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {importOpen && (
+        <CsvImportModal
+          entity="bankOpeningBalances"
+          endpoint="/banking/accounts/import-opening-balances"
+          onClose={() => setImportOpen(false)}
+          onSuccess={() => queryClient.invalidateQueries({ queryKey: ['bankAccounts'] })}
+          transformRow={(row, headers) => {
+            const map: Record<string, string> = {};
+            headers.forEach((h, i) => { map[h.toLowerCase().trim()] = row[i]?.trim() || ''; });
+            return {
+              bankIdentifier: map['bankname (or accountnumber)'] || map['bankname'] || '',
+              openingBalance: map['openingbalance (ngn)'] || map['openingbalance'] || '0',
+            };
+          }}
+        />
+      )}
+
+      {balanceModalOpen && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-semibold text-slate-900">Record Opening Balance</h2>
+              <button onClick={() => setBalanceModalOpen(false)} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
+            </div>
+            {balanceSuccess && (
+              <div className="flex items-center gap-2 px-3 py-2 mb-3 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg">
+                <CheckCircle2 size={14} /> {balanceSuccess}
+              </div>
+            )}
+            {balanceError && (
+              <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2 mb-3">{balanceError}</div>
+            )}
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const balanceKobo = Math.round(parseFloat(balanceForm.openingBalance || '0') * 100);
+              updateBalanceMutation.mutate({ id: balanceForm.bankAccountId, data: { currentBalance: balanceKobo } });
+            }} className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Bank Account</label>
+                <select
+                  value={balanceForm.bankAccountId}
+                  onChange={(e) => setBalanceForm({ ...balanceForm, bankAccountId: e.target.value })}
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                >
+                  <option value="">Select account...</option>
+                  {bankAccounts.map((acc: any) => (
+                    <option key={acc.id} value={acc.id}>{acc.name} ({acc.bankName} • ****{acc.accountNumber?.slice(-4)})</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Opening Balance (₦)</label>
+                <input type="number" step="0.01" min="0" value={balanceForm.openingBalance}
+                  onChange={(e) => setBalanceForm({ ...balanceForm, openingBalance: e.target.value })}
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button type="button" onClick={() => setBalanceModalOpen(false)}
+                  className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
+                <button type="submit" disabled={updateBalanceMutation.isPending || !balanceForm.bankAccountId || !balanceForm.openingBalance}
+                  className="px-4 py-2 text-sm font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 disabled:opacity-50">
+                  {updateBalanceMutation.isPending ? 'Saving...' : 'Save Balance'}
                 </button>
               </div>
             </form>

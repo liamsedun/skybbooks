@@ -273,6 +273,14 @@ export const bankingApi = {
     const res = await api.patch(`/banking/accounts/${id}`, data);
     return res.data;
   },
+  updateBalance: async (id: string, data: any) => {
+    const res = await api.patch(`/banking/accounts/${id}/balance`, data);
+    return res.data;
+  },
+  importOpeningBalance: async (data: any) => {
+    const res = await api.post('/banking/accounts/import-opening-balances', data);
+    return res.data;
+  },
   deleteAccount: async (id: string) => {
     const res = await api.delete(`/banking/accounts/${id}`);
     return res.data;

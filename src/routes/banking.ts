@@ -238,6 +238,75 @@ router.delete('/accounts/:id', async (req: AuthenticatedRequest, res: Response, 
   }
 });
 
+// PATCH /accounts/:id/balance — set opening balance on an existing bank account
+router.patch('/accounts/:id/balance', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { id } = req.params;
+    const { currentBalance } = z.object({ currentBalance: z.number() }).parse(req.body);
+
+    const [existing] = await db
+      .select()
+      .from(bankAccounts)
+      .where(and(eq(bankAccounts.id, id), eq(bankAccounts.orgId, orgId)))
+      .limit(1);
+
+    if (!existing) {
+      throw new AppError('Bank account not found.', 404);
+    }
+
+    const [updated] = await db
+      .update(bankAccounts)
+      .set({ currentBalance })
+      .where(eq(bankAccounts.id, id))
+      .returning();
+
+    return res.status(200).json(updated);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /accounts/import-opening-balances — single row from CSV import
+router.post('/accounts/import-opening-balances', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { bankIdentifier, openingBalance } = req.body;
+    if (!bankIdentifier) throw new AppError('bankIdentifier (bank name or account number) is required.', 400);
+
+    const balanceKobo = Math.round(parseFloat(openingBalance || '0') * 100);
+
+    // Look up by account number first, then by bank name
+    let [account] = await db
+      .select()
+      .from(bankAccounts)
+      .where(and(eq(bankAccounts.orgId, orgId), eq(bankAccounts.accountNumber, bankIdentifier)))
+      .limit(1);
+
+    if (!account) {
+      [account] = await db
+        .select()
+        .from(bankAccounts)
+        .where(and(eq(bankAccounts.orgId, orgId), eq(bankAccounts.name, bankIdentifier)))
+        .limit(1);
+    }
+
+    if (!account) {
+      throw new AppError(`Bank account "${bankIdentifier}" not found.`, 404);
+    }
+
+    const [updated] = await db
+      .update(bankAccounts)
+      .set({ currentBalance: balanceKobo })
+      .where(eq(bankAccounts.id, account.id))
+      .returning();
+
+    return res.status(200).json({ message: 'Opening balance updated.', account: updated.name, currentBalance: updated.currentBalance });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // =========================================================================
 // 2. FLUTTERWAVE CONNECT INTEGRATION ENDPOINTS
 // =========================================================================
