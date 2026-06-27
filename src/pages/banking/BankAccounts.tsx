@@ -28,7 +28,8 @@ import {
   FileUp,
   Loader2,
   Download,
-  Database
+  Database,
+  Edit3
 } from 'lucide-react';
 
 interface BankAccountsProps {
@@ -73,6 +74,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
   const { token } = useAuth();
 
   const [showConnectModal, setShowConnectModal] = useState(false);
+  const [editAccount, setEditAccount] = useState<any | null>(null);
   const [connectMethod, setConnectMethod] = useState<'select' | 'mono' | 'manual'>('select');
   const [syncingAccountId, setSyncingAccountId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -131,6 +133,20 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
     },
     onError: (err: any) => {
       setErrorMessage(err.response?.data?.message || err.message || 'Failed to register account.');
+    }
+  });
+
+  // 3b. Update bank account mutation
+  const updateAccountMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => bankingApi.updateAccount(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bankAccounts'] });
+      setEditAccount(null);
+      setShowConnectModal(false);
+      setErrorMessage(null);
+    },
+    onError: (err: any) => {
+      setErrorMessage(err.response?.data?.message || err.message || 'Failed to update account.');
     }
   });
 
@@ -207,18 +223,30 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
     if (manualForm.accountNumber.length < 5) return setErrorMessage('Account number must be at least 5 digits.');
     if (!manualForm.accountId) return setErrorMessage('You must pair this with a General Ledger Cash Account.');
 
-    // Convert balance float input to integer Kobo amount
     const balanceNum = parseFloat(manualForm.currentBalance) || 0;
     const balanceKobo = Math.round(balanceNum * 100);
 
-    createAccountMutation.mutate({
-      name: manualForm.name,
-      bankName: manualForm.bankName,
-      accountNumber: manualForm.accountNumber,
-      currentBalance: balanceKobo,
-      accountId: manualForm.accountId,
-      currency: 'NGN'
-    });
+    if (editAccount) {
+      updateAccountMutation.mutate({
+        id: editAccount.id,
+        data: {
+          name: manualForm.name,
+          bankName: manualForm.bankName,
+          accountNumber: manualForm.accountNumber,
+          currentBalance: balanceKobo,
+          accountId: manualForm.accountId,
+        }
+      });
+    } else {
+      createAccountMutation.mutate({
+        name: manualForm.name,
+        bankName: manualForm.bankName,
+        accountNumber: manualForm.accountNumber,
+        currentBalance: balanceKobo,
+        accountId: manualForm.accountId,
+        currency: 'NGN'
+      });
+    }
   };
 
   const maskAccountNumber = (num: string) => {
@@ -373,14 +401,36 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                       </div>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteAccount(account.id, account.name)}
-                      className="text-slate-400 hover:text-slate-600 p-1 rounded hover:bg-slate-50 transition"
-                      title="Deactivate Account"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditAccount(account);
+                          setManualForm({
+                            name: account.name || '',
+                            bankName: account.bankName || '',
+                            accountNumber: account.accountNumber || '',
+                            currentBalance: account.currentBalance ? String(account.currentBalance / 100) : '',
+                            accountId: account.accountId || '',
+                            type: account.type || 'Checking'
+                          });
+                          setErrorMessage(null);
+                          setShowConnectModal(true);
+                        }}
+                        className="text-slate-400 hover:text-blue-600 p-1 rounded hover:bg-slate-50 transition"
+                        title="Edit Account"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteAccount(account.id, account.name)}
+                        className="text-slate-400 hover:text-red-600 p-1 rounded hover:bg-slate-50 transition"
+                        title="Deactivate Account"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
 
                   {/* Account Balance Display */}
@@ -482,12 +532,13 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-100 font-sans">
             {/* Modal Header */}
             <div className="bg-slate-50 p-4 border-b border-slate-100 flex items-center justify-between">
-              <h3 className="font-bold text-sm text-slate-800 uppercase tracking-tight">Connect Corporate Account</h3>
+              <h3 className="font-bold text-sm text-slate-800 uppercase tracking-tight">{editAccount ? 'Edit Bank Account' : 'Connect Corporate Account'}</h3>
               <button
                 type="button"
                 className="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100 transition"
                 onClick={() => {
                   setShowConnectModal(false);
+                  setEditAccount(null);
                   resetManualForm();
                 }}
               >
@@ -646,6 +697,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                     type="button"
                     onClick={() => {
                       setConnectMethod('select');
+                      setEditAccount(null);
                       resetManualForm();
                     }}
                     className="flex-1 py-2 text-xs font-bold border border-slate-200 hover:bg-slate-50 text-slate-600 rounded cursor-pointer"
@@ -657,7 +709,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                     disabled={createAccountMutation.isPending}
                     className="flex-grow py-2 text-xs font-bold bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:bg-indigo-300 transition-colors uppercase cursor-pointer"
                   >
-                    {createAccountMutation.isPending ? 'Saving...' : 'Register Account'}
+                    {createAccountMutation.isPending || updateAccountMutation.isPending ? 'Saving...' : editAccount ? 'Update Account' : 'Register Account'}
                   </button>
                 </div>
               </form>
