@@ -731,7 +731,7 @@ router.get('/vendors/:id/statement', async (req: AuthenticatedRequest, res: Resp
 
     // Map bills: bills are liabilities (CR Accounts Payable)
     for (const bl of vendorBills) {
-      if (bl.status === 'draft') continue;
+      if (bl.status === 'draft' || bl.status === 'void') continue;
       transactionsList.push({
         id: bl.id,
         date: new Date(bl.date),
@@ -758,6 +758,7 @@ router.get('/vendors/:id/statement', async (req: AuthenticatedRequest, res: Resp
 
     // Map vendor credits: credit notes reduce liability (DR Accounts Payable)
     for (const cr of credits) {
+      if (cr.status === 'void') continue;
       transactionsList.push({
         id: cr.id,
         date: new Date(cr.date),

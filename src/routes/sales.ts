@@ -731,8 +731,8 @@ router.get('/customers/:id/statement', async (req: AuthenticatedRequest, res: Re
     const transactionsList: any[] = [];
 
     for (const inv of customerInvoices) {
-      // Drafts shouldn't usually show inside posted accounting statements
-      if (inv.status === 'draft') continue;
+      // Drafts and voided should not show inside posted accounting statements
+      if (inv.status === 'draft' || inv.status === 'void') continue;
       transactionsList.push({
         id: inv.id,
         date: new Date(inv.date),
@@ -757,7 +757,7 @@ router.get('/customers/:id/statement', async (req: AuthenticatedRequest, res: Re
     }
 
     for (const cn of customerCreditNotes) {
-      if (cn.status === 'draft') continue;
+      if (cn.status === 'draft' || cn.status === 'void') continue;
       transactionsList.push({
         id: cn.id,
         date: new Date(cn.date),
