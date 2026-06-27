@@ -148,4 +148,9 @@ export const CSV_TEMPLATES: Record<string, { headers: string[]; sample: string[]
     headers: ['accountCode', 'accountName', 'debit (NGN)', 'credit (NGN)'],
     sample: ['100000', 'Cash and Cash Equivalents', '5000000', '0'],
   },
+  chartOfAccounts: {
+    filename: 'chart-of-accounts-template.csv',
+    headers: ['code', 'name', 'type', 'sub-type', 'parent code', 'description', 'active', 'opening balance (NGN)'],
+    sample: ['100000', 'Cash and Cash Equivalents', 'asset', 'Current Assets', '', '', 'Yes', '5000000'],
+  },
 };

@@ -645,6 +645,14 @@ export const accountantApi = {
     const res = await api.get('/accountant/accounts');
     return res.data;
   },
+  importAccountsCsv: async (data: { csvData: string }) => {
+    const res = await api.post('/accountant/accounts/import-csv', data);
+    return res.data;
+  },
+  exportAccountsCsv: async () => {
+    const res = await api.get('/accountant/accounts/export-csv', { responseType: 'blob' });
+    return res.data;
+  },
 };
 
 // 7b. Journals Endpoints
