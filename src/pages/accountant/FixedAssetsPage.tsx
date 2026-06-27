@@ -130,27 +130,54 @@ export function FixedAssetsPage() {
               </tr>
             </thead>
             <tbody>
-              {(Array.isArray(assets) ? assets : []).map((asset: any) => (
-                <tr key={asset.id} className="border-t border-slate-100 hover:bg-slate-50">
-                  <td className="px-3 py-2 font-mono font-medium text-slate-800">{asset.assetNumber}</td>
-                  <td className="px-3 py-2 text-slate-800">{asset.name}</td>
-                  <td className="px-3 py-2 text-slate-600">{asset.category || '—'}</td>
-                  <td className="px-3 py-2 text-right text-slate-600">{fmtNaira(asset.purchaseCost)}</td>
-                  <td className="px-3 py-2 text-right text-slate-600">{fmtNaira(asset.accumulatedDepreciation)}</td>
-                  <td className="px-3 py-2 text-right text-slate-600">{fmtNaira(asset.residualValue)}</td>
-                  <td className="px-3 py-2 text-right font-semibold text-slate-800">{fmtNaira(asset.bookValue)}</td>
-                  <td className="px-3 py-2"><span className={`inline-block px-2 py-0.5 text-[10px] font-semibold rounded-full ${STATUS_COLORS[asset.status] || 'bg-slate-100 text-slate-600'}`}>{STATUS_LABELS[asset.status] || asset.status}</span></td>
-                  <td className="px-3 py-2 text-right">
-                    <div className="flex justify-end gap-2">
-                      <button onClick={() => setViewId(asset.id)} className="text-blue-600 hover:text-blue-800"><Eye className="w-3.5 h-3.5" /></button>
-                      <button onClick={() => deleteMutation.mutate(asset.id)} className="text-red-500 hover:text-red-700"><Trash2 className="w-3.5 h-3.5" /></button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {(!assets || assets.length === 0) && (
-                <tr><td colSpan={9} className="px-3 py-8 text-center text-slate-400">No fixed assets recorded.</td></tr>
-              )}
+              {(() => {
+                const list = Array.isArray(assets) ? assets : [];
+                if (list.length === 0) return <tr><td colSpan={9} className="px-3 py-8 text-center text-slate-400">No fixed assets recorded.</td></tr>;
+                const groups: Record<string, any[]> = {};
+                for (const a of list) {
+                  const cat = a.category || 'Uncategorized';
+                  if (!groups[cat]) groups[cat] = [];
+                  groups[cat].push(a);
+                }
+                const rows: JSX.Element[] = [];
+                for (const [cat, items] of Object.entries(groups)) {
+                  const catCost = items.reduce((s, a) => s + a.purchaseCost, 0);
+                  const catDepr = items.reduce((s, a) => s + a.accumulatedDepreciation, 0);
+                  const catRes = items.reduce((s, a) => s + a.residualValue, 0);
+                  const catBv = items.reduce((s, a) => s + a.bookValue, 0);
+                  for (const asset of items) {
+                    rows.push(
+                      <tr key={asset.id} className="border-t border-slate-100 hover:bg-slate-50">
+                        <td className="px-3 py-2 font-mono font-medium text-slate-800">{asset.assetNumber}</td>
+                        <td className="px-3 py-2 text-slate-800">{asset.name}</td>
+                        <td className="px-3 py-2 text-slate-600">{asset.category || '—'}</td>
+                        <td className="px-3 py-2 text-right text-slate-600">{fmtNaira(asset.purchaseCost)}</td>
+                        <td className="px-3 py-2 text-right text-slate-600">{fmtNaira(asset.accumulatedDepreciation)}</td>
+                        <td className="px-3 py-2 text-right text-slate-600">{fmtNaira(asset.residualValue)}</td>
+                        <td className="px-3 py-2 text-right font-semibold text-slate-800">{fmtNaira(asset.bookValue)}</td>
+                        <td className="px-3 py-2"><span className={`inline-block px-2 py-0.5 text-[10px] font-semibold rounded-full ${STATUS_COLORS[asset.status] || 'bg-slate-100 text-slate-600'}`}>{STATUS_LABELS[asset.status] || asset.status}</span></td>
+                        <td className="px-3 py-2 text-right">
+                          <div className="flex justify-end gap-2">
+                            <button onClick={() => setViewId(asset.id)} className="text-blue-600 hover:text-blue-800"><Eye className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => deleteMutation.mutate(asset.id)} className="text-red-500 hover:text-red-700"><Trash2 className="w-3.5 h-3.5" /></button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  }
+                  rows.push(
+                    <tr key={`sub-${cat}`} className="border-t border-slate-200 bg-slate-50/80">
+                      <td colSpan={3} className="px-3 py-1.5 text-xs font-bold text-slate-700">{cat} Subtotal</td>
+                      <td className="px-3 py-1.5 text-right text-xs font-bold text-slate-700">{fmtNaira(catCost)}</td>
+                      <td className="px-3 py-1.5 text-right text-xs font-bold text-slate-700">{fmtNaira(catDepr)}</td>
+                      <td className="px-3 py-1.5 text-right text-xs font-bold text-slate-700">{fmtNaira(catRes)}</td>
+                      <td className="px-3 py-1.5 text-right text-xs font-bold text-slate-700">{fmtNaira(catBv)}</td>
+                      <td colSpan={2}></td>
+                    </tr>
+                  );
+                }
+                return rows;
+              })()}
             </tbody>
             {assets && assets.length > 0 && (
             <tfoot>
