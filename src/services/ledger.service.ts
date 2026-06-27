@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { eq, and, lte, lt, gte, sql } from 'drizzle-orm';
+import { eq, and, lte, gte, sql } from 'drizzle-orm';
 import { db, accounts, journalEntries, journalLines, bankAccounts, fixedAssets, contacts, inventoryLots } from '../db/schema';
 import { AppError } from '../lib/errors';
 import { toNgn } from './currency.service';
@@ -358,7 +358,7 @@ export async function getTrialBalance(
     db.select({
       totalValue: sql<number>`coalesce(sum(${inventoryLots.quantity}::numeric * ${inventoryLots.costPerUnit}), 0)`
     }).from(inventoryLots)
-      .where(and(eq(inventoryLots.orgId, orgId), lt(inventoryLots.receivedDate, new Date(endDate.getTime() + 86400000))))
+      .where(eq(inventoryLots.orgId, orgId))
   ]);
 
   const faMap = new Map<string, { totalCost: number; totalDepr: number }>();
