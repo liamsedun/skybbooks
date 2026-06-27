@@ -4,9 +4,9 @@
 @theme {
   --font-sans: "Inter", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
 
-  --font-size-title: 24px;
-  --font-size-body: 14px;
-  --font-size-table: 13px;
+  --font-size-title: 23px;
+  --font-size-body: 13px;
+  --font-size-table: 12px;
 
   --color-primary: #2e7d32;
   --color-primary-hover: #256628;
