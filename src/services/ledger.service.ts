@@ -340,41 +340,21 @@ export async function getTrialBalance(
     .innerJoin(journalEntries, eq(journalLines.entryId, journalEntries.id))
     .where(eq(journalEntries.orgId, orgId));
 
-  // 3. Load module balances for reconciliation
+  // 3. Load module balances
   const [faByAccount, bankByAccount, customerBal, vendorBal] = await Promise.all([
-    // Fixed assets grouped by accountId
-    db
-      .select({
-        accountId: fixedAssets.accountId,
-        totalCost: sql<number>`coalesce(sum(${fixedAssets.purchaseCost}), 0)`,
-        totalDepr: sql<number>`coalesce(sum(${fixedAssets.accumulatedDepreciation}), 0)`
-      })
-      .from(fixedAssets)
-      .where(and(eq(fixedAssets.orgId, orgId), eq(fixedAssets.status, 'active')))
-      .groupBy(fixedAssets.accountId),
-    // Bank accounts grouped by accountId
-    db
-      .select({
-        accountId: bankAccounts.accountId,
-        totalBalance: sql<number>`coalesce(sum(${bankAccounts.currentBalance}), 0)`
-      })
-      .from(bankAccounts)
-      .where(eq(bankAccounts.orgId, orgId))
-      .groupBy(bankAccounts.accountId),
-    // Customer opening balances
-    db
-      .select({
-        totalBalance: sql<number>`coalesce(sum(${contacts.balance}), 0)`
-      })
-      .from(contacts)
-      .where(and(eq(contacts.orgId, orgId), eq(contacts.type, 'customer'))),
-    // Vendor opening balances
-    db
-      .select({
-        totalBalance: sql<number>`coalesce(sum(${contacts.balance}), 0)`
-      })
-      .from(contacts)
-      .where(and(eq(contacts.orgId, orgId), eq(contacts.type, 'vendor')))
+    db.select({
+      accountId: fixedAssets.accountId,
+      totalCost: sql<number>`coalesce(sum(${fixedAssets.purchaseCost}), 0)`,
+      totalDepr: sql<number>`coalesce(sum(${fixedAssets.accumulatedDepreciation}), 0)`
+    }).from(fixedAssets).where(and(eq(fixedAssets.orgId, orgId), eq(fixedAssets.status, 'active'))).groupBy(fixedAssets.accountId),
+    db.select({
+      accountId: bankAccounts.accountId,
+      totalBalance: sql<number>`coalesce(sum(${bankAccounts.currentBalance}), 0)`
+    }).from(bankAccounts).where(eq(bankAccounts.orgId, orgId)).groupBy(bankAccounts.accountId),
+    db.select({ totalBalance: sql<number>`coalesce(sum(${contacts.balance}), 0)` })
+      .from(contacts).where(and(eq(contacts.orgId, orgId), eq(contacts.type, 'customer'))),
+    db.select({ totalBalance: sql<number>`coalesce(sum(${contacts.balance}), 0)` })
+      .from(contacts).where(and(eq(contacts.orgId, orgId), eq(contacts.type, 'vendor')))
   ]);
 
   const faMap = new Map<string, { totalCost: number; totalDepr: number }>();
@@ -386,6 +366,10 @@ export async function getTrialBalance(
   const customerOB = Number(customerBal[0]?.totalBalance || 0);
   const vendorOB = Number(vendorBal[0]?.totalBalance || 0);
 
+  // Identify single AR and AP accounts
+  const arAccount = orgAccounts.find(a => a.type === 'asset' && (a.name.toLowerCase().includes('receivable') || a.code.startsWith('12')));
+  const apAccount = orgAccounts.find(a => a.type === 'liability' && (a.name.toLowerCase().includes('payable') || a.code.startsWith('20')));
+
   const resultList: TrialBalanceRow[] = [];
   let suspenseDr = 0;
   let suspenseCr = 0;
@@ -396,128 +380,72 @@ export async function getTrialBalance(
     let periodDebits = 0;
     let periodCredits = 0;
 
-    // Include manually-set opening balance from accounts table
     const ob = Number(acct.openingBalance || 0);
     if (ob > 0) {
-      const isDebitBook = acct.type === 'asset' || acct.type === 'expense';
-      if (isDebitBook) openingDebits += ob;
-      else openingCredits += ob;
+      (acct.type === 'asset' || acct.type === 'expense') ? openingDebits += ob : openingCredits += ob;
     }
 
-    const matchedLines = txLines.filter((l) => l.accountId === acct.id);
-
+    const matchedLines = txLines.filter(l => l.accountId === acct.id);
     for (const line of matchedLines) {
       const lineDate = new Date(line.date);
       const deb = line.currency && line.currency !== 'NGN' ? toNgn(line.debitAmount, line.fxRate) : line.debitAmount;
       const cred = line.currency && line.currency !== 'NGN' ? toNgn(line.creditAmount, line.fxRate) : line.creditAmount;
-
-      if (lineDate < startDate) {
-        openingDebits += deb;
-        openingCredits += cred;
-      } else if (lineDate >= startDate && lineDate <= endDate) {
-        periodDebits += deb;
-        periodCredits += cred;
-      }
+      if (lineDate < startDate) { openingDebits += deb; openingCredits += cred; }
+      else if (lineDate >= startDate && lineDate <= endDate) { periodDebits += deb; periodCredits += cred; }
     }
 
-    // --- Module balance adjustments ---
     const isDebitBook = acct.type === 'asset' || acct.type === 'expense';
 
-    // Fixed assets: add total purchase cost as debit, total depreciation as credit
+    // Fixed assets: if this account is linked to fixed assets, force its balance to match
     const faData = faMap.get(acct.id);
     if (faData && acct.type === 'asset') {
-      // Purchase cost goes to period (as if acquired in current period if no matching journal entry exists)
-      const jeCost = periodDebits + openingDebits;
-      const extraCost = Math.max(0, faData.totalCost - jeCost);
-      if (extraCost > 0) {
-        periodDebits += extraCost;
-        suspenseCr += extraCost; // balancing credit
-      }
-      // Accumulated depreciation
-      const jeDepr = periodCredits + openingCredits;
-      const extraDepr = Math.max(0, faData.totalDepr - jeDepr);
-      if (extraDepr > 0) {
-        periodCredits += extraDepr;
-        suspenseDr += extraDepr; // balancing debit
-      }
+      const jeBalance = (openingDebits + periodDebits) - (openingCredits + periodCredits);
+      const trueBalance = faData.totalCost - faData.totalDepr;
+      const diff = trueBalance - jeBalance;
+      if (diff > 0) { periodDebits += diff; suspenseCr += diff; }
+      else if (diff < 0) { periodCredits += Math.abs(diff); suspenseDr += Math.abs(diff); }
     }
 
-    // Bank accounts: ensure current balance matches
+    // Bank accounts: force balance to currentBalance
     const bankBal = bankMap.get(acct.id);
     if (bankBal !== undefined && acct.type === 'asset') {
-      const jeBankBal = (openingDebits + periodDebits) - (openingCredits + periodCredits);
-      const diff = bankBal - jeBankBal;
-      if (diff > 0) {
-        // Bank has more than journal entries show — add extra debit
-        if (startDate <= new Date('2025-01-01')) {
-          openingDebits += diff;
-        } else {
-          periodDebits += diff;
-        }
-        suspenseCr += diff;
-      } else if (diff < 0) {
-        // Bank has less — add extra credit
-        const absDiff = Math.abs(diff);
-        if (startDate <= new Date('2025-01-01')) {
-          openingCredits += absDiff;
-        } else {
-          periodCredits += absDiff;
-        }
-        suspenseDr += absDiff;
-      }
+      const jeBalance = (openingDebits + periodDebits) - (openingCredits + periodCredits);
+      const diff = bankBal - jeBalance;
+      if (diff > 0) { periodDebits += diff; suspenseCr += diff; }
+      else if (diff < 0) { periodCredits += Math.abs(diff); suspenseDr += Math.abs(diff); }
     }
 
-    // Customer opening balances → Accounts Receivable
-    if (customerOB > 0 && acct.type === 'asset' && (acct.name.toLowerCase().includes('receivable') || acct.name.toLowerCase().includes('receivable') || acct.code.startsWith('12'))) {
+    // Customer opening balance → single AR account only
+    if (customerOB > 0 && arAccount && acct.id === arAccount.id) {
       const jeAr = (openingDebits + periodDebits) - (openingCredits + periodCredits);
       const extraAr = Math.max(0, customerOB - jeAr);
-      if (extraAr > 0) {
-        openingDebits += extraAr;
-        suspenseCr += extraAr;
-      }
+      if (extraAr > 0) { openingDebits += extraAr; suspenseCr += extraAr; }
     }
 
-    // Vendor opening balances → Accounts Payable
-    if (vendorOB > 0 && acct.type === 'liability' && (acct.name.toLowerCase().includes('payable') || acct.name.toLowerCase().includes('payable') || acct.code.startsWith('20'))) {
+    // Vendor opening balance → single AP account only
+    if (vendorOB > 0 && apAccount && acct.id === apAccount.id) {
       const jeAp = (openingCredits + periodCredits) - (openingDebits + periodDebits);
       const extraAp = Math.max(0, vendorOB - jeAp);
-      if (extraAp > 0) {
-        openingCredits += extraAp;
-        suspenseDr += extraAp;
-      }
+      if (extraAp > 0) { openingCredits += extraAp; suspenseDr += extraAp; }
     }
 
-    // Opening Nets
-    const openingNet = isDebitBook ? openingDebits - openingCredits : openingCredits - openingDebits;
-    const openingDebit = openingNet > 0 ? openingNet : 0;
-    const openingCredit = openingNet < 0 ? Math.abs(openingNet) : 0;
-
-    // Period Shifts
-    const periodDebit = periodDebits;
-    const periodCredit = periodCredits;
-
-    // Closing Nets
-    const aggregatedDebits = openingDebits + periodDebits;
-    const aggregatedCredits = openingCredits + periodCredits;
-    const closingNet = isDebitBook ? aggregatedDebits - aggregatedCredits : aggregatedCredits - aggregatedDebits;
-    const closingDebit = closingNet > 0 ? closingNet : 0;
-    const closingCredit = closingNet < 0 ? Math.abs(closingNet) : 0;
+    const opened = isDebitBook ? openingDebits - openingCredits : openingCredits - openingDebits;
+    const closed = isDebitBook ? (openingDebits + periodDebits) - (openingCredits + periodCredits) : (openingCredits + periodCredits) - (openingDebits + periodDebits);
 
     resultList.push({
       accountId: acct.id,
       accountCode: acct.code,
       accountName: acct.name,
       accountType: acct.type,
-      openingDebit,
-      openingCredit,
-      periodDebit,
-      periodCredit,
-      closingDebit,
-      closingCredit
+      openingDebit: opened > 0 ? opened : 0,
+      openingCredit: opened < 0 ? Math.abs(opened) : 0,
+      periodDebit: periodDebits,
+      periodCredit: periodCredits,
+      closingDebit: closed > 0 ? closed : 0,
+      closingCredit: closed < 0 ? Math.abs(closed) : 0
     });
   }
 
-  // Add suspense row for any imbalance from module adjustments
   const suspenseNet = suspenseDr - suspenseCr;
   if (Math.abs(suspenseNet) > 0) {
     resultList.push({
@@ -525,8 +453,7 @@ export async function getTrialBalance(
       accountCode: 'SUSPENSE',
       accountName: 'Suspense - Unreconciled Module Balances',
       accountType: suspenseNet > 0 ? 'asset' : 'liability',
-      openingDebit: 0,
-      openingCredit: 0,
+      openingDebit: 0, openingCredit: 0,
       periodDebit: suspenseNet > 0 ? suspenseNet : 0,
       periodCredit: suspenseNet < 0 ? Math.abs(suspenseNet) : 0,
       closingDebit: suspenseNet > 0 ? suspenseNet : 0,
