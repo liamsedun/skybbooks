@@ -35,6 +35,11 @@ export async function runMigration() {
         WHEN duplicate_object THEN NULL;
       END $$;
     `);
+    // Fix voided bills: set total/subtotal/tax_amount to 0 so they don't skew totals
+    const voidFix = await db.execute(`UPDATE bills SET total = 0, subtotal = 0, tax_amount = 0 WHERE status = 'void' AND total != 0`);
+    if (voidFix.rowCount && voidFix.rowCount > 0) {
+      console.log(`[Migration] Fixed ${voidFix.rowCount} voided bill(s) with non-zero totals.`);
+    }
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema push:', err);

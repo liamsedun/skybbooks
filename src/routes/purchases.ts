@@ -668,7 +668,7 @@ router.get('/vendors/:id', async (req: AuthenticatedRequest, res: Response, next
     const [balResult] = await db
       .select({ total: sql`COALESCE(SUM(total), 0)` })
       .from(bills)
-      .where(and(eq(bills.vendorId, id), eq(bills.orgId, orgId), sql`status NOT IN ('paid', 'draft')`));
+      .where(and(eq(bills.vendorId, id), eq(bills.orgId, orgId), sql`status NOT IN ('paid', 'draft', 'void')`));
     return res.status(200).json({ ...vendor, outstanding: Number(balResult?.total || 0) });
   } catch (err) {
     return next(err);
