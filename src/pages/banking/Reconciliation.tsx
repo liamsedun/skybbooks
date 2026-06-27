@@ -23,7 +23,8 @@ import {
   CheckSquare,
   ChevronRight,
   Calculator,
-  ArrowRight
+  ArrowRight,
+  Trash2
 } from 'lucide-react';
 
 interface ReconciliationProps {
@@ -167,7 +168,27 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
     }
   });
 
-  // 7. Auto Match Bot trigger
+  // 7. Clear imported statements mutation
+  const clearImportMutation = useMutation({
+    mutationFn: (accountId: string) => bankingApi.clearImportedStatements(accountId),
+    onSuccess: (result: any) => {
+      queryClient.invalidateQueries({ queryKey: ['bankAccounts'] });
+      queryClient.invalidateQueries({ queryKey: ['bankingTransactions', selectedBankAccountId] });
+      alert(result.message || 'Imported statements cleared.');
+    },
+    onError: (err: any) => {
+      alert(`Failed to clear: ${err.message}`);
+    }
+  });
+
+  const handleClearImport = () => {
+    if (!selectedBankAccountId) return;
+    if (confirm('Clear all CSV-imported statement transactions? Balance will reset to 0. This cannot be undone.')) {
+      clearImportMutation.mutate(selectedBankAccountId);
+    }
+  };
+
+  // 8. Auto Match Bot trigger
   const autoMatchMutation = useMutation({
     mutationFn: bankingApi.autoMatchTransactions,
     onSuccess: (result: any) => {
@@ -371,6 +392,17 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
               <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block font-sans">Bank Stream Feed</span>
               <span className="text-xs font-bold text-slate-800 font-sans">{unreconciledFeed.length} Unreconciled Records</span>
             </div>
+            {unreconciledFeed.length > 0 && (
+              <button
+                type="button"
+                onClick={handleClearImport}
+                disabled={clearImportMutation.isPending}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-bold uppercase rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 disabled:opacity-50 transition cursor-pointer"
+              >
+                <Trash2 className="w-3 h-3" />
+                <span>Clear Import</span>
+              </button>
+            )}
           </div>
 
           {isLoadingFeed ? (

@@ -307,6 +307,51 @@ router.post('/accounts/import-opening-balances', async (req: AuthenticatedReques
   }
 });
 
+// DELETE /accounts/:id/clear-imported-statements — remove all CSV-imported transactions and reset balance
+router.delete('/accounts/:id/clear-imported-statements', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { id } = req.params;
+
+    const [ba] = await db
+      .select()
+      .from(bankAccounts)
+      .where(and(eq(bankAccounts.id, id), eq(bankAccounts.orgId, orgId)))
+      .limit(1);
+
+    if (!ba) {
+      throw new AppError('Bank account not found.', 404);
+    }
+
+    // Delete all unreconciled transactions that were imported via CSV upload
+    const result = await db
+      .delete(bankTransactions)
+      .where(
+        and(
+          eq(bankTransactions.bankAccountId, id),
+          eq(bankTransactions.orgId, orgId),
+          eq(bankTransactions.status, 'unreconciled'),
+          like(bankTransactions.monoTransactionId, 'uploaded_stmt_%')
+        )
+      )
+      .returning({ id: bankTransactions.id });
+
+    // Reset balance to 0 so user can set a fresh opening balance
+    await db
+      .update(bankAccounts)
+      .set({ currentBalance: 0 })
+      .where(eq(bankAccounts.id, id));
+
+    return res.status(200).json({
+      success: true,
+      message: `Cleared ${result.length} imported statement transaction(s). Balance reset to 0.`,
+      clearedCount: result.length
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // =========================================================================
 // 2. FLUTTERWAVE CONNECT INTEGRATION ENDPOINTS
 // =========================================================================

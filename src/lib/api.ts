@@ -281,6 +281,10 @@ export const bankingApi = {
     const res = await api.post('/banking/accounts/import-opening-balances', data);
     return res.data;
   },
+  clearImportedStatements: async (accountId: string) => {
+    const res = await api.delete(`/banking/accounts/${accountId}/clear-imported-statements`);
+    return res.data;
+  },
   deleteAccount: async (id: string) => {
     const res = await api.delete(`/banking/accounts/${id}`);
     return res.data;
