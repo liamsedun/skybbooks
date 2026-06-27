@@ -8,7 +8,7 @@ import { api } from '../../lib/api';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
 import {
   Plus, Search, Pencil, Trash2, X, Loader2, AlertCircle, Package, Briefcase,
-  Upload, Database, CheckCircle2, BarChart3
+  Upload, Database, CheckCircle2, BarChart3, FileText, Download
 } from 'lucide-react';
 
 interface GLAccount {
@@ -71,6 +71,64 @@ const EMPTY_FORM: ItemFormState = {
 function formatNaira(kobo: number | null): string {
   if (kobo === null || kobo === undefined) return '—';
   return `₦${(kobo / 100).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function exportItemsCSV(items: Item[]) {
+  const headers = ['SKU','Name','Description','Type','Unit','Sales Price','Purchase Price','Stock On Hand','Reorder Point'];
+  const rows = items.map(i => [
+    i.sku||'', i.name, i.description||'', i.type, i.unit||'',
+    i.salesPrice ? formatNaira(i.salesPrice) : '',
+    i.purchasePrice ? formatNaira(i.purchasePrice) : '',
+    i.trackInventory ? String(i.stockOnHand ?? 0) : 'Not tracked',
+    i.reorderPoint != null ? String(i.reorderPoint) : ''
+  ]);
+  const csv = [headers,...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+  const blob = new Blob([csv],{type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url;
+  a.download=`items-${new Date().toISOString().split('T')[0]}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
+function exportItemsPDF(items: Item[]) {
+  const rows = items.map(i => `
+    <tr>
+      <td>${i.sku||'\u2014'}</td>
+      <td><strong>${i.name}</strong>${i.description ? `<br><small style="color:#64748b">${i.description}</small>` : ''}</td>
+      <td>${i.type}</td>
+      <td>${i.unit||'\u2014'}</td>
+      <td>${i.salesPrice ? formatNaira(i.salesPrice) : '\u2014'}</td>
+      <td>${i.purchasePrice ? formatNaira(i.purchasePrice) : '\u2014'}</td>
+      <td>${i.trackInventory ? `${i.stockOnHand ?? 0} in stock` : 'Not tracked'}</td>
+    </tr>`).join('');
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Items & Inventory</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Segoe UI',sans-serif;color:#1e293b;padding:40px;font-size:13px}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px;padding-bottom:20px;border-bottom:2px solid #0f172a}
+    .company{font-size:22px;font-weight:800;color:#0f172a}
+    .subtitle{font-size:11px;color:#64748b;margin-top:4px}
+    .title{font-size:18px;font-weight:700;color:#0f172a}
+    .date{font-size:11px;color:#64748b;margin-top:4px}
+    table{width:100%;border-collapse:collapse;margin-top:16px}
+    th{background:#0f172a;color:#fff;padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.05em}
+    td{padding:10px 12px;border-bottom:1px solid #e2e8f0;font-size:12px;vertical-align:top}
+    tr:nth-child(even) td{background:#f8fafc}
+    .footer{margin-top:40px;text-align:center;font-size:10px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:16px}
+    @media print{body{padding:20px}}
+  </style></head><body>
+  <div class="header">
+    <div><div class="company">SkyBooks</div><div class="subtitle">By Skyhouse Accountants &amp; Technologies</div></div>
+    <div style="text-align:right"><div class="title">Items &amp; Inventory</div><div class="date">Generated: ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}</div><div class="date">${items.length} items · ${items.filter(i=>i.type==='product').length} products · ${items.filter(i=>i.type==='service').length} services</div></div>
+  </div>
+  <table>
+    <thead><tr><th>SKU</th><th>Name</th><th>Type</th><th>Unit</th><th>Sales Price</th><th>Purchase Price</th><th>Stock</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="footer">SkyBooks By Skyhouse Accountants &amp; Technologies (Olalekan Williams Edun) &bull; Confidential</div>
+  </body></html>`;
+  const w = window.open('','_blank');
+  if (w) { w.document.write(html); w.document.close(); setTimeout(()=>w.print(),500); }
 }
 
 export function ItemsPage() {
@@ -262,6 +320,20 @@ export function ItemsPage() {
         >
           <Database size={16} />
           Record Opening Stock
+        </button>
+        <button
+          onClick={() => exportItemsCSV(filteredItems)}
+          className="inline-flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors"
+        >
+          <Download size={16} />
+          CSV
+        </button>
+        <button
+          onClick={() => exportItemsPDF(filteredItems)}
+          className="inline-flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors"
+        >
+          <FileText size={16} />
+          PDF
         </button>
         <button
           onClick={() => setValuationOpen(true)}
@@ -765,14 +837,104 @@ function ValuationStatementModal({
     return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   }
 
+  function exportValuationCSV() {
+    const headers = ['Item','SKU','Unit','Date','Type','Reference','In Qty','Out Qty','Unit Cost','Value','Bal Qty','Bal Value'];
+    const rows: string[][] = [];
+    for (const vi of filtered) {
+      for (const line of vi.lines) {
+        rows.push([
+          vi.item.name, vi.item.sku||'', vi.item.unit||'',
+          fmtDate(line.date), line.type.replace('_',' '), line.reference,
+          line.inQty > 0 ? String(line.inQty) : '',
+          line.outQty > 0 ? String(line.outQty) : '',
+          line.unitCost > 0 ? formatNaira(line.unitCost) : '',
+          line.value > 0 ? formatNaira(line.value) : '',
+          String(line.balanceQty), formatNaira(line.balanceValue)
+        ]);
+      }
+    }
+    const csv = [headers,...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+    const blob = new Blob([csv],{type:'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href=url;
+    a.download=`valuation-statement-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click(); URL.revokeObjectURL(url);
+  }
+
+  function exportValuationPDF() {
+    const blocks = filtered.map(vi => {
+      const rows = vi.lines.map(line => {
+        const isOpen = line.type === 'opening_balance';
+        return `<tr${isOpen?' style="background:#f8fafc"':''}>
+          <td>${fmtDate(line.date)}</td>
+          <td>${line.type.replace('_',' ')}</td>
+          <td>${line.reference}</td>
+          <td style="text-align:right">${line.inQty > 0 ? line.inQty : '\u2014'}</td>
+          <td style="text-align:right">${line.outQty > 0 ? line.outQty : '\u2014'}</td>
+          <td style="text-align:right">${line.unitCost > 0 ? formatNaira(line.unitCost) : '\u2014'}</td>
+          <td style="text-align:right">${line.value > 0 ? formatNaira(line.value) : '\u2014'}</td>
+          <td style="text-align:right"><strong>${line.balanceQty}</strong></td>
+          <td style="text-align:right"><strong>${formatNaira(line.balanceValue)}</strong></td>
+        </tr>`;
+      }).join('');
+      return `<div style="margin-bottom:24px;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">
+        <div style="padding:12px 16px;background:#f8fafc;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between">
+          <div><strong>${vi.item.name}</strong> <span style="color:#94a3b8;font-size:12px">${vi.item.sku||''} | ${vi.item.unit||'\u2014'}</span></div>
+          <div style="font-size:12px;color:#64748b">Opening: <strong>${vi.openingQty}</strong> / ${formatNaira(vi.openingValue)} &nbsp; Closing: <strong>${vi.closingQty}</strong> / ${formatNaira(vi.closingValue)}</div>
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead><tr style="background:#f1f5f9;font-size:11px;color:#64748b;text-transform:uppercase">
+            <th style="padding:8px 12px;text-align:left">Date</th><th style="padding:8px 12px;text-align:left">Type</th><th style="padding:8px 12px;text-align:left">Reference</th>
+            <th style="padding:8px 12px;text-align:right">In Qty</th><th style="padding:8px 12px;text-align:right">Out Qty</th><th style="padding:8px 12px;text-align:right">Unit Cost</th>
+            <th style="padding:8px 12px;text-align:right">Value</th><th style="padding:8px 12px;text-align:right">Bal Qty</th><th style="padding:8px 12px;text-align:right">Bal Value</th>
+          </tr></thead>
+          <tbody style="border-top:1px solid #e2e8f0">${rows}</tbody>
+        </table>
+      </div>`;
+    }).join('');
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Valuation Statement</title>
+    <style>
+      *{margin:0;padding:0;box-sizing:border-box}
+      body{font-family:'Segoe UI',sans-serif;color:#1e293b;padding:40px;font-size:13px}
+      .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px;padding-bottom:20px;border-bottom:2px solid #0f172a}
+      .company{font-size:22px;font-weight:800;color:#0f172a}
+      .subtitle{font-size:11px;color:#64748b;margin-top:4px}
+      .title{font-size:18px;font-weight:700;color:#0f172a}
+      .date{font-size:11px;color:#64748b;margin-top:4px}
+      table{width:100%;border-collapse:collapse;margin-top:0}
+      th{background:#f1f5f9;color:#64748b;padding:8px 12px;text-align:left;font-size:11px;text-transform:uppercase}
+      td{padding:8px 12px;border-bottom:1px solid #e2e8f0;font-size:12px}
+      tr:nth-child(even) td{background:#f8fafc}
+      .footer{margin-top:40px;text-align:center;font-size:10px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:16px}
+      @media print{body{padding:20px}}
+    </style></head><body>
+    <div class="header">
+      <div><div class="company">SkyBooks</div><div class="subtitle">By Skyhouse Accountants &amp; Technologies</div></div>
+      <div style="text-align:right"><div class="title">Inventory Valuation Statement</div><div class="date">Generated: ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}</div><div class="date">${filtered.length} item(s)</div></div>
+    </div>
+    ${blocks}
+    <div class="footer">SkyBooks By Skyhouse Accountants &amp; Technologies (Olalekan Williams Edun) &bull; Confidential</div>
+    </body></html>`;
+    const w = window.open('','_blank');
+    if (w) { w.document.write(html); w.document.close(); setTimeout(()=>w.print(),500); }
+  }
+
   return (
     <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 px-4 py-8 overflow-y-auto">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl my-auto">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <h2 className="text-base font-bold text-slate-900">Inventory Valuation Statement</h2>
-          <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors">
-            <X size={18} className="text-slate-500" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={exportValuationCSV} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
+              <Download size={14} /> CSV
+            </button>
+            <button onClick={exportValuationPDF} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
+              <FileText size={14} /> PDF
+            </button>
+            <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors">
+              <X size={18} className="text-slate-500" />
+            </button>
+          </div>
         </div>
 
         <div className="px-6 py-4 border-b border-slate-100">
