@@ -11,7 +11,7 @@ const MODULE_LINKS: { prefix: string; path: string; label: string }[] = [
   { prefix: '1004', path: '/banking', label: 'Banking' },
   { prefix: '1005', path: '/banking', label: 'Banking' },
   { prefix: '1011', path: '/sales/customers', label: 'Customers' },
-  { prefix: '102', path: '/purchases/items', label: 'Items' },
+  { prefix: '102', path: '/inventory/items', label: 'Items' },
   { prefix: '200', path: '/accountant/fixed-assets', label: 'Fixed Assets' },
   { prefix: '201', path: '/accountant/fixed-assets', label: 'Fixed Assets' },
   { prefix: '202', path: '/accountant/fixed-assets', label: 'Fixed Assets' },
@@ -28,7 +28,7 @@ const MODULE_LINKS: { prefix: string; path: string; label: string }[] = [
   { prefix: '505', path: '/accountant/manual-journals', label: 'Manual Journals' },
   { prefix: '600', path: '/sales', label: 'Sales' },
   { prefix: '601', path: '/sales', label: 'Sales' },
-  { prefix: '700', path: '/purchases/items', label: 'Items' },
+  { prefix: '700', path: '/inventory/items', label: 'Items' },
   { prefix: '900', path: '/sales', label: 'Sales' },
 ];
 

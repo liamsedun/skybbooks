@@ -6,7 +6,7 @@ import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { db, items, inventoryLots, inventoryTransactions } from '../db/schema';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, lte, sql } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
 
 const router = Router();
@@ -267,9 +267,9 @@ router.get('/valuation-statement', async (req: AuthenticatedRequest, res: Respon
     const result = [];
 
     for (const item of itemList) {
-      // Fetch lots up to endDate (or all if not specified)
+      // Fetch lots up to endDate inclusive (set to end of day to catch all timestamps)
       const lotConditions: any[] = [eq(inventoryLots.itemId, item.id), eq(inventoryLots.orgId, orgId)];
-      if (endDate) lotConditions.push(lte(inventoryLots.receivedDate, new Date(endDate)));
+      if (endDate) lotConditions.push(lte(inventoryLots.receivedDate, new Date(endDate + 'T23:59:59.999Z')));
       const lots = await db
         .select()
         .from(inventoryLots)
