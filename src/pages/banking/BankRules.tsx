@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { bankingApi } from '../../lib/api';
 import { useCurrency } from '../../hooks/useCurrency';
@@ -23,7 +24,8 @@ import {
   BookOpen,
   CheckCircle,
   Filter,
-  CheckSquare
+  CheckSquare,
+  ArrowLeft
 } from 'lucide-react';
 
 export function BankRules() {
@@ -252,15 +254,26 @@ export function BankRules() {
     });
   };
 
+  const navigate = useNavigate();
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto p-1 lg:p-4 font-sans">
       {/* Header Area */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-slate-100 gap-4">
-        <div>
-          <h1 className="text-xl lg:text-2xl font-bold text-slate-900 tracking-tight">Automation Rules</h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Build rules to automatically categorise bank deposits and expenses based on statement narration descriptions.
-          </p>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => navigate('/banking')}
+            className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition cursor-pointer"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          <div>
+            <h1 className="text-xl lg:text-2xl font-bold text-slate-900 tracking-tight">Automation Rules</h1>
+            <p className="text-xs text-slate-500 mt-1">
+              Build rules to automatically categorise bank deposits and expenses based on statement narration descriptions.
+            </p>
+          </div>
         </div>
 
         <button

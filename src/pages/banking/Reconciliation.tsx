@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { bankingApi, salesApi } from '../../lib/api';
 import { useCurrency } from '../../hooks/useCurrency';
@@ -24,7 +25,8 @@ import {
   ChevronRight,
   Calculator,
   ArrowRight,
-  Trash2
+  Trash2,
+  ArrowLeft
 } from 'lucide-react';
 
 interface ReconciliationProps {
@@ -316,15 +318,26 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
     return textMatches;
   });
 
+  const navigate = useNavigate();
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto p-1 lg:p-4 font-sans">
       {/* Upper Context Bar */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between pb-4 border-b border-slate-100 gap-4">
-        <div>
-          <h1 className="text-xl lg:text-2xl font-bold text-slate-900 tracking-tight">Reconciliation Desk</h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Reconcile live bank statement feeds against company accounting records with drag-and-drop simplicity.
-          </p>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onNavigateHome}
+            className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition cursor-pointer"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          <div>
+            <h1 className="text-xl lg:text-2xl font-bold text-slate-900 tracking-tight">Reconciliation Desk</h1>
+            <p className="text-xs text-slate-500 mt-1">
+              Reconcile live bank statement feeds against company accounting records with drag-and-drop simplicity.
+            </p>
+          </div>
         </div>
 
         {/* Select Account & Bot Controls */}

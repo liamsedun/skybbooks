@@ -1,13 +1,15 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { bankingApi } from '../../lib/api';
-import { Loader2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Loader2, AlertCircle, RefreshCw, ArrowLeft } from 'lucide-react';
 
 function fmtDate(d: string): string {
   return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 export function CurrencyRatesPage() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const { data: rates, isLoading, error } = useQuery({
@@ -23,7 +25,16 @@ export function CurrencyRatesPage() {
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">Currency Rates</h1>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => navigate('/banking')}
+            className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition cursor-pointer"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          <h1 className="text-2xl font-bold text-slate-900">Currency Rates</h1>
+        </div>
         <button
           onClick={() => refreshMutation.mutate()}
           disabled={refreshMutation.isPending}
