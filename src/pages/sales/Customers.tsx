@@ -429,6 +429,15 @@ function CustomerList() {
                 </tr>
               ))}
             </tbody>
+            {filtered.length > 0 && (
+            <tfoot>
+              <tr className="border-t-2 border-slate-200 bg-slate-50">
+                <td colSpan={3} className="py-2.5 pl-4 pr-3 text-sm font-bold text-slate-800">Total</td>
+                <td className="py-2.5 pr-3 text-sm font-bold text-slate-800">{formatNaira(filtered.reduce((s, c) => s + (c.balance || 0) + (c.outstanding || 0), 0))}</td>
+                <td colSpan={2}></td>
+              </tr>
+            </tfoot>
+            )}
           </table>
         )}
       </div>
