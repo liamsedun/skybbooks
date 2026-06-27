@@ -71,6 +71,11 @@ export async function runMigration() {
         WHEN duplicate_object THEN NULL;
       END $$;
     `);
+    // Clear opening balances on P&L accounts (expense/revenue) — opening balances only valid for balance sheet accounts
+    const plFix = await db.execute(`UPDATE accounts SET opening_balance = 0 WHERE type IN ('expense', 'revenue') AND opening_balance != 0`);
+    if (plFix.rowCount && plFix.rowCount > 0) {
+      console.log(`[Migration] Cleared opening balances on ${plFix.rowCount} P&L account(s).`);
+    }
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema push:', err);
