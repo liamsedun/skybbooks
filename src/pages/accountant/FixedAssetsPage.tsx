@@ -150,6 +150,17 @@ export function FixedAssetsPage() {
                 <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-400">No fixed assets recorded.</td></tr>
               )}
             </tbody>
+            {assets && assets.length > 0 && (
+            <tfoot>
+              <tr className="border-t-2 border-slate-300 bg-slate-50">
+                <td colSpan={3} className="px-4 py-3 text-sm font-bold text-slate-800">Total</td>
+                <td className="px-4 py-3 text-right font-bold text-slate-800">{fmtNaira(assets.reduce((s: number, a: any) => s + a.purchaseCost, 0))}</td>
+                <td className="px-4 py-3 text-right font-bold text-slate-800">{fmtNaira(assets.reduce((s: number, a: any) => s + a.accumulatedDepreciation, 0))}</td>
+                <td className="px-4 py-3 text-right font-bold text-slate-800">{fmtNaira(assets.reduce((s: number, a: any) => s + a.bookValue, 0))}</td>
+                <td colSpan={2}></td>
+              </tr>
+            </tfoot>
+            )}
           </table>
         </div>
       )}
