@@ -8,9 +8,11 @@ import {
   UserPlus, Search, X, Edit2, Loader2, RefreshCw,
   User, Phone, Briefcase, CreditCard,
   CheckCircle, XCircle, Save, GraduationCap,
-  Award, Building2, Heart, Shield, Users, Plus, Trash2, MapPin, Upload
+  Award, Building2, Heart, Shield, Users, Plus, Trash2, MapPin, Upload,
+  Download
 } from 'lucide-react';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
+import { exportToCsv } from '../../lib/csvTemplates';
 import { payrollApi } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
 import { useCurrency } from '../../hooks/useCurrency';
@@ -221,6 +223,13 @@ export function EmployeesPage() {
   const activeCount = allEmployees.filter((e: any) => e.isActive).length;
   const totalPayroll = allEmployees.filter((e: any) => e.isActive).reduce((s: number, e: any) => s + (e.grossSalary || 0), 0);
 
+  function exportEmployeesCSV() {
+    const today = new Date().toISOString().split('T')[0];
+    const headers = ['Staff ID', 'First Name', 'Last Name', 'Email', 'Department', 'Designation', 'Gross Salary', 'Frequency', 'Status'];
+    const rows = employees.map((e: any) => [e.staffId, e.firstName, e.lastName, e.email||'', e.department||'', e.designation||'', (e.grossSalary/100).toFixed(2), e.paymentFrequency||'monthly', e.isActive ? 'Active' : 'Inactive']);
+    exportToCsv(`employees_${today}.csv`, headers, rows);
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
@@ -230,6 +239,14 @@ export function EmployeesPage() {
           <p className="text-xs text-slate-400 uppercase tracking-wide font-semibold mt-0.5">Personnel Directory & Payroll Setup</p>
         </div>
         <div className="flex items-center gap-3">
+          <button onClick={exportEmployeesCSV}
+            className="p-2 border border-slate-200 bg-white hover:bg-slate-50 rounded-xl text-slate-500 outline-none">
+            <Download className="w-4 h-4" />
+          </button>
+          <button onClick={async () => { try { const blob = await payrollApi.getEmployeesPdf(); window.open(URL.createObjectURL(blob), '_blank'); } catch (e) { console.error(e); } }}
+            className="p-2 border border-slate-200 bg-white hover:bg-slate-50 rounded-xl text-slate-500 outline-none">
+            <Download className="w-4 h-4" />
+          </button>
           <button onClick={() => queryClient.invalidateQueries({ queryKey: ['employees'] })}
             className="p-2 border border-slate-200 bg-white hover:bg-slate-50 rounded-xl text-slate-500 outline-none">
             <RefreshCw className="w-4 h-4" />

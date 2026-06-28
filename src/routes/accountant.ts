@@ -294,5 +294,33 @@ router.get('/accounts/export-csv', async (req: AuthenticatedRequest, res: Respon
   }
 });
 
+// =========================================================================
+// PDF EXPORT ROUTES
+// =========================================================================
+function sendPdf(res: Response, buffer: Buffer, filename: string) {
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+  return res.end(buffer);
+}
+
+router.get('/manual-journals/pdf', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { generateManualJournalsPDF } = await import('../services/pdf.service');
+    const orgId = req.user!.orgId!;
+    const start = req.query.startDate ? new Date(req.query.startDate as string) : new Date(new Date().getFullYear(), 0, 1);
+    const end = req.query.endDate ? new Date(req.query.endDate as string) : new Date();
+    const buffer = await generateManualJournalsPDF(orgId, start, end);
+    return sendPdf(res, buffer, 'manual_journals.pdf');
+  } catch (err) { return next(err); }
+});
+
+router.get('/budgets/pdf', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { generateBudgetsPDF } = await import('../services/pdf.service');
+    const buffer = await generateBudgetsPDF(req.user!.orgId!);
+    return sendPdf(res, buffer, 'budgets.pdf');
+  } catch (err) { return next(err); }
+});
+
 export default router;
 

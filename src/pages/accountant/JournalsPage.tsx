@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { journalsApi, accountantApi } from '../../lib/api';
 import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
-import { Plus, X, Loader2, AlertCircle, CheckCircle2, Eye } from 'lucide-react';
+import { Plus, X, Loader2, AlertCircle, CheckCircle2, Eye, Download } from 'lucide-react';
+import { exportToCsv } from '../../lib/csvTemplates';
 
 function fmtNaira(v: number): string {
   return `₦${(v / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
@@ -22,11 +23,35 @@ export function JournalsPage() {
     queryFn: () => journalsApi.getJournals(),
   });
 
+  function exportJournalsCSV() {
+    const today = new Date().toISOString().split('T')[0];
+    const headers = ['Entry #', 'Date', 'Description', 'Source'];
+    const rows = (Array.isArray(journals) ? journals : []).map((e: any) => [e.entryNumber||'', e.date ? new Date(e.date).toLocaleDateString('en-GB') : '', e.description||'', e.source||'']);
+    exportToCsv(`manual_journals_${today}.csv`, headers, rows);
+  }
+
+  const handleDownloadPdf = async () => {
+    try {
+      const blob = await accountantApi.getManualJournalsPdf();
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+    } catch (err) {
+      console.error('PDF download failed', err);
+    }
+  };
+
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-slate-900">Manual Journals</h1>
-        <button onClick={() => { setShowForm(true); setViewId(null); }} className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700"><Plus className="w-4 h-4" /> New Journal Entry</button>
+        <div className="flex items-center gap-2">
+          <button onClick={exportJournalsCSV}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors">
+            <Download size={14} /> CSV
+          </button>
+          <button onClick={handleDownloadPdf} className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700"><Download className="w-3.5 h-3.5" /> PDF</button>
+          <button onClick={() => { setShowForm(true); setViewId(null); }} className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700"><Plus className="w-4 h-4" /> New Journal Entry</button>
+        </div>
       </div>
 
       {viewId ? (

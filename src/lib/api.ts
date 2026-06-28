@@ -589,6 +589,14 @@ export const purchasesApi = {
     const res = await api.post(`/purchases/credit-notes/${id}/void`);
     return res.data;
   },
+  getBillsPdf: async (params?: any) => {
+    const res = await api.get('/purchases/bills/pdf', { params, responseType: 'blob' });
+    return res.data;
+  },
+  getBillPdf: async (id: string) => {
+    const res = await api.get(`/purchases/bills/${id}/pdf`, { responseType: 'blob' });
+    return res.data;
+  },
 };
 
 // 6. Payroll Endpoints
@@ -637,6 +645,26 @@ export const payrollApi = {
     const res = await api.get('/payroll/summary');
     return res.data;
   },
+  getEmployeesPdf: async () => {
+    const res = await api.get('/payroll/employees/pdf', { responseType: 'blob' });
+    return res.data;
+  },
+  getPayrollRunsPdf: async (params?: any) => {
+    const res = await api.get('/payroll/runs/pdf', { params, responseType: 'blob' });
+    return res.data;
+  },
+  getPAYESchedulePdf: async (runId: string) => {
+    const res = await api.get(`/payroll/runs/${runId}/paye-schedule/pdf`, { responseType: 'blob' });
+    return res.data;
+  },
+  getPensionSchedulePdf: async (runId: string) => {
+    const res = await api.get(`/payroll/runs/${runId}/pension-schedule/pdf`, { responseType: 'blob' });
+    return res.data;
+  },
+  getPayslipPdf: async (runId: string, employeeId: string) => {
+    const res = await api.get(`/payroll/runs/${runId}/payslips/${employeeId}/pdf`, { responseType: 'blob' });
+    return res.data;
+  },
 };
 
 // 7. Accountant Endpoints
@@ -651,6 +679,14 @@ export const accountantApi = {
   },
   exportAccountsCsv: async () => {
     const res = await api.get('/accountant/accounts/export-csv', { responseType: 'blob' });
+    return res.data;
+  },
+  getManualJournalsPdf: async (params?: any) => {
+    const res = await api.get('/accountant/manual-journals/pdf', { params, responseType: 'blob' });
+    return res.data;
+  },
+  getBudgetsPdf: async () => {
+    const res = await api.get('/accountant/budgets/pdf', { responseType: 'blob' });
     return res.data;
   },
 };
@@ -737,6 +773,10 @@ export const auditLogApi = {
     const res = await api.get('/audit-log', { params });
     return res.data;
   },
+  getAuditLogsPdf: async (params?: any) => {
+    const res = await api.get('/audit-log/pdf', { params, responseType: 'blob' });
+    return res.data;
+  },
 };
 
 // 8. Reports Endpoints
@@ -783,6 +823,10 @@ export const reportsApi = {
   },
   getPayrollSchedule: async (params: { runId: string; format?: 'pdf' | 'excel' }) => {
     const res = await api.get('/reports/payroll-schedule', { params });
+    return res.data;
+  },
+  getCustomReportPdf: async (data: { title: string; headers: string[]; rows: any[][] }) => {
+    const res = await api.post('/reports/custom/pdf', data, { responseType: 'blob' });
     return res.data;
   },
 };

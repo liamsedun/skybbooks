@@ -4,8 +4,10 @@ import { api } from '../../lib/api';
 import { payrollApi } from '../../lib/api';
 import {
   Plus, X, Loader2, AlertCircle, Search, FileText,
-  CheckCircle2, Ban, ChevronDown, ChevronUp, Play, DollarSign
+  CheckCircle2, Ban, ChevronDown, ChevronUp, Play, DollarSign,
+  Download
 } from 'lucide-react';
+import { exportToCsv } from '../../lib/csvTemplates';
 
 function formatNaira(kobo: number) {
   return `₦${(kobo / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
@@ -71,6 +73,13 @@ export function PayrollRunsPage() {
     setLoadingDetail(false);
   }
 
+  function exportPayrollRunsCSV() {
+    const today = new Date().toISOString().split('T')[0];
+    const headers = ['Run #', 'Period Start', 'Period End', 'Pay Date', 'Status', 'Gross', 'PAYE', 'Pension', 'Net'];
+    const rows = runs.map((r: any) => [r.runNumber||'', r.periodStart ? new Date(r.periodStart).toLocaleDateString('en-GB') : '', r.periodEnd ? new Date(r.periodEnd).toLocaleDateString('en-GB') : '', r.payDate ? new Date(r.payDate).toLocaleDateString('en-GB') : '', r.status||'', (r.grossTotal/100).toFixed(2), (r.payeTotal/100).toFixed(2), (r.pensionTotal/100).toFixed(2), (r.netTotal/100).toFixed(2)]);
+    exportToCsv(`payroll_runs_${today}.csv`, headers, rows);
+  }
+
   function handleCreate() {
     setFormError('');
     if (!form.periodStart || !form.periodEnd || !form.payDate) {
@@ -90,10 +99,20 @@ export function PayrollRunsPage() {
           <h1 className="text-xl font-bold text-slate-900">Payroll Runs</h1>
           <p className="text-sm text-slate-500 mt-0.5">Manage payroll cycles and processing</p>
         </div>
-        <button onClick={() => { setShowCreate(true); setForm({ periodStart: '', periodEnd: '', payDate: '' }); setFormError(''); }}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors">
-          <Plus size={15} /> Run Payroll
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={exportPayrollRunsCSV}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors">
+            <Download size={14} /> CSV
+          </button>
+          <button onClick={async () => { try { const blob = await payrollApi.getPayrollRunsPdf(); window.open(URL.createObjectURL(blob), '_blank'); } catch (e) { console.error(e); } }}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+            <Download size={14} /> PDF
+          </button>
+          <button onClick={() => { setShowCreate(true); setForm({ periodStart: '', periodEnd: '', payDate: '' }); setFormError(''); }}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors">
+            <Plus size={15} /> Run Payroll
+          </button>
+        </div>
       </div>
 
       {isLoading ? (

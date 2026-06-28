@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { budgetsApi, accountantApi } from '../../lib/api';
 import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
-import { Plus, X, Loader2, AlertCircle, CheckCircle2, Trash2 } from 'lucide-react';
+import { Plus, X, Loader2, AlertCircle, CheckCircle2, Trash2, Download } from 'lucide-react';
+import { exportToCsv } from '../../lib/csvTemplates';
 
 function fmtNaira(v: number): string {
   return `₦${(v / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
@@ -25,11 +26,35 @@ export function BudgetsPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['budgets'] }),
   });
 
+  function exportBudgetsCSV() {
+    const today = new Date().toISOString().split('T')[0];
+    const headers = ['Name', 'Fiscal Year', 'Period', 'Status'];
+    const rows = (Array.isArray(budgets) ? budgets : []).map((b: any) => [b.name||'', b.fiscalYear||'', b.period||'', b.status||'']);
+    exportToCsv(`budgets_${today}.csv`, headers, rows);
+  }
+
+  const handleDownloadPdf = async () => {
+    try {
+      const blob = await accountantApi.getBudgetsPdf();
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+    } catch (err) {
+      console.error('PDF download failed', err);
+    }
+  };
+
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-slate-900">Budgets</h1>
-        <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700"><Plus className="w-4 h-4" /> New Budget</button>
+        <div className="flex items-center gap-2">
+          <button onClick={exportBudgetsCSV}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors">
+            <Download size={14} /> CSV
+          </button>
+          <button onClick={handleDownloadPdf} className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700"><Download className="w-3.5 h-3.5" /> PDF</button>
+          <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700"><Plus className="w-4 h-4" /> New Budget</button>
+        </div>
       </div>
 
       {showForm ? (

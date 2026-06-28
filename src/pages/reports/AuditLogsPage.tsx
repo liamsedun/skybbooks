@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { auditLogApi } from '../../lib/api';
-import { Loader2, AlertCircle, Search } from 'lucide-react';
+import { Loader2, AlertCircle, Search, Download } from 'lucide-react';
+import { exportToCsv } from '../../lib/csvTemplates';
 
 function fmtDate(d: string): string {
   return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -19,13 +20,34 @@ export function AuditLogsPage() {
 
   const logs = data?.data || [];
 
+  function exportAuditLogsCSV() {
+    const today = new Date().toISOString().split('T')[0];
+    const headers = ['Timestamp', 'Action', 'Entity Type', 'Entity ID', 'User', 'Details'];
+    const rows = logs.map((l: any) => [l.createdAt ? new Date(l.createdAt).toLocaleString('en-GB') : '', l.action||'', l.entityType||'', l.entityId||'', l.user?.name||l.user?.email||'', typeof l.details === 'object' ? JSON.stringify(l.details) : (l.details||'')]);
+    exportToCsv(`audit_logs_${today}.csv`, headers, rows);
+  }
+
+  const handleDownloadPdf = async () => {
+    try {
+      const blob = await auditLogApi.getAuditLogsPdf({ action: actionFilter || undefined, entityType: entityFilter || undefined });
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+    } catch (err) {
+      console.error('PDF download failed', err);
+    }
+  };
+
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-slate-900">Audit Logs</h1>
-        {data?.total !== undefined && (
-          <span className="text-xs text-slate-400">{data.total} total entries</span>
-        )}
+        <div className="flex items-center gap-3">
+          {data?.total !== undefined && (
+            <span className="text-xs text-slate-400">{data.total} total entries</span>
+          )}
+          <button onClick={exportAuditLogsCSV} className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors"><Download className="w-3.5 h-3.5" /> CSV</button>
+          <button onClick={handleDownloadPdf} className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"><Download className="w-3.5 h-3.5" /> PDF</button>
+        </div>
       </div>
 
       <div className="flex gap-4 items-center bg-white p-4 rounded-xl border border-slate-200">

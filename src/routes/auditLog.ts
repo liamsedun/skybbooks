@@ -55,4 +55,17 @@ router.get('/', async (req: AuthenticatedRequest, res: Response, next: NextFunct
   } catch (err) { return next(err); }
 });
 
+router.get('/pdf', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { generateAuditLogsPDF } = await import('../services/pdf.service');
+    const orgId = req.user!.orgId!;
+    const start = req.query.startDate ? new Date(req.query.startDate as string) : new Date(new Date().getFullYear(), 0, 1);
+    const end = req.query.endDate ? new Date(req.query.endDate as string) : new Date();
+    const buffer = await generateAuditLogsPDF(orgId, start, end);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'inline; filename="audit_logs.pdf"');
+    return res.end(buffer);
+  } catch (err) { return next(err); }
+});
+
 export default router;

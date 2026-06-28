@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Shield, ShieldAlert, AlertTriangle, Info, RefreshCw, Search, Loader2 } from 'lucide-react';
+import { Shield, ShieldAlert, AlertTriangle, Info, RefreshCw, Search, Loader2, Download } from 'lucide-react';
+import { exportToCsv } from '../../lib/csvTemplates';
 
 interface ThreatAlert {
   id: string;
@@ -104,9 +105,13 @@ export function CustomReportsPage() {
             <p className="text-sm text-slate-500">AI-powered transaction monitoring & threat detection</p>
           </div>
         </div>
-        <button onClick={handleReset} disabled={resetting} className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50">
-          <RefreshCw className={`w-4 h-4 ${resetting ? 'animate-spin' : ''}`} /> Rescan
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => { const today = new Date().toISOString().split('T')[0]; const rows = filtered.map(a => [a.id, a.title, a.description, a.category, a.threat, fmtDate(a.date), fmtNaira(a.amount)]); exportToCsv(`audit_shield_${today}.csv`, ['ID', 'Title', 'Description', 'Category', 'Threat', 'Date', 'Amount'], rows); }}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50"><Download className="w-4 h-4" /> CSV</button>
+          <button onClick={handleReset} disabled={resetting} className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50">
+            <RefreshCw className={`w-4 h-4 ${resetting ? 'animate-spin' : ''}`} /> Rescan
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-4 gap-4">

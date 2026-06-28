@@ -408,4 +408,60 @@ router.get('/summary', async (req: AuthenticatedRequest, res: Response, next: Ne
   }
 });
 
+// =========================================================================
+// PDF EXPORT ROUTES
+// =========================================================================
+function sendPdf(res: Response, buffer: Buffer, filename: string) {
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+  return res.end(buffer);
+}
+
+router.get('/employees/pdf', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { generateEmployeesListPDF } = await import('../services/pdf.service');
+    const buffer = await generateEmployeesListPDF(req.user!.orgId!);
+    return sendPdf(res, buffer, 'employees_list.pdf');
+  } catch (err) { return next(err); }
+});
+
+router.get('/runs/pdf', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { generatePayrollRunsListPDF } = await import('../services/pdf.service');
+    const orgId = req.user!.orgId!;
+    const start = req.query.startDate ? new Date(req.query.startDate as string) : new Date(new Date().getFullYear(), 0, 1);
+    const end = req.query.endDate ? new Date(req.query.endDate as string) : new Date();
+    const buffer = await generatePayrollRunsListPDF(orgId, start, end);
+    return sendPdf(res, buffer, 'payroll_runs.pdf');
+  } catch (err) { return next(err); }
+});
+
+router.get('/runs/:id/paye-schedule/pdf', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { generatePAYESchedulePDF } = await import('../services/pdf.service');
+    const buffer = await generatePAYESchedulePDF(req.params.id, req.user!.orgId!);
+    return sendPdf(res, buffer, `paye_schedule_${req.params.id}.pdf`);
+  } catch (err) { return next(err); }
+});
+
+router.get('/runs/:id/pension-schedule/pdf', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { generatePensionSchedulePDF } = await import('../services/pdf.service');
+    const buffer = await generatePensionSchedulePDF(req.params.id, req.user!.orgId!);
+    return sendPdf(res, buffer, `pension_schedule_${req.params.id}.pdf`);
+  } catch (err) { return next(err); }
+});
+
+router.get('/runs/:id/payslips/:employeeId/pdf', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { generatePayslipPDF } = await import('../services/pdf.service');
+    const line = await db.select().from(payrollLines)
+      .where(and(eq(payrollLines.runId, req.params.id), eq(payrollLines.employeeId, req.params.employeeId)))
+      .limit(1);
+    if (!line[0]) throw new AppError('Payslip line not found.', 404);
+    const buffer = await generatePayslipPDF(line[0].id);
+    return sendPdf(res, buffer, `payslip_${req.params.employeeId}.pdf`);
+  } catch (err) { return next(err); }
+});
+
 export default router;

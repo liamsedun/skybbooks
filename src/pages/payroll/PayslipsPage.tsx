@@ -2,8 +2,10 @@ import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import {
-  Loader2, AlertCircle, FileText, Search, X, Printer
+  Loader2, AlertCircle, FileText, Search, X, Printer, Download
 } from 'lucide-react';
+import { payrollApi } from '../../lib/api';
+import { exportToCsv } from '../../lib/csvTemplates';
 
 function formatNaira(kobo: number) {
   return `₦${(kobo / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
@@ -52,6 +54,13 @@ export function PayslipsPage() {
       // Fallback: show data from line + employee
       setViewingPayslip({ line, run: selectedRun, employee: line.employee, calculation: null });
     }
+  }
+
+  function exportPayslipsCSV() {
+    const today = new Date().toISOString().split('T')[0];
+    const headers = ['Staff ID', 'Employee', 'Department', 'Gross', 'PAYE', 'Pension', 'NHF', 'Net'];
+    const rows = filtered.map((l: any) => [l.employee?.staffId||'', `${l.employee?.firstName||''} ${l.employee?.lastName||''}`, l.employee?.department||'', (l.grossPay/100).toFixed(2), (l.paye/100).toFixed(2), (l.pensionEmployee/100).toFixed(2), (l.nhf/100).toFixed(2), (l.netPay/100).toFixed(2)]);
+    exportToCsv(`payslips_${today}.csv`, headers, rows);
   }
 
   function printPayslip() {
@@ -144,6 +153,10 @@ export function PayslipsPage() {
       </div>
 
       <div className="flex flex-wrap gap-3 items-center">
+          <button onClick={exportPayslipsCSV} disabled={!selectedRunId || filtered.length === 0}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50">
+            <Download size={14} /> CSV
+          </button>
         <select value={selectedRunId} onChange={e => setSelectedRunId(e.target.value)}
           className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-slate-900/10">
           <option value="">Select a payroll run...</option>
@@ -202,10 +215,14 @@ export function PayslipsPage() {
                   <td className="py-2.5 px-2 text-right font-mono text-amber-600">{formatNaira(line.pensionEmployee)}</td>
                   <td className="py-2.5 px-2 text-right font-mono text-slate-500">{formatNaira(line.nhf)}</td>
                   <td className="py-2.5 px-2 text-right font-mono font-semibold text-emerald-600">{formatNaira(line.netPay)}</td>
-                  <td className="py-2.5 pl-2 pr-4">
+                  <td className="py-2.5 pl-2 pr-4 flex items-center gap-1.5">
                     <button onClick={() => viewPayslip(line)}
                       className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-md">
                       <FileText size={11} /> View
+                    </button>
+                    <button onClick={async () => { try { const blob = await payrollApi.getPayslipPdf(selectedRunId, line.employeeId); window.open(URL.createObjectURL(blob), '_blank'); } catch (e) { console.error(e); } }}
+                      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-md">
+                      <Download size={11} /> PDF
                     </button>
                   </td>
                 </tr>

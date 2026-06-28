@@ -646,4 +646,20 @@ router.get(
   }
 );
 
+router.post('/custom/pdf', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { generateCustomReportPDF } = await import('../services/pdf.service');
+    const orgId = req.user!.orgId!;
+    const { title, headers, rows } = z.object({
+      title: z.string(),
+      headers: z.array(z.string()),
+      rows: z.array(z.array(z.any()))
+    }).parse(req.body);
+    const buffer = await generateCustomReportPDF(orgId, title, headers, rows);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'inline; filename="custom_report.pdf"');
+    return res.end(buffer);
+  } catch (err) { return next(err); }
+});
+
 export default router;

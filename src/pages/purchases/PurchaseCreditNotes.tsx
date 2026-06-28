@@ -4,7 +4,7 @@ import { api } from '../../lib/api';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
 import {
   Search, Upload, Loader2, AlertCircle, X, Plus, FileMinus, ChevronRight,
-  Ban, CheckCircle2, ReceiptText, Edit2,
+  Ban, CheckCircle2, ReceiptText, Edit2, FileText,
 } from 'lucide-react';
 
 interface Vendor { id: string; name: string; email: string | null; }
@@ -119,6 +119,16 @@ export function PurchaseCreditNotesPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={async () => {
+              try { const list = Array.isArray(notes) ? notes : []; if (!list.length) return;
+                const rows = list.map((n: any) => [n.vcNumber, n.vendor?.name||'', new Date(n.date).toLocaleDateString('en-GB'), (n.total/100).toFixed(2), n.status]);
+                const res = await api.post('/reports/custom/pdf', { title:'Vendor Credit Notes', headers:['VC #','Vendor','Date','Total','Status'], rows }, { responseType:'blob' });
+                window.open(URL.createObjectURL(res.data), '_blank');
+              } catch (e) { console.error(e); }
+            }}
+            className="flex items-center gap-1.5 px-4 py-2 bg-white border border-slate-200 text-slate-700 text-sm font-semibold rounded-lg hover:bg-slate-50 transition shadow-sm">
+            <FileText size={16} /> PDF
+          </button>
           <button
             onClick={() => setImportOpen(true)}
             className="flex items-center gap-1.5 px-4 py-2 bg-white border border-slate-200 text-slate-700 text-sm font-semibold rounded-lg hover:bg-slate-50 transition shadow-sm"

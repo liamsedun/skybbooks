@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { api } from '../../lib/api';
+import { api, payrollApi } from '../../lib/api';
 import {
-  Loader2, AlertCircle, FileText, Download
+  Loader2, AlertCircle, FileText, Download, Printer
 } from 'lucide-react';
 
 function formatNaira(kobo: number) {
@@ -69,9 +69,14 @@ export function PensionSchedulesPage() {
           <p className="text-sm text-slate-500 mt-0.5">Employee and employer pension contributions per run</p>
         </div>
         {lines.length > 0 && (
-          <button onClick={exportCSV} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
-            <Download size={14} /> Export CSV
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={async () => { try { const blob = await payrollApi.getPensionSchedulePdf(selectedRunId); window.open(URL.createObjectURL(blob), '_blank'); } catch (e) { console.error(e); } }} className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
+              <Printer size={14} /> PDF
+            </button>
+            <button onClick={exportCSV} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
+              <Download size={14} /> Export CSV
+            </button>
+          </div>
         )}
       </div>
 

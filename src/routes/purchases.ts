@@ -897,4 +897,33 @@ router.post('/credit-notes/:id/void', async (req: AuthenticatedRequest, res: Res
   }
 });
 
+// =========================================================================
+// PDF EXPORT ROUTES
+// =========================================================================
+function sendPdf(res: Response, buffer: Buffer, filename: string) {
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+  return res.end(buffer);
+}
+
+router.get('/bills/pdf', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { generateBillsListPDF } = await import('../services/pdf.service');
+    const orgId = req.user!.orgId!;
+    const start = req.query.startDate ? new Date(req.query.startDate as string) : new Date(new Date().getFullYear(), 0, 1);
+    const end = req.query.endDate ? new Date(req.query.endDate as string) : new Date();
+    const buffer = await generateBillsListPDF(orgId, start, end);
+    return sendPdf(res, buffer, 'bills_list.pdf');
+  } catch (err) { return next(err); }
+});
+
+router.get('/bills/:id/pdf', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { generateBillPDF } = await import('../services/pdf.service');
+    const orgId = req.user!.orgId!;
+    const buffer = await generateBillPDF(req.params.id, orgId);
+    return sendPdf(res, buffer, `bill_${req.params.id}.pdf`);
+  } catch (err) { return next(err); }
+});
+
 export default router;
