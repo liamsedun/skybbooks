@@ -303,44 +303,44 @@ export function ItemsPage() {
         </div>
         <button
           onClick={openAddModal}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors"
+          className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-900 text-white text-xs font-medium rounded-lg hover:bg-slate-800 transition-colors"
         >
-          <Plus size={16} />
+          <Plus size={14} />
           Add Item
         </button>
         <button
           onClick={() => setImportOpen(true)}
-          className="inline-flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors"
+          className="inline-flex items-center gap-2 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors"
         >
-          <Upload size={16} />
+          <Upload size={14} />
           Import Opening Stock
         </button>
         <button
           onClick={() => { setStockForm({ itemId: '', quantity: '', unitCost: '' }); setStockError(null); setStockSuccess(null); setOpenStockModal(true); }}
-          className="inline-flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors"
+          className="inline-flex items-center gap-2 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors"
         >
-          <Database size={16} />
+          <Database size={14} />
           Record Opening Stock
         </button>
         <button
           onClick={() => exportItemsCSV(filteredItems)}
-          className="inline-flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors"
+          className="inline-flex items-center gap-2 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors"
         >
-          <Download size={16} />
+          <Download size={14} />
           CSV
         </button>
         <button
           onClick={() => exportItemsPDF(filteredItems)}
-          className="inline-flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors"
+          className="inline-flex items-center gap-2 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors"
         >
-          <FileText size={16} />
+          <FileText size={14} />
           PDF
         </button>
         <button
           onClick={() => setValuationOpen(true)}
-          className="inline-flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors"
+          className="inline-flex items-center gap-2 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors"
         >
-          <BarChart3 size={16} />
+          <BarChart3 size={14} />
           Valuation Statement
         </button>
       </div>

@@ -101,15 +101,15 @@ export function PayrollRunsPage() {
         </div>
         <div className="flex items-center gap-2">
           <button onClick={exportPayrollRunsCSV}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors">
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors">
             <Download size={14} /> CSV
           </button>
           <button onClick={async () => { try { const blob = await payrollApi.getPayrollRunsPdf(); window.open(URL.createObjectURL(blob), '_blank'); } catch (e) { console.error(e); } }}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
             <Download size={14} /> PDF
           </button>
           <button onClick={() => { setShowCreate(true); setForm({ periodStart: '', periodEnd: '', payDate: '' }); setFormError(''); }}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors">
+            className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-900 text-white text-xs font-medium rounded-lg hover:bg-slate-800 transition-colors">
             <Plus size={15} /> Run Payroll
           </button>
         </div>
