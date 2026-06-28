@@ -37,7 +37,7 @@ import { getBillAgingReport } from './bill.service';
 // Helper to convert kobo integer to formatted Naira string
 function formatNaira(koboAmount: number): string {
   const naira = koboAmount / 100;
-  return '₦' + naira.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return 'NGN ' + naira.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 // Helper to format Date beautifully
@@ -337,14 +337,26 @@ export async function generatePayslipPDF(payrollLineId: string): Promise<Buffer>
     .where(eq(organisations.id, run.orgId))
     .limit(1);
 
+  let logoBuffer: Buffer | null = null;
+  if (org.logoUrl) {
+    try {
+      const resp = await fetch(org.logoUrl);
+      if (resp.ok) logoBuffer = Buffer.from(await resp.arrayBuffer());
+    } catch { /* ignore */ }
+  }
+
   return generatePDFBuffer((doc) => {
     const PRIMARY_COLOR = '#4f46e5';
     const TEXT_PRIMARY = '#1f2937';
     const MUTED_COLOR = '#4b5563';
     const startX = 40;
 
-    doc.rect(startX, 40, 50, 50).fill(PRIMARY_COLOR);
-    doc.fillColor('#ffffff').fontSize(22).font('Helvetica-Bold').text(org.name.substring(0, 2).toUpperCase(), startX + 11, 52);
+    if (logoBuffer) {
+      doc.image(logoBuffer, startX, 40, { width: 50, height: 50 });
+    } else {
+      doc.rect(startX, 40, 50, 50).fill(PRIMARY_COLOR);
+      doc.fillColor('#ffffff').fontSize(22).font('Helvetica-Bold').text(org.name.substring(0, 2).toUpperCase(), startX + 11, 52);
+    }
 
     doc.fillColor(TEXT_PRIMARY).fontSize(14).font('Helvetica-Bold').text(org.name, startX + 65, 40);
     doc.fontSize(8).font('Helvetica').fillColor(MUTED_COLOR);
@@ -352,8 +364,8 @@ export async function generatePayslipPDF(payrollLineId: string): Promise<Buffer>
     doc.text(`Phone: ${org.phone || ''} | Email: ${org.email || ''}`, startX + 65, 66);
 
     doc.fillColor(PRIMARY_COLOR).fontSize(18).font('Helvetica-Bold').text('CONFIDENTIAL PAYSLIP', 350, 40, { align: 'right' });
-    doc.fontSize(8).fillColor(MUTED_COLOR).text(`Pay Period: ${formatShortDate(run.periodStart)} - ${formatShortDate(run.periodEnd)}`, 350, 60, { align: 'right' });
-    doc.text(`Disbursement Date: ${formatShortDate(run.payDate)}`, 350, 71, { align: 'right' });
+    doc.fontSize(8).fillColor(MUTED_COLOR).text(`Pay Period: ${formatShortDate(run.periodStart)} - ${formatShortDate(run.periodEnd)}`, 350, 70, { align: 'right' });
+    doc.text(`Disbursement Date: ${formatShortDate(run.payDate)}`, 350, 81, { align: 'right' });
 
     doc.moveTo(startX, 105).lineTo(555, 105).strokeColor('#e5e7eb').stroke();
 
