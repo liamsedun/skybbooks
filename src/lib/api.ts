@@ -797,6 +797,10 @@ export const fixedAssetsApi = {
     const res = await api.get('/fixed-assets/export-csv', { responseType: 'blob' });
     return res.data;
   },
+  runDepreciation: async (periodDate?: string) => {
+    const res = await api.post('/fixed-assets/run-depreciation', { periodDate });
+    return res.data;
+  },
 };
 
 // 7e. Audit Log Endpoints

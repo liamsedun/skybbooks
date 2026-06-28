@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fixedAssetsApi, accountantApi } from '../../lib/api';
 import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
-import { Plus, X, Loader2, AlertCircle, CheckCircle2, Trash2, Eye, Download, Upload, FileText, Printer } from 'lucide-react';
+import { Plus, X, Loader2, AlertCircle, CheckCircle2, Trash2, Eye, Download, Upload, FileText, Printer, Calculator } from 'lucide-react';
 import { downloadCsv } from '../../lib/csvTemplates';
 
 function fmtNaira(v: number): string {
@@ -28,6 +28,7 @@ export function FixedAssetsPage() {
   const [importing, setImporting] = useState(false);
   const [lastImportIds, setLastImportIds] = useState<string[]>([]);
   const [clearing, setClearing] = useState(false);
+  const [deprMsg, setDeprMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const { data: assets, isLoading } = useQuery({
@@ -38,6 +39,12 @@ export function FixedAssetsPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => fixedAssetsApi.deleteAsset(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['fixed-assets'] }),
+  });
+
+  const deprMutation = useMutation({
+    mutationFn: () => fixedAssetsApi.runDepreciation(),
+    onSuccess: (res) => { setDeprMsg({ type: 'success', text: res.message || 'Depreciation run complete.' }); queryClient.invalidateQueries({ queryKey: ['fixed-assets'] }); setTimeout(() => setDeprMsg(null), 5000); },
+    onError: (err: any) => { setDeprMsg({ type: 'error', text: err?.response?.data?.error || err.message || 'Depreciation run failed.' }); setTimeout(() => setDeprMsg(null), 5000); },
   });
 
   const handleExportCsv = async () => {
@@ -99,11 +106,22 @@ export function FixedAssetsPage() {
           {lastImportIds.length > 0 && (
             <button onClick={handleClearLastImport} disabled={clearing} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-rose-600 rounded-lg hover:bg-rose-700 disabled:opacity-50"><X className="w-3.5 h-3.5" /> {clearing ? 'Clearing...' : 'Clear Last Import'}</button>
           )}
+          <button onClick={() => { if (confirm('Run depreciation for all active assets? This will post a journal entry.')) deprMutation.mutate(); }} disabled={deprMutation.isPending}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-amber-600 rounded-lg hover:bg-amber-700 disabled:opacity-50">
+            <Calculator className="w-3.5 h-3.5" /> {deprMutation.isPending ? 'Running...' : 'Run Depreciation'}
+          </button>
           <button onClick={handleExportCsv} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700"><Download className="w-3.5 h-3.5" /> CSV</button>
           <button onClick={handlePrintPdf} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700"><Printer className="w-3.5 h-3.5" /> PDF</button>
           <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700"><Plus className="w-3.5 h-3.5" /> New Asset</button>
         </div>
       </div>
+
+      {deprMsg && (
+        <div className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold ${deprMsg.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+          {deprMsg.type === 'success' ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
+          {deprMsg.text}
+        </div>
+      )}
 
       {showForm ? (
         <AssetForm onDone={() => { setShowForm(false); queryClient.invalidateQueries({ queryKey: ['fixed-assets'] }); }} />

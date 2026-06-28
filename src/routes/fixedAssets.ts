@@ -1,9 +1,10 @@
 import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { db, fixedAssets, accounts } from '../db/schema';
+import { db, fixedAssets, accounts, depreciationEntries, journalEntries, journalLines } from '../db/schema';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
 import { eq, and, desc, asc, sql } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
+import { createJournalEntry } from '../services/ledger.service';
 
 const router = Router();
 router.use(authenticate);
@@ -278,6 +279,122 @@ router.post('/bulk-delete', async (req: AuthenticatedRequest, res: Response, nex
   } catch (err) {
     next(err);
   }
+});
+
+// Run depreciation for all active fixed assets
+router.post('/run-depreciation', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const userId = req.user!.userId;
+    const periodDate = req.body.periodDate ? new Date(req.body.periodDate) : new Date();
+    periodDate.setHours(0, 0, 0, 0);
+
+    // Fetch all active fixed assets with depreciation methods
+    const assetList = await db
+      .select()
+      .from(fixedAssets)
+      .where(and(eq(fixedAssets.orgId, orgId), eq(fixedAssets.status, 'active'), sql`${fixedAssets.depreciationMethod} != 'no_depreciation'`));
+
+    if (assetList.length === 0) {
+      return res.json({ success: true, message: 'No depreciable assets found.', entries: 0 });
+    }
+
+    // Fetch org accounts for mapping
+    const orgAccounts = await db.select().from(accounts).where(eq(accounts.orgId, orgId));
+    const accountByCode = new Map(orgAccounts.map(a => [a.code, a]));
+
+    // Find depreciation expense account
+    const deprExpenseAccount = orgAccounts.find(a => a.code === '810700');
+    if (!deprExpenseAccount) throw new AppError('Depreciation expense account (810700) not found.', 400);
+
+    const lines: { accountId: string; debit: number; credit: number; description: string }[] = [];
+    const entryRows: { assetId: string; periodDate: Date; amount: number }[] = [];
+    const assetUpdates: { id: string; accumulatedDepreciation: number; bookValue: number; status: string }[] = [];
+
+    for (const asset of assetList) {
+      const deprBase = asset.purchaseCost - asset.residualValue;
+      if (deprBase <= 0) continue;
+
+      let monthlyDepr = 0;
+      if (asset.depreciationMethod === 'straight_line') {
+        monthlyDepr = Math.round(deprBase / asset.usefulLifeMonths);
+      } else if (asset.depreciationMethod === 'declining_balance') {
+        const rate = 2 / asset.usefulLifeMonths;
+        monthlyDepr = Math.round(asset.bookValue * rate);
+      }
+
+      if (monthlyDepr <= 0) continue;
+
+      const remaining = asset.bookValue - asset.residualValue;
+      if (remaining <= 0) continue;
+
+      const actualDepr = Math.min(monthlyDepr, remaining);
+
+      // Find accumulated depreciation account for this asset
+      const assetAccount = orgAccounts.find(a => a.id === asset.accountId);
+      let accDeprCode = '';
+      if (assetAccount) {
+        accDeprCode = assetAccount.code.slice(0, -1) + '1' + assetAccount.code.slice(-1);
+        // Try code + '01' pattern (e.g., 200200 -> 200201)
+        const tryCode = assetAccount.code.slice(0, -2) + '01';
+        if (accountByCode.has(tryCode)) accDeprCode = tryCode;
+      }
+      if (!accDeprCode) accDeprCode = '200201';
+      const accDeprAccount = accountByCode.get(accDeprCode);
+      if (!accDeprAccount) continue;
+
+      // Debit depreciation expense, credit accumulated depreciation
+      lines.push(
+        { accountId: deprExpenseAccount.id, debit: actualDepr, credit: 0, description: `Depreciation - ${asset.name}` },
+        { accountId: accDeprAccount.id, debit: 0, credit: actualDepr, description: `Accumulated depreciation - ${asset.name}` }
+      );
+
+      entryRows.push({ assetId: asset.id, periodDate, amount: actualDepr });
+
+      const newAccumulated = asset.accumulatedDepreciation + actualDepr;
+      const newBookValue = asset.purchaseCost - newAccumulated;
+      const newStatus = newBookValue <= asset.residualValue ? 'fully_depreciated' : 'active';
+      assetUpdates.push({ id: asset.id, accumulatedDepreciation: newAccumulated, bookValue: newBookValue, status: newStatus });
+    }
+
+    if (lines.length === 0) {
+      return res.json({ success: true, message: 'No depreciation to post.', entries: 0 });
+    }
+
+    // Create consolidated journal entry for all depreciation
+    const journalEntry = await createJournalEntry({
+      orgId,
+      date: periodDate,
+      description: `Monthly depreciation - ${periodDate.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}`,
+      source: 'manual',
+      createdBy: userId,
+      lines,
+    });
+
+    // Record individual depreciation entries
+    for (const row of entryRows) {
+      await db.insert(depreciationEntries).values({
+        assetId: row.assetId,
+        periodDate: row.periodDate,
+        amount: row.amount,
+        journalEntryId: journalEntry.id,
+      });
+    }
+
+    // Update asset accumulated depreciation and book values
+    for (const upd of assetUpdates) {
+      await db.update(fixedAssets)
+        .set({ accumulatedDepreciation: upd.accumulatedDepreciation, bookValue: upd.bookValue, status: upd.status as any })
+        .where(eq(fixedAssets.id, upd.id));
+    }
+
+    return res.json({
+      success: true,
+      message: `Depreciation run complete. Posted depreciation for ${entryRows.length} asset(s). Journal entry: ${journalEntry.entryNumber}`,
+      entries: entryRows.length,
+      journalEntryNumber: journalEntry.entryNumber,
+    });
+  } catch (err) { return next(err); }
 });
 
 export default router;
