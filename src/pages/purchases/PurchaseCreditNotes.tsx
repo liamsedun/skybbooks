@@ -126,21 +126,21 @@ export function PurchaseCreditNotesPage() {
                 window.open(URL.createObjectURL(res.data), '_blank');
               } catch (e) { console.error(e); }
             }}
-            className="flex items-center gap-1.5 px-4 py-2 bg-white border border-slate-200 text-slate-700 text-sm font-semibold rounded-lg hover:bg-slate-50 transition shadow-sm">
-            <FileText size={16} /> PDF
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded-lg hover:bg-slate-50 transition shadow-sm">
+            <FileText size={14} /> PDF
           </button>
           <button
             onClick={() => setImportOpen(true)}
-            className="flex items-center gap-1.5 px-4 py-2 bg-white border border-slate-200 text-slate-700 text-sm font-semibold rounded-lg hover:bg-slate-50 transition shadow-sm"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded-lg hover:bg-slate-50 transition shadow-sm"
           >
-            <Upload size={16} />
+            <Upload size={14} />
             Import CSV
           </button>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-slate-900 transition shadow-sm"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-slate-900 transition shadow-sm"
           >
-            <Plus size={16} />
+            <Plus size={14} />
             New Credit Note
           </button>
         </div>

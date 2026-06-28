@@ -154,7 +154,7 @@ export function PayslipsPage() {
 
       <div className="flex flex-wrap gap-3 items-center">
           <button onClick={exportPayslipsCSV} disabled={!selectedRunId || filtered.length === 0}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50">
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50">
             <Download size={14} /> CSV
           </button>
         <select value={selectedRunId} onChange={e => setSelectedRunId(e.target.value)}
@@ -242,6 +242,9 @@ export function PayslipsPage() {
               <div className="flex items-center gap-2">
                 <button onClick={printPayslip} className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg">
                   <Printer size={13} /> Print
+                </button>
+                <button onClick={async () => { try { const { line } = viewingPayslip; const blob = await payrollApi.getPayslipPdf(selectedRunId, line.employeeId); window.open(URL.createObjectURL(blob), '_blank'); } catch (e) { console.error(e); } }} className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg">
+                  <Download size={13} /> PDF
                 </button>
                 <button onClick={() => setViewingPayslip(null)} className="p-1 rounded-md text-slate-400 hover:text-slate-600"><X size={18} /></button>
               </div>

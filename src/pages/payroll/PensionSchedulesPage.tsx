@@ -70,10 +70,10 @@ export function PensionSchedulesPage() {
         </div>
         {lines.length > 0 && (
           <div className="flex items-center gap-2">
-            <button onClick={async () => { try { const blob = await payrollApi.getPensionSchedulePdf(selectedRunId); window.open(URL.createObjectURL(blob), '_blank'); } catch (e) { console.error(e); } }} className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
+            <button onClick={async () => { try { const blob = await payrollApi.getPensionSchedulePdf(selectedRunId); window.open(URL.createObjectURL(blob), '_blank'); } catch (e) { console.error(e); } }} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-colors">
               <Printer size={14} /> PDF
             </button>
-            <button onClick={exportCSV} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
+            <button onClick={exportCSV} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
               <Download size={14} /> Export CSV
             </button>
           </div>
