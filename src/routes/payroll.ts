@@ -489,4 +489,76 @@ router.post('/employees/bulk-delete', async (req: AuthenticatedRequest, res: Res
   } catch (err) { return next(err); }
 });
 
+// Delete single employee
+router.delete('/employees/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { id } = req.params;
+    const [emp] = await db.select().from(employees).where(and(eq(employees.id, id), eq(employees.orgId, orgId))).limit(1);
+    if (!emp) throw new AppError('Employee not found.', 404);
+    await db.delete(employees).where(eq(employees.id, id));
+    res.json({ success: true });
+  } catch (err) { return next(err); }
+});
+
+// Delete single payroll run (draft only)
+router.delete('/runs/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { id } = req.params;
+    const [run] = await db.select().from(payrollRuns).where(and(eq(payrollRuns.id, id), eq(payrollRuns.orgId, orgId))).limit(1);
+    if (!run) throw new AppError('Payroll run not found.', 404);
+    if (run.status !== 'draft') throw new AppError('Only draft runs can be deleted.', 400);
+    await db.delete(payrollLines).where(eq(payrollLines.runId, id));
+    await db.delete(payrollRuns).where(eq(payrollRuns.id, id));
+    res.json({ success: true });
+  } catch (err) { return next(err); }
+});
+
+// Bulk delete payroll runs (draft only)
+router.post('/runs/bulk-delete', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const ids = req.body.ids as string[];
+    if (!ids || !Array.isArray(ids) || ids.length === 0) throw new AppError('No run IDs provided.', 400);
+    const runs = await db.select().from(payrollRuns).where(and(eq(payrollRuns.orgId, orgId), sql`${payrollRuns.id} = ANY(${ids})`));
+    const draftIds = runs.filter(r => r.status === 'draft').map(r => r.id);
+    if (draftIds.length > 0) {
+      await db.delete(payrollLines).where(sql`${payrollLines.runId} = ANY(${draftIds})`);
+      await db.delete(payrollRuns).where(sql`${payrollRuns.id} = ANY(${draftIds})`);
+    }
+    res.json({ success: true, deleted: draftIds.length, skipped: ids.length - draftIds.length });
+  } catch (err) { return next(err); }
+});
+
+// Delete single payslip line from a run
+router.delete('/runs/:runId/payslips/:employeeId', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { runId, employeeId } = req.params;
+    const [run] = await db.select().from(payrollRuns).where(and(eq(payrollRuns.id, runId), eq(payrollRuns.orgId, orgId))).limit(1);
+    if (!run) throw new AppError('Payroll run not found.', 404);
+    if (run.status !== 'draft') throw new AppError('Can only delete payslips from draft runs.', 400);
+    const [line] = await db.select().from(payrollLines).where(and(eq(payrollLines.runId, runId), eq(payrollLines.employeeId, employeeId))).limit(1);
+    if (!line) throw new AppError('Payslip line not found.', 404);
+    await db.delete(payrollLines).where(eq(payrollLines.id, line.id));
+    res.json({ success: true });
+  } catch (err) { return next(err); }
+});
+
+// Bulk delete payslip lines from a run
+router.post('/runs/:runId/payslips/bulk-delete', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { runId } = req.params;
+    const employeeIds = req.body.employeeIds as string[];
+    if (!employeeIds || !Array.isArray(employeeIds) || employeeIds.length === 0) throw new AppError('No employee IDs provided.', 400);
+    const [run] = await db.select().from(payrollRuns).where(and(eq(payrollRuns.id, runId), eq(payrollRuns.orgId, orgId))).limit(1);
+    if (!run) throw new AppError('Payroll run not found.', 404);
+    if (run.status !== 'draft') throw new AppError('Can only delete payslips from draft runs.', 400);
+    await db.delete(payrollLines).where(and(eq(payrollLines.runId, runId), sql`${payrollLines.employeeId} = ANY(${employeeIds})`));
+    res.json({ success: true, deleted: employeeIds.length });
+  } catch (err) { return next(err); }
+});
+
 export default router;

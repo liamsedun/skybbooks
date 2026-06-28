@@ -162,6 +162,16 @@ export const CSV_TEMPLATES: Record<string, { headers: string[]; sample: string[]
     headers: ['code', 'name', 'type', 'sub-type', 'parent code', 'description', 'active', 'opening balance (NGN)'],
     sample: ['100000', 'Cash and Cash Equivalents', 'asset', 'Current Assets', '', '', 'Yes', '5000000'],
   },
+  manualJournals: {
+    filename: 'manual-journals-template.csv',
+    headers: ['date (YYYY-MM-DD)', 'entryNumber', 'description', 'reference', 'line_accountCode', 'line_debit (NGN)', 'line_credit (NGN)', 'line_description'],
+    sample: ['2026-06-01', 'JE-2026-001', 'Correction entry', 'REF-001', '100000', '500000', '0', 'Debit entry'],
+  },
+  budgets: {
+    filename: 'budgets-template.csv',
+    headers: ['name', 'fiscalYear', 'period', 'line_accountCode', 'line_period (1-12)', 'line_amount (NGN)'],
+    sample: ['Annual Budget 2026', '2026', 'monthly', '400000', '1', '5000000'],
+  },
   fixedAssets: {
     filename: 'fixed-assets-template.csv',
     headers: ['name', 'purchase date (YYYY-MM-DD)', 'purchase cost (NGN)', 'depreciation method', 'useful life (months)', 'residual value (NGN)', 'category', 'account code'],

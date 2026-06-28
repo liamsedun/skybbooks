@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, payrollApi } from '../../lib/api';
 import {
-  Loader2, AlertCircle, FileText, Download, Printer
+  Loader2, AlertCircle, FileText, Download, Printer, Trash2
 } from 'lucide-react';
 
 function formatNaira(kobo: number) {
@@ -14,7 +14,19 @@ function fmtDate(d: string | null) {
 }
 
 export function PensionSchedulesPage() {
+  const qc = useQueryClient();
   const [selectedRunId, setSelectedRunId] = useState<string>('');
+  const [selectedPensionIds, setSelectedPensionIds] = useState<string[]>([]);
+
+  const deletePensionLineMutation = useMutation({
+    mutationFn: ({ runId, employeeId }: { runId: string; employeeId: string }) => api.delete(`/payroll/runs/${runId}/payslips/${employeeId}`).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['payroll-run-detail', selectedRunId] }),
+  });
+
+  const bulkDeletePensionMutation = useMutation({
+    mutationFn: (employeeIds: string[]) => api.post(`/payroll/runs/${selectedRunId}/payslips/bulk-delete`, { employeeIds }).then(r => r.data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['payroll-run-detail', selectedRunId] }); setSelectedPensionIds([]); },
+  });
 
   const { data: runsData } = useQuery({
     queryKey: ['payroll-runs'],
@@ -70,6 +82,12 @@ export function PensionSchedulesPage() {
         </div>
         {lines.length > 0 && (
           <div className="flex items-center gap-2">
+            {selectedPensionIds.length > 0 && selectedRun?.status === 'draft' && (
+              <button onClick={() => { if (confirm(`Delete ${selectedPensionIds.length} selected line(s)?`)) bulkDeletePensionMutation.mutate(selectedPensionIds); }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-rose-600 bg-rose-50 border border-rose-200 rounded-lg hover:bg-rose-100">
+                <Trash2 size={14} /> Delete ({selectedPensionIds.length})
+              </button>
+            )}
             <button onClick={async () => { try { const blob = await payrollApi.getPensionSchedulePdf(selectedRunId); window.open(URL.createObjectURL(blob), '_blank'); } catch (e) { console.error(e); } }} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-colors">
               <Printer size={14} /> PDF
             </button>
@@ -110,6 +128,11 @@ export function PensionSchedulesPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-slate-50 text-xs font-medium text-slate-500 uppercase tracking-wide border-b border-slate-200">
+                <th className="py-3 pl-3 pr-1 w-10">
+                  <input type="checkbox" checked={selectedPensionIds.length === lines.length && lines.length > 0}
+                    onChange={e => { if (e.target.checked) { setSelectedPensionIds(lines.map((l: any) => l.employeeId)); } else { setSelectedPensionIds([]); } }}
+                    className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                </th>
                 <th className="py-3 px-4 text-left">Staff ID</th>
                 <th className="py-3 px-2 text-left">Employee</th>
                 <th className="py-3 px-2 text-right">Gross Pay</th>
@@ -117,6 +140,7 @@ export function PensionSchedulesPage() {
                 <th className="py-3 px-2 text-right">Employee 8%</th>
                 <th className="py-3 px-2 text-right">Employer 10%</th>
                 <th className="py-3 px-2 text-right">Total</th>
+                <th className="py-3 px-2 w-16"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -125,6 +149,11 @@ export function PensionSchedulesPage() {
                 const totalPension = (line.pensionEmployee || 0) + (line.pensionEmployer || 0);
                 return (
                   <tr key={line.id} className="hover:bg-slate-50">
+                    <td className="py-2.5 pl-3 pr-1">
+                      <input type="checkbox" checked={selectedPensionIds.includes(line.employeeId)}
+                        onChange={e => { setSelectedPensionIds(prev => e.target.checked ? [...prev, line.employeeId] : prev.filter(i => i !== line.employeeId)); }}
+                        className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                    </td>
                     <td className="py-2.5 px-4 font-mono text-xs text-slate-500">{line.employee?.staffId || '—'}</td>
                     <td className="py-2.5 px-2 text-slate-700">{line.employee?.firstName} {line.employee?.lastName}</td>
                     <td className="py-2.5 px-2 text-right font-mono">{formatNaira(line.grossPay)}</td>
@@ -132,13 +161,21 @@ export function PensionSchedulesPage() {
                     <td className="py-2.5 px-2 text-right font-mono text-amber-600">{formatNaira(line.pensionEmployee)}</td>
                     <td className="py-2.5 px-2 text-right font-mono text-indigo-600">{formatNaira(line.pensionEmployer)}</td>
                     <td className="py-2.5 px-2 text-right font-mono font-semibold text-slate-900">{formatNaira(totalPension)}</td>
+                    <td className="py-2.5 px-2">
+                      {selectedRun?.status === 'draft' && (
+                        <button onClick={() => { if (confirm(`Delete pension line for ${line.employee?.firstName} ${line.employee?.lastName}?`)) deletePensionLineMutation.mutate({ runId: selectedRunId, employeeId: line.employeeId }); }}
+                          className="p-1 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded" title="Delete">
+                          <Trash2 size={13} />
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
             </tbody>
             <tfoot>
               <tr className="bg-slate-50 border-t border-slate-200 font-semibold text-sm">
-                <td colSpan={2} className="px-4 py-3 text-slate-600">Totals</td>
+                <td colSpan={3} className="px-4 py-3 text-slate-600">Totals</td>
                 <td className="px-2 py-3 text-right">—</td>
                 <td className="px-2 py-3 text-right">{formatNaira(totals.pensionable)}</td>
                 <td className="px-2 py-3 text-right text-amber-700">{formatNaira(totals.pensionEE)}</td>

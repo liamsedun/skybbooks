@@ -5,7 +5,7 @@ import { payrollApi } from '../../lib/api';
 import {
   Plus, X, Loader2, AlertCircle, Search, FileText,
   CheckCircle2, Ban, ChevronDown, ChevronUp, Play, DollarSign,
-  Download
+  Download, Trash2
 } from 'lucide-react';
 import { exportToCsv } from '../../lib/csvTemplates';
 
@@ -29,6 +29,7 @@ export function PayrollRunsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ periodStart: '', periodEnd: '', payDate: '' });
   const [formError, setFormError] = useState('');
+  const [selectedRunIds, setSelectedRunIds] = useState<string[]>([]);
 
   const { data: runsData, isLoading } = useQuery({
     queryKey: ['payroll-runs'],
@@ -57,6 +58,16 @@ export function PayrollRunsPage() {
   const payMutation = useMutation({
     mutationFn: (id: string) => api.post(`/payroll/runs/${id}/pay`).then(r => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['payroll-runs'] }),
+  });
+
+  const deleteRunMutation = useMutation({
+    mutationFn: (id: string) => api.delete(`/payroll/runs/${id}`).then(r => r.data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['payroll-runs'] }); },
+  });
+
+  const bulkDeleteRunsMutation = useMutation({
+    mutationFn: (ids: string[]) => api.post('/payroll/runs/bulk-delete', { ids }).then(r => r.data),
+    onSuccess: (res) => { qc.invalidateQueries({ queryKey: ['payroll-runs'] }); setSelectedRunIds([]); setFormError(res.message || `${res.deleted} run(s) deleted.`); setTimeout(() => setFormError(''), 3000); },
   });
 
   const [detailRun, setDetailRun] = useState<any>(null);
@@ -100,6 +111,12 @@ export function PayrollRunsPage() {
           <p className="text-sm text-slate-500 mt-0.5">Manage payroll cycles and processing</p>
         </div>
         <div className="flex items-center gap-2">
+          {selectedRunIds.length > 0 && (
+            <button onClick={() => { if (confirm(`Delete ${selectedRunIds.length} selected run(s)? Only draft runs will be deleted.`)) bulkDeleteRunsMutation.mutate(selectedRunIds); }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-rose-600 bg-rose-50 border border-rose-200 rounded-lg hover:bg-rose-100">
+              <Trash2 size={14} /> Delete ({selectedRunIds.length})
+            </button>
+          )}
           <button onClick={exportPayrollRunsCSV}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors">
             <Download size={14} /> CSV
@@ -130,7 +147,12 @@ export function PayrollRunsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-slate-50 text-xs font-medium text-slate-500 uppercase tracking-wide border-b border-slate-200">
-                <th className="py-3 pl-4 pr-2 text-left">Run #</th>
+                <th className="py-3 pl-3 pr-1 w-10">
+                  <input type="checkbox" checked={selectedRunIds.length === runs.length && runs.length > 0}
+                    onChange={e => { if (e.target.checked) { setSelectedRunIds(runs.map((r: any) => r.id)); } else { setSelectedRunIds([]); } }}
+                    className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                </th>
+                <th className="py-3 pl-2 pr-2 text-left">Run #</th>
                 <th className="py-3 px-2 text-left">Period</th>
                 <th className="py-3 px-2 text-left">Pay Date</th>
                 <th className="py-3 px-2 text-left">Status</th>
@@ -138,14 +160,19 @@ export function PayrollRunsPage() {
                 <th className="py-3 px-2 text-right">PAYE</th>
                 <th className="py-3 px-2 text-right">Pension</th>
                 <th className="py-3 px-2 text-right">Net</th>
-                <th className="py-3 pl-2 pr-4 w-40"></th>
+                <th className="py-3 pl-2 pr-4 w-44"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {runs.map(run => (
+                  {runs.map(run => (
                 <React.Fragment key={run.id}>
                   <tr className="hover:bg-slate-50 transition-colors">
-                    <td className="py-3 pl-4 pr-2 font-mono text-xs font-semibold text-slate-700">
+                    <td className="py-3 pl-3 pr-1">
+                      <input type="checkbox" checked={selectedRunIds.includes(run.id)}
+                        onChange={e => { setSelectedRunIds(prev => e.target.checked ? [...prev, run.id] : prev.filter(i => i !== run.id)); }}
+                        className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                    </td>
+                    <td className="py-3 pl-2 pr-2 font-mono text-xs font-semibold text-slate-700">
                       <button onClick={() => setExpandedId(expandedId === run.id ? null : run.id)}
                         className="flex items-center gap-1 hover:text-indigo-600">
                         {expandedId === run.id ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
@@ -165,10 +192,16 @@ export function PayrollRunsPage() {
                       <div className="flex items-center gap-1">
                         <button onClick={() => openDetail(run)} className="px-2 py-1 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-md">View</button>
                         {run.status === 'draft' && (
-                          <button onClick={() => approveMutation.mutate(run.id)} disabled={approveMutation.isPending}
-                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 rounded-md">
-                            <CheckCircle2 size={11} /> Approve
-                          </button>
+                          <>
+                            <button onClick={() => approveMutation.mutate(run.id)} disabled={approveMutation.isPending}
+                              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 rounded-md">
+                              <CheckCircle2 size={11} /> Approve
+                            </button>
+                            <button onClick={() => { if (confirm('Delete this payroll run? This cannot be undone.')) deleteRunMutation.mutate(run.id); }} disabled={deleteRunMutation.isPending}
+                              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-md">
+                              <Trash2 size={11} /> Delete
+                            </button>
+                          </>
                         )}
                         {run.status === 'approved' && (
                           <button onClick={() => { if (confirm('Mark this payroll run as paid?')) payMutation.mutate(run.id); }} disabled={payMutation.isPending}
@@ -181,7 +214,7 @@ export function PayrollRunsPage() {
                   </tr>
                   {expandedId === run.id && (
                     <tr>
-                      <td colSpan={9} className="px-6 py-4 bg-slate-50/80 border-b border-slate-100 text-xs">
+                      <td colSpan={10} className="px-6 py-4 bg-slate-50/80 border-b border-slate-100 text-xs">
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                           <div><span className="text-slate-400 uppercase font-semibold">Employees</span><p className="font-semibold mt-1 text-slate-900">—</p></div>
                           <div><span className="text-slate-400 uppercase font-semibold">NHF</span><p className="font-semibold mt-1 text-slate-900">{formatNaira(run.totalNhf)}</p></div>

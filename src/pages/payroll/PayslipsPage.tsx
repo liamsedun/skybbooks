@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { api } from '../../lib/api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { api, payrollApi } from '../../lib/api';
 import {
-  Loader2, AlertCircle, FileText, Search, X, Printer, Download
+  Loader2, AlertCircle, FileText, Search, X, Printer, Download, Trash2
 } from 'lucide-react';
 import { payrollApi } from '../../lib/api';
 import { exportToCsv } from '../../lib/csvTemplates';
@@ -16,9 +16,21 @@ function fmtDate(d: string | null) {
 }
 
 export function PayslipsPage() {
+  const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [selectedRunId, setSelectedRunId] = useState<string>('');
   const [viewingPayslip, setViewingPayslip] = useState<any>(null);
+  const [selectedPayslipIds, setSelectedPayslipIds] = useState<string[]>([]);
+
+  const deletePayslipMutation = useMutation({
+    mutationFn: ({ runId, employeeId }: { runId: string; employeeId: string }) => api.delete(`/payroll/runs/${runId}/payslips/${employeeId}`).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['payroll-run-detail', selectedRunId] }),
+  });
+
+  const bulkDeletePayslipsMutation = useMutation({
+    mutationFn: (employeeIds: string[]) => api.post(`/payroll/runs/${selectedRunId}/payslips/bulk-delete`, { employeeIds }).then(r => r.data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['payroll-run-detail', selectedRunId] }); setSelectedPayslipIds([]); },
+  });
 
   const { data: runsData } = useQuery({
     queryKey: ['payroll-runs'],
@@ -159,6 +171,12 @@ export function PayslipsPage() {
       </div>
 
       <div className="flex flex-wrap gap-3 items-center">
+        {selectedPayslipIds.length > 0 && (
+          <button onClick={() => { if (confirm(`Delete ${selectedPayslipIds.length} selected payslip(s)?`)) bulkDeletePayslipsMutation.mutate(selectedPayslipIds); }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-rose-600 bg-rose-50 border border-rose-200 rounded-lg hover:bg-rose-100 disabled:opacity-50">
+            <Trash2 size={14} /> Delete ({selectedPayslipIds.length})
+          </button>
+        )}
           <button onClick={exportPayslipsCSV} disabled={!selectedRunId || filtered.length === 0}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50">
             <Download size={14} /> CSV
@@ -199,6 +217,11 @@ export function PayslipsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-slate-50 text-xs font-medium text-slate-500 uppercase tracking-wide border-b border-slate-200">
+                <th className="py-3 pl-3 pr-1 w-10">
+                  <input type="checkbox" checked={selectedPayslipIds.length === filtered.length && filtered.length > 0}
+                    onChange={e => { if (e.target.checked) { setSelectedPayslipIds(filtered.map((l: any) => l.employeeId)); } else { setSelectedPayslipIds([]); } }}
+                    className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                </th>
                 <th className="py-3 px-4 text-left">Staff ID</th>
                 <th className="py-3 px-2 text-left">Employee</th>
                 <th className="py-3 px-2 text-left">Department</th>
@@ -207,12 +230,17 @@ export function PayslipsPage() {
                 <th className="py-3 px-2 text-right">Pension</th>
                 <th className="py-3 px-2 text-right">NHF</th>
                 <th className="py-3 px-2 text-right">Net</th>
-                <th className="py-3 pl-2 pr-4 w-20"></th>
+                <th className="py-3 pl-2 pr-4 w-28"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filtered.map((line: any) => (
                 <tr key={line.id} className="hover:bg-slate-50">
+                  <td className="py-2.5 pl-3 pr-1">
+                    <input type="checkbox" checked={selectedPayslipIds.includes(line.employeeId)}
+                      onChange={e => { setSelectedPayslipIds(prev => e.target.checked ? [...prev, line.employeeId] : prev.filter(i => i !== line.employeeId)); }}
+                      className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                  </td>
                   <td className="py-2.5 px-4 font-mono text-xs text-slate-500">{line.employee?.staffId || '—'}</td>
                   <td className="py-2.5 px-2 text-slate-700">{line.employee?.firstName} {line.employee?.lastName}</td>
                   <td className="py-2.5 px-2 text-xs text-slate-500">{line.employee?.department || '—'}</td>
@@ -221,15 +249,23 @@ export function PayslipsPage() {
                   <td className="py-2.5 px-2 text-right font-mono text-amber-600">{formatNaira(line.pensionEmployee)}</td>
                   <td className="py-2.5 px-2 text-right font-mono text-slate-500">{formatNaira(line.nhf)}</td>
                   <td className="py-2.5 px-2 text-right font-mono font-semibold text-emerald-600">{formatNaira(line.netPay)}</td>
-                  <td className="py-2.5 pl-2 pr-4 flex items-center gap-1.5">
-                    <button onClick={() => viewPayslip(line)}
-                      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-md">
-                      <FileText size={11} /> View
-                    </button>
-                    <button onClick={async () => { try { const blob = await payrollApi.getPayslipPdf(selectedRunId, line.employeeId); window.open(URL.createObjectURL(blob), '_blank'); } catch (e) { console.error(e); } }}
-                      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-md">
-                      <Download size={11} /> PDF
-                    </button>
+                  <td className="py-2.5 pl-2 pr-4">
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => viewPayslip(line)}
+                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-md">
+                        <FileText size={11} /> View
+                      </button>
+                      <button onClick={async () => { try { const blob = await payrollApi.getPayslipPdf(selectedRunId, line.employeeId); window.open(URL.createObjectURL(blob), '_blank'); } catch (e) { console.error(e); } }}
+                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-md">
+                        <Download size={11} /> PDF
+                      </button>
+                      {selectedRun && selectedRun.status === 'draft' && (
+                        <button onClick={() => { if (confirm(`Delete payslip for ${line.employee?.firstName} ${line.employee?.lastName}?`)) deletePayslipMutation.mutate({ runId: selectedRunId, employeeId: line.employeeId }); }}
+                          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-md">
+                          <Trash2 size={11} /> Delete
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

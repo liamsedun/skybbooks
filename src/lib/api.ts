@@ -669,6 +669,26 @@ export const payrollApi = {
     const res = await api.post('/payroll/employees/bulk-delete', { ids });
     return res.data;
   },
+  deleteEmployee: async (id: string) => {
+    const res = await api.delete(`/payroll/employees/${id}`);
+    return res.data;
+  },
+  deletePayrollRun: async (id: string) => {
+    const res = await api.delete(`/payroll/runs/${id}`);
+    return res.data;
+  },
+  bulkDeletePayrollRuns: async (ids: string[]) => {
+    const res = await api.post('/payroll/runs/bulk-delete', { ids });
+    return res.data;
+  },
+  deletePayslipLine: async (runId: string, employeeId: string) => {
+    const res = await api.delete(`/payroll/runs/${runId}/payslips/${employeeId}`);
+    return res.data;
+  },
+  bulkDeletePayslipLines: async (runId: string, employeeIds: string[]) => {
+    const res = await api.post(`/payroll/runs/${runId}/payslips/bulk-delete`, { employeeIds });
+    return res.data;
+  },
 };
 
 // 7. Accountant Endpoints
@@ -691,6 +711,14 @@ export const accountantApi = {
   },
   getBudgetsPdf: async () => {
     const res = await api.get('/accountant/budgets/pdf', { responseType: 'blob' });
+    return res.data;
+  },
+  importJournalsCsv: async (csvData: string) => {
+    const res = await api.post('/journals/import-csv', { csvData });
+    return res.data;
+  },
+  importBudgetsCsv: async (csvData: string) => {
+    const res = await api.post('/budgets/import-csv', { csvData });
     return res.data;
   },
 };

@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { journalsApi, accountantApi } from '../../lib/api';
 import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
-import { Plus, X, Loader2, AlertCircle, CheckCircle2, Eye, Download } from 'lucide-react';
+import { Plus, X, Loader2, AlertCircle, CheckCircle2, Eye, Download, Upload } from 'lucide-react';
 import { exportToCsv } from '../../lib/csvTemplates';
 
 function fmtNaira(v: number): string {
@@ -17,6 +17,11 @@ export function JournalsPage() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [viewId, setViewId] = useState<string | null>(null);
+  const [showImport, setShowImport] = useState(false);
+  const [csvText, setCsvText] = useState('');
+  const [importMsg, setImportMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [importing, setImporting] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const { data: journals, isLoading } = useQuery({
     queryKey: ['journals'],
@@ -40,11 +45,30 @@ export function JournalsPage() {
     }
   };
 
+  const handleImport = async () => {
+    if (!csvText.trim()) return;
+    setImporting(true);
+    setImportMsg(null);
+    try {
+      const res = await accountantApi.importJournalsCsv(csvText);
+      setImportMsg({ type: 'success', text: res.message || 'Imported successfully.' });
+      setCsvText('');
+      queryClient.invalidateQueries({ queryKey: ['journals'] });
+      setTimeout(() => { setShowImport(false); setImportMsg(null); }, 1500);
+    } catch (err: any) {
+      setImportMsg({ type: 'error', text: err.response?.data?.error || err.message || 'Import failed.' });
+    } finally { setImporting(false); }
+  };
+
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-slate-900">Manual Journals</h1>
         <div className="flex items-center gap-2">
+          <button onClick={() => setShowImport(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors">
+            <Upload size={14} /> Import CSV
+          </button>
           <button onClick={exportJournalsCSV}
             className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors">
             <Download size={14} /> CSV
@@ -53,6 +77,42 @@ export function JournalsPage() {
           <button onClick={() => { setShowForm(true); setViewId(null); }} className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700"><Plus className="w-4 h-4" /> New Journal Entry</button>
         </div>
       </div>
+
+      {/* Import Modal */}
+      {showImport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => { setShowImport(false); setImportMsg(null); }}>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 p-6 space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-slate-900">Import Journal Entries</h2>
+              <button onClick={() => { setShowImport(false); setImportMsg(null); }} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+            </div>
+            <p className="text-xs text-slate-500">Upload a CSV file with columns: date, entryNumber, description, reference, line_accountCode, line_debit (NGN), line_credit (NGN), line_description</p>
+            <input ref={fileRef} type="file" accept=".csv" onChange={e => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              const reader = new FileReader();
+              reader.onload = (ev) => setCsvText(ev.target?.result as string);
+              reader.readAsText(file);
+            }} className="w-full text-sm" />
+            {csvText && (
+              <div className="text-xs text-emerald-600 bg-emerald-50 px-3 py-2 rounded-lg">File loaded ({csvText.split(/\n/).length} rows)</div>
+            )}
+            {importMsg && (
+              <div className={`flex items-center gap-2 p-3 rounded-lg text-sm ${importMsg.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+                {importMsg.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+                {importMsg.text}
+              </div>
+            )}
+            <div className="flex justify-end gap-3">
+              <button onClick={() => { setShowImport(false); setImportMsg(null); }} className="px-4 py-2 text-sm font-semibold text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200">Cancel</button>
+              <button onClick={handleImport} disabled={!csvText || importing}
+                className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50">
+                {importing ? <Loader2 className="w-4 h-4 animate-spin inline" /> : null} Import
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {viewId ? (
         <JournalDetailView journalId={viewId} onBack={() => setViewId(null)} />
