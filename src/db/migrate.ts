@@ -76,6 +76,16 @@ export async function runMigration() {
     if (plFix.rowCount && plFix.rowCount > 0) {
       console.log(`[Migration] Cleared opening balances on ${plFix.rowCount} P&L account(s).`);
     }
+    // Delete P&L opening balance journal lines (created by CSV import, no longer valid)
+    const lineDel = await db.execute(`DELETE FROM journal_lines WHERE entry_id IN (SELECT id FROM journal_entries WHERE source = 'opening_balance') AND account_id IN (SELECT id FROM accounts WHERE LOWER(type) IN ('expense', 'revenue'))`);
+    if (lineDel.rowCount && lineDel.rowCount > 0) {
+      console.log(`[Migration] Deleted ${lineDel.rowCount} P&L opening balance journal line(s).`);
+    }
+    // Delete orphaned opening balance entries with no remaining lines
+    const entryDel = await db.execute(`DELETE FROM journal_entries WHERE source = 'opening_balance' AND id NOT IN (SELECT DISTINCT entry_id FROM journal_lines)`);
+    if (entryDel.rowCount && entryDel.rowCount > 0) {
+      console.log(`[Migration] Deleted ${entryDel.rowCount} orphaned opening balance journal entr(ies).`);
+    }
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema push:', err);
