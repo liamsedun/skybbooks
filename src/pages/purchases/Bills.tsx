@@ -303,20 +303,20 @@ function BillList() {
         </div>
         <div className="flex items-center gap-2">
           <button onClick={async () => { try { const res = await api.get('/purchases/bills/pdf', { responseType: 'blob' }); window.open(URL.createObjectURL(res.data), '_blank'); } catch (e) { console.error(e); } }}
-            className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
-            <FileText size={15} /> PDF
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
+            <FileText size={14} /> PDF
           </button>
           <button onClick={() => exportBillsCSV(filtered, vendorMap)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
-            <Download size={15} /> CSV
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
+            <Download size={14} /> CSV
           </button>
           <button onClick={() => setImportOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
-            <Upload size={15} /> Import CSV
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
+            <Upload size={14} /> Import CSV
           </button>
           <button onClick={openCreate}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary-hover transition-colors">
-            <Plus size={16} /> New Bill
+            className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary text-white text-xs font-medium rounded-lg hover:bg-primary-hover transition-colors">
+            <Plus size={14} /> New Bill
           </button>
         </div>
       </div>
