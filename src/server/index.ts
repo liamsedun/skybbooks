@@ -135,9 +135,11 @@ async function startServer() {
   // Global error handler
   app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
     const status = err.statusCode || err.status || 500;
+    const pgErr = err.cause?.message || err.cause?.detail || err.cause;
     const message = err.message || 'An unexpected error occurred.';
+    const detail = pgErr ? `${message}: ${pgErr}` : message;
     logger.error(`[ERROR] ${status} ${req.method} ${req.url}`, err);
-    res.status(status).json({ error: message, status });
+    res.status(status).json({ error: detail, status });
   });
 
   // ==========================================
