@@ -9,7 +9,7 @@ import {
   User, Phone, Briefcase, CreditCard,
   CheckCircle, XCircle, Save, GraduationCap,
   Award, Building2, Heart, Shield, Users, Plus, Trash2, MapPin, Upload,
-  Download
+  Download, ToggleLeft, ToggleRight, AlertCircle
 } from 'lucide-react';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
 import { exportToCsv } from '../../lib/csvTemplates';
@@ -140,6 +140,10 @@ export function EmployeesPage() {
   const [filterDept, setFilterDept] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [importOpen, setImportOpen] = useState(false);
+  const [lastImportIds, setLastImportIds] = useState<string[]>(() => {
+    try { const stored = sessionStorage.getItem('lastEmployeeImportIds'); return stored ? JSON.parse(stored) : []; } catch { return []; }
+  });
+  const [clearMsg, setClearMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Repeatable sections state
   const [eduQuals, setEduQuals] = useState<any[]>([]);
@@ -174,6 +178,17 @@ export function EmployeesPage() {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: any) => payrollApi.updateEmployee(id, data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['employees'] }); resetForm(); },
+  });
+
+  const toggleActiveMutation = useMutation({
+    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) => payrollApi.updateEmployee(id, { isActive }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['employees'] }),
+  });
+
+  const clearMutation = useMutation({
+    mutationFn: (ids: string[]) => payrollApi.bulkDeleteEmployees(ids),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['employees'] }); setLastImportIds([]); sessionStorage.removeItem('lastEmployeeImportIds'); setClearMsg({ type: 'success', text: 'Last import cleared successfully.' }); setTimeout(() => setClearMsg(null), 3000); },
+    onError: () => { setClearMsg({ type: 'error', text: 'Failed to clear last import.' }); setTimeout(() => setClearMsg(null), 3000); },
   });
 
   function resetForm() {
@@ -247,6 +262,12 @@ export function EmployeesPage() {
             className="p-2 border border-slate-200 bg-white hover:bg-slate-50 rounded-xl text-slate-500 outline-none">
             <Download className="w-4 h-4" />
           </button>
+          {lastImportIds.length > 0 && (
+            <button onClick={() => { if (confirm('Delete all employees from the last CSV import?')) clearMutation.mutate(lastImportIds); }}
+              className="p-2 border border-red-200 bg-red-50 hover:bg-red-100 rounded-xl text-red-500 outline-none" title="Clear Last Import">
+              <AlertCircle className="w-4 h-4" />
+            </button>
+          )}
           <button onClick={() => queryClient.invalidateQueries({ queryKey: ['employees'] })}
             className="p-2 border border-slate-200 bg-white hover:bg-slate-50 rounded-xl text-slate-500 outline-none">
             <RefreshCw className="w-4 h-4" />
@@ -277,6 +298,14 @@ export function EmployeesPage() {
           <p className="text-2xl font-bold text-slate-900 mt-1">{formatNaira(totalPayroll)}</p>
         </div>
       </div>
+
+      {/* Clear message */}
+      {clearMsg && (
+        <div className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold ${clearMsg.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+          {clearMsg.type === 'success' ? <CheckCircle className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
+          {clearMsg.text}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm flex flex-wrap gap-3">
@@ -334,6 +363,7 @@ export function EmployeesPage() {
             <table className="w-full text-left text-[13px]">
               <thead className="bg-slate-50 border-b border-slate-100">
                 <tr className="text-[11px] text-slate-500 uppercase tracking-wide font-bold">
+                  <th className="px-4 py-3">Staff ID</th>
                   <th className="px-4 py-3">Employee</th>
                   <th className="px-4 py-3">Department</th>
                   <th className="px-4 py-3">Designation</th>
@@ -346,6 +376,7 @@ export function EmployeesPage() {
               <tbody className="divide-y divide-slate-50">
                 {employees.map((emp: any) => (
                   <tr key={emp.id} className="hover:bg-slate-50/50 transition group">
+                    <td className="px-4 py-3 font-mono text-xs text-slate-500">{emp.staffId || '—'}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-xs shrink-0">
@@ -353,7 +384,7 @@ export function EmployeesPage() {
                         </div>
                         <div>
                           <p className="font-semibold text-slate-800">{emp.firstName} {emp.lastName}</p>
-                          <p className="text-xs text-slate-400">{emp.staffId} · {emp.email || '—'}</p>
+                          <p className="text-xs text-slate-400">{emp.email || '—'}</p>
                         </div>
                       </div>
                     </td>
@@ -364,9 +395,15 @@ export function EmployeesPage() {
                       <span className="px-2 py-0.5 text-xs bg-slate-100 text-slate-600 rounded-full capitalize">{emp.paymentFrequency}</span>
                     </td>
                     <td className="px-4 py-3">
-                      {emp.isActive
-                        ? <span className="flex items-center gap-1 text-xs text-green-700 font-semibold"><CheckCircle className="w-3.5 h-3.5" /> Active</span>
-                        : <span className="flex items-center gap-1 text-xs text-slate-400 font-semibold"><XCircle className="w-3.5 h-3.5" /> Inactive</span>}
+                      <button onClick={() => toggleActiveMutation.mutate({ id: emp.id, isActive: !emp.isActive })}
+                        className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-lg border transition ${
+                          emp.isActive
+                            ? 'text-green-700 bg-green-50 border-green-200 hover:bg-green-100'
+                            : 'text-slate-400 bg-slate-50 border-slate-200 hover:bg-slate-100'
+                        }`}>
+                        {emp.isActive ? <ToggleLeft className="w-3.5 h-3.5" /> : <ToggleRight className="w-3.5 h-3.5" />}
+                        {emp.isActive ? 'Active' : 'Inactive'}
+                      </button>
                     </td>
                     <td className="px-4 py-3 text-right">
                       <button onClick={() => openEdit(emp)}
@@ -561,7 +598,7 @@ export function EmployeesPage() {
           entity="employees"
           endpoint="/payroll/employees"
           onClose={() => setImportOpen(false)}
-          onSuccess={() => { queryClient.invalidateQueries({ queryKey: ['employees'] }); }}
+          onSuccess={(ids) => { if (ids && ids.length) { setLastImportIds(ids); sessionStorage.setItem('lastEmployeeImportIds', JSON.stringify(ids)); } queryClient.invalidateQueries({ queryKey: ['employees'] }); }}
           transformRow={(row, headers) => ({
             staffId: row[headers.indexOf('staffId')]?.trim() || '',
             firstName: row[headers.indexOf('firstName')]?.trim() || '',

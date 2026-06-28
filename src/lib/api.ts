@@ -665,6 +665,10 @@ export const payrollApi = {
     const res = await api.get(`/payroll/runs/${runId}/payslips/${employeeId}/pdf`, { responseType: 'blob' });
     return res.data;
   },
+  bulkDeleteEmployees: async (ids: string[]) => {
+    const res = await api.post('/payroll/employees/bulk-delete', { ids });
+    return res.data;
+  },
 };
 
 // 7. Accountant Endpoints

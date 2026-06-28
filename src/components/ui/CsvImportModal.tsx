@@ -4,10 +4,10 @@ import { CSV_TEMPLATES, downloadCsv, parseCsv } from '../../lib/csvTemplates';
 import { api } from '../../lib/api';
 
 interface Props {
-  entity: keyof typeof CSV_TEMPLATES;
+  entity: string;
   endpoint: string;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (ids?: string[]) => void;
   transformRow: (row: string[], headers: string[]) => any;
 }
 
@@ -46,13 +46,15 @@ export function CsvImportModal({ entity, endpoint, onClose, onSuccess, transform
     setError('');
     setResults(null);
     const errors: string[] = [];
+    const importedIds: string[] = [];
     let success = 0;
     let failed = 0;
 
     for (let i = 0; i < preview.rows.length; i++) {
       try {
         const payload = transformRow(preview.rows[i], preview.headers);
-        await api.post(endpoint, payload);
+        const res = await api.post(endpoint, payload);
+        if (res.data?.id) importedIds.push(res.data.id);
         success++;
       } catch (err: any) {
         failed++;
@@ -63,7 +65,7 @@ export function CsvImportModal({ entity, endpoint, onClose, onSuccess, transform
     setResults({ success, failed, errors });
     setImporting(false);
     if (failed === 0) {
-      setTimeout(() => { onSuccess(); onClose(); }, 1500);
+      setTimeout(() => { (onSuccess as any)(importedIds); onClose(); }, 1500);
     }
   }
 

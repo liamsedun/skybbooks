@@ -464,4 +464,14 @@ router.get('/runs/:id/payslips/:employeeId/pdf', async (req: AuthenticatedReques
   } catch (err) { return next(err); }
 });
 
+// Bulk delete employees (for clearing last CSV import)
+router.post('/employees/bulk-delete', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const ids = req.body.ids as string[];
+    if (!ids || !Array.isArray(ids) || ids.length === 0) throw new AppError('No employee IDs provided.', 400);
+    await db.delete(employees).where(and(eq(employees.orgId, req.user!.orgId!), sql`${employees.id} = ANY(${ids})`));
+    res.json({ success: true, deleted: ids.length });
+  } catch (err) { return next(err); }
+});
+
 export default router;
