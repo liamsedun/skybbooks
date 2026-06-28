@@ -102,6 +102,8 @@ export async function runMigration() {
     if (entryDel.rowCount && entryDel.rowCount > 0) {
       console.log(`[Migration] Deleted ${entryDel.rowCount} orphaned opening balance journal entr(ies).`);
     }
+    // Ensure middle_name column exists on employees (added after initial schema)
+    await db.execute(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS middle_name text`);
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema push:', err);
