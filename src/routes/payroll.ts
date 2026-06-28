@@ -41,7 +41,15 @@ const createEmployeeSchema = z.object({
   pensionPin: z.string().optional().nullable().default(null),
   nhfNumber: z.string().optional().nullable().default(null),
   taxId: z.string().optional().nullable().default(null),
-  isActive: z.boolean().optional().default(true)
+  isActive: z.boolean().optional().default(true),
+  pensionablePortionPct: z.number().int().min(1).max(100).optional().default(80),
+  pensionRatePct: z.number().int().min(0).max(30).optional().default(8),
+  nhisApplicable: z.boolean().optional().default(false),
+  nhfApplicable: z.boolean().optional().default(true),
+  annualRent: z.number().int().nonnegative().optional().default(0),
+  annualMortgageInterest: z.number().int().nonnegative().optional().default(0),
+  annualLifeAssurance: z.number().int().nonnegative().optional().default(0),
+  internalDeductions: z.array(z.object({ description: z.string(), amount: z.number().int().nonnegative() })).optional().default([])
 });
 
 const updateEmployeeSchema = createEmployeeSchema.partial();
@@ -143,6 +151,13 @@ router.post('/employees', async (req: AuthenticatedRequest, res: Response, next:
         nhfNumber: body.nhfNumber || null,
         taxId: body.taxId || null,
         isActive: body.isActive ?? true,
+        pensionablePortionPct: body.pensionablePortionPct ?? 80,
+        pensionRatePct: body.pensionRatePct ?? 8,
+        nhisApplicable: body.nhisApplicable ?? false,
+        nhfApplicable: body.nhfApplicable ?? true,
+        annualRent: body.annualRent ?? 0,
+        annualMortgageInterest: body.annualMortgageInterest ?? 0,
+        annualLifeAssurance: body.annualLifeAssurance ?? 0,
         orgId,
       })
       .returning();

@@ -9,7 +9,7 @@ import {
   User, Phone, Briefcase, CreditCard,
   CheckCircle, XCircle, Save, GraduationCap,
   Award, Building2, Heart, Shield, Users, Plus, Trash2, MapPin, Upload,
-  Download, ToggleLeft, ToggleRight, AlertCircle
+  Download, ToggleLeft, ToggleRight, AlertCircle, Settings
 } from 'lucide-react';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
 import { exportToCsv } from '../../lib/csvTemplates';
@@ -119,6 +119,9 @@ const emptyForm = {
   address: '', department: '', designation: '', dateOfBirth: '', dateHired: '',
   bankName: '', accountNumber: '', grossSalary: 0,
   paymentFrequency: 'monthly', pensionPin: '', nhfNumber: '', taxId: '', isActive: true,
+  pensionablePortionPct: 80, pensionRatePct: 8,
+  nhisApplicable: false, nhfApplicable: true,
+  annualRent: 0, annualMortgageInterest: 0, annualLifeAssurance: 0,
 };
 
 const emptyEduQual = { level: '', institution: '', course: '', year: '' };
@@ -210,6 +213,13 @@ export function EmployeesPage() {
       paymentFrequency: emp.paymentFrequency || 'monthly',
       pensionPin: emp.pensionPin || '', nhfNumber: emp.nhfNumber || '',
       taxId: emp.taxId || '', isActive: emp.isActive !== false,
+      pensionablePortionPct: emp.pensionablePortionPct ?? 80,
+      pensionRatePct: emp.pensionRatePct ?? 8,
+      nhisApplicable: emp.nhisApplicable ?? false,
+      nhfApplicable: emp.nhfApplicable ?? true,
+      annualRent: Math.round((emp.annualRent || 0) / 100),
+      annualMortgageInterest: Math.round((emp.annualMortgageInterest || 0) / 100),
+      annualLifeAssurance: Math.round((emp.annualLifeAssurance || 0) / 100),
     });
     setEduQuals(emp.eduQuals || []);
     setProfQuals(emp.profQuals || []);
@@ -226,6 +236,9 @@ export function EmployeesPage() {
     const payload = {
       ...form,
       grossSalary: Math.round(Number(form.grossSalary) * 100),
+      annualRent: Math.round(Number(form.annualRent) * 100),
+      annualMortgageInterest: Math.round(Number(form.annualMortgageInterest) * 100),
+      annualLifeAssurance: Math.round(Number(form.annualLifeAssurance) * 100),
       eduQuals, profQuals, institutions, nextOfKin, guarantors, references,
     };
     if (editingId) updateMutation.mutate({ id: editingId, data: payload });
@@ -484,6 +497,28 @@ export function EmployeesPage() {
                 </div>
               </div>
 
+              {/* 3b. Payroll Settings */}
+              <div className="space-y-4 border-t border-slate-100 pt-5">
+                <SectionHeader icon={Settings} title="Payroll Settings (2026 PITA)" />
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="Pensionable Portion (%)" value={form.pensionablePortionPct} onChange={f('pensionablePortionPct')} type="number" placeholder="80" />
+                  <Field label="Pension Rate (%)" value={form.pensionRatePct} onChange={f('pensionRatePct')} type="number" placeholder="8" />
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={form.nhisApplicable} onChange={e => f('nhisApplicable')(e.target.checked)}
+                      className="w-4 h-4 rounded text-indigo-600 border-slate-300 focus:ring-indigo-500" />
+                    <span className="text-sm font-medium text-slate-700">NHIS Applicable (5% of Basic)</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={form.nhfApplicable} onChange={e => f('nhfApplicable')(e.target.checked)}
+                      className="w-4 h-4 rounded text-indigo-600 border-slate-300 focus:ring-indigo-500" />
+                    <span className="text-sm font-medium text-slate-700">NHF Applicable (2.5% of Basic)</span>
+                  </label>
+                  <Field label="Annual Rent (₦)" value={form.annualRent} onChange={f('annualRent')} type="number" placeholder="0" />
+                  <Field label="Annual Mortgage Interest (₦)" value={form.annualMortgageInterest} onChange={f('annualMortgageInterest')} type="number" placeholder="0" />
+                  <Field label="Annual Life Assurance (₦)" value={form.annualLifeAssurance} onChange={f('annualLifeAssurance')} type="number" placeholder="0" />
+                </div>
+              </div>
+
               {/* 4. Educational Qualifications */}
               <RepeatableSection
                 title="Educational Qualifications"
@@ -618,6 +653,13 @@ export function EmployeesPage() {
             nhfNumber: row[headers.indexOf('nhfNumber')]?.trim() || null,
             taxId: row[headers.indexOf('taxId')]?.trim() || null,
             isActive: row[headers.indexOf('isActive (yes/no)')]?.toLowerCase() === 'yes',
+            pensionablePortionPct: parseInt(row[headers.indexOf('pensionablePortionPct (%)')]?.trim()) || 80,
+            pensionRatePct: parseInt(row[headers.indexOf('pensionRatePct (%)')]?.trim()) || 8,
+            nhisApplicable: row[headers.indexOf('nhisApplicable (yes/no)')]?.toLowerCase() === 'yes',
+            nhfApplicable: row[headers.indexOf('nhfApplicable (yes/no)')]?.toLowerCase() === 'yes',
+            annualRent: Math.round(parseFloat(row[headers.indexOf('annualRent (NGN)')] || '0') * 100),
+            annualMortgageInterest: Math.round(parseFloat(row[headers.indexOf('annualMortgageInterest (NGN)')] || '0') * 100),
+            annualLifeAssurance: Math.round(parseFloat(row[headers.indexOf('annualLifeAssurance (NGN)')] || '0') * 100),
           })}
         />
       )}

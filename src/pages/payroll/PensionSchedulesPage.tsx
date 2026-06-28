@@ -48,7 +48,7 @@ export function PensionSchedulesPage() {
       l.employee?.staffId || '',
       `${l.employee?.firstName || ''} ${l.employee?.lastName || ''}`,
       (l.grossPay / 100).toFixed(2),
-      ((l.basic + l.housing + l.transport) / 100).toFixed(2),
+      (l.basic / 100).toFixed(2),
       (l.pensionEmployee / 100).toFixed(2),
       (l.pensionEmployer / 100).toFixed(2),
       ((l.pensionEmployee + l.pensionEmployer) / 100).toFixed(2),
@@ -121,7 +121,7 @@ export function PensionSchedulesPage() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {lines.map((line: any) => {
-                const pensionable = (line.basic || 0) + (line.housing || 0) + (line.transport || 0);
+                const pensionable = line.basic || 0;
                 const totalPension = (line.pensionEmployee || 0) + (line.pensionEmployer || 0);
                 return (
                   <tr key={line.id} className="hover:bg-slate-50">

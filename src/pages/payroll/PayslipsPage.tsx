@@ -58,25 +58,31 @@ export function PayslipsPage() {
 
   function exportPayslipsCSV() {
     const today = new Date().toISOString().split('T')[0];
-    const headers = ['Staff ID', 'Employee', 'Department', 'Gross', 'PAYE', 'Pension', 'NHF', 'Net'];
-    const rows = filtered.map((l: any) => [l.employee?.staffId||'', `${l.employee?.firstName||''} ${l.employee?.lastName||''}`, l.employee?.department||'', (l.grossPay/100).toFixed(2), (l.paye/100).toFixed(2), (l.pensionEmployee/100).toFixed(2), (l.nhf/100).toFixed(2), (l.netPay/100).toFixed(2)]);
+    const headers = ['Staff ID', 'Employee', 'Department', 'Gross', 'Basic', 'PAYE', 'Pension', 'NHIS', 'NHF', 'Internal Deductions', 'Net'];
+    const rows = filtered.map((l: any) => {
+      const intDed = Array.isArray(l.internalDeductions) ? l.internalDeductions.reduce((s: number, d: any) => s + (d.amount || 0), 0) : 0;
+      return [l.employee?.staffId||'', `${l.employee?.firstName||''} ${l.employee?.lastName||''}`, l.employee?.department||'', (l.grossPay/100).toFixed(2), (l.basic/100).toFixed(2), (l.paye/100).toFixed(2), (l.pensionEmployee/100).toFixed(2), ((l.nhis||0)/100).toFixed(2), (l.nhf/100).toFixed(2), (intDed/100).toFixed(2), (l.netPay/100).toFixed(2)];
+    });
     exportToCsv(`payslips_${today}.csv`, headers, rows);
   }
 
   function printPayslip() {
     if (!viewingPayslip) return;
     const { line, run, employee, calculation } = viewingPayslip;
+    const nhisVal = (line as any).nhis || 0;
+    const intDedArr = Array.isArray((line as any).internalDeductions) ? (line as any).internalDeductions : [];
+    const intDedTotal = intDedArr.reduce((s: number, d: any) => s + (d.amount || 0), 0);
     const calc = calculation || {
-      grossPay: line.grossPay, basic: line.basic, housing: line.housing,
-      transport: line.transport, otherAllowances: line.otherAllowances,
-      pensionEmployee: line.pensionEmployee, pensionEmployer: line.pensionEmployer,
-      nhf: line.nhf, annualGross: line.annualGross, cra: line.taxRelief,
-      chargeableIncome: line.annualGross - line.taxRelief - (line.pensionEmployee || 0) * 12 - (line.nhf || 0) * 12,
-      annualPaye: line.paye * 12, monthlyPaye: line.paye,
-      otherDeductions: line.otherDeductions, netPay: line.netPay,
-      effectiveTaxRate: line.grossPay > 0 ? line.paye / line.grossPay : 0,
-      breakdown: [],
+      grossPay: line.grossPay, basic: line.basic,
+      monthlyPAYE: line.paye,
+      pensionEE: line.pensionEmployee,
+      nhf: line.nhf,
+      nhis: nhisVal,
+      otherDeductions: line.otherDeductions,
+      internalDeductions: intDedArr,
+      netPay: line.netPay,
     };
+    const intDedHtml = intDedArr.map((d: any) => `<tr><td style="padding-left:20px">${d.description}</td><td style="text-align:right">${formatNaira(d.amount || 0)}</td></tr>`).join('');
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Payslip - ${employee?.firstName} ${employee?.lastName}</title>
     <style>
@@ -96,6 +102,7 @@ export function PayslipsPage() {
       tr:nth-child(even) td{background:#f8fafc}
       .total-row td{font-weight:700;background:#f1f5f9;border-top:2px solid #0f172a}
       .net-row td{font-weight:800;background:#dbeafe;border-top:2px solid #1e40af;color:#1e40af;font-size:13px}
+      .sub-row td{font-size:10px;color:#64748b}
       .footer{text-align:center;font-size:9px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:12px;margin-top:24px}
       .badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:10px;font-weight:700;background:#dbeafe;color:#1e40af}
       @media print{body{padding:15px}}
@@ -117,19 +124,18 @@ export function PayslipsPage() {
     <table>
       <thead><tr><th>Earnings</th><th style="text-align:right">Amount</th></tr></thead>
       <tbody>
+        <tr><td>Gross Salary</td><td style="text-align:right">${formatNaira(calc.grossPay)}</td></tr>
         <tr><td>Basic Salary</td><td style="text-align:right">${formatNaira(calc.basic)}</td></tr>
-        <tr><td>Housing Allowance</td><td style="text-align:right">${formatNaira(calc.housing)}</td></tr>
-        <tr><td>Transport Allowance</td><td style="text-align:right">${formatNaira(calc.transport)}</td></tr>
-        <tr><td>Other Allowances</td><td style="text-align:right">${formatNaira(calc.otherAllowances)}</td></tr>
-        <tr class="total-row"><td>Gross Pay</td><td style="text-align:right">${formatNaira(calc.grossPay)}</td></tr>
       </tbody>
     </table>
     <table>
-      <thead><tr><th>Deductions</th><th style="text-align:right">Amount</th></tr></thead>
+      <thead><tr><th>Statutory Deductions</th><th style="text-align:right">Amount</th></tr></thead>
       <tbody>
-        <tr><td>PAYE Tax</td><td style="text-align:right">${formatNaira(calc.monthlyPaye)}</td></tr>
-        <tr><td>Pension (Employee 8%)</td><td style="text-align:right">${formatNaira(calc.pensionEmployee)}</td></tr>
-        <tr><td>NHF (2.5%)</td><td style="text-align:right">${formatNaira(calc.nhf)}</td></tr>
+        <tr><td>PAYE Tax</td><td style="text-align:right">${formatNaira(calc.monthlyPAYE)}</td></tr>
+        <tr><td>Pension (EE) ${calculation?.bandBreakdown?.[0]?.rate !== undefined ? `@ ${(calculation.pensionEE / (calculation.basic || 1) * 100).toFixed(1)}%` : ''}</td><td style="text-align:right">${formatNaira(calc.pensionEE)}</td></tr>
+        <tr><td>NHIS (5% of Basic)</td><td style="text-align:right">${formatNaira(calc.nhis)}</td></tr>
+        <tr><td>NHF (2.5% of Basic)</td><td style="text-align:right">${formatNaira(calc.nhf)}</td></tr>
+        ${intDedHtml}
         <tr class="net-row"><td>Net Pay</td><td style="text-align:right">${formatNaira(calc.netPay)}</td></tr>
       </tbody>
     </table>
@@ -253,7 +259,10 @@ export function PayslipsPage() {
               {(() => {
                 const { line, run, employee } = viewingPayslip;
                 if (!line) return <p className="text-sm text-slate-400">No data available.</p>;
-                const totalDed = (line.paye || 0) + (line.pensionEmployee || 0) + (line.nhf || 0) + (line.otherDeductions || 0);
+                const nhisVal = (line as any).nhis || 0;
+                const intDedArr = Array.isArray((line as any).internalDeductions) ? (line as any).internalDeductions : [];
+                const intDedTotal = intDedArr.reduce((s: number, d: any) => s + (d.amount || 0), 0);
+                const totalDed = (line.paye || 0) + (line.pensionEmployee || 0) + nhisVal + (line.nhf || 0) + intDedTotal;
                 return (
                   <div className="space-y-5">
                     <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 text-center">
@@ -269,18 +278,18 @@ export function PayslipsPage() {
                     </div>
                     <div className="border-t border-slate-100 pt-4 space-y-2 text-sm">
                       <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">Earnings</h4>
+                      <div className="flex justify-between"><span className="text-slate-500">Gross Salary</span><span className="font-mono">{formatNaira(line.grossPay)}</span></div>
                       <div className="flex justify-between"><span className="text-slate-500">Basic Salary</span><span className="font-mono">{formatNaira(line.basic)}</span></div>
-                      <div className="flex justify-between"><span className="text-slate-500">Housing</span><span className="font-mono">{formatNaira(line.housing)}</span></div>
-                      <div className="flex justify-between"><span className="text-slate-500">Transport</span><span className="font-mono">{formatNaira(line.transport)}</span></div>
-                      <div className="flex justify-between"><span className="text-slate-500">Other Allowances</span><span className="font-mono">{formatNaira(line.otherAllowances)}</span></div>
-                      <div className="flex justify-between font-bold text-slate-900 pt-1 border-t border-slate-100"><span>Gross Pay</span><span className="font-mono">{formatNaira(line.grossPay)}</span></div>
                     </div>
                     <div className="border-t border-slate-100 pt-4 space-y-2 text-sm">
-                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">Deductions</h4>
+                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">Statutory Deductions</h4>
                       <div className="flex justify-between"><span className="text-slate-500">PAYE Tax</span><span className="font-mono text-red-600">{formatNaira(line.paye)}</span></div>
-                      <div className="flex justify-between"><span className="text-slate-500">Pension (EE 8%)</span><span className="font-mono text-amber-600">{formatNaira(line.pensionEmployee)}</span></div>
-                      <div className="flex justify-between"><span className="text-slate-500">NHF (2.5%)</span><span className="font-mono text-slate-600">{formatNaira(line.nhf)}</span></div>
-                      {line.otherDeductions > 0 && <div className="flex justify-between"><span className="text-slate-500">Other Deductions</span><span className="font-mono">{formatNaira(line.otherDeductions)}</span></div>}
+                      <div className="flex justify-between"><span className="text-slate-500">Pension (EE)</span><span className="font-mono text-amber-600">{formatNaira(line.pensionEmployee)}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-500">NHIS (5% of Basic)</span><span className="font-mono text-amber-600">{formatNaira(nhisVal)}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-500">NHF (2.5% of Basic)</span><span className="font-mono text-slate-600">{formatNaira(line.nhf)}</span></div>
+                      {intDedArr.map((d: any, i: number) => (
+                        <div key={i} className="flex justify-between"><span className="text-slate-500">{d.description}</span><span className="font-mono">{formatNaira(d.amount || 0)}</span></div>
+                      ))}
                       <div className="flex justify-between font-bold pt-1 border-t border-slate-100"><span>Total Deductions</span><span className="font-mono text-red-600">{formatNaira(totalDed)}</span></div>
                     </div>
                     <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 flex justify-between items-center">

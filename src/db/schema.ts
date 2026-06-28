@@ -666,6 +666,13 @@ export const employees = pgTable('employees', {
   nhfNumber: text('nhf_number'),
   taxId: text('tax_id'),
   isActive: boolean('is_active').default(true).notNull(),
+  pensionablePortionPct: integer('pensionable_portion_pct').default(80).notNull(),
+  pensionRatePct: integer('pension_rate_pct').default(8).notNull(),
+  nhisApplicable: boolean('nhis_applicable').default(false).notNull(),
+  nhfApplicable: boolean('nhf_applicable').default(true).notNull(),
+  annualRent: bigint('annual_rent', { mode: 'number' }).default(0).notNull(),
+  annualMortgageInterest: bigint('annual_mortgage_interest', { mode: 'number' }).default(0).notNull(),
+  annualLifeAssurance: bigint('annual_life_assurance', { mode: 'number' }).default(0).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
@@ -701,6 +708,8 @@ export const payrollLines = pgTable('payroll_lines', {
   pensionEmployer: bigint('pension_employer', { mode: 'number' }).default(0).notNull(),
   nhf: bigint('nhf', { mode: 'number' }).default(0).notNull(),
   otherDeductions: bigint('other_deductions', { mode: 'number' }).default(0).notNull(),
+  nhis: bigint('nhis', { mode: 'number' }).default(0).notNull(),
+  internalDeductions: jsonb('internal_deductions').default([]).notNull(),
   netPay: bigint('net_pay', { mode: 'number' }).default(0).notNull(),
   taxRelief: bigint('tax_relief', { mode: 'number' }).default(0).notNull(),
   annualGross: bigint('annual_gross', { mode: 'number' }).default(0).notNull(),

@@ -396,18 +396,16 @@ export async function generatePayslipPDF(payrollLineId: string): Promise<Buffer>
     doc.text('AMOUNT', startX + 180, y + 5, { align: 'right', width: 60 });
 
     doc.rect(305, y, 250, 18).fill('#f3f4f6');
-    doc.fillColor(TEXT_PRIMARY).text('DEDUCTIONS & TAX', 313, y + 5);
+    doc.fillColor(TEXT_PRIMARY).text('STATUTORY DEDUCTIONS', 313, y + 5);
     doc.text('AMOUNT', 485, y + 5, { align: 'right', width: 60 });
 
     y += 18;
     let earningsY = y + 5;
     doc.font('Helvetica').fontSize(8).fillColor(TEXT_PRIMARY);
-    
+
     const earns = [
+      { name: 'Gross Salary', val: line.grossPay },
       { name: 'Basic Salary', val: line.basic },
-      { name: 'Housing Allowance', val: line.housing },
-      { name: 'Transport Allowance', val: line.transport },
-      { name: 'Other Allowances', val: line.otherAllowances }
     ];
 
     earns.forEach(e => {
@@ -417,12 +415,18 @@ export async function generatePayslipPDF(payrollLineId: string): Promise<Buffer>
     });
 
     let deductionsY = y + 5;
-    const deducts = [
+    const nhisVal = (line as any).nhis || 0;
+    const intDed = Array.isArray((line as any).internalDeductions) ? (line as any).internalDeductions : [];
+    const intDedTotal = intDed.reduce((s: number, d: any) => s + (d.amount || 0), 0);
+    const deducts: { name: string; val: number }[] = [
       { name: 'PAYE Tax (Monthly)', val: line.paye },
-      { name: 'Pension Fund (Employee 8%)', val: line.pensionEmployee },
-      { name: 'Housing Fund (NHF 2.5%)', val: line.nhf },
-      { name: 'Other Deductions', val: line.otherDeductions }
+      { name: 'Pension Fund (EE)', val: line.pensionEmployee },
+      { name: 'NHIS (5% of Basic)', val: nhisVal },
+      { name: 'NHF (2.5% of Basic)', val: line.nhf },
     ];
+    if (intDedTotal > 0) {
+      deducts.push({ name: 'Internal Deductions', val: intDedTotal });
+    }
 
     deducts.forEach(d => {
       doc.text(d.name, 313, deductionsY);
@@ -430,19 +434,31 @@ export async function generatePayslipPDF(payrollLineId: string): Promise<Buffer>
       deductionsY += 16;
     });
 
+    // Show internal deduction breakdown if any
+    if (intDed.length > 0) {
+      intDed.forEach((d: any) => {
+        deductionsY += 3;
+        doc.fontSize(7).fillColor('#9ca3af').text(`  ${d.description}:`, 313, deductionsY);
+        doc.text(formatNaira(d.amount || 0), 465, deductionsY, { align: 'right', width: 80 });
+        deductionsY += 12;
+      });
+      doc.fontSize(8).fillColor(TEXT_PRIMARY);
+    }
+
     const finalY = Math.max(earningsY, deductionsY);
     y = finalY + 10;
 
     doc.moveTo(startX, y).lineTo(555, y).strokeColor('#e5e7eb').stroke();
     y += 10;
 
-    doc.font('Helvetica-Bold');
-    doc.text('Total Gross Pay:', startX + 8, y);
-    doc.text(formatNaira(line.grossPay), startX + 160, y, { align: 'right', width: 80 });
+    const totalDeducts = line.paye + line.pensionEmployee + nhisVal + line.nhf + intDedTotal;
 
-    const totalDeducts = line.paye + line.pensionEmployee + line.nhf + line.otherDeductions;
-    doc.text('Total Deductions:', 313, y);
+    doc.font('Helvetica-Bold');
+    doc.text('Total Statutory + Internal Deductions:', 313, y);
     doc.text(formatNaira(totalDeducts), 465, y, { align: 'right', width: 80 });
+
+    doc.text('Gross Salary:', startX + 8, y);
+    doc.text(formatNaira(line.grossPay), startX + 160, y, { align: 'right', width: 80 });
 
     y += 24;
 
@@ -454,9 +470,9 @@ export async function generatePayslipPDF(payrollLineId: string): Promise<Buffer>
     y += 45;
 
     doc.rect(startX, y, 515, 50).fill('#f9fafb');
-    doc.fillColor(TEXT_PRIMARY).fontSize(8).font('Helvetica-Bold').text('EMPLOYER CONTRIBUTIONS (Pensions obligations)', startX + 10, y + 8);
+    doc.fillColor(TEXT_PRIMARY).fontSize(8).font('Helvetica-Bold').text('EMPLOYER CONTRIBUTIONS (Pension obligations)', startX + 10, y + 8);
     doc.font('Helvetica').fillColor(MUTED_COLOR);
-    doc.text(`Employee Contribution portion (8%): ${formatNaira(line.pensionEmployee)}`, startX + 10, y + 22);
+    doc.text(`Employee Contribution portion: ${formatNaira(line.pensionEmployee)}`, startX + 10, y + 22);
     doc.text(`Employer Match Contribution portion (10%): ${formatNaira(line.pensionEmployer)}`, startX + 10, y + 33);
     const sumP = line.pensionEmployee + line.pensionEmployer;
     doc.font('Helvetica-Bold').text(`Total Month Obligation: ${formatNaira(sumP)}`, 320, y + 27);

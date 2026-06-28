@@ -17,30 +17,54 @@ import { createJournalEntry } from './ledger.service';
 export interface TaxBandBreakdown {
   bandName: string;
   taxableAmountInBand: number; // in kobo
-  rate: number;                // decimal e.g. 0.07, 0.11 etc.
+  rate: number;                // decimal e.g. 0.15, 0.18 etc.
   taxAmountInBand: number;     // in kobo
 }
 
 export interface PayrollCalculation {
   employeeId: string;
-  grossPay: number;               // in kobo
-  basic: number;                  // in kobo
-  housing: number;                // in kobo
-  transport: number;              // in kobo
-  otherAllowances: number;        // in kobo
-  pensionableEarnings: number;    // in kobo (capped)
-  pensionEmployee: number;        // in kobo (8%)
-  pensionEmployer: number;        // in kobo (10%)
-  nhf: number;                    // in kobo (2.5% of basic)
+  grossPay: number;               // in kobo (= grossSalary)
+  basicSalary: number;            // in kobo (Basic = Gross × PensionablePortionPct)
+
+  // Statutory Deductions
+  pensionEE: number;              // in kobo (Pension Rate % × Pensionable Portion % × Gross)
+  nhis: number;                   // in kobo (5% of Basic, if applicable)
+  nhf: number;                    // in kobo (2.5% of Basic, if applicable)
+  monthlyPAYE: number;            // in kobo
+  pensionEmployer: number;        // in kobo (10% of pensionable — accounting only)
+
+  // Tax Computation
   annualGross: number;            // in kobo
-  cra: number;                    // annual Consolidated Relief Allowance in kobo
-  chargeableIncome: number;       // annual Chargeable Income in kobo
-  annualPaye: number;             // annual PAYE in kobo
-  monthlyPaye: number;            // monthly PAYE in kobo
-  otherDeductions: number;        // in kobo
+  annualPension: number;          // in kobo
+  annualNHIS: number;             // in kobo
+  annualNHF: number;              // in kobo
+  rentRelief: number;             // in kobo
+  mortgageInterestRelief: number; // in kobo
+  lifeAssuranceRelief: number;    // in kobo
+  chargeableIncome: number;       // in kobo
+  annualPAYE: number;             // in kobo
+  effectiveRatePct: number;       // percentage (e.g. 6.35)
+  bandBreakdown: TaxBandBreakdown[];
+
+  // Internal Deductions
+  internalDeductions: { description: string; amount: number }[];
+  internalDeductionsTotal: number; // in kobo
+
+  // Net Pay
   netPay: number;                 // in kobo
-  effectiveTaxRate: number;       // decimal
+
+  // Legacy fields (for payroll_lines table compatibility)
+  basic: number;
+  housing: number;
+  transport: number;
+  otherAllowances: number;
+  pensionEmployee: number;
+  paye: number;
+  otherDeductions: number;
+  cra: number;
+  pensionableEarnings: number;
   breakdown: TaxBandBreakdown[];
+  effectiveTaxRate: number;
 }
 
 // =========================================================================
@@ -88,40 +112,57 @@ export interface PayrollCalculation {
  * @returns Comprehensive calculated payroll line breakdown
  */
 export function calculatePayrollForEmployee(employee: any, payPeriod?: { start?: Date | string; end?: Date | string }): PayrollCalculation {
-  const grossPay = Number(employee.grossSalary || 0);
+  const grossPay = Number(employee.grossSalary || 0); // in kobo
 
-  // 1. SALARY STRUCTURE
-  const basic = Math.round(grossPay * 0.40);
-  const housing = Math.round(grossPay * 0.20);
-  const transport = Math.round(grossPay * 0.10);
-  const otherAllowances = Math.max(0, grossPay - basic - housing - transport);
-
-  // 2. PENSION CONTRIBUTIONS
-  const MAX_PENSIONABLE_MONTHLY = 300000 * 100;
-  const rawPensionableEarnings = basic + housing + transport;
-  const pensionableEarnings = Math.min(rawPensionableEarnings, MAX_PENSIONABLE_MONTHLY);
-
-  const pensionEmployee = Math.round(pensionableEarnings * 0.08);
-  const pensionEmployer = Math.round(pensionableEarnings * 0.10);
-
-  // 3. NATIONAL HOUSING FUND (NHF)
-  const nhf = Math.round(basic * 0.025);
-
-  // 4. PAYE CALCULATIONS (ANNUAL BASIS) — 2026 NTA Rules
-  const annualGross = grossPay * 12;
-  const pensionEmployeeAnnual = pensionEmployee * 12;
-  const nhfAnnual = nhf * 12;
-
-  // Rent relief: 20% of annual rent paid, capped at ₦500,000 (₦50,000,000 kobo)
-  // Default to 0 if not provided via employee record
+  // Read employee payroll parameters with sensible defaults
+  const pensionablePortionPct = Math.max(1, Math.min(100, Number(employee.pensionablePortionPct || 80))) / 100;
+  const pensionRatePct = Math.max(0, Math.min(30, Number(employee.pensionRatePct || 8))) / 100;
+  const nhisApplicable = employee.nhisApplicable === true;
+  const nhfApplicable = employee.nhfApplicable !== false;
   const annualRentKobo = Number(employee.annualRent || 0);
-  const rentRelief = Math.min(Math.round(annualRentKobo * 0.20), 500000 * 100);
+  const annualMortgageInterestKobo = Number(employee.annualMortgageInterest || 0);
+  const annualLifeAssuranceKobo = Number(employee.annualLifeAssurance || 0);
+  const internalDeductionsList: { description: string; amount: number }[] =
+    Array.isArray(employee.internalDeductions) ? employee.internalDeductions : [];
 
-  // Chargeable Income = Annual Gross - Employee Pension - NHF - Rent Relief
-  const rawChargeableIncome = annualGross - pensionEmployeeAnnual - nhfAnnual - rentRelief;
-  const chargeableIncome = Math.max(0, rawChargeableIncome);
+  // Step 1: Basic Salary = Gross × Pensionable Portion %
+  const basicSalary = Math.round(grossPay * pensionablePortionPct);
 
-  // 2026 NTA progressive tax bands (amounts configured in kobo)
+  // Step 2: Monthly Statutory Deductions
+  // Pension (EE) = Pension Rate % × Pensionable Portion % × Gross
+  const pensionEE = Math.round(grossPay * pensionablePortionPct * pensionRatePct);
+  // Employer pension = 10% of pensionable (standard Nigerian practice)
+  const pensionEmployer = Math.round(grossPay * pensionablePortionPct * 0.10);
+  // NHIS = 5% × Basic (if applicable)
+  const nhis = nhisApplicable ? Math.round(basicSalary * 0.05) : 0;
+  // NHF = 2.5% × Basic (if applicable)
+  const nhf = nhfApplicable ? Math.round(basicSalary * 0.025) : 0;
+
+  // Step 3: Annualise
+  const annualGross = grossPay * 12;
+  const annualPension = pensionEE * 12;
+  const annualNHIS = nhis * 12;
+  const annualNHF = nhf * 12;
+
+  // Step 4: Rent Relief
+  // 20% of annual rent paid, max ₦500,000
+  // If no rent figure provided, assume 20% of (20% of Annual Gross), capped at ₦500k
+  let rentRelief: number;
+  if (annualRentKobo > 0) {
+    rentRelief = Math.min(Math.round(annualRentKobo * 0.20), 500000 * 100);
+  } else {
+    rentRelief = Math.min(Math.round(annualGross * 0.20 * 0.20), 500000 * 100);
+  }
+
+  // Mortgage Interest Relief (capped at annual gross per validation rule)
+  const mortgageInterestRelief = Math.min(annualMortgageInterestKobo, annualGross);
+  // Life Assurance Relief (capped at annual gross per validation rule)
+  const lifeAssuranceRelief = Math.min(annualLifeAssuranceKobo, annualGross);
+
+  // Step 4 cont: Chargeable Income
+  const chargeableIncome = Math.max(0, annualGross - annualPension - annualNHIS - annualNHF - rentRelief - mortgageInterestRelief - lifeAssuranceRelief);
+
+  // Step 5: Progressive Tax Bands
   const bands = [
     { name: 'First ₦800,000 @ 0%', limit: 800000 * 100, rate: 0.00 },
     { name: 'Next ₦2,200,000 @ 15%', limit: 2200000 * 100, rate: 0.15 },
@@ -132,17 +173,15 @@ export function calculatePayrollForEmployee(employee: any, payPeriod?: { start?:
   ];
 
   let remainingChargeable = chargeableIncome;
-  let annualPaye = 0;
+  let annualPAYE = 0;
   const breakdown: TaxBandBreakdown[] = [];
 
   for (const band of bands) {
     if (remainingChargeable <= 0) break;
     const taxableInBand = Math.min(remainingChargeable, band.limit);
     const taxInBand = Math.round(taxableInBand * band.rate);
-    
-    annualPaye += taxInBand;
+    annualPAYE += taxInBand;
     remainingChargeable -= taxableInBand;
-
     breakdown.push({
       bandName: band.name,
       taxableAmountInBand: taxableInBand,
@@ -151,35 +190,70 @@ export function calculatePayrollForEmployee(employee: any, payPeriod?: { start?:
     });
   }
 
-  // Minimum tax rule (1% of gross) is REMOVED under 2026 NTA — the 0% band handles it.
-  // Monthly PAYE
-  const monthlyPaye = Math.round(annualPaye / 12);
-  const otherDeductions = 0;
+  const monthlyPAYE = Math.round(annualPAYE / 12);
+  const internalDeductionsTotal = internalDeductionsList.reduce((sum, d) => sum + Math.round(d.amount), 0);
 
-  // Net Pay = Gross - PAYE - Employee Pension - NHF - Other Deductions
-  const netPay = Math.max(0, grossPay - monthlyPaye - pensionEmployee - nhf - otherDeductions);
-  const effectiveTaxRate = grossPay > 0 ? Number((monthlyPaye / grossPay).toFixed(4)) : 0;
+  // Net Pay = Gross - Pension (EE) - NHIS - NHF - Monthly PAYE - Internal Deductions
+  const netPay = Math.max(0, grossPay - pensionEE - nhis - nhf - monthlyPAYE - internalDeductionsTotal);
+
+  const effectiveRatePct = annualGross > 0 ? Number((annualPAYE / annualGross * 100).toFixed(2)) : 0;
+
+  // Legacy backward-compat fields
+  const basic = basicSalary;
+  const housing = 0;
+  const transport = 0;
+  const otherAllowances = Math.max(0, grossPay - basicSalary);
+  const pensionEmployee = pensionEE;
+  const paye = monthlyPAYE;
+  const otherDeductions = nhis + internalDeductionsTotal;
+  const cra = rentRelief;
+  const pensionableEarnings = Math.round(grossPay * pensionablePortionPct);
+  const effectiveTaxRate = grossPay > 0 ? Number((monthlyPAYE / grossPay).toFixed(4)) : 0;
 
   return {
     employeeId: employee.id,
     grossPay,
+    basicSalary,
+
+    // Statutory
+    pensionEE,
+    nhis,
+    nhf,
+    monthlyPAYE,
+    pensionEmployer,
+
+    // Tax
+    annualGross,
+    annualPension,
+    annualNHIS,
+    annualNHF,
+    rentRelief,
+    mortgageInterestRelief,
+    lifeAssuranceRelief,
+    chargeableIncome,
+    annualPAYE,
+    effectiveRatePct,
+    bandBreakdown: breakdown,
+
+    // Internal
+    internalDeductions: internalDeductionsList,
+    internalDeductionsTotal,
+
+    // Net
+    netPay,
+
+    // Legacy compat
     basic,
     housing,
     transport,
     otherAllowances,
-    pensionableEarnings,
     pensionEmployee,
-    pensionEmployer,
-    nhf,
-    annualGross,
-    cra: rentRelief, // repurposed field — now holds rent relief amount
-    chargeableIncome,
-    annualPaye,
-    monthlyPaye,
+    paye,
     otherDeductions,
-    netPay,
+    cra,
+    pensionableEarnings,
+    breakdown,
     effectiveTaxRate,
-    breakdown
   };
 }
 
@@ -387,7 +461,7 @@ export async function runPayroll(
       const calc = calculatePayrollForEmployee(emp, { start: input.periodStart, end: input.periodEnd });
       
       cumulativeGross += calc.grossPay;
-      cumulativePaye += calc.monthlyPaye;
+      cumulativePaye += calc.monthlyPAYE;
       cumulativePension += calc.pensionEmployee; // Track employee portion
       cumulativeNhf += calc.nhf;
       cumulativeNet += calc.netPay;
@@ -430,11 +504,13 @@ export async function runPayroll(
           housing: item.calc.housing,
           transport: item.calc.transport,
           otherAllowances: item.calc.otherAllowances,
-          paye: item.calc.monthlyPaye,
+          paye: item.calc.monthlyPAYE,
           pensionEmployee: item.calc.pensionEmployee,
           pensionEmployer: item.calc.pensionEmployer,
           nhf: item.calc.nhf,
+          nhis: item.calc.nhis,
           otherDeductions: item.calc.otherDeductions,
+          internalDeductions: item.calc.internalDeductions,
           netPay: item.calc.netPay,
           taxRelief: item.calc.cra,
           annualGross: item.calc.annualGross
@@ -637,8 +713,54 @@ export async function generatePayslip(payrollLineId: string): Promise<any> {
     .where(eq(employees.id, line.employeeId))
     .limit(1);
 
-  // Derive granular tax bands structure on the fly
   const calculation = calculatePayrollForEmployee(employee, { start: run.periodStart, end: run.periodEnd });
+
+  // Build payslip in the standard 2026 PITA output format
+  const bandBreakdown = calculation.bandBreakdown.map((b: TaxBandBreakdown) => ({
+    band: b.bandName,
+    rate: b.rate,
+    taxableAmount: b.taxableAmountInBand,
+    tax: b.taxAmountInBand,
+  }));
+
+  const payslip = {
+    staffId: employee.staffId,
+    employeeName: `${employee.firstName} ${employee.lastName}`,
+    designation: employee.designation || '',
+    department: employee.department || '',
+    payPeriod: `${run.periodStart.toISOString().split('T')[0]} - ${run.periodEnd.toISOString().split('T')[0]}`,
+    bankName: employee.bankName || '',
+    accountNumber: employee.accountNumber || '',
+    pensionPin: employee.pensionPin || '',
+    nhfNumber: employee.nhfNumber || '',
+    taxId: employee.taxId || '',
+    earnings: {
+      grossSalary: calculation.grossPay,
+      basicSalary: calculation.basicSalary,
+    },
+    statutoryDeductions: {
+      pensionEE: calculation.pensionEE,
+      nhis: calculation.nhis,
+      nhf: calculation.nhf,
+      monthlyPAYE: calculation.monthlyPAYE,
+    },
+    taxComputation: {
+      annualGross: calculation.annualGross,
+      annualPension: calculation.annualPension,
+      annualNHIS: calculation.annualNHIS,
+      annualNHF: calculation.annualNHF,
+      rentRelief: calculation.rentRelief,
+      mortgageInterestRelief: calculation.mortgageInterestRelief,
+      lifeAssuranceRelief: calculation.lifeAssuranceRelief,
+      chargeableIncome: calculation.chargeableIncome,
+      annualPAYE: calculation.annualPAYE,
+      monthlyPAYE: calculation.monthlyPAYE,
+      effectiveRatePct: calculation.effectiveRatePct,
+      bandBreakdown,
+    },
+    internalDeductions: calculation.internalDeductions,
+    netPay: calculation.netPay,
+  };
 
   return {
     line,
@@ -658,7 +780,8 @@ export async function generatePayslip(payrollLineId: string): Promise<any> {
       nhfNumber: employee.nhfNumber,
       taxId: employee.taxId
     },
-    calculation
+    calculation,
+    payslip,
   };
 }
 
