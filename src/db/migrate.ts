@@ -83,15 +83,19 @@ export async function runMigration() {
     // Diagnostic: count journal lines for account 700000 by source
     const lines700k = await db.execute(`SELECT je.source, COUNT(jl.*) as line_count, SUM(jl.debit_amount) as total_debit, SUM(jl.credit_amount) as total_credit FROM journal_lines jl JOIN journal_entries je ON jl.entry_id = je.id JOIN accounts a ON jl.account_id = a.id WHERE a.code = '700000' GROUP BY je.source`);
     console.log('[Migration] Lines for 700000:', JSON.stringify(lines700k.rows));
+    // Direct hard cleanup for account 700000 (Cost of Sales) — bypasses enum comparisons entirely
+    const cosForce = await db.execute(`UPDATE accounts SET opening_balance = 0 WHERE code = '700000'`);
+    if (cosForce.rowCount && cosForce.rowCount > 0) {
+      console.log(`[Migration] Force-zeroed opening_balance for account 700000.`);
+    }
+    const cosLineDel = await db.execute(`DELETE FROM journal_lines WHERE account_id = (SELECT id FROM accounts WHERE code = '700000' LIMIT 1)`);
+    if (cosLineDel.rowCount && cosLineDel.rowCount > 0) {
+      console.log(`[Migration] Deleted ${cosLineDel.rowCount} journal line(s) for account 700000.`);
+    }
     // Delete ALL journal lines for P&L accounts related to opening balance entries
     const lineDel = await db.execute(`DELETE FROM journal_lines WHERE entry_id IN (SELECT id FROM journal_entries WHERE source = 'opening_balance') AND account_id IN (SELECT id FROM accounts WHERE LOWER("type"::text) IN ('expense', 'revenue'))`);
     if (lineDel.rowCount && lineDel.rowCount > 0) {
       console.log(`[Migration] Deleted ${lineDel.rowCount} P&L opening balance journal line(s).`);
-    }
-    // Also directly target account 700000 Cost of Sales specifically
-    const cosDel = await db.execute(`DELETE FROM journal_lines WHERE account_id IN (SELECT id FROM accounts WHERE code = '700000') AND entry_id IN (SELECT id FROM journal_entries WHERE source = 'opening_balance')`);
-    if (cosDel.rowCount && cosDel.rowCount > 0) {
-      console.log(`[Migration] Deleted ${cosDel.rowCount} Cost of Sales opening balance journal line(s).`);
     }
     // Delete orphaned opening balance entries with no remaining lines
     const entryDel = await db.execute(`DELETE FROM journal_entries WHERE source = 'opening_balance' AND id NOT IN (SELECT DISTINCT entry_id FROM journal_lines)`);

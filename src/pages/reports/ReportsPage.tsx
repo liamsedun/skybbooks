@@ -152,10 +152,7 @@ export function TrialBalancePage() {
     setEditObMsg(null);
     try {
       const accounts = await accountantApi.getAccounts();
-      const bsAccounts = accounts.filter((a: any) =>
-        !['expense', 'revenue'].includes((a.type || '').toLowerCase())
-      );
-      setEditObData(bsAccounts.map((a: any) => ({
+      setEditObData(accounts.map((a: any) => ({
         accountCode: a.code,
         accountName: a.name,
         openingBalance: Math.round((a.openingBalance || 0) / 100)

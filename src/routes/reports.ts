@@ -385,12 +385,6 @@ router.post(
         const account = accountMap.get(item.accountCode);
         if (!account) { errors.push(`Account code "${item.accountCode}" not found`); continue; }
 
-        // Opening balances only valid for balance sheet accounts
-        if (account.type === 'expense' || account.type === 'revenue') {
-          errors.push(`"${item.accountCode}" is a P&L account — opening balances cannot be set on income/expense accounts`);
-          continue;
-        }
-
         const newBalance = Math.round(item.openingBalance * 100);
         await db
           .update(accounts)
