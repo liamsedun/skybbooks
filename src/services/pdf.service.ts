@@ -364,12 +364,12 @@ export async function generatePayslipPDF(payrollLineId: string): Promise<Buffer>
     doc.text(`Phone: ${org.phone || ''} | Email: ${org.email || ''}`, startX + 65, 66);
 
     doc.fillColor(PRIMARY_COLOR).fontSize(18).font('Helvetica-Bold').text('CONFIDENTIAL PAYSLIP', 350, 40, { align: 'right' });
-    doc.fontSize(8).fillColor(MUTED_COLOR).text(`Pay Period: ${formatShortDate(run.periodStart)} - ${formatShortDate(run.periodEnd)}`, 350, 70, { align: 'right' });
-    doc.text(`Disbursement Date: ${formatShortDate(run.payDate)}`, 350, 81, { align: 'right' });
+    doc.fontSize(8).fillColor(MUTED_COLOR).text(`Pay Period: ${formatShortDate(run.periodStart)} - ${formatShortDate(run.periodEnd)}`, 350, 85, { align: 'right' });
+    doc.text(`Disbursement Date: ${formatShortDate(run.payDate)}`, 350, 96, { align: 'right' });
 
-    doc.moveTo(startX, 105).lineTo(555, 105).strokeColor('#e5e7eb').stroke();
+    doc.moveTo(startX, 115).lineTo(555, 115).strokeColor('#e5e7eb').stroke();
 
-    let y = 120;
+    let y = 130;
     doc.fillColor(TEXT_PRIMARY).fontSize(9).font('Helvetica-Bold').text('EMPLOYEE DETAIL', startX, y);
     doc.text('PAYSLIP METADATA', 300, y);
 
