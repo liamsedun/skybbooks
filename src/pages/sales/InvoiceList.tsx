@@ -297,30 +297,30 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
             className="p-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-500 rounded-xl outline-none"
             title="Refresh Ledger"
           >
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw className="w-3.5 h-3.5" />
           </button>
           
-          <button onClick={() => exportInvoicesCSV(filteredInvoices)} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
+          <button onClick={() => exportInvoicesCSV(filteredInvoices)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
             <Download size={14} /> CSV
           </button>
-          <button onClick={() => exportInvoicesPDF(filteredInvoices)} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
+          <button onClick={() => exportInvoicesPDF(filteredInvoices)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
             <FileText size={14} /> PDF
           </button>
           <button
             type="button"
             onClick={() => setImportOpen(true)}
-            className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 outline-none rounded-lg shadow-sm cursor-pointer transition flex items-center shrink-0"
+            className="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 outline-none rounded-lg shadow-sm cursor-pointer transition flex items-center shrink-0"
           >
-            <Upload className="w-4 h-4 mr-1.5 stroke-[2.5]" />
+            <Upload className="w-3.5 h-3.5 mr-1.5 stroke-[2.5]" />
             Import CSV
           </button>
           <button
             type="button"
             onClick={() => onNavigate('invoice-form')}
-            className="px-4 py-2 text-xs font-semibold text-white bg-primary hover:bg-primary-hover outline-none rounded-lg shadow-sm cursor-pointer transition flex items-center shrink-0"
+            className="px-3 py-1.5 text-xs font-semibold text-white bg-primary hover:bg-primary-hover outline-none rounded-lg shadow-sm cursor-pointer transition flex items-center shrink-0"
             id="btn-invoice-list-new"
           >
-            <Plus className="w-4 h-4 mr-1.5 stroke-[2.5]" />
+            <Plus className="w-3.5 h-3.5 mr-1.5 stroke-[2.5]" />
             New Client Invoice
           </button>
         </div>
