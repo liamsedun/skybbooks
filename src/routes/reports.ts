@@ -354,6 +354,62 @@ router.post(
   }
 );
 
+// Directly set opening balances for accounts (bulk edit)
+const setOpeningBalancesSchema = z.object({
+  lines: z.array(z.object({
+    accountCode: z.string(),
+    openingBalance: z.number()
+  })).min(1)
+});
+
+router.post(
+  '/trial-balance/set-opening-balances',
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+      const { lines } = setOpeningBalancesSchema.parse(req.body);
+      const orgId = req.user!.orgId!;
+
+      const orgAccounts = await db
+        .select()
+        .from(accounts)
+        .where(eq(accounts.orgId, orgId))
+        .orderBy(accounts.code);
+
+      const accountMap = new Map<string, typeof orgAccounts[0]>();
+      for (const a of orgAccounts) accountMap.set(a.code, a);
+
+      const errors: string[] = [];
+      let updated = 0;
+
+      for (const item of lines) {
+        const account = accountMap.get(item.accountCode);
+        if (!account) { errors.push(`Account code "${item.accountCode}" not found`); continue; }
+
+        // Opening balances only valid for balance sheet accounts
+        if (account.type === 'expense' || account.type === 'revenue') {
+          errors.push(`"${item.accountCode}" is a P&L account — opening balances cannot be set on income/expense accounts`);
+          continue;
+        }
+
+        const newBalance = Math.round(item.openingBalance * 100);
+        await db
+          .update(accounts)
+          .set({ openingBalance: newBalance })
+          .where(eq(accounts.id, account.id));
+        updated++;
+      }
+
+      if (errors.length > 0) {
+        return res.status(400).json({ success: false, message: 'Some accounts could not be updated', errors, updated });
+      }
+
+      return res.status(200).json({ success: true, message: `Updated ${updated} account(s) successfully.` });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 // =========================================================================
 // 2. INCOME STATEMENT ENDPOINT
 // =========================================================================
