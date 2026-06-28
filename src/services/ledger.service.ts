@@ -334,7 +334,8 @@ export async function getTrialBalance(
       debitAmount: journalLines.debitAmount,
       creditAmount: journalLines.creditAmount,
       currency: journalLines.currency,
-      fxRate: journalLines.fxRate
+      fxRate: journalLines.fxRate,
+      source: journalEntries.source
     })
     .from(journalLines)
     .innerJoin(journalEntries, eq(journalLines.entryId, journalEntries.id))
@@ -395,6 +396,8 @@ export async function getTrialBalance(
 
     const matchedLines = txLines.filter(l => l.accountId === acct.id);
     for (const line of matchedLines) {
+      // Skip opening balance source entries for P&L accounts (expense/revenue)
+      if ((acctType === 'expense' || acctType === 'revenue') && line.source === 'opening_balance') continue;
       const lineDate = new Date(line.date);
       const deb = line.currency && line.currency !== 'NGN' ? toNgn(line.debitAmount, line.fxRate) : line.debitAmount;
       const cred = line.currency && line.currency !== 'NGN' ? toNgn(line.creditAmount, line.fxRate) : line.creditAmount;
