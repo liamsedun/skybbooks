@@ -72,7 +72,7 @@ export async function runMigration() {
       END $$;
     `);
     // Clear opening balances on P&L accounts (expense/revenue) — opening balances only valid for balance sheet accounts
-    const plFix = await db.execute(`UPDATE accounts SET opening_balance = 0 WHERE type IN ('expense', 'revenue') AND opening_balance != 0`);
+    const plFix = await db.execute(`UPDATE accounts SET opening_balance = 0 WHERE LOWER(type) IN ('expense', 'revenue') AND opening_balance != 0`);
     if (plFix.rowCount && plFix.rowCount > 0) {
       console.log(`[Migration] Cleared opening balances on ${plFix.rowCount} P&L account(s).`);
     }

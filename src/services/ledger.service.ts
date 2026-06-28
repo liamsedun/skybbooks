@@ -387,9 +387,10 @@ export async function getTrialBalance(
     let periodCredits = 0;
 
     // Opening balances only apply to balance sheet accounts (asset, liability, equity)
-    const ob = (acct.type === 'expense' || acct.type === 'revenue') ? 0 : Number(acct.openingBalance || 0);
+    const acctType = (acct.type || '').toLowerCase();
+    const ob = (acctType === 'expense' || acctType === 'revenue') ? 0 : Number(acct.openingBalance || 0);
     if (ob > 0) {
-      acct.type === 'asset' ? openingDebits += ob : openingCredits += ob;
+      acctType === 'asset' ? openingDebits += ob : openingCredits += ob;
     }
 
     const matchedLines = txLines.filter(l => l.accountId === acct.id);
@@ -401,11 +402,11 @@ export async function getTrialBalance(
       else if (lineDate >= startDate && lineDate <= endDate) { periodDebits += deb; periodCredits += cred; }
     }
 
-    const isDebitBook = acct.type === 'asset' || acct.type === 'expense';
+    const isDebitBook = acctType === 'asset' || acctType === 'expense';
 
     // Fixed assets: if this account is linked to fixed assets, force its balance to match
     const faData = faMap.get(acct.id);
-    if (faData && acct.type === 'asset') {
+    if (faData && acctType === 'asset') {
       const jeBalance = (openingDebits + periodDebits) - (openingCredits + periodCredits);
       const trueBalance = faData.totalCost - faData.totalDepr;
       const diff = trueBalance - jeBalance;
@@ -415,7 +416,7 @@ export async function getTrialBalance(
 
     // Bank accounts: force balance to currentBalance
     const bankBal = bankMap.get(acct.id);
-    if (bankBal !== undefined && acct.type === 'asset') {
+    if (bankBal !== undefined && acctType === 'asset') {
       const jeBalance = (openingDebits + periodDebits) - (openingCredits + periodCredits);
       const diff = bankBal - jeBalance;
       if (diff > 0) { periodDebits += diff; suspenseCr += diff; }
