@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { eq, and, lte, gte, sql, desc, inArray } from 'drizzle-orm';
+import { eq, and, lte, gte, sql, desc, inArray, getTableColumns } from 'drizzle-orm';
 import {
   db,
   accounts,
@@ -606,9 +606,11 @@ export async function duplicateBill(billId: string, userId: string): Promise<any
 }
 
 export async function getBill(billId: string, orgId: string): Promise<any> {
+  const billCols = getTableColumns(bills);
   const [bill] = await db
-    .select()
+    .select({ ...billCols, journalEntryNumber: journalEntries.entryNumber })
     .from(bills)
+    .leftJoin(journalEntries, eq(bills.journalEntryId, journalEntries.id))
     .where(and(eq(bills.id, billId), eq(bills.orgId, orgId)))
     .limit(1);
 
@@ -673,9 +675,11 @@ export async function listBills(
     }
   }
 
+  const billCols = getTableColumns(bills);
   const itemsList = await db
-    .select()
+    .select({ ...billCols, journalEntryNumber: journalEntries.entryNumber })
     .from(bills)
+    .leftJoin(journalEntries, eq(bills.journalEntryId, journalEntries.id))
     .where(and(...conditions))
     .orderBy(desc(bills.date))
     .limit(limit)

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, sql, getTableColumns } from 'drizzle-orm';
 import {
   db,
   accounts,
@@ -197,9 +197,11 @@ export async function createExpense(input: any, createdBy: string): Promise<any>
 }
 
 export async function listExpenses(orgId: string): Promise<any[]> {
+  const expenseCols = getTableColumns(expenses);
   return await db
-    .select()
+    .select({ ...expenseCols, journalEntryNumber: journalEntries.entryNumber })
     .from(expenses)
+    .leftJoin(journalEntries, eq(expenses.journalEntryId, journalEntries.id))
     .where(eq(expenses.orgId, orgId))
     .orderBy(sql`${expenses.date} desc`);
 }

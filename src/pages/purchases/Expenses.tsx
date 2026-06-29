@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import {
@@ -19,6 +20,8 @@ interface Expense {
   date: string; accountId: string; amount: number; taxAmount: number;
   currency: string; paymentMethod: string; reference: string | null;
   description: string | null; isBillable: boolean;
+  journalEntryId?: string | null;
+  journalEntryNumber?: string | null;
 }
 
 function formatNaira(kobo: number) {
@@ -110,6 +113,7 @@ function exportPDF(expenses: Expense[], vendorMap: Map<string,string>, accountMa
 }
 
 export function ExpensesPage() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
@@ -283,6 +287,7 @@ export function ExpensesPage() {
                 <th className="py-3 px-2 text-left">Vendor</th>
                 <th className="py-3 px-2 text-left">Method</th>
                 <th className="py-3 px-2 text-right">Amount</th>
+                <th className="py-3 px-2 text-center">Ledger</th>
                 <th className="py-3 pl-2 pr-4 text-center w-24">Actions</th>
               </tr>
             </thead>
@@ -298,6 +303,16 @@ export function ExpensesPage() {
                     <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full capitalize">{exp.paymentMethod?.replace('_', ' ')}</span>
                   </td>
                   <td className="py-3 px-2 text-right font-mono text-slate-900 font-medium">{formatNaira(exp.amount)}</td>
+                  <td className="py-3 px-2">
+                    {exp.journalEntryId ? (
+                      <button
+                        onClick={() => navigate(`/accountant/journals?entry=${exp.journalEntryNumber || ''}`)}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
+                      ><CheckCircle2 className="w-3 h-3" /> Posted</button>
+                    ) : (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500">Not posted</span>
+                    )}
+                  </td>
                   <td className="py-3 pl-2 pr-4">
                     <div className="flex items-center justify-center gap-1">
                       <button

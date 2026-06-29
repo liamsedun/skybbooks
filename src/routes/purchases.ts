@@ -16,9 +16,10 @@ import {
   vendorCredits,
   expenses,
   purchaseOrders,
-  accounts
+  accounts,
+  journalEntries
 } from '../db/schema';
-import { eq, and, desc, sql } from 'drizzle-orm';
+import { eq, and, desc, sql, getTableColumns } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
 import {
@@ -313,9 +314,11 @@ router.post('/bills/:id/duplicate', async (req: AuthenticatedRequest, res: Respo
 router.get('/payments', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const orgId = req.user!.orgId!;
+    const pmtCols = getTableColumns(paymentsMade);
     const list = await db
-      .select()
+      .select({ ...pmtCols, journalEntryNumber: journalEntries.entryNumber })
       .from(paymentsMade)
+      .leftJoin(journalEntries, eq(paymentsMade.journalEntryId, journalEntries.id))
       .where(eq(paymentsMade.orgId, orgId))
       .orderBy(desc(paymentsMade.date));
 
@@ -346,9 +349,11 @@ router.get('/payments/:id', async (req: AuthenticatedRequest, res: Response, nex
     const orgId = req.user!.orgId!;
     const { id } = req.params;
 
+    const pmtCols = getTableColumns(paymentsMade);
     const [pmt] = await db
-      .select()
+      .select({ ...pmtCols, journalEntryNumber: journalEntries.entryNumber })
       .from(paymentsMade)
+      .leftJoin(journalEntries, eq(paymentsMade.journalEntryId, journalEntries.id))
       .where(and(eq(paymentsMade.id, id), eq(paymentsMade.orgId, orgId)))
       .limit(1);
 
@@ -441,9 +446,11 @@ router.get('/expenses/:id', async (req: AuthenticatedRequest, res: Response, nex
     const orgId = req.user!.orgId!;
     const { id } = req.params;
 
+    const expenseCols = getTableColumns(expenses);
     const [expense] = await db
-      .select()
+      .select({ ...expenseCols, journalEntryNumber: journalEntries.entryNumber })
       .from(expenses)
+      .leftJoin(journalEntries, eq(expenses.journalEntryId, journalEntries.id))
       .where(and(eq(expenses.id, id), eq(expenses.orgId, orgId)))
       .limit(1);
 

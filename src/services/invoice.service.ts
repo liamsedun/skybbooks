@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { eq, and, lte, gte, sql, desc } from 'drizzle-orm';
+import { eq, and, lte, gte, sql, desc, getTableColumns } from 'drizzle-orm';
 import {
   db,
   accounts,
@@ -673,9 +673,11 @@ export async function duplicateInvoice(id: string, userId: string): Promise<any>
 }
 
 export async function getInvoice(id: string, orgId: string): Promise<any> {
+  const invoiceCols = getTableColumns(invoices);
   const [invoice] = await db
-    .select()
+    .select({ ...invoiceCols, journalEntryNumber: journalEntries.entryNumber })
     .from(invoices)
+    .leftJoin(journalEntries, eq(invoices.journalEntryId, journalEntries.id))
     .where(and(eq(invoices.id, id), eq(invoices.orgId, orgId)))
     .limit(1);
 
@@ -732,9 +734,11 @@ export async function listInvoices(
   const allContacts = await db.select({ id: contacts.id, name: contacts.name }).from(contacts).where(eq(contacts.orgId, orgId));
   const custMap = new Map(allContacts.map((c: any) => [c.id, c.name]));
 
+  const invoiceCols = getTableColumns(invoices);
   const itemsList = await db
-    .select()
+    .select({ ...invoiceCols, journalEntryNumber: journalEntries.entryNumber })
     .from(invoices)
+    .leftJoin(journalEntries, eq(invoices.journalEntryId, journalEntries.id))
     .where(and(...conditions))
     .orderBy(desc(invoices.date))
     .limit(limit)

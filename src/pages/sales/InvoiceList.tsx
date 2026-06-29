@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   FileText,
@@ -21,6 +22,7 @@ import {
   Edit2,
   Ban,
   CheckCircle,
+  CheckCircle2,
   FileSpreadsheet,
   Archive,
   RefreshCw,
@@ -96,6 +98,7 @@ function exportInvoicesPDF(invoices: any[]) {
 }
 
 export function InvoiceList({ onNavigate }: InvoiceListProps) {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { formatNaira } = useCurrency();
   const { token } = useAuth();
@@ -599,6 +602,7 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
                   <th className="px-3 text-right align-middle bg-surface-subtle">Total Amount</th>
                   <th className="px-3 text-right align-middle bg-surface-subtle">Balance Due</th>
                   <th className="px-4 text-center align-middle bg-surface-subtle">Status</th>
+                  <th className="px-4 text-center align-middle bg-surface-subtle">Ledger</th>
                   <th className="px-4 text-right align-middle bg-surface-subtle">Row Actions</th>
                 </tr>
               </thead>
@@ -672,6 +676,18 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
                       {/* Status */}
                       <td className="px-4 align-middle h-12 text-center">
                         <StatusBadge status={invoice.status} />
+                      </td>
+
+                      {/* Posted */}
+                      <td className="px-4 align-middle h-12">
+                        {invoice.journalEntryId ? (
+                          <button
+                            onClick={() => navigate(`/accountant/journals?entry=${invoice.journalEntryNumber || ''}`)}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
+                          ><CheckCircle2 className="w-3 h-3" /> Posted</button>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500">Not posted</span>
+                        )}
                       </td>
 
                       {/* Row Actions */}

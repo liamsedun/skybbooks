@@ -5,6 +5,7 @@
  */
 
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   FileText,
@@ -17,6 +18,7 @@ import {
   Loader2,
   Clock,
   CheckCircle,
+  CheckCircle2,
   ShieldCheck,
   TrendingDown
 } from 'lucide-react';
@@ -32,6 +34,7 @@ interface InvoiceDetailProps {
 }
 
 export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { formatNaira } = useCurrency();
   const { token } = useAuth();
@@ -233,6 +236,14 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
             <div className="flex items-center gap-2">
               <h2 className="text-lg font-semibold text-slate-800">{displayInvoiceNo}</h2>
               <StatusBadge status={invoiceData.status} />
+              {invoiceData.journalEntryId ? (
+                <button
+                  onClick={() => navigate(`/accountant/journals?entry=${invoiceData.journalEntryNumber || ''}`)}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
+                ><CheckCircle2 className="w-3 h-3" /> Posted</button>
+              ) : (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500">Not posted</span>
+              )}
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
               {invoiceData.clientName} · Due {fmtDate(invoiceData.dueDate)}

@@ -1,8 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { journalsApi, accountantApi, printWindow } from '../../lib/api';
 import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
-import { Plus, X, Loader2, AlertCircle, CheckCircle2, Eye, Download, Upload, Printer } from 'lucide-react';
+import { Plus, X, Loader2, AlertCircle, CheckCircle2, Eye, Download, Upload, Printer, ExternalLink } from 'lucide-react';
 import { exportToCsv } from '../../lib/csvTemplates';
 
 function fmtNaira(v: number): string {
@@ -13,8 +14,24 @@ function fmtDate(d: string): string {
   return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+function sourceDocLink(source: string, sourceId?: string): string | null {
+  if (!sourceId) return null;
+  switch (source) {
+    case 'invoice': return `/sales/invoices/${sourceId}`;
+    case 'bill': return `/purchases/bills/${sourceId}`;
+    case 'expense': return `/purchases/expenses`;
+    case 'payment': return `/purchases/payments-made`;
+    case 'credit_note': return `/sales/credit-notes`;
+    case 'vendor_credit': return `/purchases/vendor-credits`;
+    default: return null;
+  }
+}
+
 export function JournalsPage() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
+  const entryParam = searchParams.get('entry');
   const [showForm, setShowForm] = useState(false);
   const [viewId, setViewId] = useState<string | null>(null);
   const [showImport, setShowImport] = useState(false);
@@ -27,6 +44,13 @@ export function JournalsPage() {
     queryKey: ['journals'],
     queryFn: () => journalsApi.getJournals(),
   });
+
+  useEffect(() => {
+    if (entryParam && Array.isArray(journals)) {
+      const found = journals.find((e: any) => e.entryNumber === entryParam);
+      if (found) setViewId(found.id);
+    }
+  }, [entryParam, journals]);
 
   function exportJournalsCSV() {
     const today = new Date().toISOString().split('T')[0];
@@ -141,7 +165,17 @@ export function JournalsPage() {
                   <td className="px-4 py-3 font-mono font-medium text-slate-800">{entry.entryNumber}</td>
                   <td className="px-4 py-3 text-slate-600">{fmtDate(entry.date)}</td>
                   <td className="px-4 py-3 text-slate-600 max-w-xs truncate">{entry.description || '—'}</td>
-                  <td className="px-4 py-3 text-right"><span className="inline-block px-2 py-0.5 text-xs font-semibold rounded-full bg-slate-100 text-slate-600 capitalize">{entry.source}</span></td>
+                  <td className="px-4 py-3 text-right">
+                    {entry.source !== 'manual' && entry.sourceId ? (
+                      <a
+                        href={sourceDocLink(entry.source, entry.sourceId) || '#'}
+                        onClick={(e) => { e.preventDefault(); const p = sourceDocLink(entry.source, entry.sourceId); if (p) navigate(p); }}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors"
+                      ><ExternalLink className="w-3 h-3" /> {entry.source.replace(/_/g, ' ')}</a>
+                    ) : (
+                      <span className="inline-block px-2 py-0.5 text-xs font-semibold rounded-full bg-slate-100 text-slate-600 capitalize">{entry.source}</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-right">
                     <button onClick={() => setViewId(entry.id)} className="text-blue-600 hover:text-blue-800"><Eye className="w-4 h-4" /></button>
                   </td>
@@ -159,6 +193,7 @@ export function JournalsPage() {
 }
 
 function JournalDetailView({ journalId, onBack }: { journalId: string; onBack: () => void }) {
+  const navigate = useNavigate();
   const { data: entry, isLoading } = useQuery({
     queryKey: ['journal', journalId],
     queryFn: () => journalsApi.getJournal(journalId),
@@ -178,7 +213,17 @@ function JournalDetailView({ journalId, onBack }: { journalId: string; onBack: (
         <div className="grid grid-cols-3 gap-4">
           <div><span className="text-xs font-semibold text-slate-500 uppercase">Entry #</span><p className="text-sm font-medium text-slate-800 font-mono">{entry.entryNumber}</p></div>
           <div><span className="text-xs font-semibold text-slate-500 uppercase">Date</span><p className="text-sm font-medium text-slate-800">{fmtDate(entry.date)}</p></div>
-          <div><span className="text-xs font-semibold text-slate-500 uppercase">Source</span><p className="text-sm font-medium text-slate-800 capitalize">{entry.source}</p></div>
+          <div><span className="text-xs font-semibold text-slate-500 uppercase">Source</span>
+            {entry.source !== 'manual' && entry.sourceId ? (
+              <a
+                href={sourceDocLink(entry.source, entry.sourceId) || '#'}
+                onClick={(e) => { e.preventDefault(); const p = sourceDocLink(entry.source, entry.sourceId); if (p) navigate(p); }}
+                className="inline-flex items-center gap-1 text-sm font-medium text-indigo-700 hover:text-indigo-900 transition-colors"
+              ><ExternalLink className="w-3.5 h-3.5" /> {entry.source.replace(/_/g, ' ')}</a>
+            ) : (
+              <p className="text-sm font-medium text-slate-800 capitalize">{entry.source}</p>
+            )}
+          </div>
           {entry.description && <div className="col-span-3"><span className="text-xs font-semibold text-slate-500 uppercase">Description</span><p className="text-sm text-slate-700">{entry.description}</p></div>}
           {entry.reference && <div className="col-span-3"><span className="text-xs font-semibold text-slate-500 uppercase">Reference</span><p className="text-sm text-slate-700">{entry.reference}</p></div>}
         </div>

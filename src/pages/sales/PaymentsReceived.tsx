@@ -9,7 +9,7 @@ import { api } from '../../lib/api';
 import {
   Search, Loader2, AlertCircle, CreditCard, Plus, Pencil,
   Banknote, Smartphone, Building2, Receipt, Trash2, X,
-  FileText, ChevronRight, Download, Upload,
+  FileText, ChevronRight, Download, Upload, CheckCircle2,
 } from 'lucide-react';
 import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
@@ -32,6 +32,8 @@ interface Payment {
   incomeAccountId: string | null;
   notes: string | null;
   createdAt: string;
+  journalEntryId?: string | null;
+  journalEntryNumber?: string | null;
 }
 
 interface PaymentAllocation {
@@ -519,6 +521,7 @@ export function PaymentsReceivedPage() {
                       <th className="py-2.5 pr-3">Date</th>
                       <th className="py-2.5 pr-3">Method</th>
                       <th className="py-2.5 pr-3 text-right">Amount</th>
+                      <th className="py-2.5 pr-3 text-center">Ledger</th>
                       <th className="py-2.5 pr-2"></th>
                     </tr>
                   </thead>
@@ -552,6 +555,16 @@ export function PaymentsReceivedPage() {
                           </td>
                           <td className="py-2.5 pr-3 text-right font-semibold text-emerald-700 font-mono">
                             {formatNaira(p.amount)}
+                          </td>
+                          <td className="py-2.5 pr-3 text-center">
+                            {p.journalEntryId ? (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); navigate(`/accountant/journals?entry=${p.journalEntryNumber || ''}`); }}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
+                              ><CheckCircle2 className="w-3 h-3" /> Posted</button>
+                            ) : (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500">Not posted</span>
+                            )}
                           </td>
                           <td className="py-2.5 pr-2">
                             <div className="opacity-0 group-hover:opacity-100 flex items-center justify-end gap-1 transition-opacity" onClick={e => e.stopPropagation()}>

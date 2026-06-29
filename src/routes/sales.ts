@@ -5,8 +5,8 @@
 
 import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { db, contacts, invoices, invoiceLines, quotes, salesOrders, paymentsReceived, paymentAllocations, creditNotes, accounts, paymentsMade, paymentMadeAllocations } from '../db/schema';
-import { eq, and, desc, asc, sql, inArray } from 'drizzle-orm';
+import { db, contacts, invoices, invoiceLines, quotes, salesOrders, paymentsReceived, paymentAllocations, creditNotes, accounts, paymentsMade, paymentMadeAllocations, journalEntries } from '../db/schema';
+import { eq, and, desc, asc, sql, inArray, getTableColumns } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
 import {
@@ -370,9 +370,11 @@ router.get('/invoices/:id/pdf', async (req: AuthenticatedRequest, res: Response,
 router.get('/payments', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const orgId = req.user!.orgId!;
+    const pmtCols = getTableColumns(paymentsReceived);
     const list = await db
-      .select()
+      .select({ ...pmtCols, journalEntryNumber: journalEntries.entryNumber, journalEntryId: journalEntries.id })
       .from(paymentsReceived)
+      .leftJoin(journalEntries, and(eq(journalEntries.source, 'payment'), eq(journalEntries.sourceId, paymentsReceived.id)))
       .where(eq(paymentsReceived.orgId, orgId))
       .orderBy(desc(paymentsReceived.date));
 
@@ -412,17 +414,21 @@ router.get('/payments/:id', async (req: AuthenticatedRequest, res: Response, nex
     const orgId = req.user!.orgId!;
     const { id } = req.params;
 
+    const pmtCols = getTableColumns(paymentsReceived);
     const [pmt] = await db
-      .select()
+      .select({ ...pmtCols, journalEntryNumber: journalEntries.entryNumber, journalEntryId: journalEntries.id })
       .from(paymentsReceived)
+      .leftJoin(journalEntries, and(eq(journalEntries.source, 'payment'), eq(journalEntries.sourceId, paymentsReceived.id)))
       .where(and(eq(paymentsReceived.id, id), eq(paymentsReceived.orgId, orgId)))
       .limit(1);
 
     if (!pmt) {
       // Try searching payments made instead
+      const pmtMadeCols = getTableColumns(paymentsMade);
       const [pmtMade] = await db
-        .select()
+        .select({ ...pmtMadeCols, journalEntryNumber: journalEntries.entryNumber })
         .from(paymentsMade)
+        .leftJoin(journalEntries, eq(paymentsMade.journalEntryId, journalEntries.id))
         .where(and(eq(paymentsMade.id, id), eq(paymentsMade.orgId, orgId)))
         .limit(1);
 

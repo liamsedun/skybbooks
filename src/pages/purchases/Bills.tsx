@@ -40,6 +40,8 @@ interface Bill {
   currency: string;
   notes: string | null;
   vendorName?: string;
+  journalEntryId?: string | null;
+  journalEntryNumber?: string | null;
 }
 
 const EMPTY_LINE: BillLine = { itemId: null, description: '', quantity: 1, unitPrice: 0, taxRate: 7.5, accountId: null };
@@ -432,6 +434,16 @@ function BillList() {
                         <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_STYLES[bill.status] || 'bg-slate-100 text-slate-600'}`}>
                           {bill.status}
                         </span>
+                        <div className="mt-1">
+                          {bill.journalEntryId ? (
+                            <button
+                              onClick={() => navigate(`/accountant/journals?entry=${bill.journalEntryNumber || ''}`)}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
+                            ><CheckCircle2 className="w-3 h-3" /> Posted</button>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500">Not posted</span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-right font-medium text-slate-700 whitespace-nowrap">{formatNaira(bill.total)}</td>
                       <td className="px-4 py-3 text-right font-semibold text-slate-900 whitespace-nowrap">{formatNaira(bill.balanceDue)}</td>

@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
@@ -16,6 +17,8 @@ interface Payment {
   date: string; amount: number; currency: string;
   paymentMethod: string; reference: string | null; notes: string | null;
   accountId?: string;
+  journalEntryId?: string | null;
+  journalEntryNumber?: string | null;
 }
 interface PaymentAllocation {
   id: string; paymentId: string; billId: string; amount: number;
@@ -62,6 +65,7 @@ function fmtDate(d: string) { return new Date(d).toLocaleDateString('en-GB', { d
 const PAYMENT_METHODS = ['cash', 'bank_transfer', 'card', 'cheque', 'pos', 'ussd'];
 
 export function PaymentsMadePage() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
@@ -334,6 +338,7 @@ export function PaymentsMadePage() {
                 <th className="py-3 px-2 text-left">Method</th>
                 <th className="py-3 px-2 text-left">Reference</th>
                 <th className="py-3 px-2 text-right">Amount</th>
+                <th className="py-3 px-2 text-center">Ledger</th>
                 <th className="py-3 px-2 text-center w-20">Actions</th>
               </tr>
             </thead>
@@ -348,6 +353,16 @@ export function PaymentsMadePage() {
                   </td>
                   <td className="py-3 px-2 text-xs text-slate-500 font-mono">{p.reference || '—'}</td>
                   <td className="py-3 px-2 text-right font-mono font-medium text-slate-900">{formatNaira(p.amount)}</td>
+                  <td className="py-3 px-2 text-center">
+                    {p.journalEntryId ? (
+                      <button
+                        onClick={() => navigate(`/accountant/journals?entry=${p.journalEntryNumber || ''}`)}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
+                      ><CheckCircle2 className="w-3 h-3" /> Posted</button>
+                    ) : (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500">Not posted</span>
+                    )}
+                  </td>
                   <td className="py-3 px-2 text-center">
                     <div className="flex items-center justify-center gap-1">
                       <button onClick={() => openDetail(p)}
