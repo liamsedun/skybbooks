@@ -244,8 +244,7 @@ const ACCOUNT_SEEDS: { code: string; name: string; type: 'asset' | 'liability' |
   { code: '950300', name: 'Deferred Tax (Charge) / Credit', type: 'expense', subType: 'Tax Expense', description: 'IAS 12 – Deferred tax movement.' },
   { code: '950400', name: 'Capital Gains Tax', type: 'expense', subType: 'Tax Expense', description: 'CGTA – 10% on chargeable gains.' },
   { code: '950500', name: 'Petroleum Profits Tax (if applicable)', type: 'expense', subType: 'Tax Expense', description: 'PPTA – For upstream oil & gas companies. 50–85%.' },
-  // ── SYSTEM / SUSPENSE ──
-  { code: 'SUSPENSE', name: 'Suspense - Unreconciled Module Balances', type: 'liability', subType: 'Current Liabilities', description: 'System account mirroring unreconciled differences between sub-ledgers and the general ledger.' },
+
 ];
 
 export async function seedAccounts(orgId: string) {

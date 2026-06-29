@@ -379,8 +379,6 @@ export async function getTrialBalance(
   const invAccount = orgAccounts.find(a => a.code.startsWith('102') && !a.name.toLowerCase().includes('contra'));
 
   const resultList: TrialBalanceRow[] = [];
-  let suspenseDr = 0;
-  let suspenseCr = 0;
 
   for (const acct of orgAccounts) {
     let openingDebits = 0;
@@ -416,8 +414,8 @@ export async function getTrialBalance(
       const jeBalance = (openingDebits + periodDebits) - (openingCredits + periodCredits);
       const trueBalance = faData.totalCost - faData.totalDepr;
       const diff = trueBalance - jeBalance;
-      if (diff > 0) { periodDebits += diff; suspenseCr += diff; }
-      else if (diff < 0) { periodCredits += Math.abs(diff); suspenseDr += Math.abs(diff); }
+      if (diff > 0) { periodDebits += diff; }
+      else if (diff < 0) { periodCredits += Math.abs(diff); }
     }
 
     // Bank accounts: force balance to currentBalance
@@ -425,30 +423,30 @@ export async function getTrialBalance(
     if (bankBal !== undefined && acctType === 'asset') {
       const jeBalance = (openingDebits + periodDebits) - (openingCredits + periodCredits);
       const diff = bankBal - jeBalance;
-      if (diff > 0) { periodDebits += diff; suspenseCr += diff; }
-      else if (diff < 0) { periodCredits += Math.abs(diff); suspenseDr += Math.abs(diff); }
+      if (diff > 0) { periodDebits += diff; }
+      else if (diff < 0) { periodCredits += Math.abs(diff); }
     }
 
     // Inventory: force balance to stock valuation
     if (inventoryValue > 0 && invAccount && acct.id === invAccount.id) {
       const jeBalance = (openingDebits + periodDebits) - (openingCredits + periodCredits);
       const diff = inventoryValue - jeBalance;
-      if (diff > 0) { periodDebits += diff; suspenseCr += diff; }
-      else if (diff < 0) { periodCredits += Math.abs(diff); suspenseDr += Math.abs(diff); }
+      if (diff > 0) { periodDebits += diff; }
+      else if (diff < 0) { periodCredits += Math.abs(diff); }
     }
 
     // Customer opening balance → single AR account only
     if (customerOB > 0 && arAccount && acct.id === arAccount.id) {
       const jeAr = (openingDebits + periodDebits) - (openingCredits + periodCredits);
       const extraAr = Math.max(0, customerOB - jeAr);
-      if (extraAr > 0) { openingDebits += extraAr; suspenseCr += extraAr; }
+      if (extraAr > 0) { openingDebits += extraAr; }
     }
 
     // Vendor opening balance → single AP account only
     if (vendorOB > 0 && apAccount && acct.id === apAccount.id) {
       const jeAp = (openingCredits + periodCredits) - (openingDebits + periodDebits);
       const extraAp = Math.max(0, vendorOB - jeAp);
-      if (extraAp > 0) { openingCredits += extraAp; suspenseDr += extraAp; }
+      if (extraAp > 0) { openingCredits += extraAp; }
     }
 
     const opened = isDebitBook ? openingDebits - openingCredits : openingCredits - openingDebits;
@@ -468,77 +466,7 @@ export async function getTrialBalance(
     });
   }
 
-  const suspenseNet = suspenseDr - suspenseCr;
-  if (Math.abs(suspenseNet) > 4) {
-    const suspAcct = orgAccounts.find(a => a.code === 'SUSPENSE');
-    if (suspAcct) {
-      const existing = resultList.find(r => r.accountId === suspAcct.id);
-      if (existing) {
-        // Update period columns
-        if (suspenseNet > 0) {
-          existing.periodDebit += suspenseNet;
-        } else {
-          existing.periodCredit += Math.abs(suspenseNet);
-        }
-        // Recompute closing so debit/credit never both non-zero
-        const od = existing.openingDebit || 0;
-        const oc = existing.openingCredit || 0;
-        const pd = existing.periodDebit || 0;
-        const pc = existing.periodCredit || 0;
-        const suspType = (suspAcct.type || '').toLowerCase();
-        const isDB = suspType === 'asset' || suspType === 'expense';
-        const bal = isDB ? (od + pd) - (oc + pc) : (oc + pc) - (od + pd);
-        existing.closingDebit = isDB ? (bal > 0 ? bal : 0) : (bal < 0 ? Math.abs(bal) : 0);
-        existing.closingCredit = isDB ? (bal < 0 ? Math.abs(bal) : 0) : (bal > 0 ? bal : 0);
-      }
-    } else {
-      resultList.push({
-        accountId: 'suspense',
-        accountCode: 'SUSPENSE',
-        accountName: 'Suspense - Unreconciled Module Balances',
-        accountType: 'liability',
-        openingDebit: 0, openingCredit: 0,
-        periodDebit: suspenseNet > 0 ? suspenseNet : 0,
-        periodCredit: suspenseNet < 0 ? Math.abs(suspenseNet) : 0,
-        closingDebit: suspenseNet > 0 ? suspenseNet : 0,
-        closingCredit: suspenseNet < 0 ? Math.abs(suspenseNet) : 0
-      });
-    }
-  }
-
   return resultList;
-}
-
-export async function clearSuspense(orgId: string, userId: string, entryDate: Date): Promise<{ amount: number }> {
-  // Use a wide date range to capture all suspense activity
-  const startDate = new Date('2000-01-01');
-  const endDate = new Date('2099-12-31');
-  const rows = await getTrialBalance(orgId, startDate, endDate);
-  const suspRow = rows.find(r => r.accountCode === 'SUSPENSE');
-  if (!suspRow) return { amount: 0 };
-
-  const netBalance = suspRow.closingCredit - suspRow.closingDebit;
-  if (Math.abs(netBalance) < 100) return { amount: 0 };
-
-  const [suspenseAccount] = await db.select().from(accounts).where(and(eq(accounts.orgId, orgId), eq(accounts.code, 'SUSPENSE')));
-  const [retainedEarnings] = await db.select().from(accounts).where(and(eq(accounts.orgId, orgId), eq(accounts.code, '502000')));
-  if (!suspenseAccount || !retainedEarnings) throw new AppError('Required accounts not found (SUSPENSE or Retained Earnings).', 500);
-
-  // netBalance > 0 means SUSPENSE has a credit balance → debit SUSPENSE to clear
-  const absBalance = Math.abs(netBalance);
-  await createJournalEntry({
-    orgId,
-    date: entryDate,
-    description: `Clear suspense balance of ₦${(absBalance / 100).toFixed(2)} to Retained Earnings`,
-    source: 'manual',
-    createdBy: userId,
-    lines: [
-      { accountId: suspenseAccount.id, debit: netBalance > 0 ? absBalance : 0, credit: netBalance > 0 ? 0 : absBalance },
-      { accountId: retainedEarnings.id, debit: netBalance > 0 ? 0 : absBalance, credit: netBalance > 0 ? absBalance : 0 },
-    ]
-  });
-
-  return { amount: Math.abs(netBalance) };
 }
 
 /**
