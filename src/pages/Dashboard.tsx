@@ -132,54 +132,73 @@ export function Dashboard({ onNavigate }: { onNavigate: (viewId: string) => void
   const customersList = Array.isArray(customersQuery.data) ? customersQuery.data : [];
   const vendorsList = Array.isArray(vendorsQuery.data) ? vendorsQuery.data : [];
 
-  const receivablesKobo = customersList.reduce((sum: number, c: any) => sum + (Number(c.outstanding) || 0), 0);
-  const payablesKobo = vendorsList.reduce((sum: number, v: any) => sum + (Number(v.outstanding) || 0), 0);
+  const getPeriodStart = () => {
+    const now = new Date();
+    switch (selectedPeriod) {
+      case '1w': return new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+      case '2w': return new Date(now.getFullYear(), now.getMonth(), now.getDate() - 14);
+      case '1m': return new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+      case '3m': return new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+      case '12m': return new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+      default: return new Date(now.getFullYear(), now.getMonth() - 6, now.getDate());
+    }
+  };
 
-  const totalInvoicesList = Array.isArray(invoicesQuery.data)
+  const periodStart = getPeriodStart();
+
+  const allInvoices = Array.isArray(invoicesQuery.data)
     ? invoicesQuery.data
     : (invoicesQuery.data?.invoices || invoicesQuery.data?.data || []);
-  const totalBillsList = Array.isArray(billsQuery.data)
+  const allBills = Array.isArray(billsQuery.data)
     ? billsQuery.data
     : (billsQuery.data?.bills || billsQuery.data?.data || []);
 
-  const overdueReceivables = totalInvoicesList
+  const periodInvoices = allInvoices.filter((inv: any) => inv.date && new Date(inv.date) >= periodStart);
+  const periodBills = allBills.filter((b: any) => b.date && new Date(b.date) >= periodStart);
+
+  const receivablesKobo = periodInvoices
     .filter((inv: any) => {
       const s = (inv.status || '').toLowerCase();
       return (s === 'sent' || s === 'partial' || s === 'overdue') && inv.balanceDue > 0;
     })
-    .reduce((sum: number, inv: any) => sum + (Number(inv.balanceDue) || 0), 0);
+    .reduce((sum: number, inv: any) => sum + (Number(inv.balanceDue) || Number(inv.total) || 0), 0);
 
-  const overduePayables = totalBillsList
+  const payablesKobo = periodBills
     .filter((b: any) => {
       const s = (b.status || '').toLowerCase();
       return (s === 'open' || s === 'partial' || s === 'overdue') && b.balanceDue > 0;
     })
     .reduce((sum: number, b: any) => sum + (Number(b.balanceDue) || Number(b.total) || 0), 0);
 
-  const pendingReceivables = customersList.length;
-  const pendingPayables = vendorsList.length;
+  const overdueReceivables = periodInvoices
+    .filter((inv: any) => {
+      const s = (inv.status || '').toLowerCase();
+      return (s === 'sent' || s === 'partial' || s === 'overdue') && inv.balanceDue > 0 && inv.dueDate && new Date(inv.dueDate) < new Date();
+    })
+    .reduce((sum: number, inv: any) => sum + (Number(inv.balanceDue) || 0), 0);
 
-  const netPnLKobo = totalCashKobo - payablesKobo;
-  const pnlPercent = totalCashKobo > 0 ? Math.min(Math.round((netPnLKobo / totalCashKobo) * 100), 100) : 0;
+  const overduePayables = periodBills
+    .filter((b: any) => {
+      const s = (b.status || '').toLowerCase();
+      return (s === 'open' || s === 'partial' || s === 'overdue') && b.balanceDue > 0 && b.dueDate && new Date(b.dueDate) < new Date();
+    })
+    .reduce((sum: number, b: any) => sum + (Number(b.balanceDue) || Number(b.total) || 0), 0);
 
-  const getPeriodMonths = () => {
-    switch (selectedPeriod) {
-      case '3m': return 3;
-      case '12m': return 12;
-      default: return 6;
-    }
-  };
+  const pendingInvoiceCount = periodInvoices.filter((inv: any) => { const s = (inv.status || '').toLowerCase(); return s === 'sent' || s === 'partial' || s === 'overdue'; }).length;
+  const pendingBillCount = periodBills.filter((b: any) => { const s = (b.status || '').toLowerCase(); return s === 'open' || s === 'partial' || s === 'overdue'; }).length;
 
   const cashForecastData = (() => {
     const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     const now = new Date();
-    const periodMonths = getPeriodMonths();
+    const periodMonths = selectedPeriod === '1w' || selectedPeriod === '2w' ? 1 : selectedPeriod === '1m' ? 1 : selectedPeriod === '3m' ? 3 : selectedPeriod === '12m' ? 12 : 6;
     const lastN = Array.from({ length: periodMonths }, (_, i) => {
       const d = new Date(now.getFullYear(), now.getMonth() - (periodMonths - 1) + i, 1);
       return { month: d.getMonth(), year: d.getFullYear(), name: months[d.getMonth()] };
     });
-    const inList = Array.isArray(paymentsReceivedQuery.data) ? paymentsReceivedQuery.data : (paymentsReceivedQuery.data?.payments || []);
-    const outList = Array.isArray(paymentsMadeQuery.data) ? paymentsMadeQuery.data : (paymentsMadeQuery.data?.payments || []);
+    const inListAll = Array.isArray(paymentsReceivedQuery.data) ? paymentsReceivedQuery.data : (paymentsReceivedQuery.data?.payments || []);
+    const outListAll = Array.isArray(paymentsMadeQuery.data) ? paymentsMadeQuery.data : (paymentsMadeQuery.data?.payments || []);
+    const inList = inListAll.filter((p: any) => p.date && new Date(p.date) >= periodStart);
+    const outList = outListAll.filter((p: any) => p.date && new Date(p.date) >= periodStart);
     return lastN.map(({ month, year, name }) => {
       const inflows = inList.filter((p: any) => {
         const d = new Date(p.date); return d.getMonth() === month && d.getFullYear() === year;
@@ -192,13 +211,14 @@ export function Dashboard({ onNavigate }: { onNavigate: (viewId: string) => void
   })();
 
   const expenseBreakdownData = (() => {
-    const expList = Array.isArray(expensesQuery.data) ? expensesQuery.data : (expensesQuery.data?.expenses || expensesQuery.data?.data || []);
-    const billsPayable = totalBillsList
+    const expListAll = Array.isArray(expensesQuery.data) ? expensesQuery.data : (expensesQuery.data?.expenses || expensesQuery.data?.data || []);
+    const expList = expListAll.filter((e: any) => e.date && new Date(e.date) >= periodStart);
+    const billsPayable = allBills
       .filter((b: any) => { const s = (b.status || '').toLowerCase(); return s === 'open' || s === 'partial'; })
       .reduce((s: number, b: any) => s + (Number(b.total) || 0), 0);
-    const totalPayments = Array.isArray(paymentsMadeQuery.data)
-      ? paymentsMadeQuery.data.reduce((s: number, p: any) => s + (p.amount || 0), 0)
-      : (paymentsMadeQuery.data?.payments || []).reduce((s: number, p: any) => s + (p.amount || 0), 0);
+    const allPaymentsMade = Array.isArray(paymentsMadeQuery.data) ? paymentsMadeQuery.data : (paymentsMadeQuery.data?.payments || []);
+    const periodPaymentsMade = allPaymentsMade.filter((p: any) => p.date && new Date(p.date) >= periodStart);
+    const totalPayments = periodPaymentsMade.reduce((s: number, p: any) => s + (p.amount || 0), 0);
 
     const categories: Record<string, number> = {};
     expList.forEach((e: any) => {
@@ -262,8 +282,10 @@ export function Dashboard({ onNavigate }: { onNavigate: (viewId: string) => void
   })();
 
   const recentTransactions = (() => {
-    const inList = Array.isArray(paymentsReceivedQuery.data) ? paymentsReceivedQuery.data : (paymentsReceivedQuery.data?.payments || []);
-    const outList = Array.isArray(paymentsMadeQuery.data) ? paymentsMadeQuery.data : (paymentsMadeQuery.data?.payments || []);
+    const inListAll = Array.isArray(paymentsReceivedQuery.data) ? paymentsReceivedQuery.data : (paymentsReceivedQuery.data?.payments || []);
+    const outListAll = Array.isArray(paymentsMadeQuery.data) ? paymentsMadeQuery.data : (paymentsMadeQuery.data?.payments || []);
+    const inList = inListAll.filter((p: any) => p.date && new Date(p.date) >= periodStart);
+    const outList = outListAll.filter((p: any) => p.date && new Date(p.date) >= periodStart);
     const allTx = [
       ...inList.map((p: any) => ({ ...p, type: 'inflow', amount: p.amount || 0 })),
       ...outList.map((p: any) => ({ ...p, type: 'outflow', amount: -(p.amount || 0) })),
@@ -328,9 +350,12 @@ export function Dashboard({ onNavigate }: { onNavigate: (viewId: string) => void
             onChange={e => setSelectedPeriod(e.target.value)}
             className="text-xs font-semibold border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-600"
           >
-            <option value="3m">Last 3 months</option>
-            <option value="6m">Last 6 months</option>
-            <option value="12m">Last 12 months</option>
+            <option value="1w">Last 1 Week</option>
+            <option value="2w">Last 2 Weeks</option>
+            <option value="1m">Last 1 Month</option>
+            <option value="3m">Last 3 Months</option>
+            <option value="6m">Last 6 Months</option>
+            <option value="12m">Last 12 Months</option>
           </select>
           <button onClick={refetchAll} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
             <RefreshCw className="w-3.5 h-3.5" /> Refresh
@@ -364,7 +389,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (viewId: string) => void
           </div>
           <div className="text-2xl font-bold text-slate-900 tabular-nums">{formatNaira(receivablesKobo)}</div>
           <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-            <span className="text-[11px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{pendingReceivables} customer{pendingReceivables !== 1 ? 's' : ''}</span>
+            <span className="text-[11px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{pendingInvoiceCount} invoice{pendingInvoiceCount !== 1 ? 's' : ''}</span>
             {overdueReceivables > 0 && (
               <span className="text-[11px] font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded flex items-center gap-1">
                 <AlertTriangle className="w-3 h-3" /> {formatNaira(overdueReceivables)} overdue
@@ -380,7 +405,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (viewId: string) => void
           </div>
           <div className="text-2xl font-bold text-slate-900 tabular-nums">{formatNaira(payablesKobo)}</div>
           <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-            <span className="text-[11px] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded">{pendingPayables} vendor{pendingPayables !== 1 ? 's' : ''}</span>
+            <span className="text-[11px] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded">{pendingBillCount} bill{pendingBillCount !== 1 ? 's' : ''}</span>
             {overduePayables > 0 && (
               <span className="text-[11px] font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded flex items-center gap-1">
                 <AlertTriangle className="w-3 h-3" /> {formatNaira(overduePayables)} due
