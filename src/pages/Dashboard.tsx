@@ -1,9 +1,4 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -22,25 +17,43 @@ import {
   PlusCircle,
   RefreshCw,
   Wallet,
-  Activity
+  Activity,
+  Users,
+  Building2,
+  Clock,
+  AlertTriangle,
+  PieChart as PieChartIcon,
+  Banknote,
+  Receipt,
+  Calendar
 } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import { useCurrency } from '../hooks/useCurrency';
-import { bankingApi, salesApi, purchasesApi } from '../lib/api';
+import { bankingApi, salesApi, purchasesApi, reportsApi } from '../lib/api';
 import { AmountDisplay } from '../components/ui/AmountDisplay';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { useAuth } from '../hooks/useAuth';
 
-interface DashboardProps {
-  onNavigate: (viewId: string) => void;
+function fmtNaira(v: number): string {
+  return `₦${(v / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
 }
 
-export function Dashboard({ onNavigate }: DashboardProps) {
+function fmtDate(d: string): string {
+  return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function fmtShortDate(d: string): string {
+  return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+}
+
+const CHART_COLORS = ['#2e7d32', '#dc2626', '#2563eb', '#f59e0b', '#8b5cf6', '#06b6d4', '#ec4899', '#14b8a6'];
+
+export function Dashboard({ onNavigate }: { onNavigate: (viewId: string) => void }) {
   const navigate = useNavigate();
   const { formatNaira } = useCurrency();
   const { token } = useAuth();
+  const [selectedPeriod, setSelectedPeriod] = useState<string>('6m');
 
-  // 1. Fetch live metrics from local DB endpoints via React Query
   const accountsQuery = useQuery({
     queryKey: ['bankAccounts'],
     queryFn: bankingApi.getAccounts,
@@ -48,384 +61,521 @@ export function Dashboard({ onNavigate }: DashboardProps) {
     enabled: !!token,
   });
 
+  const customersQuery = useQuery({
+    queryKey: ['dashboard-customers'],
+    queryFn: () => salesApi.getCustomers(),
+    staleTime: 10 * 1000,
+    enabled: !!token,
+  });
+
+  const vendorsQuery = useQuery({
+    queryKey: ['dashboard-vendors'],
+    queryFn: () => purchasesApi.getVendors(),
+    staleTime: 10 * 1000,
+    enabled: !!token,
+  });
+
   const invoicesQuery = useQuery({
-    queryKey: ['invoices'],
-    queryFn: () => salesApi.getInvoices(),
+    queryKey: ['dashboard-invoices'],
+    queryFn: () => salesApi.getInvoices({ limit: 500 }),
     staleTime: 10 * 1000,
     enabled: !!token,
   });
 
   const billsQuery = useQuery({
-    queryKey: ['bills'],
-    queryFn: () => purchasesApi.getBills(),
+    queryKey: ['dashboard-bills'],
+    queryFn: () => purchasesApi.getBills({ limit: 500 }),
     staleTime: 10 * 1000,
     enabled: !!token,
   });
 
   const paymentsReceivedQuery = useQuery({
-    queryKey: ['paymentsReceived'],
+    queryKey: ['dashboard-payments-received'],
     queryFn: () => salesApi.getPaymentsReceived({ limit: 500 }),
     staleTime: 10 * 1000,
     enabled: !!token,
   });
+
   const paymentsMadeQuery = useQuery({
-    queryKey: ['paymentsMade'],
-    queryFn: () => purchasesApi.getPaymentsMade(),
+    queryKey: ['dashboard-payments-made'],
+    queryFn: () => purchasesApi.getPaymentsMade({ limit: 500 }),
     staleTime: 10 * 1000,
     enabled: !!token,
   });
-  const isLoading = accountsQuery.isLoading || invoicesQuery.isLoading || billsQuery.isLoading;
 
-  // 2. Perform live calculations on database metrics
+  const expensesQuery = useQuery({
+    queryKey: ['dashboard-expenses'],
+    queryFn: () => purchasesApi.getExpenses({ limit: 500 }),
+    staleTime: 10 * 1000,
+    enabled: !!token,
+  });
+
+  const invoiceAgingQuery = useQuery({
+    queryKey: ['dashboard-invoice-aging'],
+    queryFn: () => salesApi.getInvoiceAging(),
+    staleTime: 10 * 1000,
+    enabled: !!token,
+  });
+
+  const billAgingQuery = useQuery({
+    queryKey: ['dashboard-bill-aging'],
+    queryFn: () => purchasesApi.getBillAgingReport(),
+    staleTime: 10 * 1000,
+    enabled: !!token,
+  });
+
+  const isLoading = accountsQuery.isLoading || customersQuery.isLoading || vendorsQuery.isLoading;
+
   const activeAccounts = Array.isArray(accountsQuery.data) ? accountsQuery.data : (accountsQuery.data ?? []);
-
-  
-  // Total Bank Balances (sum of active cash accounts)
   const totalCashKobo = activeAccounts.reduce((sum: number, acc: any) => sum + (acc.currentBalance || acc.balance || 0), 0);
 
-  // Total Receivables (sum of unpaid invoices)
-  const totalInvoicesList = Array.isArray(invoicesQuery.data) ? invoicesQuery.data : (invoicesQuery.data?.invoices || invoicesQuery.data?.data || []);
-  const receivablesKobo = totalInvoicesList
-    .filter((inv: any) => { const s = (inv.status || '').toLowerCase(); return s === 'sent' || s === 'unpaid' || s === 'overdue'; })
-    .reduce((sum: number, inv: any) => sum + (inv.total || inv.amount || 0), 0);
+  const customersList = Array.isArray(customersQuery.data) ? customersQuery.data : [];
+  const vendorsList = Array.isArray(vendorsQuery.data) ? vendorsQuery.data : [];
 
-  // Total Payables (sum of unpaid bills)
-  const totalBillsList = Array.isArray(billsQuery.data) ? billsQuery.data : (billsQuery.data?.bills || billsQuery.data?.data || []);
-  const payablesKobo = totalBillsList
-    .filter((b: any) => { const s = (b.status || '').toLowerCase(); return s === 'unpaid' || s === 'overdue' || s === 'pending'; })
-    .reduce((sum: number, b: any) => sum + (b.total || b.amount || 0), 0);
+  const receivablesKobo = customersList.reduce((sum: number, c: any) => sum + (Number(c.outstanding) || 0), 0);
+  const payablesKobo = vendorsList.reduce((sum: number, v: any) => sum + (Number(v.outstanding) || 0), 0);
 
-  // Net Profit Margin or dynamic PnL
+  const totalInvoicesList = Array.isArray(invoicesQuery.data)
+    ? invoicesQuery.data
+    : (invoicesQuery.data?.invoices || invoicesQuery.data?.data || []);
+  const totalBillsList = Array.isArray(billsQuery.data)
+    ? billsQuery.data
+    : (billsQuery.data?.bills || billsQuery.data?.data || []);
+
+  const overdueReceivables = totalInvoicesList
+    .filter((inv: any) => {
+      const s = (inv.status || '').toLowerCase();
+      return (s === 'sent' || s === 'partial' || s === 'overdue') && inv.balanceDue > 0;
+    })
+    .reduce((sum: number, inv: any) => sum + (Number(inv.balanceDue) || 0), 0);
+
+  const overduePayables = totalBillsList
+    .filter((b: any) => {
+      const s = (b.status || '').toLowerCase();
+      return (s === 'open' || s === 'partial' || s === 'overdue') && b.balanceDue > 0;
+    })
+    .reduce((sum: number, b: any) => sum + (Number(b.balanceDue) || Number(b.total) || 0), 0);
+
+  const pendingReceivables = customersList.length;
+  const pendingPayables = vendorsList.length;
+
   const netPnLKobo = totalCashKobo - payablesKobo;
   const pnlPercent = totalCashKobo > 0 ? Math.min(Math.round((netPnLKobo / totalCashKobo) * 100), 100) : 0;
 
-  // Mock bank transaction list if there's no synchronized data yet
-  const recentTransactions = (() => {
-    const inList = Array.isArray(paymentsReceivedQuery.data) ? paymentsReceivedQuery.data : (paymentsReceivedQuery.data?.payments || []);
-    return inList.slice(0, 5).map((p: any) => ({
-      id: p.id,
-      description: p.reference || p.paymentNumber || 'Payment Received',
-      amount: p.amount || 0,
-      date: p.date ? new Date(p.date).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '',
-      category: p.paymentMethod || 'bank_transfer',
-    }));
-  })();
+  const getPeriodMonths = () => {
+    switch (selectedPeriod) {
+      case '3m': return 3;
+      case '12m': return 12;
+      default: return 6;
+    }
+  };
 
-  // Visual chart datasets
   const cashForecastData = (() => {
     const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     const now = new Date();
-    const last6 = Array.from({ length: 6 }, (_, i) => {
-      const d = new Date(now.getFullYear(), now.getMonth() - 5 + i, 1);
+    const periodMonths = getPeriodMonths();
+    const lastN = Array.from({ length: periodMonths }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - (periodMonths - 1) + i, 1);
       return { month: d.getMonth(), year: d.getFullYear(), name: months[d.getMonth()] };
     });
     const inList = Array.isArray(paymentsReceivedQuery.data) ? paymentsReceivedQuery.data : (paymentsReceivedQuery.data?.payments || []);
     const outList = Array.isArray(paymentsMadeQuery.data) ? paymentsMadeQuery.data : (paymentsMadeQuery.data?.payments || []);
-    return last6.map(({ month, year, name }) => {
+    return lastN.map(({ month, year, name }) => {
       const inflows = inList.filter((p: any) => {
         const d = new Date(p.date); return d.getMonth() === month && d.getFullYear() === year;
       }).reduce((s: number, p: any) => s + (p.amount || 0), 0);
       const outflows = outList.filter((p: any) => {
         const d = new Date(p.date); return d.getMonth() === month && d.getFullYear() === year;
       }).reduce((s: number, p: any) => s + (p.amount || 0), 0);
-      return { name, inflows, outflows };
+      return { name, inflows, outflows, net: inflows - outflows };
     });
   })();
 
-  const pnlBreakdownData = (() => {
-    const inList = Array.isArray(paymentsReceivedQuery.data) ? paymentsReceivedQuery.data : (paymentsReceivedQuery.data?.payments || []);
-    const outList = Array.isArray(paymentsMadeQuery.data) ? paymentsMadeQuery.data : (paymentsMadeQuery.data?.payments || []);
-    const totalRevenue = inList.reduce((s: number, p: any) => s + (p.amount || 0), 0);
-    const totalExpenses = outList.reduce((s: number, p: any) => s + (p.amount || 0), 0);
-    const totalBills = totalBillsList.reduce((s: number, b: any) => s + (b.total || 0), 0);
-    return [
-      { name: 'Revenue Received', value: Math.round(totalRevenue / 100) },
-      { name: 'Bills & Payables', value: Math.round(totalBills / 100) },
-      { name: 'Payments Made', value: Math.round(totalExpenses / 100) },
-    ].filter(d => d.value > 0);
+  const expenseBreakdownData = (() => {
+    const expList = Array.isArray(expensesQuery.data) ? expensesQuery.data : (expensesQuery.data?.expenses || expensesQuery.data?.data || []);
+    const billsPayable = totalBillsList
+      .filter((b: any) => { const s = (b.status || '').toLowerCase(); return s === 'open' || s === 'partial'; })
+      .reduce((s: number, b: any) => s + (Number(b.total) || 0), 0);
+    const totalPayments = Array.isArray(paymentsMadeQuery.data)
+      ? paymentsMadeQuery.data.reduce((s: number, p: any) => s + (p.amount || 0), 0)
+      : (paymentsMadeQuery.data?.payments || []).reduce((s: number, p: any) => s + (p.amount || 0), 0);
+
+    const categories: Record<string, number> = {};
+    expList.forEach((e: any) => {
+      const cat = e.category || 'Other';
+      categories[cat] = (categories[cat] || 0) + (Number(e.amount) || 0);
+    });
+
+    const items = Object.entries(categories)
+      .map(([name, value]) => ({ name, value: Math.round(value / 100) }))
+      .filter(d => d.value > 0)
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 8);
+
+    if (billsPayable > 0) items.push({ name: 'Bills Payable', value: Math.round(billsPayable / 100) });
+    if (totalPayments > 0) items.push({ name: 'Payments Sent', value: Math.round(totalPayments / 100) });
+
+    return items;
   })();
 
+  const agingBuckets = (() => {
+    const inAging = invoiceAgingQuery.data || [];
+    const outAging = billAgingQuery.data || [];
+    const arBuckets = { current: 0, days1to30: 0, days31to60: 0, days61to90: 0, days90Plus: 0 };
+    const apBuckets = { current: 0, days1to30: 0, days31to60: 0, days61to90: 0, days90Plus: 0 };
+
+    if (Array.isArray(inAging)) {
+      inAging.forEach((r: any) => {
+        arBuckets.current += Number(r.current || 0);
+        arBuckets.days1to30 += Number(r.days1to30 || 0);
+        arBuckets.days31to60 += Number(r.days31to60 || 0);
+        arBuckets.days61to90 += Number(r.days61to90 || 0);
+        arBuckets.days90Plus += Number(r.days90Plus || 0);
+      });
+    }
+    if (Array.isArray(outAging)) {
+      outAging.forEach((r: any) => {
+        apBuckets.current += Number(r.current || 0);
+        apBuckets.days1to30 += Number(r.days1to30 || 0);
+        apBuckets.days31to60 += Number(r.days31to60 || 0);
+        apBuckets.days61to90 += Number(r.days61to90 || 0);
+        apBuckets.days90Plus += Number(r.days90Plus || 0);
+      });
+    }
+
+    return {
+      ar: [
+        { name: 'Current', value: arBuckets.current },
+        { name: '1-30d', value: arBuckets.days1to30 },
+        { name: '31-60d', value: arBuckets.days31to60 },
+        { name: '61-90d', value: arBuckets.days61to90 },
+        { name: '90+', value: arBuckets.days90Plus },
+      ].filter(b => b.value > 0),
+      ap: [
+        { name: 'Current', value: apBuckets.current },
+        { name: '1-30d', value: apBuckets.days1to30 },
+        { name: '31-60d', value: apBuckets.days31to60 },
+        { name: '61-90d', value: apBuckets.days61to90 },
+        { name: '90+', value: apBuckets.days90Plus },
+      ].filter(b => b.value > 0),
+    };
+  })();
+
+  const recentTransactions = (() => {
+    const inList = Array.isArray(paymentsReceivedQuery.data) ? paymentsReceivedQuery.data : (paymentsReceivedQuery.data?.payments || []);
+    const outList = Array.isArray(paymentsMadeQuery.data) ? paymentsMadeQuery.data : (paymentsMadeQuery.data?.payments || []);
+    const allTx = [
+      ...inList.map((p: any) => ({ ...p, type: 'inflow', amount: p.amount || 0 })),
+      ...outList.map((p: any) => ({ ...p, type: 'outflow', amount: -(p.amount || 0) })),
+    ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return allTx.slice(0, 8).map((tx: any) => ({
+      id: tx.id,
+      description: tx.reference || tx.paymentNumber || (tx.type === 'inflow' ? 'Payment Received' : 'Payment Made'),
+      amount: tx.amount,
+      date: fmtDate(tx.date || new Date().toISOString()),
+      type: tx.type,
+      method: tx.paymentMethod || 'bank_transfer',
+    }));
+  })();
+
+  const netWorthKobo = totalCashKobo + receivablesKobo - payablesKobo;
+
+  const refetchAll = () => {
+    accountsQuery.refetch();
+    customersQuery.refetch();
+    vendorsQuery.refetch();
+    invoicesQuery.refetch();
+    billsQuery.refetch();
+    paymentsReceivedQuery.refetch();
+    paymentsMadeQuery.refetch();
+    expensesQuery.refetch();
+    invoiceAgingQuery.refetch();
+    billAgingQuery.refetch();
+  };
+
+  if (isLoading) {
+    return (
+      <div className="p-8 space-y-6 animate-fade-in">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="h-7 bg-slate-200 rounded-lg w-48 animate-pulse" />
+            <div className="h-4 bg-slate-100 rounded-lg w-64 mt-2 animate-pulse" />
+          </div>
+          <div className="flex gap-3">
+            <div className="h-9 bg-slate-200 rounded-lg w-36 animate-pulse" />
+            <div className="h-9 bg-slate-200 rounded-lg w-36 animate-pulse" />
+          </div>
+        </div>
+        <div className="grid grid-cols-4 gap-6">
+          {[1,2,3,4].map(i => <div key={i} className="h-32 bg-slate-100 rounded-2xl animate-pulse" />)}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-8 animate-fade-in" id="dashboard-viewport-box">
-      
-      {/* 1. Welcoming Title Section with Refresh action */}
+    <div className="space-y-6 animate-fade-in px-6 py-6 max-w-7xl mx-auto">
+
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-extrabold text-slate-800 tracking-tight">Financial Overview</h2>
-          <p className="text-xs text-slate-400 font-semibold tracking-wide uppercase mt-1">
-            Real-time corporate metrics ledger
-          </p>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Dashboard</h1>
+          <p className="text-sm text-slate-500 mt-1">Real-time financial overview &amp; corporate metrics</p>
         </div>
-        <div className="inline-flex items-center gap-3">
-          <button 
-            onClick={() => {
-              accountsQuery.refetch();
-              invoicesQuery.refetch();
-              billsQuery.refetch();
-            }}
-            className="p-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 rounded-xl outline-none flex items-center text-xs font-semibold shadow-xs"
+        <div className="flex items-center gap-3">
+          <select
+            value={selectedPeriod}
+            onChange={e => setSelectedPeriod(e.target.value)}
+            className="text-xs font-semibold border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-600"
           >
-            <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Synchronize Feed
+            <option value="3m">Last 3 months</option>
+            <option value="6m">Last 6 months</option>
+            <option value="12m">Last 12 months</option>
+          </select>
+          <button onClick={refetchAll} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
+            <RefreshCw className="w-3.5 h-3.5" /> Refresh
           </button>
-          
-          <button
-            onClick={() => navigate('/sales/invoices/new')}
-            className="px-3.5 py-2 text-xs font-bold text-white bg-primary hover:bg-primary-hover outline-none rounded-lg shadow-sm cursor-pointer transition flex items-center"
-          >
-            <PlusCircle className="w-4 h-4 mr-2" /> Issue Invoice
+          <button onClick={() => navigate('/sales/invoices/new')} className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
+            <PlusCircle className="w-4 h-4" /> New Invoice
           </button>
         </div>
       </div>
 
-      {/* 2. DYNAMIC FOUR-GRID KPI CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6" id="dashboard-kpi-grid">
-        
-        {/* KPI 1: Operating Cash / Bank Account */}
-        <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm flex flex-col justify-between hover:shadow-md transition duration-200" id="kpi-card-cash">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] uppercase font-extrabold tracking-widest text-slate-400 font-mono">Operating Liquidity</span>
-            <div className="p-2 bg-emerald-50 text-emerald-600 rounded-xl">
-              <Wallet className="w-4 h-4" />
-            </div>
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Cash Balance</span>
+            <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg"><Banknote className="w-4 h-4" /></div>
           </div>
-          <div className="mt-4">
-            <h3 className="text-2xl font-black text-ink-900 font-sans tracking-tight tabular-nums">
-              {formatNaira(totalCashKobo)}
-            </h3>
-            <div className="inline-flex items-center text-[11px] font-semibold px-2 py-0.5 mt-2 rounded bg-success-bg text-success-custom">
-              <TrendingUp className="w-3.5 h-3.5 mr-1" />
-              {(() => { const inList = Array.isArray(paymentsReceivedQuery.data) ? paymentsReceivedQuery.data : (paymentsReceivedQuery.data?.payments || []); const now = new Date(); const thisMonth = inList.filter((p: any) => { const d = new Date(p.date); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }).reduce((s: number, p: any) => s + (p.amount || 0), 0); const lastMonth = inList.filter((p: any) => { const d = new Date(p.date); const lm = new Date(now.getFullYear(), now.getMonth() - 1, 1); return d.getMonth() === lm.getMonth() && d.getFullYear() === lm.getFullYear(); }).reduce((s: number, p: any) => s + (p.amount || 0), 0); if (thisMonth === 0) return 'No inflows this month'; if (lastMonth === 0) return `₦${(thisMonth/100).toLocaleString()} received this month`; const pct = Math.round(((thisMonth - lastMonth) / lastMonth) * 100); return `${pct >= 0 ? '+' : ''}${pct}% vs last month`; })()}
-            </div>
+          <div className="text-2xl font-bold text-slate-900 tabular-nums">{formatNaira(totalCashKobo)}</div>
+          <div className="flex items-center gap-1.5 mt-2">
+            <span className="text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded flex items-center gap-1">
+              <TrendingUp className="w-3 h-3" /> {activeAccounts.length} account{activeAccounts.length !== 1 ? 's' : ''}
+            </span>
+            <span className="text-[11px] text-slate-400">{totalCashKobo > 0 ? 'Available' : 'No funds'}</span>
           </div>
         </div>
 
-        {/* KPI 2: Accounts Receivables */}
-        <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm flex flex-col justify-between hover:shadow-md transition duration-200" id="kpi-card-ar">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] uppercase font-extrabold tracking-widest text-slate-400 font-mono">Accounts Receivable</span>
-            <div className="p-2 bg-info-bg text-info-custom rounded-xl">
-              <ArrowUpRight className="w-4 h-4" />
-            </div>
+        <div className="bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Accounts Receivable</span>
+            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><Users className="w-4 h-4" /></div>
           </div>
-          <div className="mt-4">
-            <h3 className="text-2xl font-black text-ink-900 font-sans tracking-tight tabular-nums">
-              {formatNaira(receivablesKobo)}
-            </h3>
-            <div className="inline-flex items-center text-[11px] font-semibold px-2 py-0.5 mt-2 rounded bg-info-bg text-info-custom">
-              <Activity className="w-3.5 h-3.5 mr-1" />
-              {totalInvoicesList.filter((inv: any) => { const s = (inv.status || '').toLowerCase(); return s === 'sent' || s === 'unpaid' || s === 'overdue'; }).length} pending collections
-            </div>
+          <div className="text-2xl font-bold text-slate-900 tabular-nums">{formatNaira(receivablesKobo)}</div>
+          <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+            <span className="text-[11px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{pendingReceivables} customer{pendingReceivables !== 1 ? 's' : ''}</span>
+            {overdueReceivables > 0 && (
+              <span className="text-[11px] font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3" /> {formatNaira(overdueReceivables)} overdue
+              </span>
+            )}
           </div>
         </div>
 
-        {/* KPI 3: Accounts Payables */}
-        <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm flex flex-col justify-between hover:shadow-md transition duration-200" id="kpi-card-ap">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] uppercase font-extrabold tracking-widest text-slate-400 font-mono">Accounts Payable</span>
-            <div className="p-2 bg-amber-50 text-amber-600 rounded-xl">
-              <ArrowDownLeft className="w-4 h-4" />
-            </div>
+        <div className="bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Accounts Payable</span>
+            <div className="p-2 bg-amber-50 text-amber-600 rounded-lg"><Building2 className="w-4 h-4" /></div>
           </div>
-          <div className="mt-4">
-            <h3 className="text-2xl font-black text-ink-900 font-sans tracking-tight tabular-nums">
-              {formatNaira(payablesKobo)}
-            </h3>
-            <div className="inline-flex items-center text-[11px] font-semibold px-2 py-0.5 mt-2 rounded bg-warning-bg text-warning-custom">
-              <Layers className="w-3.5 h-3.5 mr-1" />
-              {totalBillsList.filter((b: any) => { const s = (b.status || '').toLowerCase(); return s === 'unpaid' || s === 'overdue' || s === 'pending'; }).length} upcoming disbursements
-            </div>
+          <div className="text-2xl font-bold text-slate-900 tabular-nums">{formatNaira(payablesKobo)}</div>
+          <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+            <span className="text-[11px] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded">{pendingPayables} vendor{pendingPayables !== 1 ? 's' : ''}</span>
+            {overduePayables > 0 && (
+              <span className="text-[11px] font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3" /> {formatNaira(overduePayables)} due
+              </span>
+            )}
           </div>
         </div>
 
-        {/* KPI 4: Operating Profit margin indicator */}
-        <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm flex flex-col justify-between hover:shadow-md transition duration-200" id="kpi-card-margin">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] uppercase font-extrabold tracking-widest text-slate-400 font-mono">Working Margin (pnl)</span>
-            <div className="p-2 bg-primary-light text-primary rounded-xl">
-              <Activity className="w-4 h-4" />
-            </div>
+        <div className="bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Net Worth</span>
+            <div className="p-2 bg-purple-50 text-purple-600 rounded-lg"><PieChartIcon className="w-4 h-4" /></div>
           </div>
-          <div className="mt-4">
-            <h3 className="text-2xl font-black text-ink-900 font-sans tracking-tight tabular-nums">
-              {pnlPercent}%
-            </h3>
-            <div className="inline-flex items-center text-[11px] font-semibold px-2 py-0.5 mt-2 rounded bg-primary-light text-primary">
-              <TrendingUp className="w-3.5 h-3.5 mr-1" />
-              {totalCashKobo === 0 && payablesKobo === 0 ? 'No transaction data yet' : totalCashKobo > payablesKobo ? `Net positive: ₦${((totalCashKobo - payablesKobo) / 100).toLocaleString('en-NG', {notation:'compact'})}` : 'Net negative position'}
-            </div>
+          <div className="text-2xl font-bold text-slate-900 tabular-nums">{formatNaira(netWorthKobo)}</div>
+          <div className="flex items-center gap-1.5 mt-2">
+            <span className={`text-[11px] font-semibold px-2 py-0.5 rounded flex items-center gap-1 ${netWorthKobo >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+              {netWorthKobo >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+              {netWorthKobo >= 0 ? 'Positive' : 'Negative'} position
+            </span>
           </div>
         </div>
-
       </div>
 
-      {/* 3. CORE ANALYTICAL CHARTS SECTION (Recharts Grid) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6" id="dashboard-charts-layout">
-        
-        {/* Interactive Cash Flow Forecast (Span 2) */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-100 p-6 shadow-sm" id="cashflow-forecast-widget">
-          <div className="flex items-center justify-between mb-6">
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+        {/* Cash Flow Area Chart */}
+        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-5">
+          <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-sm font-extrabold text-slate-800 font-sans">Cash Flow Inflows vs Outflows</h3>
-              <p className="text-[11px] text-slate-400 mt-0.5">Historical and projective cash transactions</p>
+              <h3 className="text-sm font-bold text-slate-800">Cash Flow</h3>
+              <p className="text-xs text-slate-400 mt-0.5">Inflows vs Outflows over time</p>
             </div>
-            <div className="flex items-center space-x-3.5 text-xs font-semibold">
-              <div className="flex items-center text-primary">
-                <span className="w-2.5 h-2.5 bg-primary rounded-full mr-2"></span> Inflows
-              </div>
-              <div className="flex items-center text-danger-custom">
-                <span className="w-2.5 h-2.5 bg-danger-custom rounded-full mr-2"></span> Outflows
-              </div>
+            <div className="flex items-center gap-3 text-xs font-semibold">
+              <span className="flex items-center gap-1.5 text-emerald-600"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Inflows</span>
+              <span className="flex items-center gap-1.5 text-red-600"><span className="w-2.5 h-2.5 rounded-full bg-red-500" /> Outflows</span>
+              <span className="flex items-center gap-1.5 text-blue-600"><span className="w-2.5 h-2.5 rounded-full bg-blue-500" /> Net</span>
             </div>
           </div>
-
-          <div className="h-64" id="cashflow-chart-container">
+          <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={cashForecastData}>
                 <defs>
-                  <linearGradient id="colorIn" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#2e7d32" stopOpacity={0.08}/>
+                  <linearGradient id="inflowGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#2e7d32" stopOpacity={0.1}/>
                     <stop offset="95%" stopColor="#2e7d32" stopOpacity={0}/>
                   </linearGradient>
-                  <linearGradient id="colorOut" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#dc2626" stopOpacity={0.08}/>
+                  <linearGradient id="outflowGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#dc2626" stopOpacity={0.1}/>
                     <stop offset="95%" stopColor="#dc2626" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" opacity={0.5} />
-                <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} stroke="#94A3B8" />
-                <YAxis fontSize={10} axisLine={false} tickLine={false} stroke="#94A3B8" tickFormatter={(v) => `N${(v/100000000).toFixed(1)}M`} width={60} />
-                <Tooltip />
-                <Area type="monotone" dataKey="inflows" stroke="#2e7d32" strokeWidth={2.5} fillOpacity={1} fill="url(#colorIn)" name="Cash Inflow" />
-                <Area type="monotone" dataKey="outflows" stroke="#dc2626" strokeWidth={2.5} fillOpacity={1} fill="url(#colorOut)" name="Cash Outflow" />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" opacity={0.5} />
+                <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} stroke="#94a3b8" />
+                <YAxis fontSize={10} axisLine={false} tickLine={false} stroke="#94a3b8" tickFormatter={(v) => `₦${(v/100000000).toFixed(1)}M`} width={65} />
+                <Tooltip formatter={(value: number) => [formatNaira(value), undefined]} />
+                <Area type="monotone" dataKey="inflows" stroke="#2e7d32" strokeWidth={2} fillOpacity={1} fill="url(#inflowGrad)" name="Inflows" />
+                <Area type="monotone" dataKey="outflows" stroke="#dc2626" strokeWidth={2} fillOpacity={1} fill="url(#outflowGrad)" name="Outflows" />
+                <Line type="monotone" dataKey="net" stroke="#2563eb" strokeWidth={2} dot={false} name="Net" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Operating Costs Chart Section (Span 1) */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm" id="pnl-breakdown-widget">
-          <div>
-            <h3 className="text-sm font-extrabold text-slate-800 font-sans">Operating Expenses Chart</h3>
-            <p className="text-[11px] text-slate-400 mt-0.5">P&L distribution breakdown</p>
+        {/* Aging Pie Chart */}
+        <div className="bg-white rounded-xl border border-slate-200 p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-sm font-bold text-slate-800">Aging Summary</h3>
+              <p className="text-xs text-slate-400 mt-0.5">Receivables overdue buckets</p>
+            </div>
+            <Clock className="w-4 h-4 text-slate-400" />
           </div>
-
-          <div className="h-64 mt-6" id="pnl-chart-container">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={pnlBreakdownData} layout="vertical" margin={{ left: -10, right: 10 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E2E8F0" opacity={0.5} />
-                <XAxis type="number" fontSize={9} stroke="#94A3B8" axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="name" fontSize={9} stroke="#64748B" axisLine={false} tickLine={false} width={100} />
-                <Tooltip />
-                <Bar dataKey="value" fill="#2e7d32" radius={[0, 4, 4, 0]} barSize={12} name="Naira Amount" />
-              </BarChart>
-            </ResponsiveContainer>
+          {agingBuckets.ar.length > 0 ? (
+            <div className="h-56">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={agingBuckets.ar} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" nameKey="name" paddingAngle={2}>
+                    {agingBuckets.ar.map((_, i) => (
+                      <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value: number) => formatNaira(value)} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="h-56 flex items-center justify-center text-sm text-slate-400">No aging data</div>
+          )}
+          <div className="flex flex-wrap gap-2 mt-2">
+            {agingBuckets.ar.map((b, i) => (
+              <span key={b.name} className="text-[10px] flex items-center gap-1 text-slate-500">
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }} />
+                {b.name}: {formatNaira(b.value)}
+              </span>
+            ))}
           </div>
         </div>
 
       </div>
 
-      {/* 4. RECENT TRANSACTIONS AND ACTIONS PANEL */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6" id="dashboard-recent-collections-grid">
-        
-        {/* Bank feed synchronisation ledger (Col 2) */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-100 p-6 shadow-sm" id="banking-activity-list">
-          <div className="flex items-center justify-between mb-5">
+      {/* Expense Breakdown + Recent Transactions */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+        {/* Expense Breakdown Bar Chart */}
+        <div className="bg-white rounded-xl border border-slate-200 p-5">
+          <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-sm font-extrabold text-slate-800 font-sans">Bank Transactions Feed</h3>
-              <p className="text-[11px] text-slate-400 mt-0.5">Real-time cleared transaction imports</p>
+              <h3 className="text-sm font-bold text-slate-800">Expense Breakdown</h3>
+              <p className="text-xs text-slate-400 mt-0.5">By category</p>
             </div>
-            <button 
-              onClick={() => navigate('/banking')}
-              className="text-xs font-bold text-primary hover:text-primary-hover outline-none flex items-center"
-            >
-              Reconcile All <ChevronRight className="w-4 h-4 ml-0.5" />
+            <Receipt className="w-4 h-4 text-slate-400" />
+          </div>
+          {expenseBreakdownData.length > 0 ? (
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={expenseBreakdownData} layout="vertical" margin={{ left: -10, right: 10 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" opacity={0.5} />
+                  <XAxis type="number" fontSize={9} stroke="#94a3b8" axisLine={false} tickLine={false} tickFormatter={(v) => `₦${(v/1000000).toFixed(1)}M`} />
+                  <YAxis type="category" dataKey="name" fontSize={9} stroke="#64748b" axisLine={false} tickLine={false} width={90} />
+                  <Tooltip formatter={(value: number) => formatNaira(value * 100)} />
+                  <Bar dataKey="value" fill="#2e7d32" radius={[0, 4, 4, 0]} barSize={12} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="h-64 flex items-center justify-center text-sm text-slate-400">No expense data</div>
+          )}
+        </div>
+
+        {/* Recent Transactions */}
+        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-sm font-bold text-slate-800">Recent Transactions</h3>
+              <p className="text-xs text-slate-400 mt-0.5">Latest payments received &amp; made</p>
+            </div>
+            <button onClick={() => navigate('/banking')} className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1">
+              View All <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
-
-          <div className="divide-y divide-slate-100" id="transactions-feed-scroller">
+          <div className="divide-y divide-slate-100 max-h-80 overflow-y-auto">
             {recentTransactions.map((tx) => (
-              <div key={tx.id} className="py-3.5 flex items-center justify-between hover:bg-slate-50/40 rounded-xl px-1.5 transition">
-                <div className="flex items-center space-x-3.5 min-w-0">
-                  <div className={`p-2 rounded-xl shrink-0 ${tx.amount > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50/70 text-rose-600'}`}>
-                    {tx.amount > 0 ? <PlusCircle className="w-4 h-4" /> : <Layers className="w-4 h-4" />}
+              <div key={tx.id} className="py-3 flex items-center justify-between hover:bg-slate-50/50 rounded-lg px-1.5 transition-colors">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={`p-2 rounded-lg shrink-0 ${tx.type === 'inflow' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+                    {tx.type === 'inflow' ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownLeft className="w-4 h-4" />}
                   </div>
                   <div className="min-w-0">
-                    <h4 className="text-xs font-semibold text-slate-800 truncate leading-tight">{tx.description}</h4>
-                    <span className="text-[9px] uppercase tracking-wider text-slate-400 font-extrabold font-mono inline-block mt-1">{tx.category}</span>
+                    <p className="text-sm font-medium text-slate-800 truncate">{tx.description}</p>
+                    <p className="text-[10px] text-slate-400 font-medium mt-0.5">
+                      {tx.method.replace(/_/g, ' ')} &middot; {tx.date}
+                    </p>
                   </div>
                 </div>
-
-                <div className="text-right shrink-0">
-                  <AmountDisplay amountInKobo={tx.amount} colorize="debit-credit" type={tx.amount > 0 ? 'debit' : 'credit'} className="text-xs font-bold font-mono" />
-                  <p className="text-[9px] text-slate-400 font-bold mt-0.5 font-mono">{tx.date}</p>
+                <div className="text-right shrink-0 ml-4">
+                  <span className={`text-sm font-bold tabular-nums ${tx.amount > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                    {tx.amount > 0 ? '+' : ''}{formatNaira(Math.abs(tx.amount))}
+                  </span>
                 </div>
               </div>
             ))}
+            {recentTransactions.length === 0 && (
+              <div className="py-10 text-center text-sm text-slate-400">No transactions yet</div>
+            )}
           </div>
         </div>
 
-        {/* Corporate Quick Operations panel (Col 1) */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm flex flex-col justify-between" id="operations-payouts-box">
-          <div>
-            <h3 className="text-sm font-extrabold text-slate-800 font-sans">Financial Quick Actions</h3>
-            <p className="text-[11px] text-slate-400 mt-0.5">Strategic operations launcher</p>
+      </div>
 
-            <div className="space-y-3 mt-5" id="dashboard-shortcuts-stack">
-              <button 
-                onClick={() => navigate('/sales/invoices/new')}
-                className="w-full text-left p-3 border border-slate-150 rounded-xl hover:border-primary-light hover:bg-primary-light/10 transition flex items-center justify-between group cursor-pointer"
-              >
-                <div className="min-w-0">
-                  <h4 className="text-xs font-bold text-slate-800">Issue Corporate Invoice</h4>
-                  <p className="text-[10px] text-slate-400 mt-0.5 font-medium">B2B client invoices with 7.5% VAT</p>
-                </div>
-                <ArrowRight className="w-4 h-4 text-slate-350 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
-              </button>
+      {/* Quick Actions */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
 
-              <button 
-                onClick={() => navigate('/purchases/bills/new')}
-                className="w-full text-left p-3 border border-slate-150 rounded-xl hover:border-primary-light hover:bg-primary-light/10 transition flex items-center justify-between group cursor-pointer"
-              >
-                <div className="min-w-0">
-                  <h4 className="text-xs font-bold text-slate-800">Post Outgoing Expense</h4>
-                  <p className="text-[10px] text-slate-400 mt-0.5 font-medium">Capture immediate spend and OCR receipt</p>
-                </div>
-                <ArrowRight className="w-4 h-4 text-slate-350 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
-              </button>
+        <button onClick={() => navigate('/sales/invoices/new')} className="bg-white rounded-xl border border-slate-200 p-5 text-left hover:border-blue-200 hover:bg-blue-50/30 transition-all group">
+          <div className="p-2.5 bg-blue-50 text-blue-600 rounded-lg w-fit mb-3"><FileText className="w-5 h-5" /></div>
+          <h4 className="text-sm font-bold text-slate-800 group-hover:text-blue-700">Issue Invoice</h4>
+          <p className="text-xs text-slate-400 mt-1">Create and send B2B invoices with automated VAT</p>
+        </button>
 
-              <button 
-                onClick={() => navigate('/payroll/runs')}
-                className="w-full text-left p-3 border border-slate-150 rounded-xl hover:border-primary-light hover:bg-primary-light/10 transition flex items-center justify-between group cursor-pointer"
-              >
-                <div className="min-w-0">
-                  <h4 className="text-xs font-bold text-slate-800">Review Payroll Runs</h4>
-                  <p className="text-[10px] text-slate-400 mt-0.5 font-medium">Approve current PAYE and pension payrolls</p>
-                </div>
-                <ArrowRight className="w-4 h-4 text-slate-350 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
-              </button>
-            </div>
-          </div>
+        <button onClick={() => navigate('/purchases/bills/new')} className="bg-white rounded-xl border border-slate-200 p-5 text-left hover:border-amber-200 hover:bg-amber-50/30 transition-all group">
+          <div className="p-2.5 bg-amber-50 text-amber-600 rounded-lg w-fit mb-3"><Receipt className="w-5 h-5" /></div>
+          <h4 className="text-sm font-bold text-slate-800 group-hover:text-amber-700">Record Expense</h4>
+          <p className="text-xs text-slate-400 mt-1">Post outgoing payments and capture receipts</p>
+        </button>
 
-          <div className="border-t border-slate-100 pt-4 mt-6 bg-slate-50/35 p-3 rounded-xl flex items-center space-x-3" id="quick-actions-help-bubble">
-            <span className="w-1.5 h-1.5 bg-primary rounded-full shrink-0"></span>
-            <p className="text-[10px] text-slate-505 text-slate-500 leading-snug">
-              GAAP Audit ledger guarantees balanced double-record reconciliation on all outflow actions.
-            </p>
-          </div>
-        </div>
+        <button onClick={() => navigate('/payroll/runs')} className="bg-white rounded-xl border border-slate-200 p-5 text-left hover:border-purple-200 hover:bg-purple-50/30 transition-all group">
+          <div className="p-2.5 bg-purple-50 text-purple-600 rounded-lg w-fit mb-3"><Calendar className="w-5 h-5" /></div>
+          <h4 className="text-sm font-bold text-slate-800 group-hover:text-purple-700">Payroll Runs</h4>
+          <p className="text-xs text-slate-400 mt-1">Approve PAYE, pension schedules and payslips</p>
+        </button>
 
       </div>
 
     </div>
   );
 }
+
 export default Dashboard;
-
-
-
-
-
-
-
-
-
