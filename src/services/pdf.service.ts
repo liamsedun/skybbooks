@@ -912,10 +912,26 @@ export async function generatePAYESchedulePDF(runId: string, orgId: string): Pro
   const lines = await db.select().from(payrollLines).where(eq(payrollLines.runId, runId));
   const empIds = [...new Set(lines.map(l => l.employeeId))];
   const emps = await db.select().from(employees).where(sql`${employees.id} = ANY(${empIds})`);
-  const empMap = new Map(emps.map(e => [e.id, `${e.firstName} ${e.lastName}`]));
-  const rows = lines.map(l => [empMap.get(l.employeeId)||'-', formatNaira(l.grossPay), formatNaira(l.paye), formatNaira(l.taxRelief||0), formatNaira(l.annualGross||0)]);
-  const totalPaye = lines.reduce((s, l) => s + l.paye, 0);
-  return generateListPDF(orgId, 'PAYE SCHEDULE', `Run: ${run.runNumber} | ${formatShortDate(run.periodStart)} - ${formatShortDate(run.periodEnd)}`, ['Employee','Gross Pay','PAYE','Tax Relief','Annual Gross'], [150,90,90,90,90], ['left','right','right','right','right'], rows, '#b91c1c');
+  const empMap = new Map(emps.map(e => [e.id, { name: `${e.firstName} ${e.lastName}`, staffId: e.staffId || '' }]));
+  const rows = lines.map(l => {
+    const emp = empMap.get(l.employeeId) || { name: '-', staffId: '' };
+    const annualGross = l.annualGross || 0;
+    const relief = l.taxRelief || 0;
+    const pensionAnnual = (l.pensionEmployee || 0) * 12;
+    const nhfAnnual = (l.nhf || 0) * 12;
+    const chargeable = Math.max(0, annualGross - relief - pensionAnnual - nhfAnnual);
+    return [
+      emp.staffId, emp.name, formatNaira(l.grossPay),
+      formatNaira(l.pensionEmployee), formatNaira(l.nhf),
+      formatNaira(annualGross), formatNaira(relief),
+      formatNaira(chargeable), formatNaira(l.paye), formatNaira(l.netPay),
+    ];
+  });
+  return generateListPDF(orgId, 'PAYE SCHEDULE', `Run: ${run.runNumber} | ${formatShortDate(run.periodStart)} - ${formatShortDate(run.periodEnd)}`,
+    ['Staff', 'Employee', 'Gross Pay', 'Pension (EE)', 'NHF', 'Annual Gross', 'Relief', 'Chargeable', 'PAYE', 'Net Pay'],
+    [55, 95, 65, 65, 50, 65, 55, 65, 50, 55],
+    ['left', 'left', 'right', 'right', 'right', 'right', 'right', 'right', 'right', 'right'],
+    rows, '#b91c1c');
 }
 
 // =========================================================================
