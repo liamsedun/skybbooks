@@ -390,17 +390,9 @@ export async function getTrialBalance(
     const acctType = (acct.type || '').toLowerCase();
     const isContraAsset = acctType === 'asset' && (acct.name.toLowerCase().includes('accumulated depreciation') || acct.name.toLowerCase().includes('accumulated amortisation'));
     const isDebitBook = (acctType === 'asset' && !isContraAsset) || acctType === 'expense';
-    const ob = (acctType === 'expense' || acctType === 'revenue') ? 0 : Number(acct.openingBalance || 0);
-    if (ob > 0) {
-      if (isContraAsset) openingCredits += ob;
-      else if (acctType === 'asset' || acctType === 'expense') openingDebits += ob;
-      else openingCredits += ob;
-    }
 
     const matchedLines = txLines.filter(l => l.accountId === acct.id);
     for (const line of matchedLines) {
-      // Skip opening balance source entries for P&L accounts (expense/revenue)
-      if ((acctType === 'expense' || acctType === 'revenue') && line.source === 'opening_balance') continue;
       const lineDate = new Date(line.date);
       const deb = line.currency && line.currency !== 'NGN' ? toNgn(line.debitAmount, line.fxRate) : line.debitAmount;
       const cred = line.currency && line.currency !== 'NGN' ? toNgn(line.creditAmount, line.fxRate) : line.creditAmount;
@@ -486,6 +478,145 @@ export async function getTrialBalance(
   }
 
   return resultList;
+}
+
+/**
+ * Posts opening balances from the accounts table as a formal journal entry
+ * so the audit trail is complete and all balance calculations go through
+ * journal_lines.
+ *
+ * @param orgId   Organisation context.
+ * @param userId  The user performing the operation.
+ * @param asOfDate  The date to assign to the opening balance journal entry.
+ * @param tx  Optional Drizzle transaction to run within.
+ * @throws AppError 409 if opening balances were already posted.
+ */
+export async function postOpeningBalances(
+  orgId: string,
+  userId: string,
+  asOfDate: Date,
+  tx?: any
+): Promise<any> {
+  const client = tx || db;
+
+  // Guard: opening balances must only be posted once
+  const [existing] = await client
+    .select({ id: journalEntries.id })
+    .from(journalEntries)
+    .where(
+      and(
+        eq(journalEntries.orgId, orgId),
+        eq(journalEntries.source, 'opening_balance')
+      )
+    )
+    .limit(1);
+
+  if (existing) {
+    throw new AppError('Opening balances already posted.', 409);
+  }
+
+  // Fetch all accounts with a non-zero opening balance
+  const accountsWithOB = await client
+    .select()
+    .from(accounts)
+    .where(
+      and(
+        eq(accounts.orgId, orgId),
+        sql`${accounts.openingBalance} > 0`
+      )
+    );
+
+  if (accountsWithOB.length === 0) {
+    return { message: 'No opening balances to post.', entriesPosted: 0 };
+  }
+
+  // Build journal lines
+  const journalLinesPayload: any[] = [];
+  const updatedAccountIds: string[] = [];
+
+  for (const acct of accountsWithOB) {
+    const ob = acct.openingBalance;
+    if (ob <= 0) continue;
+
+    updatedAccountIds.push(acct.id);
+
+    const isContraAsset =
+      acct.type === 'asset' &&
+      (acct.name.toLowerCase().includes('accumulated depreciation') ||
+       acct.name.toLowerCase().includes('allowance'));
+
+    if (acct.type === 'asset' || acct.type === 'expense') {
+      if (isContraAsset) {
+        journalLinesPayload.push({ accountId: acct.id, credit: ob });
+      } else {
+        journalLinesPayload.push({ accountId: acct.id, debit: ob });
+      }
+    } else {
+      // liability, equity, revenue
+      journalLinesPayload.push({ accountId: acct.id, credit: ob });
+    }
+  }
+
+  // Balance the entry with Retained Earnings if needed
+  let totalDebits = 0;
+  let totalCredits = 0;
+  for (const line of journalLinesPayload) {
+    totalDebits += line.debit || 0;
+    totalCredits += line.credit || 0;
+  }
+
+  if (totalDebits !== totalCredits) {
+    const diff = totalDebits - totalCredits;
+
+    const [reAccount] = await client
+      .select()
+      .from(accounts)
+      .where(
+        and(
+          eq(accounts.orgId, orgId),
+          eq(accounts.systemAccountRole, 'retained_earnings')
+        )
+      )
+      .limit(1);
+
+    if (!reAccount) {
+      throw new AppError(
+        'Retained Earnings account not found. Cannot balance opening entries.',
+        400
+      );
+    }
+
+    if (diff > 0) {
+      journalLinesPayload.push({ accountId: reAccount.id, credit: diff });
+    } else {
+      journalLinesPayload.push({ accountId: reAccount.id, debit: Math.abs(diff) });
+    }
+  }
+
+  // Create the journal entry inside the same transaction context
+  const journalEntry = await createJournalEntry({
+    orgId,
+    date: asOfDate,
+    description: 'Opening balances posted',
+    reference: 'OPENING-BAL',
+    source: 'opening_balance',
+    createdBy: userId,
+    lines: journalLinesPayload
+  }, client);
+
+  // Clear opening balances on accounts that were posted
+  for (const accountId of updatedAccountIds) {
+    await client
+      .update(accounts)
+      .set({ openingBalance: 0 })
+      .where(eq(accounts.id, accountId));
+  }
+
+  return {
+    message: 'Opening balances posted successfully.',
+    entriesPosted: journalLinesPayload.length,
+    journalEntryId: journalEntry.id
+  };
 }
 
 /**

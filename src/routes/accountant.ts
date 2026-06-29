@@ -5,10 +5,11 @@
 import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { db, accounts, journalEntries, journalLines } from '../db/schema';
-import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
+import { authenticate, requireOrg, requireRole, AuthenticatedRequest } from '../middleware/auth';
 import { eq, and, asc, sql } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
 import { seedAccounts } from '../db/seedAccounts';
+import { postOpeningBalances } from '../services/ledger.service';
 
 const router = Router();
 router.use(authenticate);
@@ -292,6 +293,22 @@ router.get('/accounts/export-csv', async (req: AuthenticatedRequest, res: Respon
     return res.end(csv);
   } catch (err) {
     next(err);
+  }
+});
+
+// POST /api/accountant/post-opening-balances
+router.post('/post-opening-balances', requireRole('owner', 'admin'), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const userId = req.user!.id;
+    const asOfDate = req.body.asOfDate ? new Date(req.body.asOfDate as string) : new Date();
+    const result = await postOpeningBalances(orgId, userId, asOfDate);
+    return res.status(200).json(result);
+  } catch (err) {
+    if (err instanceof AppError && err.statusCode === 409) {
+      return res.status(409).json({ error: err.message });
+    }
+    return next(err);
   }
 });
 
