@@ -11,6 +11,7 @@ import { db, accounts, journalEntries, journalLines, fixedAssets, bankAccounts, 
 import { eq, and, asc, sql } from 'drizzle-orm';
 import {
   getTrialBalance,
+  clearSuspense,
   getIncomeStatement,
   getBalanceSheet,
   getCashFlowStatement,
@@ -398,6 +399,21 @@ router.post(
       }
 
       return res.status(200).json({ success: true, message: `Updated ${updated} account(s) successfully.` });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post(
+  '/trial-balance/clear-suspense',
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+      const orgId = req.user!.orgId!;
+      const userId = req.user!.id;
+      const entryDate = new Date();
+      const { amount } = await clearSuspense(orgId, userId, entryDate);
+      res.status(200).json({ success: true, message: `Suspense cleared. Journal entry posted for ₦${(amount / 100).toFixed(2)}.` });
     } catch (error) {
       next(error);
     }

@@ -841,6 +841,10 @@ export const reportsApi = {
     const res = await api.post('/reports/trial-balance/set-opening-balances', data);
     return res.data;
   },
+  clearSuspense: async () => {
+    const res = await api.post('/reports/trial-balance/clear-suspense');
+    return res.data;
+  },
   getIncomeStatement: async (params: { startDate: string; endDate: string; format?: 'json' | 'pdf' | 'excel' }) => {
     const res = await api.get('/reports/income-statement', { params, responseType: params.format === 'pdf' ? 'blob' : undefined });
     return res.data;

@@ -82,6 +82,8 @@ export function TrialBalancePage() {
   const [editObLoading, setEditObLoading] = useState(false);
   const [editObSaving, setEditObSaving] = useState(false);
   const [editObMsg, setEditObMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [clearingSuspense, setClearingSuspense] = useState(false);
+  const [clearMsg, setClearMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ['report', 'trial-balance', sDate, eDate],
@@ -95,6 +97,8 @@ export function TrialBalancePage() {
   });
 
   const rawRows: any[] = Array.isArray(data) ? data : [];
+  const suspRow = rawRows.find((r: any) => (r.accountCode || '') === 'SUSPENSE');
+  const suspBalance = suspRow ? (suspRow.closingCredit || 0) - (suspRow.closingDebit || 0) : 0;
   const rows = searchQuery
     ? rawRows.filter(r =>
         (r.accountCode || r.code || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -140,6 +144,22 @@ export function TrialBalancePage() {
       setImportMsg({ type: 'error', text: errors ? `${msg}: ${errors.join(', ')}` : msg });
     } finally {
       setImporting(false);
+    }
+  };
+
+  const handleClearSuspense = async () => {
+    const absBal = Math.abs(suspBalance);
+    if (absBal < 100 || !confirm(`Post a journal entry to clear the suspense balance of ₦${(absBal / 100).toFixed(2)} to Retained Earnings?`)) return;
+    setClearingSuspense(true);
+    setClearMsg(null);
+    try {
+      const res = await reportsApi.clearSuspense();
+      setClearMsg({ type: 'success', text: res.message });
+      refetch();
+    } catch (err: any) {
+      setClearMsg({ type: 'error', text: err?.response?.data?.message || err?.message || 'Failed to clear suspense.' });
+    } finally {
+      setClearingSuspense(false);
     }
   };
 
@@ -189,10 +209,20 @@ export function TrialBalancePage() {
           <button onClick={() => { downloadCsv('trial-balance-opening-balances-template.csv', ['accountCode', 'accountName', 'debit (NGN)', 'credit (NGN)'], ['100000', 'Cash and Cash Equivalents', '5000000', '0']); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-slate-600 rounded-lg hover:bg-slate-700"><FileText className="w-3.5 h-3.5" /> Sample CSV</button>
           <button onClick={() => setShowImport(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700"><Upload className="w-3.5 h-3.5" /> Import Opening Balances</button>
           <button onClick={handleOpenEditOb} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-amber-600 rounded-lg hover:bg-amber-700"><Pencil className="w-3.5 h-3.5" /> Edit Opening Balances</button>
+          {Math.abs(suspBalance) >= 100 && (
+            <button onClick={handleClearSuspense} disabled={clearingSuspense} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-rose-600 rounded-lg hover:bg-rose-700 disabled:opacity-50"><X className="w-3.5 h-3.5" /> {clearingSuspense ? 'Clearing...' : 'Clear Suspense'}</button>
+          )}
           <button onClick={() => handleExport('pdf')} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700"><Download className="w-3.5 h-3.5" /> PDF</button>
           <button onClick={() => handleExport('csv')} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700"><Download className="w-3.5 h-3.5" /> CSV</button>
         </div>
       </div>
+
+      {clearMsg && (
+        <div className={`text-sm p-3 rounded-xl flex items-center gap-2 ${clearMsg.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+          {clearMsg.type === 'success' ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
+          {clearMsg.text}
+        </div>
+      )}
 
       <div className="flex gap-4 items-center bg-white p-4 rounded-xl border border-slate-200">
         <div className="flex items-center gap-2">
