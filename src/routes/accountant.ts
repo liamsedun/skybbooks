@@ -315,6 +315,14 @@ router.get('/manual-journals/pdf', async (req: AuthenticatedRequest, res: Respon
   } catch (err) { return next(err); }
 });
 
+router.get('/accounts/pdf', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { generateChartOfAccountsPDF } = await import('../services/pdf.service');
+    const buffer = await generateChartOfAccountsPDF(req.user!.orgId!);
+    return sendPdf(res, buffer, 'chart_of_accounts.pdf');
+  } catch (err) { return next(err); }
+});
+
 router.get('/budgets/pdf', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const { generateBudgetsPDF } = await import('../services/pdf.service');

@@ -864,6 +864,58 @@ export async function generateCreditNotePDF(cnId: string, orgId: string): Promis
 // =========================================================================
 // 8. BILLS LIST PDF
 // =========================================================================
+export async function generateChartOfAccountsPDF(orgId: string): Promise<Buffer> {
+  const list = await db
+    .select()
+    .from(accounts)
+    .where(eq(accounts.orgId, orgId))
+    .orderBy(accounts.code);
+  const rows = list.map(a => [
+    a.code,
+    a.name,
+    a.type.charAt(0).toUpperCase() + a.type.slice(1),
+    a.subType || '-',
+    a.isActive ? 'Active' : 'Inactive'
+  ]);
+  return generateListPDF(
+    orgId,
+    'CHART OF ACCOUNTS',
+    `${list.length} accounts · Double-entry general ledger structure`,
+    ['Code', 'Account Name', 'Type', 'Sub-type', 'Status'],
+    [70, 180, 80, 100, 50],
+    ['left', 'left', 'left', 'left', 'left'],
+    rows,
+    '#1e3a8a'
+  );
+}
+
+export async function generateFixedAssetsPDF(orgId: string): Promise<Buffer> {
+  const list = await db
+    .select()
+    .from(fixedAssets)
+    .where(eq(fixedAssets.orgId, orgId))
+    .orderBy(asc(fixedAssets.name));
+  const rows = list.map(a => [
+    a.assetNumber,
+    a.name,
+    a.category || '-',
+    formatNaira(a.purchaseCost),
+    formatNaira(a.accumulatedDepreciation),
+    formatNaira(a.bookValue),
+    (a.status || '').charAt(0).toUpperCase() + (a.status || '').slice(1)
+  ]);
+  return generateListPDF(
+    orgId,
+    'FIXED ASSETS',
+    `${list.length} assets · Fixed asset schedule`,
+    ['Asset #', 'Name', 'Category', 'Cost', 'Depreciation', 'Book Value', 'Status'],
+    [70, 120, 70, 70, 75, 75, 60],
+    ['left', 'left', 'left', 'right', 'right', 'right', 'left'],
+    rows,
+    '#1e3a8a'
+  );
+}
+
 export async function generateBillsListPDF(orgId: string, startDate: Date, endDate: Date): Promise<Buffer> {
   const list = await db.select().from(bills).where(and(eq(bills.orgId, orgId), gte(bills.date, startDate), lte(bills.date, endDate))).orderBy(desc(bills.date));
   const vendorIds = [...new Set(list.map(b => b.vendorId))];

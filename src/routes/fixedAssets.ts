@@ -397,4 +397,15 @@ router.post('/run-depreciation', async (req: AuthenticatedRequest, res: Response
   } catch (err) { return next(err); }
 });
 
+// GET /pdf - Export fixed assets as PDF
+router.get('/pdf', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { generateFixedAssetsPDF } = await import('../services/pdf.service');
+    const buffer = await generateFixedAssetsPDF(req.user!.orgId!);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'inline; filename="fixed_assets.pdf"');
+    return res.end(buffer);
+  } catch (err) { return next(err); }
+});
+
 export default router;

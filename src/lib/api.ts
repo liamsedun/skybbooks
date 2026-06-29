@@ -709,6 +709,10 @@ export const accountantApi = {
     const res = await api.get('/accountant/manual-journals/pdf', { params, responseType: 'blob' });
     return res.data;
   },
+  getAccountsPdf: async () => {
+    const res = await api.get('/accountant/accounts/pdf', { responseType: 'blob' });
+    return res.data;
+  },
   getBudgetsPdf: async () => {
     const res = await api.get('/accountant/budgets/pdf', { responseType: 'blob' });
     return res.data;
@@ -797,6 +801,10 @@ export const fixedAssetsApi = {
     const res = await api.get('/fixed-assets/export-csv', { responseType: 'blob' });
     return res.data;
   },
+  getAssetsPdf: async () => {
+    const res = await api.get('/fixed-assets/pdf', { responseType: 'blob' });
+    return res.data;
+  },
   runDepreciation: async (periodDate?: string) => {
     const res = await api.post('/fixed-assets/run-depreciation', { periodDate });
     return res.data;
@@ -818,7 +826,7 @@ export const auditLogApi = {
 // 8. Reports Endpoints
 export const reportsApi = {
   getTrialBalance: async (params: { startDate: string; endDate: string; format?: 'json' | 'pdf' | 'excel' | 'csv' }) => {
-    const res = await api.get('/reports/trial-balance', { params, responseType: params.format === 'csv' ? 'blob' : undefined });
+    const res = await api.get('/reports/trial-balance', { params, responseType: params.format === 'csv' || params.format === 'pdf' ? 'blob' : undefined });
     return res.data;
   },
   importTrialBalanceOpeningBalances: async (data: { csvData: string }) => {
@@ -834,15 +842,15 @@ export const reportsApi = {
     return res.data;
   },
   getIncomeStatement: async (params: { startDate: string; endDate: string; format?: 'json' | 'pdf' | 'excel' }) => {
-    const res = await api.get('/reports/income-statement', { params });
+    const res = await api.get('/reports/income-statement', { params, responseType: params.format === 'pdf' ? 'blob' : undefined });
     return res.data;
   },
   getBalanceSheet: async (params: { asOfDate?: string; format?: 'json' | 'pdf' | 'excel' }) => {
-    const res = await api.get('/reports/balance-sheet', { params });
+    const res = await api.get('/reports/balance-sheet', { params, responseType: params.format === 'pdf' ? 'blob' : undefined });
     return res.data;
   },
   getCashFlow: async (params: { startDate: string; endDate: string; format?: 'json' | 'pdf' | 'excel' }) => {
-    const res = await api.get('/reports/cash-flow', { params });
+    const res = await api.get('/reports/cash-flow', { params, responseType: params.format === 'pdf' ? 'blob' : undefined });
     return res.data;
   },
   getGeneralLedger: async (params: { accountId: string; startDate: string; endDate: string; format?: 'pdf' | 'excel' | 'json' }) => {
@@ -850,11 +858,11 @@ export const reportsApi = {
     return res.data;
   },
   getAgedReceivables: async (params?: { format?: 'json' | 'pdf' | 'excel' }) => {
-    const res = await api.get('/reports/aged-receivables', { params });
+    const res = await api.get('/reports/aged-receivables', { params, responseType: params?.format === 'pdf' ? 'blob' : undefined });
     return res.data;
   },
   getAgedPayables: async (params?: { format?: 'json' | 'pdf' | 'excel' }) => {
-    const res = await api.get('/reports/aged-payables', { params });
+    const res = await api.get('/reports/aged-payables', { params, responseType: params?.format === 'pdf' ? 'blob' : undefined });
     return res.data;
   },
   getPayrollSchedule: async (params: { runId: string; format?: 'pdf' | 'excel' }) => {

@@ -57,7 +57,13 @@ export function FixedAssetsPage() {
     } catch { /* ignore */ }
   };
 
-  const handlePrintPdf = () => window.print();
+  const handlePrintPdf = async () => {
+    try {
+      const blob = await fixedAssetsApi.getAssetsPdf();
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+    } catch { /* ignore */ }
+  };
 
   const handleClearLastImport = async () => {
     if (!lastImportIds.length || !confirm('Delete all assets from the last import?')) return;

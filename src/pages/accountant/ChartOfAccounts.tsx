@@ -194,8 +194,12 @@ export function ChartOfAccountsPage() {
     } catch { /* ignore */ }
   };
 
-  const handlePrintPdf = () => {
-    window.print();
+  const handlePrintPdf = async () => {
+    try {
+      const blob = await accountantApi.getAccountsPdf();
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+    } catch { /* ignore */ }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
