@@ -357,6 +357,24 @@ export function TrialBalancePage() {
     </div>
   );
 }
+function getDefaultCompareDates(sDate: string, eDate: string): { compareStart: string; compareEnd: string } {
+  const start = new Date(sDate);
+  const end = new Date(eDate);
+  const durationMs = end.getTime() - start.getTime();
+  const priorEnd = new Date(start.getTime() - 86400000);
+  const priorStart = new Date(priorEnd.getTime() - durationMs);
+  return {
+    compareStart: priorStart.toISOString().split('T')[0],
+    compareEnd: priorEnd.toISOString().split('T')[0],
+  };
+}
+
+function getDefaultCompareAsOf(asOfDate: string): string {
+  const d = new Date(asOfDate);
+  const prior = new Date(d.getFullYear() - 1, d.getMonth(), d.getDate());
+  return prior.toISOString().split('T')[0];
+}
+
 export function IncomeStatementPage() {
   return <ReportShell reportType="income-statement" title="Income Statement" />;
 }
@@ -386,12 +404,32 @@ function ReportShell({ reportType, title }: ReportPageProps) {
 
   const isBalanceSheet = reportType === 'balance-sheet';
   const isAgedReport = reportType === 'aged-receivables' || reportType === 'aged-payables';
+  const isComparativeReport = !isAgedReport;
+
+  const defaultCompare = getDefaultCompareDates(sDate, eDate);
+  const defaultBSCompare = getDefaultCompareAsOf(asOfDate);
+  const [compareEnabled, setCompareEnabled] = useState(false);
+  const [compareSDate, setCompareSDate] = useState(defaultCompare.compareStart);
+  const [compareEDate, setCompareEDate] = useState(defaultCompare.compareEnd);
+  const [compareAsOf, setCompareAsOf] = useState(defaultBSCompare);
+
+  // Recompute default compare dates when main dates change (only if compare not manually toggled)
+  React.useEffect(() => {
+    if (!compareEnabled) {
+      const d = getDefaultCompareDates(sDate, eDate);
+      setCompareSDate(d.compareStart);
+      setCompareEDate(d.compareEnd);
+      setCompareAsOf(getDefaultCompareAsOf(asOfDate));
+    }
+  }, [sDate, eDate, asOfDate]);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['report', reportType, sDate, eDate, asOfDate],
+    queryKey: ['report', reportType, sDate, eDate, asOfDate, compareEnabled, compareSDate, compareEDate, compareAsOf],
     queryFn: async () => {
       if (isBalanceSheet) {
-        const res = await reportsApi.getBalanceSheet({ asOfDate, format: 'json' });
+        const params: any = { asOfDate, format: 'json' };
+        if (compareEnabled) params.compareAsOf = compareAsOf;
+        const res = await reportsApi.getBalanceSheet(params);
         return res.data || res;
       }
       if (isAgedReport) {
@@ -402,7 +440,12 @@ function ReportShell({ reportType, title }: ReportPageProps) {
         const res = await reportsApi.getAgedPayables({ format: 'json' });
         return res.report || res.data || res;
       }
-      const res = await reportsApi.getIncomeStatement({ startDate: sDate, endDate: eDate, format: 'json' });
+      const params: any = { startDate: sDate, endDate: eDate, format: 'json' };
+      if (compareEnabled) {
+        params.compareStart = compareSDate;
+        params.compareEnd = compareEDate;
+      }
+      const res = await reportsApi.getIncomeStatement(params);
       return res.data || res;
     },
   });
@@ -568,6 +611,36 @@ function ReportShell({ reportType, title }: ReportPageProps) {
             </div>
           </>
         )}
+
+        {isComparativeReport && (
+          <div className="flex items-center gap-3 ml-auto">
+            <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
+              <input type="checkbox" checked={compareEnabled} onChange={e => setCompareEnabled(e.target.checked)} className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+              Compare to prior period
+            </label>
+            {compareEnabled && (
+              <>
+                {isBalanceSheet ? (
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs font-medium text-slate-500">Prior as of:</label>
+                    <input type="date" value={compareAsOf} onChange={e => setCompareAsOf(e.target.value)} className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm" />
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs font-medium text-slate-500">Prior from:</label>
+                      <input type="date" value={compareSDate} onChange={e => setCompareSDate(e.target.value)} className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs font-medium text-slate-500">To:</label>
+                      <input type="date" value={compareEDate} onChange={e => setCompareEDate(e.target.value)} className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm" />
+                    </div>
+                  </>
+                )}
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {isLoading ? (
@@ -575,14 +648,24 @@ function ReportShell({ reportType, title }: ReportPageProps) {
       ) : error ? (
         <div className="flex items-center gap-2 p-4 bg-red-50 text-red-700 rounded-xl text-sm"><AlertCircle className="w-4 h-4" /> Failed to load report.</div>
       ) : (
-        <ReportTable data={data} reportType={reportType} />
+        <ReportTable data={data} reportType={reportType} compareEnabled={compareEnabled} />
       )}
     </div>
   );
 }
 
-function ReportTable({ data, reportType }: { data: any; reportType: ReportType }) {
+function ReportTable({ data, reportType, compareEnabled }: { data: any; reportType: ReportType; compareEnabled?: boolean }) {
   if (!data) return null;
+
+  // Comparative mode — data contains { current, prior, variance }
+  if (compareEnabled && data?.current) {
+    if (reportType === 'income-statement') {
+      return <ComparativePnLTable current={data.current} prior={data.prior} />;
+    }
+    if (reportType === 'balance-sheet') {
+      return <ComparativeBalanceSheetTable current={data.current} prior={data.prior} />;
+    }
+  }
 
   if (reportType === 'aged-receivables' || reportType === 'aged-payables') {
     const title = reportType === 'aged-receivables' ? 'Customer' : 'Vendor';
@@ -792,6 +875,186 @@ function AccountDrilldownModal({ account, sDate, eDate, onClose }: { account: an
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function formatVarianceClass(variance: number, isRevenue: boolean): string {
+  if (variance === 0) return '';
+  // For revenue: positive = favorable (green), negative = unfavorable (red)
+  // For expense: negative = favorable (green), positive = unfavorable (red)
+  const isFavorable = isRevenue ? variance > 0 : variance < 0;
+  return isFavorable ? 'text-emerald-600' : 'text-red-600';
+}
+
+function buildPnLRows(current: any, prior: any | null): any[] {
+  const rows: any[] = [];
+  const sections = [
+    { key: 'revenue', label: 'Revenue', isRevenue: true },
+    { key: 'costOfGoodsSold', label: 'Cost of Goods Sold', isRevenue: false },
+    { key: 'expense', label: 'Operating Expenses', isRevenue: false },
+  ];
+  for (const sec of sections) {
+    const currAccounts = current?.[sec.key]?.accounts || [];
+    const priorAccounts = prior?.[sec.key]?.accounts || [];
+    const priorMap = new Map(priorAccounts.map((a: any) => [a.code || a.accountId, a.balance]));
+    let secCurrTotal = 0;
+    let secPriorTotal = 0;
+    const secRows: any[] = [];
+    for (const a of currAccounts) {
+      const code = a.code || a.accountId;
+      const priorBal = priorMap.get(code) || 0;
+      const variance = a.balance - priorBal;
+      secCurrTotal += a.balance;
+      secPriorTotal += priorBal;
+      secRows.push({ name: a.name, currentBalance: a.balance, priorBalance: priorBal, variance, isRevenue: sec.isRevenue });
+    }
+    // Add prior-only accounts (no current balance)
+    for (const a of priorAccounts) {
+      const code = a.code || a.accountId;
+      if (!currAccounts.some((ca: any) => (ca.code || ca.accountId) === code)) {
+        const variance = 0 - a.balance;
+        secCurrTotal += 0;
+        secPriorTotal += a.balance;
+        secRows.push({ name: a.name, currentBalance: 0, priorBalance: a.balance, variance, isRevenue: sec.isRevenue });
+      }
+    }
+    rows.push({ section: sec.label, children: secRows, totalCurrent: secCurrTotal, totalPrior: secPriorTotal, isRevenue: sec.isRevenue });
+  }
+  // Gross Profit
+  const gpCurr = (current?.revenue?.total || 0) - (current?.costOfGoodsSold?.total || 0);
+  const gpPrior = (prior?.revenue?.total || 0) - (prior?.costOfGoodsSold?.total || 0);
+  rows.push({ section: 'Gross Profit', isSummary: true, summaryCurrent: gpCurr, summaryPrior: gpPrior, isRevenue: true });
+  // Net Profit
+  const npCurr = gpCurr - (current?.expense?.total || 0);
+  const npPrior = gpPrior - (prior?.expense?.total || 0);
+  rows.push({ section: 'Net Profit', isSummary: true, summaryCurrent: npCurr, summaryPrior: npPrior, isRevenue: true });
+  return rows;
+}
+
+function ComparativePnLTable({ current, prior }: { current: any; prior: any | null }) {
+  const rows = buildPnLRows(current, prior);
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <table className="w-full text-sm">
+        <thead className="bg-slate-50">
+          <tr>
+            <th className="text-left px-4 py-3 font-semibold text-slate-600">Account</th>
+            <th className="text-right px-4 py-3 font-semibold text-slate-600">Current Period</th>
+            <th className="text-right px-4 py-3 font-semibold text-slate-600">Prior Period</th>
+            <th className="text-right px-4 py-3 font-semibold text-slate-600">Variance (₦)</th>
+            <th className="text-right px-4 py-3 font-semibold text-slate-600">Variance (%)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((section: any, si: number) => (
+            <React.Fragment key={si}>
+              <tr className="bg-slate-100/50">
+                <td colSpan={5} className="px-4 py-2 text-xs font-bold text-slate-700 uppercase tracking-wider">{section.section}</td>
+              </tr>
+              {!section.isSummary && section.children.map((row: any, ri: number) => {
+                const varPct = row.priorBalance !== 0 ? ((row.variance / row.priorBalance) * 100).toFixed(1) : '—';
+                return (
+                  <tr key={ri} className="border-t border-slate-100 hover:bg-slate-50">
+                    <td className="px-4 py-2.5 pl-8 text-slate-800">{row.name}</td>
+                    <td className="px-4 py-2.5 text-right font-semibold text-slate-800">{fmtNaira(row.currentBalance)}</td>
+                    <td className="px-4 py-2.5 text-right text-slate-600">{fmtNaira(row.priorBalance)}</td>
+                    <td className={`px-4 py-2.5 text-right font-semibold ${formatVarianceClass(row.variance, row.isRevenue)}`}>{fmtNaira(row.variance)}</td>
+                    <td className={`px-4 py-2.5 text-right font-semibold ${formatVarianceClass(row.variance, row.isRevenue)}`}>{varPct}{varPct !== '—' ? '%' : ''}</td>
+                  </tr>
+                );
+              })}
+              {!section.isSummary && (
+                <tr className="border-t border-slate-200 bg-slate-50/50 font-medium">
+                  <td className="px-4 py-2 pl-8 text-sm text-slate-700">Total {section.section}</td>
+                  <td className="px-4 py-2 text-right text-slate-800">{fmtNaira(section.totalCurrent)}</td>
+                  <td className="px-4 py-2 text-right text-slate-600">{fmtNaira(section.totalPrior)}</td>
+                  <td className={`px-4 py-2 text-right ${formatVarianceClass(section.totalCurrent - section.totalPrior, section.isRevenue)}`}>{fmtNaira(section.totalCurrent - section.totalPrior)}</td>
+                  <td className={`px-4 py-2 text-right ${formatVarianceClass(section.totalCurrent - section.totalPrior, section.isRevenue)}`}>
+                    {section.totalPrior !== 0 ? `${((section.totalCurrent - section.totalPrior) / section.totalPrior * 100).toFixed(1)}%` : '—'}
+                  </td>
+                </tr>
+              )}
+              {section.isSummary && (
+                <tr className="border-t-2 border-slate-300 bg-slate-100 font-bold">
+                  <td className="px-4 py-3 text-sm text-slate-900">{section.section}</td>
+                  <td className="px-4 py-3 text-right text-slate-900">{fmtNaira(section.summaryCurrent)}</td>
+                  <td className="px-4 py-3 text-right text-slate-700">{fmtNaira(section.summaryPrior)}</td>
+                  <td className={`px-4 py-3 text-right ${formatVarianceClass(section.summaryCurrent - section.summaryPrior, section.isRevenue)}`}>{fmtNaira(section.summaryCurrent - section.summaryPrior)}</td>
+                  <td className={`px-4 py-3 text-right ${formatVarianceClass(section.summaryCurrent - section.summaryPrior, section.isRevenue)}`}>
+                    {section.summaryPrior !== 0 ? `${((section.summaryCurrent - section.summaryPrior) / section.summaryPrior * 100).toFixed(1)}%` : '—'}
+                  </td>
+                </tr>
+              )}
+            </React.Fragment>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function ComparativeBalanceSheetTable({ current, prior }: { current: any; prior: any | null }) {
+  function renderSection(label: string, currAccounts: any[], priorAccounts: any[], currTotal: number, priorTotal: number, color: string) {
+    const priorMap = new Map((priorAccounts || []).map((a: any) => [a.code || a.accountId, a.balance]));
+    return (
+      <>
+        <tr className={`bg-${color}-50`}><td colSpan={5} className="px-4 py-2 text-xs font-bold text-${color}-800 uppercase tracking-wider">{label}</td></tr>
+        {(currAccounts || []).map((a: any, i: number) => {
+          const priorBal = priorMap.get(a.code || a.accountId) || 0;
+          const variance = a.balance - priorBal;
+          return (
+            <tr key={i} className="border-t border-slate-100 hover:bg-slate-50">
+              <td className="px-4 py-2.5 pl-8 text-slate-800">{a.name}</td>
+              <td className="px-4 py-2.5 text-right font-semibold text-slate-800">{fmtNaira(a.balance)}</td>
+              <td className="px-4 py-2.5 text-right text-slate-600">{fmtNaira(priorBal)}</td>
+              <td className={`px-4 py-2.5 text-right font-semibold ${variance >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{fmtNaira(variance)}</td>
+              <td className={`px-4 py-2.5 text-right font-semibold ${variance >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{priorBal !== 0 ? `${(variance / priorBal * 100).toFixed(1)}%` : '—'}</td>
+            </tr>
+          );
+        })}
+        <tr className={`border-t-2 border-${color}-200 bg-${color}-50/50 font-bold`}>
+          <td className="px-4 py-2 text-sm text-slate-800">Total {label}</td>
+          <td className="px-4 py-2 text-right text-slate-800">{fmtNaira(currTotal)}</td>
+          <td className="px-4 py-2 text-right text-slate-600">{fmtNaira(priorTotal)}</td>
+          <td className="px-4 py-2 text-right">{fmtNaira(currTotal - priorTotal)}</td>
+          <td className="px-4 py-2 text-right">{priorTotal !== 0 ? `${((currTotal - priorTotal) / priorTotal * 100).toFixed(1)}%` : '—'}</td>
+        </tr>
+      </>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <table className="w-full text-sm">
+        <thead className="bg-slate-50">
+          <tr>
+            <th className="text-left px-4 py-3 font-semibold text-slate-600">Account</th>
+            <th className="text-right px-4 py-3 font-semibold text-slate-600">Current</th>
+            <th className="text-right px-4 py-3 font-semibold text-slate-600">Prior</th>
+            <th className="text-right px-4 py-3 font-semibold text-slate-600">Variance (₦)</th>
+            <th className="text-right px-4 py-3 font-semibold text-slate-600">Variance (%)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {renderSection('Assets', current?.assets?.accounts, prior?.assets?.accounts, current?.totalAssets || 0, prior?.totalAssets || 0, 'blue')}
+          {renderSection('Liabilities', current?.liabilities?.accounts, prior?.liabilities?.accounts, current?.totalLiabilities || 0, prior?.totalLiabilities || 0, 'amber')}
+          {renderSection('Equity', current?.equity?.accounts, prior?.equity?.accounts, current?.totalEquity || 0, prior?.totalEquity || 0, 'violet')}
+          <tr className="border-t-2 border-slate-300 bg-slate-100 font-bold text-base">
+            <td className="px-4 py-3 text-slate-900">Total Liabilities &amp; Equity</td>
+            <td className="px-4 py-3 text-right text-slate-900">{fmtNaira(current?.totalLiabilities + current?.totalEquity || 0)}</td>
+            <td className="px-4 py-3 text-right text-slate-700">{fmtNaira(prior ? prior.totalLiabilities + prior.totalEquity : 0)}</td>
+            <td className="px-4 py-3 text-right text-slate-900">
+              {prior ? fmtNaira((current?.totalLiabilities + current?.totalEquity || 0) - (prior.totalLiabilities + prior.totalEquity)) : '—'}
+            </td>
+            <td className="px-4 py-3 text-right text-slate-900">
+              {prior && (prior.totalLiabilities + prior.totalEquity) !== 0
+                ? `${((((current?.totalLiabilities + current?.totalEquity || 0) - (prior.totalLiabilities + prior.totalEquity)) / (prior.totalLiabilities + prior.totalEquity)) * 100).toFixed(1)}%`
+                : '—'}
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   );
 }

@@ -842,11 +842,11 @@ export const reportsApi = {
     return res.data;
   },
 
-  getIncomeStatement: async (params: { startDate: string; endDate: string; format?: 'json' | 'pdf' | 'excel' }) => {
+  getIncomeStatement: async (params: { startDate: string; endDate: string; format?: 'json' | 'pdf' | 'excel'; compareStart?: string; compareEnd?: string }) => {
     const res = await api.get('/reports/income-statement', { params, responseType: params.format === 'pdf' ? 'blob' : undefined });
     return res.data;
   },
-  getBalanceSheet: async (params: { asOfDate?: string; format?: 'json' | 'pdf' | 'excel' }) => {
+  getBalanceSheet: async (params: { asOfDate?: string; compareAsOf?: string; format?: 'json' | 'pdf' | 'excel' }) => {
     const res = await api.get('/reports/balance-sheet', { params, responseType: params.format === 'pdf' ? 'blob' : undefined });
     return res.data;
   },

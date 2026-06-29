@@ -11,7 +11,7 @@ import { db, accounts, journalEntries, journalLines, fixedAssets, bankAccounts, 
 import { eq, and, asc, sql } from 'drizzle-orm';
 import {
   getTrialBalance,
-  getIncomeStatement,
+  getProfitAndLoss,
   getBalanceSheet,
   getCashFlowStatement,
   TrialBalanceRow
@@ -59,8 +59,17 @@ const dateRangeQuerySchema = z.object({
   format: z.enum(['pdf', 'excel', 'csv', 'json']).default('json')
 });
 
+const incomeStatementQuerySchema = z.object({
+  startDate: z.string().transform((val) => new Date(val)),
+  endDate: z.string().transform((val) => new Date(val)),
+  compareStart: z.string().optional().transform((val) => val ? new Date(val) : undefined),
+  compareEnd: z.string().optional().transform((val) => val ? new Date(val) : undefined),
+  format: z.enum(['pdf', 'excel', 'csv', 'json']).default('json')
+});
+
 const balanceSheetQuerySchema = z.object({
   asOfDate: z.string().optional().transform((val) => val ? new Date(val) : new Date()),
+  compareAsOf: z.string().optional().transform((val) => val ? new Date(val) : undefined),
   format: z.enum(['pdf', 'excel', 'json']).default('json')
 });
 
@@ -411,11 +420,11 @@ router.get(
   '/income-statement',
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      const { startDate, endDate, format } = dateRangeQuerySchema.parse(req.query);
+      const { startDate, endDate, compareStart, compareEnd, format } = incomeStatementQuerySchema.parse(req.query);
       const orgId = req.user!.orgId!;
 
       if (format === 'json') {
-        const data = await getIncomeStatement(orgId, startDate, endDate);
+        const data = await getProfitAndLoss(orgId, startDate, endDate, compareStart, compareEnd);
         return res.status(200).json({ success: true, data });
       }
 
@@ -441,11 +450,11 @@ router.get(
   '/balance-sheet',
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      const { asOfDate, format } = balanceSheetQuerySchema.parse(req.query);
+      const { asOfDate, compareAsOf, format } = balanceSheetQuerySchema.parse(req.query);
       const orgId = req.user!.orgId!;
 
       if (format === 'json') {
-        const data = await getBalanceSheet(orgId, asOfDate);
+        const data = await getBalanceSheet(orgId, asOfDate, compareAsOf);
         return res.status(200).json({ success: true, data });
       }
 

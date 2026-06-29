@@ -13,7 +13,7 @@ import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 
 import { db, auditLog, invoiceLines, invoices, bills, organisations, bankAccounts, contacts, fixedAssets, inventoryLots } from '../db/schema';
 import { eq, and, isNotNull, gte, lte, sql } from 'drizzle-orm';
-import { getIncomeStatement, getCashFlowStatement } from './ledger.service';
+import { getProfitAndLoss, getCashFlowStatement } from './ledger.service';
 import { getPayrollSummary } from './payroll.service';
 
 // Zod schema for Receipt OCR
@@ -357,8 +357,8 @@ export class AIService {
       invoiceCount,
       billCount,
     ] = await Promise.all([
-      getIncomeStatement(orgId, startOfCurrentMonth, endOfCurrentMonth),
-      getIncomeStatement(orgId, startOfPriorMonth, endOfPriorMonth),
+      getProfitAndLoss(orgId, startOfCurrentMonth, endOfCurrentMonth).then(r => r.current),
+      getProfitAndLoss(orgId, startOfPriorMonth, endOfPriorMonth).then(r => r.current),
       getCashFlowStatement(orgId, startOfCurrentMonth, endOfCurrentMonth),
       db.select().from(bankAccounts).where(eq(bankAccounts.orgId, orgId)),
       db.select({ total: sql<number>`coalesce(sum(${contacts.balance}), 0)` })

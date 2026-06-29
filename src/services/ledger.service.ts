@@ -639,15 +639,9 @@ export async function postOpeningBalances(
 }
 
 /**
- * Formats a categorized period Income Statement showing revenue performance,
- * COGS adjustments, gross performance, operating expenses, and net yields.
- *
- * @param orgId Targeted organization node context.
- * @param startDate Lower bound period date limit.
- * @param endDate Upper bound period date limit.
- * @returns Hierarchical categorised report detailing dynamic profit metrics.
+ * Internal helper that computes the core P&L statement for a given period.
  */
-export async function getIncomeStatement(
+async function computePnL(
   orgId: string,
   startDate: Date,
   endDate: Date
@@ -689,7 +683,7 @@ export async function getIncomeStatement(
     const crSum = matchedLines.reduce((sum, curr) => sum + (curr.currency && curr.currency !== 'NGN' ? toNgn(curr.creditAmount, curr.fxRate) : curr.creditAmount), 0);
 
     if (acct.type === 'revenue') {
-      const balance = crSum - drSum; // Cr increases Revenue
+      const balance = crSum - drSum;
       if (balance !== 0) {
         revenues.push({
           accountId: acct.id,
@@ -700,7 +694,7 @@ export async function getIncomeStatement(
         totalRevenue += balance;
       }
     } else if (acct.type === 'expense') {
-      const balance = drSum - crSum; // Dr increases Expense
+      const balance = drSum - crSum;
       if (balance !== 0) {
         const isCOGS = acct.subType?.toLowerCase().includes('cogs') ||
                        acct.subType?.toLowerCase().includes('cost') ||
@@ -728,7 +722,7 @@ export async function getIncomeStatement(
 
   const grossProfit = totalRevenue - totalCogs;
   const operatingProfit = grossProfit - totalOperatingExpenses;
-  const netProfit = operatingProfit; // Map to standard operating net return
+  const netProfit = operatingProfit;
 
   return {
     revenue: {
@@ -750,6 +744,35 @@ export async function getIncomeStatement(
 }
 
 /**
+ * Formats a categorized comparative Profit & Loss statement.
+ *
+ * @param orgId Targeted organization node context.
+ * @param startDate Lower bound period date limit.
+ * @param endDate Upper bound period date limit.
+ * @param compareStartDate Optional prior period start date.
+ * @param compareEndDate Optional prior period end date.
+ * @returns Comparative P&L with current, prior (optional), and variance.
+ */
+export async function getProfitAndLoss(
+  orgId: string,
+  startDate: Date,
+  endDate: Date,
+  compareStartDate?: Date,
+  compareEndDate?: Date
+): Promise<any> {
+  const current = await computePnL(orgId, startDate, endDate);
+
+  if (compareStartDate && compareEndDate) {
+    const prior = await computePnL(orgId, compareStartDate, compareEndDate);
+    const amount = current.netProfit - prior.netProfit;
+    const percent = prior.netProfit !== 0 ? amount / prior.netProfit : 0;
+    return { current, prior, variance: { amount, percent } };
+  }
+
+  return { current, prior: null, variance: null };
+}
+
+/**
  * Formats a Snapshot Balance Sheet as of a specified date.
  * Strictly verifies the primary Accounting Equation: Assets === Liabilities + Equity.
  * (Accrues period margins up to snapshot date dynamically as system Retained Earnings.)
@@ -760,7 +783,8 @@ export async function getIncomeStatement(
  */
 export async function getBalanceSheet(
   orgId: string,
-  asOfDate: Date
+  asOfDate: Date,
+  compareAsOfDate?: Date
 ): Promise<any> {
   const orgAccounts = await db
     .select()
@@ -854,7 +878,7 @@ export async function getBalanceSheet(
     liabilitiesAndEquity = totalLiabilities + totalEquity;
   }
 
-  return {
+  const result = {
     assets: {
       accounts: assets,
       total: totalAssets
@@ -872,6 +896,13 @@ export async function getBalanceSheet(
     totalEquity,
     liabilitiesAndEquity
   };
+
+  if (compareAsOfDate) {
+    const prior = await getBalanceSheet(orgId, compareAsOfDate);
+    return { current: result, prior };
+  }
+
+  return result;
 }
 
 /**
@@ -919,8 +950,8 @@ export async function getCashFlowStatement(
   }
 
   // 2. Fetch income statement structures for net income
-  const incomeStmt = await getIncomeStatement(orgId, startDate, endDate);
-  const netIncome = incomeStmt.netProfit;
+  const incomeStmt = await getProfitAndLoss(orgId, startDate, endDate);
+  const netIncome = incomeStmt.current.netProfit;
 
   // 3. Calculate shifts in all non-cash accounts during the period to construct adjustments
   const records = await db

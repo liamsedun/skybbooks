@@ -18,7 +18,7 @@ import {
 } from '../db/schema';
 import {
   getTrialBalance,
-  getIncomeStatement,
+  getProfitAndLoss,
   getBalanceSheet,
   getCashFlowStatement
 } from './ledger.service';
@@ -211,9 +211,10 @@ export async function exportIncomeStatement(
   const priorStartDate = new Date(startDate.getTime() - currentDurationMs - 1000);
   const priorEndDate = new Date(startDate.getTime() - 1000);
 
-  // Fetch metrics double-run
-  const currentPnl = await getIncomeStatement(orgId, startDate, endDate);
-  const priorPnl = await getIncomeStatement(orgId, priorStartDate, priorEndDate);
+  // Fetch comparative P&L
+  const pnlResult = await getProfitAndLoss(orgId, startDate, endDate, priorStartDate, priorEndDate);
+  const currentPnl = pnlResult.current;
+  const priorPnl = pnlResult.prior!;
 
   const workbook = new ExcelJS.Workbook();
   const ws = workbook.addWorksheet('Income Statement');

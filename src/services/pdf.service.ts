@@ -30,7 +30,7 @@ import {
   users
 } from '../db/schema';
 import { AppError } from '../lib/errors';
-import { getTrialBalance, getIncomeStatement, getBalanceSheet, getCashFlowStatement } from './ledger.service';
+import { getTrialBalance, getProfitAndLoss, getBalanceSheet, getCashFlowStatement } from './ledger.service';
 import { getInvoiceAgingReport } from './invoice.service';
 import { getBillAgingReport } from './bill.service';
 
@@ -1114,7 +1114,8 @@ export async function generateTrialBalancePDF(orgId: string, startDate: Date, en
 // Income Statement PDF
 export async function generateIncomeStatementPDF(orgId: string, startDate: Date, endDate: Date): Promise<Buffer> {
   const [org] = await db.select().from(organisations).where(eq(organisations.id, orgId)).limit(1);
-  const pnl = await getIncomeStatement(orgId, startDate, endDate);
+  const pnlResult = await getProfitAndLoss(orgId, startDate, endDate);
+  const pnl = pnlResult.current;
 
   const orgSettings = typeof org?.settings === 'string' ? JSON.parse(org.settings) : (org?.settings || {});
   const brandColor = orgSettings.branding?.primaryColor || '#10b981';
