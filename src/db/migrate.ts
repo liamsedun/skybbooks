@@ -4,6 +4,7 @@
  */
 
 import { drizzle } from 'drizzle-orm/node-postgres';
+import { sql } from 'drizzle-orm';
 import pg from 'pg';
 
 export async function runMigration() {
@@ -122,6 +123,15 @@ export async function runMigration() {
     await db.execute(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS utilities_pct integer DEFAULT 10 NOT NULL`);
     await db.execute(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS meals_pct integer DEFAULT 5 NOT NULL`);
     await db.execute(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS others_pct integer DEFAULT 5 NOT NULL`);
+    // Create SUSPENSE account for all existing orgs that don't have it
+    await db.execute(sql`
+      INSERT INTO accounts (org_id, code, name, type, sub_type, description, is_system, is_active, opening_balance)
+      SELECT o.id, 'SUSPENSE', 'Suspense - Unreconciled Module Balances', 'liability', 'Current Liabilities', 'System account mirroring unreconciled differences between sub-ledgers and the general ledger.', true, true, 0
+      FROM organisations o
+      WHERE NOT EXISTS (
+        SELECT 1 FROM accounts a WHERE a.org_id = o.id AND a.code = 'SUSPENSE'
+      )
+    `);
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema push:', err);

@@ -468,17 +468,31 @@ export async function getTrialBalance(
 
   const suspenseNet = suspenseDr - suspenseCr;
   if (Math.abs(suspenseNet) > 0) {
-    resultList.push({
-      accountId: 'suspense',
-      accountCode: 'SUSPENSE',
-      accountName: 'Suspense - Unreconciled Module Balances',
-      accountType: suspenseNet > 0 ? 'asset' : 'liability',
-      openingDebit: 0, openingCredit: 0,
-      periodDebit: suspenseNet > 0 ? suspenseNet : 0,
-      periodCredit: suspenseNet < 0 ? Math.abs(suspenseNet) : 0,
-      closingDebit: suspenseNet > 0 ? suspenseNet : 0,
-      closingCredit: suspenseNet < 0 ? Math.abs(suspenseNet) : 0
-    });
+    const suspAcct = orgAccounts.find(a => a.code === 'SUSPENSE');
+    if (suspAcct) {
+      const existing = resultList.find(r => r.accountId === suspAcct.id);
+      if (existing) {
+        if (suspenseNet > 0) {
+          existing.periodDebit += suspenseNet;
+          existing.closingDebit += suspenseNet;
+        } else {
+          existing.periodCredit += Math.abs(suspenseNet);
+          existing.closingCredit += Math.abs(suspenseNet);
+        }
+      }
+    } else {
+      resultList.push({
+        accountId: 'suspense',
+        accountCode: 'SUSPENSE',
+        accountName: 'Suspense - Unreconciled Module Balances',
+        accountType: 'liability',
+        openingDebit: 0, openingCredit: 0,
+        periodDebit: suspenseNet > 0 ? suspenseNet : 0,
+        periodCredit: suspenseNet < 0 ? Math.abs(suspenseNet) : 0,
+        closingDebit: suspenseNet > 0 ? suspenseNet : 0,
+        closingCredit: suspenseNet < 0 ? Math.abs(suspenseNet) : 0
+      });
+    }
   }
 
   return resultList;

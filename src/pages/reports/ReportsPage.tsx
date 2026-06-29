@@ -645,7 +645,7 @@ function AccountDrilldownModal({ account, sDate, eDate, onClose }: { account: an
       const res = await reportsApi.getGeneralLedger({ accountId: account.accountId, startDate: sDate, endDate: eDate, format: 'json' });
       return res;
     },
-    enabled: !!account.accountId && account.accountId !== 'suspense',
+    enabled: !!account.accountId && account.accountCode !== 'SUSPENSE',
   });
 
   const lines = data?.lines || [];
@@ -668,8 +668,8 @@ function AccountDrilldownModal({ account, sDate, eDate, onClose }: { account: an
           </div>
         </div>
         <div className="overflow-auto flex-1 p-4">
-          {account.accountId === 'suspense' ? (
-            <p className="text-sm text-slate-500 p-4">This is a system-generated suspense account balancing unreconciled module differences. No journal entries back it.</p>
+          {account.accountCode === 'SUSPENSE' ? (
+            <p className="text-sm text-slate-500 p-4">This account mirrors unreconciled differences between sub-ledgers (fixed assets, bank accounts, contacts) and the general ledger.</p>
           ) : isLoading ? (
             <div className="flex items-center justify-center py-10"><Loader2 className="w-5 h-5 animate-spin text-slate-400" /></div>
           ) : lines.length === 0 ? (
