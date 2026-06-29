@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Sparkles,
@@ -23,8 +23,11 @@ import {
   Loader2,
   FileCode,
   DollarSign,
+  X,
+  Plus,
 } from 'lucide-react';
-import { api } from '../../lib/api';
+import { api, purchasesApi } from '../../lib/api';
+import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
 
 interface Insight {
   title: string;
@@ -61,6 +64,63 @@ export default function InsightsDashboard() {
   const [ocrLoading, setOcrLoading] = useState(false);
   const [ocrResult, setOcrResult] = useState<any | null>(null);
   const [ocrError, setOcrError] = useState<string | null>(null);
+
+  // Expense creation from OCR
+  const [expenseModal, setExpenseModal] = useState(false);
+  const [expenseForm, setExpenseForm] = useState({ accountId: '', vendorId: '', date: '', amount: '', description: '', paymentMethod: 'cash', reference: '' });
+  const [expenseSaving, setExpenseSaving] = useState(false);
+  const [expenseError, setExpenseError] = useState<string | null>(null);
+  const [expenseCreated, setExpenseCreated] = useState(false);
+  const [accountsList, setAccountsList] = useState<any[]>([]);
+  const [vendorsList, setVendorsList] = useState<any[]>([]);
+  const expenseAccounts = useMemo(() => accountsList.filter((a: any) => a.type === 'expense'), [accountsList]);
+
+  // Pre-fill expense form when OCR result arrives
+  useEffect(() => {
+    if (ocrResult && ocrResult.totalAmountKobo > 0) {
+      setExpenseForm(prev => ({
+        ...prev,
+        description: ocrResult.vendorName !== 'Unknown Vendor' ? `Payment to ${ocrResult.vendorName}` : (ocrFile?.name?.replace(/\.[^/.]+$/, '') || 'Expense'),
+        amount: String((ocrResult.totalAmountKobo / 100).toFixed(2)),
+        date: ocrResult.date || new Date().toISOString().split('T')[0],
+        reference: ocrResult.receiptNumber || '',
+      }));
+      setExpenseCreated(false);
+    }
+  }, [ocrResult, ocrFile]);
+
+  // Load accounts and vendors when modal opens
+  useEffect(() => {
+    if (expenseModal) {
+      api.get('/accountant/accounts').then(r => setAccountsList(Array.isArray(r.data) ? r.data : [])).catch(() => {});
+      api.get('/purchases/vendors').then(r => setVendorsList(Array.isArray(r.data) ? r.data : [])).catch(() => {});
+    }
+  }, [expenseModal]);
+
+  const handleCreateExpense = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!expenseForm.accountId || !expenseForm.amount) return;
+    setExpenseSaving(true);
+    setExpenseError(null);
+    try {
+      const amountKobo = Math.round(parseFloat(expenseForm.amount) * 100);
+      await purchasesApi.createExpense({
+        accountId: expenseForm.accountId,
+        vendorId: expenseForm.vendorId || undefined,
+        date: expenseForm.date,
+        amount: amountKobo,
+        description: expenseForm.description,
+        reference: expenseForm.reference || undefined,
+        paymentMethod: expenseForm.paymentMethod,
+      });
+      setExpenseCreated(true);
+      setTimeout(() => setExpenseModal(false), 1500);
+    } catch (err: any) {
+      setExpenseError(err.response?.data?.error || err.message || 'Failed to create expense.');
+    } finally {
+      setExpenseSaving(false);
+    }
+  };
 
   // Playground State - Categorisation
   const [catDesc, setCatDesc] = useState('Uber Trip Lagos');
@@ -655,6 +715,16 @@ export default function InsightsDashboard() {
                         )}
                       </div>
                     </div>
+
+                    {!ocrResult._note && ocrResult.totalAmountKobo > 0 && (
+                      <button
+                        onClick={() => { setExpenseModal(true); setExpenseCreated(false); }}
+                        className="w-full mt-2 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-2.5 rounded-lg transition-all"
+                      >
+                        <Plus size={14} />
+                        Create Expense from Receipt
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -781,6 +851,77 @@ export default function InsightsDashboard() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Create Expense from OCR Modal */}
+      {expenseModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 px-4 py-8 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              <h2 className="text-base font-semibold text-slate-900">Create Expense from Receipt</h2>
+              <button onClick={() => setExpenseModal(false)} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
+            </div>
+            <form onSubmit={handleCreateExpense} className="px-6 py-5 space-y-4">
+              {expenseError && (
+                <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2 flex items-center gap-2">
+                  <AlertTriangle size={14} /> {expenseError}
+                </div>
+              )}
+              {expenseCreated && (
+                <div className="text-sm text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2 flex items-center gap-2">
+                  <CheckCircle size={14} /> Expense created successfully!
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Expense Account *</label>
+                  <AccountSearchSelect
+                    accounts={expenseAccounts}
+                    value={expenseForm.accountId}
+                    onChange={id => setExpenseForm({ ...expenseForm, accountId: id })}
+                    placeholder="Search and select account..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Amount (₦) *</label>
+                  <input type="number" min="0" step="0.01" value={expenseForm.amount} onChange={e => setExpenseForm({ ...expenseForm, amount: e.target.value })} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Date</label>
+                  <input type="date" value={expenseForm.date} onChange={e => setExpenseForm({ ...expenseForm, date: e.target.value })} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Payment Method</label>
+                  <select value={expenseForm.paymentMethod} onChange={e => setExpenseForm({ ...expenseForm, paymentMethod: e.target.value })} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 bg-white">
+                    {['cash', 'bank_transfer', 'card', 'cheque', 'pos', 'ussd'].map(m => <option key={m} value={m}>{m.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Vendor (optional)</label>
+                  <select value={expenseForm.vendorId} onChange={e => setExpenseForm({ ...expenseForm, vendorId: e.target.value })} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 bg-white">
+                    <option value="">Select vendor</option>
+                    {vendorsList.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Reference</label>
+                  <input value={expenseForm.reference} onChange={e => setExpenseForm({ ...expenseForm, reference: e.target.value })} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Description</label>
+                  <input value={expenseForm.description} onChange={e => setExpenseForm({ ...expenseForm, description: e.target.value })} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                <button type="button" onClick={() => setExpenseModal(false)} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
+                <button type="submit" disabled={expenseSaving || !expenseForm.accountId || !expenseForm.amount} className="px-5 py-2 text-sm font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 disabled:opacity-50 flex items-center gap-2">
+                  {expenseSaving && <Loader2 size={14} className="animate-spin" />}
+                  {expenseCreated ? 'Created!' : 'Create Expense'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
