@@ -1,8 +1,8 @@
 import React, { useState, useRef } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { reportsApi, accountantApi, apiDownload, printWindow } from '../../lib/api';
-import { Loader2, AlertCircle, CheckCircle2, Download, Search, Upload, FileText, X, RefreshCw, ExternalLink, Pencil } from 'lucide-react';
+import { Loader2, AlertCircle, CheckCircle2, Download, Search, Upload, FileText, X, RefreshCw, ExternalLink, Pencil, ChevronRight } from 'lucide-react';
 import { downloadCsv, exportToCsv, CSV_TEMPLATES } from '../../lib/csvTemplates';
 
 const MODULE_LINKS: { prefix: string; path: string; label: string }[] = [
@@ -401,6 +401,7 @@ function ReportShell({ reportType, title }: ReportPageProps) {
   const [importMsg, setImportMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [importing, setImporting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [drillDown, setDrillDown] = useState<any | null>(null);
 
   const isBalanceSheet = reportType === 'balance-sheet';
   const isAgedReport = reportType === 'aged-receivables' || reportType === 'aged-payables';
@@ -648,22 +649,24 @@ function ReportShell({ reportType, title }: ReportPageProps) {
       ) : error ? (
         <div className="flex items-center gap-2 p-4 bg-red-50 text-red-700 rounded-xl text-sm"><AlertCircle className="w-4 h-4" /> Failed to load report.</div>
       ) : (
-        <ReportTable data={data} reportType={reportType} compareEnabled={compareEnabled} />
+        <ReportTable data={data} reportType={reportType} compareEnabled={compareEnabled} onAccountClick={(acct: any) => setDrillDown(acct)} />
       )}
+
+      {drillDown && <AccountDrilldownModal account={drillDown} sDate={sDate} eDate={isBalanceSheet ? `${asOfDate}` : eDate} onClose={() => setDrillDown(null)} />}
     </div>
   );
 }
 
-function ReportTable({ data, reportType, compareEnabled }: { data: any; reportType: ReportType; compareEnabled?: boolean }) {
+function ReportTable({ data, reportType, compareEnabled, onAccountClick }: { data: any; reportType: ReportType; compareEnabled?: boolean; onAccountClick?: (acct: any) => void }) {
   if (!data) return null;
 
   // Comparative mode — data contains { current, prior, variance }
   if (compareEnabled && data?.current) {
     if (reportType === 'income-statement') {
-      return <ComparativePnLTable current={data.current} prior={data.prior} />;
+      return <ComparativePnLTable current={data.current} prior={data.prior} onAccountClick={onAccountClick} />;
     }
     if (reportType === 'balance-sheet') {
-      return <ComparativeBalanceSheetTable current={data.current} prior={data.prior} />;
+      return <ComparativeBalanceSheetTable current={data.current} prior={data.prior} onAccountClick={onAccountClick} />;
     }
   }
 
@@ -724,7 +727,7 @@ function ReportTable({ data, reportType, compareEnabled }: { data: any; reportTy
           <tbody>
             <tr className="bg-blue-50"><td colSpan={2} className="px-4 py-2 text-xs font-bold text-blue-800 uppercase tracking-wider">Assets</td></tr>
             {assets.map((a: any, i: number) => (
-              <tr key={`a-${i}`} className="border-t border-slate-100 hover:bg-slate-50">
+              <tr key={`a-${i}`} className={`border-t border-slate-100 hover:bg-slate-50 ${a.accountId ? 'cursor-pointer' : ''}`} onClick={() => a.accountId && onAccountClick?.(a)}>
                 <td className="px-4 py-2.5 pl-8 text-slate-800">{a.name}</td>
                 <td className="px-4 py-2.5 text-right font-semibold text-slate-800">{fmtNaira(a.balance)}</td>
               </tr>
@@ -735,7 +738,7 @@ function ReportTable({ data, reportType, compareEnabled }: { data: any; reportTy
             </tr>
             <tr className="bg-amber-50"><td colSpan={2} className="px-4 py-2 text-xs font-bold text-amber-800 uppercase tracking-wider">Liabilities</td></tr>
             {liabilities.map((l: any, i: number) => (
-              <tr key={`l-${i}`} className="border-t border-slate-100 hover:bg-slate-50">
+              <tr key={`l-${i}`} className={`border-t border-slate-100 hover:bg-slate-50 ${l.accountId ? 'cursor-pointer' : ''}`} onClick={() => l.accountId && onAccountClick?.(l)}>
                 <td className="px-4 py-2.5 pl-8 text-slate-800">{l.name}</td>
                 <td className="px-4 py-2.5 text-right font-semibold text-slate-800">{fmtNaira(l.balance)}</td>
               </tr>
@@ -746,7 +749,7 @@ function ReportTable({ data, reportType, compareEnabled }: { data: any; reportTy
             </tr>
             <tr className="bg-violet-50"><td colSpan={2} className="px-4 py-2 text-xs font-bold text-violet-800 uppercase tracking-wider">Equity</td></tr>
             {equity.map((e: any, i: number) => (
-              <tr key={`e-${i}`} className="border-t border-slate-100 hover:bg-slate-50">
+              <tr key={`e-${i}`} className={`border-t border-slate-100 hover:bg-slate-50 ${e.accountId ? 'cursor-pointer' : ''}`} onClick={() => e.accountId && onAccountClick?.(e)}>
                 <td className="px-4 py-2.5 pl-8 text-slate-800">{e.name}</td>
                 <td className="px-4 py-2.5 text-right font-semibold text-slate-800">{fmtNaira(e.balance)}</td>
               </tr>
@@ -766,7 +769,7 @@ function ReportTable({ data, reportType, compareEnabled }: { data: any; reportTy
   }
 
   if (reportType === 'income-statement') {
-    return <SummaryTable data={data} columns={[{ key: 'accountName', label: 'Account' }, { key: 'balance', label: 'Amount', fmt: fmtNaira }]} />;
+    return <SummaryTable data={data} columns={[{ key: 'accountName', label: 'Account' }, { key: 'balance', label: 'Amount', fmt: fmtNaira }]} onAccountClick={onAccountClick} />;
   }
 
   if (reportType === 'cash-flow') {
@@ -807,73 +810,144 @@ function ReportTable({ data, reportType, compareEnabled }: { data: any; reportTy
 function AccountDrilldownModal({ account, sDate, eDate, onClose }: { account: any; sDate: string; eDate: string; onClose: () => void }) {
   const navigate = useNavigate();
   const link = getAccountModuleLink(account.accountCode || account.code || '');
-  const { data, isLoading } = useQuery({
-    queryKey: ['general-ledger', account.accountId, sDate, eDate],
-    queryFn: async () => {
-      const res = await reportsApi.getGeneralLedger({ accountId: account.accountId, startDate: sDate, endDate: eDate, format: 'json' });
+  const { data, isLoading, isFetching, fetchNextPage, hasNextPage } = useInfiniteQuery({
+    queryKey: ['account-ledger', account.accountId, sDate, eDate],
+    queryFn: async ({ pageParam = 1 }) => {
+      const res = await accountantApi.getAccountLedger(account.accountId, { startDate: sDate, endDate: eDate, page: pageParam, limit: 50 });
       return res;
     },
+    getNextPageParam: (lastPage: any) => {
+      if (!lastPage) return undefined;
+      const totalPages = Math.ceil(lastPage.total / lastPage.limit);
+      return lastPage.page < totalPages ? lastPage.page + 1 : undefined;
+    },
+    initialPageParam: 1,
     enabled: !!account.accountId,
   });
 
-  const lines = data?.lines || [];
-  const totalDr = lines.reduce((s: number, l: any) => s + Number(l.debit), 0);
-  const totalCr = lines.reduce((s: number, l: any) => s + Number(l.credit), 0);
+  const allPages = data?.pages || [];
+  const firstPage = allPages[0] || {};
+  const accountInfo = firstPage.account || {};
+  const openingBalance = firstPage.openingBalance || 0;
+  const lines = allPages.flatMap((p: any) => p.lines || []);
+  const totalDr = lines.reduce((s: number, l: any) => s + Number(l.debitAmount || 0), 0);
+  const totalCr = lines.reduce((s: number, l: any) => s + Number(l.creditAmount || 0), 0);
+  const closingBalance = lines.length > 0 ? lines[lines.length - 1].runningBalance : openingBalance;      
+  const isDebitType = accountInfo.type === 'asset' || accountInfo.type === 'expense';
+  const balanceLabel = isDebitType ? 'Debit' : 'Credit';
+  const absBalance = Math.abs(closingBalance);
+
+  function getSourceLink(source: string, sourceId: string): { path: string; label: string } | null {
+    if (!sourceId) return null;
+    switch (source) {
+      case 'invoice': return { path: `/sales/invoices/${sourceId}`, label: 'View Invoice' };
+      case 'bill': return { path: `/purchases/bills/${sourceId}`, label: 'View Bill' };
+      case 'payment': return { path: `/banking`, label: 'View Payment' };
+      case 'payroll': return { path: `/payroll`, label: 'View Payroll' };
+      case 'journal': return { path: `/accountant/manual-journals`, label: 'View Journal' };
+      default: return null;
+    }
+  }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl mx-4 max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between p-4 border-b border-slate-200">
+    <div className="fixed inset-0 z-50" onClick={onClose}>
+      {/* Backdrop */}
+      <div className="fixed inset-0 bg-neutral-950/60 backdrop-blur-sm" />
+      {/* Drawer panel */}
+      <div className="fixed right-0 top-0 bottom-0 w-full max-w-2xl bg-white shadow-2xl flex flex-col animate-slide-in" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
           <div>
-            <h2 className="text-lg font-bold text-slate-900">{account.accountName || account.name}</h2>
-            <p className="text-xs text-slate-500">{account.accountCode || account.code} &middot; {account.accountType || account.type} &middot; Bal: {fmtNaira((account.closingDebit || account.debit || 0) - (account.closingCredit || account.credit || 0))}</p>
+            <h2 className="text-lg font-bold text-slate-900">{account.accountName || accountInfo.name || 'Account Ledger'}</h2>
+            <p className="text-xs text-slate-500">
+              {account.accountCode || accountInfo.code || ''} &middot; {account.accountType || accountInfo.type || ''}
+              {closingBalance !== 0 && (
+                <span className="ml-2 font-semibold">{balanceLabel}: {fmtNaira(absBalance)}</span>
+              )}
+            </p>
           </div>
-          <div className="flex items-center gap-2">
-            {link && (
-              <button onClick={() => navigate(link.path)} className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100"><ExternalLink className="w-3 h-3" /> View in {link.label}</button>
-            )}
-            <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
-          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1"><X className="w-5 h-5" /></button>
         </div>
-        <div className="overflow-auto flex-1 p-4">
+
+        {/* Date info */}
+        <div className="px-6 py-2 bg-slate-50 border-b border-slate-200 text-xs text-slate-500">
+          Period: {sDate} – {eDate} &middot; Opening Balance: {fmtNaira(openingBalance)}
+        </div>
+
+        {/* Table */}
+        <div className="flex-1 overflow-auto">
           {isLoading ? (
-            <div className="flex items-center justify-center py-10"><Loader2 className="w-5 h-5 animate-spin text-slate-400" /></div>
+            <div className="flex items-center justify-center py-20"><Loader2 className="w-5 h-5 animate-spin text-slate-400" /></div>
           ) : lines.length === 0 ? (
-            <p className="text-sm text-slate-500 p-4">No journal entries in this period. The balance may come from module data (fixed assets, bank accounts, or contacts) or opening balances.</p>
+            <p className="text-sm text-slate-500 p-6">No journal entries in this period.</p>
           ) : (
             <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-slate-200">
-                  <th className="text-left px-3 py-2 font-semibold text-slate-600">Date</th>
-                  <th className="text-left px-3 py-2 font-semibold text-slate-600">Entry</th>
-                  <th className="text-left px-3 py-2 font-semibold text-slate-600">Description</th>
-                  <th className="text-left px-3 py-2 font-semibold text-slate-600">Source</th>
-                  <th className="text-right px-3 py-2 font-semibold text-slate-600">Debit</th>
-                  <th className="text-right px-3 py-2 font-semibold text-slate-600">Credit</th>
+              <thead className="bg-slate-50 sticky top-0">
+                <tr>
+                  <th className="text-left px-4 py-2 font-semibold text-slate-600">Date</th>
+                  <th className="text-left px-4 py-2 font-semibold text-slate-600">Entry</th>
+                  <th className="text-left px-4 py-2 font-semibold text-slate-600">Description</th>
+                  <th className="text-left px-4 py-2 font-semibold text-slate-600">Source</th>
+                  <th className="text-right px-4 py-2 font-semibold text-slate-600">Debit</th>
+                  <th className="text-right px-4 py-2 font-semibold text-slate-600">Credit</th>
+                  <th className="text-right px-4 py-2 font-semibold text-slate-600">Balance</th>
                 </tr>
               </thead>
               <tbody>
-                {lines.map((l: any, i: number) => (
-                  <tr key={i} className="border-b border-slate-100">
-                    <td className="px-3 py-2 text-slate-600">{new Date(l.date).toLocaleDateString('en-GB')}</td>
-                    <td className="px-3 py-2 text-slate-800 font-mono">{l.entryNumber}</td>
-                    <td className="px-3 py-2 text-slate-600 max-w-[200px] truncate">{l.description || '—'}</td>
-                    <td className="px-3 py-2"><span className="inline-block px-1.5 py-0.5 text-[10px] font-semibold bg-slate-100 text-slate-600 rounded">{l.source}</span></td>
-                    <td className="px-3 py-2 text-right text-slate-600">{l.debit > 0 ? fmtNaira(l.debit) : '—'}</td>
-                    <td className="px-3 py-2 text-right text-slate-600">{l.credit > 0 ? fmtNaira(l.credit) : '—'}</td>
+                {lines.map((l: any, i: number) => {
+                  const sourceLink = getSourceLink(l.source, l.sourceId);
+                  return (
+                  <tr key={l.id || i} className="border-b border-slate-100 hover:bg-slate-50">
+                    <td className="px-4 py-2 text-slate-600 whitespace-nowrap">{new Date(l.date).toLocaleDateString('en-GB')}</td>
+                    <td className="px-4 py-2 text-slate-800 font-mono">{l.entryNumber}</td>
+                    <td className="px-4 py-2 text-slate-600 max-w-[180px] truncate" title={l.description || ''}>{l.description || '—'}</td>
+                    <td className="px-4 py-2">
+                      {sourceLink ? (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); navigate(sourceLink.path); }}
+                          className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-medium"
+                        >{l.source} <ExternalLink className="w-3 h-3" /></button>
+                      ) : (
+                        <span className="inline-block px-1.5 py-0.5 text-[10px] font-semibold bg-slate-100 text-slate-600 rounded">{l.source}</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2 text-right text-slate-600">{l.debitAmount > 0 ? fmtNaira(l.debitAmount) : '—'}</td>
+                    <td className="px-4 py-2 text-right text-slate-600">{l.creditAmount > 0 ? fmtNaira(l.creditAmount) : '—'}</td>
+                    <td className="px-4 py-2 text-right font-semibold text-slate-800">{fmtNaira(l.runningBalance)}</td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
               <tfoot>
                 <tr className="border-t-2 border-slate-300 bg-slate-50 font-semibold">
-                  <td colSpan={4} className="px-3 py-2 text-slate-800">Total</td>
-                  <td className="px-3 py-2 text-right text-slate-800">{fmtNaira(totalDr)}</td>
-                  <td className="px-3 py-2 text-right text-slate-800">{fmtNaira(totalCr)}</td>
+                  <td colSpan={4} className="px-4 py-2 text-slate-800 text-xs">Page Totals</td>
+                  <td className="px-4 py-2 text-right text-slate-800">{fmtNaira(totalDr)}</td>
+                  <td className="px-4 py-2 text-right text-slate-800">{fmtNaira(totalCr)}</td>
+                  <td className="px-4 py-2 text-right text-slate-800">{fmtNaira(closingBalance)}</td>
                 </tr>
               </tfoot>
             </table>
           )}
         </div>
+
+        {/* Load more */}
+        {!isLoading && hasNextPage && (
+          <div className="px-6 py-3 border-t border-slate-200 text-center">
+            <button
+              onClick={() => fetchNextPage()}
+              disabled={isFetching}
+              className="inline-flex items-center gap-1 px-4 py-2 text-xs font-semibold text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 disabled:opacity-50"
+            >{isFetching ? 'Loading...' : 'Load more'}</button>
+          </div>
+        )}
+
+        {link && (
+          <div className="px-6 py-3 border-t border-slate-200 text-center">
+            <button onClick={() => navigate(link.path)} className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-800">
+              <ExternalLink className="w-3.5 h-3.5" /> View in {link.label}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -907,7 +981,7 @@ function buildPnLRows(current: any, prior: any | null): any[] {
       const variance = a.balance - priorBal;
       secCurrTotal += a.balance;
       secPriorTotal += priorBal;
-      secRows.push({ name: a.name, currentBalance: a.balance, priorBalance: priorBal, variance, isRevenue: sec.isRevenue });
+      secRows.push({ accountId: a.accountId, name: a.name, currentBalance: a.balance, priorBalance: priorBal, variance, isRevenue: sec.isRevenue });
     }
     // Add prior-only accounts (no current balance)
     for (const a of priorAccounts) {
@@ -916,7 +990,7 @@ function buildPnLRows(current: any, prior: any | null): any[] {
         const variance = 0 - a.balance;
         secCurrTotal += 0;
         secPriorTotal += a.balance;
-        secRows.push({ name: a.name, currentBalance: 0, priorBalance: a.balance, variance, isRevenue: sec.isRevenue });
+        secRows.push({ accountId: a.accountId, name: a.name, currentBalance: 0, priorBalance: a.balance, variance, isRevenue: sec.isRevenue });
       }
     }
     rows.push({ section: sec.label, children: secRows, totalCurrent: secCurrTotal, totalPrior: secPriorTotal, isRevenue: sec.isRevenue });
@@ -932,7 +1006,7 @@ function buildPnLRows(current: any, prior: any | null): any[] {
   return rows;
 }
 
-function ComparativePnLTable({ current, prior }: { current: any; prior: any | null }) {
+function ComparativePnLTable({ current, prior, onAccountClick }: { current: any; prior: any | null; onAccountClick?: (acct: any) => void }) {
   const rows = buildPnLRows(current, prior);
   return (
     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
@@ -955,7 +1029,7 @@ function ComparativePnLTable({ current, prior }: { current: any; prior: any | nu
               {!section.isSummary && section.children.map((row: any, ri: number) => {
                 const varPct = row.priorBalance !== 0 ? ((row.variance / row.priorBalance) * 100).toFixed(1) : '—';
                 return (
-                  <tr key={ri} className="border-t border-slate-100 hover:bg-slate-50">
+                  <tr key={ri} className={`border-t border-slate-100 hover:bg-slate-50 ${row.accountId ? 'cursor-pointer' : ''}`} onClick={() => row.accountId && onAccountClick?.(row)}>
                     <td className="px-4 py-2.5 pl-8 text-slate-800">{row.name}</td>
                     <td className="px-4 py-2.5 text-right font-semibold text-slate-800">{fmtNaira(row.currentBalance)}</td>
                     <td className="px-4 py-2.5 text-right text-slate-600">{fmtNaira(row.priorBalance)}</td>
@@ -994,7 +1068,7 @@ function ComparativePnLTable({ current, prior }: { current: any; prior: any | nu
   );
 }
 
-function ComparativeBalanceSheetTable({ current, prior }: { current: any; prior: any | null }) {
+function ComparativeBalanceSheetTable({ current, prior, onAccountClick }: { current: any; prior: any | null; onAccountClick?: (acct: any) => void }) {
   function renderSection(label: string, currAccounts: any[], priorAccounts: any[], currTotal: number, priorTotal: number, color: string) {
     const priorMap = new Map((priorAccounts || []).map((a: any) => [a.code || a.accountId, a.balance]));
     return (
@@ -1004,7 +1078,7 @@ function ComparativeBalanceSheetTable({ current, prior }: { current: any; prior:
           const priorBal = priorMap.get(a.code || a.accountId) || 0;
           const variance = a.balance - priorBal;
           return (
-            <tr key={i} className="border-t border-slate-100 hover:bg-slate-50">
+            <tr key={i} className={`border-t border-slate-100 hover:bg-slate-50 ${a.accountId ? 'cursor-pointer' : ''}`} onClick={() => a.accountId && onAccountClick?.(a)}>
               <td className="px-4 py-2.5 pl-8 text-slate-800">{a.name}</td>
               <td className="px-4 py-2.5 text-right font-semibold text-slate-800">{fmtNaira(a.balance)}</td>
               <td className="px-4 py-2.5 text-right text-slate-600">{fmtNaira(priorBal)}</td>
@@ -1059,7 +1133,7 @@ function ComparativeBalanceSheetTable({ current, prior }: { current: any; prior:
   );
 }
 
-function SummaryTable({ data, columns }: { data: any; columns: { key: string; label: string; fmt?: (v: any) => string }[] }) {
+function SummaryTable({ data, columns, onAccountClick }: { data: any; columns: { key: string; label: string; fmt?: (v: any) => string }[]; onAccountClick?: (acct: any) => void }) {
   const rows = Array.isArray(data) ? data : [];
   return (
     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
@@ -1073,7 +1147,7 @@ function SummaryTable({ data, columns }: { data: any; columns: { key: string; la
         </thead>
         <tbody>
           {rows.map((row: any, i: number) => (
-            <tr key={i} className="border-t border-slate-100 hover:bg-slate-50">
+            <tr key={i} className={`border-t border-slate-100 hover:bg-slate-50 ${row.accountId ? 'cursor-pointer' : ''}`} onClick={() => row.accountId && onAccountClick?.(row)}>
               {columns.map(col => (
                 <td key={col.key} className={`px-4 py-3 ${col.key === 'balance' || col.key === 'amount' ? 'text-right font-semibold text-slate-800' : 'text-slate-800'}`}>
                   {col.fmt ? col.fmt(row[col.key] ?? row.balance ?? row.amount ?? 0) : row[col.key] || '—'}

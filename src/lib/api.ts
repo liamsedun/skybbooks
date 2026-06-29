@@ -725,6 +725,10 @@ export const accountantApi = {
     const res = await api.post('/budgets/import-csv', { csvData });
     return res.data;
   },
+  getAccountLedger: async (accountId: string, params: { startDate: string; endDate: string; page?: number; limit?: number }) => {
+    const res = await api.get(`/accountant/accounts/${accountId}/ledger`, { params });
+    return res.data;
+  },
 };
 
 // 7b. Journals Endpoints

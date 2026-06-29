@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { eq, and, lte, gte, sql } from 'drizzle-orm';
+import { eq, and, lte, gte, sql, asc } from 'drizzle-orm';
 import { db, accounts, journalEntries, journalLines, bankAccounts, fixedAssets, contacts, inventoryLots } from '../db/schema';
 import { AppError } from '../lib/errors';
 import { toNgn, getRateForDate } from './currency.service';
@@ -1132,4 +1132,114 @@ export async function getCashFlowStatement(
     openingCash: openingCashVal,
     closingCash: closingCashVal
   };
+}
+
+/**
+ * Returns paginated journal lines for a specific account with computed
+ * running balance and source document metadata.
+ */
+export async function getAccountLedger(
+  accountId: string,
+  orgId: string,
+  startDate: Date,
+  endDate: Date,
+  page: number = 1,
+  limit: number = 50
+): Promise<{ lines: any[]; total: number; page: number; limit: number; account: any; openingBalance: number }> {
+  const [account] = await db
+    .select()
+    .from(accounts)
+    .where(and(eq(accounts.id, accountId), eq(accounts.orgId, orgId)))
+    .limit(1);
+
+  if (!account) throw new AppError('Account not found.', 404);
+
+  // Get total count for pagination
+  const [countResult] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(journalLines)
+    .innerJoin(journalEntries, eq(journalLines.entryId, journalEntries.id))
+    .where(
+      and(
+        eq(journalLines.accountId, accountId),
+        eq(journalEntries.orgId, orgId),
+        gte(journalEntries.date, startDate),
+        lte(journalEntries.date, endDate)
+      )
+    );
+
+  const total = Number(countResult?.count || 0);
+  const offset = (page - 1) * limit;
+
+  // Fetch lines with entry metadata
+  const rawLines = await db
+    .select({
+      id: journalLines.id,
+      date: journalEntries.date,
+      entryNumber: journalEntries.entryNumber,
+      description: journalEntries.description,
+      source: journalEntries.source,
+      sourceId: journalEntries.sourceId,
+      debitAmount: journalLines.debitAmount,
+      creditAmount: journalLines.creditAmount,
+      currency: journalLines.currency,
+      fxRate: journalLines.fxRate
+    })
+    .from(journalLines)
+    .innerJoin(journalEntries, eq(journalLines.entryId, journalEntries.id))
+    .where(
+      and(
+        eq(journalLines.accountId, accountId),
+        eq(journalEntries.orgId, orgId),
+        gte(journalEntries.date, startDate),
+        lte(journalEntries.date, endDate)
+      )
+    )
+    .orderBy(journalEntries.date, asc(journalEntries.entryNumber))
+    .limit(limit)
+    .offset(offset);
+
+  // Compute running balance and compute opening balance (balance before startDate)
+  const isDebitRule = account.type === 'asset' || account.type === 'expense';
+  const isContraAsset = account.type === 'asset' &&
+    (account.name.toLowerCase().includes('accumulated depreciation') ||
+     account.name.toLowerCase().includes('allowance'));
+
+  // Fetch all lines before startDate to compute opening balance
+  const [beforeResult] = await db
+    .select({
+      debits: sql<number>`coalesce(sum(${journalLines.debitAmount}), 0)`,
+      credits: sql<number>`coalesce(sum(${journalLines.creditAmount}), 0)`
+    })
+    .from(journalLines)
+    .innerJoin(journalEntries, eq(journalLines.entryId, journalEntries.id))
+    .where(
+      and(
+        eq(journalLines.accountId, accountId),
+        eq(journalEntries.orgId, orgId),
+        lte(journalEntries.date, new Date(startDate.getTime() - 1))
+      )
+    );
+
+  const beforeDebits = Number(beforeResult?.debits || 0);
+  const beforeCredits = Number(beforeResult?.credits || 0);
+
+  const openingBalance = isDebitRule
+    ? beforeDebits - beforeCredits
+    : beforeCredits - beforeDebits;
+
+  // Build lines with running balance
+  let running = openingBalance;
+  const lines = rawLines.map((line) => {
+    const netChange = isDebitRule
+      ? (line.debitAmount - line.creditAmount)
+      : (line.creditAmount - line.debitAmount);
+    running += netChange;
+    return {
+      ...line,
+      runningBalance: running
+    };
+  });
+
+  return { lines, total, page, limit, account, openingBalance };
 }

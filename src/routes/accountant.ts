@@ -9,7 +9,7 @@ import { authenticate, requireOrg, requireRole, AuthenticatedRequest } from '../
 import { eq, and, asc, sql } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
 import { seedAccounts } from '../db/seedAccounts';
-import { postOpeningBalances } from '../services/ledger.service';
+import { postOpeningBalances, getAccountLedger } from '../services/ledger.service';
 
 const router = Router();
 router.use(authenticate);
@@ -307,6 +307,29 @@ router.post('/post-opening-balances', requireRole('owner', 'admin'), async (req:
   } catch (err) {
     if (err instanceof AppError && err.statusCode === 409) {
       return res.status(409).json({ error: err.message });
+    }
+    return next(err);
+  }
+});
+
+const ledgerQuerySchema = z.object({
+  startDate: z.string().transform((val) => new Date(val)),
+  endDate: z.string().transform((val) => new Date(val)),
+  page: z.string().optional().transform((val) => val ? parseInt(val, 10) : 1),
+  limit: z.string().optional().transform((val) => val ? parseInt(val, 10) : 50),
+});
+
+// GET /api/accountant/accounts/:accountId/ledger — paginated GL lines
+router.get('/accounts/:accountId/ledger', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { accountId } = req.params;
+    const { startDate, endDate, page, limit } = ledgerQuerySchema.parse(req.query);
+    const result = await getAccountLedger(accountId, orgId, startDate, endDate, page, limit);
+    return res.status(200).json(result);
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      return next(new AppError(err.issues[0]?.message || 'Validation failed', 400));
     }
     return next(err);
   }
