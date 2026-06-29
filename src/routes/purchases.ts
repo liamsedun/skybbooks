@@ -196,7 +196,8 @@ router.get('/bills', async (req: AuthenticatedRequest, res: Response, next: Next
       vendorId: req.query.vendorId as string,
       dateFrom: req.query.dateFrom as string,
       dateTo: req.query.dateTo as string,
-      search: req.query.search as string
+      search: req.query.search as string,
+      accountCode: req.query.accountCode as string,
     };
     const pagination = {
       page: req.query.page ? parseInt(req.query.page as string) : 1,

@@ -3,19 +3,19 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 import React, { useState, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import {
   Plus, X, Loader2, AlertCircle, Search, FileText,
   CheckCircle2, Download, Ban, ChevronDown, ChevronUp,
-  Pencil, Trash2, Copy, Upload, Package, ArrowLeft, Eye
+  Pencil, Trash2, Copy, Upload, Package, ArrowLeft, Eye, ExternalLink
 } from 'lucide-react';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
 import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
 
 interface Vendor { id: string; name: string; }
-interface Account { id: string; name: string; type: string; }
+interface Account { id: string; code: string; name: string; type: string; }
 interface Item { id: string; name: string; purchasePrice: number | null; }
 interface BillLine {
   itemId: string | null;
@@ -111,6 +111,8 @@ export function BillsPage() {
 function BillList() {
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const accountCode = searchParams.get('account') || '';
   const [search, setSearch]           = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [expandedId, setExpandedId]   = useState<string | null>(null);
@@ -121,8 +123,8 @@ function BillList() {
   const [importOpen, setImportOpen]   = useState(false);
   // ── Queries ──────────────────────────────────────────────────────────────
   const { data: billsRaw, isLoading, error } = useQuery({
-    queryKey: ['bills'],
-    queryFn: () => api.get('/purchases/bills').then(r => r.data),
+    queryKey: ['bills', accountCode],
+    queryFn: () => api.get('/purchases/bills', { params: { accountCode: accountCode || undefined } }).then(r => r.data),
   });
   const { data: vendorsRaw } = useQuery({
     queryKey: ['vendors'],
@@ -152,6 +154,7 @@ function BillList() {
   const accounts: Account[] = useMemo(() => Array.isArray(accountsRaw) ? accountsRaw : (accountsRaw?.accounts || accountsRaw?.data || []), [accountsRaw]);
   const vendorMap = useMemo(() => new Map(vendors.map(v => [v.id, v.name])), [vendors]);
   const expenseAccounts = useMemo(() => accounts.filter(a => ['expense', 'cost_of_goods'].includes(a.type)), [accounts]);
+  const accountName = useMemo(() => { const a = accounts.find(a => a.code === accountCode); return a?.name || ''; }, [accounts, accountCode]);
 
   const filtered = useMemo(() => bills.filter(b => {
     const vendorName = vendorMap.get(b.vendorId) || '';
@@ -296,6 +299,13 @@ function BillList() {
     <div className="space-y-6">
 
       {/* ── Header ── */}
+      {accountCode && (
+        <div className="flex items-center gap-2 px-4 py-3 bg-indigo-50 border border-indigo-200 rounded-xl text-sm text-indigo-800">
+          <ExternalLink className="w-4 h-4 flex-shrink-0" />
+          <span>Showing bills for <strong>{accountName || `Account ${accountCode}`}</strong></span>
+          <button onClick={() => navigate('/purchases/bills')} className="ml-auto text-xs font-medium text-indigo-600 hover:text-indigo-800 underline">Clear filter</button>
+        </div>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-slate-900">Bills</h1>

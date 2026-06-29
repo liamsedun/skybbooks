@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { eq, and, lte, gte, sql, desc } from 'drizzle-orm';
+import { eq, and, lte, gte, sql, desc, inArray } from 'drizzle-orm';
 import {
   db,
   accounts,
@@ -655,7 +655,7 @@ export async function getBill(billId: string, orgId: string): Promise<any> {
 
 export async function listBills(
   orgId: string,
-  filters: { status?: string; vendorId?: string; dateFrom?: string; dateTo?: string; search?: string },
+  filters: { status?: string; vendorId?: string; dateFrom?: string; dateTo?: string; search?: string; accountCode?: string },
   pagination: { page?: number; limit?: number } = { page: 1, limit: 10 }
 ): Promise<any> {
   const page = pagination.page || 1;
@@ -670,6 +670,28 @@ export async function listBills(
   if (filters.dateTo) conditions.push(lte(bills.date, new Date(filters.dateTo)));
   if (filters.search) {
     conditions.push(sql`lower(${bills.billNumber}) like ${'%' + filters.search.toLowerCase() + '%'}`);
+  }
+  if (filters.accountCode) {
+    const apAccount = await db
+      .select({ id: accounts.id })
+      .from(accounts)
+      .where(and(eq(accounts.orgId, orgId), eq(accounts.code, filters.accountCode)))
+      .limit(1)
+      .then(r => r[0]);
+    if (apAccount) {
+      const billIds = await db
+        .select({ billId: journalEntries.referenceId })
+        .from(journalEntries)
+        .innerJoin(journalLines, eq(journalLines.entryId, journalEntries.id))
+        .where(and(
+          eq(journalEntries.referenceType, 'bill'),
+          eq(journalLines.accountId, apAccount.id),
+          sql`${journalLines.creditAmount} > 0`
+        ));
+      const ids = [...new Set(billIds.map(r => r.billId).filter(Boolean) as string[])];
+      if (ids.length > 0) conditions.push(inArray(bills.id, ids));
+      else conditions.push(sql`1=0`);
+    }
   }
 
   const itemsList = await db

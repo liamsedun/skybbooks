@@ -20,6 +20,7 @@ const MODULE_LINKS: { prefix: string; path: string; label: string }[] = [
   { prefix: '205', path: '/accountant/fixed-assets', label: 'Fixed Assets' },
   { prefix: '206', path: '/accountant/fixed-assets', label: 'Fixed Assets' },
   { prefix: '3001', path: '/purchases/bills', label: 'Bills' },
+  { prefix: '300', path: '/purchases/bills', label: 'Bills' },
   { prefix: '500', path: '/accountant/manual-journals', label: 'Manual Journals' },
   { prefix: '501', path: '/accountant/manual-journals', label: 'Manual Journals' },
   { prefix: '502', path: '/accountant/manual-journals', label: 'Manual Journals' },
@@ -246,7 +247,7 @@ export function TrialBalancePage() {
                     <span className="font-medium text-slate-800">{row.accountName || row.name || `Account ${i + 1}`}</span>
                     {link && (
                       <button
-                        onClick={e => { e.stopPropagation(); navigate(link.path); }}
+                        onClick={e => { e.stopPropagation(); navigate(link.path + '?account=' + (row.accountCode || row.code || '')); }}
                         className="ml-2 inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800"
                         title={`Go to ${link.label}`}
                       ><ExternalLink className="w-3 h-3" /> {link.label}</button>
