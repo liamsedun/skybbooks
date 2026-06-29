@@ -4,6 +4,7 @@ import { db, journalEntries, journalLines, accounts } from '../db/schema';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
+import { reverseJournalEntry } from '../services/ledger.service';
 
 const router = Router();
 router.use(authenticate);
@@ -231,6 +232,28 @@ router.post('/import-csv', async (req: AuthenticatedRequest, res: Response, next
     if (err instanceof z.ZodError) return next(new AppError(err.issues[0]?.message || 'Validation failed', 400));
     return next(err);
   }
+});
+
+// Reverse a manual journal entry
+router.post('/:id/reverse', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const userId = req.user!.id!;
+    const { id } = req.params;
+
+    const [entry] = await db
+      .select()
+      .from(journalEntries)
+      .where(and(eq(journalEntries.id, id), eq(journalEntries.orgId, orgId)))
+      .limit(1);
+    if (!entry) throw new AppError('Journal entry not found.', 404);
+    if (entry.source !== 'manual') throw new AppError('Only manual journal entries can be reversed here.', 400);
+    if (entry.isReversed) throw new AppError('This entry has already been reversed.', 400);
+
+    const reversal = await reverseJournalEntry(id, new Date(), userId);
+
+    return res.status(200).json({ message: 'Entry reversed successfully.', reversal });
+  } catch (err) { return next(err); }
 });
 
 export default router;
