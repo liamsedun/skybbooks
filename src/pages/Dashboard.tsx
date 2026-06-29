@@ -389,7 +389,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (viewId: string) => void
           </div>
         </button>
 
-        <button onClick={() => navigate('/reports')} className="bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md hover:border-purple-300 transition-all text-left cursor-pointer">
+        <button onClick={() => navigate('/reports/balance-sheet')} className="bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md hover:border-purple-300 transition-all text-left cursor-pointer">
           <div className="flex items-center justify-between mb-3">
             <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Net Worth</span>
             <div className="p-2 bg-purple-50 text-purple-600 rounded-lg"><PieChartIcon className="w-4 h-4" /></div>
