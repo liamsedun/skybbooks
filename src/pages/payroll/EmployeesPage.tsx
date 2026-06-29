@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
 import { exportToCsv } from '../../lib/csvTemplates';
-import { payrollApi, downloadBlob } from '../../lib/api';
+import { payrollApi, apiDownload } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
 import { useCurrency } from '../../hooks/useCurrency';
 
@@ -300,7 +300,7 @@ export function EmployeesPage() {
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
             <Download className="w-3.5 h-3.5" /> CSV
           </button>
-          <button onClick={async () => { try { const blob = await payrollApi.getEmployeesPdf(); downloadBlob(blob, `employees_${new Date().toISOString().split('T')[0]}.pdf`); } catch (e) { alert('Failed to export PDF.'); console.error(e); } }}
+          <button onClick={() => apiDownload('/payroll/employees/pdf', `employees_${new Date().toISOString().split('T')[0]}.pdf`)}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700">
             <Download className="w-3.5 h-3.5" /> PDF
           </button>

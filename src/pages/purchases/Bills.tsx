@@ -5,7 +5,7 @@
 import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, downloadBlob } from '../../lib/api';
+import { api, apiDownload } from '../../lib/api';
 import {
   Plus, X, Loader2, AlertCircle, Search, FileText,
   CheckCircle2, Download, Ban, ChevronDown, ChevronUp,
@@ -312,7 +312,7 @@ function BillList() {
           <p className="text-sm text-slate-500 mt-0.5">Track and pay supplier bills</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={async () => { try { const res = await api.get('/purchases/bills/pdf', { responseType: 'blob' }); downloadBlob(res.data, `bills_${new Date().toISOString().split('T')[0]}.pdf`); } catch (e) { alert('Failed to export PDF.'); console.error(e); } }}
+          <button onClick={() => apiDownload('/purchases/bills/pdf', `bills_${new Date().toISOString().split('T')[0]}.pdf`)}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
             <FileText size={14} /> PDF
           </button>
@@ -834,7 +834,7 @@ function BillDetail({ id, onBack }: { id: string; onBack: () => void }) {
           <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_STYLES[bill.status] || 'bg-slate-100 text-slate-600'}`}>
             {bill.status}
           </span>
-          <button onClick={async () => { try { const res = await api.get(`/purchases/bills/${bill.id}/pdf`, { responseType: 'blob' }); downloadBlob(res.data, `bill_${bill.billNumber}.pdf`); } catch (e) { console.error(e); } }}
+          <button onClick={() => apiDownload(`/purchases/bills/${bill.id}/pdf`, `bill_${bill.billNumber}.pdf`)}
             className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg">
             <FileText size={14} /> PDF
           </button>

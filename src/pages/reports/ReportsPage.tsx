@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { reportsApi, accountantApi, downloadBlob } from '../../lib/api';
+import { reportsApi, accountantApi, apiDownload } from '../../lib/api';
 import { Loader2, AlertCircle, CheckCircle2, Download, Search, Upload, FileText, X, RefreshCw, ExternalLink, Pencil } from 'lucide-react';
 import { downloadCsv, exportToCsv, CSV_TEMPLATES } from '../../lib/csvTemplates';
 
@@ -106,16 +106,12 @@ export function TrialBalancePage() {
       )
     : rawRows;
 
-  const handleExport = async (format: 'pdf' | 'csv') => {
-    try {
-      if (format === 'csv') {
-        const blob = await reportsApi.getTrialBalance({ startDate: sDate, endDate: eDate, format: 'csv' });
-        downloadBlob(blob, `trial_balance_${sDate}_to_${eDate}.csv`);
-      } else {
-        const blob = await reportsApi.getTrialBalance({ startDate: sDate, endDate: eDate, format: 'pdf' });
-        downloadBlob(blob, `trial_balance_${sDate}_to_${eDate}.pdf`);
-      }
-    } catch { alert('Failed to export. Please try again.'); }
+  const handleExport = (format: 'pdf' | 'csv') => {
+    if (format === 'csv') {
+      apiDownload(`/reports/trial-balance?format=csv&startDate=${sDate}&endDate=${eDate}`, `trial_balance_${sDate}_to_${eDate}.csv`);
+    } else {
+      apiDownload(`/reports/trial-balance?format=pdf&startDate=${sDate}&endDate=${eDate}`, `trial_balance_${sDate}_to_${eDate}.pdf`);
+    }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -433,7 +429,7 @@ function ReportShell({ reportType, title }: ReportPageProps) {
     },
   });
 
-  const handleExport = async (format: 'pdf' | 'excel' | 'csv') => {
+  const handleExport = (format: 'pdf' | 'excel' | 'csv') => {
     if (format === 'csv') {
       const rows = Array.isArray(data) ? data : [];
       if (!rows.length) return;
@@ -456,29 +452,7 @@ function ReportShell({ reportType, title }: ReportPageProps) {
       exportToCsv(`${reportType}_${today}.csv`, headers, csvRows);
       return;
     }
-    let blob: Blob;
-    try {
-      if (reportType === 'trial-balance') {
-        const res = await reportsApi.getTrialBalance({ startDate: sDate, endDate: eDate, format });
-        blob = res;
-      } else if (reportType === 'income-statement') {
-        const res = await reportsApi.getIncomeStatement({ startDate: sDate, endDate: eDate, format });
-        blob = res;
-      } else if (reportType === 'balance-sheet') {
-        const res = await reportsApi.getBalanceSheet({ asOfDate, format });
-        blob = res;
-      } else if (reportType === 'cash-flow') {
-        const res = await reportsApi.getCashFlow({ startDate: sDate, endDate: eDate, format });
-        blob = res;
-      } else if (reportType === 'aged-receivables') {
-        const res = await reportsApi.getAgedReceivables({ format });
-        blob = res;
-      } else {
-        const res = await reportsApi.getAgedPayables({ format });
-        blob = res;
-      }
-      downloadBlob(blob, `${reportType}_${new Date().toISOString().split('T')[0]}.pdf`);
-    } catch { alert('Failed to export PDF. Please try again.'); }
+    apiDownload(`/reports/${reportType}?format=${format}&startDate=${sDate}&endDate=${eDate}`, `${reportType}_${new Date().toISOString().split('T')[0]}.${format}`);
   };
 
   const handleImportOB = async () => {

@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, downloadBlob } from '../../lib/api';
-import { payrollApi } from '../../lib/api';
+import { api, apiDownload, payrollApi } from '../../lib/api';
 import {
   Plus, X, Loader2, AlertCircle, Search, FileText,
   CheckCircle2, Ban, ChevronDown, ChevronUp, Play, DollarSign,
@@ -121,7 +120,7 @@ export function PayrollRunsPage() {
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors">
             <Download size={14} /> CSV
           </button>
-          <button onClick={async () => { try { const blob = await payrollApi.getPayrollRunsPdf(); downloadBlob(blob, `payroll_runs_${new Date().toISOString().split('T')[0]}.pdf`); } catch (e) { alert('Failed to export PDF.'); console.error(e); } }}
+          <button onClick={() => apiDownload('/payroll/runs/pdf', `payroll_runs_${new Date().toISOString().split('T')[0]}.pdf`)}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
             <Download size={14} /> PDF
           </button>

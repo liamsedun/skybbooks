@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, downloadBlob } from '../../lib/api';
+import { api, downloadBlob, apiDownload } from '../../lib/api';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
 import {
   Search, Upload, Loader2, AlertCircle, X, Plus, FileMinus, ChevronRight,

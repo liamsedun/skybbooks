@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, accountantApi, downloadBlob } from '../../lib/api';
+import { api, accountantApi, apiDownload } from '../../lib/api';
 import {
   Plus,
   Search,
@@ -184,18 +184,12 @@ export function ChartOfAccountsPage() {
 
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
-  const handleExportCsv = async () => {
-    try {
-      const blob = await accountantApi.exportAccountsCsv();
-      downloadBlob(blob, 'chart_of_accounts.csv');
-    } catch { alert('Failed to export CSV. Please try again.'); }
+  const handleExportCsv = () => {
+    apiDownload('/accountant/accounts/export-csv', 'chart_of_accounts.csv');
   };
 
-  const handlePrintPdf = async () => {
-    try {
-      const blob = await accountantApi.getAccountsPdf();
-      downloadBlob(blob, 'chart_of_accounts.pdf');
-    } catch { alert('Failed to export PDF. Please try again.'); }
+  const handlePrintPdf = () => {
+    apiDownload('/accountant/accounts/pdf', 'chart_of_accounts.pdf');
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {

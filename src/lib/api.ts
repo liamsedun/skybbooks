@@ -895,4 +895,16 @@ export function downloadBlob(blob: Blob, filename: string) {
   }
 }
 
+export function apiDownload(url: string, filename: string) {
+  const token = localStorage.getItem('accessToken');
+  const sep = url.includes('?') ? '&' : '?';
+  const fullUrl = `${url}${sep}token=${encodeURIComponent(token || '')}`;
+  const a = document.createElement('a');
+  a.href = fullUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
 

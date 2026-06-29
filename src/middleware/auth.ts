@@ -23,18 +23,24 @@ export function authenticate(
   res: Response,
   next: NextFunction
 ): void {
-  const authHeader = req.headers.authorization;
+  let token: string | undefined;
 
-  if (!authHeader) {
+  const authHeader = req.headers.authorization;
+  if (authHeader) {
+    const parts = authHeader.split(' ');
+    if (parts.length === 2 && parts[0] === 'Bearer') {
+      token = parts[1];
+    }
+  }
+
+  // Allow token via query param for direct-download URLs
+  if (!token && req.method === 'GET' && typeof req.query.token === 'string') {
+    token = req.query.token;
+  }
+
+  if (!token) {
     return next(new AppError('Authentication token is required.', 401));
   }
-
-  const parts = authHeader.split(' ');
-  if (parts.length !== 2 || parts[0] !== 'Bearer') {
-    return next(new AppError('Authorization header must follow the Bearer schema.', 401));
-  }
-
-  const token = parts[1];
 
   try {
     const decoded = verifyAccessToken(token);

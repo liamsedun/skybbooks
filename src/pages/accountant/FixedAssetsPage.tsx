@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fixedAssetsApi, accountantApi, downloadBlob } from '../../lib/api';
+import { fixedAssetsApi, accountantApi, apiDownload } from '../../lib/api';
 import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
 import { Plus, X, Loader2, AlertCircle, CheckCircle2, Trash2, Eye, Download, Upload, FileText, Printer, Calculator } from 'lucide-react';
 import { downloadCsv } from '../../lib/csvTemplates';
@@ -47,18 +47,12 @@ export function FixedAssetsPage() {
     onError: (err: any) => { setDeprMsg({ type: 'error', text: err?.response?.data?.error || err.message || 'Depreciation run failed.' }); setTimeout(() => setDeprMsg(null), 5000); },
   });
 
-  const handleExportCsv = async () => {
-    try {
-      const blob = await fixedAssetsApi.exportAssetsCsv();
-      downloadBlob(blob, 'fixed_assets.csv');
-    } catch { alert('Failed to export CSV. Please try again.'); }
+  const handleExportCsv = () => {
+    apiDownload('/fixed-assets/export-csv', 'fixed_assets.csv');
   };
 
-  const handlePrintPdf = async () => {
-    try {
-      const blob = await fixedAssetsApi.getAssetsPdf();
-      downloadBlob(blob, 'fixed_assets.pdf');
-    } catch { alert('Failed to export PDF. Please try again.'); }
+  const handlePrintPdf = () => {
+    apiDownload('/fixed-assets/pdf', 'fixed_assets.pdf');
   };
 
   const handleClearLastImport = async () => {
