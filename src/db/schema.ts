@@ -555,6 +555,7 @@ export const paymentsMade = pgTable('payments_made', {
   paymentMethod: paymentMethodEnum('payment_method').notNull(),
   reference: text('reference'),
   accountId: uuid('account_id').references(() => accounts.id).notNull(),
+  journalEntryId: uuid('journal_entry_id').references(() => journalEntries.id),
   notes: text('notes'),
   createdBy: uuid('created_by').references(() => users.id).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull()
@@ -939,7 +940,8 @@ export const journalEntriesRelations = relations(journalEntries, ({ one, many })
   vendorCredits: many(vendorCredits),
   expenses: many(expenses),
   payrollRuns: many(payrollRuns),
-  depreciationEntries: many(depreciationEntries)
+  depreciationEntries: many(depreciationEntries),
+  paymentsMade: many(paymentsMade)
 }));
 
 export const journalLinesRelations = relations(journalLines, ({ one, many }) => ({
@@ -1246,6 +1248,10 @@ export const paymentsMadeRelations = relations(paymentsMade, ({ one, many }) => 
   account: one(accounts, {
     fields: [paymentsMade.accountId],
     references: [accounts.id]
+  }),
+  journalEntry: one(journalEntries, {
+    fields: [paymentsMade.journalEntryId],
+    references: [journalEntries.id]
   }),
   creator: one(users, {
     fields: [paymentsMade.createdBy],

@@ -613,27 +613,32 @@ export async function recordPaymentMade(input: any, createdBy: string): Promise<
     // CR Bank Account (outgoing asset)
     const apAccountId = await resolveAccountsPayable(orgId, tx);
 
-    await createJournalEntry({
+    const journalEntry = await createJournalEntry({
       orgId,
       date: payment.date,
       description: `Journal posting of Outbound Supplier Payment ${payment.paymentNumber}`,
       reference: payment.paymentNumber,
-      source: 'payment', // using payment as general tag
+      source: 'payment',
       sourceId: payment.id,
       createdBy,
       lines: [
         {
-          accountId: apAccountId, // vendor control account
+          accountId: apAccountId,
           debit: amount,
           description: `AP reduction for payment ${payment.paymentNumber}`
         },
         {
-          accountId: payment.accountId, // bank account ledger
+          accountId: payment.accountId,
           credit: amount,
           description: `Disbursement from bank for payment ${payment.paymentNumber}`
         }
       ]
     }, tx);
+
+    await tx
+      .update(paymentsMade)
+      .set({ journalEntryId: journalEntry.id })
+      .where(eq(paymentsMade.id, payment.id));
 
     return {
       ...payment,
@@ -708,19 +713,8 @@ export async function deletePaymentMade(paymentId: string, userId: string): Prom
 
     await tx.delete(paymentMadeAllocations).where(eq(paymentMadeAllocations.paymentId, paymentId));
 
-    const entryList = await tx
-      .select()
-      .from(journalEntries)
-      .where(
-        and(
-          eq(journalEntries.source, 'payment'),
-          eq(journalEntries.sourceId, paymentId),
-          eq(journalEntries.isReversed, false)
-        )
-      );
-
-    for (const jr of entryList) {
-      await reverseJournalEntry(jr.id, new Date(), userId);
+    if (payment.journalEntryId) {
+      await reverseJournalEntry(payment.journalEntryId, new Date(), userId);
     }
 
     await tx.delete(paymentsMade).where(eq(paymentsMade.id, paymentId));
