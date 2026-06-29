@@ -223,9 +223,9 @@ export class AIService {
   ): Promise<ExtractedReceiptData | { vendorName: string; note: string }> {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ocr-'));
     try {
-      const worker = await Tesseract.createWorker('eng');
       let fullText = '';
 
+      const worker = await Tesseract.createWorker('eng');
       if (mimeType === 'application/pdf') {
         const pageImages = await this.pdfToImages(fileBuffer);
         for (let i = 0; i < pageImages.length; i++) {
@@ -235,14 +235,12 @@ export class AIService {
           fullText += (data.text || '') + '\n';
         }
       } else {
-        // Write image to temp file for reliable Tesseract recognition
         const ext = mimeType === 'image/png' ? '.png' : '.jpg';
         const tmpPath = path.join(tmpDir, `receipt${ext}`);
         fs.writeFileSync(tmpPath, fileBuffer);
         const { data } = await worker.recognize(tmpPath);
         fullText = data.text || '';
       }
-
       await worker.terminate();
 
       const result = this.parseReceiptText(fullText);
@@ -262,7 +260,6 @@ export class AIService {
         _note: `Receipt OCR engine encountered an error: ${errMsg.slice(0, 200)}`,
       } as any;
     } finally {
-      // Clean up temp files
       try {
         const entries = fs.readdirSync(tmpDir);
         for (const e of entries) fs.unlinkSync(path.join(tmpDir, e));
