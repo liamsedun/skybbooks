@@ -10,7 +10,7 @@ import path from 'path';
 import os from 'os';
 import Tesseract from 'tesseract.js';
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
-import { createCanvas } from 'canvas';
+
 import { db, auditLog, invoiceLines, invoices, bills, organisations, bankAccounts, contacts, fixedAssets, inventoryLots } from '../db/schema';
 import { eq, and, isNotNull, gte, lte, sql } from 'drizzle-orm';
 import { getIncomeStatement, getCashFlowStatement } from './ledger.service';
@@ -91,23 +91,20 @@ export class AIService {
   }
 
   /**
-   * Convert a PDF buffer to an array of PNG image buffers (one per page)
+   * Extract text directly from a PDF buffer using pdfjs-dist
    */
-  private async pdfToImages(pdfBuffer: Buffer): Promise<Buffer[]> {
+  private async pdfToText(pdfBuffer: Buffer): Promise<string> {
     const doc = await pdfjsLib.getDocument({ data: new Uint8Array(pdfBuffer) }).promise;
-    const pageCount = Math.min(doc.numPages, 10); // cap at 10 pages
-    const scale = 2; // 2x for good OCR quality
-    const images: Buffer[] = [];
+    const pageCount = Math.min(doc.numPages, 10);
+    const texts: string[] = [];
 
     for (let i = 1; i <= pageCount; i++) {
       const page = await doc.getPage(i);
-      const viewport = page.getViewport({ scale });
-      const canvas = createCanvas(viewport.width, viewport.height);
-      const ctx = canvas.getContext('2d');
-      await page.render({ canvasContext: ctx, viewport } as any).promise;
-      images.push(canvas.toBuffer('image/png'));
+      const content = await page.getTextContent();
+      const pageText = content.items.map((item: any) => item.str).join(' ');
+      texts.push(pageText);
     }
-    return images;
+    return texts.join('\n');
   }
 
   /**
@@ -225,23 +222,19 @@ export class AIService {
     try {
       let fullText = '';
 
-      const worker = await Tesseract.createWorker('eng');
       if (mimeType === 'application/pdf') {
-        const pageImages = await this.pdfToImages(fileBuffer);
-        for (let i = 0; i < pageImages.length; i++) {
-          const tmpPath = path.join(tmpDir, `page-${i}.png`);
-          fs.writeFileSync(tmpPath, pageImages[i]);
-          const { data } = await worker.recognize(tmpPath);
-          fullText += (data.text || '') + '\n';
-        }
+        // Extract text directly from PDF (no OCR needed)
+        fullText = await this.pdfToText(fileBuffer);
       } else {
+        // Use Tesseract OCR for images
+        const worker = await Tesseract.createWorker('eng');
         const ext = mimeType === 'image/png' ? '.png' : '.jpg';
         const tmpPath = path.join(tmpDir, `receipt${ext}`);
         fs.writeFileSync(tmpPath, fileBuffer);
         const { data } = await worker.recognize(tmpPath);
         fullText = data.text || '';
+        await worker.terminate();
       }
-      await worker.terminate();
 
       const result = this.parseReceiptText(fullText);
       await logAICall(orgId, userId, 'EXTRACT_RECEIPT', `tesseract-ocr: ${fullText.length} chars`, 'success');
