@@ -6,7 +6,7 @@
 import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { db, employees, payrollRuns, payrollLines } from '../db/schema';
-import { eq, and, desc, sql } from 'drizzle-orm';
+import { eq, and, desc, sql, inArray } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
 import {
@@ -484,7 +484,7 @@ router.post('/employees/bulk-delete', async (req: AuthenticatedRequest, res: Res
   try {
     const ids = req.body.ids as string[];
     if (!ids || !Array.isArray(ids) || ids.length === 0) throw new AppError('No employee IDs provided.', 400);
-    await db.delete(employees).where(and(eq(employees.orgId, req.user!.orgId!), sql`${employees.id} = ANY(${ids})`));
+    await db.delete(employees).where(and(eq(employees.orgId, req.user!.orgId!), inArray(employees.id, ids)));
     res.json({ success: true, deleted: ids.length });
   } catch (err) { return next(err); }
 });
@@ -521,11 +521,11 @@ router.post('/runs/bulk-delete', async (req: AuthenticatedRequest, res: Response
     const orgId = req.user!.orgId!;
     const ids = req.body.ids as string[];
     if (!ids || !Array.isArray(ids) || ids.length === 0) throw new AppError('No run IDs provided.', 400);
-    const runs = await db.select().from(payrollRuns).where(and(eq(payrollRuns.orgId, orgId), sql`${payrollRuns.id} = ANY(${ids})`));
+    const runs = await db.select().from(payrollRuns).where(and(eq(payrollRuns.orgId, orgId), inArray(payrollRuns.id, ids)));
     const draftIds = runs.filter(r => r.status === 'draft').map(r => r.id);
     if (draftIds.length > 0) {
-      await db.delete(payrollLines).where(sql`${payrollLines.runId} = ANY(${draftIds})`);
-      await db.delete(payrollRuns).where(sql`${payrollRuns.id} = ANY(${draftIds})`);
+      await db.delete(payrollLines).where(inArray(payrollLines.runId, draftIds));
+      await db.delete(payrollRuns).where(inArray(payrollRuns.id, draftIds));
     }
     res.json({ success: true, deleted: draftIds.length, skipped: ids.length - draftIds.length });
   } catch (err) { return next(err); }
@@ -556,7 +556,7 @@ router.post('/runs/:runId/payslips/bulk-delete', async (req: AuthenticatedReques
     const [run] = await db.select().from(payrollRuns).where(and(eq(payrollRuns.id, runId), eq(payrollRuns.orgId, orgId))).limit(1);
     if (!run) throw new AppError('Payroll run not found.', 404);
     if (run.status !== 'draft') throw new AppError('Can only delete payslips from draft runs.', 400);
-    await db.delete(payrollLines).where(and(eq(payrollLines.runId, runId), sql`${payrollLines.employeeId} = ANY(${employeeIds})`));
+    await db.delete(payrollLines).where(and(eq(payrollLines.runId, runId), inArray(payrollLines.employeeId, employeeIds)));
     res.json({ success: true, deleted: employeeIds.length });
   } catch (err) { return next(err); }
 });
