@@ -84,8 +84,22 @@ export function PayslipsPage() {
     const nhisVal = (line as any).nhis || 0;
     const intDedArr = Array.isArray((line as any).internalDeductions) ? (line as any).internalDeductions : [];
     const intDedTotal = intDedArr.reduce((s: number, d: any) => s + (d.amount || 0), 0);
+    const gp = line.grossPay;
+    const bp = employee?.basicSalaryPct ?? 50;
+    const hp = employee?.housingPct ?? 20;
+    const tp = employee?.transportPct ?? 10;
+    const up = employee?.utilitiesPct ?? 10;
+    const mp = employee?.mealsPct ?? 5;
+    const op = employee?.othersPct ?? 5;
+    const sumPct = bp + hp + tp + up + mp + op;
+    const basicSalaryAmt = Math.round(gp * bp / sumPct);
+    const housingAmt = Math.round(gp * hp / sumPct);
+    const transportAmt = Math.round(gp * tp / sumPct);
+    const utilitiesAmt = Math.round(gp * up / sumPct);
+    const mealsAmt = Math.round(gp * mp / sumPct);
+    const othersAmt = gp - basicSalaryAmt - housingAmt - transportAmt - utilitiesAmt - mealsAmt;
     const calc = calculation || {
-      grossPay: line.grossPay, basic: line.basic,
+      grossPay: gp, basic: line.basic,
       monthlyPAYE: line.paye,
       pensionEE: line.pensionEmployee,
       nhf: line.nhf,
@@ -93,6 +107,7 @@ export function PayslipsPage() {
       otherDeductions: line.otherDeductions,
       internalDeductions: intDedArr,
       netPay: line.netPay,
+      basicSalaryAmt, housingAmt, transportAmt, utilitiesAmt, mealsAmt, othersAmt,
     };
     const intDedHtml = intDedArr.map((d: any) => `<tr><td style="padding-left:20px">${d.description}</td><td style="text-align:right">${formatNaira(d.amount || 0)}</td></tr>`).join('');
 
@@ -136,8 +151,13 @@ export function PayslipsPage() {
     <table>
       <thead><tr><th>Earnings</th><th style="text-align:right">Amount</th></tr></thead>
       <tbody>
-        <tr><td>Gross Salary</td><td style="text-align:right">${formatNaira(calc.grossPay)}</td></tr>
-        <tr><td>Basic Salary</td><td style="text-align:right">${formatNaira(calc.basic)}</td></tr>
+        <tr><td>Basic Salary</td><td style="text-align:right">${formatNaira(calc.basicSalaryAmt || calc.grossPay)}</td></tr>
+        <tr><td>Housing Allowance</td><td style="text-align:right">${formatNaira(calc.housingAmt || 0)}</td></tr>
+        <tr><td>Transport Allowance</td><td style="text-align:right">${formatNaira(calc.transportAmt || 0)}</td></tr>
+        <tr><td>Utilities Allowance</td><td style="text-align:right">${formatNaira(calc.utilitiesAmt || 0)}</td></tr>
+        <tr><td>Meals Allowance</td><td style="text-align:right">${formatNaira(calc.mealsAmt || 0)}</td></tr>
+        <tr><td>Others</td><td style="text-align:right">${formatNaira(calc.othersAmt || 0)}</td></tr>
+        <tr style="font-weight:bold;border-top:1px solid #ccc"><td>Total Gross</td><td style="text-align:right">${formatNaira(calc.grossPay)}</td></tr>
       </tbody>
     </table>
     <table>
@@ -314,8 +334,33 @@ export function PayslipsPage() {
                     </div>
                     <div className="border-t border-slate-100 pt-4 space-y-2 text-sm">
                       <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">Earnings</h4>
-                      <div className="flex justify-between"><span className="text-slate-500">Gross Salary</span><span className="font-mono">{formatNaira(line.grossPay)}</span></div>
-                      <div className="flex justify-between"><span className="text-slate-500">Basic Salary</span><span className="font-mono">{formatNaira(line.basic)}</span></div>
+                      {(() => {
+                        const gp = line.grossPay;
+                        const bp = employee?.basicSalaryPct ?? 50;
+                        const hp = employee?.housingPct ?? 20;
+                        const tp = employee?.transportPct ?? 10;
+                        const up = employee?.utilitiesPct ?? 10;
+                        const mp = employee?.mealsPct ?? 5;
+                        const op = employee?.othersPct ?? 5;
+                        const sumPct = bp + hp + tp + up + mp + op;
+                        const basicAmt = Math.round(gp * bp / sumPct);
+                        const housingAmt = Math.round(gp * hp / sumPct);
+                        const transportAmt = Math.round(gp * tp / sumPct);
+                        const utilitiesAmt = Math.round(gp * up / sumPct);
+                        const mealsAmt = Math.round(gp * mp / sumPct);
+                        const othersAmt = gp - basicAmt - housingAmt - transportAmt - utilitiesAmt - mealsAmt;
+                        return (
+                          <div className="space-y-1">
+                            <div className="flex justify-between"><span className="text-slate-500">Basic Salary</span><span className="font-mono">{formatNaira(basicAmt)}</span></div>
+                            <div className="flex justify-between"><span className="text-slate-500">Housing Allowance</span><span className="font-mono">{formatNaira(housingAmt)}</span></div>
+                            <div className="flex justify-between"><span className="text-slate-500">Transport Allowance</span><span className="font-mono">{formatNaira(transportAmt)}</span></div>
+                            <div className="flex justify-between"><span className="text-slate-500">Utilities Allowance</span><span className="font-mono">{formatNaira(utilitiesAmt)}</span></div>
+                            <div className="flex justify-between"><span className="text-slate-500">Meals Allowance</span><span className="font-mono">{formatNaira(mealsAmt)}</span></div>
+                            <div className="flex justify-between"><span className="text-slate-500">Others</span><span className="font-mono">{formatNaira(othersAmt)}</span></div>
+                            <div className="flex justify-between font-semibold border-t border-slate-100 pt-1"><span className="text-slate-700">Total Gross</span><span className="font-mono">{formatNaira(gp)}</span></div>
+                          </div>
+                        );
+                      })()}
                     </div>
                     <div className="border-t border-slate-100 pt-4 space-y-2 text-sm">
                       <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">Statutory Deductions</h4>

@@ -9,7 +9,7 @@ import {
   User, Phone, Briefcase, CreditCard,
   CheckCircle, XCircle, Save, GraduationCap,
   Award, Building2, Heart, Shield, Users, Plus, Trash2, MapPin, Upload,
-  Download, ToggleLeft, ToggleRight, AlertCircle, Settings, Trash
+  Download, ToggleLeft, ToggleRight, AlertCircle, Settings, Trash, DollarSign
 } from 'lucide-react';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
 import { exportToCsv } from '../../lib/csvTemplates';
@@ -122,6 +122,8 @@ const emptyForm = {
   pensionablePortionPct: 80, pensionRatePct: 8,
   nhisApplicable: false, nhfApplicable: true,
   annualRent: 0, annualMortgageInterest: 0, annualLifeAssurance: 0,
+  basicSalaryPct: 50, housingPct: 20, transportPct: 10,
+  utilitiesPct: 10, mealsPct: 5, othersPct: 5,
 };
 
 const emptyEduQual = { level: '', institution: '', course: '', year: '' };
@@ -235,6 +237,12 @@ export function EmployeesPage() {
       annualRent: Math.round((emp.annualRent || 0) / 100),
       annualMortgageInterest: Math.round((emp.annualMortgageInterest || 0) / 100),
       annualLifeAssurance: Math.round((emp.annualLifeAssurance || 0) / 100),
+      basicSalaryPct: emp.basicSalaryPct ?? 50,
+      housingPct: emp.housingPct ?? 20,
+      transportPct: emp.transportPct ?? 10,
+      utilitiesPct: emp.utilitiesPct ?? 10,
+      mealsPct: emp.mealsPct ?? 5,
+      othersPct: emp.othersPct ?? 5,
     });
     setEduQuals(emp.eduQuals || []);
     setProfQuals(emp.profQuals || []);
@@ -555,6 +563,25 @@ export function EmployeesPage() {
                 </div>
               </div>
 
+              {/* 3c. Salary Breakdown */}
+              <div className="space-y-4 border-t border-slate-100 pt-5">
+                <SectionHeader icon={DollarSign} title="Salary Breakdown (%)" desc="Percentages of gross salary allocated to each component." />
+                <div className="grid grid-cols-3 gap-4">
+                  <Field label="Basic Salary (%)" value={form.basicSalaryPct} onChange={f('basicSalaryPct')} type="number" min={0} max={100} placeholder="50" />
+                  <Field label="Housing Allowance (%)" value={form.housingPct} onChange={f('housingPct')} type="number" min={0} max={100} placeholder="20" />
+                  <Field label="Transport Allowance (%)" value={form.transportPct} onChange={f('transportPct')} type="number" min={0} max={100} placeholder="10" />
+                  <Field label="Utilities Allowance (%)" value={form.utilitiesPct} onChange={f('utilitiesPct')} type="number" min={0} max={100} placeholder="10" />
+                  <Field label="Meals Allowance (%)" value={form.mealsPct} onChange={f('mealsPct')} type="number" min={0} max={100} placeholder="5" />
+                  <Field label="Others (%)" value={form.othersPct} onChange={f('othersPct')} type="number" min={0} max={100} placeholder="5" />
+                </div>
+                {(() => {
+                  const total = Number(form.basicSalaryPct || 0) + Number(form.housingPct || 0) + Number(form.transportPct || 0) + Number(form.utilitiesPct || 0) + Number(form.mealsPct || 0) + Number(form.othersPct || 0);
+                  return total === 100
+                    ? <p className="text-xs text-emerald-600 font-medium">Total: {total}% ✓</p>
+                    : <p className="text-xs text-rose-600 font-medium">Total: {total}% — must equal 100%</p>;
+                })()}
+              </div>
+
               {/* 4. Educational Qualifications */}
               <RepeatableSection
                 title="Educational Qualifications"
@@ -696,6 +723,12 @@ export function EmployeesPage() {
             annualRent: Math.round(parseFloat(row[headers.indexOf('annualRent (NGN)')] || '0') * 100),
             annualMortgageInterest: Math.round(parseFloat(row[headers.indexOf('annualMortgageInterest (NGN)')] || '0') * 100),
             annualLifeAssurance: Math.round(parseFloat(row[headers.indexOf('annualLifeAssurance (NGN)')] || '0') * 100),
+            basicSalaryPct: parseInt(row[headers.indexOf('basicSalaryPct (%)')]?.trim()) || 50,
+            housingPct: parseInt(row[headers.indexOf('housingPct (%)')]?.trim()) || 20,
+            transportPct: parseInt(row[headers.indexOf('transportPct (%)')]?.trim()) || 10,
+            utilitiesPct: parseInt(row[headers.indexOf('utilitiesPct (%)')]?.trim()) || 10,
+            mealsPct: parseInt(row[headers.indexOf('mealsPct (%)')]?.trim()) || 5,
+            othersPct: parseInt(row[headers.indexOf('othersPct (%)')]?.trim()) || 5,
           })}
         />
       )}

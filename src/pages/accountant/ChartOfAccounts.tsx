@@ -30,6 +30,7 @@ interface Account {
   description?: string | null;
   isActive: boolean;
   isSystem: boolean;
+  openingBalance?: number;
 }
 
 type AccountFormState = {
@@ -40,6 +41,7 @@ type AccountFormState = {
   parentId: string;
   description: string;
   isActive: boolean;
+  openingBalance: string;
 };
 
 const ACCOUNT_TYPES: Account['type'][] = ['asset', 'liability', 'equity', 'revenue', 'expense'];
@@ -63,6 +65,7 @@ const EMPTY_FORM: AccountFormState = {
   parentId: '',
   description: '',
   isActive: true,
+  openingBalance: '',
 };
 
 interface TreeNode extends Account {
@@ -164,7 +167,7 @@ export function ChartOfAccountsPage() {
 
   function openAddModal() { setForm(EMPTY_FORM); setModalMode('add'); setEditingId(null); setFormError(null); setModalOpen(true); }
   function openEditModal(account: Account) {
-    setForm({ code: account.code, name: account.name, type: account.type, subType: account.subType || '', parentId: account.parentId || '', description: account.description || '', isActive: account.isActive });
+    setForm({ code: account.code, name: account.name, type: account.type, subType: account.subType || '', parentId: account.parentId || '', description: account.description || '', isActive: account.isActive, openingBalance: account.openingBalance ? (account.openingBalance / 100).toFixed(2) : '' });
     setModalMode('edit'); setEditingId(account.id); setFormError(null); setModalOpen(true);
   }
   function closeModal() { setModalOpen(false); setEditingId(null); setFormError(null); }
@@ -172,7 +175,9 @@ export function ChartOfAccountsPage() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.code.trim() || !form.name.trim()) { setFormError('Account code and name are required.'); return; }
-    const payload = { code: form.code.trim(), name: form.name.trim(), type: form.type, subType: form.subType.trim() || null, parentId: form.parentId || null, description: form.description.trim() || null, isActive: form.isActive };
+    const payload: any = { code: form.code.trim(), name: form.name.trim(), type: form.type, subType: form.subType.trim() || null, parentId: form.parentId || null, description: form.description.trim() || null, isActive: form.isActive };
+    const ob = parseFloat(form.openingBalance);
+    if (!isNaN(ob) && ob >= 0) payload.openingBalance = Math.round(ob * 100);
     if (modalMode === 'add') createMutation.mutate(payload);
     else if (editingId) updateMutation.mutate({ id: editingId, payload });
   }
@@ -371,6 +376,12 @@ export function ChartOfAccountsPage() {
                 <label className="block text-xs font-medium text-slate-500 mb-1">Description</label>
                 <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
               </div>
+              {modalMode === 'edit' && (
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Opening Balance (NGN)</label>
+                  <input type="number" step="0.01" min="0" value={form.openingBalance} onChange={(e) => setForm({ ...form, openingBalance: e.target.value })} placeholder="0.00" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                </div>
+              )}
               <label className="flex items-center gap-2 text-sm text-slate-600">
                 <input type="checkbox" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} className="rounded border-slate-300" />
                 Active

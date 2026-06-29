@@ -22,6 +22,7 @@ const accountSchema = z.object({
   parentId: z.string().uuid().optional().nullable(),
   description: z.string().optional().nullable(),
   isActive: z.boolean().optional(),
+  openingBalance: z.number().optional(),
 });
 
 // GET /api/accountant/accounts

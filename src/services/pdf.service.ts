@@ -410,12 +410,33 @@ export async function generatePayslipPDF(payrollLineId: string): Promise<Buffer>
     let earningsY = y + 5;
     doc.font('Helvetica').fontSize(8).fillColor(TEXT_PRIMARY);
 
+    const gp = line.grossPay;
+    const bp = employee.basicSalaryPct ?? 50;
+    const hp = employee.housingPct ?? 20;
+    const tp = employee.transportPct ?? 10;
+    const up = employee.utilitiesPct ?? 10;
+    const mp = employee.mealsPct ?? 5;
+    const op = employee.othersPct ?? 5;
+    const sumPct = bp + hp + tp + up + mp + op;
+    const basicAmt = Math.round(gp * bp / sumPct);
+    const housingAmt = Math.round(gp * hp / sumPct);
+    const transportAmt = Math.round(gp * tp / sumPct);
+    const utilitiesAmt = Math.round(gp * up / sumPct);
+    const mealsAmt = Math.round(gp * mp / sumPct);
+    const othersAmt = gp - basicAmt - housingAmt - transportAmt - utilitiesAmt - mealsAmt;
+
     const earns = [
-      { name: 'Gross Salary', val: line.grossPay },
-      { name: 'Basic Salary', val: line.basic },
+      { name: 'Basic Salary', val: basicAmt },
+      { name: 'Housing Allowance', val: housingAmt },
+      { name: 'Transport Allowance', val: transportAmt },
+      { name: 'Utilities Allowance', val: utilitiesAmt },
+      { name: 'Meals Allowance', val: mealsAmt },
+      { name: 'Others', val: othersAmt },
+      { name: 'Total Gross', val: gp, bold: true },
     ];
 
     earns.forEach(e => {
+      if (e.bold) doc.font('Helvetica-Bold'); else doc.font('Helvetica');
       doc.text(e.name, startX + 8, earningsY);
       doc.text(formatNaira(e.val), startX + 160, earningsY, { align: 'right', width: 80 });
       earningsY += 16;

@@ -673,6 +673,12 @@ export const employees = pgTable('employees', {
   annualRent: bigint('annual_rent', { mode: 'number' }).default(0).notNull(),
   annualMortgageInterest: bigint('annual_mortgage_interest', { mode: 'number' }).default(0).notNull(),
   annualLifeAssurance: bigint('annual_life_assurance', { mode: 'number' }).default(0).notNull(),
+  basicSalaryPct: integer('basic_salary_pct').default(50).notNull(),
+  housingPct: integer('housing_pct').default(20).notNull(),
+  transportPct: integer('transport_pct').default(10).notNull(),
+  utilitiesPct: integer('utilities_pct').default(10).notNull(),
+  mealsPct: integer('meals_pct').default(5).notNull(),
+  othersPct: integer('others_pct').default(5).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 

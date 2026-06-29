@@ -49,6 +49,12 @@ const createEmployeeSchema = z.object({
   annualRent: z.number().int().nonnegative().optional().default(0),
   annualMortgageInterest: z.number().int().nonnegative().optional().default(0),
   annualLifeAssurance: z.number().int().nonnegative().optional().default(0),
+  basicSalaryPct: z.number().int().min(0).max(100).optional().default(50),
+  housingPct: z.number().int().min(0).max(100).optional().default(20),
+  transportPct: z.number().int().min(0).max(100).optional().default(10),
+  utilitiesPct: z.number().int().min(0).max(100).optional().default(10),
+  mealsPct: z.number().int().min(0).max(100).optional().default(5),
+  othersPct: z.number().int().min(0).max(100).optional().default(5),
   internalDeductions: z.array(z.object({ description: z.string(), amount: z.number().int().nonnegative() })).optional().default([])
 });
 
@@ -158,6 +164,12 @@ router.post('/employees', async (req: AuthenticatedRequest, res: Response, next:
         annualRent: body.annualRent ?? 0,
         annualMortgageInterest: body.annualMortgageInterest ?? 0,
         annualLifeAssurance: body.annualLifeAssurance ?? 0,
+        basicSalaryPct: body.basicSalaryPct ?? 50,
+        housingPct: body.housingPct ?? 20,
+        transportPct: body.transportPct ?? 10,
+        utilitiesPct: body.utilitiesPct ?? 10,
+        mealsPct: body.mealsPct ?? 5,
+        othersPct: body.othersPct ?? 5,
         orgId,
       })
       .returning();
