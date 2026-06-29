@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, accountantApi } from '../../lib/api';
+import { api, accountantApi, downloadBlob } from '../../lib/api';
 import {
   Plus,
   Search,
@@ -187,19 +187,15 @@ export function ChartOfAccountsPage() {
   const handleExportCsv = async () => {
     try {
       const blob = await accountantApi.exportAccountsCsv();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = 'chart_of_accounts.csv'; a.click();
-      URL.revokeObjectURL(url);
-    } catch { /* ignore */ }
+      downloadBlob(blob, 'chart_of_accounts.csv');
+    } catch { alert('Failed to export CSV. Please try again.'); }
   };
 
   const handlePrintPdf = async () => {
     try {
       const blob = await accountantApi.getAccountsPdf();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.href = url; a.download = 'chart_of_accounts.pdf'; a.click();
-    } catch { /* ignore */ }
+      downloadBlob(blob, 'chart_of_accounts.pdf');
+    } catch { alert('Failed to export PDF. Please try again.'); }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { reportsApi, accountantApi } from '../../lib/api';
+import { reportsApi, accountantApi, downloadBlob } from '../../lib/api';
 import { Loader2, AlertCircle, CheckCircle2, Download, Search, Upload, FileText, X, RefreshCw, ExternalLink, Pencil } from 'lucide-react';
 import { downloadCsv, exportToCsv, CSV_TEMPLATES } from '../../lib/csvTemplates';
 
@@ -106,17 +106,12 @@ export function TrialBalancePage() {
     try {
       if (format === 'csv') {
         const blob = await reportsApi.getTrialBalance({ startDate: sDate, endDate: eDate, format: 'csv' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = `trial_balance_${sDate}_to_${eDate}.csv`; a.click();
-        URL.revokeObjectURL(url);
+        downloadBlob(blob, `trial_balance_${sDate}_to_${eDate}.csv`);
       } else {
         const blob = await reportsApi.getTrialBalance({ startDate: sDate, endDate: eDate, format: 'pdf' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = url; a.download = `trial_balance_${sDate}_to_${eDate}.pdf`; a.click();
-        URL.revokeObjectURL(url);
+        downloadBlob(blob, `trial_balance_${sDate}_to_${eDate}.pdf`);
       }
-    } catch { /* ignore */ }
+    } catch { alert('Failed to export. Please try again.'); }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -452,9 +447,8 @@ function ReportShell({ reportType, title }: ReportPageProps) {
         const res = await reportsApi.getAgedPayables({ format });
         blob = res;
       }
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.href = url; a.download = `${reportType}_${new Date().toISOString().split('T')[0]}.pdf`; a.click();
-    } catch { /* ignore */ }
+      downloadBlob(blob, `${reportType}_${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch { alert('Failed to export PDF. Please try again.'); }
   };
 
   const handleImportOB = async () => {

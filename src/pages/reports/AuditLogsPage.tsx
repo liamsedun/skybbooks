@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { auditLogApi } from '../../lib/api';
+import { auditLogApi, downloadBlob } from '../../lib/api';
 import { Loader2, AlertCircle, Search, Download } from 'lucide-react';
 import { exportToCsv } from '../../lib/csvTemplates';
 
@@ -30,9 +30,9 @@ export function AuditLogsPage() {
   const handleDownloadPdf = async () => {
     try {
       const blob = await auditLogApi.getAuditLogsPdf({ action: actionFilter || undefined, entityType: entityFilter || undefined });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.href = url; a.download = `audit_logs_${new Date().toISOString().split('T')[0]}.pdf`; a.click();
+      downloadBlob(blob, `audit_logs_${new Date().toISOString().split('T')[0]}.pdf`);
     } catch (err) {
+      alert('Failed to export PDF. Please try again.');
       console.error('PDF download failed', err);
     }
   };

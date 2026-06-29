@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '../../lib/api';
+import { api, downloadBlob } from '../../lib/api';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
 import {
   Search, Upload, Loader2, AlertCircle, X, Plus, FileMinus, ChevronRight,
@@ -123,8 +123,8 @@ export function PurchaseCreditNotesPage() {
               try { const list = Array.isArray(notes) ? notes : []; if (!list.length) return;
                 const rows = list.map((n: any) => [n.vcNumber, n.vendor?.name||'', new Date(n.date).toLocaleDateString('en-GB'), (n.total/100).toFixed(2), n.status]);
                 const res = await api.post('/reports/custom/pdf', { title:'Vendor Credit Notes', headers:['VC #','Vendor','Date','Total','Status'], rows }, { responseType:'blob' });
-                const url = URL.createObjectURL(res.data); const a = document.createElement('a'); a.href = url; a.download = `vendor_credit_notes_${new Date().toISOString().split('T')[0]}.pdf`; a.click();
-              } catch (e) { console.error(e); }
+                downloadBlob(res.data, `vendor_credit_notes_${new Date().toISOString().split('T')[0]}.pdf`);
+              } catch (e) { alert('Failed to export PDF.'); console.error(e); }
             }}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded-lg hover:bg-slate-50 transition shadow-sm">
             <FileText size={14} /> PDF
