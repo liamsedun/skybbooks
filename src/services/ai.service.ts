@@ -6,9 +6,10 @@
 import { GoogleGenAI, Type } from '@google/genai';
 import { z } from 'zod';
 import crypto from 'crypto';
-import { db, auditLog, invoiceLines, invoices, organisations } from '../db/schema';
-import { eq, and, isNotNull } from 'drizzle-orm';
-import { getIncomeStatement } from './ledger.service';
+import { db, auditLog, invoiceLines, invoices, bills, organisations, bankAccounts, contacts, fixedAssets, inventoryLots } from '../db/schema';
+import { eq, and, isNotNull, gte, lte, sql } from 'drizzle-orm';
+import { getIncomeStatement, getCashFlowStatement } from './ledger.service';
+import { getPayrollSummary } from './payroll.service';
 
 // Initialize Gemini SDK with telemetry headers
 const apiKey = process.env.GEMINI_API_KEY;
@@ -228,14 +229,13 @@ export class AIService {
   }
 
   /**
-   * c) Financial Insights
+   * c) Financial Insights — Computed from live module data (no Gemini call)
    */
   async generateMonthlyInsights(
     orgId: string,
     month: Date,
     userId: string
   ): Promise<Array<{ title: string; detail: string; severity: 'info' | 'warning' | 'alert'; metric?: string }>> {
-    // Generate cache key
     const year = month.getFullYear();
     const mNum = month.getMonth();
     const cacheKey = `${orgId}-${year}-${mNum}`;
@@ -245,67 +245,255 @@ export class AIService {
       return insightsCache[cacheKey].data;
     }
 
-    // Pull Current vs Prior Month income statement data
     const startOfCurrentMonth = new Date(year, mNum, 1);
     const endOfCurrentMonth = new Date(year, mNum + 1, 0, 23, 59, 59, 999);
-
     const startOfPriorMonth = new Date(year, mNum - 1, 1);
     const endOfPriorMonth = new Date(year, mNum, 0, 23, 59, 59, 999);
 
-    const currentMonthData = await getIncomeStatement(orgId, startOfCurrentMonth, endOfCurrentMonth);
-    const priorMonthData = await getIncomeStatement(orgId, startOfPriorMonth, endOfPriorMonth);
+    // Gather all module data in parallel
+    const [
+      currentMonthData,
+      priorMonthData,
+      cashFlow,
+      bankAccs,
+      customerBal,
+      vendorBal,
+      faData,
+      invData,
+      payrollData,
+      invoiceCount,
+      billCount,
+    ] = await Promise.all([
+      getIncomeStatement(orgId, startOfCurrentMonth, endOfCurrentMonth),
+      getIncomeStatement(orgId, startOfPriorMonth, endOfPriorMonth),
+      getCashFlowStatement(orgId, startOfCurrentMonth, endOfCurrentMonth),
+      db.select().from(bankAccounts).where(eq(bankAccounts.orgId, orgId)),
+      db.select({ total: sql<number>`coalesce(sum(${contacts.balance}), 0)` })
+        .from(contacts).where(and(eq(contacts.orgId, orgId), eq(contacts.type, 'customer'))),
+      db.select({ total: sql<number>`coalesce(sum(${contacts.balance}), 0)` })
+        .from(contacts).where(and(eq(contacts.orgId, orgId), eq(contacts.type, 'vendor'))),
+      db.select({
+        totalCost: sql<number>`coalesce(sum(${fixedAssets.purchaseCost}), 0)`,
+        totalDepr: sql<number>`coalesce(sum(${fixedAssets.accumulatedDepreciation}), 0)`,
+        count: sql<number>`count(*)`,
+      }).from(fixedAssets).where(eq(fixedAssets.orgId, orgId)),
+      db.select({
+        totalValue: sql<number>`coalesce(sum(${inventoryLots.quantity}::numeric * ${inventoryLots.costPerUnit}), 0)`,
+        itemCount: sql<number>`count(distinct ${inventoryLots.itemId})`,
+      }).from(inventoryLots).where(eq(inventoryLots.orgId, orgId)),
+      getPayrollSummary(orgId, year).catch(() => ({
+        monthlyTotals: [],
+        annualTotals: { gross: 0, net: 0, paye: 0, pension: 0, nhf: 0 },
+      })),
+      db.select({ count: sql<number>`count(*)` })
+        .from(invoices).where(and(eq(invoices.orgId, orgId), gte(invoices.date, startOfCurrentMonth), lte(invoices.date, endOfCurrentMonth))),
+      db.select({ count: sql<number>`count(*)` })
+        .from(bills).where(and(eq(bills.orgId, orgId), gte(bills.date, startOfCurrentMonth), lte(bills.date, endOfCurrentMonth))),
+    ]);
 
-    const financialData = {
-      currentMonth: currentMonthData,
-      priorMonth: priorMonthData,
+    const formatKobo = (v: number) => {
+      const abs = Math.abs(v);
+      const sign = v < 0 ? '-' : '';
+      if (abs >= 100_000_000) return `${sign}₦${(abs / 100_000_000).toFixed(1)}M`;
+      if (abs >= 100_000) return `${sign}₦${(abs / 100_000).toFixed(1)}L`;
+      return `${sign}₦${(abs / 100).toLocaleString('en-NG', { minimumFractionDigits: 0 })}`;
     };
 
-    const prompt = `You are a CFO assistant for a Nigerian SME. Analyse this financial data and provide 3-5 actionable insights in plain English. Focus on: significant changes, cash flow concerns, profitability trends. Data: ${JSON.stringify(
-      financialData
-    )}. Return JSON array of insight objects: { title, detail, severity: info|warning|alert, metric? }`;
+    const insights: Array<{ title: string; detail: string; severity: 'info' | 'warning' | 'alert'; metric?: string }> = [];
 
-    try {
-      const response = await withRetry(() =>
-        ai.models.generateContent({
-          model: 'gemini-3.5-flash',
-          contents: prompt,
-          config: {
-            responseMimeType: 'application/json',
-            responseSchema: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  title: { type: Type.STRING, description: 'Visual short, actionable title.' },
-                  detail: { type: Type.STRING, description: 'In-depth brief explanation focusing on trends / cash flows.' },
-                  severity: {
-                    type: Type.STRING,
-                    description: "Severity level of transaction. Must be strictly 'info', 'warning', or 'alert'.",
-                  },
-                  metric: { type: Type.STRING, description: "Highly scannable visual metric label (e.g., '+22% MoM' or '₦450k decrease')." },
-                },
-                required: ['title', 'detail', 'severity'],
-              },
-            },
-          },
-        })
-      );
-
-      const responseText = response.text || '[]';
-      const parsed = JSON.parse(responseText);
-
-      // Cache for 24 hours (24 * 60 * 60 * 1000)
-      insightsCache[cacheKey] = {
-        expiresAt: now + 24 * 60 * 60 * 1000,
-        data: parsed,
-      };
-
-      await logAICall(orgId, userId, 'FINANCIAL_INSIGHTS', prompt, 'success');
-      return parsed;
-    } catch (error: any) {
-      await logAICall(orgId, userId, 'FINANCIAL_INSIGHTS', prompt, 'failure', error?.message || String(error));
-      throw error;
+    // --- 1. Revenue ---
+    const revenue = currentMonthData.revenue.total;
+    const priorRevenue = priorMonthData.revenue.total;
+    if (revenue === 0) {
+      insights.push({
+        title: 'Zero Revenue Recorded',
+        detail: `No operating revenue was booked in ${month.toLocaleString('en-US', { month: 'long', year: 'numeric' })}. Immediate attention is required to resume invoicing and sales to prevent a severe operational cash crunch.`,
+        severity: 'alert',
+        metric: '₦0 Revenue',
+      });
+    } else {
+      const revDiff = revenue - priorRevenue;
+      const revPct = priorRevenue > 0 ? ((revDiff / priorRevenue) * 100).toFixed(1) : '+N/A';
+      insights.push({
+        title: revenue > priorRevenue ? 'Revenue Growth' : 'Revenue Decline',
+        detail: `Revenue of ${formatKobo(revenue)} was recorded ${revDiff >= 0 ? 'up' : 'down'} ${formatKobo(Math.abs(revDiff))} MoM.${revenue > priorRevenue ? ' This signals healthy sales activity.' : ' Review pipeline and marketing efforts.'}`,
+        severity: revDiff < 0 ? 'warning' : 'info',
+        metric: `${revPct}% MoM`,
+      });
     }
+
+    // --- 2. Gross Profit ---
+    const gp = currentMonthData.grossProfit;
+    const priorGp = priorMonthData.grossProfit;
+    const gpMargin = revenue > 0 ? (gp / revenue) * 100 : 0;
+    const cogs = currentMonthData.costOfGoodsSold.total;
+    if (gp < 0) {
+      const cogsItems = currentMonthData.costOfGoodsSold.accounts || [];
+      const bigCogs = cogsItems.sort((a: any, b: any) => b.balance - a.balance).slice(0, 2);
+      let cogsDetail = `Cost of Goods Sold (${formatKobo(cogs)}) exceeded revenue, producing negative gross profit of ${formatKobo(gp)}.`;
+      if (bigCogs.length > 0) {
+        cogsDetail += ` Largest COGS components: ${bigCogs.map((c: any) => `${c.name} (${formatKobo(c.balance)})`).join(', ')}.`;
+      }
+      insights.push({
+        title: 'Negative Gross Profit',
+        detail: cogsDetail + ` Immediate review of cost classification and pricing strategy is required.`,
+        severity: 'alert',
+        metric: formatKobo(gp),
+      });
+    } else if (gpMargin < 20) {
+      insights.push({
+        title: 'Low Gross Margin Warning',
+        detail: `Gross profit margin is ${gpMargin.toFixed(1)}%, which is below the healthy 20%+ threshold. Revenue of ${formatKobo(revenue)} yielded gross profit of ${formatKobo(gp)} after ${formatKobo(cogs)} in COGS. Consider cost reduction or price adjustments.`,
+        severity: 'warning',
+        metric: `${gpMargin.toFixed(1)}% Margin`,
+      });
+    }
+
+    // --- 3. Net Profit / Loss ---
+    const netProfit = currentMonthData.netProfit;
+    const priorNet = priorMonthData.netProfit;
+    if (netProfit < 0) {
+      const deprAccounts = currentMonthData.expense.accounts.filter((a: any) =>
+        a.name.toLowerCase().includes('depreciation') || a.name.toLowerCase().includes('amortisation')
+      );
+      const totalDepr = deprAccounts.reduce((s: number, a: any) => s + a.balance, 0);
+      let detail = `Net loss of ${formatKobo(netProfit)} was recorded for the period.`;
+      if (totalDepr > 0) {
+        detail += ` Non-cash depreciation/amortisation of ${formatKobo(totalDepr)} accounts for ${Math.abs(totalDepr / (netProfit || 1) * 100).toFixed(0)}% of the deficit.`;
+      }
+      if (cogs > revenue) {
+        detail += ` The primary driver is COGS (${formatKobo(cogs)}) exceeding revenue.`;
+      }
+      insights.push({
+        title: 'Net Profit Deficit',
+        detail,
+        severity: 'alert',
+        metric: formatKobo(netProfit),
+      });
+    } else if (netProfit > 0) {
+      const pctChange = priorNet > 0 ? ((netProfit - priorNet) / priorNet * 100).toFixed(1) : '+N/A';
+      insights.push({
+        title: netProfit >= priorNet ? 'Profitability Improving' : 'Profitability Declining',
+        detail: `Net profit of ${formatKobo(netProfit)} was achieved, ${netProfit >= priorNet ? 'up' : 'down'} from ${formatKobo(priorNet)} last month (${pctChange}% MoM).`,
+        severity: netProfit >= priorNet ? 'info' : 'warning',
+        metric: `${pctChange}% MoM`,
+      });
+    }
+
+    // --- 4. Cash & Bank Position ---
+    const totalCash = bankAccs.reduce((sum, b) => sum + b.currentBalance, 0);
+    const cashChange = cashFlow.netChangeInCash;
+    if (totalCash === 0) {
+      insights.push({
+        title: 'No Bank Accounts Configured',
+        detail: 'No bank accounts are linked. Cash position cannot be monitored. Configure bank accounts to enable real-time cash flow tracking.',
+        severity: 'warning',
+        metric: '₦0 Cash',
+      });
+    } else if (cashChange < 0) {
+      const pctBurn = totalCash > 0 ? Math.abs(cashChange / totalCash * 100).toFixed(0) : '0';
+      insights.push({
+        title: 'Negative Cash Flow',
+        detail: `Cash balance of ${formatKobo(totalCash)} across ${bankAccs.length} account(s) decreased by ${formatKobo(Math.abs(cashChange))} this period (${pctBurn}% burn rate). Monitor outflows closely to avoid liquidity pressure.`,
+        severity: 'warning',
+        metric: formatKobo(cashChange),
+      });
+    } else {
+      insights.push({
+        title: 'Positive Cash Position',
+        detail: `Total cash of ${formatKobo(totalCash)} across ${bankAccs.length} account(s) with net inflow of ${formatKobo(cashChange)} this period.`,
+        severity: 'info',
+        metric: formatKobo(totalCash),
+      });
+    }
+
+    // --- 5. Accounts Receivable ---
+    const arTotal = Number(customerBal[0]?.total || 0);
+    if (arTotal > 0) {
+      const arRatio = revenue > 0 ? (arTotal / revenue) : 0;
+      insights.push({
+        title: arRatio > 2 ? 'High Receivables Outstanding' : 'Receivables Within Range',
+        detail: `Customers owe ${formatKobo(arTotal)} in outstanding invoices. This represents ${arRatio.toFixed(1)}x monthly revenue. ${arRatio > 2 ? 'Follow up on collections to improve cash conversion.' : 'Collection efforts are on track.'}`,
+        severity: arRatio > 2 ? 'warning' : 'info',
+        metric: formatKobo(arTotal),
+      });
+    }
+
+    // --- 6. Accounts Payable ---
+    const apTotal = Number(vendorBal[0]?.total || 0);
+    if (apTotal > 0) {
+      insights.push({
+        title: apTotal > totalCash && totalCash > 0 ? 'Payables Exceed Cash Reserves' : 'Vendor Payables Status',
+        detail: `Outstanding vendor payables total ${formatKobo(apTotal)}. ${apTotal > totalCash && totalCash > 0 ? 'This exceeds available cash of ' + formatKobo(totalCash) + ', creating payment risk.' : 'Manage payment schedules within available cash flow.'}`,
+        severity: apTotal > totalCash && totalCash > 0 ? 'warning' : 'info',
+        metric: formatKobo(apTotal),
+      });
+    }
+
+    // --- 7. Payroll ---
+    const thisMonthPayroll = payrollData.monthlyTotals?.[mNum];
+    const payrollCost = thisMonthPayroll?.gross || 0;
+    if (payrollCost > 0) {
+      const pctOfRevenue = revenue > 0 ? (payrollCost / revenue * 100).toFixed(1) : 'N/A';
+      insights.push({
+        title: payrollCost > revenue * 0.5 ? 'High Payroll-to-Revenue Ratio' : 'Payroll Costs',
+        detail: `Payroll gross of ${formatKobo(payrollCost)} was processed (${thisMonthPayroll?.runsCount || 0} run(s)). This is ${pctOfRevenue}% of revenue.${payrollCost > revenue * 0.5 ? ' Ratios above 50% indicate potential overstaffing relative to revenue.' : ''}`,
+        severity: payrollCost > revenue * 0.5 ? 'warning' : 'info',
+        metric: formatKobo(payrollCost),
+      });
+    }
+
+    // --- 8. Fixed Assets & Depreciation ---
+    const fa = faData[0];
+    const totalFaCost = fa?.totalCost || 0;
+    const totalFaDepr = fa?.totalDepr || 0;
+    const faCount = fa?.count || 0;
+    const deprThisPeriod = currentMonthData.expense.accounts.filter((a: any) =>
+      a.name.toLowerCase().includes('depreciation') || a.name.toLowerCase().includes('amortisation')
+    ).reduce((s: number, a: any) => s + a.balance, 0);
+    if (totalFaCost > 0 && deprThisPeriod > 0) {
+      insights.push({
+        title: 'Non-Cash Depreciation Charge',
+        detail: `Depreciation of ${formatKobo(deprThisPeriod)} was charged this period. Total asset base is ${formatKobo(totalFaCost)} (${faCount} asset(s), net book value ${formatKobo(totalFaCost - totalFaDepr)}). This non-cash expense reduces profit but does not affect liquidity.`,
+        severity: 'info',
+        metric: formatKobo(deprThisPeriod),
+      });
+    }
+
+    // --- 9. Inventory ---
+    const inv = invData[0];
+    const invValue = inv?.totalValue || 0;
+    const invItems = inv?.itemCount || 0;
+    if (invValue > 0) {
+      insights.push({
+        title: 'Inventory Position',
+        detail: `Inventory is valued at ${formatKobo(invValue)} across ${invItems} item(s). ${invValue > revenue * 3 ? 'Inventory turns may be slow — investigate carrying costs and demand forecasting.' : 'Stock levels appear reasonable relative to sales volume.'}`,
+        severity: invValue > revenue * 3 && revenue > 0 ? 'warning' : 'info',
+        metric: formatKobo(invValue),
+      });
+    }
+
+    // --- 10. Transaction Volume ---
+    const invCount = Number(invoiceCount[0]?.count || 0);
+    const billCountNum = Number(billCount[0]?.count || 0);
+    if (invCount === 0 && billCountNum === 0) {
+      insights.push({
+        title: 'No Transaction Activity',
+        detail: 'No invoices or bills were created this period. The business may be dormant or transactions are being recorded outside the system.',
+        severity: 'warning',
+        metric: '0 Transactions',
+      });
+    }
+
+    await logAICall(orgId, userId, 'FINANCIAL_INSIGHTS', `computed-insights-${cacheKey}`, 'success');
+
+    // Cache for 1 hour
+    insightsCache[cacheKey] = {
+      expiresAt: now + 60 * 60 * 1000,
+      data: insights,
+    };
+
+    return insights;
   }
 
   /**

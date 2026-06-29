@@ -88,7 +88,7 @@ export default function InsightsDashboard() {
       }
     } catch (err: any) {
       setInsightsError(
-        err.response?.data?.error || 'Gemini system was unable to pull insights for this date range.'
+        err.response?.data?.error || 'CFO insights engine was unable to pull insights for this date range.'
       );
     } finally {
       setLoadingInsights(false);
@@ -250,7 +250,7 @@ export default function InsightsDashboard() {
             <h1 className="text-2xl font-bold text-slate-900 tracking-tight">AI Financial Assistant</h1>
           </div>
           <p className="text-sm text-slate-500 mt-1">
-            Real-time CFO intelligence powered by Gemini 3.5. Instant audit scans, financial ratio alerts, and automated receipt processing.
+            Real-time CFO intelligence. Automated audit scans, financial ratio alerts, and business performance monitoring.
           </p>
         </div>
 
@@ -334,8 +334,8 @@ export default function InsightsDashboard() {
                   <div className="bg-white rounded-xl border border-slate-200 p-12 flex flex-col items-center justify-center space-y-4 min-h-[300px]">
                     <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
                     <div className="text-center">
-                      <p className="text-xs font-bold text-slate-600 animate-pulse">Consulting digital CFO ledger records...</p>
-                      <p className="text-[10px] text-slate-400 mt-1 font-mono">Running MoM profitability and cashflow delta math</p>
+                      <p className="text-xs font-bold text-slate-600 animate-pulse">Analysing all module data for CFO insights...</p>
+                      <p className="text-[10px] text-slate-400 mt-1 font-mono">Computing revenue, costs, cash flow, and key metrics</p>
                     </div>
                   </div>
                 ) : insightsError ? (
@@ -534,9 +534,9 @@ export default function InsightsDashboard() {
                   <Upload className="h-4 w-4 text-indigo-600" />
                   <h3 className="text-sm font-bold text-slate-800">Receipt OCR & Data Extractor</h3>
                 </div>
-                <span className="text-[10px] font-black px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-full">
-                  Gemini-Vision API
-                </span>
+                  <span className="text-[10px] font-black px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-full">
+                    AI Vision OCR
+                  </span>
               </div>
 
               <div className="p-5 flex-1 flex flex-col justify-between space-y-6">
@@ -567,7 +567,7 @@ export default function InsightsDashboard() {
                     disabled={ocrLoading || !ocrFile}
                     className="w-full bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 text-white font-bold text-xs py-2.5 rounded-lg transition-all"
                   >
-                    {ocrLoading ? 'Extracting with Gemini...' : 'Extract Receipt Data'}
+                    {ocrLoading ? 'Extracting...' : 'Extract Receipt Data'}
                   </button>
                 </form>
 
@@ -624,7 +624,7 @@ export default function InsightsDashboard() {
                     <h3 className="text-sm font-bold text-slate-800">Dynamic Transaction Auto-Categoriser</h3>
                   </div>
                   <span className="text-[10px] font-black px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-full">
-                    GPT/Flash LLM
+                    Smart Classifier
                   </span>
                 </div>
 
@@ -668,7 +668,7 @@ export default function InsightsDashboard() {
                       disabled={catLoading}
                       className="col-span-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-2.5 rounded-lg transition-all"
                     >
-                      {catLoading ? 'Analysing with Gemini AI...' : 'Categorise Feed Transaction'}
+                      {catLoading ? 'Analysing...' : 'Categorise Feed Transaction'}
                     </button>
                   </form>
 
@@ -698,7 +698,7 @@ export default function InsightsDashboard() {
               <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-4">
                 <div>
                   <h4 className="text-xs font-bold text-slate-800 tracking-tight">Invoice Line Autocomplete Suggestions</h4>
-                  <p className="text-[10px] text-slate-400 mt-0.5">As you type, Gemini predicts line item names based on historical data.</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Suggests line item names based on historical data as you type.</p>
                 </div>
 
                 <div className="relative">
