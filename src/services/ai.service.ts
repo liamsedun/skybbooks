@@ -558,64 +558,69 @@ export class AIService {
   }
 
   /**
-   * e) Anomaly Detection
+   * e) Anomaly Detection — local heuristic rules, no external API needed
    */
   async detectAnomalies(
     orgId: string,
     transactions: any[],
     userId: string
   ): Promise<Array<{ transactionId: string; reason: string; severity: 'low' | 'medium' | 'high' }>> {
-    // Format transactions to send minimal context
-    const cleanTransactions = transactions.map((tx) => ({
+    const flags: Array<{ transactionId: string; reason: string; severity: 'low' | 'medium' | 'high' }> = [];
+
+    const clean = transactions.map((tx) => ({
       id: tx.id,
-      description: tx.description,
-      amountKobo: tx.amount || tx.amountKobo,
-      date: tx.date,
+      description: (tx.description || '').toLowerCase().trim(),
+      amountKobo: Math.abs(tx.amount || tx.amountKobo || 0),
+      date: tx.date ? tx.date.split('T')[0] : '',
       reference: tx.reference || null,
     }));
 
-    const prompt = `Review these transactions for a Nigerian business. Flag any that look unusual: duplicate amounts, round-number suspicion, timing anomalies, unusual vendors. Return JSON array of flagged transactions with reason. Transactions: ${JSON.stringify(
-      cleanTransactions
-    )}. Return JSON: [{ transactionId: string, reason: string, severity: 'low'|'medium'|'high' }]`;
-
-    try {
-      const response = await withRetry(() =>
-        ai.models.generateContent({
-          model: 'gemini-3.5-flash',
-          contents: prompt,
-          config: {
-            responseMimeType: 'application/json',
-            responseSchema: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  transactionId: { type: Type.STRING, description: 'ID of the flagged transaction.' },
-                  reason: {
-                    type: Type.STRING,
-                    description: 'Direct reason description specifying round numbers, timing, or duplication checks.',
-                  },
-                  severity: {
-                    type: Type.STRING,
-                    description: "Severity score. Must be low, medium, or high.",
-                  },
-                },
-                required: ['transactionId', 'reason', 'severity'],
-              },
-            },
-          },
-        })
-      );
-
-      const responseText = response.text || '[]';
-      const parsed = JSON.parse(responseText);
-
-      await logAICall(orgId, userId, 'DETECT_ANOMALIES', prompt, 'success');
-      return parsed;
-    } catch (error: any) {
-      await logAICall(orgId, userId, 'DETECT_ANOMALIES', prompt, 'failure', error?.message || String(error));
-      throw error;
+    // 1. Detect duplicates — same description + amount + date
+    const seen = new Map<string, string[]>();
+    for (const tx of clean) {
+      const key = `${tx.description}|${tx.amountKobo}|${tx.date}`;
+      if (!seen.has(key)) seen.set(key, []);
+      seen.get(key)!.push(tx.id);
     }
+    for (const [key, ids] of seen) {
+      if (ids.length > 1) {
+        for (const id of ids) {
+          const parts = key.split('|');
+          flags.push({
+            transactionId: id,
+            reason: `Duplicate transaction: "${parts[0]}" for ${(Number(parts[1]) / 100).toLocaleString('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0 })} on ${parts[2]} appears ${ids.length} times.`,
+            severity: 'high',
+          });
+        }
+      }
+    }
+
+    // 2. Round-number detection — amounts that are clean multiples of 10,000
+    for (const tx of clean) {
+      if (tx.amountKobo >= 500_000_00 && tx.amountKobo % 1_000_000_00 === 0) {
+        // Already flagged as duplicate? skip to avoid double
+        if (flags.some((f) => f.transactionId === tx.id)) continue;
+        flags.push({
+          transactionId: tx.id,
+          reason: `Round-number alert: ${(tx.amountKobo / 100).toLocaleString('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0 })} is a clean round million-₦ amount which may indicate a manual journal or estimated entry.`,
+          severity: tx.amountKobo >= 10_000_000_00 ? 'high' : 'medium',
+        });
+      }
+    }
+
+    // 3. Large-value detection — amount > 10M kobo (₦100k) flagged as large
+    for (const tx of clean) {
+      if (tx.amountKobo > 10_000_000_00 && !flags.some((f) => f.transactionId === tx.id)) {
+        flags.push({
+          transactionId: tx.id,
+          reason: `High-value transaction: ${(tx.amountKobo / 100).toLocaleString('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0 })} (${tx.description || 'no description'}). Verify business justification.`,
+          severity: tx.amountKobo >= 50_000_000_00 ? 'high' : 'medium',
+        });
+      }
+    }
+
+    await logAICall(orgId, userId, 'DETECT_ANOMALIES', `${clean.length} transactions analysed locally`, 'success');
+    return flags;
   }
 }
 
