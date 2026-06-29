@@ -114,16 +114,20 @@ export default function InsightsDashboard() {
         }
       }
 
-      // 2. Fallback: journal entries for the selected month
+      // 2. Fallback: journal entries
       if (combinedTxns.length === 0) {
-        const jeRes = await api.get('/accounting/journal-entries', {
-          params: { startDate: `${selectedMonth}-01`, endDate: `${selectedMonth}-28`, limit: 200 },
-        });
-        if (jeRes.data?.entries?.length) {
-          combinedTxns = jeRes.data.entries.map((e: any) => ({
+        const jeRes = await api.get('/journals');
+        if (Array.isArray(jeRes.data) && jeRes.data.length > 0) {
+          const monthStart = new Date(`${selectedMonth}-01`);
+          const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0);
+          const filtered = jeRes.data.filter((e: any) => {
+            const d = new Date(e.date);
+            return d >= monthStart && d <= monthEnd;
+          });
+          combinedTxns = filtered.map((e: any) => ({
             id: e.id,
             description: e.description || 'Journal Entry',
-            amount: 0, // journals don't have a single amount
+            amount: 0,
             date: e.date?.split('T')[0],
             reference: e.entryNumber,
           }));
