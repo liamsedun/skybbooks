@@ -5,7 +5,7 @@
 import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, apiDownload } from '../../lib/api';
+import { api, printWindow } from '../../lib/api';
 import {
   Plus, X, Loader2, AlertCircle, Search, FileText,
   CheckCircle2, Download, Ban, ChevronDown, ChevronUp,
@@ -312,7 +312,12 @@ function BillList() {
           <p className="text-sm text-slate-500 mt-0.5">Track and pay supplier bills</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => apiDownload('/purchases/bills/pdf', `bills_${new Date().toISOString().split('T')[0]}.pdf`)}
+          <button onClick={() => {
+              const rows = filtered.map((b: any) =>
+                `<tr><td>${b.billNumber||''}</td><td>${vendorMap.get(b.vendorId)||''}</td><td>${new Date(b.date).toLocaleDateString('en-GB')}</td><td>${new Date(b.dueDate).toLocaleDateString('en-GB')}</td><td class="c">${b.status||''}</td><td class="r">₦${(b.total/100).toLocaleString()}</td><td class="r">₦${(b.amountPaid/100).toLocaleString()}</td><td class="r">₦${(b.balanceDue/100).toLocaleString()}</td></tr>`
+              ).join('');
+              printWindow('Bills', `<table><thead><tr><th>Bill #</th><th>Vendor</th><th>Date</th><th>Due Date</th><th class="c">Status</th><th class="r">Total</th><th class="r">Paid</th><th class="r">Balance</th></tr></thead><tbody>${rows}</tbody></table>`, `${filtered.length} bills`);
+            }}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
             <FileText size={14} /> PDF
           </button>
@@ -834,7 +839,15 @@ function BillDetail({ id, onBack }: { id: string; onBack: () => void }) {
           <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_STYLES[bill.status] || 'bg-slate-100 text-slate-600'}`}>
             {bill.status}
           </span>
-          <button onClick={() => apiDownload(`/purchases/bills/${bill.id}/pdf`, `bill_${bill.billNumber}.pdf`)}
+          <button onClick={() => {
+              const lines = (bill.lines || []).map((l: any) => {
+                const base = l.quantity * l.unitPrice;
+                const tax = base * (l.taxRate / 100);
+                return `<tr><td>${l.description||''}</td><td class="r">${l.quantity}</td><td class="r">₦${(l.unitPrice/100).toLocaleString()}</td><td class="r">₦${(Math.round(base)/100).toLocaleString()}</td><td class="r">₦${(Math.round(tax)/100).toLocaleString()}</td><td class="r">₦${(Math.round(base+tax)/100).toLocaleString()}</td></tr>`;
+              }).join('');
+              const body = `<table><thead><tr><th>Item</th><th class="r">Qty</th><th class="r">Unit Price</th><th class="r">Subtotal</th><th class="r">Tax</th><th class="r">Total</th></tr></thead><tbody>${lines||'<tr><td colspan="6" style="text-align:center;color:#94a3b8">No line items</td></tr>'}</tbody></table>`;
+              printWindow(`Bill ${bill.billNumber}`, body, `${vendorName} · ${formatNaira(bill.total)}`);
+            }}
             className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg">
             <FileText size={14} /> PDF
           </button>

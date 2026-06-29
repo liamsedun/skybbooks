@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { auditLogApi, apiDownload } from '../../lib/api';
+import { auditLogApi, printWindow } from '../../lib/api';
 import { Loader2, AlertCircle, Search, Download } from 'lucide-react';
 import { exportToCsv } from '../../lib/csvTemplates';
 
@@ -28,11 +28,11 @@ export function AuditLogsPage() {
   }
 
   const handleDownloadPdf = () => {
-    const params = new URLSearchParams();
-    if (actionFilter) params.set('action', actionFilter);
-    if (entityFilter) params.set('entityType', entityFilter);
-    const qs = params.toString();
-    apiDownload(`/audit-log/pdf${qs ? '?' + qs : ''}`, `audit_logs_${new Date().toISOString().split('T')[0]}.pdf`);
+    const list = data?.data || [];
+    const rows = list.map((l: any) =>
+      `<tr><td>${new Date(l.createdAt).toLocaleDateString('en-GB')}</td><td>${l.action||''}</td><td>${l.entityType||''}</td><td>${l.entityId||''}</td><td>${l.performedBy||''}</td></tr>`
+    ).join('');
+    printWindow('Audit Logs', `<table><thead><tr><th>Date</th><th>Action</th><th>Entity</th><th>ID</th><th>User</th></tr></thead><tbody>${rows||'<tr><td colspan="5" style="text-align:center;color:#94a3b8">No records</td></tr>'}</tbody></table>`, `${list.length} entries`);
   };
 
   return (

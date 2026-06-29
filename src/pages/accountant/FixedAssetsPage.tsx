@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fixedAssetsApi, accountantApi, apiDownload } from '../../lib/api';
+import { fixedAssetsApi, accountantApi, printWindow, apiDownload } from '../../lib/api';
 import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
 import { Plus, X, Loader2, AlertCircle, CheckCircle2, Trash2, Eye, Download, Upload, FileText, Printer, Calculator } from 'lucide-react';
 import { downloadCsv } from '../../lib/csvTemplates';
@@ -52,7 +52,10 @@ export function FixedAssetsPage() {
   };
 
   const handlePrintPdf = () => {
-    apiDownload('/fixed-assets/pdf', 'fixed_assets.pdf');
+    const rows = (assets || []).map((a: any) =>
+      `<tr><td>${a.assetNumber||''}</td><td>${a.name||''}</td><td>${a.category||'-'}</td><td class="r">₦${(a.purchaseCost/100).toLocaleString()}</td><td class="r">₦${(a.accumulatedDepreciation/100).toLocaleString()}</td><td class="r">₦${(a.bookValue/100).toLocaleString()}</td><td class="c">${(a.status||'').charAt(0).toUpperCase()+(a.status||'').slice(1)}</td></tr>`
+    ).join('');
+    printWindow('Fixed Assets', `<table><thead><tr><th>Asset #</th><th>Name</th><th>Category</th><th class="r">Cost</th><th class="r">Depreciation</th><th class="r">Book Value</th><th class="c">Status</th></tr></thead><tbody>${rows}</tbody></table>`, `${(assets||[]).length} assets`);
   };
 
   const handleClearLastImport = async () => {

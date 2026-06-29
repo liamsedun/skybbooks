@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
 import { exportToCsv } from '../../lib/csvTemplates';
-import { payrollApi, apiDownload } from '../../lib/api';
+import { payrollApi, printWindow } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
 import { useCurrency } from '../../hooks/useCurrency';
 
@@ -300,7 +300,12 @@ export function EmployeesPage() {
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
             <Download className="w-3.5 h-3.5" /> CSV
           </button>
-          <button onClick={() => apiDownload('/payroll/employees/pdf', `employees_${new Date().toISOString().split('T')[0]}.pdf`)}
+          <button onClick={() => {
+              const rows = (employees||[]).map((e: any) =>
+                `<tr><td>${e.staffId||''}</td><td>${e.firstName||''} ${e.lastName||''}</td><td>${e.department||'-'}</td><td>${e.jobTitle||'-'}</td><td class="c">${e.employmentStatus||'-'}</td><td>${e.email||''}</td></tr>`
+              ).join('');
+              printWindow('Employees', `<table><thead><tr><th>Staff ID</th><th>Name</th><th>Department</th><th>Job Title</th><th class="c">Status</th><th>Email</th></tr></thead><tbody>${rows}</tbody></table>`, `${(employees||[]).length} employees`);
+            }}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700">
             <Download className="w-3.5 h-3.5" /> PDF
           </button>

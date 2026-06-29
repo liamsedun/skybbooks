@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, downloadBlob, apiDownload } from '../../lib/api';
+import { api, printWindow } from '../../lib/api';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
 import {
   Search, Upload, Loader2, AlertCircle, X, Plus, FileMinus, ChevronRight,
@@ -119,12 +119,13 @@ export function PurchaseCreditNotesPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={async () => {
-              try { const list = Array.isArray(notes) ? notes : []; if (!list.length) return;
-                const rows = list.map((n: any) => [n.vcNumber, n.vendor?.name||'', new Date(n.date).toLocaleDateString('en-GB'), (n.total/100).toFixed(2), n.status]);
-                const res = await api.post('/reports/custom/pdf', { title:'Vendor Credit Notes', headers:['VC #','Vendor','Date','Total','Status'], rows }, { responseType:'blob' });
-                downloadBlob(res.data, `vendor_credit_notes_${new Date().toISOString().split('T')[0]}.pdf`);
-              } catch (e) { alert('Failed to export PDF.'); console.error(e); }
+          <button onClick={() => {
+              const list = Array.isArray(notes) ? notes : [];
+              if (!list.length) return;
+              const rows = list.map((n: any) =>
+                `<tr><td>${n.vcNumber}</td><td>${n.vendor?.name||''}</td><td>${new Date(n.date).toLocaleDateString('en-GB')}</td><td class="r">₦${(n.total/100).toFixed(2)}</td><td class="c">${n.status}</td></tr>`
+              ).join('');
+              printWindow('Vendor Credit Notes', `<table><thead><tr><th>VC #</th><th>Vendor</th><th>Date</th><th class="r">Total</th><th class="c">Status</th></tr></thead><tbody>${rows}</tbody></table>`, `${list.length} notes`);
             }}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded-lg hover:bg-slate-50 transition shadow-sm">
             <FileText size={14} /> PDF

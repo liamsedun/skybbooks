@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { reportsApi, accountantApi, apiDownload } from '../../lib/api';
+import { reportsApi, accountantApi, apiDownload, printWindow } from '../../lib/api';
 import { Loader2, AlertCircle, CheckCircle2, Download, Search, Upload, FileText, X, RefreshCw, ExternalLink, Pencil } from 'lucide-react';
 import { downloadCsv, exportToCsv, CSV_TEMPLATES } from '../../lib/csvTemplates';
 
@@ -110,7 +110,10 @@ export function TrialBalancePage() {
     if (format === 'csv') {
       apiDownload(`/reports/trial-balance?format=csv&startDate=${sDate}&endDate=${eDate}`, `trial_balance_${sDate}_to_${eDate}.csv`);
     } else {
-      apiDownload(`/reports/trial-balance?format=pdf&startDate=${sDate}&endDate=${eDate}`, `trial_balance_${sDate}_to_${eDate}.pdf`);
+      const rows = rawRows.map((r: any) =>
+        `<tr><td>${r.accountCode||''}</td><td>${r.accountName||''}</td><td class="c">${r.accountType||''}</td><td class="r">₦${((r.closingDebit||0)/100).toLocaleString()}</td><td class="r">₦${((r.closingCredit||0)/100).toLocaleString()}</td></tr>`
+      ).join('');
+      printWindow('Trial Balance', `<table><thead><tr><th>Code</th><th>Account</th><th class="c">Type</th><th class="r">Debit</th><th class="r">Credit</th></tr></thead><tbody>${rows}</tbody></table>`, `Period: ${sDate} - ${eDate}`);
     }
   };
 
