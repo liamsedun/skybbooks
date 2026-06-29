@@ -3,6 +3,7 @@ import {
   db,
   accounts,
   bills,
+  contacts,
   vendorCredits,
   journalEntries
 } from '../db/schema';
@@ -272,13 +273,40 @@ export async function voidVendorCredit(cnId: string, orgId: string, userId: stri
 }
 
 export async function listVendorCredits(orgId: string): Promise<any[]> {
-  const list = await db
-    .select()
+  const rows = await db
+    .select({
+      id: vendorCredits.id,
+      orgId: vendorCredits.orgId,
+      vcNumber: vendorCredits.vcNumber,
+      vendorId: vendorCredits.vendorId,
+      billId: vendorCredits.billId,
+      date: vendorCredits.date,
+      status: vendorCredits.status,
+      subtotal: vendorCredits.subtotal,
+      tax: vendorCredits.tax,
+      total: vendorCredits.total,
+      remainingCredit: vendorCredits.remainingCredit,
+      notes: vendorCredits.notes,
+      journalEntryId: vendorCredits.journalEntryId,
+      createdBy: vendorCredits.createdBy,
+      createdAt: vendorCredits.createdAt,
+      vendorName: contacts.name,
+      vendorEmail: contacts.email,
+      billNumber: bills.billNumber,
+    })
     .from(vendorCredits)
+    .leftJoin(contacts, eq(vendorCredits.vendorId, contacts.id))
+    .leftJoin(bills, eq(vendorCredits.billId, bills.id))
     .where(eq(vendorCredits.orgId, orgId))
     .orderBy(sql`${vendorCredits.createdAt} desc`);
 
-  return list;
+  return rows.map(r => ({
+    ...r,
+    vendor: r.vendorName ? { name: r.vendorName, email: r.vendorEmail } : undefined,
+    billNumber: r.billNumber || undefined,
+    vendorName: undefined,
+    vendorEmail: undefined,
+  }));
 }
 
 export async function getVendorCredit(id: string, orgId: string): Promise<any> {

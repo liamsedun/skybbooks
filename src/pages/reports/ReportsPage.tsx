@@ -595,7 +595,64 @@ function ReportTable({ data, reportType }: { data: any; reportType: ReportType }
   }
 
   if (reportType === 'balance-sheet') {
-    return <SummaryTable data={data} columns={[{ key: 'accountName', label: 'Account' }, { key: 'balance', label: 'Balance', fmt: fmtNaira }]} />;
+    const bsData = data?.data || data;
+    const assets = bsData?.assets?.accounts || [];
+    const liabilities = bsData?.liabilities?.accounts || [];
+    const equity = bsData?.equity?.accounts || [];
+    const totalAssets = bsData?.totalAssets || 0;
+    const totalLiabilities = bsData?.totalLiabilities || 0;
+    const totalEquity = bsData?.totalEquity || 0;
+    return (
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-slate-50">
+            <tr>
+              <th className="text-left px-4 py-3 font-semibold text-slate-600">Account</th>
+              <th className="text-right px-4 py-3 font-semibold text-slate-600">Balance</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr className="bg-blue-50"><td colSpan={2} className="px-4 py-2 text-xs font-bold text-blue-800 uppercase tracking-wider">Assets</td></tr>
+            {assets.map((a: any, i: number) => (
+              <tr key={`a-${i}`} className="border-t border-slate-100 hover:bg-slate-50">
+                <td className="px-4 py-2.5 pl-8 text-slate-800">{a.name}</td>
+                <td className="px-4 py-2.5 text-right font-semibold text-slate-800">{fmtNaira(a.balance)}</td>
+              </tr>
+            ))}
+            <tr className="border-t-2 border-blue-200 bg-blue-50/50">
+              <td className="px-4 py-2 text-sm font-bold text-slate-800">Total Assets</td>
+              <td className="px-4 py-2 text-right font-bold text-slate-800">{fmtNaira(totalAssets)}</td>
+            </tr>
+            <tr className="bg-amber-50"><td colSpan={2} className="px-4 py-2 text-xs font-bold text-amber-800 uppercase tracking-wider">Liabilities</td></tr>
+            {liabilities.map((l: any, i: number) => (
+              <tr key={`l-${i}`} className="border-t border-slate-100 hover:bg-slate-50">
+                <td className="px-4 py-2.5 pl-8 text-slate-800">{l.name}</td>
+                <td className="px-4 py-2.5 text-right font-semibold text-slate-800">{fmtNaira(l.balance)}</td>
+              </tr>
+            ))}
+            <tr className="border-t-2 border-amber-200 bg-amber-50/50">
+              <td className="px-4 py-2 text-sm font-bold text-slate-800">Total Liabilities</td>
+              <td className="px-4 py-2 text-right font-bold text-slate-800">{fmtNaira(totalLiabilities)}</td>
+            </tr>
+            <tr className="bg-violet-50"><td colSpan={2} className="px-4 py-2 text-xs font-bold text-violet-800 uppercase tracking-wider">Equity</td></tr>
+            {equity.map((e: any, i: number) => (
+              <tr key={`e-${i}`} className="border-t border-slate-100 hover:bg-slate-50">
+                <td className="px-4 py-2.5 pl-8 text-slate-800">{e.name}</td>
+                <td className="px-4 py-2.5 text-right font-semibold text-slate-800">{fmtNaira(e.balance)}</td>
+              </tr>
+            ))}
+            <tr className="border-t-2 border-violet-200 bg-violet-50/50">
+              <td className="px-4 py-2 text-sm font-bold text-slate-800">Total Equity</td>
+              <td className="px-4 py-2 text-right font-bold text-slate-800">{fmtNaira(totalEquity)}</td>
+            </tr>
+            <tr className="border-t-2 border-slate-300 bg-slate-100">
+              <td className="px-4 py-3 text-base font-bold text-slate-900">Total Liabilities &amp; Equity</td>
+              <td className="px-4 py-3 text-right text-base font-bold text-slate-900">{fmtNaira(totalLiabilities + totalEquity)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    );
   }
 
   if (reportType === 'income-statement') {
