@@ -17,6 +17,7 @@ import {
 import { AppError } from '../lib/errors';
 import { createJournalEntry, reverseJournalEntry } from './ledger.service';
 import { populateFxRate } from './currency.service';
+import { getOrgSettings } from './settings.service';
 
 // ==========================================
 // 1. HELPER FUNCTIONS & ACCOUNTS RESOLUTION
@@ -198,17 +199,25 @@ async function createInvoiceJournalEntry(invoiceId: string, orgId: string, userI
 // ==========================================
 
 export async function createInvoice(input: any, createdBy: string): Promise<any> {
-  return await db.transaction(async (tx) => {
-    const orgId = input.orgId;
+  const orgId = input.orgId;
+  const settings = await getOrgSettings(orgId);
+  const defaultTaxRate = settings.general?.defaultTaxRate ?? 7.5;
+  const defaultCurrency = settings.general?.defaultCurrency || 'NGN';
+  const invSeries = (settings.txnNumbering?.series || []).find((s: any) => s.module === 'Invoice');
+  const numPrefix = invSeries?.prefix || 'INV-';
+  const startStr = invSeries?.start || '000001';
+  const startNum = parseInt(startStr, 10);
+  const padLen = Math.max(4, startStr.length);
 
+  return await db.transaction(async (tx) => {
     // 1. Generate sequential Invoice Number
     const [countResult] = await tx
       .select({ count: sql<number>`count(*)` })
       .from(invoices)
       .where(eq(invoices.orgId, orgId));
 
-    const invoiceCount = Number(countResult?.count || 0) + 1;
-    const invoiceNumber = `INV-${String(invoiceCount).padStart(4, '0')}`;
+    const invoiceCount = Number(countResult?.count || 0);
+    const invoiceNumber = `${numPrefix}${String(startNum + invoiceCount).padStart(padLen, '0')}`;
 
     // 2. Calculations
     let subtotal = 0;
@@ -225,7 +234,7 @@ export async function createInvoice(input: any, createdBy: string): Promise<any>
       const qty = Number(line.quantity || 0);
       const price = Number(line.unitPrice || 0);
       const discPct = Number(line.discountPct || 0);
-      const taxRate = Number(line.taxRate !== undefined ? line.taxRate : 7.5);
+      const taxRate = Number(line.taxRate !== undefined ? line.taxRate : defaultTaxRate);
 
       if (qty <= 0 || price < 0) {
         throw new AppError('Quantity must be greater than 0 and price must be non-negative.', 400);
@@ -269,8 +278,8 @@ export async function createInvoice(input: any, createdBy: string): Promise<any>
         date: new Date(input.date || new Date()),
         dueDate: new Date(input.dueDate || new Date()),
         status: input.status || 'draft',
-        currency: input.currency || 'NGN',
-        fxRate: input.fxRate ? String(input.fxRate) : await populateFxRate(orgId, input.currency || 'NGN', input.date),
+        currency: input.currency || defaultCurrency,
+        fxRate: input.fxRate ? String(input.fxRate) : await populateFxRate(orgId, input.currency || defaultCurrency, input.date),
         subtotal,
         discountAmount: totalDiscount,
         taxAmount: totalTax,
@@ -318,6 +327,10 @@ export async function createInvoice(input: any, createdBy: string): Promise<any>
 }
 
 export async function updateInvoice(id: string, input: any, updatedBy: string): Promise<any> {
+  const [invoiceOrg] = await db.select({ orgId: invoices.orgId }).from(invoices).where(eq(invoices.id, id)).limit(1);
+  const settings = invoiceOrg?.orgId ? await getOrgSettings(invoiceOrg.orgId) : undefined;
+  const defaultTaxRate = settings?.general?.defaultTaxRate ?? 7.5;
+
   return await db.transaction(async (tx) => {
     // 1. Only allow updates when status is draft
     const [existingInvoice] = await tx
@@ -349,7 +362,7 @@ export async function updateInvoice(id: string, input: any, updatedBy: string): 
         const qty = Number(line.quantity || 0);
         const price = Number(line.unitPrice || 0);
         const discPct = Number(line.discountPct || 0);
-        const taxRate = Number(line.taxRate !== undefined ? line.taxRate : 7.5);
+        const taxRate = Number(line.taxRate !== undefined ? line.taxRate : defaultTaxRate);
 
         if (qty <= 0 || price < 0) {
           throw new AppError('Quantity must be greater than 0 and price must be non-negative.', 400);

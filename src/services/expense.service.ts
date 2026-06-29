@@ -14,6 +14,7 @@ import {
 } from '../db/schema';
 import { AppError } from '../lib/errors';
 import { createJournalEntry, reverseJournalEntry } from './ledger.service';
+import { getOrgSettings } from './settings.service';
 import Tesseract from 'tesseract.js';
 
 // ==========================================
@@ -114,8 +115,16 @@ async function resolveVatInput(orgId: string, tx: any): Promise<string> {
 // ==========================================
 
 export async function createExpense(input: any, createdBy: string): Promise<any> {
+  const orgId = input.orgId;
+  const settings = await getOrgSettings(orgId);
+  const defaultCurrency = settings.general?.defaultCurrency || 'NGN';
+  const expSeries = (settings.txnNumbering?.series || []).find((s: any) => s.module === 'Expense' || s.module === 'Vendor Payment');
+  const numPrefix = expSeries?.prefix || 'EXP-';
+  const startStr = expSeries?.start || '00001';
+  const startNum = parseInt(startStr, 10);
+  const padLen = Math.max(5, startStr.length);
+
   return await db.transaction(async (tx) => {
-    const orgId = input.orgId;
     const amount = Number(input.amount || 0);
     const taxAmount = Number(input.taxAmount || 0);
     const onAccount = !!input.onAccount;
@@ -130,8 +139,8 @@ export async function createExpense(input: any, createdBy: string): Promise<any>
       .from(expenses)
       .where(eq(expenses.orgId, orgId));
 
-    const expCount = Number(countResult?.count || 0) + 1;
-    const expenseNumber = `EXP-${String(expCount).padStart(5, '0')}`;
+    const expCount = Number(countResult?.count || 0);
+    const expenseNumber = `${numPrefix}${String(startNum + expCount).padStart(padLen, '0')}`;
 
     // Compute net expense debit portion
     const netExpenseAmt = amount - taxAmount;
@@ -155,7 +164,7 @@ export async function createExpense(input: any, createdBy: string): Promise<any>
         accountId: expenseAccountId,
         amount,
         taxAmount,
-        currency: input.currency || 'NGN',
+        currency: input.currency || defaultCurrency,
         paymentMethod: input.paymentMethod || 'cash',
         reference: input.reference || null,
         description: input.description || null,

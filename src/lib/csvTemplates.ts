@@ -5,8 +5,8 @@ function csvEscape(val: string): string {
 }
 
 export function exportToCsv(filename: string, headers: string[], rows: string[][]) {
-  const csv = [headers, ...rows].map(r => r.map(v => v.includes(',') || v.includes('"') || v.includes('\n') ? `"${v.replace(/"/g, '""')}"` : v).join(',')).join('\n');
-  const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8;' });
+  const csv = [headers, ...rows].map(r => r.map(v => v.includes(',') || v.includes('"') || v.includes('\n') ? `"${v.replace(/"/g, '""')}"` : v).join(',')).join('\r\n');
+  const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url; a.download = filename; a.click();
@@ -14,8 +14,8 @@ export function exportToCsv(filename: string, headers: string[], rows: string[][
 }
 
 export function downloadCsv(filename: string, headers: string[], sampleRow: string[]) {
-  const csv = [headers.map(csvEscape).join(','), sampleRow.map(csvEscape).join(',')].join('\n');
-  const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8;' });
+  const csv = [headers.map(csvEscape).join(','), sampleRow.map(csvEscape).join(',')].join('\r\n');
+  const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url; a.download = filename; a.click();
@@ -55,7 +55,7 @@ function parseCsvLine(line: string): string[] {
 }
 
 export function parseCsv(text: string): { headers: string[]; rows: string[][] } {
-  const cleaned = text.replace(/^\uFEFF/, '').replace(/\r$/, '');
+  const cleaned = text.replace(/^\uFEFF/, '').replace(/\r/g, '');
   const lines = cleaned.split(/\n/).filter(Boolean);
   if (lines.length < 2) throw new Error('CSV must have a header row and at least one data row.');
   const headers = parseCsvLine(lines[0]);

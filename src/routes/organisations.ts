@@ -693,10 +693,10 @@ router.get('/users/export/csv', requireRole('owner', 'admin'), async (req: Authe
       .from(users)
       .where(eq(users.organisationId, orgId));
 
-    const header = 'Name,Email,Role,Status,Last Login\n';
+    const header = 'Name,Email,Role,Status,Last Login\r\n';
     const rows = userList.map(u =>
       `"${u.fullName || ''}","${u.email}","${u.role}","${u.isActive ? 'Active' : 'Inactive'}","${u.lastLogin ? new Date(u.lastLogin).toISOString().split('T')[0] : 'Never'}"`
-    ).join('\n');
+    ).join('\r\n');
 
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', 'attachment; filename=users.csv');

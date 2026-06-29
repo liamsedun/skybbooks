@@ -102,10 +102,10 @@ router.get(
 
       if (format === 'csv') {
         const data = await getTrialBalance(orgId, startDate, endDate);
-        const csvHeader = 'Account Code,Account Name,Type,Debit (NGN),Credit (NGN)\n';
+        const csvHeader = 'Account Code,Account Name,Type,Debit (NGN),Credit (NGN)\r\n';
         const csvRows = data.map((r: TrialBalanceRow) =>
           `${r.accountCode},"${r.accountName.replace(/"/g, '""')}",${r.accountType},${(r.closingDebit / 100).toFixed(2)},${(r.closingCredit / 100).toFixed(2)}`
-        ).join('\n');
+        ).join('\r\n');
         const csv = '\uFEFF' + csvHeader + csvRows;
         res.setHeader('Content-Type', 'text/csv;charset=utf-8');
         res.setHeader('Content-Disposition', 'attachment; filename="trial_balance.csv"');

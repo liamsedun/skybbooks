@@ -15,6 +15,7 @@ import {
 import { AppError } from '../lib/errors';
 import { createBill } from './bill.service';
 import { createExpense } from './expense.service';
+import { getOrgSettings } from './settings.service';
 
 // ==========================================
 // UTILITIES FOR STORAGE OF VIRTUAL PO LINES
@@ -50,17 +51,25 @@ export function deserializePoNotesAndLines(serialized: string | null | undefined
 // ==========================================
 
 export async function createPO(input: any, createdBy: string): Promise<any> {
-  return await db.transaction(async (tx) => {
-    const orgId = input.orgId;
+  const orgId = input.orgId;
+  const settings = await getOrgSettings(orgId);
+  const defaultTaxRate = settings.general?.defaultTaxRate ?? 7.5;
+  const defaultCurrency = settings.general?.defaultCurrency || 'NGN';
+  const poSeries = (settings.txnNumbering?.series || []).find((s: any) => s.module === 'Purchase Order');
+  const numPrefix = poSeries?.prefix || 'PO-';
+  const startStr = poSeries?.start || '00001';
+  const startNum = parseInt(startStr, 10);
+  const padLen = Math.max(4, startStr.length);
 
+  return await db.transaction(async (tx) => {
     // 1. Generate sequential PO number
     const [countResult] = await tx
       .select({ count: sql<number>`count(*)` })
       .from(purchaseOrders)
       .where(eq(purchaseOrders.orgId, orgId));
 
-    const poCount = Number(countResult?.count || 0) + 1;
-    const poNumber = `PO-${String(poCount).padStart(4, '0')}`;
+    const poCount = Number(countResult?.count || 0);
+    const poNumber = `${numPrefix}${String(startNum + poCount).padStart(padLen, '0')}`;
 
     // 2. Calculations based on input lines
     let subtotal = 0;
@@ -71,7 +80,7 @@ export async function createPO(input: any, createdBy: string): Promise<any> {
       for (const line of input.lines) {
         const qty = Number(line.quantity || 0);
         const price = Number(line.unitPrice || 0);
-        const taxRate = Number(line.taxRate !== undefined ? line.taxRate : 7.5);
+        const taxRate = Number(line.taxRate !== undefined ? line.taxRate : defaultTaxRate);
 
         if (qty <= 0 || price < 0) {
           throw new AppError('Quantity must be positive and price must be non-negative.', 400);
@@ -110,7 +119,7 @@ export async function createPO(input: any, createdBy: string): Promise<any> {
         date: input.date ? new Date(input.date) : new Date(),
         expectedDate: input.expectedDate ? new Date(input.expectedDate) : null,
         status: 'draft', // defaults directly to draft
-        currency: input.currency || 'NGN',
+        currency: input.currency || defaultCurrency,
         subtotal,
         tax: totalTax,
         total,
@@ -128,6 +137,10 @@ export async function createPO(input: any, createdBy: string): Promise<any> {
 }
 
 export async function updatePO(poId: string, input: any, userId: string): Promise<any> {
+  const [poOrg] = await db.select({ orgId: purchaseOrders.orgId }).from(purchaseOrders).where(eq(purchaseOrders.id, poId)).limit(1);
+  const settings = poOrg?.orgId ? await getOrgSettings(poOrg.orgId) : undefined;
+  const defaultTaxRate = settings?.general?.defaultTaxRate ?? 7.5;
+
   return await db.transaction(async (tx) => {
     const [po] = await tx
       .select()
@@ -157,7 +170,7 @@ export async function updatePO(poId: string, input: any, userId: string): Promis
       for (const line of input.lines) {
         const qty = Number(line.quantity || 0);
         const price = Number(line.unitPrice || 0);
-        const taxRate = Number(line.taxRate !== undefined ? line.taxRate : 7.5);
+        const taxRate = Number(line.taxRate !== undefined ? line.taxRate : defaultTaxRate);
 
         if (qty <= 0 || price < 0) {
           throw new AppError('Quantity must be positive and price must be non-negative.', 400);
@@ -234,6 +247,15 @@ export async function sendPO(poId: string, userId: string): Promise<any> {
 }
 
 export async function convertToBill(poId: string, userId: string): Promise<any> {
+  const [poRow] = await db.select({ orgId: purchaseOrders.orgId }).from(purchaseOrders).where(eq(purchaseOrders.id, poId)).limit(1);
+  const orgId = poRow?.orgId;
+  const settings = orgId ? await getOrgSettings(orgId) : undefined;
+  const billSeries = (settings?.txnNumbering?.series || []).find((s: any) => s.module === 'Bill' || s.module === 'Vendor Bill');
+  const numPrefix = billSeries?.prefix || 'BILL-';
+  const startStr = billSeries?.start || '00001';
+  const startNum = parseInt(startStr, 10);
+  const padLen = Math.max(4, startStr.length);
+
   return await db.transaction(async (tx) => {
     // 1. Fetch source PO
     const [po] = await tx
@@ -267,8 +289,8 @@ export async function convertToBill(poId: string, userId: string): Promise<any> 
       .from(bills)
       .where(eq(bills.orgId, po.orgId));
 
-    const billCount = Number(countResult?.count || 0) + 1;
-    const billNumber = `BILL-${String(billCount).padStart(4, '0')}`;
+    const billCount = Number(countResult?.count || 0);
+    const billNumber = `${numPrefix}${String(startNum + billCount).padStart(padLen, '0')}`;
 
     const [bill] = await tx
       .insert(bills)

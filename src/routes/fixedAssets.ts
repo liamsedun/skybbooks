@@ -247,12 +247,12 @@ router.get('/export-csv', async (req: AuthenticatedRequest, res: Response, next:
       .where(eq(fixedAssets.orgId, orgId))
       .orderBy(asc(fixedAssets.name));
 
-    const csvHeader = 'Asset #,Name,Category,Purchase Date,Purchase Cost (NGN),Depreciation Method,Useful Life (months),Residual Value (NGN),Accumulated Depreciation (NGN),Book Value (NGN),Status\n';
+    const csvHeader = 'Asset #,Name,Category,Purchase Date,Purchase Cost (NGN),Depreciation Method,Useful Life (months),Residual Value (NGN),Accumulated Depreciation (NGN),Book Value (NGN),Status\r\n';
     const csvRows = list.map(a => {
       const date = a.purchaseDate.toISOString().split('T')[0];
       const methodLabel = a.depreciationMethod === 'straight_line' ? 'Straight Line' : a.depreciationMethod === 'declining_balance' ? 'Declining Balance' : 'No Depreciation';
       return `${a.assetNumber},"${a.name.replace(/"/g, '""')}",${a.category || ''},${date},${(a.purchaseCost / 100).toFixed(2)},${methodLabel},${a.usefulLifeMonths},${(a.residualValue / 100).toFixed(2)},${(a.accumulatedDepreciation / 100).toFixed(2)},${(a.bookValue / 100).toFixed(2)},${a.status}`;
-    }).join('\n');
+    }).join('\r\n');
 
     const csv = '\uFEFF' + csvHeader + csvRows;
     res.setHeader('Content-Type', 'text/csv;charset=utf-8');

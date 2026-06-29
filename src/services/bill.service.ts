@@ -19,6 +19,7 @@ import {
 import { AppError } from '../lib/errors';
 import { createJournalEntry, reverseJournalEntry } from './ledger.service';
 import { populateFxRate } from './currency.service';
+import { getOrgSettings } from './settings.service';
 
 // ==========================================
 // 1. HELPER FUNCTIONS & ACCOUNTS RESOLUTION
@@ -197,17 +198,25 @@ async function createBillJournalEntry(billId: string, orgId: string, userId: str
 // ==========================================
 
 export async function createBill(input: any, createdBy: string): Promise<any> {
-  return await db.transaction(async (tx) => {
-    const orgId = input.orgId;
+  const orgId = input.orgId;
+  const settings = await getOrgSettings(orgId);
+  const defaultTaxRate = settings.general?.defaultTaxRate ?? 7.5;
+  const defaultCurrency = settings.general?.defaultCurrency || 'NGN';
+  const billSeries = (settings.txnNumbering?.series || []).find((s: any) => s.module === 'Bill' || s.module === 'Vendor Bill');
+  const numPrefix = billSeries?.prefix || 'BILL-';
+  const startStr = billSeries?.start || '00001';
+  const startNum = parseInt(startStr, 10);
+  const padLen = Math.max(4, startStr.length);
 
+  return await db.transaction(async (tx) => {
     // 1. Generate sequential Bill Number
     const [countResult] = await tx
       .select({ count: sql<number>`count(*)` })
       .from(bills)
       .where(eq(bills.orgId, orgId));
 
-    const billCount = Number(countResult?.count || 0) + 1;
-    const billNumber = `BILL-${String(billCount).padStart(4, '0')}`;
+    const billCount = Number(countResult?.count || 0);
+    const billNumber = `${numPrefix}${String(startNum + billCount).padStart(padLen, '0')}`;
 
     // 2. Calculations
     let subtotal = 0;
@@ -222,7 +231,7 @@ export async function createBill(input: any, createdBy: string): Promise<any> {
     for (const line of input.lines) {
       const qty = Number(line.quantity || 0);
       const price = Number(line.unitPrice || 0);
-      const taxRate = Number(line.taxRate !== undefined ? line.taxRate : 7.5);
+      const taxRate = Number(line.taxRate !== undefined ? line.taxRate : defaultTaxRate);
 
       if (qty <= 0 || price < 0) {
         throw new AppError('Quantity must be greater than 0 and price must be non-negative.', 400);
@@ -260,8 +269,8 @@ export async function createBill(input: any, createdBy: string): Promise<any> {
         date: input.date ? new Date(input.date) : new Date(),
         dueDate: input.dueDate ? new Date(input.dueDate) : new Date(),
         status: 'draft', // always starts as draft
-        currency: input.currency || 'NGN',
-        fxRate: input.fxRate ? String(input.fxRate) : await populateFxRate(orgId, input.currency || 'NGN', input.date),
+        currency: input.currency || defaultCurrency,
+        fxRate: input.fxRate ? String(input.fxRate) : await populateFxRate(orgId, input.currency || defaultCurrency, input.date),
         subtotal,
         taxAmount: totalTax,
         total,
@@ -287,6 +296,10 @@ export async function createBill(input: any, createdBy: string): Promise<any> {
 }
 
 export async function updateBill(billId: string, input: any, userId: string): Promise<any> {
+  const [billOrg] = await db.select({ orgId: bills.orgId }).from(bills).where(eq(bills.id, billId)).limit(1);
+  const settings = billOrg?.orgId ? await getOrgSettings(billOrg.orgId) : undefined;
+  const defaultTaxRate = settings?.general?.defaultTaxRate ?? 7.5;
+
   return await db.transaction(async (tx) => {
     // 1. Fetch bill and check status
     const [bill] = await tx
@@ -314,7 +327,7 @@ export async function updateBill(billId: string, input: any, userId: string): Pr
       for (const line of input.lines) {
         const qty = Number(line.quantity || 0);
         const price = Number(line.unitPrice || 0);
-        const taxRate = Number(line.taxRate !== undefined ? line.taxRate : 7.5);
+        const taxRate = Number(line.taxRate !== undefined ? line.taxRate : defaultTaxRate);
 
         if (qty <= 0 || price < 0) {
           throw new AppError('Quantity must be greater than 0 and price must be non-negative.', 400);

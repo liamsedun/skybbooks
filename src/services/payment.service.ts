@@ -18,6 +18,7 @@ import {
 import { AppError } from '../lib/errors';
 import { createJournalEntry, reverseJournalEntry } from './ledger.service';
 import { populateFxRate } from './currency.service';
+import { getOrgSettings } from './settings.service';
 
 // ==========================================
 // HELPER FUNCTIONS
@@ -86,8 +87,16 @@ async function resolveAccountsPayable(orgId: string, tx: any): Promise<string> {
 // ==========================================
 
 export async function recordPaymentReceived(input: any, createdBy: string): Promise<any> {
+  const orgId = input.orgId;
+  const settings = await getOrgSettings(orgId);
+  const defaultCurrency = settings.general?.defaultCurrency || 'NGN';
+  const pmtSeries = (settings.txnNumbering?.series || []).find((s: any) => s.module === 'Customer Payment');
+  const numPrefix = pmtSeries?.prefix || 'PMT-';
+  const startStr = pmtSeries?.start || '000001';
+  const startNum = parseInt(startStr, 10);
+  const padLen = Math.max(6, startStr.length);
+
   return await db.transaction(async (tx) => {
-    const orgId = input.orgId;
     const amount = Number(input.amount || 0);
     const category = input.category || 'sales_invoice';
 
@@ -142,8 +151,8 @@ export async function recordPaymentReceived(input: any, createdBy: string): Prom
       .from(paymentsReceived)
       .where(eq(paymentsReceived.orgId, orgId));
 
-    const pmtCount = Number(countResult?.count || 0) + 1;
-    const paymentNumber = `PMT-${String(pmtCount).padStart(6, '0')}`;
+    const pmtCount = Number(countResult?.count || 0);
+    const paymentNumber = `${numPrefix}${String(startNum + pmtCount).padStart(padLen, '0')}`;
 
     // 4. Record Payment Received
     const [payment] = await tx
@@ -156,8 +165,8 @@ export async function recordPaymentReceived(input: any, createdBy: string): Prom
         payerName: input.payerName || null,
         date: new Date(input.date || new Date()),
         amount,
-        currency: input.currency || 'NGN',
-        fxRate: input.fxRate ? String(input.fxRate) : await populateFxRate(orgId, input.currency || 'NGN', input.date),
+        currency: input.currency || defaultCurrency,
+        fxRate: input.fxRate ? String(input.fxRate) : await populateFxRate(orgId, input.currency || defaultCurrency, input.date),
         paymentMethod: input.paymentMethod || 'bank_transfer',
         reference: input.reference || null,
         accountId: input.accountId, // Selected asset bank account
@@ -511,8 +520,16 @@ export async function unallocatePayment(paymentId: string, allocationId: string,
 // ==========================================
 
 export async function recordPaymentMade(input: any, createdBy: string): Promise<any> {
+  const orgId = input.orgId;
+  const settings = await getOrgSettings(orgId);
+  const defaultCurrency = settings.general?.defaultCurrency || 'NGN';
+  const pmtSeries = (settings.txnNumbering?.series || []).find((s: any) => s.module === 'Vendor Payment');
+  const numPrefix = pmtSeries?.prefix || 'VPMT-';
+  const startStr = pmtSeries?.start || '000001';
+  const startNum = parseInt(startStr, 10);
+  const padLen = Math.max(6, startStr.length);
+
   return await db.transaction(async (tx) => {
-    const orgId = input.orgId;
     const amount = Number(input.amount || 0);
 
     if (amount <= 0) {
@@ -553,8 +570,8 @@ export async function recordPaymentMade(input: any, createdBy: string): Promise<
       .from(paymentsMade)
       .where(eq(paymentsMade.orgId, orgId));
 
-    const pmtCount = Number(countResult?.count || 0) + 1;
-    const paymentNumber = `VPMT-${String(pmtCount).padStart(6, '0')}`;
+    const pmtCount = Number(countResult?.count || 0);
+    const paymentNumber = `${numPrefix}${String(startNum + pmtCount).padStart(padLen, '0')}`;
 
     // Record Payment Made
     const [payment] = await tx
@@ -565,7 +582,7 @@ export async function recordPaymentMade(input: any, createdBy: string): Promise<
         vendorId: input.vendorId,
         date: new Date(input.date || new Date()),
         amount,
-        currency: input.currency || 'NGN',
+        currency: input.currency || defaultCurrency,
         paymentMethod: input.paymentMethod || 'bank_transfer',
         reference: input.reference || null,
         accountId: input.accountId, // outbound bank account ledger

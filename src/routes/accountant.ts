@@ -278,12 +278,12 @@ router.get('/accounts/export-csv', async (req: AuthenticatedRequest, res: Respon
     // Build parent code map
     const idToCode = new Map(list.map(a => [a.id, a.code]));
 
-    const csvHeader = 'Code,Name,Type,Sub-type,Parent Code,Description,Active,Opening Balance (NGN)\n';
+    const csvHeader = 'Code,Name,Type,Sub-type,Parent Code,Description,Active,Opening Balance (NGN)\r\n';
     const csvRows = list.map(a => {
       const parentCode = a.parentId ? (idToCode.get(a.parentId) || '') : '';
       const ob = (Number(a.openingBalance || 0) / 100).toFixed(2);
       return `${a.code},"${a.name.replace(/"/g, '""')}",${a.type},${a.subType || ''},${parentCode},"${(a.description || '').replace(/"/g, '""')}",${a.isActive ? 'Yes' : 'No'},${ob}`;
-    }).join('\n');
+    }).join('\r\n');
 
     const csv = '\uFEFF' + csvHeader + csvRows;
     res.setHeader('Content-Type', 'text/csv;charset=utf-8');
