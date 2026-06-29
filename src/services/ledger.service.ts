@@ -6,7 +6,7 @@
 import { eq, and, lte, gte, sql } from 'drizzle-orm';
 import { db, accounts, journalEntries, journalLines, bankAccounts, fixedAssets, contacts, inventoryLots } from '../db/schema';
 import { AppError } from '../lib/errors';
-import { toNgn } from './currency.service';
+import { toNgn, getRateForDate } from './currency.service';
 
 // ==========================================
 // 1. TYPES EXPORT DEFINITIONS
@@ -268,7 +268,8 @@ export async function reverseJournalEntry(
  */
 export async function getAccountBalance(
   accountId: string,
-  asOfDate?: Date
+  asOfDate?: Date,
+  currency?: string
 ): Promise<number> {
   // 1. Resolve account type
   const [account] = await db
@@ -281,28 +282,46 @@ export async function getAccountBalance(
     throw new AppError('The requested account profile could not be found.', 404);
   }
 
-  // 2. Fetch lines aggregator
+  // 2. Fetch individual journal lines with their currency and fxRate
   const conditions = [eq(journalLines.accountId, accountId)];
   if (asOfDate) {
     conditions.push(lte(journalEntries.date, asOfDate));
   }
 
-  const query = db
+  const lines = await db
     .select({
-      debitsSum: sql<number>`coalesce(sum(${journalLines.debitAmount}), 0)`,
-      creditsSum: sql<number>`coalesce(sum(${journalLines.creditAmount}), 0)`
+      debitAmount: journalLines.debitAmount,
+      creditAmount: journalLines.creditAmount,
+      currency: journalLines.currency,
+      fxRate: journalLines.fxRate
     })
     .from(journalLines)
     .innerJoin(journalEntries, eq(journalLines.entryId, journalEntries.id))
     .where(and(...conditions));
 
-  const [aggregator] = await query;
-  const debits = Number(aggregator?.debitsSum || 0);
-  const credits = Number(aggregator?.creditsSum || 0);
+  // 3. Translate each line to base currency (NGN)
+  let totalDebits = 0;
+  let totalCredits = 0;
 
-  // 3. Compute net balances by accounts definitions
+  for (const line of lines) {
+    const lineCurrency = line.currency || 'NGN';
+    const deb = lineCurrency !== 'NGN' ? toNgn(line.debitAmount, line.fxRate) : line.debitAmount;
+    const cred = lineCurrency !== 'NGN' ? toNgn(line.creditAmount, line.fxRate) : line.creditAmount;
+    totalDebits += Number(deb || 0);
+    totalCredits += Number(cred || 0);
+  }
+
+  // 4. Compute net balance
   const isDebitRule = account.type === 'asset' || account.type === 'expense';
-  return isDebitRule ? debits - credits : credits - debits;
+  const balanceInNgn = isDebitRule ? totalDebits - totalCredits : totalCredits - totalDebits;
+
+  // 5. Convert to target currency if requested
+  if (currency && currency.toUpperCase() !== 'NGN') {
+    const rate = await getRateForDate(account.orgId, currency, asOfDate || new Date());
+    return Math.round(balanceInNgn / rate);
+  }
+
+  return balanceInNgn;
 }
 
 /**
