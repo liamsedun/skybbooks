@@ -120,12 +120,17 @@ export function PurchaseCreditNotesPage() {
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => {
-              const list = Array.isArray(notes) ? notes : [];
-              if (!list.length) return;
-              const rows = list.map((n: any) =>
-                `<tr><td>${n.vcNumber}</td><td>${n.vendor?.name||''}</td><td>${new Date(n.date).toLocaleDateString('en-GB')}</td><td class="r">₦${(n.total/100).toFixed(2)}</td><td class="c">${n.status}</td></tr>`
-              ).join('');
-              printWindow('Vendor Credit Notes', `<table><thead><tr><th>VC #</th><th>Vendor</th><th>Date</th><th class="r">Total</th><th class="c">Status</th></tr></thead><tbody>${rows}</tbody></table>`, `${list.length} notes`);
+              try {
+                const list = Array.isArray(notes) ? notes : [];
+                if (!list.length) return;
+                const rows = list.map((n: any) =>
+                  `<tr><td>${n.vcNumber}</td><td>${n.vendor?.name||''}</td><td>${new Date(n.date).toLocaleDateString('en-GB')}</td><td class="r">₦${(n.total/100).toFixed(2)}</td><td class="c">${n.status}</td></tr>`
+                ).join('');
+                printWindow('Vendor Credit Notes', `<table><thead><tr><th>VC #</th><th>Vendor</th><th>Date</th><th class="r">Total</th><th class="c">Status</th></tr></thead><tbody>${rows}</tbody></table>`, `${list.length} notes`);
+              } catch (err) {
+                alert('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'));
+                console.error('Print error:', err);
+              }
             }}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded-lg hover:bg-slate-50 transition shadow-sm">
             <FileText size={14} /> PDF

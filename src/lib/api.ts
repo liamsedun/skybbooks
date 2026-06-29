@@ -918,6 +918,7 @@ export function printWindow(title: string, bodyHtml: string, subtitle?: string) 
   </body></html>`;
   const w = window.open('', '_blank');
   if (w) { w.document.write(html); w.document.close(); setTimeout(() => w.print(), 500); }
+  else { alert('Popup blocked. Please allow popups for this site and try again.'); }
 }
 
 export function apiDownload(url: string, filename: string) {

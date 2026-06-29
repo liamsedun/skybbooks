@@ -52,10 +52,15 @@ export function FixedAssetsPage() {
   };
 
   const handlePrintPdf = () => {
-    const rows = (assets || []).map((a: any) =>
-      `<tr><td>${a.assetNumber||''}</td><td>${a.name||''}</td><td>${a.category||'-'}</td><td class="r">₦${(a.purchaseCost/100).toLocaleString()}</td><td class="r">₦${(a.accumulatedDepreciation/100).toLocaleString()}</td><td class="r">₦${(a.bookValue/100).toLocaleString()}</td><td class="c">${(a.status||'').charAt(0).toUpperCase()+(a.status||'').slice(1)}</td></tr>`
-    ).join('');
-    printWindow('Fixed Assets', `<table><thead><tr><th>Asset #</th><th>Name</th><th>Category</th><th class="r">Cost</th><th class="r">Depreciation</th><th class="r">Book Value</th><th class="c">Status</th></tr></thead><tbody>${rows}</tbody></table>`, `${(assets||[]).length} assets`);
+    try {
+      const rows = (assets || []).map((a: any) =>
+        `<tr><td>${a.assetNumber||''}</td><td>${a.name||''}</td><td>${a.category||'-'}</td><td class="r">₦${(a.purchaseCost/100).toLocaleString()}</td><td class="r">₦${(a.accumulatedDepreciation/100).toLocaleString()}</td><td class="r">₦${(a.bookValue/100).toLocaleString()}</td><td class="c">${(a.status||'').charAt(0).toUpperCase()+(a.status||'').slice(1)}</td></tr>`
+      ).join('');
+      printWindow('Fixed Assets', `<table><thead><tr><th>Asset #</th><th>Name</th><th>Category</th><th class="r">Cost</th><th class="r">Depreciation</th><th class="r">Book Value</th><th class="c">Status</th></tr></thead><tbody>${rows}</tbody></table>`, `${(assets||[]).length} assets`);
+    } catch (err) {
+      alert('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      console.error('Print error:', err);
+    }
   };
 
   const handleClearLastImport = async () => {

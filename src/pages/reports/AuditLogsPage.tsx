@@ -28,11 +28,16 @@ export function AuditLogsPage() {
   }
 
   const handleDownloadPdf = () => {
-    const list = data?.data || [];
-    const rows = list.map((l: any) =>
-      `<tr><td>${new Date(l.createdAt).toLocaleDateString('en-GB')}</td><td>${l.action||''}</td><td>${l.entityType||''}</td><td>${l.entityId||''}</td><td>${l.performedBy||''}</td></tr>`
-    ).join('');
-    printWindow('Audit Logs', `<table><thead><tr><th>Date</th><th>Action</th><th>Entity</th><th>ID</th><th>User</th></tr></thead><tbody>${rows||'<tr><td colspan="5" style="text-align:center;color:#94a3b8">No records</td></tr>'}</tbody></table>`, `${list.length} entries`);
+    try {
+      const list = data?.data || [];
+      const rows = list.map((l: any) =>
+        `<tr><td>${new Date(l.createdAt).toLocaleDateString('en-GB')}</td><td>${l.action||''}</td><td>${l.entityType||''}</td><td>${l.entityId||''}</td><td>${l.performedBy||''}</td></tr>`
+      ).join('');
+      printWindow('Audit Logs', `<table><thead><tr><th>Date</th><th>Action</th><th>Entity</th><th>ID</th><th>User</th></tr></thead><tbody>${rows||'<tr><td colspan="5" style="text-align:center;color:#94a3b8">No records</td></tr>'}</tbody></table>`, `${list.length} entries`);
+    } catch (err) {
+      alert('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      console.error('Print error:', err);
+    }
   };
 
   return (

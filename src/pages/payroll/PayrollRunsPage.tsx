@@ -121,10 +121,15 @@ export function PayrollRunsPage() {
             <Download size={14} /> CSV
           </button>
           <button onClick={() => {
-              const rows = (runs||[]).map((r: any) =>
-                `<tr><td>${r.runNumber||''}</td><td>${new Date(r.periodStart).toLocaleDateString('en-GB')}</td><td>${new Date(r.periodEnd).toLocaleDateString('en-GB')}</td><td class="r">₦${(r.totalGross/100).toLocaleString()}</td><td class="r">₦${(r.totalNet/100).toLocaleString()}</td><td class="c">${r.employeeCount||0}</td><td class="c">${r.status||''}</td></tr>`
-              ).join('');
-              printWindow('Payroll Runs', `<table><thead><tr><th>Run #</th><th>Period Start</th><th>Period End</th><th class="r">Gross</th><th class="r">Net</th><th class="c">Employees</th><th class="c">Status</th></tr></thead><tbody>${rows}</tbody></table>`, `${(runs||[]).length} runs`);
+              try {
+                const rows = (runs||[]).map((r: any) =>
+                  `<tr><td>${r.runNumber||''}</td><td>${new Date(r.periodStart).toLocaleDateString('en-GB')}</td><td>${new Date(r.periodEnd).toLocaleDateString('en-GB')}</td><td class="r">₦${(r.totalGross/100).toLocaleString()}</td><td class="r">₦${(r.totalNet/100).toLocaleString()}</td><td class="c">${r.employeeCount||0}</td><td class="c">${r.status||''}</td></tr>`
+                ).join('');
+                printWindow('Payroll Runs', `<table><thead><tr><th>Run #</th><th>Period Start</th><th>Period End</th><th class="r">Gross</th><th class="r">Net</th><th class="c">Employees</th><th class="c">Status</th></tr></thead><tbody>${rows}</tbody></table>`, `${(runs||[]).length} runs`);
+              } catch (err) {
+                alert('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'));
+                console.error('Print error:', err);
+              }
             }}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
             <Download size={14} /> PDF

@@ -90,10 +90,15 @@ export function PayeSchedulesPage() {
               </button>
             )}
             <button onClick={() => {
-              const rows = lines.map((l: any) =>
-                `<tr><td>${l.employee?.staffId||''}</td><td>${l.employee?.firstName||''} ${l.employee?.lastName||''}</td><td class="r">₦${(l.grossPay/100).toFixed(2)}</td><td class="r">₦${(l.paye/100).toFixed(2)}</td><td class="r">₦${(l.netPay/100).toFixed(2)}</td></tr>`
-              ).join('');
-              printWindow('PAYE Schedule', `<table><thead><tr><th>Staff ID</th><th>Employee</th><th class="r">Gross Pay</th><th class="r">PAYE</th><th class="r">Net Pay</th></tr></thead><tbody>${rows}</tbody></table>`, `${lines.length} employees · ${selectedRun?.runNumber || ''}`);
+              try {
+                const rows = lines.map((l: any) =>
+                  `<tr><td>${l.employee?.staffId||''}</td><td>${l.employee?.firstName||''} ${l.employee?.lastName||''}</td><td class="r">₦${(l.grossPay/100).toFixed(2)}</td><td class="r">₦${(l.paye/100).toFixed(2)}</td><td class="r">₦${(l.netPay/100).toFixed(2)}</td></tr>`
+                ).join('');
+                printWindow('PAYE Schedule', `<table><thead><tr><th>Staff ID</th><th>Employee</th><th class="r">Gross Pay</th><th class="r">PAYE</th><th class="r">Net Pay</th></tr></thead><tbody>${rows}</tbody></table>`, `${lines.length} employees · ${selectedRun?.runNumber || ''}`);
+              } catch (err) {
+                alert('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'));
+                console.error('Print error:', err);
+              }
             }} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-colors">
               <Printer size={14} /> PDF
             </button>

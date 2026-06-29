@@ -1,10 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, payrollApi, apiDownload } from '../../lib/api';
+import { api, payrollApi, printWindow } from '../../lib/api';
 import {
   Loader2, AlertCircle, FileText, Search, X, Printer, Download, Trash2
 } from 'lucide-react';
-import { payrollApi } from '../../lib/api';
 import { exportToCsv } from '../../lib/csvTemplates';
 
 function formatNaira(kobo: number) {
@@ -179,6 +178,7 @@ export function PayslipsPage() {
 
     const w = window.open('', '_blank');
     if (w) { w.document.write(html); w.document.close(); setTimeout(() => w.print(), 500); }
+    else { alert('Popup blocked. Please allow popups for this site and try again.'); }
   }
 
   return (
@@ -275,7 +275,30 @@ export function PayslipsPage() {
                         className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-md">
                         <FileText size={11} /> View
                       </button>
-                      <button onClick={() => apiDownload(`/payroll/runs/${selectedRunId}/payslips/${line.employeeId}/pdf`, `payslip_${line.employee?.staffId || line.employeeId}.pdf`)}
+                      <button onClick={() => {
+                        try {
+                          const l = line;
+                          const intDedArr = Array.isArray((l as any).internalDeductions) ? (l as any).internalDeductions : [];
+                          const intDedHtml = intDedArr.map((d: any) => `<tr><td style="padding-left:20px">${d.description}</td><td style="text-align:right">${formatNaira(d.amount || 0)}</td></tr>`).join('');
+                          const body = `<table><thead><tr><th>Earnings</th><th style="text-align:right">Amount</th></tr></thead><tbody>
+                            <tr><td>Basic Salary</td><td style="text-align:right">${formatNaira(l.basic)}</td></tr>
+                            <tr><td>Housing Allowance</td><td style="text-align:right">${formatNaira(l.housing)}</td></tr>
+                            <tr><td>Transport Allowance</td><td style="text-align:right">${formatNaira(l.transport)}</td></tr>
+                            <tr style="font-weight:bold;border-top:1px solid #ccc"><td>Total Gross</td><td style="text-align:right">${formatNaira(l.grossPay)}</td></tr>
+                          </tbody></table>
+                          <table><thead><tr><th>Deductions</th><th style="text-align:right">Amount</th></tr></thead><tbody>
+                            <tr><td>PAYE Tax</td><td style="text-align:right">${formatNaira(l.paye)}</td></tr>
+                            <tr><td>Pension (EE)</td><td style="text-align:right">${formatNaira(l.pensionEmployee)}</td></tr>
+                            <tr><td>NHF</td><td style="text-align:right">${formatNaira(l.nhf)}</td></tr>
+                            ${intDedHtml}
+                            <tr style="font-weight:bold;border-top:2px solid #333;background:#dbeafe"><td>Net Pay</td><td style="text-align:right">${formatNaira(l.netPay)}</td></tr>
+                          </tbody></table>`;
+                          printWindow(`Payslip - ${l.employee?.firstName||''} ${l.employee?.lastName||''}`, body, `Staff: ${l.employee?.staffId||''}`);
+                        } catch (err) {
+                          alert('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'));
+                          console.error('Print error:', err);
+                        }
+                      }}
                         className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-md">
                         <Download size={11} /> PDF
                       </button>
@@ -305,7 +328,31 @@ export function PayslipsPage() {
                 <button onClick={printPayslip} className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg">
                   <Printer size={13} /> Print
                 </button>
-                <button onClick={() => { const { line } = viewingPayslip; apiDownload(`/payroll/runs/${selectedRunId}/payslips/${line.employeeId}/pdf`, `payslip_${line.employee?.staffId || line.employeeId}.pdf`); }} className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg">
+                <button onClick={() => {
+                  try {
+                    const { line, employee } = viewingPayslip;
+                    const l = line;
+                    const intDedArr = Array.isArray((l as any).internalDeductions) ? (l as any).internalDeductions : [];
+                    const intDedHtml = intDedArr.map((d: any) => `<tr><td style="padding-left:20px">${d.description}</td><td style="text-align:right">${formatNaira(d.amount || 0)}</td></tr>`).join('');
+                    const body = `<table><thead><tr><th>Earnings</th><th style="text-align:right">Amount</th></tr></thead><tbody>
+                      <tr><td>Basic Salary</td><td style="text-align:right">${formatNaira(l.basic)}</td></tr>
+                      <tr><td>Housing Allowance</td><td style="text-align:right">${formatNaira(l.housing)}</td></tr>
+                      <tr><td>Transport Allowance</td><td style="text-align:right">${formatNaira(l.transport)}</td></tr>
+                      <tr style="font-weight:bold;border-top:1px solid #ccc"><td>Total Gross</td><td style="text-align:right">${formatNaira(l.grossPay)}</td></tr>
+                    </tbody></table>
+                    <table><thead><tr><th>Deductions</th><th style="text-align:right">Amount</th></tr></thead><tbody>
+                      <tr><td>PAYE Tax</td><td style="text-align:right">${formatNaira(l.paye)}</td></tr>
+                      <tr><td>Pension (EE)</td><td style="text-align:right">${formatNaira(l.pensionEmployee)}</td></tr>
+                      <tr><td>NHF</td><td style="text-align:right">${formatNaira(l.nhf)}</td></tr>
+                      ${intDedHtml}
+                      <tr style="font-weight:bold;border-top:2px solid #333;background:#dbeafe"><td>Net Pay</td><td style="text-align:right">${formatNaira(l.netPay)}</td></tr>
+                    </tbody></table>`;
+                    printWindow(`Payslip - ${employee?.firstName||''} ${employee?.lastName||''}`, body, `Staff: ${employee?.staffId||''}`);
+                  } catch (err) {
+                    alert('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'));
+                    console.error('Print error:', err);
+                  }
+                }} className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg">
                   <Download size={13} /> PDF
                 </button>
                 <button onClick={() => setViewingPayslip(null)} className="p-1 rounded-md text-slate-400 hover:text-slate-600"><X size={18} /></button>

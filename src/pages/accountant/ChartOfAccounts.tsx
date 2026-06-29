@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, accountantApi, apiDownload } from '../../lib/api';
+import { api, accountantApi, apiDownload, printWindow } from '../../lib/api';
 import {
   Plus,
   Search,
@@ -189,7 +189,16 @@ export function ChartOfAccountsPage() {
   };
 
   const handlePrintPdf = () => {
-    apiDownload('/accountant/accounts/pdf', 'chart_of_accounts.pdf');
+    try {
+      const list = accounts || [];
+      const rows = list.map((a: Account) =>
+        `<tr><td>${a.code||''}</td><td>${a.name||''}</td><td>${a.type||''}</td><td class="c">${a.isActive ? 'Active' : 'Inactive'}</td></tr>`
+      ).join('');
+      printWindow('Chart of Accounts', `<table><thead><tr><th>Code</th><th>Account Name</th><th>Type</th><th class="c">Status</th></tr></thead><tbody>${rows||'<tr><td colspan="4" style="text-align:center;color:#94a3b8">No accounts</td></tr>'}</tbody></table>`, `${list.length} accounts`);
+    } catch (err) {
+      alert('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      console.error('Print error:', err);
+    }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {

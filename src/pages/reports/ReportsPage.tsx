@@ -106,10 +106,15 @@ export function TrialBalancePage() {
     if (format === 'csv') {
       apiDownload(`/reports/trial-balance?format=csv&startDate=${sDate}&endDate=${eDate}`, `trial_balance_${sDate}_to_${eDate}.csv`);
     } else {
-      const rows = rawRows.map((r: any) =>
-        `<tr><td>${r.accountCode||''}</td><td>${r.accountName||''}</td><td class="c">${r.accountType||''}</td><td class="r">₦${((r.closingDebit||0)/100).toLocaleString()}</td><td class="r">₦${((r.closingCredit||0)/100).toLocaleString()}</td></tr>`
-      ).join('');
-      printWindow('Trial Balance', `<table><thead><tr><th>Code</th><th>Account</th><th class="c">Type</th><th class="r">Debit</th><th class="r">Credit</th></tr></thead><tbody>${rows}</tbody></table>`, `Period: ${sDate} - ${eDate}`);
+      try {
+        const rows = rawRows.map((r: any) =>
+          `<tr><td>${r.accountCode||''}</td><td>${r.accountName||''}</td><td class="c">${r.accountType||''}</td><td class="r">₦${((r.closingDebit||0)/100).toLocaleString()}</td><td class="r">₦${((r.closingCredit||0)/100).toLocaleString()}</td></tr>`
+        ).join('');
+        printWindow('Trial Balance', `<table><thead><tr><th>Code</th><th>Account</th><th class="c">Type</th><th class="r">Debit</th><th class="r">Credit</th></tr></thead><tbody>${rows}</tbody></table>`, `Period: ${sDate} - ${eDate}`);
+      } catch (err) {
+        alert('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'));
+        console.error('Print error:', err);
+      }
     }
   };
 
@@ -423,6 +428,57 @@ function ReportShell({ reportType, title }: ReportPageProps) {
         csvRows = rows.map((r: any) => [r.code||r.accountCode||'', r.name||r.accountName||'', r.type||r.accountType||'', ((r.debit||r.debitAmount||0)/100).toFixed(2), ((r.credit||r.creditAmount||0)/100).toFixed(2)]);
       }
       exportToCsv(`${reportType}_${today}.csv`, headers, csvRows);
+      return;
+    }
+    if (format === 'pdf') {
+      try {
+        if (reportType === 'income-statement') {
+          const rows = (Array.isArray(data) ? data : []).map((r: any) =>
+            `<tr><td>${r.accountName||''}</td><td class="r">₦${((r.balance||0)/100).toLocaleString()}</td></tr>`
+          ).join('');
+          printWindow('Income Statement', `<table><thead><tr><th>Account</th><th class="r">Balance</th></tr></thead><tbody>${rows||'<tr><td colspan="2" style="text-align:center;color:#94a3b8">No data</td></tr>'}</tbody></table>`, `Period: ${sDate} - ${eDate}`);
+        } else if (reportType === 'balance-sheet') {
+          const bsData = (data as any)?.data || data || {};
+          const assets = bsData?.assets?.accounts || [];
+          const liabilities = bsData?.liabilities?.accounts || [];
+          const equity = bsData?.equity?.accounts || [];
+          const totalAssets = bsData?.totalAssets || 0;
+          const totalLiabilities = bsData?.totalLiabilities || 0;
+          const totalEquity = bsData?.totalEquity || 0;
+          const assetRows = assets.map((a: any) => `<tr><td style="padding-left:24px">${a.name||''}</td><td class="r">₦${((a.balance||0)/100).toLocaleString()}</td></tr>`).join('');
+          const liabilityRows = liabilities.map((l: any) => `<tr><td style="padding-left:24px">${l.name||''}</td><td class="r">₦${((l.balance||0)/100).toLocaleString()}</td></tr>`).join('');
+          const equityRows = equity.map((e: any) => `<tr><td style="padding-left:24px">${e.name||''}</td><td class="r">₦${((e.balance||0)/100).toLocaleString()}</td></tr>`).join('');
+          printWindow('Balance Sheet', `<table><thead><tr><th>Account</th><th class="r">Balance</th></tr></thead><tbody>
+            <tr style="background:#eff6ff;font-weight:bold"><td colspan="2" style="padding:8px 10px">ASSETS</td></tr>${assetRows}
+            <tr style="font-weight:bold;border-top:2px solid"><td style="padding:7px 10px">Total Assets</td><td class="r" style="padding:7px 10px">₦${(totalAssets/100).toLocaleString()}</td></tr>
+            <tr style="background:#fffbeb;font-weight:bold"><td colspan="2" style="padding:8px 10px">LIABILITIES</td></tr>${liabilityRows}
+            <tr style="font-weight:bold;border-top:2px solid"><td style="padding:7px 10px">Total Liabilities</td><td class="r" style="padding:7px 10px">₦${(totalLiabilities/100).toLocaleString()}</td></tr>
+            <tr style="background:#f5f3ff;font-weight:bold"><td colspan="2" style="padding:8px 10px">EQUITY</td></tr>${equityRows}
+            <tr style="font-weight:bold;border-top:2px solid"><td style="padding:7px 10px">Total Equity</td><td class="r" style="padding:7px 10px">₦${(totalEquity/100).toLocaleString()}</td></tr>
+            <tr style="font-weight:bold;border-top:3px double;background:#f1f5f9"><td style="padding:7px 10px">Total Liabilities &amp; Equity</td><td class="r" style="padding:7px 10px">₦${((totalLiabilities+totalEquity)/100).toLocaleString()}</td></tr>
+          </tbody></table>`, `As of ${asOfDate}`);
+        } else if (reportType === 'cash-flow') {
+          const rows = (Array.isArray(data) ? data : []).map((r: any) =>
+            `<tr><td>${r.category||''}</td><td class="r">₦${((r.amount||0)/100).toLocaleString()}</td></tr>`
+          ).join('');
+          printWindow('Cash Flow Statement', `<table><thead><tr><th>Category</th><th class="r">Amount</th></tr></thead><tbody>${rows||'<tr><td colspan="2" style="text-align:center;color:#94a3b8">No data</td></tr>'}</tbody></table>`, `Period: ${sDate} - ${eDate}`);
+        } else if (reportType === 'aged-receivables' || reportType === 'aged-payables') {
+          const label = reportType === 'aged-receivables' ? 'Customer' : 'Vendor';
+          const title = reportType === 'aged-receivables' ? 'Aged Receivables' : 'Aged Payables';
+          const rows = (Array.isArray(data) ? data : []).map((r: any) =>
+            `<tr><td>${r.name||r.customerName||r.vendorName||''}</td><td class="r">₦${((r.current||0)/100).toLocaleString()}</td><td class="r">₦${((r.days1to30||0)/100).toLocaleString()}</td><td class="r">₦${((r.days31to60||0)/100).toLocaleString()}</td><td class="r">₦${((r.days61to90||0)/100).toLocaleString()}</td><td class="r">₦${((r.days90Plus||0)/100).toLocaleString()}</td><td class="r">₦${((r.total||0)/100).toLocaleString()}</td></tr>`
+          ).join('');
+          printWindow(title, `<table><thead><tr><th>${label}</th><th class="r">Current</th><th class="r">1-30</th><th class="r">31-60</th><th class="r">61-90</th><th class="r">90+</th><th class="r">Total</th></tr></thead><tbody>${rows||'<tr><td colspan="7" style="text-align:center;color:#94a3b8">No data</td></tr>'}</tbody></table>`, `${(Array.isArray(data) ? data : []).length} entries`);
+        } else {
+          const rows = (Array.isArray(data) ? data : []).map((r: any) =>
+            `<tr><td>${(r.code||r.accountCode||'')}</td><td>${(r.name||r.accountName||'')}</td><td class="c">${r.type||r.accountType||''}</td><td class="r">₦${((r.debit||r.debitAmount||0)/100).toLocaleString()}</td><td class="r">₦${((r.credit||r.creditAmount||0)/100).toLocaleString()}</td></tr>`
+          ).join('');
+          printWindow('Report', `<table><thead><tr><th>Code</th><th>Account</th><th class="c">Type</th><th class="r">Debit</th><th class="r">Credit</th></tr></thead><tbody>${rows||'<tr><td colspan="5" style="text-align:center;color:#94a3b8">No data</td></tr>'}</tbody></table>`);
+        }
+      } catch (err) {
+        alert('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'));
+        console.error('Print error:', err);
+      }
       return;
     }
     apiDownload(`/reports/${reportType}?format=${format}&startDate=${sDate}&endDate=${eDate}`, `${reportType}_${new Date().toISOString().split('T')[0]}.${format}`);

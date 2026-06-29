@@ -1,8 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { journalsApi, accountantApi } from '../../lib/api';
+import { journalsApi, accountantApi, printWindow } from '../../lib/api';
 import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
-import { Plus, X, Loader2, AlertCircle, CheckCircle2, Eye, Download, Upload } from 'lucide-react';
+import { Plus, X, Loader2, AlertCircle, CheckCircle2, Eye, Download, Upload, Printer } from 'lucide-react';
 import { exportToCsv } from '../../lib/csvTemplates';
 
 function fmtNaira(v: number): string {
@@ -35,13 +35,16 @@ export function JournalsPage() {
     exportToCsv(`manual_journals_${today}.csv`, headers, rows);
   }
 
-  const handleDownloadPdf = async () => {
+  const handlePrintPdf = () => {
     try {
-      const blob = await accountantApi.getManualJournalsPdf();
-      const url = URL.createObjectURL(blob);
-      window.open(url, '_blank');
+      const list = Array.isArray(journals) ? journals : [];
+      const rows = list.map((e: any) =>
+        `<tr><td>${e.entryNumber||''}</td><td>${e.date ? new Date(e.date).toLocaleDateString('en-GB') : ''}</td><td>${e.description||''}</td><td>${e.source||''}</td></tr>`
+      ).join('');
+      printWindow('Manual Journals', `<table><thead><tr><th>Entry #</th><th>Date</th><th>Description</th><th>Source</th></tr></thead><tbody>${rows||'<tr><td colspan="4" style="text-align:center;color:#94a3b8">No entries</td></tr>'}</tbody></table>`, `${list.length} entries`);
     } catch (err) {
-      console.error('PDF download failed', err);
+      alert('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      console.error('Print error:', err);
     }
   };
 
@@ -73,7 +76,7 @@ export function JournalsPage() {
             className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors">
             <Download size={14} /> CSV
           </button>
-          <button onClick={handleDownloadPdf} className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700"><Download className="w-3.5 h-3.5" /> PDF</button>
+          <button onClick={handlePrintPdf} className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700"><Printer className="w-3.5 h-3.5" /> PDF</button>
           <button onClick={() => { setShowForm(true); setViewId(null); }} className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700"><Plus className="w-4 h-4" /> New Journal Entry</button>
         </div>
       </div>

@@ -1,8 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { budgetsApi, accountantApi } from '../../lib/api';
+import { budgetsApi, accountantApi, printWindow } from '../../lib/api';
 import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
-import { Plus, X, Loader2, AlertCircle, CheckCircle2, Trash2, Download, Upload } from 'lucide-react';
+import { Plus, X, Loader2, AlertCircle, CheckCircle2, Trash2, Download, Upload, Printer } from 'lucide-react';
 import { exportToCsv } from '../../lib/csvTemplates';
 
 function fmtNaira(v: number): string {
@@ -38,13 +38,16 @@ export function BudgetsPage() {
     exportToCsv(`budgets_${today}.csv`, headers, rows);
   }
 
-  const handleDownloadPdf = async () => {
+  const handlePrintPdf = () => {
     try {
-      const blob = await accountantApi.getBudgetsPdf();
-      const url = URL.createObjectURL(blob);
-      window.open(url, '_blank');
+      const list = Array.isArray(budgets) ? budgets : [];
+      const rows = list.map((b: any) =>
+        `<tr><td>${b.name||''}</td><td>${b.fiscalYear||''}</td><td>${b.period||''}</td><td class="c">${b.status||''}</td></tr>`
+      ).join('');
+      printWindow('Budgets', `<table><thead><tr><th>Name</th><th>Fiscal Year</th><th>Period</th><th class="c">Status</th></tr></thead><tbody>${rows||'<tr><td colspan="4" style="text-align:center;color:#94a3b8">No budgets</td></tr>'}</tbody></table>`, `${list.length} budgets`);
     } catch (err) {
-      console.error('PDF download failed', err);
+      alert('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      console.error('Print error:', err);
     }
   };
 
@@ -76,7 +79,7 @@ export function BudgetsPage() {
             className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors">
             <Download size={14} /> CSV
           </button>
-          <button onClick={handleDownloadPdf} className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700"><Download className="w-3.5 h-3.5" /> PDF</button>
+          <button onClick={handlePrintPdf} className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700"><Printer className="w-3.5 h-3.5" /> PDF</button>
           <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700"><Plus className="w-4 h-4" /> New Budget</button>
         </div>
       </div>

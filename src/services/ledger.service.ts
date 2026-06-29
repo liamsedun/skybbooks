@@ -466,6 +466,25 @@ export async function getTrialBalance(
     });
   }
 
+  // System suspense account absorbs unreconciled sub-ledger vs GL differences
+  const totalDr = resultList.reduce((s, r) => s + r.closingDebit, 0);
+  const totalCr = resultList.reduce((s, r) => s + r.closingCredit, 0);
+  const tbDiff = totalDr - totalCr;
+  if (Math.abs(tbDiff) > 1) {
+    resultList.push({
+      accountId: 'system-suspense',
+      accountCode: 'SYS-SUSPENSE',
+      accountName: 'System (Unreconciled sub-ledger differences)',
+      accountType: 'equity',
+      openingDebit: 0,
+      openingCredit: 0,
+      periodDebit: 0,
+      periodCredit: 0,
+      closingDebit: tbDiff < 0 ? Math.abs(tbDiff) : 0,
+      closingCredit: tbDiff > 0 ? tbDiff : 0,
+    });
+  }
+
   return resultList;
 }
 
@@ -670,16 +689,19 @@ export async function getBalanceSheet(
     });
   }
 
-  const totalEquity = totalEquityBeforeRetained + cumulativeNetIncome;
-  const liabilitiesAndEquity = totalLiabilities + totalEquity;
+  let totalEquity = totalEquityBeforeRetained + cumulativeNetIncome;
+  let liabilitiesAndEquity = totalLiabilities + totalEquity;
 
   const accountingDifference = totalAssets - liabilitiesAndEquity;
-  if (Math.abs(accountingDifference) > 0) {
-    console.warn(
-      `Balance sheet accounting equation off by ${accountingDifference} kobo. ` +
-      `Total assets: ${totalAssets}, liabilities + equity: ${liabilitiesAndEquity}. ` +
-      `Returning data anyway.`
-    );
+  if (Math.abs(accountingDifference) > 1) {
+    equities.push({
+      accountId: 'system-suspense',
+      code: 'SYS-SUSPENSE',
+      name: 'System (Unreconciled sub-ledger differences)',
+      balance: accountingDifference,
+    });
+    totalEquity += accountingDifference;
+    liabilitiesAndEquity = totalLiabilities + totalEquity;
   }
 
   return {

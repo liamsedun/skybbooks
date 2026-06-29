@@ -301,10 +301,15 @@ export function EmployeesPage() {
             <Download className="w-3.5 h-3.5" /> CSV
           </button>
           <button onClick={() => {
-              const rows = (employees||[]).map((e: any) =>
-                `<tr><td>${e.staffId||''}</td><td>${e.firstName||''} ${e.lastName||''}</td><td>${e.department||'-'}</td><td>${e.jobTitle||'-'}</td><td class="c">${e.employmentStatus||'-'}</td><td>${e.email||''}</td></tr>`
-              ).join('');
-              printWindow('Employees', `<table><thead><tr><th>Staff ID</th><th>Name</th><th>Department</th><th>Job Title</th><th class="c">Status</th><th>Email</th></tr></thead><tbody>${rows}</tbody></table>`, `${(employees||[]).length} employees`);
+              try {
+                const rows = (employees||[]).map((e: any) =>
+                  `<tr><td>${e.staffId||''}</td><td>${e.firstName||''} ${e.lastName||''}</td><td>${e.department||'-'}</td><td>${e.jobTitle||'-'}</td><td class="c">${e.employmentStatus||'-'}</td><td>${e.email||''}</td></tr>`
+                ).join('');
+                printWindow('Employees', `<table><thead><tr><th>Staff ID</th><th>Name</th><th>Department</th><th>Job Title</th><th class="c">Status</th><th>Email</th></tr></thead><tbody>${rows}</tbody></table>`, `${(employees||[]).length} employees`);
+              } catch (err) {
+                alert('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'));
+                console.error('Print error:', err);
+              }
             }}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700">
             <Download className="w-3.5 h-3.5" /> PDF
