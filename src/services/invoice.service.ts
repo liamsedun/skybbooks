@@ -12,7 +12,10 @@ import {
   invoices,
   invoiceLines,
   contacts,
-  salesOrders
+  salesOrders,
+  items,
+  inventoryLots,
+  inventoryTransactions
 } from '../db/schema';
 import { AppError } from '../lib/errors';
 import { createJournalEntry, reverseJournalEntry } from './ledger.service';
@@ -84,6 +87,26 @@ async function resolveRevenueAccount(orgId: string, accountId: string | null | u
   throw new AppError("A valid Sales/Revenue general ledger account is required.", 400);
 }
 
+async function resolveCogsAccount(orgId: string, tx: any): Promise<string> {
+  const [cogsAccount] = await tx
+    .select()
+    .from(accounts)
+    .where(
+      and(
+        eq(accounts.orgId, orgId),
+        eq(accounts.systemAccountRole, 'cogs')
+      )
+    )
+    .limit(1);
+
+  if (cogsAccount) return cogsAccount.id;
+
+  throw new AppError(
+    "Cost of Goods Sold account not configured. Go to Chart of Accounts, select an expense account, and set its System Role to 'COGS'.",
+    400
+  );
+}
+
 /**
  * Creates the matching bookkeeping journal entries for an invoice.
  */
@@ -136,6 +159,108 @@ async function createInvoiceJournalEntry(invoiceId: string, orgId: string, userI
 
     revenueGroup[revAccountId] = (revenueGroup[revAccountId] || 0) + netBase;
     totalTaxSum += line.taxAmount;
+  }
+
+  // Process inventory items: COGS and inventory reduction
+  let totalCogsAmount = 0;
+  const inventoryCreditGroup: Record<string, number> = {};
+
+  for (const line of lines) {
+    if (!line.itemId) continue;
+
+    const [item] = await tx
+      .select()
+      .from(items)
+      .where(eq(items.id, line.itemId))
+      .limit(1);
+
+    if (!item || !item.trackInventory) continue;
+
+    const inventoryAccountId = item.inventoryAccountId;
+    if (!inventoryAccountId) {
+      throw new AppError(
+        `Item "${item.name}" has trackInventory enabled but no Inventory Account configured.`,
+        400
+      );
+    }
+
+    const qtyToSell = Number(line.quantity);
+    if (qtyToSell <= 0) continue;
+
+    // FIFO: consume oldest lots first
+    const lots = await tx
+      .select()
+      .from(inventoryLots)
+      .where(eq(inventoryLots.itemId, line.itemId))
+      .orderBy(inventoryLots.receivedDate);
+
+    let remainingQty = qtyToSell;
+
+    for (const lot of lots) {
+      if (remainingQty <= 0) break;
+
+      const availableQty = Number(lot.quantity);
+      if (availableQty <= 0) continue;
+
+      const consumedQty = Math.min(remainingQty, availableQty);
+      const costAmount = consumedQty * lot.costPerUnit;
+
+      totalCogsAmount += costAmount;
+      inventoryCreditGroup[inventoryAccountId] =
+        (inventoryCreditGroup[inventoryAccountId] || 0) + costAmount;
+
+      await tx.insert(inventoryTransactions).values({
+        itemId: line.itemId,
+        orgId,
+        lotId: lot.id,
+        type: 'sale',
+        quantity: String(consumedQty),
+        unitCost: lot.costPerUnit,
+        referenceType: 'invoice',
+        referenceId: invoiceId,
+        date: invoice.date
+      });
+
+      const newLotQty = availableQty - consumedQty;
+      if (newLotQty <= 0) {
+        await tx.delete(inventoryLots).where(eq(inventoryLots.id, lot.id));
+      } else {
+        await tx
+          .update(inventoryLots)
+          .set({ quantity: String(newLotQty) })
+          .where(eq(inventoryLots.id, lot.id));
+      }
+
+      remainingQty -= consumedQty;
+    }
+
+    if (remainingQty > 0) {
+      throw new AppError(
+        `Insufficient inventory for item "${item.name}". Cannot post invoice.`,
+        400
+      );
+    }
+  }
+
+  // Add COGS journal lines
+  if (totalCogsAmount > 0) {
+    const cogsAccountId = await resolveCogsAccount(orgId, tx);
+
+    journalLinesPayload.push({
+      accountId: cogsAccountId,
+      debit: totalCogsAmount,
+      description: `Cost of Goods Sold for invoice ${invoice.invoiceNumber}`
+    });
+
+    for (const [invAccId, creditAmt] of Object.entries(inventoryCreditGroup)) {
+      if (creditAmt > 0) {
+        journalLinesPayload.push({
+          accountId: invAccId,
+          credit: creditAmt,
+          description: `Inventory reduction for invoice ${invoice.invoiceNumber}`
+        });
+      }
+    }
   }
 
   // CR Revenue Accounts
