@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   TrendingUp,
   TrendingDown,
@@ -50,6 +50,7 @@ const CHART_COLORS = ['#2e7d32', '#dc2626', '#2563eb', '#f59e0b', '#8b5cf6', '#0
 
 export function Dashboard({ onNavigate }: { onNavigate: (viewId: string) => void }) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { formatNaira } = useCurrency();
   const { token } = useAuth();
   const [selectedPeriod, setSelectedPeriod] = useState<string>('6m');
@@ -302,17 +303,18 @@ export function Dashboard({ onNavigate }: { onNavigate: (viewId: string) => void
 
   const netWorthKobo = totalCashKobo + receivablesKobo - payablesKobo;
 
-  const refetchAll = () => {
-    accountsQuery.refetch();
-    customersQuery.refetch();
-    vendorsQuery.refetch();
-    invoicesQuery.refetch();
-    billsQuery.refetch();
-    paymentsReceivedQuery.refetch();
-    paymentsMadeQuery.refetch();
-    expensesQuery.refetch();
-    invoiceAgingQuery.refetch();
-    billAgingQuery.refetch();
+  const [refreshing, setRefreshing] = useState(false);
+  const refetchAll = async () => {
+    setRefreshing(true);
+    const keys = [
+      'bankAccounts', 'dashboard-customers', 'dashboard-vendors',
+      'dashboard-invoices', 'dashboard-bills', 'dashboard-payments-received',
+      'dashboard-payments-made', 'dashboard-expenses',
+      'dashboard-invoice-aging', 'dashboard-bill-aging'
+    ];
+    keys.forEach(k => queryClient.invalidateQueries({ queryKey: [k] }));
+    await Promise.all(keys.map(k => queryClient.refetchQueries({ queryKey: [k] })));
+    setTimeout(() => setRefreshing(false), 600);
   };
 
   if (isLoading) {
@@ -357,8 +359,8 @@ export function Dashboard({ onNavigate }: { onNavigate: (viewId: string) => void
             <option value="6m">Last 6 Months</option>
             <option value="12m">Last 12 Months</option>
           </select>
-          <button onClick={refetchAll} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
-            <RefreshCw className="w-3.5 h-3.5" /> Refresh
+          <button onClick={refetchAll} disabled={refreshing} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-60">
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} /> {refreshing ? 'Refreshing...' : 'Refresh'}
           </button>
           <button onClick={() => navigate('/sales/invoices/new')} className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
             <PlusCircle className="w-4 h-4" /> New Invoice
