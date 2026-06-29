@@ -80,14 +80,6 @@ async function resolveVatInput(orgId: string, tx: any): Promise<string> {
 
   throw new AppError('VAT Receivable account not configured. Go to Chart of Accounts, select an asset account, and set its System Role to \'VAT Receivable\'.', 404);
 }
-    .from(accounts)
-    .where(and(eq(accounts.orgId, orgId), eq(accounts.type, 'asset')))
-    .limit(1);
-
-  if (fallbackAsset) return fallbackAsset.id;
-
-  throw new AppError('VAT Input account could not be resolved.', 404);
-}
 
 // ==========================================
 // CORE EXPENSES SERVICE
