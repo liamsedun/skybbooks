@@ -246,7 +246,7 @@ export function TrialBalancePage() {
                     <span className="font-medium text-slate-800">{row.accountName || row.name || `Account ${i + 1}`}</span>
                     {link && (
                       <button
-                        onClick={e => { e.stopPropagation(); navigate(link.path + '?account=' + (row.accountCode || row.code || '')); }}
+                        onClick={e => { e.stopPropagation(); navigate(link.path); }}
                         className="ml-2 inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800"
                         title={`Go to ${link.label}`}
                       ><ExternalLink className="w-3 h-3" /> {link.label}</button>
