@@ -30,12 +30,49 @@ const accountSchema = z.object({
 router.get('/accounts', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const orgId = req.user!.orgId!;
+    const includeBalances = req.query.includeBalances === 'true';
+
     const list = await db
       .select()
       .from(accounts)
       .where(eq(accounts.orgId, orgId))
       .orderBy(accounts.code);
-    return res.status(200).json(list);
+
+    if (!includeBalances) {
+      return res.status(200).json(list);
+    }
+
+    // Bulk balance query — single pass for performance
+    const balanceRows = await db
+      .select({
+        accountId: journalLines.accountId,
+        totalDebits: sql<number>`coalesce(sum(${journalLines.debitAmount}), 0)`,
+        totalCredits: sql<number>`coalesce(sum(${journalLines.creditAmount}), 0)`,
+      })
+      .from(journalLines)
+      .innerJoin(journalEntries, eq(journalEntries.id, journalLines.entryId))
+      .where(eq(journalEntries.orgId, orgId))
+      .groupBy(journalLines.accountId);
+
+    const balanceMap = new Map<string, { debits: number; credits: number }>();
+    for (const row of balanceRows) {
+      balanceMap.set(row.accountId, { debits: Number(row.totalDebits), credits: Number(row.totalCredits) });
+    }
+
+    const debitNormalTypes = new Set(['asset', 'expense']);
+
+    const enriched = list.map((acc) => {
+      const b = balanceMap.get(acc.id);
+      let balance = 0;
+      if (b) {
+        balance = debitNormalTypes.has(acc.type)
+          ? b.debits - b.credits
+          : b.credits - b.debits;
+      }
+      return { ...acc, balance };
+    });
+
+    return res.status(200).json(enriched);
   } catch (err) {
     return next(err);
   }
