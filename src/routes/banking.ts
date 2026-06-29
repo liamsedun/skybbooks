@@ -29,7 +29,8 @@ import {
   matchBankTransaction,
   autoMatchTransactions,
   applyBankRule,
-  createTransactionFromBankFeed
+  createTransactionFromBankFeed,
+  getBankReconciliationStatement
 } from '../services/reconciliation.service';
 import { fetchLatestRates } from '../services/cbn.service';
 
@@ -760,6 +761,22 @@ router.get('/accounts/:id/transactions', async (req: AuthenticatedRequest, res: 
     );
 
     return res.status(200).json(enrichedList);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET bank reconciliation statement
+router.get('/accounts/:bankAccountId/reconciliation-statement', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { bankAccountId } = req.params;
+    const { asOfDate } = z.object({ asOfDate: z.string().optional() }).parse(req.query);
+
+    const date = asOfDate ? new Date(asOfDate) : new Date();
+
+    const statement = await getBankReconciliationStatement(bankAccountId, orgId, date);
+    return res.status(200).json({ success: true, data: statement });
   } catch (err) {
     next(err);
   }

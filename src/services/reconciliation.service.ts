@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { sql, eq, and, desc, inArray } from 'drizzle-orm';
+import { sql, eq, and, desc, inArray, lte } from 'drizzle-orm';
 import {
   db,
   bankAccounts,
@@ -18,7 +18,7 @@ import {
   contacts
 } from '../db/schema';
 import { AppError } from '../lib/errors';
-import { createJournalEntry } from './ledger.service';
+import { createJournalEntry, getAccountBalance } from './ledger.service';
 
 /**
  * 1. MATCH BANK TRANSACTION (MANUAL RECONCILIATION)
@@ -654,4 +654,78 @@ export async function createTransactionFromBankFeed(
       throw new AppError(`Unsupported transaction matching type: ${input.type}`, 400);
     }
   });
+}
+
+/**
+ * 5. BANK RECONCILIATION STATEMENT
+ */
+export async function getBankReconciliationStatement(
+  bankAccountId: string,
+  orgId: string,
+  asOfDate: Date
+): Promise<any> {
+  const [ba] = await db
+    .select()
+    .from(bankAccounts)
+    .where(and(eq(bankAccounts.id, bankAccountId), eq(bankAccounts.orgId, orgId)))
+    .limit(1);
+
+  if (!ba) {
+    throw new AppError('Bank account not found.', 404);
+  }
+
+  const reconciledItems = await db
+    .select()
+    .from(bankTransactions)
+    .where(
+      and(
+        eq(bankTransactions.bankAccountId, bankAccountId),
+        eq(bankTransactions.status, 'reconciled'),
+        lte(bankTransactions.date, asOfDate)
+      )
+    )
+    .orderBy(desc(bankTransactions.date));
+
+  const unreconciledItems = await db
+    .select()
+    .from(bankTransactions)
+    .where(
+      and(
+        eq(bankTransactions.bankAccountId, bankAccountId),
+        eq(bankTransactions.status, 'unreconciled'),
+        lte(bankTransactions.date, asOfDate)
+      )
+    )
+    .orderBy(desc(bankTransactions.date));
+
+  const outstandingDeposits = unreconciledItems
+    .filter((t) => t.type === 'credit')
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const outstandingPayments = unreconciledItems
+    .filter((t) => t.type === 'debit')
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const glBalance = await getAccountBalance(ba.accountId, asOfDate);
+
+  const statementClosingBalance = ba.currentBalance;
+  const adjustedBankBalance = statementClosingBalance + outstandingDeposits - outstandingPayments;
+  const isReconciled = adjustedBankBalance === glBalance;
+
+  return {
+    bankAccount: {
+      name: ba.name,
+      accountNumber: ba.accountNumber,
+      bankName: ba.bankName
+    },
+    statementClosingBalance,
+    glBalance,
+    reconciledItems,
+    unreconciledItems,
+    outstandingDeposits,
+    outstandingPayments,
+    adjustedBankBalance,
+    isReconciled,
+    asOfDate
+  };
 }

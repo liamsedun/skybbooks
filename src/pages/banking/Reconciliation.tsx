@@ -10,6 +10,7 @@ import { bankingApi, salesApi } from '../../lib/api';
 import { useCurrency } from '../../hooks/useCurrency';
 import { useAuth } from '../../hooks/useAuth';
 import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
+import { printWindow } from '../../lib/api';
 import {
   RefreshCw,
   Search,
@@ -211,6 +212,39 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
     }
   });
 
+  // Reconciliation statement for printing
+  const { data: recStatement } = useQuery({
+    queryKey: ['reconciliationStatement', selectedBankAccountId],
+    queryFn: () => bankingApi.getReconciliationStatement(selectedBankAccountId),
+    enabled: !!selectedBankAccountId && !!token,
+  });
+
+  const handlePrintStatement = () => {
+    const stmt = recStatement?.data || recStatement;
+    if (!stmt) return;
+    const fmt = (v: number) => `₦${(v/100).toLocaleString()}`;
+    const rows: string[] = [];
+    const addRow = (label: string, val: string, cls?: string) =>
+      rows.push(`<tr${cls?` style="${cls}"`:''}><td style="padding:6px 12px">${label}</td><td class="r" style="padding:6px 12px;font-weight:600">${val}</td></tr>`);
+    addRow('Balance per bank statement', fmt(stmt.statementClosingBalance));
+    addRow('Add: Outstanding deposits', fmt(stmt.outstandingDeposits));
+    addRow('Less: Outstanding payments', `(${fmt(stmt.outstandingPayments)})`);
+    addRow('', '', 'border-top:2px solid #0f172a');
+    addRow('Adjusted bank balance', fmt(stmt.adjustedBankBalance), 'font-weight:700');
+    addRow('', '', 'border-top:2px solid #0f172a');
+    addRow('Balance per GL (cash book)', fmt(stmt.glBalance));
+    addRow('', '', 'border-top:3px double #0f172a');
+    const diff = Math.abs(stmt.adjustedBankBalance - stmt.glBalance);
+    if (stmt.isReconciled) {
+      addRow(`Difference: ₦${(diff/100).toLocaleString()}  ✓ Reconciled`, '', 'background:#ecfdf5;font-weight:700;color:#059669');
+    } else {
+      addRow(`Difference: ₦${(diff/100).toLocaleString()}  ✗ Outstanding`, '', 'background:#fef2f2;font-weight:700;color:#dc2626');
+    }
+    addRow('', '', 'border-top:3px double #0f172a');
+    const subtitle = `Bank: ${stmt.bankAccount.bankName} — ${stmt.bankAccount.name} (${stmt.bankAccount.accountNumber})`;
+    printWindow('Bank Reconciliation Statement', `<table style="width:100%;border-collapse:collapse;font-size:13px">${rows.join('')}</table>`, subtitle);
+  };
+
   // Handle manual reconciliation lock
   const handleMatch = (txnId: string, lineId: string) => {
     reconcileMutation.mutate({ txnId, lineId });
@@ -369,6 +403,15 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
           >
             <Sparkles className="w-3.5 h-3.5 animate-pulse" />
             <span>Auto-Match Bot</span>
+          </button>
+          <button
+            type="button"
+            onClick={handlePrintStatement}
+            disabled={!recStatement?.data && !recStatement}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg disabled:opacity-50 transition cursor-pointer font-sans shadow-xs"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+            <span>Print Statement</span>
           </button>
         </div>
       </div>

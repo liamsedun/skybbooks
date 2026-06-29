@@ -329,6 +329,10 @@ export const bankingApi = {
     const res = await api.post(`/banking/accounts/${accountId}/auto-match`);
     return res.data;
   },
+  getReconciliationStatement: async (bankAccountId: string, params?: { asOfDate?: string }) => {
+    const res = await api.get(`/banking/accounts/${bankAccountId}/reconciliation-statement`, { params });
+    return res.data;
+  },
   getRules: async () => {
     const res = await api.get('/banking/rules');
     return res.data;
