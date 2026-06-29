@@ -341,9 +341,9 @@ export function Dashboard({ onNavigate }: { onNavigate: (viewId: string) => void
         </div>
       </div>
 
-      {/* KPI Cards */}
+      {/* KPI Cards — click to drill down to source module */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <div className="bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md transition-shadow">
+        <button onClick={() => navigate('/banking')} className="bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md hover:border-emerald-300 transition-all text-left cursor-pointer">
           <div className="flex items-center justify-between mb-3">
             <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Cash Balance</span>
             <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg"><Banknote className="w-4 h-4" /></div>
@@ -355,9 +355,9 @@ export function Dashboard({ onNavigate }: { onNavigate: (viewId: string) => void
             </span>
             <span className="text-[11px] text-slate-400">{totalCashKobo > 0 ? 'Available' : 'No funds'}</span>
           </div>
-        </div>
+        </button>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md transition-shadow">
+        <button onClick={() => navigate('/sales/invoices')} className="bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md hover:border-blue-300 transition-all text-left cursor-pointer">
           <div className="flex items-center justify-between mb-3">
             <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Accounts Receivable</span>
             <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><Users className="w-4 h-4" /></div>
@@ -371,9 +371,9 @@ export function Dashboard({ onNavigate }: { onNavigate: (viewId: string) => void
               </span>
             )}
           </div>
-        </div>
+        </button>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md transition-shadow">
+        <button onClick={() => navigate('/purchases/bills')} className="bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md hover:border-amber-300 transition-all text-left cursor-pointer">
           <div className="flex items-center justify-between mb-3">
             <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Accounts Payable</span>
             <div className="p-2 bg-amber-50 text-amber-600 rounded-lg"><Building2 className="w-4 h-4" /></div>
@@ -387,9 +387,9 @@ export function Dashboard({ onNavigate }: { onNavigate: (viewId: string) => void
               </span>
             )}
           </div>
-        </div>
+        </button>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md transition-shadow">
+        <button onClick={() => navigate('/reports')} className="bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md hover:border-purple-300 transition-all text-left cursor-pointer">
           <div className="flex items-center justify-between mb-3">
             <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Net Worth</span>
             <div className="p-2 bg-purple-50 text-purple-600 rounded-lg"><PieChartIcon className="w-4 h-4" /></div>
@@ -401,7 +401,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (viewId: string) => void
               {netWorthKobo >= 0 ? 'Positive' : 'Negative'} position
             </span>
           </div>
-        </div>
+        </button>
       </div>
 
       {/* Charts Row */}
