@@ -111,9 +111,10 @@ export function TrialBalancePage() {
         a.href = url; a.download = `trial_balance_${sDate}_to_${eDate}.csv`; a.click();
         URL.revokeObjectURL(url);
       } else {
-        const res = await reportsApi.getTrialBalance({ startDate: sDate, endDate: eDate, format: 'pdf' });
-        const url = URL.createObjectURL(res);
-        window.open(url, '_blank');
+        const blob = await reportsApi.getTrialBalance({ startDate: sDate, endDate: eDate, format: 'pdf' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = `trial_balance_${sDate}_to_${eDate}.pdf`; a.click();
+        URL.revokeObjectURL(url);
       }
     } catch { /* ignore */ }
   };
@@ -452,7 +453,7 @@ function ReportShell({ reportType, title }: ReportPageProps) {
         blob = res;
       }
       const url = URL.createObjectURL(blob);
-      window.open(url, '_blank');
+      const a = document.createElement('a'); a.href = url; a.download = `${reportType}_${new Date().toISOString().split('T')[0]}.pdf`; a.click();
     } catch { /* ignore */ }
   };
 

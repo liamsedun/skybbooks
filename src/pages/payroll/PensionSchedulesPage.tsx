@@ -88,7 +88,7 @@ export function PensionSchedulesPage() {
                 <Trash2 size={14} /> Delete ({selectedPensionIds.length})
               </button>
             )}
-            <button onClick={async () => { try { const blob = await payrollApi.getPensionSchedulePdf(selectedRunId); window.open(URL.createObjectURL(blob), '_blank'); } catch (e) { console.error(e); } }} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-colors">
+            <button onClick={async () => { try { const blob = await payrollApi.getPensionSchedulePdf(selectedRunId); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `pension_schedule_${new Date().toISOString().split('T')[0]}.pdf`; a.click(); } catch (e) { console.error(e); } }} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-colors">
               <Printer size={14} /> PDF
             </button>
             <button onClick={exportCSV} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">

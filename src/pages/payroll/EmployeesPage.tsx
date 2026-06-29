@@ -300,7 +300,7 @@ export function EmployeesPage() {
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
             <Download className="w-3.5 h-3.5" /> CSV
           </button>
-          <button onClick={async () => { try { const blob = await payrollApi.getEmployeesPdf(); window.open(URL.createObjectURL(blob), '_blank'); } catch (e) { console.error(e); } }}
+          <button onClick={async () => { try { const blob = await payrollApi.getEmployeesPdf(); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `employees_${new Date().toISOString().split('T')[0]}.pdf`; a.click(); } catch (e) { console.error(e); } }}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700">
             <Download className="w-3.5 h-3.5" /> PDF
           </button>

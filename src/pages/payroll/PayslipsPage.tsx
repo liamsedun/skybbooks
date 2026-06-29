@@ -275,7 +275,7 @@ export function PayslipsPage() {
                         className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-md">
                         <FileText size={11} /> View
                       </button>
-                      <button onClick={async () => { try { const blob = await payrollApi.getPayslipPdf(selectedRunId, line.employeeId); window.open(URL.createObjectURL(blob), '_blank'); } catch (e) { console.error(e); } }}
+                      <button onClick={async () => { try { const blob = await payrollApi.getPayslipPdf(selectedRunId, line.employeeId); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `payslip_${line.employee?.staffId || line.employeeId}.pdf`; a.click(); } catch (e) { console.error(e); } }}
                         className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-md">
                         <Download size={11} /> PDF
                       </button>
@@ -305,7 +305,7 @@ export function PayslipsPage() {
                 <button onClick={printPayslip} className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg">
                   <Printer size={13} /> Print
                 </button>
-                <button onClick={async () => { try { const { line } = viewingPayslip; const blob = await payrollApi.getPayslipPdf(selectedRunId, line.employeeId); window.open(URL.createObjectURL(blob), '_blank'); } catch (e) { console.error(e); } }} className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg">
+                <button onClick={async () => { try { const { line } = viewingPayslip; const blob = await payrollApi.getPayslipPdf(selectedRunId, line.employeeId); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `payslip_${line.employee?.staffId || line.employeeId}.pdf`; a.click(); } catch (e) { console.error(e); } }} className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg">
                   <Download size={13} /> PDF
                 </button>
                 <button onClick={() => setViewingPayslip(null)} className="p-1 rounded-md text-slate-400 hover:text-slate-600"><X size={18} /></button>

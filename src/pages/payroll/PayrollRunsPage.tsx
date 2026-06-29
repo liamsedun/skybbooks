@@ -121,7 +121,7 @@ export function PayrollRunsPage() {
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors">
             <Download size={14} /> CSV
           </button>
-          <button onClick={async () => { try { const blob = await payrollApi.getPayrollRunsPdf(); window.open(URL.createObjectURL(blob), '_blank'); } catch (e) { console.error(e); } }}
+          <button onClick={async () => { try { const blob = await payrollApi.getPayrollRunsPdf(); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `payroll_runs_${new Date().toISOString().split('T')[0]}.pdf`; a.click(); } catch (e) { console.error(e); } }}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
             <Download size={14} /> PDF
           </button>

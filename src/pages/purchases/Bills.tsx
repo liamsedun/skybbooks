@@ -312,7 +312,7 @@ function BillList() {
           <p className="text-sm text-slate-500 mt-0.5">Track and pay supplier bills</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={async () => { try { const res = await api.get('/purchases/bills/pdf', { responseType: 'blob' }); window.open(URL.createObjectURL(res.data), '_blank'); } catch (e) { console.error(e); } }}
+          <button onClick={async () => { try { const res = await api.get('/purchases/bills/pdf', { responseType: 'blob' }); const url = URL.createObjectURL(res.data); const a = document.createElement('a'); a.href = url; a.download = `bills_${new Date().toISOString().split('T')[0]}.pdf`; a.click(); } catch (e) { console.error(e); } }}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
             <FileText size={14} /> PDF
           </button>
@@ -834,7 +834,7 @@ function BillDetail({ id, onBack }: { id: string; onBack: () => void }) {
           <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_STYLES[bill.status] || 'bg-slate-100 text-slate-600'}`}>
             {bill.status}
           </span>
-          <button onClick={async () => { try { const res = await api.get(`/purchases/bills/${bill.id}/pdf`, { responseType: 'blob' }); window.open(URL.createObjectURL(res.data), '_blank'); } catch (e) { console.error(e); } }}
+          <button onClick={async () => { try { const res = await api.get(`/purchases/bills/${bill.id}/pdf`, { responseType: 'blob' }); const url = URL.createObjectURL(res.data); const a = document.createElement('a'); a.href = url; a.download = `bill_${bill.billNumber}.pdf`; a.click(); } catch (e) { console.error(e); } }}
             className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg">
             <FileText size={14} /> PDF
           </button>

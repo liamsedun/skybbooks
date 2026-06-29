@@ -61,7 +61,7 @@ export function FixedAssetsPage() {
     try {
       const blob = await fixedAssetsApi.getAssetsPdf();
       const url = URL.createObjectURL(blob);
-      window.open(url, '_blank');
+      const a = document.createElement('a'); a.href = url; a.download = 'fixed_assets.pdf'; a.click();
     } catch { /* ignore */ }
   };
 

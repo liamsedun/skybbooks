@@ -31,7 +31,7 @@ export function AuditLogsPage() {
     try {
       const blob = await auditLogApi.getAuditLogsPdf({ action: actionFilter || undefined, entityType: entityFilter || undefined });
       const url = URL.createObjectURL(blob);
-      window.open(url, '_blank');
+      const a = document.createElement('a'); a.href = url; a.download = `audit_logs_${new Date().toISOString().split('T')[0]}.pdf`; a.click();
     } catch (err) {
       console.error('PDF download failed', err);
     }

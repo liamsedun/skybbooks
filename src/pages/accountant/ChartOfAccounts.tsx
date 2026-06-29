@@ -198,7 +198,7 @@ export function ChartOfAccountsPage() {
     try {
       const blob = await accountantApi.getAccountsPdf();
       const url = URL.createObjectURL(blob);
-      window.open(url, '_blank');
+      const a = document.createElement('a'); a.href = url; a.download = 'chart_of_accounts.pdf'; a.click();
     } catch { /* ignore */ }
   };
 
