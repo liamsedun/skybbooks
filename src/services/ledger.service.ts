@@ -390,9 +390,13 @@ export async function getTrialBalance(
 
     // Opening balances only apply to balance sheet accounts (asset, liability, equity)
     const acctType = (acct.type || '').toLowerCase();
+    const isContraAsset = acctType === 'asset' && (acct.name.toLowerCase().includes('accumulated depreciation') || acct.name.toLowerCase().includes('accumulated amortisation'));
+    const isDebitBook = (acctType === 'asset' && !isContraAsset) || acctType === 'expense';
     const ob = (acctType === 'expense' || acctType === 'revenue') ? 0 : Number(acct.openingBalance || 0);
     if (ob > 0) {
-      acctType === 'asset' ? openingDebits += ob : openingCredits += ob;
+      if (isContraAsset) openingCredits += ob;
+      else if (acctType === 'asset' || acctType === 'expense') openingDebits += ob;
+      else openingCredits += ob;
     }
 
     const matchedLines = txLines.filter(l => l.accountId === acct.id);
@@ -405,8 +409,6 @@ export async function getTrialBalance(
       if (lineDate < startDate) { openingDebits += deb; openingCredits += cred; }
       else if (lineDate >= startDate && lineDate <= endDate) { periodDebits += deb; periodCredits += cred; }
     }
-
-    const isDebitBook = acctType === 'asset' || acctType === 'expense';
 
     // Fixed assets: if this account is linked to fixed assets, force its balance to match
     const faData = faMap.get(acct.id);
@@ -457,12 +459,12 @@ export async function getTrialBalance(
       accountCode: acct.code,
       accountName: acct.name,
       accountType: acct.type,
-      openingDebit: opened > 0 ? opened : 0,
-      openingCredit: opened < 0 ? Math.abs(opened) : 0,
+      openingDebit: isDebitBook ? (opened > 0 ? opened : 0) : (opened < 0 ? Math.abs(opened) : 0),
+      openingCredit: isDebitBook ? (opened < 0 ? Math.abs(opened) : 0) : (opened > 0 ? opened : 0),
       periodDebit: periodDebits,
       periodCredit: periodCredits,
-      closingDebit: closed > 0 ? closed : 0,
-      closingCredit: closed < 0 ? Math.abs(closed) : 0
+      closingDebit: isDebitBook ? (closed > 0 ? closed : 0) : (closed < 0 ? Math.abs(closed) : 0),
+      closingCredit: isDebitBook ? (closed < 0 ? Math.abs(closed) : 0) : (closed > 0 ? closed : 0),
     });
   }
 
