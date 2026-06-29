@@ -153,6 +153,33 @@ export async function runMigration() {
         AND je.id = jl.entry_id
         AND je.source = 'bill'
     `);
+    // Create vendor_credits enum and table if not exist
+    await db.execute(sql`
+      DO $$ BEGIN
+        CREATE TYPE vendor_credit_status AS ENUM ('issued', 'applied', 'void');
+      EXCEPTION
+        WHEN duplicate_object THEN NULL;
+      END $$;
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS vendor_credits (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        vc_number text NOT NULL,
+        vendor_id uuid REFERENCES contacts(id) NOT NULL,
+        bill_id uuid REFERENCES bills(id),
+        date timestamp NOT NULL,
+        status vendor_credit_status DEFAULT 'issued' NOT NULL,
+        subtotal bigint DEFAULT 0 NOT NULL,
+        tax bigint DEFAULT 0 NOT NULL,
+        total bigint DEFAULT 0 NOT NULL,
+        remaining_credit bigint DEFAULT 0 NOT NULL,
+        notes text,
+        journal_entry_id uuid REFERENCES journal_entries(id),
+        created_by uuid REFERENCES users(id) NOT NULL,
+        created_at timestamp DEFAULT now() NOT NULL
+      );
+    `);
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema push:', err);
