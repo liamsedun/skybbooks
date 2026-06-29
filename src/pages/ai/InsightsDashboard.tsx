@@ -95,41 +95,76 @@ export default function InsightsDashboard() {
     }
   };
 
-  // Scan and Detect Anomalies
+  // Scan and Detect Anomalies from real data
   const runAnomalyScan = async () => {
     setLoadingAnomalies(true);
     setAnomaliesError(null);
     try {
-      // Step 1: Attempt to load real bank feed data to verify against real accounts
-      const accountsRes = await api.get('/banking/accounts');
+      // Strategy: pull real transactions from bank → journal entries → payments
       let combinedTxns: any[] = [];
 
+      // 1. Try bank transactions
+      const accountsRes = await api.get('/banking/accounts');
       if (accountsRes.data && accountsRes.data.length > 0) {
-        // Query transactions for the first active bank account
-        const accountId = accountsRes.data[0].id;
-        const txnsRes = await api.get(`/banking/accounts/${accountId}/transactions`, {
+        const txnsRes = await api.get(`/banking/accounts/${accountsRes.data[0].id}/transactions`, {
           params: { limit: 100 },
         });
-        if (txnsRes.data && txnsRes.data.transactions) {
+        if (txnsRes.data?.transactions?.length) {
           combinedTxns = txnsRes.data.transactions;
         }
       }
 
-      // If no bank accounts or transactions exist, populate with realistic Nigerian SMEs transactions
+      // 2. Fallback: journal entries for the selected month
       if (combinedTxns.length === 0) {
-        combinedTxns = [
-          { id: 'tx-01', description: 'PHCN Electricity payment round sum', amount: 5000000, date: '2026-06-01' },
-          { id: 'tx-02', description: 'Duplicated Staff Bonus payout', amount: 12000000, date: '2026-06-03' },
-          { id: 'tx-03', description: 'Duplicated Staff Bonus payout', amount: 12000000, date: '2026-06-03' }, // Duplicate trigger
-          { id: 'tx-04', description: 'Generator servicing fuel', amount: 2500000, date: '2026-06-04' },
-          { id: 'tx-05', description: 'Unknown Retail vendor payment offshore', amount: 4850000, date: '2026-06-05' },
-          { id: 'tx-06', description: 'Cash withdrawal round number alert', amount: 100000000, date: '2026-06-08' }, // 1M Cash round number
-        ];
+        const jeRes = await api.get('/accounting/journal-entries', {
+          params: { startDate: `${selectedMonth}-01`, endDate: `${selectedMonth}-28`, limit: 200 },
+        });
+        if (jeRes.data?.entries?.length) {
+          combinedTxns = jeRes.data.entries.map((e: any) => ({
+            id: e.id,
+            description: e.description || 'Journal Entry',
+            amount: 0, // journals don't have a single amount
+            date: e.date?.split('T')[0],
+            reference: e.entryNumber,
+          }));
+        }
+      }
+
+      // 3. Fallback: payments received
+      if (combinedTxns.length === 0) {
+        const pmtRes = await api.get('/sales/payments', { params: { limit: 200 } });
+        if (pmtRes.data?.length) {
+          combinedTxns = pmtRes.data.map((p: any) => ({
+            id: p.id,
+            description: p.description || p.reference || 'Payment received',
+            amount: p.amount || 0,
+            date: p.date?.split('T')[0],
+          }));
+        }
+      }
+
+      // 4. Fallback: payments made
+      if (combinedTxns.length === 0) {
+        const pmtRes = await api.get('/purchases/payments', { params: { limit: 200 } });
+        if (pmtRes.data?.length) {
+          combinedTxns = pmtRes.data.map((p: any) => ({
+            id: p.id,
+            description: p.description || p.reference || 'Payment made',
+            amount: p.amount || 0,
+            date: p.date?.split('T')[0],
+          }));
+        }
+      }
+
+      // If still no real data, show empty state — no placeholders
+      if (combinedTxns.length === 0) {
+        setAnomalies([]);
+        setLoadingAnomalies(false);
+        return;
       }
 
       const scanRes = await api.post('/ai/detect-anomalies', { transactions: combinedTxns });
       if (scanRes.data?.success) {
-        // Enrichment for visual aesthetics
         const enriched = scanRes.data.data.map((anom: Anomaly) => {
           const matchTx = combinedTxns.find((t) => t.id === anom.transactionId);
           return {
