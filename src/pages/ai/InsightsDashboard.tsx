@@ -213,7 +213,7 @@ export default function InsightsDashboard() {
         setOcrResult(res.data.data);
       }
     } catch (err: any) {
-      setOcrError(err.response?.data?.error || 'Receipt OCR processing failed. Check file type.');
+      setOcrError(err.response?.data?.error?.includes('quota') ? 'AI vision service is temporarily unavailable due to high demand. Please try again later.' : (err.response?.data?.error || 'Receipt OCR processing failed. Check file type.'));
     } finally {
       setOcrLoading(false);
     }
@@ -238,7 +238,7 @@ export default function InsightsDashboard() {
         setCatResult(res.data.data);
       }
     } catch (err: any) {
-      setCatError(err.response?.data?.error || 'Categoriser model returned error.');
+      setCatError(err.response?.data?.error || 'Category matching failed.');
     } finally {
       setCatLoading(false);
     }
@@ -618,6 +618,11 @@ export default function InsightsDashboard() {
 
                 {ocrResult && (
                   <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3 font-mono text-[11px]">
+                    {ocrResult._note && (
+                      <div className="p-2 bg-amber-50 border border-amber-200 rounded text-amber-800 text-[10px] leading-relaxed">
+                        {ocrResult._note}
+                      </div>
+                    )}
                     <div className="flex justify-between border-b border-slate-200 pb-1.5">
                       <span className="text-slate-400 font-bold">VEND:</span>
                       <span className="text-slate-700 font-black">{ocrResult.vendorName}</span>
@@ -640,12 +645,14 @@ export default function InsightsDashboard() {
                     <div className="pt-1.5">
                       <span className="text-slate-400 font-bold block mb-1 uppercase tracking-wide">Line Items:</span>
                       <div className="space-y-1">
-                        {ocrResult.lineItems?.map((li: any, i: number) => (
+                        {ocrResult.lineItems?.length > 0 ? ocrResult.lineItems.map((li: any, i: number) => (
                           <div key={i} className="flex justify-between text-slate-600 bg-white p-1.5 rounded border border-slate-200">
                             <span>{li.description}</span>
                             <span>{li.quantity}x @ {formatNaira(li.unitPriceKobo)}</span>
                           </div>
-                        ))}
+                        )) : (
+                          <p className="text-[10px] text-slate-400 italic">No items extracted</p>
+                        )}
                       </div>
                     </div>
                   </div>
