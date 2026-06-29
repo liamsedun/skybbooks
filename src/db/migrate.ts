@@ -132,6 +132,27 @@ export async function runMigration() {
         SELECT 1 FROM accounts a WHERE a.org_id = o.id AND a.code = 'SUSPENSE'
       )
     `);
+    // Ensure Trade Creditors / Accounts Payable (300100) exists for all orgs
+    await db.execute(sql`
+      INSERT INTO accounts (org_id, code, name, type, sub_type, description, is_system, is_active, opening_balance)
+      SELECT o.id, '300100', 'Trade Creditors / Accounts Payable', 'liability', 'Current Liabilities', 'IFRS 9 / IAS 1 – Outstanding supplier invoices.', true, true, 0
+      FROM organisations o
+      WHERE NOT EXISTS (
+        SELECT 1 FROM accounts a WHERE a.org_id = o.id AND a.code = '300100'
+      )
+    `);
+    // Move existing bill journal lines from 300000 (Trade & Other Payables) to 300100 (Trade Creditors / Accounts Payable)
+    await db.execute(sql`
+      UPDATE journal_lines jl
+      SET account_id = target.id
+      FROM accounts target, accounts source, journal_entries je
+      WHERE source.org_id = target.org_id
+        AND source.code = '300000'
+        AND target.code = '300100'
+        AND jl.account_id = source.id
+        AND je.id = jl.entry_id
+        AND je.source = 'bill'
+    `);
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema push:', err);
