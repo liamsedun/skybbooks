@@ -878,6 +878,10 @@ export const reportsApi = {
     const res = await api.post('/reports/custom/pdf', data, { responseType: 'blob' });
     return res.data;
   },
+  getDashboardSummary: async (params?: { startDate?: string; endDate?: string }) => {
+    const res = await api.get('/reports/dashboard-summary', { params });
+    return res.data;
+  },
 };
 
 export function downloadBlob(blob: Blob, filename: string) {

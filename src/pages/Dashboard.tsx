@@ -6,18 +6,11 @@ import {
   TrendingDown,
   ArrowUpRight,
   ArrowDownLeft,
-  DollarSign,
-  Briefcase,
-  Layers,
   ChevronRight,
-  ArrowRight,
   Loader2,
   FileText,
-  AlertCircle,
   PlusCircle,
   RefreshCw,
-  Wallet,
-  Activity,
   Users,
   Building2,
   Clock,
@@ -25,13 +18,12 @@ import {
   PieChart as PieChartIcon,
   Banknote,
   Receipt,
-  Calendar
+  Calendar,
+  CheckCircle2
 } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import { useCurrency } from '../hooks/useCurrency';
 import { bankingApi, salesApi, purchasesApi, reportsApi } from '../lib/api';
-import { AmountDisplay } from '../components/ui/AmountDisplay';
-import { StatusBadge } from '../components/ui/StatusBadge';
 import { useAuth } from '../hooks/useAuth';
 
 function fmtNaira(v: number): string {
@@ -55,23 +47,35 @@ export function Dashboard({ onNavigate }: { onNavigate: (viewId: string) => void
   const { token } = useAuth();
   const [selectedPeriod, setSelectedPeriod] = useState<string>('6m');
 
+  const getPeriodStart = () => {
+    const now = new Date();
+    switch (selectedPeriod) {
+      case '1w': return new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+      case '2w': return new Date(now.getFullYear(), now.getMonth(), now.getDate() - 14);
+      case '1m': return new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+      case '3m': return new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+      case '12m': return new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+      default: return new Date(now.getFullYear(), now.getMonth() - 6, now.getDate());
+    }
+  };
+
+  const periodStart = getPeriodStart();
+  const periodStartStr = periodStart.toISOString().split('T')[0];
+  const nowStr = new Date().toISOString().split('T')[0];
+  const getFiscalStart = () => `${new Date().getFullYear()}-01-01`;
+
+  // Single ledger-derived KPI query
+  const summaryQuery = useQuery({
+    queryKey: ['dashboard-summary', selectedPeriod],
+    queryFn: () => reportsApi.getDashboardSummary({ startDate: periodStartStr, endDate: nowStr }),
+    staleTime: 10 * 1000,
+    enabled: !!token,
+  });
+
+  // Chart data — granular queries kept for charts
   const accountsQuery = useQuery({
     queryKey: ['bankAccounts'],
     queryFn: bankingApi.getAccounts,
-    staleTime: 10 * 1000,
-    enabled: !!token,
-  });
-
-  const customersQuery = useQuery({
-    queryKey: ['dashboard-customers'],
-    queryFn: () => salesApi.getCustomers(),
-    staleTime: 10 * 1000,
-    enabled: !!token,
-  });
-
-  const vendorsQuery = useQuery({
-    queryKey: ['dashboard-vendors'],
-    queryFn: () => purchasesApi.getVendors(),
     staleTime: 10 * 1000,
     enabled: !!token,
   });
@@ -99,14 +103,14 @@ export function Dashboard({ onNavigate }: { onNavigate: (viewId: string) => void
 
   const paymentsMadeQuery = useQuery({
     queryKey: ['dashboard-payments-made'],
-    queryFn: () => purchasesApi.getPaymentsMade({ limit: 500 }),
+    queryFn: () => purchasesApi.getPaymentsMade(),
     staleTime: 10 * 1000,
     enabled: !!token,
   });
 
   const expensesQuery = useQuery({
     queryKey: ['dashboard-expenses'],
-    queryFn: () => purchasesApi.getExpenses({ limit: 500 }),
+    queryFn: () => purchasesApi.getExpenses(),
     staleTime: 10 * 1000,
     enabled: !!token,
   });
@@ -125,27 +129,11 @@ export function Dashboard({ onNavigate }: { onNavigate: (viewId: string) => void
     enabled: !!token,
   });
 
-  const isLoading = accountsQuery.isLoading || customersQuery.isLoading || vendorsQuery.isLoading;
+  const summaryData = summaryQuery.data?.data;
+  const isLoading = summaryQuery.isLoading;
 
   const activeAccounts = Array.isArray(accountsQuery.data) ? accountsQuery.data : (accountsQuery.data ?? []);
   const totalCashKobo = activeAccounts.reduce((sum: number, acc: any) => sum + (acc.currentBalance || acc.balance || 0), 0);
-
-  const customersList = Array.isArray(customersQuery.data) ? customersQuery.data : [];
-  const vendorsList = Array.isArray(vendorsQuery.data) ? vendorsQuery.data : [];
-
-  const getPeriodStart = () => {
-    const now = new Date();
-    switch (selectedPeriod) {
-      case '1w': return new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
-      case '2w': return new Date(now.getFullYear(), now.getMonth(), now.getDate() - 14);
-      case '1m': return new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
-      case '3m': return new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
-      case '12m': return new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
-      default: return new Date(now.getFullYear(), now.getMonth() - 6, now.getDate());
-    }
-  };
-
-  const periodStart = getPeriodStart();
 
   const allInvoices = Array.isArray(invoicesQuery.data)
     ? invoicesQuery.data
@@ -156,37 +144,6 @@ export function Dashboard({ onNavigate }: { onNavigate: (viewId: string) => void
 
   const periodInvoices = allInvoices.filter((inv: any) => inv.date && new Date(inv.date) >= periodStart);
   const periodBills = allBills.filter((b: any) => b.date && new Date(b.date) >= periodStart);
-
-  const receivablesKobo = periodInvoices
-    .filter((inv: any) => {
-      const s = (inv.status || '').toLowerCase();
-      return (s === 'sent' || s === 'partial' || s === 'overdue') && inv.balanceDue > 0;
-    })
-    .reduce((sum: number, inv: any) => sum + (Number(inv.balanceDue) || Number(inv.total) || 0), 0);
-
-  const payablesKobo = periodBills
-    .filter((b: any) => {
-      const s = (b.status || '').toLowerCase();
-      return (s === 'open' || s === 'partial' || s === 'overdue') && b.balanceDue > 0;
-    })
-    .reduce((sum: number, b: any) => sum + (Number(b.balanceDue) || Number(b.total) || 0), 0);
-
-  const overdueReceivables = periodInvoices
-    .filter((inv: any) => {
-      const s = (inv.status || '').toLowerCase();
-      return (s === 'sent' || s === 'partial' || s === 'overdue') && inv.balanceDue > 0 && inv.dueDate && new Date(inv.dueDate) < new Date();
-    })
-    .reduce((sum: number, inv: any) => sum + (Number(inv.balanceDue) || 0), 0);
-
-  const overduePayables = periodBills
-    .filter((b: any) => {
-      const s = (b.status || '').toLowerCase();
-      return (s === 'open' || s === 'partial' || s === 'overdue') && b.balanceDue > 0 && b.dueDate && new Date(b.dueDate) < new Date();
-    })
-    .reduce((sum: number, b: any) => sum + (Number(b.balanceDue) || Number(b.total) || 0), 0);
-
-  const pendingInvoiceCount = periodInvoices.filter((inv: any) => { const s = (inv.status || '').toLowerCase(); return s === 'sent' || s === 'partial' || s === 'overdue'; }).length;
-  const pendingBillCount = periodBills.filter((b: any) => { const s = (b.status || '').toLowerCase(); return s === 'open' || s === 'partial' || s === 'overdue'; }).length;
 
   const cashForecastData = (() => {
     const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -301,15 +258,22 @@ export function Dashboard({ onNavigate }: { onNavigate: (viewId: string) => void
     }));
   })();
 
-  const netWorthKobo = totalCashKobo + receivablesKobo - payablesKobo;
+  const kpiReceivables = summaryData?.totalReceivables ?? 0;
+  const kpiPayables = summaryData?.totalPayables ?? 0;
+  const kpiRevenue = summaryData?.totalRevenue ?? 0;
+  const kpiExpenses = summaryData?.totalExpenses ?? 0;
+  const kpiNetProfit = summaryData?.netProfit ?? 0;
+  const kpiOutstandingInvoices = summaryData?.outstandingInvoices ?? { count: 0, total: 0 };
+  const kpiOutstandingBills = summaryData?.outstandingBills ?? { count: 0, total: 0 };
+
+  const netWorthKobo = totalCashKobo + kpiReceivables - kpiPayables;
 
   const [refreshing, setRefreshing] = useState(false);
   const refetchAll = async () => {
     setRefreshing(true);
     const keys = [
-      'bankAccounts', 'dashboard-customers', 'dashboard-vendors',
-      'dashboard-invoices', 'dashboard-bills', 'dashboard-payments-received',
-      'dashboard-payments-made', 'dashboard-expenses',
+      'dashboard-summary', 'bankAccounts', 'dashboard-invoices', 'dashboard-bills',
+      'dashboard-payments-received', 'dashboard-payments-made', 'dashboard-expenses',
       'dashboard-invoice-aging', 'dashboard-bill-aging'
     ];
     keys.forEach(k => queryClient.invalidateQueries({ queryKey: [k] }));
@@ -344,7 +308,17 @@ export function Dashboard({ onNavigate }: { onNavigate: (viewId: string) => void
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Dashboard</h1>
-          <p className="text-sm text-slate-500 mt-1">Real-time financial overview &amp; corporate metrics</p>
+          <div className="flex items-center gap-3 mt-1">
+            <p className="text-sm text-slate-500">Real-time financial overview &amp; corporate metrics</p>
+            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+              <CheckCircle2 className="w-3 h-3" /> Reconciles with Trial Balance
+            </span>
+          </div>
+          {summaryData?.period && (
+            <p className="text-xs text-slate-400 mt-1">
+              {fmtDate(summaryData.period.startDate)} – {fmtDate(summaryData.period.endDate)}
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-3">
           <select
@@ -389,12 +363,12 @@ export function Dashboard({ onNavigate }: { onNavigate: (viewId: string) => void
             <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Accounts Receivable</span>
             <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><Users className="w-4 h-4" /></div>
           </div>
-          <div className="text-2xl font-bold text-slate-900 tabular-nums">{formatNaira(receivablesKobo)}</div>
+          <div className="text-2xl font-bold text-slate-900 tabular-nums">{formatNaira(kpiReceivables)}</div>
           <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-            <span className="text-[11px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{pendingInvoiceCount} invoice{pendingInvoiceCount !== 1 ? 's' : ''}</span>
-            {overdueReceivables > 0 && (
-              <span className="text-[11px] font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded flex items-center gap-1">
-                <AlertTriangle className="w-3 h-3" /> {formatNaira(overdueReceivables)} overdue
+            <span className="text-[11px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{kpiOutstandingInvoices.count} invoice{kpiOutstandingInvoices.count !== 1 ? 's' : ''}</span>
+            {kpiReceivables > 0 && (
+              <span className="text-[11px] font-semibold text-green-600 bg-green-50 px-2 py-0.5 rounded flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3" /> Ledger-sourced
               </span>
             )}
           </div>
@@ -405,12 +379,12 @@ export function Dashboard({ onNavigate }: { onNavigate: (viewId: string) => void
             <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Accounts Payable</span>
             <div className="p-2 bg-amber-50 text-amber-600 rounded-lg"><Building2 className="w-4 h-4" /></div>
           </div>
-          <div className="text-2xl font-bold text-slate-900 tabular-nums">{formatNaira(payablesKobo)}</div>
+          <div className="text-2xl font-bold text-slate-900 tabular-nums">{formatNaira(kpiPayables)}</div>
           <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-            <span className="text-[11px] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded">{pendingBillCount} bill{pendingBillCount !== 1 ? 's' : ''}</span>
-            {overduePayables > 0 && (
-              <span className="text-[11px] font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded flex items-center gap-1">
-                <AlertTriangle className="w-3 h-3" /> {formatNaira(overduePayables)} due
+            <span className="text-[11px] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded">{kpiOutstandingBills.count} bill{kpiOutstandingBills.count !== 1 ? 's' : ''}</span>
+            {kpiPayables > 0 && (
+              <span className="text-[11px] font-semibold text-green-600 bg-green-50 px-2 py-0.5 rounded flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3" /> Ledger-sourced
               </span>
             )}
           </div>

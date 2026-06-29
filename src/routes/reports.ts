@@ -7,8 +7,8 @@ import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
 import { AppError } from '../lib/errors';
-import { db, accounts, journalEntries, journalLines, fixedAssets, bankAccounts, contacts } from '../db/schema';
-import { eq, and, asc, sql } from 'drizzle-orm';
+import { db, accounts, journalEntries, journalLines, fixedAssets, bankAccounts, contacts, invoices, bills } from '../db/schema';
+import { eq, and, asc, sql, lte, gte } from 'drizzle-orm';
 import {
   getTrialBalance,
   getProfitAndLoss,
@@ -669,6 +669,171 @@ router.post('/custom/pdf', async (req: AuthenticatedRequest, res: Response, next
     res.setHeader('Content-Disposition', 'inline; filename="custom_report.pdf"');
     return res.end(buffer);
   } catch (err) { return next(err); }
+});
+
+// =========================================================================
+// 9. DASHBOARD SUMMARY ENDPOINT
+// =========================================================================
+const dashboardQuerySchema = z.object({
+  startDate: z.string().optional().transform((val) => val ? new Date(val) : new Date(new Date().getFullYear(), 0, 1)),
+  endDate: z.string().optional().transform((val) => val ? new Date(val) : new Date()),
+});
+
+router.get('/dashboard-summary', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { startDate, endDate } = dashboardQuerySchema.parse(req.query);
+
+    // 1. Total Revenue: credit balances on revenue-type accounts
+    const [revResult] = await db
+      .select({ total: sql<number>`coalesce(sum(${journalLines.creditAmount}), 0)` })
+      .from(journalLines)
+      .innerJoin(journalEntries, eq(journalLines.entryId, journalEntries.id))
+      .innerJoin(accounts, eq(journalLines.accountId, accounts.id))
+      .where(
+        and(
+          eq(accounts.orgId, orgId),
+          eq(accounts.type, 'revenue'),
+          gte(journalEntries.date, startDate),
+          lte(journalEntries.date, endDate)
+        )
+      );
+    const totalRevenue = Number(revResult?.total || 0);
+
+    // 2. Total Expenses: debit balances on expense-type accounts
+    const [expResult] = await db
+      .select({ total: sql<number>`coalesce(sum(${journalLines.debitAmount}), 0)` })
+      .from(journalLines)
+      .innerJoin(journalEntries, eq(journalLines.entryId, journalEntries.id))
+      .innerJoin(accounts, eq(journalLines.accountId, accounts.id))
+      .where(
+        and(
+          eq(accounts.orgId, orgId),
+          eq(accounts.type, 'expense'),
+          gte(journalEntries.date, startDate),
+          lte(journalEntries.date, endDate)
+        )
+      );
+    const totalExpenses = Number(expResult?.total || 0);
+    const netProfit = totalRevenue - totalExpenses;
+
+    // 3. Receivables: find account with systemAccountRole = 'accounts_receivable'
+    const [arAccount] = await db
+      .select()
+      .from(accounts)
+      .where(and(eq(accounts.orgId, orgId), eq(accounts.systemAccountRole, 'accounts_receivable')))
+      .limit(1);
+
+    let totalReceivables = 0;
+    if (arAccount) {
+      const [arResult] = await db
+        .select({
+          debits: sql<number>`coalesce(sum(${journalLines.debitAmount}), 0)`,
+          credits: sql<number>`coalesce(sum(${journalLines.creditAmount}), 0)`
+        })
+        .from(journalLines)
+        .innerJoin(journalEntries, eq(journalLines.entryId, journalEntries.id))
+        .where(
+          and(
+            eq(journalLines.accountId, arAccount.id),
+            eq(journalEntries.orgId, orgId),
+            lte(journalEntries.date, endDate)
+          )
+        );
+      totalReceivables = Number(arResult?.debits || 0) - Number(arResult?.credits || 0);
+    }
+
+    // 4. Payables: account with systemAccountRole = 'accounts_payable'
+    const [apAccount] = await db
+      .select()
+      .from(accounts)
+      .where(and(eq(accounts.orgId, orgId), eq(accounts.systemAccountRole, 'accounts_payable')))
+      .limit(1);
+
+    let totalPayables = 0;
+    if (apAccount) {
+      const [apResult] = await db
+        .select({
+          debits: sql<number>`coalesce(sum(${journalLines.debitAmount}), 0)`,
+          credits: sql<number>`coalesce(sum(${journalLines.creditAmount}), 0)`
+        })
+        .from(journalLines)
+        .innerJoin(journalEntries, eq(journalLines.entryId, journalEntries.id))
+        .where(
+          and(
+            eq(journalLines.accountId, apAccount.id),
+            eq(journalEntries.orgId, orgId),
+            lte(journalEntries.date, endDate)
+          )
+        );
+      totalPayables = Number(apResult?.credits || 0) - Number(apResult?.debits || 0);
+    }
+
+    // 5. Cash & Bank: sum of bank accounts linked to GL accounts
+    const [bankResult] = await db
+      .select({ total: sql<number>`coalesce(sum(${bankAccounts.currentBalance}), 0)` })
+      .from(bankAccounts)
+      .where(eq(bankAccounts.orgId, orgId));
+    const totalCashBank = Number(bankResult?.total || 0);
+
+    // 6. Outstanding invoices count & total
+    const [invResult] = await db
+      .select({
+        count: sql<number>`count(*)`,
+        total: sql<number>`coalesce(sum(${invoices.balanceDue}), 0)`
+      })
+      .from(invoices)
+      .where(
+        and(
+          eq(invoices.orgId, orgId),
+          sql`${invoices.status} in ('sent', 'partial', 'overdue')`
+        )
+      );
+
+    // 7. Outstanding bills count & total
+    const [billResult] = await db
+      .select({
+        count: sql<number>`count(*)`,
+        total: sql<number>`coalesce(sum(${bills.balanceDue}), 0)`
+      })
+      .from(bills)
+      .where(
+        and(
+          eq(bills.orgId, orgId),
+          sql`${bills.status} in ('open', 'partial', 'overdue')`
+        )
+      );
+
+    // 8. Customer & vendor counts
+    const [customerResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(contacts)
+      .where(and(eq(contacts.orgId, orgId), eq(contacts.type, 'customer')));
+
+    const [vendorResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(contacts)
+      .where(and(eq(contacts.orgId, orgId), eq(contacts.type, 'vendor')));
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        period: { startDate: startDate.toISOString(), endDate: endDate.toISOString() },
+        totalRevenue,
+        totalExpenses,
+        netProfit,
+        totalReceivables,
+        totalPayables,
+        totalCashBank,
+        outstandingInvoices: { count: Number(invResult?.count || 0), total: Number(invResult?.total || 0) },
+        outstandingBills: { count: Number(billResult?.count || 0), total: Number(billResult?.total || 0) },
+        customerCount: Number(customerResult?.count || 0),
+        vendorCount: Number(vendorResult?.count || 0),
+      }
+    });
+  } catch (err) {
+    return next(err);
+  }
 });
 
 export default router;
