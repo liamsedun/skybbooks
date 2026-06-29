@@ -3,24 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { GoogleGenAI, Type } from '@google/genai';
 import { z } from 'zod';
 import crypto from 'crypto';
+import Tesseract from 'tesseract.js';
 import { db, auditLog, invoiceLines, invoices, bills, organisations, bankAccounts, contacts, fixedAssets, inventoryLots } from '../db/schema';
 import { eq, and, isNotNull, gte, lte, sql } from 'drizzle-orm';
 import { getIncomeStatement, getCashFlowStatement } from './ledger.service';
 import { getPayrollSummary } from './payroll.service';
-
-// Initialize Gemini SDK with telemetry headers
-const apiKey = process.env.GEMINI_API_KEY;
-const ai = new GoogleGenAI({
-  apiKey: apiKey,
-  httpOptions: {
-    headers: {
-      'User-Agent': 'aistudio-build',
-    },
-  },
-});
 
 // Zod schema for Receipt OCR
 export const ExtractedReceiptDataSchema = z.object({
@@ -40,28 +29,6 @@ export const ExtractedReceiptDataSchema = z.object({
 });
 
 export type ExtractedReceiptData = z.infer<typeof ExtractedReceiptDataSchema>;
-
-// Exponential backoff helper for Gemini calls on 429/503 status
-async function withRetry<T>(fn: () => Promise<T>, retries = 3, delay = 1000): Promise<T> {
-  try {
-    return await fn();
-  } catch (error: any) {
-    const isRetryable =
-      error?.status === 429 ||
-      error?.status === 503 ||
-      error?.statusCode === 429 ||
-      error?.statusCode === 503 ||
-      String(error).includes('429') ||
-      String(error).includes('503');
-
-    if (isRetryable && retries > 0) {
-      console.warn(`Gemini API call failed with retryable status. Retrying in ${delay}ms...`, error);
-      await new Promise((resolve) => setTimeout(resolve, delay));
-      return withRetry(fn, retries - 1, delay * 2);
-    }
-    throw error;
-  }
-}
 
 // Generate prompt SHA-256 hash
 function hashPrompt(prompt: string): string {
@@ -108,7 +75,18 @@ const insightsCache: Record<string, CacheEntry> = {};
 
 export class AIService {
   /**
-   * a) Receipt OCR & Data Extraction — tries Gemini, falls back to filename extraction
+   * Parse amount strings like "1,500.00", "1500", "₦1,500" into kobo
+   */
+  private parseAmountKobo(raw: string): number {
+    const cleaned = raw.replace(/[₦,NGN\s]/g, '').trim();
+    const n = parseFloat(cleaned);
+    if (isNaN(n)) return 0;
+    // If it has decimals, assume naira with fraction; if not, assume already kobo
+    return cleaned.includes('.') ? Math.round(n * 100) : Math.round(n);
+  }
+
+  /**
+   * a) Receipt OCR & Data Extraction — uses Tesseract.js (self-hosted, free, no expiration)
    */
   async extractReceiptData(
     imageBuffer: Buffer,
@@ -116,67 +94,144 @@ export class AIService {
     orgId: string,
     userId: string
   ): Promise<ExtractedReceiptData | { vendorName: string; note: string }> {
-    // Try Gemini first
-    if (apiKey) {
-      try {
-        const prompt = `Extract from this receipt: vendor name, date (ISO format), total amount (in kobo, no decimals), line items (description, quantity, unit price, total), VAT amount, receipt/invoice number. Return ONLY valid JSON. Currency is Nigerian Naira.`;
+    try {
+      const worker = await Tesseract.createWorker('eng');
+      const { data } = await worker.recognize(imageBuffer);
+      await worker.terminate();
 
-        const base64Data = imageBuffer.toString('base64');
-        const response = await withRetry(() =>
-          ai.models.generateContent({
-            model: 'gemini-3.5-flash',
-            contents: [{ parts: [{ inlineData: { mimeType, data: base64Data } }, { text: prompt }] }],
-            config: {
-              responseMimeType: 'application/json',
-              responseSchema: {
-                type: Type.OBJECT,
-                properties: {
-                  vendorName: { type: Type.STRING },
-                  date: { type: Type.STRING },
-                  totalAmountKobo: { type: Type.INTEGER },
-                  lineItems: {
-                    type: Type.ARRAY,
-                    items: {
-                      type: Type.OBJECT,
-                      properties: {
-                        description: { type: Type.STRING },
-                        quantity: { type: Type.INTEGER },
-                        unitPriceKobo: { type: Type.INTEGER },
-                        totalKobo: { type: Type.INTEGER },
-                      },
-                      required: ['description', 'quantity', 'unitPriceKobo', 'totalKobo'],
-                    },
-                  },
-                  vatAmountKobo: { type: Type.INTEGER },
-                  receiptNumber: { type: Type.STRING },
-                },
-                required: ['vendorName', 'date', 'totalAmountKobo', 'lineItems'],
-              },
-            },
-          })
-        );
+      const text = data.text || '';
+      const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
 
-        const responseText = response.text || '{}';
-        const parsed = JSON.parse(responseText);
-        const validated = ExtractedReceiptDataSchema.parse(parsed);
-        await logAICall(orgId, userId, 'EXTRACT_RECEIPT', prompt, 'success');
-        return validated;
-      } catch (error: any) {
-        await logAICall(orgId, userId, 'EXTRACT_RECEIPT', 'gemini-failed', 'failure', error?.message || String(error));
-        // Fall through to filename extraction
+      // Vendor name: first meaningful line (skip empty/short lines)
+      let vendorName = 'Unknown Vendor';
+      for (const line of lines) {
+        const cleaned = line.replace(/[^\w\s&-.]/g, '').trim();
+        if (cleaned.length > 2 && !/^\d/.test(cleaned) && !cleaned.match(/^(tel|phone|address|www|email|@)/i)) {
+          vendorName = cleaned;
+          break;
+        }
       }
-    }
 
-    // Fallback: return partial extraction with defaults (no OCR possible locally)
-    return {
-      vendorName: 'Receipt uploaded',
-      date: null,
-      totalAmountKobo: 0,
-      lineItems: [],
-      vatAmountKobo: null,
-      receiptNumber: null,
-      _note: 'AI vision service is temporarily unavailable. The receipt has been uploaded and will be auto-processed once service is restored.',
-    } as any;
+      // Receipt number: look for patterns like "Receipt No:", "Inv:", "#", "REF:"
+      let receiptNumber: string | null = null;
+      for (const line of lines) {
+        const m = line.match(/(?:receipt|invoice|ref|order)\s*(?:no|#|:|number)?\s*[#:]?\s*([\w-]+)/i);
+        if (m) { receiptNumber = m[1]; break; }
+      }
+
+      // Date: look for common date patterns
+      let dateStr: string | null = null;
+      for (const line of lines) {
+        const m = line.match(/(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/);
+        if (m) {
+          const [, d, mo, y] = m;
+          const year = y.length === 2 ? `20${y}` : y;
+          dateStr = `${year}-${mo.padStart(2, '0')}-${d.padStart(2, '0')}`;
+          break;
+        }
+      }
+
+      // Total amount: look for lines with "total", "amount", "grand total" plus a number
+      let totalAmountKobo = 0;
+      for (const line of lines) {
+        if (line.match(/(?:total|amount|grand\s*total|sum|due)/i)) {
+          const nums = line.match(/(?:₦|NGN|N)?\s*[\d,]+\.?\d*/g);
+          if (nums) {
+            totalAmountKobo = Math.max(...nums.map(n => this.parseAmountKobo(n)));
+          }
+        }
+      }
+
+      // VAT: look for VAT lines
+      let vatAmountKobo: number | null = null;
+      for (const line of lines) {
+        if (line.match(/vat/i)) {
+          const nums = line.match(/(?:₦|NGN|N)?\s*[\d,]+\.?\d*/g);
+          if (nums) {
+            vatAmountKobo = Math.max(...nums.map(n => this.parseAmountKobo(n)));
+          }
+        }
+      }
+
+      // Line items: lines containing a price-like number at the end
+      const lineItems: Array<{ description: string; quantity: number; unitPriceKobo: number; totalKobo: number }> = [];
+      for (const line of lines) {
+        // Skip header/footer lines
+        if (line.match(/^(receipt|invoice|vat|total|amount|change|balance|thank|cash|phone|address|www|email|@|tel)/i)) continue;
+        if (line === vendorName) continue;
+
+        // Try to extract: description + optional qty + price at end
+        // Pattern: description (maybe qty x price) then total price at end
+        const priceMatch = line.match(/(?:₦|NGN|N)?\s*([\d,]+\.?\d*)\s*$/);
+        if (priceMatch) {
+          const totalItemKobo = this.parseAmountKobo(priceMatch[1]);
+          if (totalItemKobo > 0 && totalItemKobo < totalAmountKobo * 2) {
+            // Try to extract quantity x unit price
+            const qtyMatch = line.match(/(\d+)\s*[xX*]\s*(?:₦|NGN|N)?\s*([\d,]+\.?\d*)/);
+            let qty = 1;
+            let unitPrice = 0;
+            if (qtyMatch) {
+              qty = parseInt(qtyMatch[1]) || 1;
+              unitPrice = this.parseAmountKobo(qtyMatch[2]);
+            }
+            const desc = line.replace(/(?:₦|NGN|N)?\s*[\d,]+\.?\d*\s*$/, '').replace(/x\s*(?:₦|NGN|N)?\s*[\d,]+\.?\d*/i, '').trim();
+            if (desc.length > 1) {
+              lineItems.push({
+                description: desc,
+                quantity: qty,
+                unitPriceKobo: unitPrice || Math.round(totalItemKobo / qty),
+                totalKobo: totalItemKobo,
+              });
+            }
+          }
+        }
+      }
+
+      // If no total found via keyword, take the last significant number in the text
+      if (totalAmountKobo === 0 && lineItems.length > 0) {
+        totalAmountKobo = lineItems.reduce((s, i) => s + i.totalKobo, 0);
+      }
+      // Last resort: find the largest number in the text
+      if (totalAmountKobo === 0) {
+        const allNums = [...text.matchAll(/(?:₦|NGN|N)?\s*([\d,]+\.?\d*)/g)];
+        if (allNums.length > 0) {
+          totalAmountKobo = Math.max(...allNums.map(m => this.parseAmountKobo(m[1])));
+        }
+      }
+
+      // Clean up: deduplicate line items by description
+      const seen = new Set<string>();
+      const uniqueItems = lineItems.filter(i => {
+        const key = i.description.toLowerCase().trim();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      await logAICall(orgId, userId, 'EXTRACT_RECEIPT', `tesseract-ocr: ${text.length} chars`, 'success');
+
+      return {
+        vendorName,
+        date: dateStr,
+        totalAmountKobo: Math.abs(totalAmountKobo),
+        lineItems: uniqueItems.slice(0, 20),
+        vatAmountKobo,
+        receiptNumber,
+      };
+    } catch (error: any) {
+      await logAICall(orgId, userId, 'EXTRACT_RECEIPT', 'tesseract-failed', 'failure', error?.message || String(error));
+
+      // Graceful fallback
+      return {
+        vendorName: 'Receipt uploaded (OCR unavailable)',
+        date: null,
+        totalAmountKobo: 0,
+        lineItems: [],
+        vatAmountKobo: null,
+        receiptNumber: null,
+        _note: 'Receipt OCR engine encountered an error. Please try again with a clearer image.',
+      } as any;
+    }
   }
 
   /**
