@@ -9,7 +9,7 @@ import { api } from '../../lib/api';
 import {
   Plus, Search, Pencil, Trash2, X, Loader2, AlertCircle, Upload,
   FileText, ArrowRight, CheckCircle2, Clock, XCircle, RefreshCw, ChevronRight,
-  RotateCcw, Download,
+  RotateCcw, Download, Copy,
 } from 'lucide-react';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
 
@@ -26,7 +26,7 @@ interface Quote {
   date: string; expiryDate: string | null; status: QuoteStatus;
   currency: string; subtotal: number; discount: number; tax: number;
   total: number; notes: string | null; terms: string | null;
-  convertedToId: string | null; lines: QuoteLine[]; createdAt: string;
+  convertedToId: string | null; convertedToInvoiceNumber: string | null; lines: QuoteLine[]; createdAt: string;
 }
 
 type FormLine = { itemId: string; description: string; quantity: string; unitPrice: string; discountPct: string; taxRate: string; };
@@ -329,13 +329,25 @@ export function QuotesPage() {
                         <td className="py-2.5 pr-3 text-sm text-slate-500">{fmtDate(q.expiryDate)}</td>
                         <td className="py-2.5 pr-3 text-sm text-right font-medium text-slate-900 font-mono">{formatNaira(q.total)}</td>
                         <td className="py-2.5 pr-3">
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${meta.color} ${meta.bg}`}>
-                            <Icon className="w-3 h-3"/>{meta.label}
-                          </span>
+                          {q.status === 'converted' ? (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); navigate(`/sales/invoices/${q.convertedToId}`); }}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-violet-50 text-violet-700 hover:bg-violet-100 border border-violet-200 transition-colors"
+                            ><RefreshCw className="w-3 h-3" /> {q.convertedToInvoiceNumber || 'Converted'}</button>
+                          ) : (
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${meta.color} ${meta.bg}`}>
+                              <Icon className="w-3 h-3"/>{meta.label}
+                            </span>
+                          )}
                         </td>
                         <td className="py-2.5 pr-2">
                           <div className="opacity-0 group-hover:opacity-100 flex items-center justify-end gap-1 transition-opacity" onClick={e=>e.stopPropagation()}>
-                            {q.status!=='converted'&&q.status!=='declined'&&(
+                            {q.status==='converted' ? (
+                              <button onClick={() => { setForm(formFromQuote(q)); setEditingId(null); setFormError(null); setModalOpen(true); }}
+                                className="px-2 py-1 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg">
+                                <Copy size={12} className="inline mr-1" />Duplicate
+                              </button>
+                            ) : q.status!=='declined'&&(
                               <button onClick={()=>{ setConvertingId(q.id); convertMutation.mutate(q.id); }}
                                 disabled={convertMutation.isPending&&convertingId===q.id}
                                 className="px-2 py-1 text-xs font-medium text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-200 rounded-lg disabled:opacity-50">
@@ -438,10 +450,10 @@ export function QuotesPage() {
                 {/* Linked invoice */}
                 {selectedQuote.convertedToId&&(
                   <div className="border-t border-slate-100 pt-3">
-                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Converted Invoice</p>
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Converted To</p>
                     <button onClick={()=>navigate(`/sales/invoices/${selectedQuote.convertedToId}`)}
                       className="w-full flex items-center justify-between p-3 bg-violet-50 rounded-lg border border-violet-100 hover:border-violet-200 transition-colors">
-                      <span className="text-sm font-medium text-violet-700">View Invoice</span>
+                      <span className="text-sm font-medium text-violet-700">{selectedQuote.convertedToInvoiceNumber || 'View Invoice'}</span>
                       <ChevronRight size={16} className="text-violet-400"/>
                     </button>
                   </div>
@@ -453,6 +465,12 @@ export function QuotesPage() {
                       disabled={convertMutation.isPending&&convertingId===selectedQuote.id}
                       className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-violet-700 border border-violet-200 rounded-lg hover:bg-violet-50 disabled:opacity-50">
                       <RefreshCw size={14}/>{convertMutation.isPending&&convertingId===selectedQuote.id?'Converting...':'Convert to Invoice'}
+                    </button>
+                  )}
+                  {selectedQuote.status==='converted'&&(
+                    <button onClick={()=>{ setForm(formFromQuote(selectedQuote)); setEditingId(null); setFormError(null); setModalOpen(true); }}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50">
+                      <Copy size={14}/>Duplicate Quote
                     </button>
                   )}
                   {selectedQuote.status==='converted'&&(

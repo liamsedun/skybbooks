@@ -842,9 +842,11 @@ const updateQuoteSchema = createQuoteSchema.partial();
 router.get('/quotes', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const orgId = req.user!.orgId!;
+    const quoteCols = getTableColumns(quotes);
     const list = await db
-      .select()
+      .select({ ...quoteCols, convertedToInvoiceNumber: invoices.invoiceNumber })
       .from(quotes)
+      .leftJoin(invoices, eq(invoices.id, quotes.convertedToId))
       .where(eq(quotes.orgId, orgId))
       .orderBy(desc(quotes.createdAt));
     return res.status(200).json(list);
@@ -937,7 +939,15 @@ router.post('/quotes/:id/convert', async (req: AuthenticatedRequest, res: Respon
     const [quote] = await db.select().from(quotes)
       .where(and(eq(quotes.id, id), eq(quotes.orgId, orgId))).limit(1);
     if (!quote) throw new AppError('Quote not found.', 404);
-    if (quote.status === 'converted') throw new AppError('Quote already converted.', 400);
+    if (quote.status === 'converted') {
+      let ref = 'an invoice';
+      if (quote.convertedToId) {
+        const [linkedInv] = await db.select({ invoiceNumber: invoices.invoiceNumber }).from(invoices)
+          .where(eq(invoices.id, quote.convertedToId)).limit(1);
+        if (linkedInv) ref = linkedInv.invoiceNumber;
+      }
+      throw new AppError(`This quote has already been converted to ${ref}. To create a new invoice, duplicate the quote first.`, 409);
+    }
     const count = await db.select({ c: sql`count(*)` }).from(invoices).where(eq(invoices.orgId, orgId));
     const seq = (Number((count[0] as any).c) + 1).toString().padStart(4, '0');
     const invoiceNumber = `INV-${seq}`;
@@ -1150,7 +1160,12 @@ router.post('/sales-orders/:id/convert', async (req: AuthenticatedRequest, res: 
     const [so] = await db.select().from(salesOrders)
       .where(and(eq(salesOrders.id, id), eq(salesOrders.orgId, orgId))).limit(1);
     if (!so) throw new AppError('Sales order not found.', 404);
-    if (so.status === 'fulfilled') throw new AppError('Sales order already fulfilled.', 400);
+    if (so.status === 'fulfilled') {
+      const [linkedInv] = await db.select({ invoiceNumber: invoices.invoiceNumber }).from(invoices)
+        .where(eq(invoices.soId, so.id)).limit(1);
+      const ref = linkedInv ? linkedInv.invoiceNumber : 'an invoice';
+      throw new AppError(`This sales order has already been converted to ${ref}. To create a new invoice, duplicate the sales order first.`, 409);
+    }
     const count = await db.select({ c: sql`count(*)` }).from(invoices).where(eq(invoices.orgId, orgId));
     const seq = (Number((count[0] as any).c) + 1).toString().padStart(4, '0');
     const invoiceNumber = `INV-${seq}`;
