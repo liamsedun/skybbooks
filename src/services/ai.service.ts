@@ -6,6 +6,8 @@
 import { z } from 'zod';
 import crypto from 'crypto';
 import Tesseract from 'tesseract.js';
+import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
+import { createCanvas } from 'canvas';
 import { db, auditLog, invoiceLines, invoices, bills, organisations, bankAccounts, contacts, fixedAssets, inventoryLots } from '../db/schema';
 import { eq, and, isNotNull, gte, lte, sql } from 'drizzle-orm';
 import { getIncomeStatement, getCashFlowStatement } from './ledger.service';
@@ -86,142 +88,158 @@ export class AIService {
   }
 
   /**
-   * a) Receipt OCR & Data Extraction — uses Tesseract.js (self-hosted, free, no expiration)
+   * Convert a PDF buffer to an array of PNG image buffers (one per page)
+   */
+  private async pdfToImages(pdfBuffer: Buffer): Promise<Buffer[]> {
+    const doc = await pdfjsLib.getDocument({ data: new Uint8Array(pdfBuffer) }).promise;
+    const pageCount = Math.min(doc.numPages, 10); // cap at 10 pages
+    const scale = 2; // 2x for good OCR quality
+    const images: Buffer[] = [];
+
+    for (let i = 1; i <= pageCount; i++) {
+      const page = await doc.getPage(i);
+      const viewport = page.getViewport({ scale });
+      const canvas = createCanvas(viewport.width, viewport.height);
+      const ctx = canvas.getContext('2d');
+      await page.render({ canvasContext: ctx, viewport } as any).promise;
+      images.push(canvas.toBuffer('image/png'));
+    }
+    return images;
+  }
+
+  /**
+   * Parse raw OCR text into structured receipt data
+   */
+  private parseReceiptText(text: string): { vendorName: string; date: string | null; totalAmountKobo: number; lineItems: any[]; vatAmountKobo: number | null; receiptNumber: string | null } {
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+
+    let vendorName = 'Unknown Vendor';
+    for (const line of lines) {
+      const cleaned = line.replace(/[^\w\s&-.]/g, '').trim();
+      if (cleaned.length > 2 && !/^\d/.test(cleaned) && !cleaned.match(/^(tel|phone|address|www|email|@)/i)) {
+        vendorName = cleaned;
+        break;
+      }
+    }
+
+    let receiptNumber: string | null = null;
+    for (const line of lines) {
+      const m = line.match(/(?:receipt|invoice|ref|order)\s*(?:no|#|:|number)?\s*[#:]?\s*([\w-]+)/i);
+      if (m) { receiptNumber = m[1]; break; }
+    }
+
+    let dateStr: string | null = null;
+    for (const line of lines) {
+      const m = line.match(/(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/);
+      if (m) {
+        const [, d, mo, y] = m;
+        const year = y.length === 2 ? `20${y}` : y;
+        dateStr = `${year}-${mo.padStart(2, '0')}-${d.padStart(2, '0')}`;
+        break;
+      }
+    }
+
+    let totalAmountKobo = 0;
+    for (const line of lines) {
+      if (line.match(/(?:total|amount|grand\s*total|sum|due)/i)) {
+        const nums = line.match(/(?:₦|NGN|N)?\s*[\d,]+\.?\d*/g);
+        if (nums) {
+          totalAmountKobo = Math.max(...nums.map(n => this.parseAmountKobo(n)));
+        }
+      }
+    }
+
+    let vatAmountKobo: number | null = null;
+    for (const line of lines) {
+      if (line.match(/vat/i)) {
+        const nums = line.match(/(?:₦|NGN|N)?\s*[\d,]+\.?\d*/g);
+        if (nums) {
+          vatAmountKobo = Math.max(...nums.map(n => this.parseAmountKobo(n)));
+        }
+      }
+    }
+
+    const lineItems: Array<{ description: string; quantity: number; unitPriceKobo: number; totalKobo: number }> = [];
+    for (const line of lines) {
+      if (line.match(/^(receipt|invoice|vat|total|amount|change|balance|thank|cash|phone|address|www|email|@|tel)/i)) continue;
+      if (line === vendorName) continue;
+
+      const priceMatch = line.match(/(?:₦|NGN|N)?\s*([\d,]+\.?\d*)\s*$/);
+      if (priceMatch) {
+        const totalItemKobo = this.parseAmountKobo(priceMatch[1]);
+        if (totalItemKobo > 0 && totalItemKobo < totalAmountKobo * 2) {
+          const qtyMatch = line.match(/(\d+)\s*[xX*]\s*(?:₦|NGN|N)?\s*([\d,]+\.?\d*)/);
+          let qty = 1;
+          let unitPrice = 0;
+          if (qtyMatch) {
+            qty = parseInt(qtyMatch[1]) || 1;
+            unitPrice = this.parseAmountKobo(qtyMatch[2]);
+          }
+          const desc = line.replace(/(?:₦|NGN|N)?\s*[\d,]+\.?\d*\s*$/, '').replace(/x\s*(?:₦|NGN|N)?\s*[\d,]+\.?\d*/i, '').trim();
+          if (desc.length > 1) {
+            lineItems.push({
+              description: desc,
+              quantity: qty,
+              unitPriceKobo: unitPrice || Math.round(totalItemKobo / qty),
+              totalKobo: totalItemKobo,
+            });
+          }
+        }
+      }
+    }
+
+    if (totalAmountKobo === 0 && lineItems.length > 0) {
+      totalAmountKobo = lineItems.reduce((s, i) => s + i.totalKobo, 0);
+    }
+    if (totalAmountKobo === 0) {
+      const allNums = [...text.matchAll(/(?:₦|NGN|N)?\s*([\d,]+\.?\d*)/g)];
+      if (allNums.length > 0) {
+        totalAmountKobo = Math.max(...allNums.map(m => this.parseAmountKobo(m[1])));
+      }
+    }
+
+    const seen = new Set<string>();
+    const uniqueItems = lineItems.filter(i => {
+      const key = i.description.toLowerCase().trim();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    return { vendorName, date: dateStr, totalAmountKobo: Math.abs(totalAmountKobo), lineItems: uniqueItems.slice(0, 20), vatAmountKobo, receiptNumber };
+  }
+
+  /**
+   * a) Receipt OCR & Data Extraction — uses Tesseract.js, supports images and PDFs
    */
   async extractReceiptData(
-    imageBuffer: Buffer,
+    fileBuffer: Buffer,
     mimeType: string,
     orgId: string,
     userId: string
   ): Promise<ExtractedReceiptData | { vendorName: string; note: string }> {
     try {
       const worker = await Tesseract.createWorker('eng');
-      const { data } = await worker.recognize(imageBuffer);
+      let fullText = '';
+
+      if (mimeType === 'application/pdf') {
+        const pageImages = await this.pdfToImages(fileBuffer);
+        for (const pageBuf of pageImages) {
+          const { data } = await worker.recognize(pageBuf);
+          fullText += (data.text || '') + '\n';
+        }
+      } else {
+        const { data } = await worker.recognize(fileBuffer);
+        fullText = data.text || '';
+      }
+
       await worker.terminate();
 
-      const text = data.text || '';
-      const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-
-      // Vendor name: first meaningful line (skip empty/short lines)
-      let vendorName = 'Unknown Vendor';
-      for (const line of lines) {
-        const cleaned = line.replace(/[^\w\s&-.]/g, '').trim();
-        if (cleaned.length > 2 && !/^\d/.test(cleaned) && !cleaned.match(/^(tel|phone|address|www|email|@)/i)) {
-          vendorName = cleaned;
-          break;
-        }
-      }
-
-      // Receipt number: look for patterns like "Receipt No:", "Inv:", "#", "REF:"
-      let receiptNumber: string | null = null;
-      for (const line of lines) {
-        const m = line.match(/(?:receipt|invoice|ref|order)\s*(?:no|#|:|number)?\s*[#:]?\s*([\w-]+)/i);
-        if (m) { receiptNumber = m[1]; break; }
-      }
-
-      // Date: look for common date patterns
-      let dateStr: string | null = null;
-      for (const line of lines) {
-        const m = line.match(/(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/);
-        if (m) {
-          const [, d, mo, y] = m;
-          const year = y.length === 2 ? `20${y}` : y;
-          dateStr = `${year}-${mo.padStart(2, '0')}-${d.padStart(2, '0')}`;
-          break;
-        }
-      }
-
-      // Total amount: look for lines with "total", "amount", "grand total" plus a number
-      let totalAmountKobo = 0;
-      for (const line of lines) {
-        if (line.match(/(?:total|amount|grand\s*total|sum|due)/i)) {
-          const nums = line.match(/(?:₦|NGN|N)?\s*[\d,]+\.?\d*/g);
-          if (nums) {
-            totalAmountKobo = Math.max(...nums.map(n => this.parseAmountKobo(n)));
-          }
-        }
-      }
-
-      // VAT: look for VAT lines
-      let vatAmountKobo: number | null = null;
-      for (const line of lines) {
-        if (line.match(/vat/i)) {
-          const nums = line.match(/(?:₦|NGN|N)?\s*[\d,]+\.?\d*/g);
-          if (nums) {
-            vatAmountKobo = Math.max(...nums.map(n => this.parseAmountKobo(n)));
-          }
-        }
-      }
-
-      // Line items: lines containing a price-like number at the end
-      const lineItems: Array<{ description: string; quantity: number; unitPriceKobo: number; totalKobo: number }> = [];
-      for (const line of lines) {
-        // Skip header/footer lines
-        if (line.match(/^(receipt|invoice|vat|total|amount|change|balance|thank|cash|phone|address|www|email|@|tel)/i)) continue;
-        if (line === vendorName) continue;
-
-        // Try to extract: description + optional qty + price at end
-        // Pattern: description (maybe qty x price) then total price at end
-        const priceMatch = line.match(/(?:₦|NGN|N)?\s*([\d,]+\.?\d*)\s*$/);
-        if (priceMatch) {
-          const totalItemKobo = this.parseAmountKobo(priceMatch[1]);
-          if (totalItemKobo > 0 && totalItemKobo < totalAmountKobo * 2) {
-            // Try to extract quantity x unit price
-            const qtyMatch = line.match(/(\d+)\s*[xX*]\s*(?:₦|NGN|N)?\s*([\d,]+\.?\d*)/);
-            let qty = 1;
-            let unitPrice = 0;
-            if (qtyMatch) {
-              qty = parseInt(qtyMatch[1]) || 1;
-              unitPrice = this.parseAmountKobo(qtyMatch[2]);
-            }
-            const desc = line.replace(/(?:₦|NGN|N)?\s*[\d,]+\.?\d*\s*$/, '').replace(/x\s*(?:₦|NGN|N)?\s*[\d,]+\.?\d*/i, '').trim();
-            if (desc.length > 1) {
-              lineItems.push({
-                description: desc,
-                quantity: qty,
-                unitPriceKobo: unitPrice || Math.round(totalItemKobo / qty),
-                totalKobo: totalItemKobo,
-              });
-            }
-          }
-        }
-      }
-
-      // If no total found via keyword, take the last significant number in the text
-      if (totalAmountKobo === 0 && lineItems.length > 0) {
-        totalAmountKobo = lineItems.reduce((s, i) => s + i.totalKobo, 0);
-      }
-      // Last resort: find the largest number in the text
-      if (totalAmountKobo === 0) {
-        const allNums = [...text.matchAll(/(?:₦|NGN|N)?\s*([\d,]+\.?\d*)/g)];
-        if (allNums.length > 0) {
-          totalAmountKobo = Math.max(...allNums.map(m => this.parseAmountKobo(m[1])));
-        }
-      }
-
-      // Clean up: deduplicate line items by description
-      const seen = new Set<string>();
-      const uniqueItems = lineItems.filter(i => {
-        const key = i.description.toLowerCase().trim();
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
-
-      await logAICall(orgId, userId, 'EXTRACT_RECEIPT', `tesseract-ocr: ${text.length} chars`, 'success');
-
-      return {
-        vendorName,
-        date: dateStr,
-        totalAmountKobo: Math.abs(totalAmountKobo),
-        lineItems: uniqueItems.slice(0, 20),
-        vatAmountKobo,
-        receiptNumber,
-      };
+      const result = this.parseReceiptText(fullText);
+      await logAICall(orgId, userId, 'EXTRACT_RECEIPT', `tesseract-ocr: ${fullText.length} chars`, 'success');
+      return result;
     } catch (error: any) {
       await logAICall(orgId, userId, 'EXTRACT_RECEIPT', 'tesseract-failed', 'failure', error?.message || String(error));
-
-      // Graceful fallback
       return {
         vendorName: 'Receipt uploaded (OCR unavailable)',
         date: null,

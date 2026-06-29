@@ -583,7 +583,7 @@ export default function InsightsDashboard() {
                   <div className="border-2 border-dashed border-slate-200 rounded-lg p-6 text-center hover:bg-slate-50/50 cursor-pointer transition relative">
                     <input
                       type="file"
-                      accept="image/*"
+                      accept="image/*,application/pdf"
                       onChange={(e) => setOcrFile(e.target.files?.[0] || null)}
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                     />
@@ -596,7 +596,7 @@ export default function InsightsDashboard() {
                     ) : (
                       <div>
                         <p className="text-xs font-bold text-slate-600">Select or drop purchase receipt file</p>
-                        <p className="text-[9px] text-slate-400 mt-1">Supports PNG, JPG (Max 5MB)</p>
+                        <p className="text-[9px] text-slate-400 mt-1">Supports PNG, JPG, PDF (Max 10MB)</p>
                       </div>
                     )}
                   </div>
