@@ -31,24 +31,15 @@ async function resolveAccountsReceivable(orgId: string, tx: any): Promise<string
     .where(
       and(
         eq(accounts.orgId, orgId),
-        eq(accounts.type, 'asset'),
-        sql`lower(${accounts.name}) like '%receivable%'`
+        eq(accounts.systemAccountRole, 'accounts_receivable')
       )
     )
     .limit(1);
 
   if (arAccount) return arAccount.id;
 
-  const [fallbackAsset] = await tx
-    .select()
-    .from(accounts)
-    .where(and(eq(accounts.orgId, orgId), eq(accounts.type, 'asset')))
-    .limit(1);
-
-  if (fallbackAsset) return fallbackAsset.id;
-
   throw new AppError(
-    "Accounts Receivable account not configured. Please create an asset account with 'Receivable' in its name.",
+    'Accounts Receivable account not configured. Go to Chart of Accounts, select an asset account, and set its System Role to \'Accounts Receivable\'.',
     400
   );
 }
@@ -60,24 +51,15 @@ async function resolveAccountsPayable(orgId: string, tx: any): Promise<string> {
     .where(
       and(
         eq(accounts.orgId, orgId),
-        eq(accounts.type, 'liability'),
-        sql`lower(${accounts.name}) like '%payable%'`
+        eq(accounts.systemAccountRole, 'accounts_payable')
       )
     )
     .limit(1);
 
   if (apAccount) return apAccount.id;
 
-  const [fallbackLiability] = await tx
-    .select()
-    .from(accounts)
-    .where(and(eq(accounts.orgId, orgId), eq(accounts.type, 'liability')))
-    .limit(1);
-
-  if (fallbackLiability) return fallbackLiability.id;
-
   throw new AppError(
-    "Accounts Payable account not configured. Please create a liability account with 'Payable' in its name.",
+    'Accounts Payable account not configured. Go to Chart of Accounts, select a liability account, and set its System Role to \'Accounts Payable\'.',
     400
   );
 }

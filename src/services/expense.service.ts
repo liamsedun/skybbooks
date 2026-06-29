@@ -28,23 +28,14 @@ async function resolveAccountsPayable(orgId: string, tx: any): Promise<string> {
     .where(
       and(
         eq(accounts.orgId, orgId),
-        eq(accounts.type, 'liability'),
-        sql`lower(${accounts.name}) like '%payable%' or lower(${accounts.name}) like '%creditor%'`
+        eq(accounts.systemAccountRole, 'accounts_payable')
       )
     )
     .limit(1);
 
   if (apAccount) return apAccount.id;
 
-  const [fallbackLiability] = await tx
-    .select()
-    .from(accounts)
-    .where(and(eq(accounts.orgId, orgId), eq(accounts.type, 'liability')))
-    .limit(1);
-
-  if (fallbackLiability) return fallbackLiability.id;
-
-  throw new AppError('Accounts Payable account could not be resolved.', 404);
+  throw new AppError('Accounts Payable account not configured. Go to Chart of Accounts, select a liability account, and set its System Role to \'Accounts Payable\'.', 404);
 }
 
 async function resolveBankOrCashAccount(orgId: string, paymentAccountId: string | null | undefined, tx: any): Promise<string> {
@@ -57,31 +48,20 @@ async function resolveBankOrCashAccount(orgId: string, paymentAccountId: string 
     if (existing) return existing.id;
   }
 
-  // Find bank/cash asset account
   const [cashAccount] = await tx
     .select()
     .from(accounts)
     .where(
       and(
         eq(accounts.orgId, orgId),
-        eq(accounts.type, 'asset'),
-        sql`lower(${accounts.name}) like '%bank%' or lower(${accounts.name}) like '%cash%' or lower(${accounts.name}) like '%clearing%'`
+        eq(accounts.systemAccountRole, 'bank')
       )
     )
     .limit(1);
 
   if (cashAccount) return cashAccount.id;
 
-  // Fallback to any active asset
-  const [fallbackAsset] = await tx
-    .select()
-    .from(accounts)
-    .where(and(eq(accounts.orgId, orgId), eq(accounts.type, 'asset')))
-    .limit(1);
-
-  if (fallbackAsset) return fallbackAsset.id;
-
-  throw new AppError('Bank or Cash Account asset could not be resolved.', 404);
+  throw new AppError('Bank or Cash account not configured. Go to Chart of Accounts, select an asset account, and set its System Role to \'Bank\'.', 404);
 }
 
 async function resolveVatInput(orgId: string, tx: any): Promise<string> {
@@ -91,16 +71,15 @@ async function resolveVatInput(orgId: string, tx: any): Promise<string> {
     .where(
       and(
         eq(accounts.orgId, orgId),
-        eq(accounts.type, 'asset'),
-        sql`lower(${accounts.name}) like '%vat%' or lower(${accounts.name}) like '%tax%' or lower(${accounts.name}) like '%input%'`
+        eq(accounts.systemAccountRole, 'vat_receivable')
       )
     )
     .limit(1);
 
   if (vatAccount) return vatAccount.id;
 
-  const [fallbackAsset] = await tx
-    .select()
+  throw new AppError('VAT Receivable account not configured. Go to Chart of Accounts, select an asset account, and set its System Role to \'VAT Receivable\'.', 404);
+}
     .from(accounts)
     .where(and(eq(accounts.orgId, orgId), eq(accounts.type, 'asset')))
     .limit(1);

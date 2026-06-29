@@ -25,24 +25,15 @@ async function resolveAccountsReceivable(orgId: string, tx: any): Promise<string
     .where(
       and(
         eq(accounts.orgId, orgId),
-        eq(accounts.type, 'asset'),
-        sql`lower(${accounts.name}) like '%receivable%'`
+        eq(accounts.systemAccountRole, 'accounts_receivable')
       )
     )
     .limit(1);
 
   if (arAccount) return arAccount.id;
 
-  const [fallbackAsset] = await tx
-    .select()
-    .from(accounts)
-    .where(and(eq(accounts.orgId, orgId), eq(accounts.type, 'asset')))
-    .limit(1);
-
-  if (fallbackAsset) return fallbackAsset.id;
-
   throw new AppError(
-    "Accounts Receivable account not configured. Please create an asset account with 'Receivable' in its name.",
+    'Accounts Receivable account not configured. Go to Chart of Accounts, select an asset account, and set its System Role to \'Accounts Receivable\'.',
     400
   );
 }
@@ -54,24 +45,15 @@ async function resolveVatPayable(orgId: string, tx: any): Promise<string> {
     .where(
       and(
         eq(accounts.orgId, orgId),
-        eq(accounts.type, 'liability'),
-        sql`lower(${accounts.name}) like '%vat%' or lower(${accounts.name}) like '%tax%' or lower(${accounts.name}) like '%payable%'`
+        eq(accounts.systemAccountRole, 'vat_payable')
       )
     )
     .limit(1);
 
   if (vatAccount) return vatAccount.id;
 
-  const [fallbackLiability] = await tx
-    .select()
-    .from(accounts)
-    .where(and(eq(accounts.orgId, orgId), eq(accounts.type, 'liability')))
-    .limit(1);
-
-  if (fallbackLiability) return fallbackLiability.id;
-
   throw new AppError(
-    "VAT Payable or Tax Liability account not found. Please create a liability account styled 'VAT Payable'.",
+    'VAT Payable account not configured. Go to Chart of Accounts, select a liability account, and set its System Role to \'VAT Payable\'.',
     400
   );
 }

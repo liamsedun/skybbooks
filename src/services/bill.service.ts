@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { eq, and, lte, gte, sql, desc, asc, inArray } from 'drizzle-orm';
+import { eq, and, lte, gte, sql, desc, inArray } from 'drizzle-orm';
 import {
   db,
   accounts,
@@ -26,49 +26,21 @@ import { getOrgSettings } from './settings.service';
 // ==========================================
 
 async function resolveAccountsPayable(orgId: string, tx: any): Promise<string> {
-  // Prefer "creditor" accounts (e.g. Trade Creditors / Accounts Payable 300100)
-  const [creditorAccount] = await tx
+  const [apAccount] = await tx
     .select()
     .from(accounts)
     .where(
       and(
         eq(accounts.orgId, orgId),
-        eq(accounts.type, 'liability'),
-        sql`lower(${accounts.name}) like '%creditor%'`
+        eq(accounts.systemAccountRole, 'accounts_payable')
       )
     )
-    .orderBy(asc(accounts.code))
     .limit(1);
 
-  if (creditorAccount) return creditorAccount.id;
-
-  // Fallback to any "payable" account
-  const [payableAccount] = await tx
-    .select()
-    .from(accounts)
-    .where(
-      and(
-        eq(accounts.orgId, orgId),
-        eq(accounts.type, 'liability'),
-        sql`lower(${accounts.name}) like '%payable%'`
-      )
-    )
-    .orderBy(asc(accounts.code))
-    .limit(1);
-
-  if (payableAccount) return payableAccount.id;
-
-  // Fallback to any active liability account
-  const [fallbackLiability] = await tx
-    .select()
-    .from(accounts)
-    .where(and(eq(accounts.orgId, orgId), eq(accounts.type, 'liability')))
-    .limit(1);
-
-  if (fallbackLiability) return fallbackLiability.id;
+  if (apAccount) return apAccount.id;
 
   throw new AppError(
-    "Accounts Payable account not configured. Please create a liability account with 'Payable' or 'Creditor' in its name.",
+    "Accounts Payable account not configured. Go to Chart of Accounts, select a liability account, and set its System Role to 'Accounts Payable'.",
     400
   );
 }
@@ -80,25 +52,15 @@ async function resolveVatInput(orgId: string, tx: any): Promise<string> {
     .where(
       and(
         eq(accounts.orgId, orgId),
-        eq(accounts.type, 'asset'),
-        sql`lower(${accounts.name}) like '%vat%' or lower(${accounts.name}) like '%tax%' or lower(${accounts.name}) like '%input%'`
+        eq(accounts.systemAccountRole, 'vat_receivable')
       )
     )
     .limit(1);
 
   if (vatAccount) return vatAccount.id;
 
-  // Fallback to any active asset
-  const [fallbackAsset] = await tx
-    .select()
-    .from(accounts)
-    .where(and(eq(accounts.orgId, orgId), eq(accounts.type, 'asset')))
-    .limit(1);
-
-  if (fallbackAsset) return fallbackAsset.id;
-
   throw new AppError(
-    "VAT Input or Tax Asset account not found. Please create an asset account styled 'VAT Input'.",
+    "VAT Receivable account not configured. Go to Chart of Accounts, select an asset account, and set its System Role to 'VAT Receivable'.",
     400
   );
 }
@@ -113,7 +75,6 @@ async function resolveExpenseAccount(orgId: string, accountId: string | null | u
     if (existing) return existing.id;
   }
 
-  // Find standard expense account
   const [expAccount] = await tx
     .select()
     .from(accounts)

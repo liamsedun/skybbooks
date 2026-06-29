@@ -25,6 +25,33 @@ export async function runMigration() {
     // Validate database connection
     await db.execute('SELECT 1');
 
+    // Create system_account_role enum and add column to accounts table
+    await db.execute(sql`
+      DO $$ BEGIN
+        CREATE TYPE system_account_role AS ENUM (
+          'accounts_receivable', 'accounts_payable', 'vat_payable', 'vat_receivable',
+          'retained_earnings', 'cogs', 'inventory', 'bank', 'payroll_clearing',
+          'paye_payable', 'pension_payable', 'none'
+        );
+      EXCEPTION
+        WHEN duplicate_object THEN NULL;
+      END $$;
+    `);
+    await db.execute(sql`
+      ALTER TABLE accounts ADD COLUMN IF NOT EXISTS system_account_role system_account_role DEFAULT 'none' NOT NULL
+    `);
+    // Assign system roles to standard seeded accounts by code
+    await db.execute(sql`UPDATE accounts SET system_account_role = 'accounts_receivable' WHERE code = '101100' AND system_account_role = 'none'`);
+    await db.execute(sql`UPDATE accounts SET system_account_role = 'vat_receivable' WHERE code = '101600' AND system_account_role = 'none'`);
+    await db.execute(sql`UPDATE accounts SET system_account_role = 'inventory' WHERE code IN ('102000','102400') AND system_account_role = 'none'`);
+    await db.execute(sql`UPDATE accounts SET system_account_role = 'bank' WHERE code IN ('100200','100300') AND system_account_role = 'none'`);
+    await db.execute(sql`UPDATE accounts SET system_account_role = 'accounts_payable' WHERE code = '300100' AND system_account_role = 'none'`);
+    await db.execute(sql`UPDATE accounts SET system_account_role = 'vat_payable' WHERE code = '301300' AND system_account_role = 'none'`);
+    await db.execute(sql`UPDATE accounts SET system_account_role = 'paye_payable' WHERE code = '301500' AND system_account_role = 'none'`);
+    await db.execute(sql`UPDATE accounts SET system_account_role = 'pension_payable' WHERE code = '301600' AND system_account_role = 'none'`);
+    await db.execute(sql`UPDATE accounts SET system_account_role = 'retained_earnings' WHERE code = '502000' AND system_account_role = 'none'`);
+    await db.execute(sql`UPDATE accounts SET system_account_role = 'cogs' WHERE code = '700000' AND system_account_role = 'none'`);
+
     // Ensure vendor_credits table has the exact schema needed (drop stale one if it lacks columns)
     await db.execute(sql`
       DO $$ BEGIN

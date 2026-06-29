@@ -1,28 +1,28 @@
 import { db, accounts } from './schema';
 import { eq } from 'drizzle-orm';
 
-const ACCOUNT_SEEDS: { code: string; name: string; type: 'asset' | 'liability' | 'equity' | 'revenue' | 'expense'; subType: string | null; description: string | null }[] = [
+const ACCOUNT_SEEDS: { code: string; name: string; type: 'asset' | 'liability' | 'equity' | 'revenue' | 'expense'; subType: string | null; description: string | null; systemAccountRole?: string }[] = [
   // ── CURRENT ASSETS ──
   { code: '100000', name: 'Cash and Cash Equivalents', type: 'asset', subType: 'Current Assets', description: 'IAS 7 – Cash, petty cash, bank balances. CBN regulated — naira & domiciliary accounts.' },
   { code: '100100', name: 'Cash on Hand', type: 'asset', subType: 'Current Assets', description: 'IAS 7 – Physical naira notes and coins. Includes foreign currency cash.' },
-  { code: '100200', name: 'Cash at Bank – Naira', type: 'asset', subType: 'Current Assets', description: 'IAS 7 – CBN-regulated commercial bank accounts. Specify bank name in sub-ledger.' },
-  { code: '100300', name: 'Cash at Bank – Foreign Currency', type: 'asset', subType: 'Current Assets', description: 'IAS 7 / IAS 21 – USD, EUR, GBP domiciliary accounts. Retranslate at closing rate.' },
+  { code: '100200', name: 'Cash at Bank – Naira', type: 'asset', subType: 'Current Assets', description: 'IAS 7 – CBN-regulated commercial bank accounts. Specify bank name in sub-ledger.', systemAccountRole: 'bank' },
+  { code: '100300', name: 'Cash at Bank – Foreign Currency', type: 'asset', subType: 'Current Assets', description: 'IAS 7 / IAS 21 – USD, EUR, GBP domiciliary accounts. Retranslate at closing rate.', systemAccountRole: 'bank' },
   { code: '100400', name: 'Petty Cash', type: 'asset', subType: 'Current Assets', description: 'IAS 7 – Imprest system petty cash fund.' },
   { code: '100500', name: 'Short-term Bank Deposits (<3 months)', type: 'asset', subType: 'Current Assets', description: 'IAS 7 – Treasury bills, fixed deposits ≤ 90 days. WHT deducted at source.' },
   { code: '101000', name: 'Trade & Other Receivables', type: 'asset', subType: 'Current Assets', description: 'IFRS 9 / IAS 32 – Amounts due from customers. Expected Credit Loss (ECL) model applies.' },
-  { code: '101100', name: 'Trade Receivables', type: 'asset', subType: 'Current Assets', description: 'IFRS 15 / IFRS 9 – Invoiced revenue not yet collected. Stage 1–3 impairment per IFRS 9.' },
+  { code: '101100', name: 'Trade Receivables', type: 'asset', subType: 'Current Assets', description: 'IFRS 15 / IFRS 9 – Invoiced revenue not yet collected. Stage 1–3 impairment per IFRS 9.', systemAccountRole: 'accounts_receivable' },
   { code: '101200', name: 'Allowance for Impairment (contra)', type: 'asset', subType: 'Current Assets', description: 'IFRS 9 – ECL provision against trade receivables. 12-month or lifetime ECL.' },
   { code: '101300', name: 'Staff Advances & Loans', type: 'asset', subType: 'Current Assets', description: 'IAS 19 / IFRS 9 – Advances to employees. PAYE implications on benefit element.' },
   { code: '101400', name: 'Receivable from Related Parties', type: 'asset', subType: 'Current Assets', description: 'IAS 24 – Amounts due from subsidiaries / associates. Transfer pricing rules apply.' },
   { code: '101500', name: 'WHT Receivable', type: 'asset', subType: 'Current Assets', description: 'CITA / WHT Regs – Withholding tax credit receivable. Obtain WHT credit notes from FIRS.' },
-  { code: '101600', name: 'VAT Receivable / Input VAT', type: 'asset', subType: 'Current Assets', description: 'VATA – Input VAT recoverable from FIRS. File VAT returns monthly; offset against output VAT.' },
+  { code: '101600', name: 'VAT Receivable / Input VAT', type: 'asset', subType: 'Current Assets', description: 'VATA – Input VAT recoverable from FIRS. File VAT returns monthly; offset against output VAT.', systemAccountRole: 'vat_receivable' },
   { code: '101700', name: 'Prepayments', type: 'asset', subType: 'Current Assets', description: 'IAS 1 – Expenses paid in advance (rents, insurance, subscriptions).' },
   { code: '101800', name: 'Other Receivables', type: 'asset', subType: 'Current Assets', description: 'IFRS 9 – Deposits, claims receivable.' },
-  { code: '102000', name: 'Inventories', type: 'asset', subType: 'Current Assets', description: 'IAS 2 – Goods held for sale or production.' },
+  { code: '102000', name: 'Inventories', type: 'asset', subType: 'Current Assets', description: 'IAS 2 – Goods held for sale or production.', systemAccountRole: 'inventory' },
   { code: '102100', name: 'Raw Materials', type: 'asset', subType: 'Current Assets', description: 'IAS 2 – Materials for manufacturing.' },
   { code: '102200', name: 'Work-in-Progress', type: 'asset', subType: 'Current Assets', description: 'IAS 2 – Partially completed goods.' },
   { code: '102300', name: 'Finished Goods', type: 'asset', subType: 'Current Assets', description: 'IAS 2 – Completed goods awaiting sale.' },
-  { code: '102400', name: 'Trading Stock', type: 'asset', subType: 'Current Assets', description: 'IAS 2 – Goods purchased for resale. FIFO or Weighted Average; LIFO not permitted.' },
+  { code: '102400', name: 'Trading Stock', type: 'asset', subType: 'Current Assets', description: 'IAS 2 – Goods purchased for resale. FIFO or Weighted Average; LIFO not permitted.', systemAccountRole: 'inventory' },
   { code: '102500', name: 'Spare Parts & Consumables', type: 'asset', subType: 'Current Assets', description: 'IAS 2 / IAS 16 – Parts not meeting PP&E threshold. Expense when consumed.' },
   { code: '102600', name: 'Inventory Write-down (contra)', type: 'asset', subType: 'Current Assets', description: 'IAS 2 – NRV write-down below cost.' },
   { code: '103000', name: 'Financial Assets – Current', type: 'asset', subType: 'Current Assets', description: 'IFRS 9 – Current financial assets.' },
@@ -74,7 +74,7 @@ const ACCOUNT_SEEDS: { code: string; name: string; type: 'asset' | 'liability' |
 
   // ── CURRENT LIABILITIES ──
   { code: '300000', name: 'Trade & Other Payables', type: 'liability', subType: 'Current Liabilities', description: 'IAS 1 / IFRS 9 – Obligations due within 12 months.' },
-  { code: '300100', name: 'Trade Creditors / Accounts Payable', type: 'liability', subType: 'Current Liabilities', description: 'IAS 1 – Amounts owed to suppliers. Deduct WHT at applicable rate.' },
+  { code: '300100', name: 'Trade Creditors / Accounts Payable', type: 'liability', subType: 'Current Liabilities', description: 'IAS 1 – Amounts owed to suppliers. Deduct WHT at applicable rate.', systemAccountRole: 'accounts_payable' },
   { code: '300200', name: 'Accrued Expenses', type: 'liability', subType: 'Current Liabilities', description: 'IAS 1 / IAS 37 – Expenses incurred but not invoiced.' },
   { code: '300300', name: 'Other Payables', type: 'liability', subType: 'Current Liabilities', description: 'IAS 1 – Miscellaneous current creditors.' },
   { code: '300400', name: 'Due to Related Parties', type: 'liability', subType: 'Current Liabilities', description: 'IAS 24 – Transfer pricing — FIRS Regulations.' },
@@ -83,10 +83,10 @@ const ACCOUNT_SEEDS: { code: string; name: string; type: 'asset' | 'liability' |
   { code: '301000', name: 'Tax Liabilities', type: 'liability', subType: 'Current Liabilities', description: 'IAS 12 / CITA – Aggregate tax obligations.' },
   { code: '301100', name: 'Company Income Tax Payable (CIT)', type: 'liability', subType: 'Current Liabilities', description: 'CITA – CIT on taxable profits. Small company: turnover ≤ ₦25m; Medium ₦25m–₦100m.' },
   { code: '301200', name: 'Education Tax Payable (EDT)', type: 'liability', subType: 'Current Liabilities', description: 'Education Tax Act – 2.5% of assessable profits. File with CIT return.' },
-  { code: '301300', name: 'VAT Payable (Output VAT)', type: 'liability', subType: 'Current Liabilities', description: 'VATA – VAT collected from customers less input VAT. File monthly; due 21st.' },
+  { code: '301300', name: 'VAT Payable (Output VAT)', type: 'liability', subType: 'Current Liabilities', description: 'VATA – VAT collected from customers less input VAT. File monthly; due 21st.', systemAccountRole: 'vat_payable' },
   { code: '301400', name: 'WHT Payable', type: 'liability', subType: 'Current Liabilities', description: 'CITA / WHT Regs – WHT deducted from payments; remit to FIRS within 30 days.' },
-  { code: '301500', name: 'PAYE Payable', type: 'liability', subType: 'Current Liabilities', description: 'PITA – Employee income tax deducted at source. Remit to State IRS by 10th.' },
-  { code: '301600', name: 'Pension Contribution Payable', type: 'liability', subType: 'Current Liabilities', description: 'Pension Reform Act – 10% employer / 8% employee. Remit to PFA within 7 days.' },
+  { code: '301500', name: 'PAYE Payable', type: 'liability', subType: 'Current Liabilities', description: 'PITA – Employee income tax deducted at source. Remit to State IRS by 10th.', systemAccountRole: 'paye_payable' },
+  { code: '301600', name: 'Pension Contribution Payable', type: 'liability', subType: 'Current Liabilities', description: 'Pension Reform Act – 10% employer / 8% employee. Remit to PFA within 7 days.', systemAccountRole: 'pension_payable' },
   { code: '301700', name: 'NSITF Contribution Payable', type: 'liability', subType: 'Current Liabilities', description: 'NSITF Act – 1% of total monthly payroll. Remit to NSITF.' },
   { code: '301800', name: 'NHF Contribution Payable', type: 'liability', subType: 'Current Liabilities', description: 'NHF Act – 2.5% of employee salary. Remit to FMBN.' },
   { code: '301900', name: 'NITDA Levy Payable', type: 'liability', subType: 'Current Liabilities', description: 'NITDA Act – 1% of PBT for companies with turnover > ₦100m.' },
@@ -122,7 +122,7 @@ const ACCOUNT_SEEDS: { code: string; name: string; type: 'asset' | 'liability' |
   { code: '500100', name: 'Ordinary Share Capital', type: 'equity', subType: 'Equity', description: 'IAS 1 – ₦1 or ₦0.50 par value typical in Nigeria.' },
   { code: '500200', name: 'Preference Share Capital', type: 'equity', subType: 'Equity', description: 'IAS 32 – Classify as equity or liability based on terms.' },
   { code: '501000', name: 'Share Premium', type: 'equity', subType: 'Equity', description: 'IAS 1 – Excess of issue price over par value.' },
-  { code: '502000', name: 'Retained Earnings', type: 'equity', subType: 'Equity', description: 'IAS 1 – Accumulated profits net of dividends.' },
+  { code: '502000', name: 'Retained Earnings', type: 'equity', subType: 'Equity', description: 'IAS 1 – Accumulated profits net of dividends.', systemAccountRole: 'retained_earnings' },
   { code: '502100', name: 'Retained Earnings – Opening', type: 'equity', subType: 'Equity', description: 'IAS 1 – Opening balance of retained earnings.' },
   { code: '502200', name: 'Profit / (Loss) for the Year', type: 'equity', subType: 'Equity', description: 'IAS 1 – Transfer from P&L at year end.' },
   { code: '502300', name: 'Dividends Declared', type: 'equity', subType: 'Equity', description: 'IAS 1 / IAS 10 – WHT 10% withheld on dividends.' },
@@ -157,7 +157,7 @@ const ACCOUNT_SEEDS: { code: string; name: string; type: 'asset' | 'liability' |
   { code: '601800', name: 'Exchange Gains – Operating', type: 'revenue', subType: 'Operating Revenue', description: 'IAS 21 – Fx gains on operating transactions. Taxable.' },
 
   // ── COST OF SALES ──
-  { code: '700000', name: 'Cost of Sales', type: 'expense', subType: 'Cost of Sales', description: 'IAS 2 – Direct costs of goods sold.' },
+  { code: '700000', name: 'Cost of Sales', type: 'expense', subType: 'Cost of Sales', description: 'IAS 2 – Direct costs of goods sold.', systemAccountRole: 'cogs' },
   { code: '700100', name: 'Opening Stock', type: 'expense', subType: 'Cost of Sales', description: 'IAS 2 – Opening inventory value.' },
   { code: '700200', name: 'Purchases of Goods', type: 'expense', subType: 'Cost of Sales', description: 'IAS 2 – VAT input where applicable; include import duties.' },
   { code: '700300', name: 'Import Duties & Levies', type: 'expense', subType: 'Cost of Sales', description: 'IAS 2 / Customs Act – Nigeria Customs Service charges.' },
@@ -253,7 +253,12 @@ export async function seedAccounts(orgId: string) {
     return { seeded: 0, message: 'Accounts already exist for this organisation.' };
   }
   const values = ACCOUNT_SEEDS.map(a => ({
-    ...a,
+    code: a.code,
+    name: a.name,
+    type: a.type,
+    subType: a.subType,
+    description: a.description,
+    systemAccountRole: (a as any).systemAccountRole || 'none',
     orgId,
     isSystem: true,
     isActive: true,

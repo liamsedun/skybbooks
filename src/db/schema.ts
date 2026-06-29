@@ -47,6 +47,21 @@ export const journalSourceEnum = pgEnum('journal_source', [
 
 export const contactTypeEnum = pgEnum('contact_type', ['customer', 'vendor', 'both']);
 
+export const systemAccountRoleEnum = pgEnum('system_account_role', [
+  'accounts_receivable',
+  'accounts_payable',
+  'vat_payable',
+  'vat_receivable',
+  'retained_earnings',
+  'cogs',
+  'inventory',
+  'bank',
+  'payroll_clearing',
+  'paye_payable',
+  'pension_payable',
+  'none',
+]);
+
 export const itemTypeEnum = pgEnum('item_type', ['product', 'service']);
 
 export const inventoryTxnTypeEnum = pgEnum('inventory_txn_type', [
@@ -231,6 +246,7 @@ export const accounts = pgTable('accounts', {
   isActive: boolean('is_active').default(true).notNull(),
   description: text('description'),
   openingBalance: bigint('opening_balance', { mode: 'number' }).default(0).notNull(),
+  systemAccountRole: systemAccountRoleEnum('system_account_role').default('none').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
