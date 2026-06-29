@@ -441,6 +441,11 @@ function ReportShell({ reportType, title }: ReportPageProps) {
         const res = await reportsApi.getAgedPayables({ format: 'json' });
         return res.report || res.data || res;
       }
+      if (reportType === 'cash-flow') {
+        const params: any = { startDate: sDate, endDate: eDate, format: 'json' };
+        const res = await reportsApi.getCashFlow(params);
+        return res.data || res;
+      }
       const params: any = { startDate: sDate, endDate: eDate, format: 'json' };
       if (compareEnabled) {
         params.compareStart = compareSDate;
@@ -465,8 +470,29 @@ function ReportShell({ reportType, title }: ReportPageProps) {
         headers = ['Account', 'Amount'];
         csvRows = rows.map((r: any) => [r.accountName||'', ((r.balance||0)/100).toFixed(2)]);
       } else if (reportType === 'cash-flow') {
-        headers = ['Category', 'Amount'];
-        csvRows = rows.map((r: any) => [r.category||'', ((r.amount||0)/100).toFixed(2)]);
+        const cf = data?.data || data || {};
+        headers = ['Line Item', 'Amount'];
+        const flatRows: string[][] = [];
+        const addRow = (label: string, amt: number) => flatRows.push([label, (amt/100).toFixed(2)]);
+        const netIncome = cf.netIncome || 0;
+        const operating = cf.operatingActivities || {};
+        const investing = cf.investingActivities || {};
+        const financing = cf.financingActivities || {};
+        addRow('A. OPERATING ACTIVITIES', 0);
+        addRow('Net Profit', netIncome);
+        (operating.adjustments || []).forEach((a: any) => addRow(a.name, a.amount));
+        (operating.workingCapitalChanges || []).forEach((w: any) => addRow(w.name, w.amount));
+        addRow('Net Cash from Operating Activities', operating.total || 0);
+        addRow('B. INVESTING ACTIVITIES', 0);
+        (investing.items || []).forEach((iv: any) => addRow(iv.name, iv.amount));
+        addRow('Net Cash from Investing Activities', investing.total || 0);
+        addRow('C. FINANCING ACTIVITIES', 0);
+        (financing.items || []).forEach((fn: any) => addRow(fn.name, fn.amount));
+        addRow('Net Cash from Financing Activities', financing.total || 0);
+        addRow('Net Change in Cash', cf.netChangeInCash || 0);
+        addRow('Opening Cash Balance', cf.openingCash || 0);
+        addRow('Closing Cash Balance', cf.closingCash || 0);
+        csvRows = flatRows;
       } else {
         headers = ['Account Code', 'Account Name', 'Type', 'Debit', 'Credit'];
         csvRows = rows.map((r: any) => [r.code||r.accountCode||'', r.name||r.accountName||'', r.type||r.accountType||'', ((r.debit||r.debitAmount||0)/100).toFixed(2), ((r.credit||r.creditAmount||0)/100).toFixed(2)]);
@@ -502,10 +528,29 @@ function ReportShell({ reportType, title }: ReportPageProps) {
             <tr style="font-weight:bold;border-top:3px double;background:#f1f5f9"><td style="padding:7px 10px">Total Liabilities &amp; Equity</td><td class="r" style="padding:7px 10px">₦${((totalLiabilities+totalEquity)/100).toLocaleString()}</td></tr>
           </tbody></table>`, `As of ${asOfDate}`);
         } else if (reportType === 'cash-flow') {
-          const rows = (Array.isArray(data) ? data : []).map((r: any) =>
-            `<tr><td>${r.category||''}</td><td class="r">₦${((r.amount||0)/100).toLocaleString()}</td></tr>`
-          ).join('');
-          printWindow('Cash Flow Statement', `<table><thead><tr><th>Category</th><th class="r">Amount</th></tr></thead><tbody>${rows||'<tr><td colspan="2" style="text-align:center;color:#94a3b8">No data</td></tr>'}</tbody></table>`, `Period: ${sDate} - ${eDate}`);
+          const cf = data?.data || data || {};
+          const fmtPdf = (v: number) => `₦${(v/100).toLocaleString()}`;
+          const pdfRows: string[] = [];
+          const addPdfRow = (label: string, amt: string, cls?: string) => pdfRows.push(`<tr${cls?` class="${cls}"`:''}><td style="padding:4px 10px">${label}</td><td class="r" style="padding:4px 10px">${amt}</td></tr>`);
+          const netIncome = cf.netIncome || 0;
+          const operating = cf.operatingActivities || {};
+          const investing = cf.investingActivities || {};
+          const financing = cf.financingActivities || {};
+          addPdfRow('A. OPERATING ACTIVITIES', '', 'bg-emerald-50');
+          addPdfRow('Net Profit', fmtPdf(netIncome));
+          (operating.adjustments || []).forEach((a: any) => addPdfRow(a.name, fmtPdf(a.amount)));
+          (operating.workingCapitalChanges || []).forEach((w: any) => addPdfRow(w.name, fmtPdf(w.amount)));
+          addPdfRow('Net Cash from Operating Activities', fmtPdf(operating.total || 0), 'fw-bold border-top-2');
+          addPdfRow('B. INVESTING ACTIVITIES', '', 'bg-blue-50');
+          (investing.items || []).forEach((iv: any) => addPdfRow(iv.name, fmtPdf(iv.amount)));
+          addPdfRow('Net Cash from Investing Activities', fmtPdf(investing.total || 0), 'fw-bold border-top-2');
+          addPdfRow('C. FINANCING ACTIVITIES', '', 'bg-violet-50');
+          (financing.items || []).forEach((fn: any) => addPdfRow(fn.name, fmtPdf(fn.amount)));
+          addPdfRow('Net Cash from Financing Activities', fmtPdf(financing.total || 0), 'fw-bold border-top-2');
+          addPdfRow('Net Change in Cash', fmtPdf(cf.netChangeInCash || 0), 'fw-bold border-top-3');
+          addPdfRow('Opening Cash Balance', fmtPdf(cf.openingCash || 0));
+          addPdfRow('Closing Cash Balance', fmtPdf(cf.closingCash || 0), 'fw-bold');
+          printWindow('Cash Flow Statement', `<table><thead><tr><th>Line Item</th><th class="r">Amount</th></tr></thead><tbody>${pdfRows.join('')}</tbody></table>`, `Period: ${sDate} - ${eDate}`);
         } else if (reportType === 'aged-receivables' || reportType === 'aged-payables') {
           const label = reportType === 'aged-receivables' ? 'Customer' : 'Vendor';
           const title = reportType === 'aged-receivables' ? 'Aged Receivables' : 'Aged Payables';
@@ -773,7 +818,94 @@ function ReportTable({ data, reportType, compareEnabled, onAccountClick }: { dat
   }
 
   if (reportType === 'cash-flow') {
-    return <SummaryTable data={data} columns={[{ key: 'category', label: 'Category' }, { key: 'amount', label: 'Amount', fmt: fmtNaira }]} />;
+    const cf = data?.data || data || {};
+    const netIncome = cf.netIncome || 0;
+    const operating = cf.operatingActivities || {};
+    const investing = cf.investingActivities || {};
+    const financing = cf.financingActivities || {};
+    const adjustments = operating.adjustments || [];
+    const workingCapital = operating.workingCapitalChanges || [];
+    const investingItems = investing.items || [];
+    const financingItems = financing.items || [];
+    return (
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-slate-50">
+            <tr>
+              <th className="text-left px-4 py-3 font-semibold text-slate-600">Line Item</th>
+              <th className="text-right px-4 py-3 font-semibold text-slate-600">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr className="bg-emerald-50"><td colSpan={2} className="px-4 py-2 text-xs font-bold text-emerald-800 uppercase tracking-wider">A. Operating Activities</td></tr>
+            <tr className="border-t border-slate-100">
+              <td className="px-4 py-2.5 pl-8 text-slate-800">Net Profit (from P&amp;L)</td>
+              <td className="px-4 py-2.5 text-right font-semibold text-slate-800">{fmtNaira(netIncome)}</td>
+            </tr>
+            {adjustments.map((a: any, i: number) => (
+              <tr key={`adj-${i}`} className="border-t border-slate-100">
+                <td className="px-4 py-2.5 pl-8 text-slate-800">{a.name}</td>
+                <td className="px-4 py-2.5 text-right text-slate-800">{fmtNaira(a.amount)}</td>
+              </tr>
+            ))}
+            {workingCapital.map((w: any, i: number) => (
+              <tr key={`wc-${i}`} className="border-t border-slate-100">
+                <td className="px-4 py-2.5 pl-8 text-slate-800">{w.name}</td>
+                <td className="px-4 py-2.5 text-right text-slate-800">{fmtNaira(w.amount)}</td>
+              </tr>
+            ))}
+            <tr className="border-t-2 border-emerald-200 bg-emerald-50/50">
+              <td className="px-4 py-2 text-sm font-bold text-slate-800">Net Cash from Operating Activities</td>
+              <td className="px-4 py-2 text-right font-bold text-slate-800">{fmtNaira(operating.total)}</td>
+            </tr>
+            <tr className="bg-blue-50"><td colSpan={2} className="px-4 py-2 text-xs font-bold text-blue-800 uppercase tracking-wider">B. Investing Activities</td></tr>
+            {investingItems.length === 0 && (
+              <tr className="border-t border-slate-100">
+                <td colSpan={2} className="px-4 py-2.5 pl-8 text-slate-400 italic">No investing activity</td>
+              </tr>
+            )}
+            {investingItems.map((iv: any, i: number) => (
+              <tr key={`inv-${i}`} className="border-t border-slate-100">
+                <td className="px-4 py-2.5 pl-8 text-slate-800">{iv.name}</td>
+                <td className="px-4 py-2.5 text-right text-slate-800">{fmtNaira(iv.amount)}</td>
+              </tr>
+            ))}
+            <tr className="border-t-2 border-blue-200 bg-blue-50/50">
+              <td className="px-4 py-2 text-sm font-bold text-slate-800">Net Cash from Investing Activities</td>
+              <td className="px-4 py-2 text-right font-bold text-slate-800">{fmtNaira(investing.total)}</td>
+            </tr>
+            <tr className="bg-violet-50"><td colSpan={2} className="px-4 py-2 text-xs font-bold text-violet-800 uppercase tracking-wider">C. Financing Activities</td></tr>
+            {financingItems.length === 0 && (
+              <tr className="border-t border-slate-100">
+                <td colSpan={2} className="px-4 py-2.5 pl-8 text-slate-400 italic">No financing activity</td>
+              </tr>
+            )}
+            {financingItems.map((fn: any, i: number) => (
+              <tr key={`fin-${i}`} className="border-t border-slate-100">
+                <td className="px-4 py-2.5 pl-8 text-slate-800">{fn.name}</td>
+                <td className="px-4 py-2.5 text-right text-slate-800">{fmtNaira(fn.amount)}</td>
+              </tr>
+            ))}
+            <tr className="border-t-2 border-violet-200 bg-violet-50/50">
+              <td className="px-4 py-2 text-sm font-bold text-slate-800">Net Cash from Financing Activities</td>
+              <td className="px-4 py-2 text-right font-bold text-slate-800">{fmtNaira(financing.total)}</td>
+            </tr>
+            <tr className="border-t-2 border-slate-300 bg-slate-100">
+              <td className="px-4 py-3 text-base font-bold text-slate-900">Net Change in Cash</td>
+              <td className="px-4 py-3 text-right text-base font-bold text-slate-900">{fmtNaira(cf.netChangeInCash)}</td>
+            </tr>
+            <tr className="border-t border-slate-200">
+              <td className="px-4 py-2.5 pl-8 text-slate-600">Opening Cash Balance</td>
+              <td className="px-4 py-2.5 text-right text-slate-600">{fmtNaira(cf.openingCash)}</td>
+            </tr>
+            <tr className="border-t border-slate-200">
+              <td className="px-4 py-2.5 pl-8 text-slate-600">Closing Cash Balance</td>
+              <td className="px-4 py-2.5 text-right font-semibold text-slate-800">{fmtNaira(cf.closingCash)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    );
   }
 
   return (
