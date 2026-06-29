@@ -25,7 +25,7 @@ export async function runMigration() {
     // Validate database connection
     await db.execute('SELECT 1');
 
-    // Create vendor_credit_status enum and vendor_credits table first (before risky cleanup ops)
+    // Ensure vendor_credits table has the exact schema needed (drop stale one if it lacks columns)
     await db.execute(sql`
       DO $$ BEGIN
         CREATE TYPE vendor_credit_status AS ENUM ('issued', 'applied', 'void');
@@ -33,8 +33,9 @@ export async function runMigration() {
         WHEN duplicate_object THEN NULL;
       END $$;
     `);
+    await db.execute(sql`DROP TABLE IF EXISTS vendor_credits CASCADE`);
     await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS vendor_credits (
+      CREATE TABLE vendor_credits (
         id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
         org_id uuid REFERENCES organisations(id) NOT NULL,
         vc_number text NOT NULL,
