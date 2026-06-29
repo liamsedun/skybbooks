@@ -374,7 +374,8 @@ export async function getTrialBalance(
 
   // Identify single AR, AP, and Inventory accounts
   const arAccount = orgAccounts.find(a => a.type === 'asset' && (a.name.toLowerCase().includes('receivable') || a.code.startsWith('12')));
-  const apAccount = orgAccounts.find(a => a.type === 'liability' && (a.name.toLowerCase().includes('payable') || a.code.startsWith('20')));
+  const apAccount = orgAccounts.find(a => a.type === 'liability' && a.name.toLowerCase().includes('creditor'))
+    || orgAccounts.find(a => a.type === 'liability' && a.name.toLowerCase().includes('payable'));
   const invAccount = orgAccounts.find(a => a.code.startsWith('102') && !a.name.toLowerCase().includes('contra'));
 
   const resultList: TrialBalanceRow[] = [];

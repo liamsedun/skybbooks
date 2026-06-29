@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { eq, and, lte, gte, sql, desc, inArray } from 'drizzle-orm';
+import { eq, and, lte, gte, sql, desc, asc, inArray } from 'drizzle-orm';
 import {
   db,
   accounts,
@@ -26,19 +26,37 @@ import { getOrgSettings } from './settings.service';
 // ==========================================
 
 async function resolveAccountsPayable(orgId: string, tx: any): Promise<string> {
-  const [apAccount] = await tx
+  // Prefer "creditor" accounts (e.g. Trade Creditors / Accounts Payable 300100)
+  const [creditorAccount] = await tx
     .select()
     .from(accounts)
     .where(
       and(
         eq(accounts.orgId, orgId),
         eq(accounts.type, 'liability'),
-        sql`lower(${accounts.name}) like '%payable%' or lower(${accounts.name}) like '%creditor%'`
+        sql`lower(${accounts.name}) like '%creditor%'`
       )
     )
+    .orderBy(asc(accounts.code))
     .limit(1);
 
-  if (apAccount) return apAccount.id;
+  if (creditorAccount) return creditorAccount.id;
+
+  // Fallback to any "payable" account
+  const [payableAccount] = await tx
+    .select()
+    .from(accounts)
+    .where(
+      and(
+        eq(accounts.orgId, orgId),
+        eq(accounts.type, 'liability'),
+        sql`lower(${accounts.name}) like '%payable%'`
+      )
+    )
+    .orderBy(asc(accounts.code))
+    .limit(1);
+
+  if (payableAccount) return payableAccount.id;
 
   // Fallback to any active liability account
   const [fallbackLiability] = await tx

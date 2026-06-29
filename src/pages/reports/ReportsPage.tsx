@@ -20,7 +20,6 @@ const MODULE_LINKS: { prefix: string; path: string; label: string }[] = [
   { prefix: '205', path: '/accountant/fixed-assets', label: 'Fixed Assets' },
   { prefix: '206', path: '/accountant/fixed-assets', label: 'Fixed Assets' },
   { prefix: '3001', path: '/purchases/bills', label: 'Bills' },
-  { prefix: '300', path: '/purchases/bills', label: 'Bills' },
   { prefix: '500', path: '/accountant/manual-journals', label: 'Manual Journals' },
   { prefix: '501', path: '/accountant/manual-journals', label: 'Manual Journals' },
   { prefix: '502', path: '/accountant/manual-journals', label: 'Manual Journals' },
@@ -263,6 +262,15 @@ export function TrialBalancePage() {
                 <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-400">{searchQuery ? 'No accounts match your search.' : 'No data available.'}</td></tr>
               )}
             </tbody>
+            {rows.length > 0 && (
+              <tfoot>
+                <tr className="border-t-2 border-slate-300 bg-slate-50 font-semibold text-slate-900">
+                  <td className="px-4 py-3 text-sm" colSpan={3}>Total</td>
+                  <td className="px-4 py-3 text-right text-sm font-mono">{fmtNaira(rows.reduce((s: number, r: any) => s + (r.closingDebit || r.debit || 0), 0))}</td>
+                  <td className="px-4 py-3 text-right text-sm font-mono">{fmtNaira(rows.reduce((s: number, r: any) => s + (r.closingCredit || r.credit || 0), 0))}</td>
+                </tr>
+              </tfoot>
+            )}
           </table>
         </div>
       )}
