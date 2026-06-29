@@ -5,6 +5,9 @@
 
 import { z } from 'zod';
 import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 import Tesseract from 'tesseract.js';
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { createCanvas } from 'canvas';
@@ -218,18 +221,25 @@ export class AIService {
     orgId: string,
     userId: string
   ): Promise<ExtractedReceiptData | { vendorName: string; note: string }> {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ocr-'));
     try {
       const worker = await Tesseract.createWorker('eng');
       let fullText = '';
 
       if (mimeType === 'application/pdf') {
         const pageImages = await this.pdfToImages(fileBuffer);
-        for (const pageBuf of pageImages) {
-          const { data } = await worker.recognize(pageBuf);
+        for (let i = 0; i < pageImages.length; i++) {
+          const tmpPath = path.join(tmpDir, `page-${i}.png`);
+          fs.writeFileSync(tmpPath, pageImages[i]);
+          const { data } = await worker.recognize(tmpPath);
           fullText += (data.text || '') + '\n';
         }
       } else {
-        const { data } = await worker.recognize(fileBuffer);
+        // Write image to temp file for reliable Tesseract recognition
+        const ext = mimeType === 'image/png' ? '.png' : '.jpg';
+        const tmpPath = path.join(tmpDir, `receipt${ext}`);
+        fs.writeFileSync(tmpPath, fileBuffer);
+        const { data } = await worker.recognize(tmpPath);
         fullText = data.text || '';
       }
 
@@ -239,7 +249,9 @@ export class AIService {
       await logAICall(orgId, userId, 'EXTRACT_RECEIPT', `tesseract-ocr: ${fullText.length} chars`, 'success');
       return result;
     } catch (error: any) {
-      await logAICall(orgId, userId, 'EXTRACT_RECEIPT', 'tesseract-failed', 'failure', error?.message || String(error));
+      const errMsg = error?.message || String(error);
+      console.error('OCR extraction error:', errMsg);
+      await logAICall(orgId, userId, 'EXTRACT_RECEIPT', 'tesseract-failed', 'failure', errMsg);
       return {
         vendorName: 'Receipt uploaded (OCR unavailable)',
         date: null,
@@ -247,8 +259,15 @@ export class AIService {
         lineItems: [],
         vatAmountKobo: null,
         receiptNumber: null,
-        _note: 'Receipt OCR engine encountered an error. Please try again with a clearer image.',
+        _note: `Receipt OCR engine encountered an error: ${errMsg.slice(0, 200)}`,
       } as any;
+    } finally {
+      // Clean up temp files
+      try {
+        const entries = fs.readdirSync(tmpDir);
+        for (const e of entries) fs.unlinkSync(path.join(tmpDir, e));
+        fs.rmdirSync(tmpDir);
+      } catch (_) { /* ignore cleanup errors */ }
     }
   }
 
