@@ -63,10 +63,15 @@ export function PurchaseCreditNotesPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [editingNote, setEditingNote] = useState<VendorCredit | null>(null);
 
-  const { data: notes, isLoading, isError } = useQuery<VendorCredit[]>({
+  const { data: notes, isLoading, isError, error } = useQuery<VendorCredit[]>({
     queryKey: ['purchases', 'vendor-credit-notes'],
     queryFn: async () => { const r = await api.get('/purchases/credit-notes'); return r.data; },
   });
+  const queryError = isError && error
+    ? (error as any)?.response?.data?.error || (error as any)?.message || 'Failed to load vendor credit notes.'
+    : null;
+
+  if (isError && error) console.error('[CreditNotes] query error:', (error as any)?.response?.data || (error as any)?.message || error);
 
   const voidMutation = useMutation({
     mutationFn: (id: string) => api.post(`/purchases/credit-notes/${id}/void`),
@@ -202,7 +207,7 @@ export function PurchaseCreditNotesPage() {
           </div>
         ) : isError ? (
           <div className="flex items-center justify-center gap-2 py-16 text-rose-500 text-sm">
-            <AlertCircle size={16} />Failed to load vendor credit notes.
+            <AlertCircle size={16} />{queryError}
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center px-4">

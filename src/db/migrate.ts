@@ -24,6 +24,35 @@ export async function runMigration() {
     console.log('[Migration] Verifying database connection and syncing schema...');
     // Validate database connection
     await db.execute('SELECT 1');
+
+    // Create vendor_credit_status enum and vendor_credits table first (before risky cleanup ops)
+    await db.execute(sql`
+      DO $$ BEGIN
+        CREATE TYPE vendor_credit_status AS ENUM ('issued', 'applied', 'void');
+      EXCEPTION
+        WHEN duplicate_object THEN NULL;
+      END $$;
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS vendor_credits (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        vc_number text NOT NULL,
+        vendor_id uuid REFERENCES contacts(id) NOT NULL,
+        bill_id uuid REFERENCES bills(id),
+        date timestamp NOT NULL,
+        status vendor_credit_status DEFAULT 'issued' NOT NULL,
+        subtotal bigint DEFAULT 0 NOT NULL,
+        tax bigint DEFAULT 0 NOT NULL,
+        total bigint DEFAULT 0 NOT NULL,
+        remaining_credit bigint DEFAULT 0 NOT NULL,
+        notes text,
+        journal_entry_id uuid REFERENCES journal_entries(id),
+        created_by uuid REFERENCES users(id) NOT NULL,
+        created_at timestamp DEFAULT now() NOT NULL
+      );
+    `);
+
     // Ensure settings column exists on organisations
     await db.execute(`ALTER TABLE organisations ADD COLUMN IF NOT EXISTS settings jsonb DEFAULT '{}'::jsonb NOT NULL`);
     // Ensure avatar_url column exists on users
@@ -145,33 +174,6 @@ export async function runMigration() {
         AND jl.account_id = source.id
         AND je.id = jl.entry_id
         AND je.source = 'bill'
-    `);
-    // Create vendor_credits enum and table if not exist
-    await db.execute(sql`
-      DO $$ BEGIN
-        CREATE TYPE vendor_credit_status AS ENUM ('issued', 'applied', 'void');
-      EXCEPTION
-        WHEN duplicate_object THEN NULL;
-      END $$;
-    `);
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS vendor_credits (
-        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-        org_id uuid REFERENCES organisations(id) NOT NULL,
-        vc_number text NOT NULL,
-        vendor_id uuid REFERENCES contacts(id) NOT NULL,
-        bill_id uuid REFERENCES bills(id),
-        date timestamp NOT NULL,
-        status vendor_credit_status DEFAULT 'issued' NOT NULL,
-        subtotal bigint DEFAULT 0 NOT NULL,
-        tax bigint DEFAULT 0 NOT NULL,
-        total bigint DEFAULT 0 NOT NULL,
-        remaining_credit bigint DEFAULT 0 NOT NULL,
-        notes text,
-        journal_entry_id uuid REFERENCES journal_entries(id),
-        created_by uuid REFERENCES users(id) NOT NULL,
-        created_at timestamp DEFAULT now() NOT NULL
-      );
     `);
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
