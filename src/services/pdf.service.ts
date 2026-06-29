@@ -943,9 +943,21 @@ export async function generatePensionSchedulePDF(runId: string, orgId: string): 
   const lines = await db.select().from(payrollLines).where(eq(payrollLines.runId, runId));
   const empIds = [...new Set(lines.map(l => l.employeeId))];
   const emps = await db.select().from(employees).where(sql`${employees.id} = ANY(${empIds})`);
-  const empMap = new Map(emps.map(e => [e.id, `${e.firstName} ${e.lastName}`]));
-  const rows = lines.map(l => [empMap.get(l.employeeId)||'-', formatNaira(l.grossPay), formatNaira(l.pensionEmployee), formatNaira(l.pensionEmployer), formatNaira(l.pensionEmployee + l.pensionEmployer)]);
-  return generateListPDF(orgId, 'PENSION CONTRIBUTION SCHEDULE', `Run: ${run.runNumber} | ${formatShortDate(run.periodStart)} - ${formatShortDate(run.periodEnd)}`, ['Employee','Gross Pay','EE (8%)','ER (10%)','Total'], [150,90,90,90,90], ['left','right','right','right','right'], rows, '#d97706');
+  const empMap = new Map(emps.map(e => [e.id, { name: `${e.firstName} ${e.lastName}`, staffId: e.staffId || '' }]));
+  const rows = lines.map(l => {
+    const emp = empMap.get(l.employeeId) || { name: '-', staffId: '' };
+    const pensionable = l.basic || 0;
+    return [
+      emp.staffId, emp.name, formatNaira(l.grossPay),
+      formatNaira(pensionable), formatNaira(l.pensionEmployee),
+      formatNaira(l.pensionEmployer), formatNaira((l.pensionEmployee || 0) + (l.pensionEmployer || 0)),
+    ];
+  });
+  return generateListPDF(orgId, 'PENSION CONTRIBUTION SCHEDULE', `Run: ${run.runNumber} | ${formatShortDate(run.periodStart)} - ${formatShortDate(run.periodEnd)}`,
+    ['Staff ID', 'Employee', 'Gross Pay', 'Pensionable', 'EE (8%)', 'ER (10%)', 'Total'],
+    [55, 100, 65, 65, 60, 60, 60],
+    ['left', 'left', 'right', 'right', 'right', 'right', 'right'],
+    rows, '#d97706');
 }
 
 // =========================================================================
