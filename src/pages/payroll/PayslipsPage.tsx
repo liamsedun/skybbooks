@@ -46,58 +46,58 @@ function buildPayslipHtml(line: any, run: any, employee: any, calc: any, org: an
   <style>
     @page{size:A4 portrait;margin:0}
     *{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:#fff;font-size:8px;color:#0f172a;-webkit-font-smoothing:antialiased;width:210mm;height:297mm;overflow:hidden}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:#fff;font-size:9.5px;color:#0f172a;-webkit-font-smoothing:antialiased;width:210mm;height:297mm;overflow:hidden}
     .page{width:210mm;height:297mm;background:#fff;position:relative}
-    .watermark{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-35deg);font-size:80px;font-weight:900;color:rgba(180,40,50,0.06);letter-spacing:15px;white-space:nowrap;pointer-events:none;z-index:0}
-    .header{background:#1e3a5f;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;position:relative;z-index:1}
+    .watermark{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-35deg);font-size:120px;font-weight:900;color:rgba(180,40,50,0.12);letter-spacing:18px;white-space:nowrap;pointer-events:none;z-index:0}
+    .header{background:#1e3a5f;padding:10px 22px;display:flex;align-items:center;justify-content:space-between;position:relative;z-index:1}
     .header-left{display:flex;align-items:center;gap:10px}
     .header-logo{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#fff;overflow:hidden;flex-shrink:0}
     .header-logo img{width:100%;height:100%;object-fit:cover;border-radius:6px}
     .header-logo .fallback{width:100%;height:100%;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;border-radius:6px}
-    .header h1{color:#fff;font-size:12px;font-weight:700}
-    .header .sub{color:#a0b8d4;font-size:6.5px;margin-top:1px;line-height:1.4}
-    .header-right .badge{display:inline-block;background:rgba(255,255,255,0.12);color:#e8f0fe;padding:3px 14px;border-radius:14px;font-size:10px;font-weight:800;letter-spacing:0.04em}
-    .body{padding:10px 24px 6px;position:relative;z-index:1}
-    .emp-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid #eef1f5}
-    .emp-row .name{font-size:12px;font-weight:700;color:#1e3a5f}
-    .emp-row .emp-meta{font-size:7px;color:#6b7a90;margin-top:1px}
+    .header h1{color:#fff;font-size:14px;font-weight:700}
+    .header .sub{color:#a0b8d4;font-size:7px;margin-top:1px;line-height:1.4}
+    .header-right .badge{display:inline-block;background:rgba(255,255,255,0.12);color:#e8f0fe;padding:3px 14px;border-radius:14px;font-size:12px;font-weight:800;letter-spacing:0.04em}
+    .body{padding:8px 22px 4px;position:relative;z-index:1}
+    .emp-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;padding-bottom:5px;border-bottom:1px solid #eef1f5}
+    .emp-row .name{font-size:14px;font-weight:700;color:#1e3a5f}
+    .emp-row .emp-meta{font-size:8.5px;color:#6b7a90;margin-top:1px}
     .emp-row .emp-meta span{display:inline-block;margin-right:8px}
-    .emp-row .period{text-align:right;font-size:7px;color:#6b7a90;line-height:1.5}
-    .emp-row .period strong{color:#1e3a5f;font-size:8px;font-weight:600}
-    .grid-2{display:flex;gap:14px;margin-bottom:6px}
+    .emp-row .period{text-align:right;font-size:8.5px;color:#6b7a90;line-height:1.5}
+    .emp-row .period strong{color:#1e3a5f;font-size:9px;font-weight:600}
+    .grid-2{display:flex;gap:14px;margin-bottom:5px}
     .grid-2 > div{flex:1;min-width:0}
-    .section-header{font-size:5.5px;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:#8b9ab0;margin-bottom:4px}
+    .section-header{font-size:7px;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:#8b9ab0;margin-bottom:3px}
     .card{border:1px solid #e2e8f0;border-radius:6px;overflow:hidden}
-    .card-row{display:flex;justify-content:space-between;align-items:center;padding:3px 10px;font-size:7.5px;border-bottom:1px solid #f1f5f9}
+    .card-row{display:flex;justify-content:space-between;align-items:center;padding:4px 10px;font-size:9px;border-bottom:1px solid #f1f5f9}
     .card-row:last-child{border-bottom:none}
     .card-row .lb{color:#475569}
     .card-row .vl{font-weight:600;color:#0f172a;font-variant-numeric:tabular-nums}
     .card-row.highlight{background:#f0f7ff}
-    .card-row.total{border-top:1.5px solid #1e3a5f;margin-top:0;background:#f1f5f9}
+    .card-row.total{border-top:1.5px solid #1e3a5f;margin-top:0;background:#f1f5f9;padding:4px 10px}
     .card-row.total .lb{font-weight:700;color:#1e3a5f}
     .card-row.total .vl{color:#1e3a5f}
-    .relief-list{padding:2px 10px 2px;font-size:7px}
+    .relief-list{padding:2px 10px 2px;font-size:8.5px}
     .relief-list .rl-row{display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px dashed #eef2f6}
     .relief-list .rl-row:last-child{border-bottom:none}
     .relief-list .rl-label{color:#475569;padding-left:8px}
     .relief-list .rl-value{font-weight:600;color:#0f172a;font-variant-numeric:tabular-nums}
-    .net-panel{background:linear-gradient(135deg,#1e3a5f,#2d5a87);border-radius:8px;padding:10px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
-    .net-panel .nl{color:#b8cfe8;font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em}
-    .net-panel .ns{color:#8aadd0;font-size:6px;margin-top:1px}
-    .net-panel .na{color:#fff;font-size:16px;font-weight:800}
-    table.bands{width:100%;border-collapse:separate;border-spacing:0;font-size:7.5px;border-radius:6px;overflow:hidden}
-    table.bands th{padding:5px 10px;text-align:left;color:#fff;font-weight:700;font-size:6px;text-transform:uppercase;letter-spacing:0.07em;background:#1e3a5f}
+    .net-panel{background:linear-gradient(135deg,#1e3a5f,#2d5a87);border-radius:8px;padding:8px 18px;display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+    .net-panel .nl{color:#b8cfe8;font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em}
+    .net-panel .ns{color:#8aadd0;font-size:7px;margin-top:1px}
+    .net-panel .na{color:#fff;font-size:20px;font-weight:800}
+    table.bands{width:100%;border-collapse:separate;border-spacing:0;font-size:9px;border-radius:6px;overflow:hidden}
+    table.bands th{padding:5px 10px;text-align:left;color:#fff;font-weight:700;font-size:7px;text-transform:uppercase;letter-spacing:0.07em;background:#1e3a5f}
     table.bands td{padding:4px 10px;border-bottom:1px solid #eef2f6;color:#1e293b;font-variant-numeric:tabular-nums;background:#fff}
     table.bands tr:last-child td{border-bottom:none}
     table.bands tr:nth-child(even) td{background:#f8fafc}
     table.bands .r{text-align:right;font-weight:500}
     table.bands .fw{font-weight:700;color:#1e3a5f}
     table.bands .bn{color:#475569}
-    .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
-    .metric-card{border:1px solid #e2e8f0;border-radius:6px;padding:6px 6px;text-align:center;background:#fafbfc}
-    .metric-card .ml{font-size:5.5px;color:#8b9ab0;text-transform:uppercase;letter-spacing:0.05em;font-weight:700;margin-bottom:2px}
-    .metric-card .mv{font-size:9px;font-weight:700;color:#0f172a;font-variant-numeric:tabular-nums}
-    .footer{text-align:center;padding:6px 24px;border-top:1px solid #e2e8f0;font-size:6px;color:#94a3b8;position:relative;z-index:1}
+    .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+    .metric-card{border:1px solid #e2e8f0;border-radius:6px;padding:5px 5px;text-align:center;background:#fafbfc}
+    .metric-card .ml{font-size:6.5px;color:#8b9ab0;text-transform:uppercase;letter-spacing:0.05em;font-weight:700;margin-bottom:2px}
+    .metric-card .mv{font-size:11px;font-weight:700;color:#0f172a;font-variant-numeric:tabular-nums}
+    .footer{text-align:center;padding:5px 22px;border-top:1px solid #e2e8f0;font-size:7.5px;color:#94a3b8;position:relative;z-index:1}
     @media print{body{background:#fff}.page{box-shadow:none;border-radius:0}}
   </style></head><body>
   <div class="page">
