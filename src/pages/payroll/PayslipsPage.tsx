@@ -40,7 +40,7 @@ function buildPayslipHtml(line: any, run: any, employee: any, calc: any, org: an
     <tr><td class="bn">${b.bandName || b.band}</td><td class="r">${(b.rate * 100).toFixed(0)}%</td><td class="r">${formatNaira(b.taxableAmountInBand || b.taxableAmount || 0)}</td><td class="r fw">${formatNaira(b.taxAmountInBand || b.tax || 0)}</td></tr>
   `).join('');
 
-  const hasRelief = calc && ((calc.rentRelief || 0) > 0 || (calc.mortgageInterestRelief || 0) > 0 || (calc.lifeAssuranceRelief || 0) > 0);
+  const totalRelief = calc ? ((calc.rentRelief||0) + (calc.mortgageInterestRelief||0) + (calc.lifeAssuranceRelief||0)) : 0;
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Payslip - ${employee?.firstName} ${employee?.lastName}</title>
   <style>
@@ -48,62 +48,72 @@ function buildPayslipHtml(line: any, run: any, employee: any, calc: any, org: an
     *{margin:0;padding:0;box-sizing:border-box}
     body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:#f0f2f5;padding:32px;font-size:11px;color:#1a1d23;-webkit-font-smoothing:antialiased}
     .page{max-width:820px;margin:0 auto;background:#fff;border-radius:20px;box-shadow:0 8px 40px rgba(0,0,0,0.06),0 1px 3px rgba(0,0,0,0.04);overflow:hidden}
-    .header{background:#0c1424;padding:28px 36px;display:flex;align-items:center;justify-content:space-between}
+    .header{background:#1e3a5f;padding:28px 36px;display:flex;align-items:center;justify-content:space-between}
     .header-left{display:flex;align-items:center;gap:16px}
-    .header-logo{width:42px;height:42px;background:rgba(255,255,255,0.08);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#fff}
+    .header-logo{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#fff;overflow:hidden;flex-shrink:0}
+    .header-logo img{width:100%;height:100%;object-fit:cover;border-radius:10px}
+    .header-logo .fallback{width:100%;height:100%;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;border-radius:10px}
     .header h1{color:#fff;font-size:16px;font-weight:700;letter-spacing:-0.01em}
-    .header .sub{color:#8899b4;font-size:8px;margin-top:2px;line-height:1.5}
+    .header .sub{color:#a0b8d4;font-size:8px;margin-top:2px;line-height:1.5}
     .header-right{text-align:right}
-    .header-right .badge{display:inline-block;background:rgba(59,130,246,0.15);color:#60a5fa;padding:4px 14px;border-radius:20px;font-size:9px;font-weight:700;letter-spacing:0.03em}
-    .header-right .run-id{color:#5a6d8a;font-size:8px;margin-top:4px}
+    .header-right .badge{display:inline-block;background:rgba(255,255,255,0.12);color:#e8f0fe;padding:5px 18px;border-radius:20px;font-size:13px;font-weight:800;letter-spacing:0.05em}
+    .header-right .run-id{color:#90aac8;font-size:10px;margin-top:5px;font-weight:600;letter-spacing:0.02em}
     .body{padding:28px 36px}
     .emp-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:20px;border-bottom:1px solid #eef1f5}
-    .emp-row .name{font-size:17px;font-weight:700;color:#0c1424;letter-spacing:-0.01em}
+    .emp-row .name{font-size:17px;font-weight:700;color:#1e3a5f;letter-spacing:-0.01em}
     .emp-row .emp-meta{font-size:10px;color:#6b7a90;margin-top:2px}
     .emp-row .emp-meta span{display:inline-block;margin-right:12px}
     .emp-row .period{text-align:right;font-size:10px;color:#6b7a90;line-height:1.6}
-    .emp-row .period strong{color:#0c1424;font-size:11px;font-weight:600}
+    .emp-row .period strong{color:#1e3a5f;font-size:11px;font-weight:600}
     .grid-2{display:flex;gap:24px;margin-bottom:16px}
     .grid-2 > div{flex:1;min-width:0}
     .section-header{font-size:7px;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:#8b9ab0;margin-bottom:8px}
-    .card{border:1px solid #eef1f5;border-radius:12px;overflow:hidden}
-    .card-row{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;font-size:10.5px;border-bottom:1px solid #f4f6f9}
+    .card{border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.02)}
+    .card-row{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;font-size:10.5px;border-bottom:1px solid #f1f5f9}
     .card-row:last-child{border-bottom:none}
-    .card-row .lb{color:#4a5568}
-    .card-row .vl{font-weight:600;color:#1a1d23;font-variant-numeric:tabular-nums}
-    .card-row.highlight{background:#f8faff}
-    .card-row.total{border-top:1.5px solid #1a1d23;margin-top:0;background:#f8f9fb}
-    .card-row.total .lb{font-weight:700;color:#1a1d23}
-    .card-row.total .vl{color:#0c1424}
-    .net-panel{background:linear-gradient(135deg,#0c1b37,#1a3a6b);border-radius:14px;padding:20px 24px;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
-    .net-panel .nl{color:#a3b8d9;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em}
-    .net-panel .ns{color:#7a93bc;font-size:8px;margin-top:2px}
+    .card-row .lb{color:#475569}
+    .card-row .vl{font-weight:600;color:#0f172a;font-variant-numeric:tabular-nums}
+    .card-row.highlight{background:#f0f7ff}
+    .card-row.total{border-top:2px solid #1e3a5f;margin-top:0;background:#f1f5f9}
+    .card-row.total .lb{font-weight:700;color:#1e3a5f}
+    .card-row.total .vl{color:#1e3a5f}
+    .relief-list{padding:6px 14px 6px 14px;font-size:9.5px}
+    .relief-list .rl-row{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px dashed #eef2f6}
+    .relief-list .rl-row:last-child{border-bottom:none}
+    .relief-list .rl-label{color:#475569;padding-left:10px}
+    .relief-list .rl-value{font-weight:600;color:#0f172a;font-variant-numeric:tabular-nums}
+    .net-panel{background:linear-gradient(135deg,#1e3a5f,#2d5a87);border-radius:14px;padding:20px 24px;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+    .net-panel .nl{color:#b8cfe8;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em}
+    .net-panel .ns{color:#8aadd0;font-size:8px;margin-top:2px}
     .net-panel .na{color:#fff;font-size:24px;font-weight:800;letter-spacing:-0.02em}
-    table.bands{width:100%;border-collapse:collapse;font-size:10px}
-    table.bands th{padding:7px 10px;text-align:left;color:#6b7a90;font-weight:700;font-size:7px;text-transform:uppercase;letter-spacing:0.08em;border-bottom:1px solid #eef1f5;background:#f8f9fb}
-    table.bands td{padding:6px 10px;border-bottom:1px solid #f4f6f9;color:#1a1d23;font-variant-numeric:tabular-nums}
+    table.bands{width:100%;border-collapse:separate;border-spacing:0;font-size:10px;border-radius:10px;overflow:hidden}
+    table.bands th{padding:9px 12px;text-align:left;color:#ffffff;font-weight:700;font-size:7.5px;text-transform:uppercase;letter-spacing:0.08em;background:#1e3a5f;border-bottom:none}
+    table.bands td{padding:7px 12px;border-bottom:1px solid #eef2f6;color:#1e293b;font-variant-numeric:tabular-nums;background:#fff}
+    table.bands tr:last-child td{border-bottom:none}
+    table.bands tr:nth-child(even) td{background:#f8fafc}
     table.bands .r{text-align:right;font-weight:500}
-    table.bands .fw{font-weight:700;color:#0c1424}
-    table.bands .bn{color:#4a5568}
-    .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:0}
-    .metric-card{border:1px solid #eef1f5;border-radius:10px;padding:12px;text-align:center;background:#fafbfc}
-    .metric-card .ml{font-size:7px;color:#8b9ab0;text-transform:uppercase;letter-spacing:0.06em;font-weight:700;margin-bottom:4px}
-    .metric-card .mv{font-size:14px;font-weight:700;color:#1a1d23;font-variant-numeric:tabular-nums}
-    .footer{text-align:center;padding:16px 36px;border-top:1px solid #eef1f5;font-size:7.5px;color:#8b9ab0;letter-spacing:0.02em}
+    table.bands .fw{font-weight:700;color:#1e3a5f}
+    table.bands .bn{color:#475569}
+    .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:0}
+    .metric-card{border:1px solid #e2e8f0;border-radius:12px;padding:14px 10px;text-align:center;background:#fafbfc;box-shadow:0 1px 3px rgba(0,0,0,0.02)}
+    .metric-card .ml{font-size:7px;color:#8b9ab0;text-transform:uppercase;letter-spacing:0.06em;font-weight:700;margin-bottom:5px}
+    .metric-card .mv{font-size:14px;font-weight:700;color:#0f172a;font-variant-numeric:tabular-nums}
+    .footer{text-align:center;padding:16px 36px;border-top:1px solid #e2e8f0;font-size:7.5px;color:#94a3b8;letter-spacing:0.02em}
     @media print{body{background:#fff;padding:0}.page{box-shadow:none;border-radius:0}}
   </style></head><body>
   <div class="page">
     <div class="header">
       <div class="header-left">
-        <div class="header-logo">${(org?.name || 'S')[0]}</div>
+        <div class="header-logo">
+          ${org?.logoUrl ? `<img src="${org.logoUrl}" alt="" />` : `<div class="fallback">${(org?.name || 'S')[0]}</div>`}
+        </div>
         <div>
           <h1>${org?.name || 'SkyBooks'}</h1>
           <div class="sub">${[org?.address, org?.phone, org?.email].filter(Boolean).join(' &bull; ')}</div>
         </div>
       </div>
       <div class="header-right">
-        <div class="badge">PAYSLIP</div>
-        <div class="run-id">${run?.runNumber || ''}</div>
+        <div class="badge">PAYSLIP ${run?.runNumber || ''}</div>
       </div>
     </div>
     <div class="body">
@@ -169,7 +179,12 @@ function buildPayslipHtml(line: any, run: any, employee: any, calc: any, org: an
             <div class="card-row"><span class="lb">Less: Pension (EE)</span><span class="vl">${formatNaira(calc.annualPension || 0)}</span></div>
             <div class="card-row"><span class="lb">Less: NHIS</span><span class="vl">${formatNaira(calc.annualNHIS || 0)}</span></div>
             <div class="card-row"><span class="lb">Less: NHF</span><span class="vl">${formatNaira(calc.annualNHF || 0)}</span></div>
-            ${hasRelief ? `<div class="card-row highlight"><span class="lb">Less: Tax Reliefs</span><span class="vl">${formatNaira((calc.rentRelief||0)+(calc.mortgageInterestRelief||0)+(calc.lifeAssuranceRelief||0))}</span></div>` : ''}
+            ${calc ? `<div class="relief-list">
+              <div style="font-weight:700;color:#1e3a5f;font-size:9.5px;padding:4px 0;border-bottom:1px solid #e2e8f0;margin-bottom:4px">Less: Tax Reliefs (Monthly)</div>
+              <div class="rl-row"><span class="rl-label">Rent Relief</span><span class="rl-value">${formatNaira(calc.rentRelief || 0)}</span></div>
+              <div class="rl-row"><span class="rl-label">Mortgage Loan Interest</span><span class="rl-value">${formatNaira(calc.mortgageInterestRelief || 0)}</span></div>
+              <div class="rl-row"><span class="rl-label">Life Insurance</span><span class="rl-value">${formatNaira(calc.lifeAssuranceRelief || 0)}</span></div>
+            </div>` : ''}
             <div class="card-row total"><span class="lb">Chargeable Income</span><span class="vl">${formatNaira(calc.chargeableIncome || 0)}</span></div>
             <div class="card-row"><span class="lb">Annual PAYE</span><span class="vl">${formatNaira(calc.annualPAYE || 0)}</span></div>
             <div class="card-row"><span class="lb">Effective Rate</span><span class="vl">${((calc.effectiveRatePct || 0)).toFixed(2)}%</span></div>
@@ -184,12 +199,7 @@ function buildPayslipHtml(line: any, run: any, employee: any, calc: any, org: an
             ${employee?.pensionPin ? `<div class="card-row"><span class="lb">Pension PIN</span><span class="vl">${employee.pensionPin}</span></div>` : ''}
             ${employee?.nhfNumber ? `<div class="card-row"><span class="lb">NHF Number</span><span class="vl">${employee.nhfNumber}</span></div>` : ''}
           </div>
-          ${hasRelief ? `<div style="margin-top:12px"><div class="section-header">Tax Reliefs</div>
-          <div class="card">
-            ${(calc.rentRelief||0) > 0 ? `<div class="card-row"><span class="lb">Rent</span><span class="vl">${formatNaira(calc.rentRelief)}</span></div>` : ''}
-            ${(calc.mortgageInterestRelief||0) > 0 ? `<div class="card-row"><span class="lb">Mortgage Interest</span><span class="vl">${formatNaira(calc.mortgageInterestRelief)}</span></div>` : ''}
-            ${(calc.lifeAssuranceRelief||0) > 0 ? `<div class="card-row"><span class="lb">Life Assurance</span><span class="vl">${formatNaira(calc.lifeAssuranceRelief)}</span></div>` : ''}
-          </div></div>` : ''}
+          
         </div>
       </div>
 
