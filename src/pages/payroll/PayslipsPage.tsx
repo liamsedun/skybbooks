@@ -425,19 +425,6 @@ export function PayslipsPage() {
                         className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-md">
                         <FileText size={11} /> View
                       </button>
-                      <button onClick={() => {
-                        try {
-                          const org = (orgData as any)?.data || orgData || {};
-                          const html = buildPayslipHtml(line, selectedRun, line.employee, null, org);
-                          openPayslipPrint(html, `Payslip - ${line.employee?.firstName || ''} ${line.employee?.lastName || ''}`);
-                        } catch (err) {
-                          alert('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'));
-                          console.error('Print error:', err);
-                        }
-                      }}
-                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-md">
-                        <Download size={11} /> PDF
-                      </button>
                       {selectedRun && selectedRun.status === 'draft' && (
                         <button onClick={() => { if (confirm(`Delete payslip for ${line.employee?.firstName} ${line.employee?.lastName}?`)) deletePayslipMutation.mutate({ runId: selectedRunId, employeeId: line.employeeId }); }}
                           className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-md">
