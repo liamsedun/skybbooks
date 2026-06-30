@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, payrollApi, printWindow } from '../../lib/api';
+import { api, payrollApi, orgApi, printWindow } from '../../lib/api';
 import {
   Loader2, AlertCircle, FileText, Search, X, Printer, Download, Trash2
 } from 'lucide-react';
@@ -37,6 +37,11 @@ export function PayslipsPage() {
   });
 
   const runs: any[] = useMemo(() => Array.isArray(runsData) ? runsData : [], [runsData]);
+
+  const { data: orgData } = useQuery({
+    queryKey: ['org'],
+    queryFn: orgApi.getOrg,
+  });
 
   const { data: detailData, isLoading } = useQuery({
     queryKey: ['payroll-run-detail', selectedRunId],
@@ -80,6 +85,7 @@ export function PayslipsPage() {
   function printPayslip() {
     if (!viewingPayslip) return;
     const { line, run, employee, calculation } = viewingPayslip;
+    const org = (orgData as any)?.data || orgData || {};
     const nhisVal = (line as any).nhis || 0;
     const intDedArr = Array.isArray((line as any).internalDeductions) ? (line as any).internalDeductions : [];
     const intDedTotal = intDedArr.reduce((s: number, d: any) => s + (d.amount || 0), 0);
@@ -97,6 +103,7 @@ export function PayslipsPage() {
     const utilitiesAmt = Math.round(gp * up / sumPct);
     const mealsAmt = Math.round(gp * mp / sumPct);
     const othersAmt = gp - basicSalaryAmt - housingAmt - transportAmt - utilitiesAmt - mealsAmt;
+    const totalDeductions = line.paye + line.pensionEmployee + nhisVal + line.nhf + intDedTotal;
     const calc = calculation || {
       grossPay: gp, basic: line.basic,
       monthlyPAYE: line.paye,
@@ -108,71 +115,124 @@ export function PayslipsPage() {
       netPay: line.netPay,
       basicSalaryAmt, housingAmt, transportAmt, utilitiesAmt, mealsAmt, othersAmt,
     };
-    const intDedHtml = intDedArr.map((d: any) => `<tr><td style="padding-left:20px">${d.description}</td><td style="text-align:right">${formatNaira(d.amount || 0)}</td></tr>`).join('');
+
+    const earningsRows = [
+      { label: 'Basic Salary', val: calc.basicSalaryAmt || calc.grossPay },
+      { label: 'Housing Allowance', val: calc.housingAmt || 0 },
+      { label: 'Transport Allowance', val: calc.transportAmt || 0 },
+      { label: 'Utilities Allowance', val: calc.utilitiesAmt || 0 },
+      { label: 'Meals Allowance', val: calc.mealsAmt || 0 },
+      { label: 'Others', val: calc.othersAmt || 0 },
+    ];
+    const deductionsRows = [
+      { label: 'PAYE Tax', val: calc.monthlyPAYE },
+      { label: 'Pension (EE)', val: calc.pensionEE },
+      { label: 'NHIS (5% of Basic)', val: calc.nhis },
+      { label: 'NHF (2.5% of Basic)', val: calc.nhf },
+    ];
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Payslip - ${employee?.firstName} ${employee?.lastName}</title>
     <style>
       *{margin:0;padding:0;box-sizing:border-box}
-      body{font-family:'Segoe UI',sans-serif;color:#1e293b;padding:30px;font-size:12px}
-      .header{text-align:center;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid #0f172a}
-      .company{font-size:20px;font-weight:800}
-      .subtitle{font-size:10px;color:#64748b;margin-top:2px}
-      .title{font-size:16px;font-weight:700;margin-top:8px}
-      .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:16px 0;padding:12px;background:#f8fafc;border-radius:8px}
-      .info-grid div{font-size:11px}
-      .info-grid .label{color:#64748b;font-weight:600}
-      .info-grid .value{font-weight:700;color:#0f172a}
-      table{width:100%;border-collapse:collapse;margin:12px 0}
-      th{background:#0f172a;color:#fff;padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase}
-      td{padding:7px 10px;border-bottom:1px solid #e2e8f0;font-size:11px}
-      tr:nth-child(even) td{background:#f8fafc}
-      .total-row td{font-weight:700;background:#f1f5f9;border-top:2px solid #0f172a}
-      .net-row td{font-weight:800;background:#dbeafe;border-top:2px solid #1e40af;color:#1e40af;font-size:13px}
-      .sub-row td{font-size:10px;color:#64748b}
-      .footer{text-align:center;font-size:9px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:12px;margin-top:24px}
-      .badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:10px;font-weight:700;background:#dbeafe;color:#1e40af}
-      @media print{body{padding:15px}}
+      body{font-family:'Inter','Segoe UI',sans-serif;background:#f1f5f9;padding:30px;font-size:12px;color:#1e293b}
+      .page{max-width:800px;margin:0 auto;background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,0.08);overflow:hidden}
+      .top-bar{background:#0f172a;padding:20px 30px;display:flex;align-items:center;justify-content:space-between}
+      .top-bar .org-name{color:#fff;font-size:16px;font-weight:700}
+      .top-bar .org-detail{color:#94a3b8;font-size:9px;line-height:1.5}
+      .top-bar .badge{background:#3b82f6;color:#fff;padding:4px 14px;border-radius:20px;font-size:10px;font-weight:700}
+      .content{padding:24px 30px}
+      .section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#64748b;margin-bottom:10px}
+      .emp-header{display:flex;justify-content:space-between;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid #e2e8f0}
+      .emp-header .name{font-size:16px;font-weight:700;color:#0f172a}
+      .emp-header .meta{font-size:10px;color:#64748b;margin-top:2px}
+      .emp-header .period{text-align:right;font-size:10px;color:#64748b}
+      .emp-header .period strong{color:#0f172a;font-size:11px}
+      .two-col{display:flex;gap:24px;margin-bottom:20px}
+      .two-col > div{flex:1}
+      .card{background:#f8fafc;border-radius:10px;padding:14px;border:1px solid #e2e8f0}
+      .card .row{display:flex;justify-content:space-between;padding:5px 0;font-size:11px;border-bottom:1px dashed #e2e8f0}
+      .card .row:last-child{border-bottom:none}
+      .card .row .label{color:#64748b}
+      .card .row .value{font-weight:600;color:#0f172a}
+      .card .row.total{border-top:2px solid #0f172a;margin-top:4px;padding-top:8px;font-weight:700}
+      .card .row.total .value{color:#0f172a}
+      .net-box{background:linear-gradient(135deg,#1e40af,#3b82f6);border-radius:10px;padding:18px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+      .net-box .net-label{color:#bfdbfe;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em}
+      .net-box .net-amount{color:#fff;font-size:22px;font-weight:800}
+      .net-box .net-sub{color:#93c5fd;font-size:9px;margin-top:2px}
+      .footer-note{text-align:center;font-size:8px;color:#94a3b8;border-top:1px solid #e2e8f0;padding:12px 30px;margin-top:8px}
+      @media print{body{background:#fff;padding:0}.page{box-shadow:none;border-radius:0}}
     </style></head><body>
-    <div class="header">
-      <div class="company">SkyBooks</div>
-      <div class="subtitle">By Skyhouse Accountants &amp; Technologies</div>
-      <div class="title">Payslip</div>
-      <span class="badge">${run?.runNumber || ''}</span>
-    </div>
-    <div class="info-grid">
-      <div><div class="label">Employee</div><div class="value">${employee?.firstName || ''} ${employee?.lastName || ''}</div></div>
-      <div><div class="label">Staff ID</div><div class="value">${employee?.staffId || ''}</div></div>
-      <div><div class="label">Department</div><div class="value">${employee?.department || '—'}</div></div>
-      <div><div class="label">Designation</div><div class="value">${employee?.designation || '—'}</div></div>
-      <div><div class="label">Period</div><div class="value">${fmtDate(run?.periodStart)} – ${fmtDate(run?.periodEnd)}</div></div>
-      <div><div class="label">Pay Date</div><div class="value">${fmtDate(run?.payDate)}</div></div>
-    </div>
-    <table>
-      <thead><tr><th>Earnings</th><th style="text-align:right">Amount</th></tr></thead>
-      <tbody>
-        <tr><td>Basic Salary</td><td style="text-align:right">${formatNaira(calc.basicSalaryAmt || calc.grossPay)}</td></tr>
-        <tr><td>Housing Allowance</td><td style="text-align:right">${formatNaira(calc.housingAmt || 0)}</td></tr>
-        <tr><td>Transport Allowance</td><td style="text-align:right">${formatNaira(calc.transportAmt || 0)}</td></tr>
-        <tr><td>Utilities Allowance</td><td style="text-align:right">${formatNaira(calc.utilitiesAmt || 0)}</td></tr>
-        <tr><td>Meals Allowance</td><td style="text-align:right">${formatNaira(calc.mealsAmt || 0)}</td></tr>
-        <tr><td>Others</td><td style="text-align:right">${formatNaira(calc.othersAmt || 0)}</td></tr>
-        <tr style="font-weight:bold;border-top:1px solid #ccc"><td>Total Gross</td><td style="text-align:right">${formatNaira(calc.grossPay)}</td></tr>
-      </tbody>
-    </table>
-    <table>
-      <thead><tr><th>Statutory Deductions</th><th style="text-align:right">Amount</th></tr></thead>
-      <tbody>
-        <tr><td>PAYE Tax</td><td style="text-align:right">${formatNaira(calc.monthlyPAYE)}</td></tr>
-        <tr><td>Pension (EE) ${calculation?.bandBreakdown?.[0]?.rate !== undefined ? `@ ${(calculation.pensionEE / (calculation.basic || 1) * 100).toFixed(1)}%` : ''}</td><td style="text-align:right">${formatNaira(calc.pensionEE)}</td></tr>
-        <tr><td>NHIS (5% of Basic)</td><td style="text-align:right">${formatNaira(calc.nhis)}</td></tr>
-        <tr><td>NHF (2.5% of Basic)</td><td style="text-align:right">${formatNaira(calc.nhf)}</td></tr>
-        ${intDedHtml}
-        <tr class="net-row"><td>Net Pay</td><td style="text-align:right">${formatNaira(calc.netPay)}</td></tr>
-      </tbody>
-    </table>
-    <div class="footer">
-      SkyBooks By Skyhouse Accountants &amp; Technologies (Olalekan Williams Edun) &bull; Confidential<br/>
-      Generated: ${new Date().toLocaleString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}
+    <div class="page">
+      <div class="top-bar">
+        <div>
+          <div class="org-name">${org.name || 'SkyBooks'}</div>
+          <div class="org-detail">${org.address || ''}${org.phone ? ` &bull; ${org.phone}` : ''}${org.email ? `<br>${org.email}` : ''}${org.website ? ` &bull; ${org.website}` : ''}</div>
+        </div>
+        <span class="badge">${run?.runNumber || 'PAYSLIP'}</span>
+      </div>
+      <div class="content">
+        <div class="emp-header">
+          <div>
+            <div class="name">${employee?.firstName || ''} ${employee?.lastName || ''}</div>
+            <div class="meta">${employee?.staffId || ''}${employee?.department ? ` &bull; ${employee.department}` : ''}</div>
+            ${employee?.email ? `<div class="meta">${employee.email}</div>` : ''}
+            ${employee?.phone ? `<div class="meta">${employee.phone}</div>` : ''}
+            ${employee?.address ? `<div class="meta">${employee.address}</div>` : ''}
+          </div>
+          <div class="period">
+            <strong>${fmtDate(run?.periodStart)} – ${fmtDate(run?.periodEnd)}</strong><br>
+            Pay Date: ${fmtDate(run?.payDate)}
+          </div>
+        </div>
+        <div class="two-col">
+          <div>
+            <div class="section-title">Earnings</div>
+            <div class="card">
+              ${earningsRows.map(r => `<div class="row"><span class="label">${r.label}</span><span class="value">${formatNaira(r.val)}</span></div>`).join('')}
+              <div class="row total"><span class="label">Total Gross</span><span class="value">${formatNaira(calc.grossPay)}</span></div>
+            </div>
+          </div>
+          <div>
+            <div class="section-title">Statutory Deductions</div>
+            <div class="card">
+              ${deductionsRows.map(d => `<div class="row"><span class="label">${d.label}</span><span class="value">${formatNaira(d.val)}</span></div>`).join('')}
+              ${intDedArr.length > 0 ? intDedArr.map((d: any) => `<div class="row"><span class="label" style="padding-left:8px;font-style:italic">${d.description}</span><span class="value">${formatNaira(d.amount || 0)}</span></div>`).join('') : ''}
+              <div class="row total"><span class="label">Total Deductions</span><span class="value">${formatNaira(totalDeductions)}</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="net-box">
+          <div>
+            <div class="net-label">Net Pay</div>
+            <div class="net-sub">After all deductions</div>
+          </div>
+          <div style="text-align:right">
+            <div class="net-amount">${formatNaira(calc.netPay)}</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:24px">
+          <div style="flex:1">
+            <div class="section-title">Employer Contributions</div>
+            <div class="card">
+              <div class="row"><span class="label">Pension (EE)</span><span class="value">${formatNaira(line.pensionEmployee)}</span></div>
+              <div class="row"><span class="label">Pension (ER 10%)</span><span class="value">${formatNaira(line.pensionEmployer)}</span></div>
+              <div class="row total"><span class="label">Total Pension Obligation</span><span class="value">${formatNaira(line.pensionEmployee + line.pensionEmployer)}</span></div>
+            </div>
+          </div>
+          <div style="flex:1">
+            <div class="section-title">Payment Info</div>
+            <div class="card">
+              <div class="row"><span class="label">Bank</span><span class="value">${employee?.bankName || '—'}</span></div>
+              <div class="row"><span class="label">Account</span><span class="value">${employee?.accountNumber || '—'}</span></div>
+              <div class="row"><span class="label">Tax ID</span><span class="value">${employee?.taxId || '—'}</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="footer-note">
+        ${org.name || 'SkyBooks'} &bull; Confidential &bull; Computer-generated document &bull; ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}
+      </div>
     </div>
     </body></html>`;
 

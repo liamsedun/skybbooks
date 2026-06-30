@@ -180,6 +180,7 @@ export async function runMigration() {
     await db.execute(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS utilities_pct integer DEFAULT 10 NOT NULL`);
     await db.execute(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS meals_pct integer DEFAULT 5 NOT NULL`);
     await db.execute(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS others_pct integer DEFAULT 5 NOT NULL`);
+    await db.execute(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS address text`);
     // Deactivate existing SUSPENSE accounts (feature removed)
     await db.execute(`UPDATE accounts SET is_active = false, is_system = false WHERE code = 'SUSPENSE'`);
     // Ensure Trade Creditors / Accounts Payable (300100) exists for all orgs

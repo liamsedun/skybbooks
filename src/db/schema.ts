@@ -693,6 +693,7 @@ export const employees = pgTable('employees', {
   lastName: text('last_name').notNull(),
   email: text('email'),
   phone: text('phone'),
+  address: text('address'),
   department: text('department'),
   designation: text('designation'),
   dateOfBirth: timestamp('date_of_birth'),
