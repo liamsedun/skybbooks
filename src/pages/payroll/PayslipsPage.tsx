@@ -31,7 +31,7 @@ export function PayslipsPage() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['payroll-run-detail', selectedRunId] }); setSelectedPayslipIds([]); },
   });
 
-  const { data: runsData } = useQuery({
+  const { data: runsData, isLoading: runsLoading } = useQuery({
     queryKey: ['payroll-runs'],
     queryFn: () => api.get('/payroll/runs').then(r => r.data),
   });
@@ -261,13 +261,19 @@ export function PayslipsPage() {
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50">
             <Download size={14} /> CSV
           </button>
-        <select value={selectedRunId} onChange={e => setSelectedRunId(e.target.value)}
-          className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-slate-900/10">
-          <option value="">Select a payroll run...</option>
-          {runs.map(r => (
-            <option key={r.id} value={r.id}>{r.runNumber} — {fmtDate(r.periodStart)} to {fmtDate(r.periodEnd)}</option>
-          ))}
-        </select>
+        {runsLoading ? (
+          <select disabled className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-slate-50 text-slate-400">
+            <option>Loading runs...</option>
+          </select>
+        ) : (
+          <select key={runs.length} value={selectedRunId} onChange={e => setSelectedRunId(e.target.value)}
+            className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-slate-900/10">
+            <option value="">Select a payroll run...</option>
+            {runs.map(r => (
+              <option key={r.id} value={r.id}>{r.runNumber} — {fmtDate(r.periodStart)} to {fmtDate(r.periodEnd)}</option>
+            ))}
+          </select>
+        )}
         {selectedRunId && (
           <div className="relative flex-1 max-w-xs">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />

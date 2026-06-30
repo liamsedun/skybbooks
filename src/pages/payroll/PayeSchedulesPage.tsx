@@ -28,7 +28,7 @@ export function PayeSchedulesPage() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['payroll-run-detail', selectedRunId] }); setSelectedPayeIds([]); },
   });
 
-  const { data: runsData } = useQuery({
+  const { data: runsData, isLoading: runsLoading } = useQuery({
     queryKey: ['payroll-runs'],
     queryFn: () => api.get('/payroll/runs').then(r => r.data),
   });
@@ -110,13 +110,19 @@ export function PayeSchedulesPage() {
       </div>
 
       <div className="flex gap-3 items-center">
-        <select value={selectedRunId} onChange={e => setSelectedRunId(e.target.value)}
-          className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-slate-900/10">
-          <option value="">Select a payroll run...</option>
-          {runs.map(r => (
-            <option key={r.id} value={r.id}>{r.runNumber} — {fmtDate(r.periodStart)} to {fmtDate(r.periodEnd)}</option>
-          ))}
-        </select>
+        {runsLoading ? (
+          <select disabled className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-slate-50 text-slate-400">
+            <option>Loading runs...</option>
+          </select>
+        ) : (
+          <select key={runs.length} value={selectedRunId} onChange={e => setSelectedRunId(e.target.value)}
+            className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-slate-900/10">
+            <option value="">Select a payroll run...</option>
+            {runs.map(r => (
+              <option key={r.id} value={r.id}>{r.runNumber} — {fmtDate(r.periodStart)} to {fmtDate(r.periodEnd)}</option>
+            ))}
+          </select>
+        )}
         {selectedRun && (
           <span className="text-xs text-slate-400 bg-slate-50 px-3 py-2 rounded-lg border border-slate-200">
             Status: <span className="font-semibold capitalize text-slate-700">{selectedRun.status}</span>
