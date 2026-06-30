@@ -636,12 +636,12 @@ export async function generatePayslipPDF(payrollLineId: string): Promise<Buffer>
     const mw = (pageW - 18) / 4;
     metrics.forEach((m, i) => {
       const mx = startX + i * (mw + 6);
-      doc.roundedRect(mx, y, mw, 34, 8).fillColor('#fafbfc').fill();
-      doc.roundedRect(mx, y, mw, 34, 8).lineWidth(1).strokeColor(LIGHT_BORDER).stroke();
-      doc.fillColor(SECTION_HDR).fontSize(6).font('Helvetica-Bold').text(m.l, mx + 4, y + 5, { width: mw - 8, align: 'center' });
-      doc.fillColor(TEXT_PRIMARY).fontSize(11).font('Helvetica-Bold').text(m.v, mx + 4, y + 16, { width: mw - 8, align: 'center' });
+      doc.roundedRect(mx, y, mw, 24, 6).fillColor('#fafbfc').fill();
+      doc.roundedRect(mx, y, mw, 24, 6).lineWidth(0.5).strokeColor(LIGHT_BORDER).stroke();
+      doc.fillColor(SECTION_HDR).fontSize(5).font('Helvetica-Bold').text(m.l, mx + 4, y + 3, { width: mw - 8, align: 'center' });
+      doc.fillColor(TEXT_PRIMARY).fontSize(9).font('Helvetica-Bold').text(m.v, mx + 4, y + 12, { width: mw - 8, align: 'center' });
     });
-    y += 40;
+    y += 30;
 
     // ── Footer ──
     doc.fontSize(6.5).fillColor('#94a3b8').text(

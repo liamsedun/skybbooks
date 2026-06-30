@@ -94,10 +94,10 @@ function buildPayslipHtml(line: any, run: any, employee: any, calc: any, org: an
     table.bands .r{text-align:right;font-weight:500}
     table.bands .fw{font-weight:700;color:#1e3a5f}
     table.bands .bn{color:#475569}
-    .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:0}
-    .metric-card{border:1px solid #e2e8f0;border-radius:12px;padding:14px 10px;text-align:center;background:#fafbfc;box-shadow:0 1px 3px rgba(0,0,0,0.02)}
-    .metric-card .ml{font-size:7px;color:#8b9ab0;text-transform:uppercase;letter-spacing:0.06em;font-weight:700;margin-bottom:5px}
-    .metric-card .mv{font-size:14px;font-weight:700;color:#0f172a;font-variant-numeric:tabular-nums}
+    .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:0}
+    .metric-card{border:1px solid #e2e8f0;border-radius:8px;padding:10px 7px;text-align:center;background:#fafbfc;box-shadow:0 1px 2px rgba(0,0,0,0.02)}
+    .metric-card .ml{font-size:6px;color:#8b9ab0;text-transform:uppercase;letter-spacing:0.06em;font-weight:700;margin-bottom:3px}
+    .metric-card .mv{font-size:11px;font-weight:700;color:#0f172a;font-variant-numeric:tabular-nums}
     .footer{text-align:center;padding:16px 36px;border-top:1px solid #e2e8f0;font-size:7.5px;color:#94a3b8;letter-spacing:0.02em}
     @media print{body{background:#fff;padding:0}.page{box-shadow:none;border-radius:0}}
   </style></head><body>
