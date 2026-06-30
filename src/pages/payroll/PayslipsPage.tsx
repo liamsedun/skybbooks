@@ -82,13 +82,13 @@ function buildPayslipHtml(line: any, run: any, employee: any, calc: any, org: an
     .relief-list .rl-row:last-child{border-bottom:none}
     .relief-list .rl-label{color:#475569;padding-left:10px}
     .relief-list .rl-value{font-weight:600;color:#0f172a;font-variant-numeric:tabular-nums}
-    .net-panel{background:linear-gradient(135deg,#1e3a5f,#2d5a87);border-radius:14px;padding:20px 24px;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
-    .net-panel .nl{color:#b8cfe8;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em}
-    .net-panel .ns{color:#8aadd0;font-size:8px;margin-top:2px}
-    .net-panel .na{color:#fff;font-size:24px;font-weight:800;letter-spacing:-0.02em}
-    table.bands{width:100%;border-collapse:separate;border-spacing:0;font-size:10px;border-radius:10px;overflow:hidden}
-    table.bands th{padding:9px 12px;text-align:left;color:#ffffff;font-weight:700;font-size:7.5px;text-transform:uppercase;letter-spacing:0.08em;background:#1e3a5f;border-bottom:none}
-    table.bands td{padding:7px 12px;border-bottom:1px solid #eef2f6;color:#1e293b;font-variant-numeric:tabular-nums;background:#fff}
+    .net-panel{background:linear-gradient(135deg,#1e3a5f,#2d5a87);border-radius:14px;padding:12px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+    .net-panel .nl{color:#b8cfe8;font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em}
+    .net-panel .ns{color:#8aadd0;font-size:7px;margin-top:2px}
+    .net-panel .na{color:#fff;font-size:18px;font-weight:800;letter-spacing:-0.02em}
+    table.bands{width:100%;border-collapse:separate;border-spacing:0;font-size:8px;border-radius:8px;overflow:hidden}
+    table.bands th{padding:5px 8px;text-align:left;color:#ffffff;font-weight:700;font-size:6.5px;text-transform:uppercase;letter-spacing:0.08em;background:#1e3a5f;border-bottom:none}
+    table.bands td{padding:4px 8px;border-bottom:1px solid #eef2f6;color:#1e293b;font-variant-numeric:tabular-nums;background:#fff}
     table.bands tr:last-child td{border-bottom:none}
     table.bands tr:nth-child(even) td{background:#f8fafc}
     table.bands .r{text-align:right;font-weight:500}
@@ -204,8 +204,8 @@ function buildPayslipHtml(line: any, run: any, employee: any, calc: any, org: an
       </div>
 
       ${bands ? `
-      <div style="margin-top:16px">
-        <div class="section-header">Tax Band Breakdown</div>
+      <div style="margin-top:16px;max-width:75%;margin-left:auto;margin-right:auto">
+        <div class="section-header" style="text-align:center">Tax Band Breakdown</div>
         <div class="card" style="padding:0">
           <table class="bands">
             <thead><tr><th>Band</th><th style="text-align:right">Rate</th><th style="text-align:right">Taxable Amount</th><th style="text-align:right">Tax</th></tr></thead>

@@ -517,13 +517,13 @@ export async function generatePayslipPDF(payrollLineId: string): Promise<Buffer>
     y = Math.max(eTop, dTop) + 16;
 
     // ── Net Pay Panel (gradient look) ──
-    doc.roundedRect(startX, y, pageW, 36, 8).fillColor('#1e3a5f').fill();
+    doc.roundedRect(startX, y, pageW, 28, 8).fillColor('#1e3a5f').fill();
     // Simulate gradient with a lighter rect on left
-    doc.roundedRect(startX, y, pageW * 0.55, 36, 8).fillColor('#2d5a87').fill();
-    doc.fillColor('#b8cfe8').fontSize(8).font('Helvetica-Bold').text('NET PAY', startX + 18, y + 6);
-    doc.fontSize(7).font('Helvetica').fillColor('#8aadd0').text('After all statutory & internal deductions', startX + 18, y + 17);
-    doc.fillColor('#ffffff').fontSize(20).font('Helvetica-Bold').text(formatNaira(line.netPay), startX + pageW - 18, y + 7, { align: 'right' });
-    y += 46;
+    doc.roundedRect(startX, y, pageW * 0.55, 28, 8).fillColor('#2d5a87').fill();
+    doc.fillColor('#b8cfe8').fontSize(7).font('Helvetica-Bold').text('NET PAY', startX + 18, y + 4);
+    doc.fontSize(6).font('Helvetica').fillColor('#8aadd0').text('After all statutory & internal deductions', startX + 18, y + 13);
+    doc.fillColor('#ffffff').fontSize(16).font('Helvetica-Bold').text(formatNaira(line.netPay), startX + pageW - 18, y + 5, { align: 'right' });
+    y += 36;
 
     // ── Two-column: Tax Computation (Annual) | Payment Info ──
     doc.fontSize(6.5).font('Helvetica-Bold').fillColor(SECTION_HDR);
@@ -596,26 +596,28 @@ export async function generatePayslipPDF(payrollLineId: string): Promise<Buffer>
       doc.text('TAX BAND BREAKDOWN', startX, y);
       y += 8;
 
-      // Table header with dark background
-      const bw = [180, 50, 130, 120];
-      doc.roundedRect(startX, y, pageW, 18, 4).fillColor('#1e3a5f').fill();
-      doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(7);
-      doc.text('Band', startX + 10, y + 5);
-      doc.text('Rate', startX + bw[0] + 10, y + 5, { align: 'right', width: bw[1] - 20 });
-      doc.text('Taxable Amount', startX + bw[0] + bw[1] + 10, y + 5, { align: 'right', width: bw[2] - 20 });
-      doc.text('Tax', startX + bw[0] + bw[1] + bw[2] + 10, y + 5, { align: 'right', width: bw[3] - 20 });
-      y += 18;
+      // Table header with dark background - narrower & centered
+      const tw = Math.round(pageW * 0.75);
+      const tx = startX + Math.round((pageW - tw) / 2);
+      const bw = [Math.round(tw * 0.38), Math.round(tw * 0.12), Math.round(tw * 0.25), tw - Math.round(tw * 0.38) - Math.round(tw * 0.12) - Math.round(tw * 0.25)];
+      doc.roundedRect(tx, y, tw, 14, 4).fillColor('#1e3a5f').fill();
+      doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(6);
+      doc.text('Band', tx + 8, y + 4);
+      doc.text('Rate', tx + bw[0] + 8, y + 4, { align: 'right', width: bw[1] - 16 });
+      doc.text('Taxable Amount', tx + bw[0] + bw[1] + 8, y + 4, { align: 'right', width: bw[2] - 16 });
+      doc.text('Tax', tx + bw[0] + bw[1] + bw[2] + 8, y + 4, { align: 'right', width: bw[3] - 16 });
+      y += 14;
 
       bandRows.forEach((b, idx) => {
         if (y > 740) { doc.addPage(); y = 40; }
-        doc.rect(startX, y, pageW, 14).fillColor(idx % 2 === 0 ? '#ffffff' : '#f8fafc').fill();
-        doc.rect(startX, y, pageW, 14).lineWidth(0.5).strokeColor('#eef2f6').stroke();
-        doc.fillColor(TEXT_PRIMARY).font('Helvetica').fontSize(7);
-        doc.text(b.name, startX + 10, y + 3.5);
-        doc.text(`${(b.rate * 100).toFixed(0)}%`, startX + bw[0] + 10, y + 3.5, { align: 'right', width: bw[1] - 20 });
-        doc.text(formatNaira(b.taxable), startX + bw[0] + bw[1] + 10, y + 3.5, { align: 'right', width: bw[2] - 20 });
-        doc.text(formatNaira(b.tax), startX + bw[0] + bw[1] + bw[2] + 10, y + 3.5, { align: 'right', width: bw[3] - 20 });
-        y += 14;
+        doc.rect(tx, y, tw, 10).fillColor(idx % 2 === 0 ? '#ffffff' : '#f8fafc').fill();
+        doc.rect(tx, y, tw, 10).lineWidth(0.5).strokeColor('#eef2f6').stroke();
+        doc.fillColor(TEXT_PRIMARY).font('Helvetica').fontSize(6);
+        doc.text(b.name, tx + 8, y + 2);
+        doc.text(`${(b.rate * 100).toFixed(0)}%`, tx + bw[0] + 8, y + 2, { align: 'right', width: bw[1] - 16 });
+        doc.text(formatNaira(b.taxable), tx + bw[0] + bw[1] + 8, y + 2, { align: 'right', width: bw[2] - 16 });
+        doc.text(formatNaira(b.tax), tx + bw[0] + bw[1] + bw[2] + 8, y + 2, { align: 'right', width: bw[3] - 16 });
+        y += 10;
       });
       y += 10;
     }
