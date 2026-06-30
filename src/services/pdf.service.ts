@@ -426,7 +426,7 @@ export async function generatePayslipPDF(payrollLineId: string): Promise<Buffer>
     doc.roundedRect(startX + pageW - badgeW - 10, y + 6, badgeW, 20, 10).fillColor('#ffffff').opacity(0.1).fill();
     doc.opacity(1).fillColor('#e8f0fe').fontSize(11).font('Helvetica-Bold').text(`PAYSLIP`, startX + pageW - badgeW - 10 + 12, y + 10, { align: 'left' });
     doc.fillColor('#e8f0fe').fontSize(9).font('Helvetica-Bold').text(run?.runNumber || '', startX + pageW - 12, y + 12, { align: 'right' });
-    y += 44;
+    y += 52;
 
     // ── Employee Row (clean two-column) ──
     doc.fontSize(13).font('Helvetica-Bold').fillColor('#1e3a5f').text(`${employee.firstName} ${employee.lastName}`, startX, y);
@@ -559,7 +559,7 @@ export async function generatePayslipPDF(payrollLineId: string): Promise<Buffer>
     if (employee.nhfNumber) payInfoRows.push({ l: 'NHF Number', v: employee.nhfNumber });
 
     const payEnd = drawCard(doc, rightCol, y, colW, payInfoRows);
-    y = Math.max(taxEnd, payEnd) + 14;
+    y = Math.max(taxEnd, payEnd) + 18;
 
     // ── Employer Contributions ──
     doc.fontSize(6.5).font('Helvetica-Bold').fillColor(SECTION_HDR);
@@ -569,7 +569,7 @@ export async function generatePayslipPDF(payrollLineId: string): Promise<Buffer>
       { l: 'Pension (ER 10%)', v: formatNaira(line.pensionEmployer) },
       { l: 'Total Pension Obligation', v: formatNaira((line.pensionEmployee || 0) + (line.pensionEmployer || 0)), b: true },
     ];
-    y = drawCard(doc, leftCol, y, colW, erRows) + 16;
+    y = drawCard(doc, leftCol, y, colW, erRows) + 22;
 
     // ── Tax Band Breakdown Table ──
     const bands = [
@@ -617,7 +617,7 @@ export async function generatePayslipPDF(payrollLineId: string): Promise<Buffer>
         doc.text(formatNaira(b.tax), tx + bw[0] + bw[1] + bw[2] + 6, y + 1.5, { align: 'right', width: bw[3] - 12 });
         y += 9;
       });
-      y += 10;
+      y += 14;
     }
 
     // ── Annual Overview Metrics Grid ──
@@ -639,7 +639,7 @@ export async function generatePayslipPDF(payrollLineId: string): Promise<Buffer>
       doc.fillColor(SECTION_HDR).fontSize(5).font('Helvetica-Bold').text(m.l, mx + 4, y + 3, { width: mw - 8, align: 'center' });
       doc.fillColor(TEXT_PRIMARY).fontSize(9).font('Helvetica-Bold').text(m.v, mx + 4, y + 12, { width: mw - 8, align: 'center' });
     });
-    y += 36;
+    y += 42;
 
     // ── Footer ──
     doc.fontSize(6.5).fillColor('#94a3b8').text(
