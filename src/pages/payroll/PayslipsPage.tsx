@@ -86,81 +86,74 @@ export function PayslipsPage() {
     if (!viewingPayslip) return;
     const { line, run, employee, calculation } = viewingPayslip;
     const org = (orgData as any)?.data || orgData || {};
-    const nhisVal = (line as any).nhis || 0;
-    const intDedArr = Array.isArray((line as any).internalDeductions) ? (line as any).internalDeductions : [];
-    const intDedTotal = intDedArr.reduce((s: number, d: any) => s + (d.amount || 0), 0);
-    const gp = line.grossPay;
-    const bp = employee?.basicSalaryPct ?? 50;
-    const hp = employee?.housingPct ?? 20;
-    const tp = employee?.transportPct ?? 10;
-    const up = employee?.utilitiesPct ?? 10;
-    const mp = employee?.mealsPct ?? 5;
-    const op = employee?.othersPct ?? 5;
-    const sumPct = bp + hp + tp + up + mp + op;
-    const basicSalaryAmt = Math.round(gp * bp / sumPct);
-    const housingAmt = Math.round(gp * hp / sumPct);
-    const transportAmt = Math.round(gp * tp / sumPct);
-    const utilitiesAmt = Math.round(gp * up / sumPct);
-    const mealsAmt = Math.round(gp * mp / sumPct);
-    const othersAmt = gp - basicSalaryAmt - housingAmt - transportAmt - utilitiesAmt - mealsAmt;
-    const totalDeductions = line.paye + line.pensionEmployee + nhisVal + line.nhf + intDedTotal;
-    const calc = calculation || {
-      grossPay: gp, basic: line.basic,
-      monthlyPAYE: line.paye,
-      pensionEE: line.pensionEmployee,
-      nhf: line.nhf,
-      nhis: nhisVal,
-      otherDeductions: line.otherDeductions,
-      internalDeductions: intDedArr,
-      netPay: line.netPay,
-      basicSalaryAmt, housingAmt, transportAmt, utilitiesAmt, mealsAmt, othersAmt,
-    };
+    const calc = calculation || {};
 
-    const earningsRows = [
-      { label: 'Basic Salary', val: calc.basicSalaryAmt || calc.grossPay },
-      { label: 'Housing Allowance', val: calc.housingAmt || 0 },
-      { label: 'Transport Allowance', val: calc.transportAmt || 0 },
-      { label: 'Utilities Allowance', val: calc.utilitiesAmt || 0 },
-      { label: 'Meals Allowance', val: calc.mealsAmt || 0 },
-      { label: 'Others', val: calc.othersAmt || 0 },
+    const intDedArr = Array.isArray(calc.internalDeductions || line.internalDeductions) ? (calc.internalDeductions || line.internalDeductions) : [];
+    const intDedTotal = intDedArr.reduce((s: number, d: any) => s + (d.amount || 0), 0);
+
+    const eRows = [
+      { l: 'Basic Salary', v: calc.basicSalary || line.basic || 0 },
+      { l: 'Housing Allowance', v: calc.housing || line.housing || 0 },
+      { l: 'Transport Allowance', v: calc.transport || line.transport || 0 },
+      { l: 'Utilities Allowance', v: calc.utilities || 0 },
+      { l: 'Meals Allowance', v: calc.meals || 0 },
+      { l: 'Other Allowances', v: calc.otherAllowances || line.otherAllowances || 0 },
     ];
-    const deductionsRows = [
-      { label: 'PAYE Tax', val: calc.monthlyPAYE },
-      { label: 'Pension (EE)', val: calc.pensionEE },
-      { label: 'NHIS (5% of Basic)', val: calc.nhis },
-      { label: 'NHF (2.5% of Basic)', val: calc.nhf },
+    const sRows = [
+      { l: 'PAYE Tax', v: calc.monthlyPAYE || line.paye || 0 },
+      { l: 'Pension (EE)', v: calc.pensionEE || line.pensionEmployee || 0 },
+      { l: 'NHIS (5% of Basic)', v: calc.nhis || line.nhis || 0 },
+      { l: 'NHF (2.5% of Basic)', v: calc.nhf || line.nhf || 0 },
     ];
+    const totalDed = sRows.reduce((s, r) => s + r.v, 0) + intDedTotal;
+    const gross = calc.grossPay || line.grossPay || 0;
+    const net = calc.netPay || line.netPay || 0;
+
+    const bands = (calc.bandBreakdown || []).map((b: any) => `
+      <tr><td>${b.bandName || b.band}</td><td>${(b.rate * 100).toFixed(0)}%</td><td class="r">${formatNaira(b.taxableAmountInBand || b.taxableAmount || 0)}</td><td class="r fw">${formatNaira(b.taxAmountInBand || b.tax || 0)}</td></tr>
+    `).join('');
+
+    const hasRelief = (calc.rentRelief || 0) > 0 || (calc.mortgageInterestRelief || 0) > 0 || (calc.lifeAssuranceRelief || 0) > 0;
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Payslip - ${employee?.firstName} ${employee?.lastName}</title>
     <style>
       *{margin:0;padding:0;box-sizing:border-box}
-      body{font-family:'Inter','Segoe UI',sans-serif;background:#f1f5f9;padding:30px;font-size:12px;color:#1e293b}
-      .page{max-width:800px;margin:0 auto;background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,0.08);overflow:hidden}
-      .top-bar{background:#0f172a;padding:20px 30px;display:flex;align-items:center;justify-content:space-between}
-      .top-bar .org-name{color:#fff;font-size:16px;font-weight:700}
-      .top-bar .org-detail{color:#94a3b8;font-size:9px;line-height:1.5}
-      .top-bar .badge{background:#3b82f6;color:#fff;padding:4px 14px;border-radius:20px;font-size:10px;font-weight:700}
-      .content{padding:24px 30px}
-      .section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#64748b;margin-bottom:10px}
-      .emp-header{display:flex;justify-content:space-between;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid #e2e8f0}
-      .emp-header .name{font-size:16px;font-weight:700;color:#0f172a}
-      .emp-header .meta{font-size:10px;color:#64748b;margin-top:2px}
-      .emp-header .period{text-align:right;font-size:10px;color:#64748b}
-      .emp-header .period strong{color:#0f172a;font-size:11px}
-      .two-col{display:flex;gap:24px;margin-bottom:20px}
+      body{font-family:'Inter','Segoe UI',sans-serif;background:#eef2f6;padding:28px;font-size:11px;color:#1e293b}
+      .page{max-width:860px;margin:0 auto;background:#fff;border-radius:14px;box-shadow:0 2px 20px rgba(0,0,0,0.06)}
+      .top-bar{background:#0f172a;padding:18px 28px;display:flex;align-items:center;justify-content:space-between;border-radius:14px 14px 0 0}
+      .top-bar .org-name{color:#fff;font-size:15px;font-weight:700}
+      .top-bar .org-detail{color:#94a3b8;font-size:8px;line-height:1.5}
+      .top-bar .badge{background:#2563eb;color:#fff;padding:3px 12px;border-radius:20px;font-size:9px;font-weight:700}
+      .content{padding:22px 28px}
+      .emp-grid{display:flex;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #e2e8f0}
+      .emp-grid .left .name{font-size:15px;font-weight:700;color:#0f172a}
+      .emp-grid .left .meta{font-size:9px;color:#64748b;margin-top:1px}
+      .emp-grid .right{text-align:right;font-size:9px;color:#64748b}
+      .emp-grid .right strong{color:#0f172a;font-size:10px}
+      .two-col{display:flex;gap:20px;margin-bottom:14px}
       .two-col > div{flex:1}
-      .card{background:#f8fafc;border-radius:10px;padding:14px;border:1px solid #e2e8f0}
-      .card .row{display:flex;justify-content:space-between;padding:5px 0;font-size:11px;border-bottom:1px dashed #e2e8f0}
-      .card .row:last-child{border-bottom:none}
-      .card .row .label{color:#64748b}
-      .card .row .value{font-weight:600;color:#0f172a}
-      .card .row.total{border-top:2px solid #0f172a;margin-top:4px;padding-top:8px;font-weight:700}
-      .card .row.total .value{color:#0f172a}
-      .net-box{background:linear-gradient(135deg,#1e40af,#3b82f6);border-radius:10px;padding:18px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
-      .net-box .net-label{color:#bfdbfe;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em}
-      .net-box .net-amount{color:#fff;font-size:22px;font-weight:800}
-      .net-box .net-sub{color:#93c5fd;font-size:9px;margin-top:2px}
-      .footer-note{text-align:center;font-size:8px;color:#94a3b8;border-top:1px solid #e2e8f0;padding:12px 30px;margin-top:8px}
+      .card{background:#f8fafc;border-radius:8px;padding:12px;border:1px solid #e2e8f0;margin-bottom:14px}
+      .card-title{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#64748b;margin-bottom:6px}
+      .row{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px dashed #e2e8f0;font-size:10px}
+      .row:last-child{border-bottom:none}
+      .row .lb{color:#64748b}
+      .row .vl{font-weight:600;color:#0f172a}
+      .row .tot{border-top:1.5px solid #0f172a;margin-top:3px;padding-top:5px;font-weight:700}
+      .row .tot .vl{color:#0f172a}
+      .net-box{background:linear-gradient(135deg,#1e3a5f,#2563eb);border-radius:10px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+      .net-box .nl{color:#bfdbfe;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em}
+      .net-box .na{color:#fff;font-size:20px;font-weight:800}
+      .net-box .ns{color:#93c5fd;font-size:8px;margin-top:1px}
+      table.tax{width:100%;border-collapse:collapse;font-size:10px}
+      table.tax th{text-align:left;color:#64748b;font-weight:600;padding:4px 6px;border-bottom:1px solid #e2e8f0}
+      table.tax td{padding:3px 6px;border-bottom:1px dashed #e2e8f0}
+      table.tax .r{text-align:right}
+      table.tax .fw{font-weight:600}
+      .metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+      .metric{background:#f1f5f9;border-radius:8px;padding:10px 12px;text-align:center}
+      .metric .ml{font-size:8px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em}
+      .metric .mv{font-size:15px;font-weight:700;margin-top:2px}
+      .footer-note{text-align:center;font-size:7px;color:#94a3b8;border-top:1px solid #e2e8f0;padding:10px 28px}
       @media print{body{background:#fff;padding:0}.page{box-shadow:none;border-radius:0}}
     </style></head><body>
     <div class="page">
@@ -172,62 +165,92 @@ export function PayslipsPage() {
         <span class="badge">${run?.runNumber || 'PAYSLIP'}</span>
       </div>
       <div class="content">
-        <div class="emp-header">
-          <div>
+        <div class="emp-grid">
+          <div class="left">
             <div class="name">${employee?.firstName || ''} ${employee?.lastName || ''}</div>
-            <div class="meta">${employee?.staffId || ''}${employee?.department ? ` &bull; ${employee.department}` : ''}</div>
+            <div class="meta">${employee?.staffId || ''}${employee?.department ? ` &bull; ${employee.department}` : ''}${employee?.designation ? ` &bull; ${employee.designation}` : ''}</div>
             ${employee?.email ? `<div class="meta">${employee.email}</div>` : ''}
             ${employee?.phone ? `<div class="meta">${employee.phone}</div>` : ''}
             ${employee?.address ? `<div class="meta">${employee.address}</div>` : ''}
           </div>
-          <div class="period">
+          <div class="right">
             <strong>${fmtDate(run?.periodStart)} – ${fmtDate(run?.periodEnd)}</strong><br>
             Pay Date: ${fmtDate(run?.payDate)}
           </div>
         </div>
+
         <div class="two-col">
           <div>
-            <div class="section-title">Earnings</div>
+            <div class="card-title">Earnings</div>
             <div class="card">
-              ${earningsRows.map(r => `<div class="row"><span class="label">${r.label}</span><span class="value">${formatNaira(r.val)}</span></div>`).join('')}
-              <div class="row total"><span class="label">Total Gross</span><span class="value">${formatNaira(calc.grossPay)}</span></div>
+              ${eRows.map(r => `<div class="row"><span class="lb">${r.l}</span><span class="vl">${formatNaira(r.v)}</span></div>`).join('')}
+              <div class="row tot"><span class="lb">Total Gross</span><span class="vl">${formatNaira(gross)}</span></div>
+            </div>
+            <div class="card-title">Tax Computation (Annual)</div>
+            <div class="card">
+              <div class="row"><span class="lb">Annual Gross</span><span class="vl">${formatNaira(calc.annualGross || gross * 12)}</span></div>
+              <div class="row"><span class="lb">Less: Pension (EE)</span><span class="vl">${formatNaira(calc.annualPension || 0)}</span></div>
+              <div class="row"><span class="lb">Less: NHIS</span><span class="vl">${formatNaira(calc.annualNHIS || 0)}</span></div>
+              <div class="row"><span class="lb">Less: NHF</span><span class="vl">${formatNaira(calc.annualNHF || 0)}</span></div>
+              ${hasRelief ? `<div class="row tot"><span class="lb">Less: Tax Reliefs</span><span class="vl">${formatNaira((calc.rentRelief||0)+(calc.mortgageInterestRelief||0)+(calc.lifeAssuranceRelief||0))}</span></div>` : ''}
+              <div class="row tot"><span class="lb">Chargeable Income</span><span class="vl">${formatNaira(calc.chargeableIncome || 0)}</span></div>
+              <div class="row"><span class="lb">Annual PAYE</span><span class="vl">${formatNaira(calc.annualPAYE || 0)}</span></div>
+              <div class="row"><span class="lb">Effective Rate</span><span class="vl">${((calc.effectiveRatePct || 0)).toFixed(2)}%</span></div>
             </div>
           </div>
           <div>
-            <div class="section-title">Statutory Deductions</div>
+            <div class="card-title">Statutory Deductions</div>
             <div class="card">
-              ${deductionsRows.map(d => `<div class="row"><span class="label">${d.label}</span><span class="value">${formatNaira(d.val)}</span></div>`).join('')}
-              ${intDedArr.length > 0 ? intDedArr.map((d: any) => `<div class="row"><span class="label" style="padding-left:8px;font-style:italic">${d.description}</span><span class="value">${formatNaira(d.amount || 0)}</span></div>`).join('') : ''}
-              <div class="row total"><span class="label">Total Deductions</span><span class="value">${formatNaira(totalDeductions)}</span></div>
+              ${sRows.map(r => `<div class="row"><span class="lb">${r.l}</span><span class="vl">${formatNaira(r.v)}</span></div>`).join('')}
+              ${intDedArr.map((d: any) => `<div class="row"><span class="lb" style="padding-left:6px;font-style:italic">${d.description}</span><span class="vl">${formatNaira(d.amount || 0)}</span></div>`).join('')}
+              <div class="row tot"><span class="lb">Total Deductions</span><span class="vl">${formatNaira(totalDed)}</span></div>
+            </div>
+            ${hasRelief ? `<div class="card-title">Tax Reliefs</div>
+            <div class="card">
+              ${(calc.rentRelief||0) > 0 ? `<div class="row"><span class="lb">Rent Relief</span><span class="vl">${formatNaira(calc.rentRelief)}</span></div>` : ''}
+              ${(calc.mortgageInterestRelief||0) > 0 ? `<div class="row"><span class="lb">Mortgage Interest</span><span class="vl">${formatNaira(calc.mortgageInterestRelief)}</span></div>` : ''}
+              ${(calc.lifeAssuranceRelief||0) > 0 ? `<div class="row"><span class="lb">Life Assurance</span><span class="vl">${formatNaira(calc.lifeAssuranceRelief)}</span></div>` : ''}
+            </div>` : ''}
+            <div class="card-title">Employer Contributions</div>
+            <div class="card">
+              <div class="row"><span class="lb">Pension (ER 10%)</span><span class="vl">${formatNaira(line.pensionEmployer || 0)}</span></div>
+              <div class="row tot"><span class="lb">Total Pension Obligation</span><span class="vl">${formatNaira((line.pensionEmployee || 0) + (line.pensionEmployer || 0))}</span></div>
+            </div>
+            <div class="card-title">Payment Info</div>
+            <div class="card">
+              <div class="row"><span class="lb">Bank</span><span class="vl">${employee?.bankName || '—'}</span></div>
+              <div class="row"><span class="lb">Account</span><span class="vl">${employee?.accountNumber || '—'}</span></div>
+              <div class="row"><span class="lb">Tax ID</span><span class="vl">${employee?.taxId || '—'}</span></div>
+              ${employee?.pensionPin ? `<div class="row"><span class="lb">Pension PIN</span><span class="vl">${employee.pensionPin}</span></div>` : ''}
+              ${employee?.nhfNumber ? `<div class="row"><span class="lb">NHF Number</span><span class="vl">${employee.nhfNumber}</span></div>` : ''}
             </div>
           </div>
         </div>
+
         <div class="net-box">
           <div>
-            <div class="net-label">Net Pay</div>
-            <div class="net-sub">After all deductions</div>
+            <div class="nl">Net Pay</div>
+            <div class="ns">After all statutory &amp; internal deductions</div>
           </div>
           <div style="text-align:right">
-            <div class="net-amount">${formatNaira(calc.netPay)}</div>
+            <div class="na">${formatNaira(net)}</div>
           </div>
         </div>
-        <div style="display:flex;gap:24px">
-          <div style="flex:1">
-            <div class="section-title">Employer Contributions</div>
-            <div class="card">
-              <div class="row"><span class="label">Pension (EE)</span><span class="value">${formatNaira(line.pensionEmployee)}</span></div>
-              <div class="row"><span class="label">Pension (ER 10%)</span><span class="value">${formatNaira(line.pensionEmployer)}</span></div>
-              <div class="row total"><span class="label">Total Pension Obligation</span><span class="value">${formatNaira(line.pensionEmployee + line.pensionEmployer)}</span></div>
-            </div>
-          </div>
-          <div style="flex:1">
-            <div class="section-title">Payment Info</div>
-            <div class="card">
-              <div class="row"><span class="label">Bank</span><span class="value">${employee?.bankName || '—'}</span></div>
-              <div class="row"><span class="label">Account</span><span class="value">${employee?.accountNumber || '—'}</span></div>
-              <div class="row"><span class="label">Tax ID</span><span class="value">${employee?.taxId || '—'}</span></div>
-            </div>
-          </div>
+
+        ${bands ? `
+        <div class="card-title">Tax Band Breakdown (Annual)</div>
+        <div class="card" style="padding:8px">
+          <table class="tax">
+            <thead><tr><th>Band</th><th>Rate</th><th class="r">Taxable Amount</th><th class="r">Tax</th></tr></thead>
+            <tbody>${bands}</tbody>
+          </table>
+        </div>` : ''}
+
+        <div class="metric-grid">
+          <div class="metric"><div class="ml">Annual Gross</div><div class="mv">${formatNaira(calc.annualGross || gross * 12)}</div></div>
+          <div class="metric"><div class="ml">Annual PAYE</div><div class="mv" style="color:#dc2626">${formatNaira(calc.annualPAYE || 0)}</div></div>
+          <div class="metric"><div class="ml">Monthly PAYE</div><div class="mv" style="color:#dc2626">${formatNaira(calc.monthlyPAYE || line.paye || 0)}</div></div>
+          <div class="metric"><div class="ml">Annual Net Pay</div><div class="mv" style="color:#16a34a">${formatNaira(net * 12)}</div></div>
         </div>
       </div>
       <div class="footer-note">

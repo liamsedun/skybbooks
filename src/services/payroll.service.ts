@@ -53,11 +53,14 @@ export interface PayrollCalculation {
   // Net Pay
   netPay: number;                 // in kobo
 
-  // Legacy fields (for payroll_lines table compatibility)
-  basic: number;
+  // Allowances breakdown
   housing: number;
   transport: number;
+  utilities: number;
+  meals: number;
   otherAllowances: number;
+
+  // Pagibig / NHIP / PhilHealth style compat fields
   pensionEmployee: number;
   paye: number;
   otherDeductions: number;
@@ -115,6 +118,12 @@ export function calculatePayrollForEmployee(employee: any, payPeriod?: { start?:
   const grossPay = Number(employee.grossSalary || 0); // in kobo
 
   // Read employee payroll parameters with sensible defaults
+  const basicSalaryPct = Math.max(1, Math.min(100, Number(employee.basicSalaryPct || 50))) / 100;
+  const housingPct = Math.max(0, Math.min(100, Number(employee.housingPct || 20))) / 100;
+  const transportPct = Math.max(0, Math.min(100, Number(employee.transportPct || 10))) / 100;
+  const utilitiesPct = Math.max(0, Math.min(100, Number(employee.utilitiesPct || 10))) / 100;
+  const mealsPct = Math.max(0, Math.min(100, Number(employee.mealsPct || 5))) / 100;
+  const othersPct = Math.max(0, Math.min(100, Number(employee.othersPct || 5))) / 100;
   const pensionablePortionPct = Math.max(1, Math.min(100, Number(employee.pensionablePortionPct || 80))) / 100;
   const pensionRatePct = Math.max(0, Math.min(30, Number(employee.pensionRatePct || 8))) / 100;
   const nhisApplicable = employee.nhisApplicable === true;
@@ -125,14 +134,22 @@ export function calculatePayrollForEmployee(employee: any, payPeriod?: { start?:
   const internalDeductionsList: { description: string; amount: number }[] =
     Array.isArray(employee.internalDeductions) ? employee.internalDeductions : [];
 
-  // Step 1: Basic Salary = Gross × Pensionable Portion %
-  const basicSalary = Math.round(grossPay * pensionablePortionPct);
+  // Step 1: Salary structure — allocate gross across allowance components
+  const sumPct = basicSalaryPct + housingPct + transportPct + utilitiesPct + mealsPct + othersPct;
+  const basicSalary = Math.round(grossPay * basicSalaryPct / sumPct);
+  const housing = Math.round(grossPay * housingPct / sumPct);
+  const transport = Math.round(grossPay * transportPct / sumPct);
+  const utilities = Math.round(grossPay * utilitiesPct / sumPct);
+  const meals = Math.round(grossPay * mealsPct / sumPct);
+  const otherAllowances = grossPay - basicSalary - housing - transport - utilities - meals;
 
   // Step 2: Monthly Statutory Deductions
-  // Pension (EE) = Pension Rate % × Pensionable Portion % × Gross
-  const pensionEE = Math.round(grossPay * pensionablePortionPct * pensionRatePct);
+  // Pension base = Gross × Pensionable Portion % (separate from basic salary %)
+  const pensionableEarnings = Math.round(grossPay * pensionablePortionPct);
+  // Pension (EE) = Pension Rate % × Pensionable Base
+  const pensionEE = Math.round(pensionableEarnings * pensionRatePct);
   // Employer pension = 10% of pensionable (standard Nigerian practice)
-  const pensionEmployer = Math.round(grossPay * pensionablePortionPct * 0.10);
+  const pensionEmployer = Math.round(pensionableEarnings * 0.10);
   // NHIS = 5% × Basic (if applicable)
   const nhis = nhisApplicable ? Math.round(basicSalary * 0.05) : 0;
   // NHF = 2.5% × Basic (if applicable)
@@ -198,16 +215,12 @@ export function calculatePayrollForEmployee(employee: any, payPeriod?: { start?:
 
   const effectiveRatePct = annualGross > 0 ? Number((annualPAYE / annualGross * 100).toFixed(2)) : 0;
 
-  // Legacy backward-compat fields
+  // Legacy fields (for payroll_lines table compatibility)
   const basic = basicSalary;
-  const housing = 0;
-  const transport = 0;
-  const otherAllowances = Math.max(0, grossPay - basicSalary);
   const pensionEmployee = pensionEE;
   const paye = monthlyPAYE;
   const otherDeductions = nhis + internalDeductionsTotal;
   const cra = rentRelief;
-  const pensionableEarnings = Math.round(grossPay * pensionablePortionPct);
   const effectiveTaxRate = grossPay > 0 ? Number((monthlyPAYE / grossPay).toFixed(4)) : 0;
 
   return {
@@ -242,11 +255,14 @@ export function calculatePayrollForEmployee(employee: any, payPeriod?: { start?:
     // Net
     netPay,
 
-    // Legacy compat
-    basic,
+    // Allowances
     housing,
     transport,
+    utilities,
+    meals,
     otherAllowances,
+
+    // Legacy compat
     pensionEmployee,
     paye,
     otherDeductions,
@@ -737,6 +753,11 @@ export async function generatePayslip(payrollLineId: string): Promise<any> {
     earnings: {
       grossSalary: calculation.grossPay,
       basicSalary: calculation.basicSalary,
+      housing: calculation.housing,
+      transport: calculation.transport,
+      utilities: calculation.utilities,
+      meals: calculation.meals,
+      otherAllowances: calculation.otherAllowances,
     },
     statutoryDeductions: {
       pensionEE: calculation.pensionEE,
@@ -758,7 +779,17 @@ export async function generatePayslip(payrollLineId: string): Promise<any> {
       effectiveRatePct: calculation.effectiveRatePct,
       bandBreakdown,
     },
+    taxReliefs: {
+      rentRelief: calculation.rentRelief,
+      mortgageInterestRelief: calculation.mortgageInterestRelief,
+      lifeAssuranceRelief: calculation.lifeAssuranceRelief,
+    },
     internalDeductions: calculation.internalDeductions,
+    employeeContributions: {
+      pensionEE: calculation.pensionEE,
+      nhis: calculation.nhis,
+      nhf: calculation.nhf,
+    },
     netPay: calculation.netPay,
   };
 
