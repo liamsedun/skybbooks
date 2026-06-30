@@ -406,27 +406,27 @@ export async function generatePayslipPDF(payrollLineId: string): Promise<Buffer>
     let y = 30;
 
     // ── Modern Header ──
-    doc.rect(startX, y, pageW, 52).fill(DARK_HEADER);
+    doc.rect(startX, y, pageW, 40).fill(DARK_HEADER);
     // Logo
     if (logoBuffer) {
       doc.save();
-      doc.circle(startX + 30, y + 26, 20);
+      doc.circle(startX + 24, y + 20, 16);
       doc.clip();
-      doc.image(logoBuffer, startX + 12, y + 8, { width: 36, height: 36 });
+      doc.image(logoBuffer, startX + 10, y + 6, { width: 28, height: 28 });
       doc.restore();
-      doc.fillColor('#ffffff').fontSize(14).font('Helvetica-Bold').text(org.name, startX + 54, y + 10);
+      doc.fillColor('#ffffff').fontSize(13).font('Helvetica-Bold').text(org.name, startX + 44, y + 6);
     } else {
-      doc.roundedRect(startX + 14, y + 10, 36, 36, 9).fillColor('#ffffff').opacity(0.1).fill();
-      doc.opacity(1).fillColor('#ffffff').fontSize(18).font('Helvetica-Bold').text((org.name || 'S').substring(0, 1).toUpperCase(), startX + 28, y + 18);
-      doc.fillColor('#ffffff').fontSize(14).font('Helvetica-Bold').text(org.name, startX + 56, y + 10);
+      doc.roundedRect(startX + 12, y + 8, 28, 28, 7).fillColor('#ffffff').opacity(0.1).fill();
+      doc.opacity(1).fillColor('#ffffff').fontSize(16).font('Helvetica-Bold').text((org.name || 'S').substring(0, 1).toUpperCase(), startX + 24, y + 15);
+      doc.fillColor('#ffffff').fontSize(13).font('Helvetica-Bold').text(org.name, startX + 46, y + 6);
     }
-    doc.fontSize(7).font('Helvetica').fillColor('#a0b8d4').text(orgContactItems.join(' • '), startX + 54, y + 25);
+    doc.fontSize(6.5).font('Helvetica').fillColor('#a0b8d4').text(orgContactItems.join(' • '), startX + 44, y + 20);
     // Badge
     const badgeW = 130;
-    doc.roundedRect(startX + pageW - badgeW - 10, y + 10, badgeW, 22, 11).fillColor('#ffffff').opacity(0.1).fill();
-    doc.opacity(1).fillColor('#e8f0fe').fontSize(12).font('Helvetica-Bold').text(`PAYSLIP`, startX + pageW - badgeW - 10 + 12, y + 14, { align: 'left' });
-    doc.fillColor('#e8f0fe').fontSize(10).font('Helvetica-Bold').text(run?.runNumber || '', startX + pageW - 12, y + 16, { align: 'right' });
-    y += 48;
+    doc.roundedRect(startX + pageW - badgeW - 10, y + 6, badgeW, 20, 10).fillColor('#ffffff').opacity(0.1).fill();
+    doc.opacity(1).fillColor('#e8f0fe').fontSize(11).font('Helvetica-Bold').text(`PAYSLIP`, startX + pageW - badgeW - 10 + 12, y + 10, { align: 'left' });
+    doc.fillColor('#e8f0fe').fontSize(9).font('Helvetica-Bold').text(run?.runNumber || '', startX + pageW - 12, y + 12, { align: 'right' });
+    y += 36;
 
     // ── Employee Row (clean two-column) ──
     doc.fontSize(13).font('Helvetica-Bold').fillColor('#1e3a5f').text(`${employee.firstName} ${employee.lastName}`, startX, y);
@@ -444,12 +444,12 @@ export async function generatePayslipPDF(payrollLineId: string): Promise<Buffer>
     doc.font('Helvetica').fillColor(MUTED_COLOR).text('Pay Date', startX + pageW - 155, y + 10);
     doc.font('Helvetica-Bold').fillColor(TEXT_PRIMARY).text(formatShortDate(run.payDate), startX + pageW - 125, y + 10);
 
-    const empBottom = employee.address ? y + 52 : employee.phone ? y + 43 : employee.email ? y + 33 : y + 24;
-    y = empBottom + 10;
+    const empBottom = employee.address ? y + 44 : employee.phone ? y + 36 : employee.email ? y + 28 : y + 20;
+    y = empBottom + 6;
 
     // Draw separator line
-    doc.moveTo(startX, y).lineTo(startX + pageW, y).strokeColor(LIGHT_BORDER).lineWidth(1).stroke();
-    y += 10;
+    doc.moveTo(startX, y).lineTo(startX + pageW, y).strokeColor(LIGHT_BORDER).lineWidth(0.5).stroke();
+    y += 6;
 
     // ── Two-column Card Layout: Earnings | Statutory Deductions ──
     const colW = 248;
@@ -459,30 +459,29 @@ export async function generatePayslipPDF(payrollLineId: string): Promise<Buffer>
 
     // Helper: draw a bordered card
     function drawCard(d: any, cx: number, cy: number, cw: number, rows: { l: string; v: string; b?: boolean; ital?: boolean }[], total?: { l: string; v: string }) {
-      d.roundedRect(cx, cy, cw, 4, 4).fillColor('#fff').fill();
-      d.roundedRect(cx, cy, cw, 4, 4).lineWidth(1).strokeColor(LIGHT_BORDER).stroke();
-      d.fontSize(7.5).fillColor(TEXT_PRIMARY);
+      d.roundedRect(cx, cy, cw, 3, 3).fillColor('#fff').fill();
+      d.roundedRect(cx, cy, cw, 3, 3).lineWidth(0.5).strokeColor(LIGHT_BORDER).stroke();
+      d.fontSize(7).fillColor(TEXT_PRIMARY);
       rows.forEach((r, idx) => {
-        const ry = cy + 6 + idx * 11;
-        d.rect(cx, ry, cw, 11).fillColor(idx % 2 === 1 ? '#f8fafc' : '#ffffff').fill();
+        const ry = cy + 4 + idx * 10;
+        d.rect(cx, ry, cw, 10).fillColor(idx % 2 === 1 ? '#f8fafc' : '#ffffff').fill();
         d.fillColor(TEXT_PRIMARY);
         d.font(r.b ? 'Helvetica-Bold' : r.ital ? 'Helvetica-Oblique' : 'Helvetica');
-        d.text(r.l, cx + 8, ry + 2);
+        d.text(r.l, cx + 7, ry + 1.5);
         d.font(r.b ? 'Helvetica-Bold' : 'Helvetica');
-        d.text(r.v, cx + cw - 8, ry + 2, { align: 'right' });
+        d.text(r.v, cx + cw - 7, ry + 1.5, { align: 'right' });
       });
       d.fillColor('#ffffff').fill();
       if (total) {
-        const ty = cy + 6 + rows.length * 11;
-        d.rect(cx, ty, cw, 13).fillColor('#f1f5f9').fill();
-        const borderY = ty - 1;
-        d.lineWidth(1.5).strokeColor('#1e3a5f').moveTo(cx + 4, borderY).lineTo(cx + cw - 4, borderY).stroke();
-        d.fillColor('#1e3a5f').font('Helvetica-Bold').fontSize(7.5);
-        d.text(total.l, cx + 8, ty + 3);
-        d.text(total.v, cx + cw - 8, ty + 3, { align: 'right' });
-        return ty + 13;
+        const ty = cy + 4 + rows.length * 10;
+        d.rect(cx, ty, cw, 11).fillColor('#f1f5f9').fill();
+        d.lineWidth(1).strokeColor('#1e3a5f').moveTo(cx + 4, ty - 0.5).lineTo(cx + cw - 4, ty - 0.5).stroke();
+        d.fillColor('#1e3a5f').font('Helvetica-Bold').fontSize(7);
+        d.text(total.l, cx + 7, ty + 2);
+        d.text(total.v, cx + cw - 7, ty + 2, { align: 'right' });
+        return ty + 11;
       }
-      return cy + 6 + rows.length * 11;
+      return cy + 4 + rows.length * 10;
     }
 
     // Section header
@@ -514,7 +513,7 @@ export async function generatePayslipPDF(payrollLineId: string): Promise<Buffer>
 
     const eTop = drawCard(doc, leftCol, y, colW, earns, { l: 'Total Gross', v: formatNaira(gp) });
     const dTop = drawCard(doc, rightCol, y, colW, deducts, { l: 'Total Deductions', v: formatNaira(totalDeducts) });
-    y = Math.max(eTop, dTop) + 16;
+    y = Math.max(eTop, dTop) + 10;
 
     // ── Net Pay Panel (gradient look) ──
     doc.roundedRect(startX, y, pageW, 28, 8).fillColor('#1e3a5f').fill();
@@ -523,13 +522,13 @@ export async function generatePayslipPDF(payrollLineId: string): Promise<Buffer>
     doc.fillColor('#b8cfe8').fontSize(7).font('Helvetica-Bold').text('NET PAY', startX + 18, y + 4);
     doc.fontSize(6).font('Helvetica').fillColor('#8aadd0').text('After all statutory & internal deductions', startX + 18, y + 13);
     doc.fillColor('#ffffff').fontSize(16).font('Helvetica-Bold').text(formatNaira(line.netPay), startX + pageW - 18, y + 5, { align: 'right' });
-    y += 36;
+    y += 28;
 
     // ── Two-column: Tax Computation (Annual) | Payment Info ──
     doc.fontSize(6.5).font('Helvetica-Bold').fillColor(SECTION_HDR);
     doc.text('TAX COMPUTATION (ANNUAL)', leftCol, y);
     doc.text('PAYMENT INFO', rightCol, y);
-    y += 8;
+    y += 6;
 
     const taxItems: { l: string; v: string; b?: boolean; ital?: boolean }[] = [
       { l: 'Annual Gross', v: formatNaira(annualGross) },
@@ -560,7 +559,7 @@ export async function generatePayslipPDF(payrollLineId: string): Promise<Buffer>
     if (employee.nhfNumber) payInfoRows.push({ l: 'NHF Number', v: employee.nhfNumber });
 
     const payEnd = drawCard(doc, rightCol, y, colW, payInfoRows);
-    y = Math.max(taxEnd, payEnd) + 14;
+    y = Math.max(taxEnd, payEnd) + 8;
 
     // ── Employer Contributions ──
     doc.fontSize(6.5).font('Helvetica-Bold').fillColor(SECTION_HDR);
@@ -570,7 +569,7 @@ export async function generatePayslipPDF(payrollLineId: string): Promise<Buffer>
       { l: 'Pension (ER 10%)', v: formatNaira(line.pensionEmployer) },
       { l: 'Total Pension Obligation', v: formatNaira((line.pensionEmployee || 0) + (line.pensionEmployer || 0)), b: true },
     ];
-    y = drawCard(doc, leftCol, y, colW, erRows) + 16;
+    y = drawCard(doc, leftCol, y, colW, erRows) + 10;
 
     // ── Tax Band Breakdown Table ──
     const bands = [
@@ -594,38 +593,37 @@ export async function generatePayslipPDF(payrollLineId: string): Promise<Buffer>
     if (bandRows.length > 0) {
       doc.fontSize(6.5).font('Helvetica-Bold').fillColor(SECTION_HDR);
       doc.text('TAX BAND BREAKDOWN', startX, y);
-      y += 8;
+      y += 6;
 
       // Table header with dark background - narrower & centered
       const tw = Math.round(pageW * 0.75);
       const tx = startX + Math.round((pageW - tw) / 2);
       const bw = [Math.round(tw * 0.38), Math.round(tw * 0.12), Math.round(tw * 0.25), tw - Math.round(tw * 0.38) - Math.round(tw * 0.12) - Math.round(tw * 0.25)];
-      doc.roundedRect(tx, y, tw, 14, 4).fillColor('#1e3a5f').fill();
-      doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(6);
-      doc.text('Band', tx + 8, y + 4);
-      doc.text('Rate', tx + bw[0] + 8, y + 4, { align: 'right', width: bw[1] - 16 });
-      doc.text('Taxable Amount', tx + bw[0] + bw[1] + 8, y + 4, { align: 'right', width: bw[2] - 16 });
-      doc.text('Tax', tx + bw[0] + bw[1] + bw[2] + 8, y + 4, { align: 'right', width: bw[3] - 16 });
-      y += 14;
+      doc.roundedRect(tx, y, tw, 12, 3).fillColor('#1e3a5f').fill();
+      doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(5.5);
+      doc.text('Band', tx + 6, y + 3.5);
+      doc.text('Rate', tx + bw[0] + 6, y + 3.5, { align: 'right', width: bw[1] - 12 });
+      doc.text('Taxable Amount', tx + bw[0] + bw[1] + 6, y + 3.5, { align: 'right', width: bw[2] - 12 });
+      doc.text('Tax', tx + bw[0] + bw[1] + bw[2] + 6, y + 3.5, { align: 'right', width: bw[3] - 12 });
+      y += 12;
 
       bandRows.forEach((b, idx) => {
-        if (y > 740) { doc.addPage(); y = 40; }
-        doc.rect(tx, y, tw, 10).fillColor(idx % 2 === 0 ? '#ffffff' : '#f8fafc').fill();
-        doc.rect(tx, y, tw, 10).lineWidth(0.5).strokeColor('#eef2f6').stroke();
-        doc.fillColor(TEXT_PRIMARY).font('Helvetica').fontSize(6);
-        doc.text(b.name, tx + 8, y + 2);
-        doc.text(`${(b.rate * 100).toFixed(0)}%`, tx + bw[0] + 8, y + 2, { align: 'right', width: bw[1] - 16 });
-        doc.text(formatNaira(b.taxable), tx + bw[0] + bw[1] + 8, y + 2, { align: 'right', width: bw[2] - 16 });
-        doc.text(formatNaira(b.tax), tx + bw[0] + bw[1] + bw[2] + 8, y + 2, { align: 'right', width: bw[3] - 16 });
-        y += 10;
+        doc.rect(tx, y, tw, 9).fillColor(idx % 2 === 0 ? '#ffffff' : '#f8fafc').fill();
+        doc.rect(tx, y, tw, 9).lineWidth(0.5).strokeColor('#eef2f6').stroke();
+        doc.fillColor(TEXT_PRIMARY).font('Helvetica').fontSize(5.5);
+        doc.text(b.name, tx + 6, y + 1.5);
+        doc.text(`${(b.rate * 100).toFixed(0)}%`, tx + bw[0] + 6, y + 1.5, { align: 'right', width: bw[1] - 12 });
+        doc.text(formatNaira(b.taxable), tx + bw[0] + bw[1] + 6, y + 1.5, { align: 'right', width: bw[2] - 12 });
+        doc.text(formatNaira(b.tax), tx + bw[0] + bw[1] + bw[2] + 6, y + 1.5, { align: 'right', width: bw[3] - 12 });
+        y += 9;
       });
-      y += 10;
+      y += 6;
     }
 
     // ── Annual Overview Metrics Grid ──
     doc.fontSize(6.5).font('Helvetica-Bold').fillColor(SECTION_HDR);
     doc.text('ANNUAL OVERVIEW', startX, y);
-    y += 8;
+    y += 6;
 
     const metrics = [
       { l: 'Annual Gross', v: formatNaira(annualGross) },

@@ -48,7 +48,7 @@ function buildPayslipHtml(line: any, run: any, employee: any, calc: any, org: an
     *{margin:0;padding:0;box-sizing:border-box}
     body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:#f0f2f5;padding:32px;font-size:11px;color:#1a1d23;-webkit-font-smoothing:antialiased}
     .page{max-width:820px;margin:0 auto;background:#fff;border-radius:20px;box-shadow:0 8px 40px rgba(0,0,0,0.06),0 1px 3px rgba(0,0,0,0.04);overflow:hidden}
-    .header{background:#1e3a5f;padding:20px 36px 14px;display:flex;align-items:center;justify-content:space-between}
+    .header{background:#1e3a5f;padding:14px 36px 6px;display:flex;align-items:center;justify-content:space-between}
     .header-left{display:flex;align-items:center;gap:16px}
     .header-logo{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#fff;overflow:hidden;flex-shrink:0}
     .header-logo img{width:100%;height:100%;object-fit:cover;border-radius:10px}
@@ -58,18 +58,18 @@ function buildPayslipHtml(line: any, run: any, employee: any, calc: any, org: an
     .header-right{text-align:right}
     .header-right .badge{display:inline-block;background:rgba(255,255,255,0.12);color:#e8f0fe;padding:5px 18px;border-radius:20px;font-size:13px;font-weight:800;letter-spacing:0.05em}
     .header-right .run-id{color:#90aac8;font-size:10px;margin-top:5px;font-weight:600;letter-spacing:0.02em}
-    .body{padding:14px 36px 28px}
-    .emp-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:20px;border-bottom:1px solid #eef1f5}
+    .body{padding:4px 36px 12px}
+    .emp-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #eef1f5}
     .emp-row .name{font-size:17px;font-weight:700;color:#1e3a5f;letter-spacing:-0.01em}
     .emp-row .emp-meta{font-size:10px;color:#6b7a90;margin-top:2px}
     .emp-row .emp-meta span{display:inline-block;margin-right:12px}
     .emp-row .period{text-align:right;font-size:10px;color:#6b7a90;line-height:1.6}
     .emp-row .period strong{color:#1e3a5f;font-size:11px;font-weight:600}
-    .grid-2{display:flex;gap:24px;margin-bottom:16px}
+    .grid-2{display:flex;gap:14px;margin-bottom:8px}
     .grid-2 > div{flex:1;min-width:0}
-    .section-header{font-size:7px;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:#8b9ab0;margin-bottom:8px}
+    .section-header{font-size:7px;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:#8b9ab0;margin-bottom:5px}
     .card{border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.02)}
-    .card-row{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;font-size:10.5px;border-bottom:1px solid #f1f5f9}
+    .card-row{display:flex;justify-content:space-between;align-items:center;padding:5px 12px;font-size:10.5px;border-bottom:1px solid #f1f5f9}
     .card-row:last-child{border-bottom:none}
     .card-row .lb{color:#475569}
     .card-row .vl{font-weight:600;color:#0f172a;font-variant-numeric:tabular-nums}
@@ -77,12 +77,12 @@ function buildPayslipHtml(line: any, run: any, employee: any, calc: any, org: an
     .card-row.total{border-top:2px solid #1e3a5f;margin-top:0;background:#f1f5f9}
     .card-row.total .lb{font-weight:700;color:#1e3a5f}
     .card-row.total .vl{color:#1e3a5f}
-    .relief-list{padding:6px 14px 6px 14px;font-size:9.5px}
+    .relief-list{padding:3px 10px 3px 10px;font-size:9.5px}
     .relief-list .rl-row{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px dashed #eef2f6}
     .relief-list .rl-row:last-child{border-bottom:none}
     .relief-list .rl-label{color:#475569;padding-left:10px}
     .relief-list .rl-value{font-weight:600;color:#0f172a;font-variant-numeric:tabular-nums}
-    .net-panel{background:linear-gradient(135deg,#1e3a5f,#2d5a87);border-radius:14px;padding:12px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+    .net-panel{background:linear-gradient(135deg,#1e3a5f,#2d5a87);border-radius:14px;padding:10px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
     .net-panel .nl{color:#b8cfe8;font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em}
     .net-panel .ns{color:#8aadd0;font-size:7px;margin-top:2px}
     .net-panel .na{color:#fff;font-size:18px;font-weight:800;letter-spacing:-0.02em}
@@ -98,7 +98,7 @@ function buildPayslipHtml(line: any, run: any, employee: any, calc: any, org: an
     .metric-card{border:1px solid #e2e8f0;border-radius:8px;padding:10px 7px;text-align:center;background:#fafbfc;box-shadow:0 1px 2px rgba(0,0,0,0.02)}
     .metric-card .ml{font-size:6px;color:#8b9ab0;text-transform:uppercase;letter-spacing:0.06em;font-weight:700;margin-bottom:3px}
     .metric-card .mv{font-size:11px;font-weight:700;color:#0f172a;font-variant-numeric:tabular-nums}
-    .footer{text-align:center;padding:16px 36px;border-top:1px solid #e2e8f0;font-size:7.5px;color:#94a3b8;letter-spacing:0.02em}
+    .footer{text-align:center;padding:8px 36px;border-top:1px solid #e2e8f0;font-size:7.5px;color:#94a3b8;letter-spacing:0.02em}
     @media print{body{background:#fff;padding:0}.page{box-shadow:none;border-radius:0}}
   </style></head><body>
   <div class="page">
@@ -152,7 +152,7 @@ function buildPayslipHtml(line: any, run: any, employee: any, calc: any, org: an
             ${intDedArr.map((d: any) => `<div class="card-row"><span class="lb" style="padding-left:18px;font-style:italic;color:#8b9ab0">${d.description}</span><span class="vl">${formatNaira(d.amount || 0)}</span></div>`).join('')}
             <div class="card-row total"><span class="lb">Total Deductions</span><span class="vl">${formatNaira(totalDed)}</span></div>
           </div>
-          <div style="margin-top:12px">
+          <div style="margin-top:6px">
             <div class="section-header">Employer Contributions</div>
             <div class="card">
               <div class="card-row"><span class="lb">Pension (ER 10%)</span><span class="vl">${formatNaira(line?.pensionEmployer || 0)}</span></div>
@@ -180,7 +180,7 @@ function buildPayslipHtml(line: any, run: any, employee: any, calc: any, org: an
             <div class="card-row"><span class="lb">Less: NHIS</span><span class="vl">${formatNaira(calc.annualNHIS || 0)}</span></div>
             <div class="card-row"><span class="lb">Less: NHF</span><span class="vl">${formatNaira(calc.annualNHF || 0)}</span></div>
             ${calc ? `<div class="relief-list">
-              <div style="font-weight:700;color:#1e3a5f;font-size:9.5px;padding:4px 0;border-bottom:1px solid #e2e8f0;margin-bottom:4px">Less: Tax Reliefs (Monthly)</div>
+              <div style="font-weight:700;color:#1e3a5f;font-size:9.5px;padding:2px 0;border-bottom:1px solid #e2e8f0;margin-bottom:2px">Less: Tax Reliefs (Monthly)</div>
               <div class="rl-row"><span class="rl-label">Rent Relief</span><span class="rl-value">${formatNaira(calc.rentRelief || 0)}</span></div>
               <div class="rl-row"><span class="rl-label">Mortgage Loan Interest</span><span class="rl-value">${formatNaira(calc.mortgageInterestRelief || 0)}</span></div>
               <div class="rl-row"><span class="rl-label">Life Insurance</span><span class="rl-value">${formatNaira(calc.lifeAssuranceRelief || 0)}</span></div>
@@ -204,7 +204,7 @@ function buildPayslipHtml(line: any, run: any, employee: any, calc: any, org: an
       </div>
 
       ${bands ? `
-      <div style="margin-top:16px;max-width:75%;margin-left:auto;margin-right:auto">
+      <div style="margin-top:8px;max-width:75%;margin-left:auto;margin-right:auto">
         <div class="section-header" style="text-align:center">Tax Band Breakdown</div>
         <div class="card" style="padding:0">
           <table class="bands">
@@ -214,7 +214,7 @@ function buildPayslipHtml(line: any, run: any, employee: any, calc: any, org: an
         </div>
       </div>` : ''}
 
-      <div style="margin-top:16px">
+      <div style="margin-top:8px">
         <div class="section-header">Annual Overview</div>
         <div class="metrics">
           <div class="metric-card"><div class="ml">Annual Gross</div><div class="mv">${formatNaira(calc.annualGross || gross * 12)}</div></div>
@@ -224,7 +224,7 @@ function buildPayslipHtml(line: any, run: any, employee: any, calc: any, org: an
         </div>
       </div>
       ` : `
-      <div style="margin-top:16px">
+      <div style="margin-top:8px">
         <div class="section-header">Payment Info</div>
         <div class="card">
           <div class="card-row"><span class="lb">Bank</span><span class="vl">${employee?.bankName || '—'}</span></div>
