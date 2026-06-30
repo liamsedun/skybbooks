@@ -13,7 +13,7 @@ import {
   journalLines
 } from '../db/schema';
 import { AppError } from '../lib/errors';
-import { createJournalEntry, reverseJournalEntry } from './ledger.service';
+import { createJournalEntry, reverseJournalEntry, isDateInClosedPeriod } from './ledger.service';
 import { getOrgSettings } from './settings.service';
 import Tesseract from 'tesseract.js';
 
@@ -216,6 +216,18 @@ export async function updateExpense(expenseId: string, input: any, userId: strin
       .limit(1);
 
     if (!expense) throw new AppError('Expense not found.', 404);
+
+    // 0. Reject if new date falls in a closed period
+    if (input.date) {
+      const newDate = new Date(input.date);
+      const periodCheck = await isDateInClosedPeriod(expense.orgId, newDate);
+      if (periodCheck.isClosed) {
+        throw new AppError(
+          `Cannot update expense to a date in a closed accounting period. Period ending ${periodCheck.periodEnd?.toISOString().split('T')[0]} was closed on ${periodCheck.closedAt?.toISOString().split('T')[0]}.`,
+          403
+        );
+      }
+    }
 
     // If there is an existing journal entry we must reverse/void it and recreate a clean one
     if (expense.journalEntryId) {

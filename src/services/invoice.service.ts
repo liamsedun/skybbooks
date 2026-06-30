@@ -18,7 +18,7 @@ import {
   inventoryTransactions
 } from '../db/schema';
 import { AppError } from '../lib/errors';
-import { createJournalEntry, reverseJournalEntry } from './ledger.service';
+import { createJournalEntry, reverseJournalEntry, isDateInClosedPeriod } from './ledger.service';
 import { populateFxRate } from './currency.service';
 import { getOrgSettings } from './settings.service';
 
@@ -446,6 +446,18 @@ export async function updateInvoice(id: string, input: any, updatedBy: string): 
     if (!existingInvoice) throw new AppError('Invoice not found.', 404);
     if (existingInvoice.status !== 'draft') {
       throw new AppError('Changes can only be applied to draft invoices.', 400);
+    }
+
+    // 0. Reject if new date falls in a closed period
+    if (input.date) {
+      const newDate = new Date(input.date);
+      const periodCheck = await isDateInClosedPeriod(existingInvoice.orgId, newDate);
+      if (periodCheck.isClosed) {
+        throw new AppError(
+          `Cannot update invoice to a date in a closed accounting period. Period ending ${periodCheck.periodEnd?.toISOString().split('T')[0]} was closed on ${periodCheck.closedAt?.toISOString().split('T')[0]}.`,
+          403
+        );
+      }
     }
 
     // 2. Perform recalculations if new lines are provided

@@ -359,6 +359,21 @@ export const bankingApi = {
   },
 };
 
+export const periodsApi = {
+  getClosedPeriods: async () => {
+    const res = await api.get('/periods/closed');
+    return res.data;
+  },
+  closePeriod: async (data: { periodStart: string; periodEnd: string }) => {
+    const res = await api.post('/periods/close', data);
+    return res.data;
+  },
+  reopenPeriod: async (id: string, confirmed: boolean) => {
+    const res = await api.delete(`/periods/closed/${id}`, { data: { confirmed } });
+    return res.data;
+  }
+};
+
 // 4. Sales Endpoints
 export const salesApi = {
   getInvoices: async (params?: any) => {

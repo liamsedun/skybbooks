@@ -4,7 +4,7 @@
  */
 
 import { eq, and, lte, gte, sql, asc } from 'drizzle-orm';
-import { db, accounts, journalEntries, journalLines, bankAccounts, fixedAssets, contacts, inventoryLots } from '../db/schema';
+import { db, accounts, journalEntries, journalLines, bankAccounts, fixedAssets, contacts, inventoryLots, closedPeriods } from '../db/schema';
 import { AppError } from '../lib/errors';
 import { toNgn, getRateForDate } from './currency.service';
 
@@ -50,6 +50,28 @@ export type TrialBalanceRow = {
 // ==========================================
 
 /**
+ * Checks whether the given date falls within any closed accounting period for the org.
+ */
+export async function isDateInClosedPeriod(orgId: string, date: Date): Promise<{ isClosed: boolean; periodEnd?: Date; closedAt?: Date }> {
+  const closed = await db
+    .select()
+    .from(closedPeriods)
+    .where(
+      and(
+        eq(closedPeriods.orgId, orgId),
+        lte(closedPeriods.periodStart, date),
+        gte(closedPeriods.periodEnd, date)
+      )
+    )
+    .limit(1);
+
+  if (closed.length > 0) {
+    return { isClosed: true, periodEnd: closed[0].periodEnd, closedAt: closed[0].closedAt };
+  }
+  return { isClosed: false };
+}
+
+/**
  * Creates a balanced multi-line double-entry journal entry inside the ledger.
  *
  * @param input Raw transaction payload including org index, date, desc, source type and nested journal lines.
@@ -62,6 +84,15 @@ export async function createJournalEntry(
   tx?: any
 ): Promise<any> {
   const client = tx || db;
+
+  // 0. Reject if date falls in closed period
+  const periodCheck = await isDateInClosedPeriod(input.orgId, input.date);
+  if (periodCheck.isClosed) {
+    throw new AppError(
+      `Cannot post to a closed accounting period. Period ending ${periodCheck.periodEnd?.toISOString().split('T')[0]} was closed on ${periodCheck.closedAt?.toISOString().split('T')[0]}.`,
+      403
+    );
+  }
 
   // 1. Validate line inputs
   if (!input.lines || input.lines.length < 2) {

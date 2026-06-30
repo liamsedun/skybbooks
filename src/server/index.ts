@@ -26,6 +26,7 @@ import journalsRouter from '../routes/journals';
 import budgetsRouter from '../routes/budgets';
 import fixedAssetsRouter from '../routes/fixedAssets';
 import auditLogRouter from '../routes/auditLog';
+import periodsRouter from '../routes/periods';
 
 import { runMigration } from '../db/migrate';
 
@@ -122,6 +123,7 @@ async function startServer() {
   app.use('/api/budgets', budgetsRouter);
   app.use('/api/fixed-assets', fixedAssetsRouter);
   app.use('/api/audit-log', auditLogRouter);
+  app.use('/api/periods', periodsRouter);
 
   app.get('/api/health', (req, res) => {
     res.json({ status: 'healthy', timestamp: new Date().toISOString() });

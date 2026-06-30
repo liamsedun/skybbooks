@@ -660,6 +660,28 @@ export const bankRules = pgTable('bank_rules', {
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
+// --- Closed Periods ---
+
+export const closedPeriods = pgTable('closed_periods', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  periodStart: timestamp('period_start').notNull(),
+  periodEnd: timestamp('period_end').notNull(),
+  closedAt: timestamp('closed_at').defaultNow().notNull(),
+  closedBy: uuid('closed_by').references(() => users.id).notNull()
+});
+
+export const closedPeriodsRelations = relations(closedPeriods, ({ one }) => ({
+  organisation: one(organisations, {
+    fields: [closedPeriods.orgId],
+    references: [organisations.id]
+  }),
+  closer: one(users, {
+    fields: [closedPeriods.closedBy],
+    references: [users.id]
+  })
+}));
+
 // --- Payroll ---
 
 export const employees = pgTable('employees', {
@@ -1515,6 +1537,7 @@ export const db = drizzle(pool, {
     budgetLines,
     auditLog,
     currencyRates,
+    closedPeriods,
 
     // Relations
     organisationsRelations,
@@ -1554,7 +1577,8 @@ export const db = drizzle(pool, {
     budgetsRelations,
     budgetLinesRelations,
     auditLogRelations,
-    currencyRatesRelations
+    currencyRatesRelations,
+    closedPeriodsRelations
   }
 });
 
@@ -1602,6 +1626,7 @@ export const schema = {
   budgets,
   budgetLines,
   auditLog,
-  currencyRates
+  currencyRates,
+  closedPeriods
 };
 

@@ -17,7 +17,7 @@ import {
   inventoryTransactions
 } from '../db/schema';
 import { AppError } from '../lib/errors';
-import { createJournalEntry, reverseJournalEntry } from './ledger.service';
+import { createJournalEntry, reverseJournalEntry, isDateInClosedPeriod } from './ledger.service';
 import { populateFxRate } from './currency.service';
 import { getOrgSettings } from './settings.service';
 
@@ -293,6 +293,18 @@ export async function updateBill(billId: string, input: any, userId: string): Pr
     }
     if (bill.status === 'void') {
       throw new AppError('Void bills cannot be modified.', 400);
+    }
+
+    // 0. Reject if new date falls in a closed period
+    if (input.date) {
+      const newDate = new Date(input.date);
+      const periodCheck = await isDateInClosedPeriod(bill.orgId, newDate);
+      if (periodCheck.isClosed) {
+        throw new AppError(
+          `Cannot update bill to a date in a closed accounting period. Period ending ${periodCheck.periodEnd?.toISOString().split('T')[0]} was closed on ${periodCheck.closedAt?.toISOString().split('T')[0]}.`,
+          403
+        );
+      }
     }
 
     // 2. Clear old lines if lines are provided

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { periodsApi } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
 import { useOrgSettings } from '../../hooks/useOrgSettings';
 import { orgApi, authApi, accountantApi, api } from '../../lib/api';
@@ -215,6 +216,146 @@ function fromOrg(org: OrgData): OrgFormState {
   };
 }
 
+function PeriodManagementContent() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const [showCloseModal, setShowCloseModal] = useState(false);
+  const [closeForm, setCloseForm] = useState({ periodStart: '', periodEnd: '' });
+
+  const { data: closedPeriodsData, isLoading } = useQuery({
+    queryKey: ['closedPeriods'],
+    queryFn: periodsApi.getClosedPeriods,
+  });
+
+  const closeMutation = useMutation({
+    mutationFn: periodsApi.closePeriod,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['closedPeriods'] });
+      setShowCloseModal(false);
+      setCloseForm({ periodStart: '', periodEnd: '' });
+    },
+    onError: (err: any) => {
+      alert(err.response?.data?.message || err.message);
+    }
+  });
+
+  const reopenMutation = useMutation({
+    mutationFn: ({ id, confirmed }: { id: string; confirmed: boolean }) =>
+      periodsApi.reopenPeriod(id, confirmed),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['closedPeriods'] });
+    },
+    onError: (err: any) => {
+      alert(err.response?.data?.message || err.message);
+    }
+  });
+
+  const closedPeriods = closedPeriodsData?.data || [];
+  const isOwnerOrAdmin = user?.role === 'owner' || user?.role === 'admin';
+
+  if (!isOwnerOrAdmin) {
+    return <p className="text-xs text-slate-400">Only owners and administrators can manage accounting periods.</p>;
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-slate-500">{closedPeriods.length} closed period{closedPeriods.length !== 1 ? 's' : ''}</p>
+        <button
+          type="button"
+          onClick={() => setShowCloseModal(true)}
+          className="px-3 py-1.5 text-xs font-bold bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition"
+        >
+          Close Period
+        </button>
+      </div>
+
+      {closedPeriods.length === 0 && (
+        <p className="text-xs text-slate-400 py-3">No accounting periods have been closed yet.</p>
+      )}
+
+      {closedPeriods.map((p: any) => (
+        <div key={p.id} className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg p-3">
+          <div className="text-xs space-y-0.5">
+            <span className="font-semibold text-slate-800">
+              {new Date(p.periodStart).toLocaleDateString('en-GB')} — {new Date(p.periodEnd).toLocaleDateString('en-GB')}
+            </span>
+            <div className="text-slate-400">
+              Closed by {p.closerName || 'Unknown'} on {new Date(p.closedAt).toLocaleDateString('en-GB')}
+            </div>
+          </div>
+          {user?.role === 'owner' && (
+            <button
+              type="button"
+              onClick={() => {
+                if (window.confirm('Re-opening a period allows backdated entries and may affect finalized reports. Continue?')) {
+                  reopenMutation.mutate({ id: p.id, confirmed: true });
+                }
+              }}
+              className="text-xs font-semibold text-amber-600 hover:text-amber-700 px-2 py-1 rounded hover:bg-amber-50 transition"
+            >
+              Re-open
+            </button>
+          )}
+        </div>
+      ))}
+
+      {/* Close Period Modal */}
+      {showCloseModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-sm w-full mx-4 shadow-xl space-y-4">
+            <h3 className="text-sm font-bold text-slate-900">Close Accounting Period</h3>
+            <p className="text-xs text-slate-400">Once closed, journal entries cannot be posted within this date range.</p>
+            <div className="space-y-3">
+              <div>
+                <label className="text-[10px] font-bold uppercase text-slate-400 block mb-1">Period Start</label>
+                <input
+                  type="date"
+                  value={closeForm.periodStart}
+                  onChange={(e) => setCloseForm({ ...closeForm, periodStart: e.target.value })}
+                  className="w-full text-xs border border-slate-200 rounded px-3 py-2 focus:outline-none focus:border-primary"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase text-slate-400 block mb-1">Period End</label>
+                <input
+                  type="date"
+                  value={closeForm.periodEnd}
+                  onChange={(e) => setCloseForm({ ...closeForm, periodEnd: e.target.value })}
+                  className="w-full text-xs border border-slate-200 rounded px-3 py-2 focus:outline-none focus:border-primary"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setShowCloseModal(false)}
+                className="px-4 py-2 text-xs font-medium border border-slate-200 rounded-lg hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!closeForm.periodStart || !closeForm.periodEnd) {
+                    alert('Please select both start and end dates.');
+                    return;
+                  }
+                  closeMutation.mutate(closeForm);
+                }}
+                disabled={closeMutation.isPending}
+                className="px-4 py-2 text-xs font-bold bg-slate-900 text-white rounded-lg hover:bg-slate-800 disabled:opacity-50"
+              >
+                {closeMutation.isPending ? 'Closing...' : 'Close Period'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function OrganisationProfilePage() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -335,6 +476,10 @@ export function OrganisationProfilePage() {
             <FieldWithIcon icon={Receipt} label="VAT / TIN Number (FIRS)" value={form.vatNumber} onChange={f('vatNumber')} placeholder="TIN-00000000-0001" hint="Federal Inland Revenue Service tax ID." />
             <FieldWithIcon icon={Calendar} label="Fiscal Year Start" type="date" value={form.fiscalYearStart} onChange={f('fiscalYearStart')} hint="Day and month your financial year begins." />
           </div>
+        </Section>
+
+        <Section title="Period Management" desc="Close and re-open accounting periods to prevent backdated journal entries.">
+          <PeriodManagementContent />
         </Section>
 
         {/* Read-only info */}
