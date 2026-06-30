@@ -58,7 +58,7 @@ function buildPayslipHtml(line: any, run: any, employee: any, calc: any, org: an
     .header-right{text-align:right}
     .header-right .badge{display:inline-block;background:rgba(255,255,255,0.12);color:#e8f0fe;padding:5px 18px;border-radius:20px;font-size:13px;font-weight:800;letter-spacing:0.05em}
     .header-right .run-id{color:#90aac8;font-size:10px;margin-top:5px;font-weight:600;letter-spacing:0.02em}
-    .body{padding:4px 36px 12px}
+    .body{padding:10px 36px 16px}
     .emp-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #eef1f5}
     .emp-row .name{font-size:17px;font-weight:700;color:#1e3a5f;letter-spacing:-0.01em}
     .emp-row .emp-meta{font-size:10px;color:#6b7a90;margin-top:2px}
@@ -98,7 +98,7 @@ function buildPayslipHtml(line: any, run: any, employee: any, calc: any, org: an
     .metric-card{border:1px solid #e2e8f0;border-radius:8px;padding:10px 7px;text-align:center;background:#fafbfc;box-shadow:0 1px 2px rgba(0,0,0,0.02)}
     .metric-card .ml{font-size:6px;color:#8b9ab0;text-transform:uppercase;letter-spacing:0.06em;font-weight:700;margin-bottom:3px}
     .metric-card .mv{font-size:11px;font-weight:700;color:#0f172a;font-variant-numeric:tabular-nums}
-    .footer{text-align:center;padding:8px 36px;border-top:1px solid #e2e8f0;font-size:7.5px;color:#94a3b8;letter-spacing:0.02em}
+    .footer{text-align:center;padding:14px 36px 10px;border-top:1px solid #e2e8f0;font-size:7.5px;color:#94a3b8;letter-spacing:0.02em}
     @media print{body{background:#fff;padding:0}.page{box-shadow:none;border-radius:0}}
   </style></head><body>
   <div class="page">
@@ -204,7 +204,7 @@ function buildPayslipHtml(line: any, run: any, employee: any, calc: any, org: an
       </div>
 
       ${bands ? `
-      <div style="margin-top:8px;max-width:75%;margin-left:auto;margin-right:auto">
+      <div style="margin-top:16px;max-width:75%;margin-left:auto;margin-right:auto">
         <div class="section-header" style="text-align:center">Tax Band Breakdown</div>
         <div class="card" style="padding:0">
           <table class="bands">
@@ -214,7 +214,7 @@ function buildPayslipHtml(line: any, run: any, employee: any, calc: any, org: an
         </div>
       </div>` : ''}
 
-      <div style="margin-top:8px">
+      <div style="margin-top:16px">
         <div class="section-header">Annual Overview</div>
         <div class="metrics">
           <div class="metric-card"><div class="ml">Annual Gross</div><div class="mv">${formatNaira(calc.annualGross || gross * 12)}</div></div>
