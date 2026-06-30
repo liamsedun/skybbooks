@@ -396,142 +396,177 @@ export async function generatePayslipPDF(payrollLineId: string): Promise<Buffer>
   if (org.email) orgContactItems.push(org.email);
 
   return generatePDFBuffer((doc) => {
-    const TEXT_PRIMARY = '#1f2937';
-    const MUTED_COLOR = '#4b5563';
-    const LIGHT_BG = '#f8fafc';
+    const TEXT_PRIMARY = '#1a1d23';
+    const MUTED_COLOR = '#6b7a90';
+    const LIGHT_BORDER = '#eef1f5';
+    const CARD_BG = '#fafbfc';
+    const SECTION_HDR = '#8b9ab0';
+    const DARK_HEADER = '#0c1424';
     const startX = 40;
     const pageW = 515;
     let y = 30;
 
-    // ── Header Bar ──
-    doc.rect(startX, y, pageW, 48).fill('#0f172a');
-    if (logoBuffer) {
-      doc.image(logoBuffer, startX + 12, y + 7, { width: 32, height: 32 });
-      doc.fillColor('#ffffff').fontSize(13).font('Helvetica-Bold').text(org.name, startX + 52, y + 7);
-    } else {
-      doc.fillColor('#ffffff').fontSize(13).font('Helvetica-Bold').text(org.name, startX + 14, y + 7);
-    }
-    doc.fontSize(7).font('Helvetica').fillColor('#94a3b8').text(orgContactItems.join(' | '), startX + 14, y + 20);
-    doc.fontSize(9).font('Helvetica-Bold').fillColor('#3b82f6').text('PAYSLIP', startX + pageW - 78, y + 7, { align: 'right', width: 65 });
-    doc.fontSize(7).fillColor('#94a3b8').text(run?.runNumber || '', startX + pageW - 78, y + 20, { align: 'right', width: 65 });
-    y += 58;
+    // ── Modern Header ──
+    doc.rect(startX, y, pageW, 52).fill(DARK_HEADER);
+    // Logo initial box
+    doc.roundedRect(startX + 14, y + 10, 32, 32, 8).fillColor('#ffffff').opacity(0.08).fill();
+    doc.opacity(1).fillColor('#ffffff').fontSize(16).font('Helvetica-Bold').text((org.name || 'S').substring(0, 1).toUpperCase(), startX + 26, y + 17);
+    doc.fillColor('#ffffff').fontSize(13).font('Helvetica-Bold').text(org.name, startX + 54, y + 10);
+    doc.fontSize(7).font('Helvetica').fillColor('#8899b4').text(orgContactItems.join(' • '), startX + 54, y + 25);
+    // Badge
+    doc.roundedRect(startX + pageW - 88, y + 10, 78, 18, 10).fillColor('#ffffff').opacity(0.07).fill();
+    doc.opacity(1).fillColor('#60a5fa').fontSize(8).font('Helvetica-Bold').text('PAYSLIP', startX + pageW - 75, y + 13, { align: 'right', width: 52 });
+    doc.fontSize(6.5).fillColor('#5a6d8a').text(run?.runNumber || '', startX + pageW - 88, y + 30, { align: 'right', width: 78 });
+    y += 62;
 
-    // ── Employee Header ──
-    doc.fillColor(TEXT_PRIMARY).fontSize(11).font('Helvetica-Bold').text(`${employee.firstName} ${employee.lastName}`, startX, y);
-    doc.fontSize(7).font('Helvetica').fillColor(MUTED_COLOR);
+    // ── Employee Row (clean two-column) ──
+    doc.fontSize(13).font('Helvetica-Bold').fillColor(TEXT_PRIMARY).text(`${employee.firstName} ${employee.lastName}`, startX, y);
     const empLine = [employee.staffId, employee.department, employee.designation].filter(Boolean).join(' • ');
-    if (empLine) doc.text(empLine, startX, y + 12);
-    if (employee.email) doc.text(employee.email, startX, y + 21);
-    if (employee.phone) doc.text(employee.phone, startX, y + 30);
-    if (employee.address) doc.text(employee.address, startX, y + 39);
+    doc.fontSize(7.5).font('Helvetica').fillColor(MUTED_COLOR);
+    if (empLine) doc.text(empLine, startX, y + 14);
+    if (employee.email) doc.text(employee.email, startX, y + (empLine ? 24 : 14));
+    if (employee.phone) doc.text(employee.phone, startX, y + (empLine ? 33 : (employee.email ? 23 : 14)));
+    if (employee.address) doc.text(employee.address, startX, y + (empLine ? 42 : (employee.email ? 32 : (employee.phone ? 22 : 14))));
 
-    doc.fontSize(7).fillColor(MUTED_COLOR);
-    doc.font('Helvetica').text('Period', startX + pageW - 170, y);
-    doc.font('Helvetica-Bold').fillColor(TEXT_PRIMARY).text(`${formatShortDate(run.periodStart)} – ${formatShortDate(run.periodEnd)}`, startX + pageW - 142, y);
-    doc.font('Helvetica').fillColor(MUTED_COLOR).text('Pay Date', startX + pageW - 170, y + 10);
-    doc.font('Helvetica-Bold').fillColor(TEXT_PRIMARY).text(formatShortDate(run.payDate), startX + pageW - 142, y + 10);
+    // Period on the right
+    doc.fontSize(7).font('Helvetica').fillColor(MUTED_COLOR);
+    doc.text('Period', startX + pageW - 155, y);
+    doc.font('Helvetica-Bold').fillColor(TEXT_PRIMARY).text(`${formatShortDate(run.periodStart)} – ${formatShortDate(run.periodEnd)}`, startX + pageW - 125, y);
+    doc.font('Helvetica').fillColor(MUTED_COLOR).text('Pay Date', startX + pageW - 155, y + 10);
+    doc.font('Helvetica-Bold').fillColor(TEXT_PRIMARY).text(formatShortDate(run.payDate), startX + pageW - 125, y + 10);
 
-    const empBottom = employee.address ? y + 49 : employee.phone ? y + 40 : employee.email ? y + 31 : y + 22;
-    y = empBottom + 12;
+    const empBottom = employee.address ? y + 52 : employee.phone ? y + 43 : employee.email ? y + 33 : y + 24;
+    y = empBottom + 16;
 
-    // ── Two-column Earnings / Statutory Deductions ──
-    // Section header
-    doc.rect(startX, y, pageW, 14).fill(LIGHT_BG);
-    doc.fillColor(TEXT_PRIMARY).fontSize(7).font('Helvetica-Bold').text('EARNINGS', startX + 10, y + 4);
-    doc.text('AMOUNT', startX + 170, y + 4, { align: 'right', width: 55 });
-    doc.text('STATUTORY DEDUCTIONS', startX + 290, y + 4);
-    doc.text('AMOUNT', startX + 465, y + 4, { align: 'right', width: 45 });
+    // Draw separator line
+    doc.moveTo(startX, y).lineTo(startX + pageW, y).strokeColor(LIGHT_BORDER).lineWidth(1).stroke();
     y += 14;
 
-    doc.font('Helvetica').fontSize(8).fillColor(TEXT_PRIMARY);
-    const earns = [
-      { n: 'Basic Salary', v: basicAmt },
-      { n: 'Housing Allowance', v: housingAmt },
-      { n: 'Transport Allowance', v: transportAmt },
-      { n: 'Utilities Allowance', v: utilitiesAmt },
-      { n: 'Meals Allowance', v: mealsAmt },
-      { n: 'Other Allowances', v: otherAllowancesAmt },
-    ];
-    const deducts = [
-      { n: 'PAYE Tax', v: line.paye },
-      { n: 'Pension (EE)', v: line.pensionEmployee },
-      { n: 'NHIS (5% of Basic)', v: nhisVal },
-      { n: 'NHF (2.5% of Basic)', v: line.nhf },
-    ];
+    // ── Two-column Card Layout: Earnings | Statutory Deductions ──
+    const colW = 248;
+    const gap = 19;
+    const leftCol = startX;
+    const rightCol = startX + colW + gap;
 
-    const maxRows = Math.max(earns.length, deducts.length);
-    let rowY = y;
-    for (let i = 0; i < maxRows; i++) {
-      if (i < earns.length) {
-        doc.text(earns[i].n, startX + 10, rowY);
-        doc.text(formatNaira(earns[i].v), startX + 170, rowY, { align: 'right', width: 55 });
-      }
-      if (i < deducts.length) {
-        doc.text(deducts[i].n, startX + 290, rowY);
-        doc.text(formatNaira(deducts[i].v), startX + 465, rowY, { align: 'right', width: 45 });
-      }
-      rowY += 13;
-    }
-
-    // Totals row
-    doc.font('Helvetica-Bold');
-    doc.text('Total Gross', startX + 10, rowY);
-    doc.text(formatNaira(gp), startX + 170, rowY, { align: 'right', width: 55 });
-
-    // Internal deductions below statutory list
-    let totalDedY = rowY;
-    if (intDed.length > 0) {
-      totalDedY += 13;
-      doc.font('Helvetica').fontSize(7).fillColor('#64748b');
-      intDed.forEach((d: any) => {
-        doc.text(`  ${d.description}`, startX + 290, totalDedY);
-        doc.text(formatNaira(d.amount || 0), startX + 465, totalDedY, { align: 'right', width: 45 });
-        totalDedY += 11;
+    // Helper: draw a bordered card
+    function drawCard(d: any, cx: number, cy: number, cw: number, rows: { l: string; v: string; b?: boolean; ital?: boolean }[], total?: { l: string; v: string }) {
+      d.roundedRect(cx, cy, cw, 4, 4).fillColor('#fff').fill();
+      d.roundedRect(cx, cy, cw, 4, 4).lineWidth(1).strokeColor(LIGHT_BORDER).stroke();
+      d.fontSize(7.5).fillColor(TEXT_PRIMARY);
+      rows.forEach((r, idx) => {
+        const ry = cy + 6 + idx * 11;
+        d.rect(cx, ry, cw, 11).fillColor(idx % 2 === 1 ? '#f8f9fb' : '#ffffff').fill();
+        d.fillColor(TEXT_PRIMARY);
+        d.font(r.b ? 'Helvetica-Bold' : r.ital ? 'Helvetica-Oblique' : 'Helvetica');
+        d.text(r.l, cx + 8, ry + 2);
+        d.font(r.b ? 'Helvetica-Bold' : 'Helvetica');
+        d.text(r.v, cx + cw - 8, ry + 2, { align: 'right' });
       });
+      d.fillColor('#ffffff').fill();
+      if (total) {
+        const ty = cy + 6 + rows.length * 11;
+        d.rect(cx, ty, cw, 13).fillColor('#f0f2f5').fill();
+        d.fillColor(TEXT_PRIMARY).font('Helvetica-Bold').fontSize(7.5);
+        d.text(total.l, cx + 8, ty + 3);
+        d.text(total.v, cx + cw - 8, ty + 3, { align: 'right' });
+        return ty + 13;
+      }
+      return cy + 6 + rows.length * 11;
     }
-    doc.font('Helvetica-Bold').fontSize(8).fillColor(TEXT_PRIMARY);
-    doc.text('Total Deductions', startX + 290, totalDedY);
-    doc.text(formatNaira(totalDeducts), startX + 465, totalDedY, { align: 'right', width: 45 });
 
-    y = totalDedY + 18;
+    // Section header
+    doc.fontSize(6.5).font('Helvetica-Bold').fillColor(SECTION_HDR);
+    doc.text('EARNINGS', leftCol, y);
+    doc.text('STATUTORY DEDUCTIONS', rightCol, y);
+    y += 8;
 
-    // ── Net Pay Box ──
-    doc.roundedRect(startX, y, pageW, 32, 6).fill(brandColor);
-    doc.fillColor('#ffffff').fontSize(9).font('Helvetica-Bold').text('NET PAY', startX + 16, y + 9);
-    doc.fontSize(7).font('Helvetica').fillColor('#bfdbfe').text('After all statutory & internal deductions', startX + 16, y + 20);
-    doc.fontSize(16).font('Helvetica-Bold').fillColor('#ffffff').text(formatNaira(line.netPay), startX + pageW - 16, y + 6, { align: 'right' });
-    y += 40;
-
-    // ── Tax Computation Section ──
-    doc.rect(startX, y, pageW, 14).fill(LIGHT_BG);
-    doc.fillColor(TEXT_PRIMARY).fontSize(7).font('Helvetica-Bold').text('TAX COMPUTATION (ANNUAL)', startX + 10, y + 4);
-    y += 14;
-
-    const taxItems: any[] = [
-      { n: 'Annual Gross', v: annualGross },
-      { n: 'Less: Pension (EE)', v: annualPension },
-      { n: 'Less: NHIS', v: annualNHIS },
-      { n: 'Less: NHF', v: annualNHF },
+    // Earnings rows
+    const earns = [
+      { l: 'Basic Salary', v: formatNaira(basicAmt) },
+      { l: 'Housing Allowance', v: formatNaira(housingAmt) },
+      { l: 'Transport Allowance', v: formatNaira(transportAmt) },
+      { l: 'Utilities Allowance', v: formatNaira(utilitiesAmt) },
+      { l: 'Meals Allowance', v: formatNaira(mealsAmt) },
+      { l: 'Other Allowances', v: formatNaira(otherAllowancesAmt) },
     ];
-    if (hasRelief) {
-      taxItems.push({ n: 'Less: Tax Reliefs', v: rentRelief });
-    }
-    taxItems.push(
-      { n: 'Chargeable Income', v: chargeableIncome, b: true },
-      { n: 'Annual PAYE', v: annualPAYE },
-      { n: 'Effective Rate', v: 0, r: `${effectiveRate.toFixed(2)}%` },
-    );
 
-    doc.font('Helvetica').fontSize(8).fillColor(TEXT_PRIMARY);
-    taxItems.forEach((item: any) => {
-      doc.font(item.b ? 'Helvetica-Bold' : 'Helvetica');
-      doc.text(item.n, startX + 10, y);
-      if (item.r) doc.text(item.r, startX + 170, y, { align: 'right', width: 55 });
-      else doc.text(formatNaira(item.v), startX + 170, y, { align: 'right', width: 55 });
-      y += 13;
+    // Deduction rows
+    const deducts: { l: string; v: string; ital?: boolean }[] = [
+      { l: 'PAYE Tax', v: formatNaira(line.paye) },
+      { l: 'Pension (EE)', v: formatNaira(line.pensionEmployee) },
+      { l: 'NHIS', v: formatNaira(nhisVal) },
+      { l: 'NHF', v: formatNaira(line.nhf) },
+    ];
+    intDed.forEach((d: any) => {
+      deducts.push({ l: d.description, v: formatNaira(d.amount || 0), ital: true });
     });
 
-    y += 6;
+    const eTop = drawCard(doc, leftCol, y, colW, earns, { l: 'Total Gross', v: formatNaira(gp) });
+    const dTop = drawCard(doc, rightCol, y, colW, deducts, { l: 'Total Deductions', v: formatNaira(totalDeducts) });
+    y = Math.max(eTop, dTop) + 16;
+
+    // ── Net Pay Panel (gradient look) ──
+    doc.roundedRect(startX, y, pageW, 36, 8).fillColor('#0c1b37').fill();
+    // Simulate gradient with a lighter rect on left
+    doc.roundedRect(startX, y, pageW * 0.55, 36, 8).fillColor('#1a3a6b').fill();
+    doc.fillColor('#a3b8d9').fontSize(8).font('Helvetica-Bold').text('NET PAY', startX + 18, y + 6);
+    doc.fontSize(7).font('Helvetica').fillColor('#7a93bc').text('After all statutory & internal deductions', startX + 18, y + 17);
+    doc.fillColor('#ffffff').fontSize(20).font('Helvetica-Bold').text(formatNaira(line.netPay), startX + pageW - 18, y + 7, { align: 'right' });
+    y += 46;
+
+    // ── Two-column: Tax Computation (Annual) | Payment Info ──
+    doc.fontSize(6.5).font('Helvetica-Bold').fillColor(SECTION_HDR);
+    doc.text('TAX COMPUTATION (ANNUAL)', leftCol, y);
+    doc.text('PAYMENT INFO', rightCol, y);
+    y += 8;
+
+    const taxItems: { l: string; v: string; b?: boolean; ital?: boolean }[] = [
+      { l: 'Annual Gross', v: formatNaira(annualGross) },
+      { l: 'Less: Pension (EE)', v: formatNaira(annualPension) },
+      { l: 'Less: NHIS', v: formatNaira(annualNHIS) },
+      { l: 'Less: NHF', v: formatNaira(annualNHF) },
+    ];
+    if (hasRelief) {
+      taxItems.push({ l: 'Less: Tax Reliefs', v: formatNaira(rentRelief) });
+    }
+    taxItems.push({ l: 'Chargeable Income', v: formatNaira(chargeableIncome), b: true });
+    taxItems.push({ l: 'Annual PAYE', v: formatNaira(annualPAYE) });
+    taxItems.push({ l: 'Effective Rate', v: `${effectiveRate.toFixed(2)}%` });
+
+    const taxEnd = drawCard(doc, leftCol, y, colW, taxItems);
+
+    const payInfoRows = [
+      { l: 'Bank', v: employee.bankName || '—' },
+      { l: 'Account', v: employee.accountNumber || '—' },
+      { l: 'Tax ID', v: employee.taxId || '—' },
+    ];
+    if (employee.pensionPin) payInfoRows.push({ l: 'Pension PIN', v: employee.pensionPin });
+    if (employee.nhfNumber) payInfoRows.push({ l: 'NHF Number', v: employee.nhfNumber });
+
+    const payEnd = drawCard(doc, rightCol, y, colW, payInfoRows);
+    y = Math.max(taxEnd, payEnd) + 14;
+
+    // ── Tax Reliefs (if any) ──
+    if (hasRelief) {
+      doc.fontSize(6.5).font('Helvetica-Bold').fillColor(SECTION_HDR);
+      doc.text('TAX RELIEFS', leftCol, y);
+      y += 8;
+      const reliefRows: { l: string; v: string; b?: boolean; ital?: boolean }[] = [];
+      if ((line.taxRelief || 0) > 0) reliefRows.push({ l: 'Rent Relief', v: formatNaira(line.taxRelief || 0) });
+      if ((line as any).mortgageInterestRelief) reliefRows.push({ l: 'Mortgage Interest', v: formatNaira((line as any).mortgageInterestRelief) });
+      if ((line as any).lifeAssuranceRelief) reliefRows.push({ l: 'Life Assurance', v: formatNaira((line as any).lifeAssuranceRelief) });
+      y = drawCard(doc, leftCol, y, colW, reliefRows) + 14;
+    }
+
+    // ── Employer Contributions ──
+    doc.fontSize(6.5).font('Helvetica-Bold').fillColor(SECTION_HDR);
+    doc.text('EMPLOYER CONTRIBUTIONS', leftCol, y);
+    y += 8;
+    const erRows: { l: string; v: string; b?: boolean; ital?: boolean }[] = [
+      { l: 'Pension (ER 10%)', v: formatNaira(line.pensionEmployer) },
+      { l: 'Total Pension Obligation', v: formatNaira((line.pensionEmployee || 0) + (line.pensionEmployer || 0)), b: true },
+    ];
+    y = drawCard(doc, leftCol, y, colW, erRows) + 16;
 
     // ── Tax Band Breakdown Table ──
     const bands = [
@@ -553,69 +588,54 @@ export async function generatePayslipPDF(payrollLineId: string): Promise<Buffer>
     }
 
     if (bandRows.length > 0) {
-      doc.rect(startX, y, pageW, 14).fill(LIGHT_BG);
-      doc.fillColor(TEXT_PRIMARY).fontSize(7).font('Helvetica-Bold');
-      doc.text('TAX BAND BREAKDOWN', startX + 10, y + 4);
-      doc.text('RATE', startX + 155, y + 4, { align: 'right', width: 35 });
-      doc.text('TAXABLE AMOUNT', startX + 250, y + 4, { align: 'right', width: 80 });
-      doc.text('TAX', startX + 380, y + 4, { align: 'right', width: 60 });
-      y += 14;
+      doc.fontSize(6.5).font('Helvetica-Bold').fillColor(SECTION_HDR);
+      doc.text('TAX BAND BREAKDOWN', startX, y);
+      y += 8;
 
-      doc.font('Helvetica').fontSize(7.5).fillColor(TEXT_PRIMARY);
-      bandRows.forEach((b) => {
-        doc.text(b.name, startX + 8, y);
-        doc.text(`${(b.rate * 100).toFixed(0)}%`, startX + 155, y, { align: 'right', width: 35 });
-        doc.text(formatNaira(b.taxable), startX + 250, y, { align: 'right', width: 80 });
-        doc.text(formatNaira(b.tax), startX + 380, y, { align: 'right', width: 60 });
+      // Table header
+      const bw = [180, 50, 130, 120];
+      doc.roundedRect(startX, y, pageW, 16, 4).fillColor('#f8f9fb').fill();
+      doc.roundedRect(startX, y, pageW, 16, 4).lineWidth(1).strokeColor(LIGHT_BORDER).stroke();
+      doc.fillColor(SECTION_HDR).font('Helvetica-Bold').fontSize(6.5);
+      doc.text('Band', startX + 10, y + 4);
+      doc.text('Rate', startX + bw[0] + 10, y + 4, { align: 'right', width: bw[1] - 20 });
+      doc.text('Taxable Amount', startX + bw[0] + bw[1] + 10, y + 4, { align: 'right', width: bw[2] - 20 });
+      doc.text('Tax', startX + bw[0] + bw[1] + bw[2] + 10, y + 4, { align: 'right', width: bw[3] - 20 });
+      y += 16;
+
+      bandRows.forEach((b, idx) => {
+        if (y > 740) { doc.addPage(); y = 40; }
+        doc.rect(startX, y, pageW, 13).fillColor(idx % 2 === 1 ? '#f8f9fb' : '#ffffff').fill();
+        doc.fillColor(TEXT_PRIMARY).font('Helvetica').fontSize(7);
+        doc.text(b.name, startX + 10, y + 3);
+        doc.text(`${(b.rate * 100).toFixed(0)}%`, startX + bw[0] + 10, y + 3, { align: 'right', width: bw[1] - 20 });
+        doc.text(formatNaira(b.taxable), startX + bw[0] + bw[1] + 10, y + 3, { align: 'right', width: bw[2] - 20 });
+        doc.text(formatNaira(b.tax), startX + bw[0] + bw[1] + bw[2] + 10, y + 3, { align: 'right', width: bw[3] - 20 });
         y += 13;
       });
-      y += 6;
+      y += 10;
     }
 
-    // ── Reliefs (if any) ──
-    if (hasRelief) {
-      doc.rect(startX, y, pageW, 14).fill(LIGHT_BG);
-      doc.fillColor(TEXT_PRIMARY).fontSize(7).font('Helvetica-Bold').text('TAX RELIEFS', startX + 10, y + 4);
-      y += 14;
-      doc.font('Helvetica').fontSize(8).fillColor(TEXT_PRIMARY);
-      doc.text('Rent Relief', startX + 10, y);
-      doc.text(formatNaira(rentRelief), startX + 170, y, { align: 'right', width: 55 });
-      y += 14;
-    }
+    // ── Annual Overview Metrics Grid ──
+    doc.fontSize(6.5).font('Helvetica-Bold').fillColor(SECTION_HDR);
+    doc.text('ANNUAL OVERVIEW', startX, y);
+    y += 8;
 
-    // ── Employer Contributions ──
-    doc.rect(startX, y, pageW / 2 - 6, 40).fill(LIGHT_BG);
-    doc.fillColor(TEXT_PRIMARY).fontSize(7).font('Helvetica-Bold').text('EMPLOYER CONTRIBUTIONS', startX + 8, y + 5);
-    doc.font('Helvetica').fontSize(7).fillColor(MUTED_COLOR);
-    doc.text(`Pension (EE): ${formatNaira(line.pensionEmployee)}`, startX + 8, y + 16);
-    doc.text(`Pension (ER 10%): ${formatNaira(line.pensionEmployer)}`, startX + 8, y + 25);
-    doc.font('Helvetica-Bold').fillColor(TEXT_PRIMARY).text(`Total: ${formatNaira(line.pensionEmployee + line.pensionEmployer)}`, startX + 8, y + 34);
-
-    doc.rect(startX + pageW / 2 + 6, y, pageW / 2 - 6, 40).fill(LIGHT_BG);
-    doc.fillColor(TEXT_PRIMARY).fontSize(7).font('Helvetica-Bold').text('PAYMENT INFO', startX + pageW / 2 + 14, y + 5);
-    doc.font('Helvetica').fontSize(7).fillColor(MUTED_COLOR);
-    doc.text(`Bank: ${employee.bankName || '—'}`, startX + pageW / 2 + 14, y + 16);
-    doc.text(`Account: ${employee.accountNumber || '—'}`, startX + pageW / 2 + 14, y + 25);
-    doc.text(`Tax ID: ${employee.taxId || '—'}`, startX + pageW / 2 + 14, y + 34);
-
-    y += 50;
-
-    // ── Annual Overview Metrics ──
     const metrics = [
       { l: 'Annual Gross', v: formatNaira(annualGross) },
       { l: 'Annual PAYE', v: formatNaira(annualPAYE) },
       { l: 'Monthly PAYE', v: formatNaira(line.paye) },
       { l: 'Annual Net Pay', v: formatNaira(line.netPay * 12) },
     ];
-    const colW = (pageW - 18) / 4;
+    const mw = (pageW - 18) / 4;
     metrics.forEach((m, i) => {
-      const mx = startX + i * (colW + 6);
-      doc.rect(mx, y, colW, 26).fill(LIGHT_BG);
-      doc.fillColor(MUTED_COLOR).fontSize(6.5).font('Helvetica-Bold').text(m.l, mx + 6, y + 4, { width: colW - 12, align: 'center' });
-      doc.fillColor(TEXT_PRIMARY).fontSize(10).font('Helvetica-Bold').text(m.v, mx + 6, y + 13, { width: colW - 12, align: 'center' });
+      const mx = startX + i * (mw + 6);
+      doc.roundedRect(mx, y, mw, 32, 6).fillColor('#fafbfc').fill();
+      doc.roundedRect(mx, y, mw, 32, 6).lineWidth(1).strokeColor(LIGHT_BORDER).stroke();
+      doc.fillColor(SECTION_HDR).fontSize(6).font('Helvetica-Bold').text(m.l, mx + 4, y + 4, { width: mw - 8, align: 'center' });
+      doc.fillColor(TEXT_PRIMARY).fontSize(11).font('Helvetica-Bold').text(m.v, mx + 4, y + 15, { width: mw - 8, align: 'center' });
     });
-
-    y += 34;
+    y += 40;
 
     // ── Footer ──
     doc.fontSize(6.5).fillColor('#94a3b8').text(
