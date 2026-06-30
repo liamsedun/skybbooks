@@ -1,28 +1,26 @@
 # SkyBooks — Session Summary
 
 ## Goal
-Modernise payslip print/PDF with card-based single-page A4 design, org logo, visible CONFIDENTIAL watermark, expanded tax relief breakdown, and compact layout.
+Fix UI issues (dropdowns, datepickers not opening on navigation), align backend payroll formulas with the PAYE calculator spec, and modernise payslip print/PDF layout.
 
 ## Constraints & Preferences
 - Backend: Express + Drizzle ORM + Neon Postgres + TypeScript
 - PAYE calculator spec: `basicSalaryPct` (default 50%) vs `pensionablePortionPct` (default 80%) are separate; allowances computed from their percentage fields; NHIS/NHF toggles; tax bands: 0% first ₦800k, 15% next ₦2.2M, 18% next ₦9M, 21% next ₦13M, 23% next ₦25M, 25% above ₦50M
-- All payslip aesthetic changes must preserve calculation formulas unchanged
+- Native `<select>` and `<input type="date">` fail to open on first conditional render in SPAs — fix uses `key` prop to force DOM remount
+- Payslip redesign must preserve calculation formulas unchanged (cosmetic changes only)
 
 ## Progress
 ### Done
-- Redesigned frontend `buildPayslipHtml()` in `PayslipsPage.tsx` with card-based two-column earnings/deductions layout, gradient net pay panel, band breakdown table, reliefs breakdown, employer contributions, payment info, annual overview metrics grid
-- Redesigned backend `generatePayslipPDF()` in `pdf.service.ts` to match frontend card-based design
-- Extracted `buildPayslipHtml()` module-level helper so both table-row PDF and slideover print use the same modern template
-- Removed per-row PDF button from payslip table; kept only slideover PDF/Print buttons
-- Compacted both frontend and backend to a single A4 portrait page (reduced padding/margins, tuned font sizes to 9-9.5px body, 12-14px headings, 11px metrics)
-- Added faint red "CONFIDENTIAL" watermark diagonally across background (opacity 0.12, 130px font in backend; 0.12, 120px font in frontend)
-- Lightened header background from `#0c1424` to `#1e3a5f`
-- Increased PAYSLIP badge font to 12px (frontend) / 11pt (backend)
-- Added org logo (`org.logoUrl`) rendering in frontend header, falling back to initial letter; backend already had logo support via `logoBuffer`
-- Expanded "Less: Tax Reliefs (Monthly)" to show individual lines for Rent Relief, Mortgage Loan Interest, and Life Insurance (with N0.00 fallback) in both frontend and backend
-- Improved band table styling with dark navy header, alternating row stripes, subtle borders, and card shadows
-- Increased backend PDF font sizes: body 7.5pt, section headers 6.5pt, net pay 16pt, band rows 7pt, metrics 10pt; row height increased from 9→10px, header from 36→38px; section header from 5.5→6.5pt; employee name 12pt; period labels 7.5pt
-- Increased watermark opacity from 0.05 to 0.12 in backend PDF for better visibility
+- Fixed PAYE Schedules, Pension Schedules, Payslips page dropdowns: added `key={runs.length}` to remount `<select>` when data arrives, plus loading state
+- Fixed New Payroll Run date inputs: added `modalKey` counter + `key` on each `<input type="date">` to force fresh DOM on modal open
+- Fixed `calculatePayrollForEmployee()` in `payroll.service.ts`:
+  - Basic salary now uses `basicSalaryPct` (from employee record) instead of `pensionablePortionPct`
+  - Allowances (housing, transport, utilities, meals, others) computed from their respective pct fields instead of hardcoded 0
+  - Pension base stays on `pensionablePortionPct` (separate from basic %)
+- Updated `PayrollCalculation` interface with `utilities`, `meals` fields
+- Updated `generatePayslip()` return payload with allowance breakdown + `taxReliefs` + `employeeContributions` sections
+- Redesigned frontend `printPayslip()` in `PayslipsPage.tsx`: dark header with org initial logo, clean employee row, card-based two-column earnings/deductions, gradient net pay panel, tax computation card, tax band table, reliefs card, employer contributions card, payment info card, annual overview metrics grid
+- Redesigned backend `generatePayslipPDF()` in `pdf.service.ts` with matching modern structure: dark header with logo initial, card-based layout with bordered rows, gradient net pay panel, two-column tax/payment info, band breakdown table, reliefs card, employer contributions card, annual metrics grid, footer
 
 ### In Progress
 - (none)
@@ -31,28 +29,29 @@ Modernise payslip print/PDF with card-based single-page A4 design, org logo, vis
 - (none)
 
 ## Key Decisions
-- `buildPayslipHtml()` extracted as module-level function because `formatNaira` and `fmtDate` are also module-level — all three same-scope helpers use each other freely
-- Single A4 portrait forced via `width:210mm;height:297mm;overflow:hidden` on body (frontend) and compact y-offsets in PDFKit (backend)
-- Watermark uses `rgba(180,40,50,0.12)` — visible but not overpowering, placed via absolute positioning with -35° rotation
-- Table-row PDF removed because the slideover already provides PDF download with full calculation data (band breakdown, annual overview, reliefs)
+- `basicSalaryPct` and `pensionablePortionPct` are kept as separate employee fields per the PAYE calculator spec — basic salary uses `basicSalaryPct`, pension base uses `pensionablePortionPct`
+- `utilities` and `meals` are computed in the calculation return object but not stored in `payroll_lines` table (no migration needed — frontend falls back to deriving from employee pcts on older runs)
+- For conditionally-rendered native HTML elements (`<select>`, `<input type="date">`) that fail to initialise on React Router navigation, adding a dynamic `key` prop forces the browser to create fresh DOM nodes, fixing the native popup/open behaviour
 
 ## Next Steps
-1. Verify Render auto-deploy completes
+1. Push to main and verify Render auto-deploy completes
 2. Test period close flow end-to-end
 3. Test bank reconciliation statement print
 
 ## Critical Context
-- `buildPayslipHtml(line, run, employee, calc, org)` returns full modern HTML; called from `printPayslip()` (via `viewingPayslip` state) and directly from slideover PDF button
-- `openPayslipPrint(html, title)` opens popup and triggers browser print
-- `printPayslip()` still reads from `viewingPayslip` state (slideover)
-- `selectedRun`, `orgData` available in component scope for table-row calls
-- Logo fetched at component level via `orgApi.getOrg()`, field name `logoUrl`
-- Backend PDF uses `logoBuffer` loaded from `org.logoUrl` earlier in `generatePayslipPDF()`
-- PAYE bands hardcoded in both backend calc and PDF rendering (annual scale in kobo)
+- `printWindow()` defined in `src/lib/api.ts:907` — opens popup and triggers browser print
+- All pushes to `origin/main` trigger Render auto-deploy
+- `formatNaira(kobo)` converts kobo to display string with ₦ symbol
+- `fmtDate()` formats ISO date to `DD Mon YYYY`
+- Org data fetched via `orgApi.getOrg()` returns `{ success, data }`
+- PAYE bands hardcoded both in backend calc and PDF rendering (annual scale in kobo)
 
 ## Relevant Files
-- `src/pages/payroll/PayslipsPage.tsx`: `buildPayslipHtml()`, `printPayslip()`, `openPayslipPrint()` — all payslip print/PDF logic; two download buttons (table-row removed, slideover kept)
-- `src/services/pdf.service.ts`: `generatePayslipPDF()` — backend PDF generation with matching card layout, watermark, and compact spacing
+- `src/pages/payroll/PayeSchedulesPage.tsx`: Dropdown fix (loading state + key)
+- `src/pages/payroll/PensionSchedulesPage.tsx`: Dropdown fix (loading state + key)
+- `src/pages/payroll/PayslipsPage.tsx`: Dropdown fix; redesigned `printPayslip()` with card-based modern layout
+- `src/pages/payroll/PayrollRunsPage.tsx`: Datepicker fix (`modalKey` key on date inputs)
+- `src/services/payroll.service.ts`: `calculatePayrollForEmployee()` formula fix (basicSalaryPct, allowance computation); updated `generatePayslip()` payload
+- `src/services/pdf.service.ts`: Redesigned `generatePayslipPDF()` with card-based modern layout
 - `src/db/schema.ts`: `payrollLines` columns (basic, housing, transport, otherAllowances, paye, pensionEmployee, pensionEmployer, nhf, nhis, internalDeductions, netPay, taxRelief, annualGross)
-- `src/services/payroll.service.ts`: `calculatePayrollForEmployee()` formulas, `generatePayslip()` payload with reliefs/contributions
 - `src/lib/api.ts`: `printWindow()`, `orgApi`, `payrollApi`
