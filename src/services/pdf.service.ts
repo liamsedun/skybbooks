@@ -426,7 +426,7 @@ export async function generatePayslipPDF(payrollLineId: string): Promise<Buffer>
     doc.roundedRect(startX + pageW - badgeW - 10, y + 10, badgeW, 22, 11).fillColor('#ffffff').opacity(0.1).fill();
     doc.opacity(1).fillColor('#e8f0fe').fontSize(12).font('Helvetica-Bold').text(`PAYSLIP`, startX + pageW - badgeW - 10 + 12, y + 14, { align: 'left' });
     doc.fillColor('#e8f0fe').fontSize(10).font('Helvetica-Bold').text(run?.runNumber || '', startX + pageW - 12, y + 16, { align: 'right' });
-    y += 62;
+    y += 48;
 
     // ── Employee Row (clean two-column) ──
     doc.fontSize(13).font('Helvetica-Bold').fillColor('#1e3a5f').text(`${employee.firstName} ${employee.lastName}`, startX, y);
@@ -445,11 +445,11 @@ export async function generatePayslipPDF(payrollLineId: string): Promise<Buffer>
     doc.font('Helvetica-Bold').fillColor(TEXT_PRIMARY).text(formatShortDate(run.payDate), startX + pageW - 125, y + 10);
 
     const empBottom = employee.address ? y + 52 : employee.phone ? y + 43 : employee.email ? y + 33 : y + 24;
-    y = empBottom + 16;
+    y = empBottom + 10;
 
     // Draw separator line
     doc.moveTo(startX, y).lineTo(startX + pageW, y).strokeColor(LIGHT_BORDER).lineWidth(1).stroke();
-    y += 14;
+    y += 10;
 
     // ── Two-column Card Layout: Earnings | Statutory Deductions ──
     const colW = 248;
