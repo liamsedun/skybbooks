@@ -58,7 +58,7 @@ router.get('/:id', async (req: AuthenticatedRequest, res: Response, next: NextFu
 router.post('/', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const orgId = req.user!.orgId!;
-    const userId = req.user!.id!;
+    const userId = req.user!.userId;
     const body = journalEntrySchema.parse(req.body);
 
     const totalDebits = body.lines.reduce((s, l) => s + l.debitAmount, 0);
@@ -108,7 +108,7 @@ router.post('/', async (req: AuthenticatedRequest, res: Response, next: NextFunc
 router.post('/import-csv', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const orgId = req.user!.orgId!;
-    const userId = req.user!.id!;
+    const userId = req.user!.userId;
     const { csvData } = req.body;
     if (!csvData || typeof csvData !== 'string' || !csvData.trim()) {
       throw new AppError('CSV data is required.', 400);
@@ -238,7 +238,7 @@ router.post('/import-csv', async (req: AuthenticatedRequest, res: Response, next
 router.post('/:id/reverse', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const orgId = req.user!.orgId!;
-    const userId = req.user!.id!;
+    const userId = req.user!.userId;
     const { id } = req.params;
 
     const [entry] = await db

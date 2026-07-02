@@ -56,7 +56,7 @@ router.get('/:id', async (req: AuthenticatedRequest, res: Response, next: NextFu
 router.post('/', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const orgId = req.user!.orgId!;
-    const userId = req.user!.id!;
+    const userId = req.user!.userId;
     const body = budgetSchema.parse(req.body);
 
     const [budget] = await db
@@ -143,7 +143,7 @@ router.delete('/:id', async (req: AuthenticatedRequest, res: Response, next: Nex
 router.post('/import-csv', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const orgId = req.user!.orgId!;
-    const userId = req.user!.id!;
+    const userId = req.user!.userId;
     const { csvData } = req.body;
     if (!csvData || typeof csvData !== 'string' || !csvData.trim()) {
       throw new AppError('CSV data is required.', 400);
