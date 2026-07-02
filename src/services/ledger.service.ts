@@ -450,6 +450,18 @@ export async function getTrialBalance(
       else if (lineDate >= startDate && lineDate <= endDate) { periodDebits += deb; periodCredits += cred; }
     }
 
+    // Incorporate opening balance set via Edit Opening Balances (accounts.opening_balance)
+    if (acct.openingBalance !== 0) {
+      const ob = acct.openingBalance;
+      if (isDebitBook) {
+        if (ob > 0) openingDebits += ob;
+        else openingCredits += Math.abs(ob);
+      } else {
+        if (ob > 0) openingCredits += ob;
+        else openingDebits += Math.abs(ob);
+      }
+    }
+
     // Fixed assets: if this account is linked to fixed assets, force its balance to match
     const faData = faMap.get(acct.id);
     if (faData && acctType === 'asset') {
