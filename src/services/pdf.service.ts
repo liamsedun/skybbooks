@@ -416,9 +416,19 @@ export async function generatePayslipPDF(payrollLineId: string): Promise<Buffer>
       doc.restore();
       doc.fillColor('#ffffff').fontSize(13).font('Helvetica-Bold').text(org.name, startX + 44, y + 6);
     } else {
-      doc.roundedRect(startX + 12, y + 8, 28, 28, 7).fillColor('#ffffff').opacity(0.1).fill();
-      doc.opacity(1).fillColor('#ffffff').fontSize(16).font('Helvetica-Bold').text((org.name || 'S').substring(0, 1).toUpperCase(), startX + 24, y + 15);
-      doc.fillColor('#ffffff').fontSize(13).font('Helvetica-Bold').text(org.name, startX + 46, y + 6);
+      // SkyBooks house logo (from SkyhouseLogo SVG)
+      const lx = startX + 14;
+      const ly = y + 10;
+      doc.roundedRect(lx, ly, 36, 36, 9).fillColor('#ffffff').opacity(0.1).fill();
+      doc.opacity(1);
+      doc.save();
+      doc.translate(lx + 4, ly + 4);
+      doc.scale(0.28);
+      doc.path('M 12 40 L 50 12 L 88 40').lineWidth(7).strokeColor('#DFB13D').stroke();
+      doc.path('M 26 44 L 26 68 A 24 24 0 0 0 74 68 L 74 44').lineWidth(7).strokeColor('#DFB13D').stroke();
+      doc.path('M 38 92 L 38 76 A 12 12 0 0 1 62 76 L 62 92 Z').fill('#DFB13D');
+      doc.restore();
+      doc.fillColor('#ffffff').fontSize(14).font('Helvetica-Bold').text(org.name, startX + 56, y + 10);
     }
     doc.fontSize(6.5).font('Helvetica').fillColor('#a0b8d4').text(orgContactItems.join(' • '), startX + 44, y + 20);
     // Badge

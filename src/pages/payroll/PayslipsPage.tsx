@@ -52,7 +52,7 @@ function buildPayslipHtml(line: any, run: any, employee: any, calc: any, org: an
     .header-left{display:flex;align-items:center;gap:16px}
     .header-logo{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#fff;overflow:hidden;flex-shrink:0}
     .header-logo img{width:100%;height:100%;object-fit:cover;border-radius:10px}
-    .header-logo .fallback{width:100%;height:100%;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;border-radius:10px}
+    .header-logo svg{width:100%;height:100%;padding:7px}
     .header h1{color:#fff;font-size:16px;font-weight:700;letter-spacing:-0.01em}
     .header .sub{color:#a0b8d4;font-size:8px;margin-top:2px;line-height:1.5}
     .header-right{text-align:right}
@@ -105,7 +105,7 @@ function buildPayslipHtml(line: any, run: any, employee: any, calc: any, org: an
     <div class="header">
       <div class="header-left">
         <div class="header-logo">
-          ${org?.logoUrl ? `<img src="${org.logoUrl}" alt="" />` : `<div class="fallback">${(org?.name || 'S')[0]}</div>`}
+          ${org?.logoUrl ? `<img src="${org.logoUrl}" alt="" />` : `<svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full p-2"><path d="M 12 40 L 50 12 L 88 40" stroke="#DFB13D" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><path d="M 26 44 L 26 68 A 24 24 0 0 0 74 68 L 74 44" stroke="#DFB13D" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><path d="M 38 92 L 38 76 A 12 12 0 0 1 62 76 L 62 92 Z" fill="#DFB13D"/></svg>`}
         </div>
         <div>
           <h1>${org?.name || 'SkyBooks'}</h1>
