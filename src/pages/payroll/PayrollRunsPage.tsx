@@ -63,6 +63,12 @@ export function PayrollRunsPage() {
     onError: (e: any) => setActionMsg({ type: 'error', text: e?.response?.data?.error || e?.message || 'Payment failed.' }),
   });
 
+  const unapproveMutation = useMutation({
+    mutationFn: (id: string) => api.post(`/payroll/runs/${id}/unapprove`).then(r => r.data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['payroll-runs'] }); setActionMsg({ type: 'success', text: 'Payroll run unapproved and journals reversed.' }); setTimeout(() => setActionMsg(null), 4000); },
+    onError: (e: any) => setActionMsg({ type: 'error', text: e?.response?.data?.error || e?.message || 'Unapproval failed.' }),
+  });
+
   const deleteRunMutation = useMutation({
     mutationFn: (id: string) => api.delete(`/payroll/runs/${id}`).then(r => r.data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['payroll-runs'] }); },
@@ -227,6 +233,12 @@ export function PayrollRunsPage() {
                           <button onClick={() => { if (confirm('Mark this payroll run as paid?')) payMutation.mutate(run.id); }} disabled={payMutation.isPending}
                             className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-md disabled:opacity-50">
                             {payMutation.isPending ? <Loader2 size={11} className="animate-spin" /> : <DollarSign size={11} />} Pay
+                          </button>
+                        )}
+                        {run.status === 'approved' && (
+                          <button onClick={() => { if (confirm('Unapprove this payroll run? This will reverse all posted journals.')) unapproveMutation.mutate(run.id); }} disabled={unapproveMutation.isPending}
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-md disabled:opacity-50">
+                            {unapproveMutation.isPending ? <Loader2 size={11} className="animate-spin" /> : <Ban size={11} />} Unapprove
                           </button>
                         )}
                       </div>

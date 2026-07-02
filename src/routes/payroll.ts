@@ -13,6 +13,7 @@ import {
   calculatePayrollForEmployee,
   runPayroll,
   approvePayroll,
+  unapprovePayroll,
   generatePayslip,
   getPayrollSummary
 } from '../services/payroll.service';
@@ -338,6 +339,19 @@ router.post('/runs/:id/approve', async (req: AuthenticatedRequest, res: Response
 
     const approvedRunInfo = await approvePayroll(id, userId);
     return res.status(200).json(approvedRunInfo);
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// Unapprove a payroll run and reverse all posted journals
+router.post('/runs/:id/unapprove', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user!.userId;
+
+    const result = await unapprovePayroll(id, userId);
+    return res.status(200).json(result);
   } catch (err) {
     return next(err);
   }

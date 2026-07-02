@@ -12,7 +12,7 @@ import {
   accounts
 } from '../db/schema';
 import { AppError } from '../lib/errors';
-import { createJournalEntry } from './ledger.service';
+import { createJournalEntry, reverseJournalEntry } from './ledger.service';
 
 export interface TaxBandBreakdown {
   bandName: string;
@@ -702,6 +702,34 @@ export async function approvePayroll(runId: string, approverId: string): Promise
       run: updatedRun,
       journalEntryId: journal.id
     };
+  });
+}
+
+export async function unapprovePayroll(runId: string, userId: string): Promise<any> {
+  return await db.transaction(async (tx) => {
+    const [run] = await tx
+      .select()
+      .from(payrollRuns)
+      .where(eq(payrollRuns.id, runId))
+      .limit(1);
+
+    if (!run) throw new AppError('Payroll run not found.', 404);
+    if (run.status !== 'approved') {
+      throw new AppError('Only approved payroll runs can be unapproved.', 400);
+    }
+    if (!run.journalEntryId) {
+      throw new AppError('No journal entry found to reverse.', 400);
+    }
+
+    await reverseJournalEntry(run.journalEntryId, new Date(), userId);
+
+    const [updatedRun] = await tx
+      .update(payrollRuns)
+      .set({ status: 'draft', journalEntryId: null })
+      .where(eq(payrollRuns.id, runId))
+      .returning();
+
+    return { run: updatedRun };
   });
 }
 
