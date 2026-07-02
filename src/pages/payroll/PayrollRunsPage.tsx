@@ -27,7 +27,7 @@ export function PayrollRunsPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [modalKey, setModalKey] = useState(0);
-  const [form, setForm] = useState({ periodStart: '', periodEnd: '', payDate: '', bankAccountId: '' });
+  const [form, setForm] = useState({ periodStart: '', periodEnd: '', payDate: '', bankAccountId: '', accruedSalaryAccountId: '' });
   const [formError, setFormError] = useState('');
   const [actionMsg, setActionMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [selectedRunIds, setSelectedRunIds] = useState<string[]>([]);
@@ -45,6 +45,11 @@ export function PayrollRunsPage() {
   const { data: bankAccountsData } = useQuery({
     queryKey: ['bank-accounts'],
     queryFn: () => api.get('/banking/accounts').then(r => r.data),
+  });
+
+  const { data: accountsData } = useQuery({
+    queryKey: ['chart-accounts'],
+    queryFn: () => api.get('/accountant/accounts').then(r => r.data),
   });
 
   const runs: any[] = useMemo(() => Array.isArray(runsData) ? runsData : [], [runsData]);
@@ -115,6 +120,7 @@ export function PayrollRunsPage() {
       periodEnd: form.periodEnd,
       payDate: form.payDate,
       bankAccountId: form.bankAccountId || undefined,
+      accruedSalaryAccountId: form.accruedSalaryAccountId || undefined,
     });
   }
 
@@ -150,7 +156,7 @@ export function PayrollRunsPage() {
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
             <Download size={14} /> PDF
           </button>
-          <button onClick={() => { setShowCreate(true); setModalKey(k => k + 1); setForm({ periodStart: '', periodEnd: '', payDate: '', bankAccountId: '' }); setFormError(''); }}
+          <button onClick={() => { setShowCreate(true); setModalKey(k => k + 1); setForm({ periodStart: '', periodEnd: '', payDate: '', bankAccountId: '', accruedSalaryAccountId: '' }); setFormError(''); }}
             className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-900 text-white text-xs font-medium rounded-lg hover:bg-slate-800 transition-colors">
             <Plus size={15} /> Run Payroll
           </button>
@@ -358,6 +364,17 @@ export function PayrollRunsPage() {
                     <option key={ba.id} value={ba.id}>{ba.bankName} — {ba.accountNumber} ({ba.name})</option>
                   ))}
                 </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Accrued Salary Account (optional)</label>
+                <select value={form.accruedSalaryAccountId} onChange={e => setForm({ ...form, accruedSalaryAccountId: e.target.value })}
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10">
+                  <option value="">Direct disbursement (no accrual)</option>
+                  {(Array.isArray(accountsData) ? accountsData : []).filter((a: any) => a.type === 'liability').map((a: any) => (
+                    <option key={a.id} value={a.id}>{a.code} {a.name}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-slate-400 mt-1">If selected, net pay is parked as a liability on approval and settled on payment.</p>
               </div>
               <p className="text-xs text-slate-400">This will calculate payroll for all active employees.</p>
             </div>

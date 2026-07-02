@@ -439,7 +439,7 @@ async function resolveBankAccount(orgId: string, tx: any): Promise<string> {
  */
 export async function runPayroll(
   orgId: string,
-  input: { periodStart: string; periodEnd: string; payDate: string; employeeIds?: string[]; bankAccountId?: string },
+  input: { periodStart: string; periodEnd: string; payDate: string; employeeIds?: string[]; bankAccountId?: string; accruedSalaryAccountId?: string },
   createdBy: string
 ): Promise<any> {
   return await db.transaction(async (tx) => {
@@ -505,6 +505,7 @@ export async function runPayroll(
         totalNhf: cumulativeNhf,
         totalNet: cumulativeNet,
         bankAccountId: input.bankAccountId || null,
+        accruedSalaryAccountId: input.accruedSalaryAccountId || null,
         processedBy: createdBy
       })
       .returning();
@@ -624,6 +625,9 @@ export async function approvePayroll(runId: string, approverId: string): Promise
       bankAccId = await resolveBankAccount(run.orgId, tx);
     }
 
+    // Determine net pay credit target: accrued salary account (if set, park as liability) or Bank (direct disbursement)
+    const netPayCreditAccId = run.accruedSalaryAccountId || bankAccId;
+
     // 4. Construct double-entry journal lines
     const journalLinesPayload: any[] = [];
 
@@ -682,12 +686,14 @@ export async function approvePayroll(runId: string, approverId: string): Promise
       });
     }
 
-    // CR Clearing Bank Account (Net salary disbursed)
+    // CR Net Pay (either bank disbursement or accrued salary liability)
     if (totalNet > 0) {
       journalLinesPayload.push({
-        accountId: bankAccId,
+        accountId: netPayCreditAccId,
         credit: totalNet,
-        description: `Net Wage Salaries Bank Disbursement Transfer for Run ${run.runNumber}`
+        description: run.accruedSalaryAccountId
+          ? `Net Wage Salaries Accrued Liability for Run ${run.runNumber}`
+          : `Net Wage Salaries Bank Disbursement Transfer for Run ${run.runNumber}`
       });
     }
 

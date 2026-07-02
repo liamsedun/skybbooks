@@ -5,7 +5,7 @@
 
 import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { db, employees, payrollRuns, payrollLines } from '../db/schema';
+import { db, employees, payrollRuns, payrollLines, bankAccounts } from '../db/schema';
 import { eq, and, desc, sql, inArray } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
@@ -17,6 +17,7 @@ import {
   generatePayslip,
   getPayrollSummary
 } from '../services/payroll.service';
+import { createJournalEntry } from '../services/ledger.service';
 
 const router = Router();
 
@@ -66,7 +67,8 @@ const runPayrollSchema = z.object({
   periodEnd: z.string().min(1, 'Period end date is required.'),
   payDate: z.string().min(1, 'Disbursement payment date is required.'),
   employeeIds: z.array(z.string().uuid('Invalid employee ID.')).optional(),
-  bankAccountId: z.string().uuid('Invalid bank account ID.').optional()
+  bankAccountId: z.string().uuid('Invalid bank account ID.').optional(),
+  accruedSalaryAccountId: z.string().uuid('Invalid accrued salary account ID.').optional()
 });
 
 // Configure core security session checks on all payroll routes
@@ -362,6 +364,7 @@ router.post('/runs/:id/unapprove', async (req: AuthenticatedRequest, res: Respon
 router.post('/runs/:id/pay', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const orgId = req.user!.orgId!;
+    const userId = req.user!.userId!;
     const { id } = req.params;
 
     const [run] = await db
@@ -375,6 +378,45 @@ router.post('/runs/:id/pay', async (req: AuthenticatedRequest, res: Response, ne
       throw new AppError('Payroll run must be approved before being closed as paid.', 400);
     }
 
+    // If the run used an accrued salary account, transfer from accrual to bank on payment
+    if (run.accruedSalaryAccountId) {
+      // Resolve bank ledger account from the selected bank account
+      let bankAccId: string;
+      if (run.bankAccountId) {
+        const [ba] = await db
+          .select()
+          .from(bankAccounts)
+          .where(eq(bankAccounts.id, run.bankAccountId))
+          .limit(1);
+        if (!ba) throw new AppError('Selected bank account not found.', 404);
+        bankAccId = ba.accountId;
+      } else {
+        throw new AppError('A bank account must be selected when using salary accrual.', 400);
+      }
+
+      // Fetch lines to get exact totalNet
+      const lines = await db
+        .select()
+        .from(payrollLines)
+        .where(eq(payrollLines.runId, id));
+
+      const totalNet = lines.reduce((sum, l) => sum + l.netPay, 0);
+
+      await createJournalEntry({
+        orgId,
+        date: new Date(),
+        description: `Salary accrual settlement — Payroll Run ${run.runNumber}`,
+        reference: run.runNumber,
+        source: 'payroll',
+        sourceId: run.id,
+        createdBy: userId,
+        lines: [
+          { accountId: run.accruedSalaryAccountId, debit: totalNet, description: `Accrued salary drawn down for Run ${run.runNumber}` },
+          { accountId: bankAccId, credit: totalNet, description: `Bank disbursement settlement for Run ${run.runNumber}` }
+        ]
+      });
+    }
+
     // Update status to paid
     const [updatedPay] = await db
       .update(payrollRuns)
@@ -383,13 +425,13 @@ router.post('/runs/:id/pay', async (req: AuthenticatedRequest, res: Response, ne
       .returning();
 
     // Mock bank transfers stub for response
-    const lines = await db
+    const lineRecords = await db
       .select()
       .from(payrollLines)
       .innerJoin(employees, eq(payrollLines.employeeId, employees.id))
       .where(eq(payrollLines.runId, id));
 
-    const transferStubLogs = lines.map((line) => ({
+    const transferStubLogs = lineRecords.map((line) => ({
       employeeName: `${line.employees.firstName} ${line.employees.lastName}`,
       bankName: line.employees.bankName || 'Unknown Bank',
       accountNumber: line.employees.accountNumber || '0000000000',
