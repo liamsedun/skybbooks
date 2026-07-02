@@ -204,6 +204,17 @@ export async function runMigration() {
         AND je.id = jl.entry_id
         AND je.source = 'bill'
     `);
+    // Ensure closed_periods table exists (accounting period closure tracking)
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS closed_periods (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        period_start timestamp NOT NULL,
+        period_end timestamp NOT NULL,
+        closed_at timestamp DEFAULT now() NOT NULL,
+        closed_by uuid REFERENCES users(id) NOT NULL
+      );
+    `);
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema push:', err);
