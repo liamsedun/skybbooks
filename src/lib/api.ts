@@ -201,7 +201,15 @@ export const authApi = {
   },
 };
 
-// 2. Organisation Management
+// 2b. Platform Branding
+export const platformApi = {
+  getBranding: async (): Promise<{ developerLogoUrl: string | null }> => {
+    const res = await api.get('/platform/branding');
+    return res.data;
+  },
+};
+
+// 2c. Organisation Management
 export const orgApi = {
   inviteUser: async (data: { name: string; email: string; role: string }) => {
     const res = await api.post('/org/invite', data);

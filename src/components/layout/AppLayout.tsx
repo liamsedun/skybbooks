@@ -37,6 +37,7 @@ import { usePermissions } from '../../hooks/usePermissions';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { Footer } from './Footer';
 import { SkyhouseLogo } from '../ui/SkyhouseLogo';
+import { usePlatformBranding } from '../../hooks/usePlatformBranding';
 
 interface AppLayoutProps {
   currentView?: string;
@@ -59,6 +60,7 @@ interface NavGroup {
 export function AppLayout({ currentView, onViewChange, children }: AppLayoutProps) {
   const { user, organisation, logout } = useAuth();
   const { role, hasModuleAccess } = usePermissions();
+  const { developerLogoUrl } = usePlatformBranding();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -318,7 +320,11 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
         {/* Brand visual header area */}
         <div className="h-16 px-5 border-b border-slate-50 flex items-center justify-between">
           <div className="flex items-center space-x-3 select-none">
-            <SkyhouseLogo className="w-9 h-9 drop-shadow-sm shrink-0" />
+            {developerLogoUrl ? (
+              <img src={developerLogoUrl} alt="" className="w-8 h-8 rounded object-contain shrink-0" />
+            ) : (
+              <SkyhouseLogo className="w-9 h-9 drop-shadow-sm shrink-0" />
+            )}
             <div>
               <h2 className="text-sm font-extrabold text-slate-800 uppercase tracking-widest leading-none">SkyBooks</h2>
               <span className="text-[10px] text-slate-400 font-bold tracking-widest font-mono uppercase mt-1 inline-block">Books Engine</span>

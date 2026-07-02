@@ -161,6 +161,15 @@ function ContactRow({ tone = 'dark' }: { tone?: 'dark' | 'light' }) {
 // =========================================================================
 
 function AuthShell({ children }: { children: React.ReactNode }) {
+  const [devLogo, setDevLogo] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch('/api/platform/branding')
+      .then(r => r.json())
+      .then(d => setDevLogo(d.developerLogoUrl || null))
+      .catch(() => {});
+  }, []);
+
   return (
     <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 lg:p-8">
       <style>{`
@@ -190,8 +199,8 @@ function AuthShell({ children }: { children: React.ReactNode }) {
         <div className="hidden lg:flex relative flex-col justify-between bg-gradient-to-br from-indigo-950 via-indigo-900 to-violet-900 p-10 text-white overflow-hidden">
           <div>
             <div className="flex items-center gap-2.5">
-              <span className="w-9 h-9 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center">
-                <SkyhouseMark className="w-5 h-5 text-amber-300" />
+              <span className="w-9 h-9 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center overflow-hidden p-1.5">
+                {devLogo ? <img src={devLogo} alt="" className="w-full h-full object-contain" /> : <SkyhouseMark className="w-full h-full text-amber-300" />}
               </span>
               <div>
                 <h1 className="text-lg font-bold tracking-tight leading-none">SkyBooks</h1>
@@ -234,8 +243,8 @@ function AuthShell({ children }: { children: React.ReactNode }) {
         <div className="flex flex-col p-6 sm:p-10 lg:p-12">
           {/* Mobile-only compact header */}
           <div className="flex lg:hidden items-center gap-2.5 mb-8">
-            <span className="w-8 h-8 rounded-lg bg-indigo-950 flex items-center justify-center">
-              <SkyhouseMark className="w-4.5 h-4.5 text-amber-300" />
+            <span className="w-8 h-8 rounded-lg bg-indigo-950 flex items-center justify-center overflow-hidden p-1.5">
+              {devLogo ? <img src={devLogo} alt="" className="w-full h-full object-contain" /> : <SkyhouseMark className="w-full h-full text-amber-300" />}
             </span>
             <h1 className="text-base font-bold text-slate-900 tracking-tight">SkyBooks</h1>
           </div>
