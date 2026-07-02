@@ -38,6 +38,7 @@ import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { Footer } from './Footer';
 import { SkyhouseLogo } from '../ui/SkyhouseLogo';
 import { usePlatformBranding } from '../../hooks/usePlatformBranding';
+import { useNotifications } from '../../hooks/useNotifications';
 
 interface AppLayoutProps {
   currentView?: string;
@@ -61,6 +62,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
   const { user, organisation, logout } = useAuth();
   const { role, hasModuleAccess } = usePermissions();
   const { developerLogoUrl } = usePlatformBranding();
+  const { notifications, unreadCount } = useNotifications();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -488,15 +490,17 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
                 className="p-1.5 md:p-2 border border-slate-150 rounded-xl hover:bg-slate-50 hover:text-primary transition relative outline-none cursor-pointer"
               >
                 <Bell className="w-4 h-4 md:w-4.5 md:h-4.5 text-slate-500" />
-                <span className="absolute -top-0.5 -right-0.5 md:-top-1 md:-right-1 bg-primary text-white border-2 border-white rounded-full h-3.5 w-3.5 md:h-4.5 md:w-4.5 text-[7px] md:text-[8px] font-bold flex items-center justify-center animate-pulse">
-                  3
-                </span>
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 md:-top-1 md:-right-1 bg-primary text-white border-2 border-white rounded-full h-3.5 w-3.5 md:h-4.5 md:w-4.5 text-[7px] md:text-[8px] font-bold flex items-center justify-center">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
               </button>
 
               {showNotifications && (
-                <div className="absolute right-0 mt-3.5 w-72 max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-xl border border-slate-100 z-50 p-4 space-y-2 text-[11px] font-medium" id="header-notifications-popup">
-                  <div className="font-extrabold text-ink-900 border-b border-slate-50 pb-2 mb-2 flex justify-between items-center text-xs">
-                    <span>Recent Audit Events</span>
+                <div className="absolute right-0 mt-3.5 w-80 max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-xl border border-slate-100 z-50 p-4 space-y-1.5 text-[11px] font-medium" id="header-notifications-popup">
+                  <div className="font-extrabold text-ink-900 border-b border-slate-50 pb-2 mb-1 flex justify-between items-center text-xs">
+                    <span>Notifications</span>
                     <span 
                       onClick={() => setShowNotifications(false)}
                       className="text-primary cursor-pointer font-bold hover:underline"
@@ -504,15 +508,26 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
                       Dismiss
                     </span>
                   </div>
-                  <div className="p-2 hover:bg-primary-light/30 rounded-lg border border-transparent hover:border-primary-light transition text-ink-600">
-                    📢 <strong>Bank sync:</strong> 15 new transactions imported and auto-matched with payment rules.
-                  </div>
-                  <div className="p-2 hover:bg-primary-light/30 rounded-lg border border-transparent hover:border-primary-light transition text-ink-600">
-                    💰 <strong>Payroll Approved:</strong> Run #06/2026 approved by owner. Payslip generation completed.
-                  </div>
-                  <div className="p-2 hover:bg-primary-light/30 rounded-lg border border-transparent hover:border-primary-light transition text-ink-600 text-amber-700">
-                    ⚠️ <strong>Overdue Invoices:</strong> Apex Retail invoice INV-1031 is overdue. Re-sent auto-notice.
-                  </div>
+                  {notifications.length === 0 ? (
+                    <div className="text-center py-6 text-slate-400">No notifications</div>
+                  ) : (
+                    notifications.map((n) => (
+                      <div
+                        key={n.id}
+                        onClick={() => { navigate(n.link); setShowNotifications(false); }}
+                        className={`flex items-start gap-2 p-2 rounded-lg border border-transparent transition cursor-pointer ${
+                          n.severity === 'error'
+                            ? 'hover:bg-red-50 hover:border-red-100 text-red-700'
+                            : n.severity === 'warning'
+                            ? 'hover:bg-amber-50 hover:border-amber-100 text-amber-700'
+                            : 'hover:bg-blue-50 hover:border-blue-100 text-slate-600'
+                        }`}
+                      >
+                        <span className="text-sm">{n.icon}</span>
+                        <span className="flex-1">{n.message}</span>
+                      </div>
+                    ))
+                  )}
                 </div>
               )}
             </div>

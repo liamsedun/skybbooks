@@ -209,6 +209,22 @@ export const platformApi = {
   },
 };
 
+export interface NotificationItem {
+  id: string;
+  icon: string;
+  message: string;
+  severity: 'info' | 'warning' | 'error';
+  link: string;
+  timestamp: string;
+}
+
+export const notificationsApi = {
+  getNotifications: async (): Promise<NotificationItem[]> => {
+    const res = await api.get('/notifications');
+    return res.data;
+  },
+};
+
 // 2c. Organisation Management
 export const orgApi = {
   inviteUser: async (data: { name: string; email: string; role: string }) => {
