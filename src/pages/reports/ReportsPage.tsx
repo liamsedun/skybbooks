@@ -104,7 +104,15 @@ export function TrialBalancePage() {
 
   const handleExport = (format: 'pdf' | 'csv') => {
     if (format === 'csv') {
-      apiDownload(`/reports/trial-balance?format=csv&startDate=${sDate}&endDate=${eDate}`, `trial_balance_${sDate}_to_${eDate}.csv`);
+      const headers = ['Account Code', 'Account Name', 'Type', 'Debit (NGN)', 'Credit (NGN)'];
+      const csvRows = rawRows.map((r: any) => [
+        r.accountCode || '',
+        `"${(r.accountName || '').replace(/"/g, '""')}"`,
+        r.accountType || '',
+        ((r.closingDebit || 0) / 100).toFixed(2),
+        ((r.closingCredit || 0) / 100).toFixed(2),
+      ]);
+      exportToCsv(`trial_balance_${sDate}_to_${eDate}.csv`, headers, csvRows);
     } else {
       try {
         const rows = rawRows.map((r: any) =>
