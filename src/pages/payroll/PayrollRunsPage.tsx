@@ -29,6 +29,7 @@ export function PayrollRunsPage() {
   const [modalKey, setModalKey] = useState(0);
   const [form, setForm] = useState({ periodStart: '', periodEnd: '', payDate: '' });
   const [formError, setFormError] = useState('');
+  const [actionMsg, setActionMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [selectedRunIds, setSelectedRunIds] = useState<string[]>([]);
 
   const { data: runsData, isLoading } = useQuery({
@@ -52,12 +53,14 @@ export function PayrollRunsPage() {
 
   const approveMutation = useMutation({
     mutationFn: (id: string) => api.post(`/payroll/runs/${id}/approve`).then(r => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['payroll-runs'] }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['payroll-runs'] }); setActionMsg({ type: 'success', text: 'Payroll run approved successfully.' }); setTimeout(() => setActionMsg(null), 4000); },
+    onError: (e: any) => setActionMsg({ type: 'error', text: e?.response?.data?.error || e?.message || 'Approval failed. Check that all required ledger accounts exist.' }),
   });
 
   const payMutation = useMutation({
     mutationFn: (id: string) => api.post(`/payroll/runs/${id}/pay`).then(r => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['payroll-runs'] }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['payroll-runs'] }); setActionMsg({ type: 'success', text: 'Payroll run paid successfully.' }); setTimeout(() => setActionMsg(null), 4000); },
+    onError: (e: any) => setActionMsg({ type: 'error', text: e?.response?.data?.error || e?.message || 'Payment failed.' }),
   });
 
   const deleteRunMutation = useMutation({
@@ -142,6 +145,13 @@ export function PayrollRunsPage() {
         </div>
       </div>
 
+      {actionMsg && (
+        <div className={`flex items-center gap-2 p-3 rounded-lg text-sm ${actionMsg.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+          {actionMsg.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+          {actionMsg.text}
+        </div>
+      )}
+
       {isLoading ? (
         <div className="flex items-center justify-center py-16 text-slate-400 bg-white border border-slate-200 rounded-xl">
           <Loader2 size={20} className="animate-spin mr-2" /> Loading runs...
@@ -204,8 +214,8 @@ export function PayrollRunsPage() {
                         {run.status === 'draft' && (
                           <>
                             <button onClick={() => approveMutation.mutate(run.id)} disabled={approveMutation.isPending}
-                              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 rounded-md">
-                              <CheckCircle2 size={11} /> Approve
+                              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 rounded-md disabled:opacity-50">
+                              {approveMutation.isPending ? <Loader2 size={11} className="animate-spin" /> : <CheckCircle2 size={11} />} Approve
                             </button>
                             <button onClick={() => { if (confirm('Delete this payroll run? This cannot be undone.')) deleteRunMutation.mutate(run.id); }} disabled={deleteRunMutation.isPending}
                               className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-md">
@@ -215,8 +225,8 @@ export function PayrollRunsPage() {
                         )}
                         {run.status === 'approved' && (
                           <button onClick={() => { if (confirm('Mark this payroll run as paid?')) payMutation.mutate(run.id); }} disabled={payMutation.isPending}
-                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-md">
-                            <DollarSign size={11} /> Pay
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-md disabled:opacity-50">
+                            {payMutation.isPending ? <Loader2 size={11} className="animate-spin" /> : <DollarSign size={11} />} Pay
                           </button>
                         )}
                       </div>
