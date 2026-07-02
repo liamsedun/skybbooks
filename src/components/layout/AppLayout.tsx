@@ -449,8 +449,12 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
 
           {/* Org Display capsule with selector */}
           <div className="flex items-center space-x-2.5 sm:space-x-3.5 select-none" id="org-display-bubble">
-            <div className="w-7 h-7 bg-primary-light text-primary rounded-lg flex items-center justify-center text-xs font-bold shadow-sm uppercase shrink-0">
-              {orgInitials}
+            <div className="w-7 h-7 bg-primary-light text-primary rounded-lg flex items-center justify-center text-xs font-bold shadow-sm uppercase shrink-0 overflow-hidden">
+              {developerLogoUrl ? (
+                <img src={developerLogoUrl} alt="" className="w-full h-full object-contain" />
+              ) : (
+                orgInitials
+              )}
             </div>
             <div>
               <div className="hidden sm:block">
