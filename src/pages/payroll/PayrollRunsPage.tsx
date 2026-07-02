@@ -27,7 +27,7 @@ export function PayrollRunsPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [modalKey, setModalKey] = useState(0);
-  const [form, setForm] = useState({ periodStart: '', periodEnd: '', payDate: '' });
+  const [form, setForm] = useState({ periodStart: '', periodEnd: '', payDate: '', bankAccountId: '' });
   const [formError, setFormError] = useState('');
   const [actionMsg, setActionMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [selectedRunIds, setSelectedRunIds] = useState<string[]>([]);
@@ -40,6 +40,11 @@ export function PayrollRunsPage() {
   const { data: employeesData } = useQuery({
     queryKey: ['payroll-employees'],
     queryFn: () => api.get('/payroll/employees').then(r => r.data),
+  });
+
+  const { data: bankAccountsData } = useQuery({
+    queryKey: ['bank-accounts'],
+    queryFn: () => api.get('/banking/accounts').then(r => r.data),
   });
 
   const runs: any[] = useMemo(() => Array.isArray(runsData) ? runsData : [], [runsData]);
@@ -109,6 +114,7 @@ export function PayrollRunsPage() {
       periodStart: form.periodStart,
       periodEnd: form.periodEnd,
       payDate: form.payDate,
+      bankAccountId: form.bankAccountId || undefined,
     });
   }
 
@@ -144,7 +150,7 @@ export function PayrollRunsPage() {
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
             <Download size={14} /> PDF
           </button>
-          <button onClick={() => { setShowCreate(true); setModalKey(k => k + 1); setForm({ periodStart: '', periodEnd: '', payDate: '' }); setFormError(''); }}
+          <button onClick={() => { setShowCreate(true); setModalKey(k => k + 1); setForm({ periodStart: '', periodEnd: '', payDate: '', bankAccountId: '' }); setFormError(''); }}
             className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-900 text-white text-xs font-medium rounded-lg hover:bg-slate-800 transition-colors">
             <Plus size={15} /> Run Payroll
           </button>
@@ -342,6 +348,16 @@ export function PayrollRunsPage() {
                 <label className="block text-xs font-medium text-slate-500 mb-1">Pay Date *</label>
                 <input key={`pd-${modalKey}`} type="date" value={form.payDate} onChange={e => setForm({ ...form, payDate: e.target.value })}
                   className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Disburse From *</label>
+                <select value={form.bankAccountId} onChange={e => setForm({ ...form, bankAccountId: e.target.value })}
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10">
+                  <option value="">Select bank account</option>
+                  {(Array.isArray(bankAccountsData) ? bankAccountsData : []).map((ba: any) => (
+                    <option key={ba.id} value={ba.id}>{ba.bankName} — {ba.accountNumber} ({ba.name})</option>
+                  ))}
+                </select>
               </div>
               <p className="text-xs text-slate-400">This will calculate payroll for all active employees.</p>
             </div>

@@ -9,6 +9,7 @@ import {
   employees,
   payrollRuns,
   payrollLines,
+  bankAccounts,
   accounts
 } from '../db/schema';
 import { AppError } from '../lib/errors';
@@ -438,7 +439,7 @@ async function resolveBankAccount(orgId: string, tx: any): Promise<string> {
  */
 export async function runPayroll(
   orgId: string,
-  input: { periodStart: string; periodEnd: string; payDate: string; employeeIds?: string[] },
+  input: { periodStart: string; periodEnd: string; payDate: string; employeeIds?: string[]; bankAccountId?: string },
   createdBy: string
 ): Promise<any> {
   return await db.transaction(async (tx) => {
@@ -503,6 +504,7 @@ export async function runPayroll(
         totalPension: cumulativePension,
         totalNhf: cumulativeNhf,
         totalNet: cumulativeNet,
+        bankAccountId: input.bankAccountId || null,
         processedBy: createdBy
       })
       .returning();
@@ -607,7 +609,20 @@ export async function approvePayroll(runId: string, approverId: string): Promise
     const pensionPayableAccId = await resolvePensionPayableAccount(run.orgId, tx);
     const nhfPayableAccId = await resolveNhfPayableAccount(run.orgId, tx);
     const otherDeductionsAccId = await resolveOtherDeductionsAccount(run.orgId, tx);
-    const bankAccId = await resolveBankAccount(run.orgId, tx);
+
+    // Resolve bank ledger account: use the user-selected bank account if set, else auto-resolve
+    let bankAccId: string;
+    if (run.bankAccountId) {
+      const [ba] = await tx
+        .select()
+        .from(bankAccounts)
+        .where(eq(bankAccounts.id, run.bankAccountId))
+        .limit(1);
+      if (!ba) throw new AppError('Selected bank account not found.', 404);
+      bankAccId = ba.accountId;
+    } else {
+      bankAccId = await resolveBankAccount(run.orgId, tx);
+    }
 
     // 4. Construct double-entry journal lines
     const journalLinesPayload: any[] = [];

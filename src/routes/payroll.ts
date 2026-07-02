@@ -65,7 +65,8 @@ const runPayrollSchema = z.object({
   periodStart: z.string().min(1, 'Period start date is required.'),
   periodEnd: z.string().min(1, 'Period end date is required.'),
   payDate: z.string().min(1, 'Disbursement payment date is required.'),
-  employeeIds: z.array(z.string().uuid('Invalid employee ID.')).optional()
+  employeeIds: z.array(z.string().uuid('Invalid employee ID.')).optional(),
+  bankAccountId: z.string().uuid('Invalid bank account ID.').optional()
 });
 
 // Configure core security session checks on all payroll routes

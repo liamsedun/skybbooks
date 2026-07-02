@@ -215,6 +215,8 @@ export async function runMigration() {
         closed_by uuid REFERENCES users(id) NOT NULL
       );
     `);
+    // Add bank_account_id to payroll_runs for user-selected disbursement bank account
+    await db.execute(`ALTER TABLE payroll_runs ADD COLUMN IF NOT EXISTS bank_account_id uuid REFERENCES bank_accounts(id)`);
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema push:', err);

@@ -736,6 +736,7 @@ export const payrollRuns = pgTable('payroll_runs', {
   totalNhf: bigint('total_nhf', { mode: 'number' }).default(0).notNull(),
   totalNet: bigint('total_net', { mode: 'number' }).default(0).notNull(),
   journalEntryId: uuid('journal_entry_id').references(() => journalEntries.id),
+  bankAccountId: uuid('bank_account_id').references(() => bankAccounts.id),
   processedBy: uuid('processed_by').references(() => users.id),
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
