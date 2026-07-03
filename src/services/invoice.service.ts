@@ -510,8 +510,8 @@ export async function updateInvoice(id: string, input: any, updatedBy: string): 
       total = subtotal - totalDiscount + totalTax;
     }
 
-    const amountPaid = 0; 
-    const balanceDue = total;
+    const amountPaid = existingInvoice.amountPaid;
+    const balanceDue = hasLinesUpdate ? Math.max(0, total - amountPaid) : existingInvoice.balanceDue;
 
     // Update parent invoice
     const [updatedInvoice] = await tx

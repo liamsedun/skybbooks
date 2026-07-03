@@ -200,7 +200,7 @@ export async function applyCreditNote(cnId: string, invoiceId: string, amount: n
 
     // 3. Update invoice
     const nextAmountPaid = invoice.amountPaid + amount;
-    const nextBalanceDue = invoice.total - nextAmountPaid;
+    const nextBalanceDue = invoice.balanceDue - amount;
     const nextInvoiceStatus = nextBalanceDue <= 0 ? 'paid' : 'partial';
 
     await tx

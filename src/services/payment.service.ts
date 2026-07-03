@@ -169,7 +169,7 @@ export async function recordPaymentReceived(input: any, createdBy: string): Prom
 
       const allocAmt = Number(alloc.amount);
       const nextAmountPaid = invoice.amountPaid + allocAmt;
-      const nextBalanceDue = invoice.total - nextAmountPaid;
+      const nextBalanceDue = invoice.balanceDue - allocAmt;
       const nextStatus = nextBalanceDue <= 0 ? 'paid' : 'partial';
 
       // Update invoice fields
@@ -345,7 +345,7 @@ export async function updatePaymentReceived(paymentId: string, orgId: string, in
       const [invoice] = await tx.select().from(invoices).where(eq(invoices.id, alloc.invoiceId)).limit(1);
       const allocAmt = Number(alloc.amount);
       const nextAmountPaid = invoice.amountPaid + allocAmt;
-      const nextBalanceDue = invoice.total - nextAmountPaid;
+      const nextBalanceDue = invoice.balanceDue - allocAmt;
       const nextStatus = nextBalanceDue <= 0 ? 'paid' : 'partial';
 
       await tx
@@ -584,7 +584,7 @@ export async function recordPaymentMade(input: any, createdBy: string): Promise<
 
       const allocAmt = Number(alloc.amount);
       const nextAmountPaid = bill.amountPaid + allocAmt;
-      const nextBalanceDue = bill.total - nextAmountPaid;
+      const nextBalanceDue = bill.balanceDue - allocAmt;
       const nextStatus = nextBalanceDue <= 0 ? 'paid' : 'partial';
 
       await tx

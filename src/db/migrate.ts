@@ -260,6 +260,29 @@ export async function runMigration() {
       }
       console.log(`[Migration] Duplicate customer merge complete.`);
     }
+    // Recalculate invoices amount_paid/balance_due from actual payment allocations
+    // (fixes corruption caused by updateInvoice previously resetting amountPaid to 0 on edit)
+    const fixedInvoices = await db.execute(`
+      UPDATE invoices SET
+        amount_paid = COALESCE(allocs.paid, 0),
+        balance_due = invoices.total - COALESCE(allocs.paid, 0),
+        status = CASE
+          WHEN invoices.status IN ('draft', 'void') THEN invoices.status
+          WHEN invoices.total - COALESCE(allocs.paid, 0) <= 0 THEN 'paid'
+          WHEN COALESCE(allocs.paid, 0) > 0 THEN 'partial'
+          ELSE invoices.status
+        END
+      FROM (
+        SELECT invoice_id, SUM(amount) as paid
+        FROM payment_allocations
+        GROUP BY invoice_id
+      ) allocs
+      WHERE invoices.id = allocs.invoice_id
+        AND (invoices.amount_paid != COALESCE(allocs.paid, 0) OR invoices.balance_due != invoices.total - COALESCE(allocs.paid, 0))
+    `);
+    if (fixedInvoices.rowCount && fixedInvoices.rowCount > 0) {
+      console.log(`[Migration] Fixed ${fixedInvoices.rowCount} invoice(s) with mismatched amount_paid/balance_due.`);
+    }
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema push:', err);
