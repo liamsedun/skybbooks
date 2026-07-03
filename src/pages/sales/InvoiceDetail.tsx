@@ -172,6 +172,8 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
 
   const handlePdfDownload = async () => {
     try {
+      const printArea = document.getElementById('invoice-pdf-mock-container');
+      if (printArea) { window.print(); return; }
       const blob = await salesApi.getInvoicePdf(invoiceId);
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
