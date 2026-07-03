@@ -541,13 +541,12 @@ export async function getTrialBalance(
       debit += childAgg.debit;
       credit += childAgg.credit;
     }
+    if (row) { row.closingDebit = debit; row.closingCredit = credit; }
     return { debit, credit };
   }
   for (const acct of orgAccounts) {
     if (acct.parentId || !parentChildren.has(acct.id)) continue;
-    const agg = aggregateParent(acct.id);
-    const row = resultMap.get(acct.id);
-    if (row) { row.closingDebit = agg.debit; row.closingCredit = agg.credit; }
+    aggregateParent(acct.id);
   }
 
   // System suspense account absorbs unreconciled sub-ledger vs GL differences
