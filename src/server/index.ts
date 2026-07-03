@@ -93,6 +93,7 @@ async function startServer() {
     message: { error: 'Too many requests. Please try again later.' },
     standardHeaders: true,
     legacyHeaders: false,
+    validate: { xForwardedForHeader: false },
     skip: () => process.env.NODE_ENV !== 'production'
   });
 
@@ -102,6 +103,7 @@ async function startServer() {
     message: { error: 'Too many authentication attempts. Please try again in a minute.' },
     standardHeaders: true,
     legacyHeaders: false,
+    validate: { xForwardedForHeader: false },
     skip: () => process.env.NODE_ENV !== 'production'
   });
 

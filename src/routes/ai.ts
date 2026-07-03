@@ -23,7 +23,7 @@ const aiRateLimiter = rateLimit({
   keyGenerator: (req: any) => {
     return req.user?.orgId || req.ip;
   },
-  validate: { ip: false },
+  validate: { xForwardedForHeader: false },
   message: { error: 'Rate limit exceeded: Max 50 AI assistant requests per hour.' },
   standardHeaders: true,
   legacyHeaders: false,
