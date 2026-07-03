@@ -42,7 +42,8 @@ export const journalSourceEnum = pgEnum('journal_source', [
   'payment',
   'payroll',
   'bank_feed',
-  'opening_balance'
+  'opening_balance',
+  'opening_stock'
 ]);
 
 export const contactTypeEnum = pgEnum('contact_type', ['customer', 'vendor', 'both']);

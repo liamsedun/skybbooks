@@ -219,6 +219,14 @@ export async function runMigration() {
     await db.execute(`ALTER TABLE payroll_runs ADD COLUMN IF NOT EXISTS bank_account_id uuid REFERENCES bank_accounts(id)`);
     // Add accrued_salary_account_id to payroll_runs for accrual-based net pay parking
     await db.execute(`ALTER TABLE payroll_runs ADD COLUMN IF NOT EXISTS accrued_salary_account_id uuid REFERENCES accounts(id)`);
+    // Add 'opening_stock' to journal_source enum for inventory opening stock journal entries
+    await db.execute(sql`
+      DO $$ BEGIN
+        ALTER TYPE journal_source ADD VALUE 'opening_stock';
+      EXCEPTION
+        WHEN duplicate_object THEN NULL;
+      END $$;
+    `);
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema push:', err);
