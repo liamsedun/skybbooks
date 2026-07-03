@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef } from 'react';
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { reportsApi, accountantApi, apiDownload, printWindow } from '../../lib/api';
@@ -102,87 +102,23 @@ export function TrialBalancePage() {
       )
     : rawRows;
 
-  // Build hierarchy tree from parentId
-  const tbTree = useMemo(() => {
-    const nodeMap = new Map<string, any>();
-    rawRows.forEach(r => nodeMap.set(r.accountId || r.code, { ...r, children: [] }));
-    const roots: any[] = [];
-    nodeMap.forEach(node => {
-      if (node.parentId && nodeMap.has(node.parentId)) {
-        nodeMap.get(node.parentId)!.children.push(node);
-      } else {
-        roots.push(node);
-      }
-    });
-    const sortFn = (a: any, b: any) => (a.accountCode || '').localeCompare(b.accountCode || '', undefined, { numeric: true });
-    const sortRecursive = (ns: any[]) => { ns.sort(sortFn); ns.forEach(n => sortRecursive(n.children)); };
-    sortRecursive(roots);
-    return roots;
-  }, [rawRows]);
-
-  // Identify parent accounts (excluded from totals)
-  const parentIdSet = useMemo(() => {
-    const ids = new Set<string>();
-    rawRows.forEach(r => { if (r.parentId) ids.add(r.parentId); });
-    return ids;
-  }, [rawRows]);
-
-  function renderTbNode(node: any, depth: number): React.ReactNode {
-    const code = node.accountCode || node.code || '';
-    const name = node.accountName || node.name || '';
-    const type = node.accountType || node.type || '';
-    const closingDr = node.closingDebit || node.debit || 0;
-    const closingCr = node.closingCredit || node.credit || 0;
-    const hasChildren = node.children.length > 0;
-    return (
-      <React.Fragment key={node.accountId || code}>
-        <tr className="border-t border-slate-100 hover:bg-slate-50 cursor-pointer" onClick={() => setDrillDown(node)}>
-          <td className="px-4 py-3 text-slate-600 font-mono" style={{ paddingLeft: `${16 + depth * 20}px` }}>
-            <span className={hasChildren ? 'font-semibold' : ''}>{code}</span>
-          </td>
-          <td className="px-4 py-3">
-            <span className={`font-medium text-slate-800 ${hasChildren ? 'font-semibold' : ''}`}>{name}</span>
-          </td>
-          <td className="px-4 py-3 text-right text-slate-500 capitalize">{type}</td>
-          <td className="px-4 py-3 text-right text-slate-600">{fmtNaira(closingDr)}</td>
-          <td className="px-4 py-3 text-right text-slate-600">{fmtNaira(closingCr)}</td>
-        </tr>
-        {node.children.map((child: any) => renderTbNode(child, depth + 1))}
-      </React.Fragment>
-    );
-  }
-
   const handleExport = (format: 'pdf' | 'csv') => {
     if (format === 'csv') {
       const headers = ['Account Code', 'Account Name', 'Type', 'Debit (NGN)', 'Credit (NGN)'];
-      let totDr = 0, totCr = 0;
-      const csvRows = rawRows.map((r: any) => {
-        const dr = r.closingDebit || r.debit || 0;
-        const cr = r.closingCredit || r.credit || 0;
-        const isParent = parentIdSet.has(r.accountId || r.code);
-        if (!isParent) { totDr += dr; totCr += cr; }
-        return [
-          r.accountCode || '',
-          `"${(r.accountName || '').replace(/"/g, '""')}"`,
-          r.accountType || '',
-          (dr / 100).toFixed(2),
-          (cr / 100).toFixed(2),
-        ];
-      });
-      csvRows.push(['TOTAL', '', '', (totDr / 100).toFixed(2), (totCr / 100).toFixed(2)]);
+      const csvRows = rawRows.map((r: any) => [
+        r.accountCode || '',
+        `"${(r.accountName || '').replace(/"/g, '""')}"`,
+        r.accountType || '',
+        ((r.closingDebit || 0) / 100).toFixed(2),
+        ((r.closingCredit || 0) / 100).toFixed(2),
+      ]);
       exportToCsv(`trial_balance_${sDate}_to_${eDate}.csv`, headers, csvRows);
     } else {
       try {
-        let totDr = 0, totCr = 0;
-        const rows = rawRows.map((r: any) => {
-          const dr = r.closingDebit || r.debit || 0;
-          const cr = r.closingCredit || r.credit || 0;
-          const isParent = parentIdSet.has(r.accountId || r.code);
-          if (!isParent) { totDr += dr; totCr += cr; }
-          return `<tr><td>${r.accountCode||''}</td><td>${r.accountName||''}</td><td class="c">${r.accountType||''}</td><td class="r">${dr > 0 ? '₦'+Number(dr/100).toLocaleString() : ''}</td><td class="r">${cr > 0 ? '₦'+Number(cr/100).toLocaleString() : ''}</td></tr>`;
-        }).join('');
-        const footer = `<tr style="font-weight:bold;border-top:2px solid #333;background:#f8fafc"><td colspan="3">Total</td><td class="r">₦${Number(totDr/100).toLocaleString()}</td><td class="r">₦${Number(totCr/100).toLocaleString()}</td></tr>`;
-        printWindow('Trial Balance', `<table><thead><tr><th>Code</th><th>Account</th><th class="c">Type</th><th class="r">Debit</th><th class="r">Credit</th></tr></thead><tbody>${rows}</tbody>${rawRows.length ? `<tfoot>${footer}</tfoot>` : ''}</table>`, `Period: ${sDate} - ${eDate}`);
+        const rows = rawRows.map((r: any) =>
+          `<tr><td>${r.accountCode||''}</td><td>${r.accountName||''}</td><td class="c">${r.accountType||''}</td><td class="r">₦${((r.closingDebit||0)/100).toLocaleString()}</td><td class="r">₦${((r.closingCredit||0)/100).toLocaleString()}</td></tr>`
+        ).join('');
+        printWindow('Trial Balance', `<table><thead><tr><th>Code</th><th>Account</th><th class="c">Type</th><th class="r">Debit</th><th class="r">Credit</th></tr></thead><tbody>${rows}</tbody></table>`, `Period: ${sDate} - ${eDate}`);
       } catch (err) {
         alert('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'));
         console.error('Print error:', err);
@@ -309,29 +245,37 @@ export function TrialBalancePage() {
               </tr>
             </thead>
             <tbody>
-              {searchQuery ? (
-                rows.map((row: any, i: number) => (
-                  <tr key={i} className="border-t border-slate-100 hover:bg-slate-50 cursor-pointer" onClick={() => setDrillDown(row)}>
-                    <td className="px-4 py-3 text-slate-600 font-mono">{row.accountCode || row.code || '—'}</td>
-                    <td className="px-4 py-3">
-                      <span className="font-medium text-slate-800">{row.accountName || row.name || `Account ${i + 1}`}</span>
-                    </td>
-                    <td className="px-4 py-3 text-right text-slate-500 capitalize">{row.accountType || row.type || '—'}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{fmtNaira(row.closingDebit || row.debit || 0)}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{fmtNaira(row.closingCredit || row.credit || 0)}</td>
-                  </tr>
-                ))
-              ) : tbTree.length > 0 ? tbTree.map((node: any) => renderTbNode(node, 0)) : null}
+              {rows.map((row: any, i: number) => {
+                const link = getAccountModuleLink(row.accountCode || row.code || '');
+                return (
+                <tr key={i} className="border-t border-slate-100 hover:bg-slate-50 cursor-pointer" onClick={() => setDrillDown(row)}>
+                  <td className="px-4 py-3 text-slate-600 font-mono">{row.accountCode || row.code || '—'}</td>
+                  <td className="px-4 py-3">
+                    <span className="font-medium text-slate-800">{row.accountName || row.name || `Account ${i + 1}`}</span>
+                    {link && (
+                      <button
+                        onClick={e => { e.stopPropagation(); navigate(link.path); }}
+                        className="ml-2 inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800"
+                        title={`Go to ${link.label}`}
+                      ><ExternalLink className="w-3 h-3" /> {link.label}</button>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-right text-slate-500 capitalize">{row.accountType || row.type || '—'}</td>
+                  <td className="px-4 py-3 text-right text-slate-600">{fmtNaira(row.closingDebit || row.debit || 0)}</td>
+                  <td className="px-4 py-3 text-right text-slate-600">{fmtNaira(row.closingCredit || row.credit || 0)}</td>
+                </tr>
+                );
+              })}
               {rows.length === 0 && (
                 <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-400">{searchQuery ? 'No accounts match your search.' : 'No data available.'}</td></tr>
               )}
             </tbody>
-            {rawRows.length > 0 && (
+            {rows.length > 0 && (
               <tfoot>
                 <tr className="border-t-2 border-slate-300 bg-slate-50 font-semibold text-slate-900">
                   <td className="px-4 py-3 text-sm" colSpan={3}>Total</td>
-                  <td className="px-4 py-3 text-right text-sm font-mono">{fmtNaira((searchQuery ? rows : rawRows).reduce((s: number, r: any) => s + (parentIdSet.has(r.accountId || r.code) ? 0 : (r.closingDebit || r.debit || 0)), 0))}</td>
-                  <td className="px-4 py-3 text-right text-sm font-mono">{fmtNaira((searchQuery ? rows : rawRows).reduce((s: number, r: any) => s + (parentIdSet.has(r.accountId || r.code) ? 0 : (r.closingCredit || r.credit || 0)), 0))}</td>
+                  <td className="px-4 py-3 text-right text-sm font-mono">{fmtNaira(rows.reduce((s: number, r: any) => s + (r.closingDebit || r.debit || 0), 0))}</td>
+                  <td className="px-4 py-3 text-right text-sm font-mono">{fmtNaira(rows.reduce((s: number, r: any) => s + (r.closingCredit || r.credit || 0), 0))}</td>
                 </tr>
               </tfoot>
             )}

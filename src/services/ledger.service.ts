@@ -37,7 +37,6 @@ export type TrialBalanceRow = {
   accountCode: string;
   accountName: string;
   accountType: string;
-  parentId: string | null;
   openingDebit: number;
   openingCredit: number;
   periodDebit: number;
@@ -512,7 +511,6 @@ export async function getTrialBalance(
       accountCode: acct.code,
       accountName: acct.name,
       accountType: acct.type,
-      parentId: acct.parentId || null,
       openingDebit: isDebitBook ? (opened > 0 ? opened : 0) : (opened < 0 ? Math.abs(opened) : 0),
       openingCredit: isDebitBook ? (opened < 0 ? Math.abs(opened) : 0) : (opened > 0 ? opened : 0),
       periodDebit: periodDebits,
@@ -561,7 +559,6 @@ export async function getTrialBalance(
       accountCode: 'SYS-SUSPENSE',
       accountName: 'System (Unreconciled sub-ledger differences)',
       accountType: 'equity',
-      parentId: null,
       openingDebit: 0,
       openingCredit: 0,
       periodDebit: 0,
