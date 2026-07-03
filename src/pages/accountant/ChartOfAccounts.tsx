@@ -108,7 +108,7 @@ function visibleNodeIds(nodes: TreeNode[], term: string, typeFilter: string): Se
 }
 
 function fmtNaira(v: number): string {
-  const abs = Math.abs(v);
+  const abs = Math.abs(v) / 100;
   const formatted = `₦${abs.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   return v < 0 ? `(${formatted})` : formatted;
 }
@@ -248,7 +248,7 @@ export function ChartOfAccountsPage() {
       return <span className="font-mono text-sm text-slate-800">{fmtNaira(balance)}</span>;
     }
     // Negative balance means abnormal direction
-    const absFormatted = `₦${Math.abs(balance).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const absFormatted = `₦${(Math.abs(balance) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     return <span className="font-mono text-sm text-red-600 font-medium">({absFormatted}) {isDebitNormal ? 'Cr' : 'Dr'}</span>;
   }
 
