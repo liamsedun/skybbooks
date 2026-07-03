@@ -651,6 +651,87 @@ router.get('/vendors', async (req: AuthenticatedRequest, res: Response, next: Ne
   }
 });
 
+// POST /api/purchases/vendors/import-csv — Bulk import vendors from CSV
+router.post('/vendors/import-csv', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { csvData } = req.body;
+    if (!csvData || typeof csvData !== 'string' || !csvData.trim()) {
+      throw new AppError('CSV data is required.', 400);
+    }
+    const cleaned = csvData.replace(/^\uFEFF/, '').replace(/\r$/, '');
+    const lines = cleaned.split(/\n/).filter(Boolean);
+    if (lines.length < 2) throw new AppError('CSV must have a header row and at least one data row.', 400);
+
+    function parseCsvLine(line: string): string[] {
+      const fields: string[] = []; let current = ''; let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (inQuotes) { if (ch === '"') { if (i + 1 < line.length && line[i + 1] === '"') { current += '"'; i++; } else { inQuotes = false; } } else { current += ch; } }
+        else { if (ch === '"') { inQuotes = true; } else if (ch === ',') { fields.push(current.trim()); current = ''; } else { current += ch; } }
+      }
+      fields.push(current.trim()); return fields;
+    }
+
+    const headers = parseCsvLine(lines[0]).map(h => h.toLowerCase().trim());
+    const nameIdx = headers.findIndex(h => h === 'name' || h === 'vendor name' || h === 'vendor_name');
+    const emailIdx = headers.findIndex(h => h === 'email');
+    const phoneIdx = headers.findIndex(h => h === 'phone');
+    const addressIdx = headers.findIndex(h => h === 'address');
+    const cityIdx = headers.findIndex(h => h === 'city');
+    const stateIdx = headers.findIndex(h => h === 'state');
+    const countryIdx = headers.findIndex(h => h === 'country');
+    const taxPinIdx = headers.findIndex(h => h === 'tax pin' || h === 'tax_pin' || h === 'taxPin');
+    const termsIdx = headers.findIndex(h => h === 'payment terms' || h === 'payment_terms' || h === 'terms');
+    const currencyIdx = headers.findIndex(h => h === 'currency');
+    const notesIdx = headers.findIndex(h => h === 'notes');
+
+    if (nameIdx === -1) throw new AppError('CSV must contain a "name" column.', 400);
+
+    const errors: string[] = [];
+    const created: any[] = [];
+    const dataRows = lines.slice(1);
+
+    for (let i = 0; i < dataRows.length; i++) {
+      const row = parseCsvLine(dataRows[i]);
+      const name = row[nameIdx]?.trim();
+      if (!name) { errors.push(`Row ${i + 2}: missing name`); continue; }
+      const email = emailIdx >= 0 ? (row[emailIdx]?.trim() || null) : null;
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        errors.push(`Row ${i + 2}: invalid email "${email}"`); continue;
+      }
+      const phone = phoneIdx >= 0 ? (row[phoneIdx]?.trim() || null) : null;
+      const address = addressIdx >= 0 ? (row[addressIdx]?.trim() || null) : null;
+      const city = cityIdx >= 0 ? (row[cityIdx]?.trim() || null) : null;
+      const state = stateIdx >= 0 ? (row[stateIdx]?.trim() || null) : null;
+      const country = countryIdx >= 0 ? (row[countryIdx]?.trim() || 'Nigeria') : 'Nigeria';
+      const taxPin = taxPinIdx >= 0 ? (row[taxPinIdx]?.trim() || null) : null;
+      const paymentTerms = termsIdx >= 0 ? (parseInt(row[termsIdx]?.trim()) || null) : null;
+      const currency = currencyIdx >= 0 ? (row[currencyIdx]?.trim() || 'NGN') : 'NGN';
+      const notes = notesIdx >= 0 ? (row[notesIdx]?.trim() || null) : null;
+
+      try {
+        const [vendor] = await db.insert(contacts).values({
+          orgId, name, email, phone, address, city, state, country,
+          taxPin, paymentTerms, currency, notes, type: 'vendor', isActive: true
+        }).returning();
+        created.push(vendor);
+      } catch (err: any) {
+        errors.push(`Row ${i + 2}: ${err?.message || 'Database error'}`);
+      }
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: `Imported ${created.length} vendor(s) successfully.`,
+      created,
+      errors: errors.length > 0 ? errors : undefined
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.post('/vendors', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const orgId = req.user!.orgId!;
