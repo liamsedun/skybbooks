@@ -234,8 +234,7 @@ export async function runMigration() {
       SELECT c1.org_id, c1.name, c1.id as keep_id, c2.id as dup_id, c2.balance as dup_balance, c2.customer_code as dup_code
       FROM contacts c1
       JOIN contacts c2 ON c1.org_id = c2.org_id AND c1.name = c2.name AND c1.type = 'customer' AND c2.type = 'customer'
-      WHERE c1.id < c2.id
-        AND c1.created_at <= c2.created_at
+      WHERE c1.customer_code < c2.customer_code
     `);
     if (dupes.rows.length > 0) {
       console.log(`[Migration] Found ${dupes.rows.length} duplicate customer pair(s). Merging...`);
