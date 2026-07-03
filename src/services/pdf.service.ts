@@ -178,6 +178,16 @@ export async function generateInvoicePDF(invoiceId: string, orgId: string): Prom
     .from(invoiceLines)
     .where(eq(invoiceLines.invoiceId, invoiceId));
 
+  const paymentHistory = await db.execute(sql`
+    SELECT pa.amount as "amountAllocated",
+           pr.payment_number as "paymentNumber",
+           pr.date, pr.reference
+    FROM payment_allocations pa
+    INNER JOIN payments_received pr ON pa.payment_id = pr.id
+    WHERE pa.invoice_id = ${invoiceId}
+    ORDER BY pr.date
+  `);
+
   const orgSettings = typeof org.settings === 'string' ? JSON.parse(org.settings) : (org.settings || {});
   const brandColor = orgSettings.branding?.primaryColor || '#1e3a8a';
 
@@ -287,7 +297,23 @@ export async function generateInvoicePDF(invoiceId: string, orgId: string): Prom
     doc.text('Amount Paid:', summaryLabelX, y);
     doc.fillColor(TEXT_PRIMARY).text(formatNaira(invoice.amountPaid), summaryValX, y, { align: 'right' });
 
-    y += 12;
+    // List individual payments received
+    const payments = paymentHistory?.rows || [];
+    if (payments.length > 0) {
+      y += 12;
+      doc.fillColor(MUTED_COLOR).fontSize(7).font('Helvetica');
+      for (const pmt of payments) {
+        const label = pmt.reference
+          ? `${pmt.paymentNumber} (${pmt.reference})`
+          : pmt.paymentNumber;
+        doc.text(label, summaryLabelX + 10, y);
+        doc.text(formatNaira(pmt.amountAllocated), summaryValX, y, { align: 'right' });
+        y += 10;
+      }
+      y -= 8; // tighten spacing before Balance Due
+    } else {
+      y += 12;
+    }
     doc.font('Helvetica-Bold').text('Balance Due:', summaryLabelX, y);
     doc.text(formatNaira(invoice.balanceDue), summaryValX, y, { align: 'right' });
 
