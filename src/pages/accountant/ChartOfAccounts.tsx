@@ -214,10 +214,14 @@ export function ChartOfAccountsPage() {
   const handlePrintPdf = () => {
     try {
       const list = effectiveAccounts || [];
-      const rows = list.map((a: Account) =>
-        `<tr><td>${a.code||''}</td><td>${a.name||''}</td><td>${a.type||''}</td><td class="c">${a.isActive ? 'Active' : 'Inactive'}</td></tr>`
-      ).join('');
-      printWindow('Chart of Accounts', `<table><thead><tr><th>Code</th><th>Account Name</th><th>Type</th><th class="c">Status</th></tr></thead><tbody>${rows||'<tr><td colspan="4" style="text-align:center;color:#94a3b8">No accounts</td></tr>'}</tbody></table>`, `${list.length} accounts`);
+      let totDr = 0, totCr = 0;
+      const rows = list.map((a: Account) => {
+        const dc = toDebitCredit(a.balance ?? 0, a.type);
+        totDr += dc.debit; totCr += dc.credit;
+        return `<tr><td>${a.code||''}</td><td>${a.name||''}</td><td>${a.type||''}</td><td class="c">${a.isActive ? 'Active' : 'Inactive'}</td><td class="r">${dc.debit > 0 ? '₦'+Number(dc.debit/100).toLocaleString() : ''}</td><td class="r">${dc.credit > 0 ? '₦'+Number(dc.credit/100).toLocaleString() : ''}</td></tr>`;
+      }).join('');
+      const footer = `<tr style="font-weight:bold;border-top:2px solid #333;background:#f8fafc"><td colspan="4">Total</td><td class="r">₦${Number(totDr/100).toLocaleString()}</td><td class="r">₦${Number(totCr/100).toLocaleString()}</td></tr>`;
+      printWindow('Chart of Accounts', `<table><thead><tr><th>Code</th><th>Account Name</th><th>Type</th><th class="c">Status</th><th class="r">Debit</th><th class="r">Credit</th></tr></thead><tbody>${rows||'<tr><td colspan="6" style="text-align:center;color:#94a3b8">No accounts</td></tr>'}</tbody>${list.length ? `<tfoot>${footer}</tfoot>` : ''}</table>`, `${list.length} accounts`);
     } catch (err) {
       alert('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'));
       console.error('Print error:', err);
@@ -251,18 +255,19 @@ export function ChartOfAccountsPage() {
 
   const debitNormalTypes = new Set(['asset', 'expense']);
 
-  function renderBalance(account: Account): React.ReactNode {
-    const balance = account.balance ?? 0;
-    const isDebitNormal = debitNormalTypes.has(account.type);
-    if (balance === 0) {
-      return <span className="font-mono text-sm text-slate-400">₦0.00</span>;
-    }
+  function toDebitCredit(balance: number, type: string): { debit: number; credit: number } {
+    if (balance === 0) return { debit: 0, credit: 0 };
+    const isDebitNormal = debitNormalTypes.has(type);
+    const isCreditNormal = !isDebitNormal;
     if (balance > 0) {
-      return <span className="font-mono text-sm text-slate-800">{fmtNaira(balance)}</span>;
+      return isDebitNormal ? { debit: balance, credit: 0 } : { debit: 0, credit: balance };
     }
-    // Negative balance means abnormal direction
-    const absFormatted = `₦${(Math.abs(balance) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    return <span className="font-mono text-sm text-red-600 font-medium">({absFormatted}) {isDebitNormal ? 'Cr' : 'Dr'}</span>;
+    return isCreditNormal ? { debit: Math.abs(balance), credit: 0 } : { debit: 0, credit: Math.abs(balance) };
+  }
+
+  function renderCell(amount: number, className?: string): React.ReactNode {
+    if (amount === 0) return <span className={`font-mono text-sm text-slate-400 ${className || ''}`}>₦0.00</span>;
+    return <span className={`font-mono text-sm text-slate-800 ${className || ''}`}>{fmtNaira(amount)}</span>;
   }
 
   function renderNode(node: TreeNode, depth: number): React.ReactNode {
@@ -297,11 +302,16 @@ export function ChartOfAccountsPage() {
           <td className="py-2.5 pr-3">
             <span className={`text-xs font-medium ${node.isActive ? 'text-emerald-600' : 'text-slate-400'}`}>{node.isActive ? 'Active' : 'Inactive'}</span>
           </td>
-          {showBalances && (
-            <td className="py-2.5 pr-3 text-right whitespace-nowrap">
-              {renderBalance(hasChildren ? { ...node, balance: aggBalances.get(node.id) ?? node.balance ?? 0 } : node)}
-            </td>
-          )}
+          {showBalances && (() => {
+            const bal = hasChildren ? (aggBalances.get(node.id) ?? node.balance ?? 0) : (node.balance ?? 0);
+            const dc = toDebitCredit(bal, node.type);
+            return (
+              <>
+                <td className="py-2.5 pr-3 text-right whitespace-nowrap">{renderCell(dc.debit)}</td>
+                <td className="py-2.5 pr-3 text-right whitespace-nowrap">{renderCell(dc.credit)}</td>
+              </>
+            );
+          })()}
           <td className="py-2.5 pr-2 text-right">
             <div className="opacity-0 group-hover:opacity-100 flex items-center justify-end gap-1 transition-opacity">
               <button onClick={() => openEditModal(node)} className="p-1.5 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100" aria-label="Edit account"><Pencil size={14} /></button>
@@ -382,12 +392,33 @@ export function ChartOfAccountsPage() {
                 <th className="py-2.5 pr-3">Sub-type</th>
                 <th className="py-2.5 pr-3">Status</th>
                 {showBalances && (
-                  <th className="py-2.5 pr-3 text-right">Balance</th>
+                  <th className="py-2.5 pr-3 text-right">Debit</th>
+                )}
+                {showBalances && (
+                  <th className="py-2.5 pr-3 text-right">Credit</th>
                 )}
                 <th className="py-2.5 pr-2"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">{tree.map((node) => renderNode(node, 0))}</tbody>
+            {showBalances && effectiveAccounts.length > 0 && (() => {
+              let totDr = 0, totCr = 0;
+              for (const a of effectiveAccounts) {
+                const dc = toDebitCredit(a.balance ?? 0, a.type);
+                totDr += dc.debit; totCr += dc.credit;
+              }
+              return (
+                <tfoot>
+                  <tr className="border-t-2 border-slate-300 bg-slate-50 font-semibold text-slate-900">
+                    <td className="py-3 pl-4 pr-3 text-sm" colSpan={4}>Total</td>
+                    <td className="py-3 pr-3" />
+                    <td className="py-3 pr-3 text-right font-mono text-sm">{renderCell(totDr)}</td>
+                    <td className="py-3 pr-3 text-right font-mono text-sm">{renderCell(totCr)}</td>
+                    <td className="py-3 pr-2" />
+                  </tr>
+                </tfoot>
+              );
+            })()}
           </table>
         )}
       </div>
