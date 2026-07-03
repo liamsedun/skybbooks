@@ -76,6 +76,7 @@ interface Customer {
   city?: string | null;
   state?: string | null;
   country?: string | null;
+  customerCode?: string;
 }
 
 interface GLAccount {
@@ -933,8 +934,9 @@ export function PaymentsReceivedPage() {
             queryClient.invalidateQueries({ queryKey: ['paymentsReceived'] });
           }}
           transformRow={(row, headers) => {
-            const custName = row[headers.indexOf('customerId (or name)')]?.trim();
-            const customer = (customers || []).find(c => c.id === custName || c.name === custName);
+            const custIdx = headers.findIndex(h => h === 'customerCode (or name)' || h === 'customerId (or name)');
+            const custName = row[custIdx]?.trim();
+            const customer = (customers || []).find(c => c.id === custName || c.name === custName || c.customerCode === custName);
             const amountStr = row[headers.indexOf('amount (NGN)')]?.replace(/[,₦]/g, '').trim();
             return {
               category: row[headers.indexOf('category')]?.trim() || 'other_income',

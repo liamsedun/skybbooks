@@ -121,9 +121,9 @@ function formFromCustomer(c: Customer): CustomerFormState {
 }
 
 function exportCustomersCSV(customers: Customer[]) {
-  const headers = ['Name','Email','Phone','Address','City','State','Country','Tax PIN','Payment Terms','Credit Limit','Opening Balance','Outstanding','Currency','Notes','Status'];
+  const headers = ['Code','Name','Email','Phone','Address','City','State','Country','Tax PIN','Payment Terms','Credit Limit','Opening Balance','Outstanding','Currency','Notes','Status'];
   const rows = customers.map(c => [
-    c.name, c.email||'', c.phone||'', c.address||'', c.city||'', c.state||'',
+    c.customerCode||'', c.name, c.email||'', c.phone||'', c.address||'', c.city||'', c.state||'',
     c.country, c.taxPin||'', c.paymentTerms ? `Net ${c.paymentTerms}` : '',
     c.creditLimit ? `₦${(c.creditLimit/100).toLocaleString('en-NG')}` : '',
     c.balance ? `₦${(c.balance/100).toLocaleString('en-NG')}` : '',
@@ -142,6 +142,7 @@ function exportCustomersPDF(customers: Customer[]) {
   const rows = customers.map(c => `
     <tr>
       <td><strong>${c.name}</strong>${c.notes ? `<br><small style="color:#64748b">${c.notes}</small>` : ''}</td>
+      <td style="font-family:monospace;font-size:11px;color:#64748b">${c.customerCode||'\u2014'}</td>
       <td>${c.email||'\u2014'}<br>${c.phone||'\u2014'}</td>
       <td>${[c.city,c.state,c.country].filter(Boolean).join(', ')||'\u2014'}</td>
       <td>${c.taxPin||'\u2014'}</td>
@@ -170,7 +171,7 @@ function exportCustomersPDF(customers: Customer[]) {
     <div style="text-align:right"><div class="title">Customer Directory</div><div class="date">Generated: ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}</div><div class="date">${customers.length} customers</div></div>
   </div>
   <table>
-    <thead><tr><th>Customer</th><th>Contact</th><th>Location</th><th>Tax PIN</th><th>Terms</th><th>Credit Limit</th><th>Status</th></tr></thead>
+    <thead><tr><th>Customer</th><th>Code</th><th>Contact</th><th>Location</th><th>Tax PIN</th><th>Terms</th><th>Credit Limit</th><th>Status</th></tr></thead>
     <tbody>${rows}</tbody>
   </table>
   <div class="footer">SkyBooks By Skyhouse Accountants &amp; Technologies (Olalekan Williams Edun) &bull; Confidential</div>
@@ -378,6 +379,7 @@ function CustomerList() {
             <thead>
               <tr className="border-b border-slate-100 text-left text-xs font-medium text-slate-400 uppercase tracking-wide">
                 <th className="py-2.5 pl-4 pr-3">Name</th>
+                <th className="py-2.5 pr-3 text-xs font-medium text-slate-400 uppercase tracking-wide">Code</th>
                 <th className="py-2.5 pr-3">Contact</th>
                 <th className="py-2.5 pr-3">Location</th>
                 <th className="py-2.5 pr-3">Balance</th>
@@ -394,6 +396,9 @@ function CustomerList() {
                 >
                   <td className="py-2.5 pl-4 pr-3">
                     <span className="text-sm font-medium text-slate-900">{c.name}</span>
+                  </td>
+                  <td className="py-2.5 pr-3">
+                    <span className="text-sm text-slate-500 font-mono">{c.customerCode || '—'}</span>
                   </td>
                   <td className="py-2.5 pr-3 text-sm text-slate-500">
                     {c.email && <div>{c.email}</div>}
@@ -436,7 +441,7 @@ function CustomerList() {
             {filtered.length > 0 && (
             <tfoot>
               <tr className="border-t-2 border-slate-200 bg-slate-50">
-                <td colSpan={3} className="py-2.5 pl-4 pr-3 text-sm font-bold text-slate-800">Total</td>
+                <td colSpan={4} className="py-2.5 pl-4 pr-3 text-sm font-bold text-slate-800">Total</td>
                 <td className="py-2.5 pr-3 text-sm font-bold text-slate-800">{formatNaira(filtered.reduce((s, c) => s + (c.balance || 0) + (c.outstanding || 0), 0))}</td>
                 <td colSpan={2}></td>
               </tr>
@@ -468,6 +473,7 @@ function CustomerList() {
             const num = (key: string) => parseFloat((row[h[key]] || '').replace(/,/g, ''));
             return {
               name: row[h['name']] || '',
+              customerCode: row[h['code']] || row[h['customer code']] || null,
               email: row[h['email']] || null,
               phone: row[h['phone']] || null,
               address: row[h['address']] || null,

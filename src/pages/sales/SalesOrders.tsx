@@ -15,7 +15,7 @@ import { CsvImportModal } from '../../components/ui/CsvImportModal';
 
 type SOStatus = 'draft' | 'confirmed' | 'partial' | 'fulfilled' | 'cancelled';
 
-interface Customer { id: string; name: string; email: string | null; }
+interface Customer { id: string; name: string; email: string | null; customerCode?: string; }
 interface Item { id: string; name: string; description: string | null; salesPrice: number | null; }
 interface SOLine {
   itemId: string | null;
@@ -565,8 +565,9 @@ export function SalesOrdersPage() {
           onClose={() => setImportOpen(false)}
           onSuccess={() => queryClient.invalidateQueries({ queryKey: ['sales', 'orders'] })}
           transformRow={(row, headers) => {
-            const custName = row[headers.indexOf('customerId (or name)')]?.trim();
-            const customer = (customers || []).find(c => c.id === custName || c.name === custName);
+            const custIdx = headers.findIndex(h => h === 'customerCode (or name)' || h === 'customerId (or name)');
+            const custName = row[custIdx]?.trim();
+            const customer = (customers || []).find(c => c.id === custName || c.name === custName || c.customerCode === custName);
             return {
               customerId: customer?.id || custName,
               date: row[headers.indexOf('date (YYYY-MM-DD)')] || undefined,

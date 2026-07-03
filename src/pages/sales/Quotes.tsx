@@ -15,7 +15,7 @@ import { CsvImportModal } from '../../components/ui/CsvImportModal';
 
 type QuoteStatus = 'draft' | 'sent' | 'accepted' | 'declined' | 'expired' | 'converted';
 
-interface Customer { id: string; name: string; email: string | null; }
+interface Customer { id: string; name: string; email: string | null; customerCode?: string; }
 interface Item { id: string; name: string; sku: string | null; salesPrice: number | null; type: string; }
 interface QuoteLine {
   itemId: string | null; description: string; quantity: number;
@@ -627,8 +627,11 @@ export function QuotesPage() {
           onSuccess={() => queryClient.invalidateQueries({queryKey:['sales','quotes']})}
           transformRow={(row, headers) => {
             const idx = (h: string) => headers.indexOf(h);
+            const custCol = headers.findIndex(h => h === 'customerCode (or name)' || h === 'customerId (or name)');
+            const custVal = custCol >= 0 ? row[custCol]?.trim() : '';
+            const customer = (customers || []).find(c => c.id === custVal || c.name === custVal || c.customerCode === custVal);
             return {
-              customerId: row[idx('customerId (or name)')],
+              customerId: customer?.id || custVal,
               date: row[idx('date (YYYY-MM-DD)')] || undefined,
               expiryDate: row[idx('expiryDate')] || undefined,
               currency: row[idx('currency')] || undefined,

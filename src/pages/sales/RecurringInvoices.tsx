@@ -14,7 +14,7 @@ import { CsvImportModal } from '../../components/ui/CsvImportModal';
 
 type Frequency = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'annually';
 
-interface Customer { id: string; name: string; email: string | null; }
+interface Customer { id: string; name: string; email: string | null; customerCode?: string; }
 interface Item { id: string; name: string; salesPrice: number | null; }
 interface RecurringLine {
   itemId: string | null;
@@ -578,8 +578,10 @@ export function RecurringInvoicesPage() {
           transformRow={(row, headers) => {
             const data: any = {};
             headers.forEach((h, i) => { data[h] = row[i]; });
+            const custVal = data['customerCode (or name)'] || data['customerId (or name)'];
+            const customer = (customers || []).find(c => c.id === custVal || c.name === custVal || c.customerCode === custVal);
             return {
-              customerId: data['customerId (or name)'],
+              customerId: customer?.id || custVal,
               frequency: data.frequency,
               startDate: data['startDate (YYYY-MM-DD)'],
               endDate: data.endDate || null,

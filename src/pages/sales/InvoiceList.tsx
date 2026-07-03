@@ -814,9 +814,9 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
             const data: Record<string, string> = {};
             headers.forEach((h, i) => { data[h.trim()] = (row[i] || '').trim(); });
 
-            let customerId = data['customerId (or name)'];
+            let customerId = data['customerCode (or name)'] || data['customerId (or name)'];
             if (customerId) {
-              const existing = customers.find((c: any) => c.id === customerId || c.name === customerId);
+              const existing = customers.find((c: any) => c.id === customerId || c.name === customerId || c.customerCode === customerId);
               if (existing) {
                 customerId = existing.id;
               } else if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(customerId)) {

@@ -11,7 +11,7 @@ import {
   Ban, CheckCircle2, ReceiptText, Download, FileText,
 } from 'lucide-react';
 
-interface Customer { id: string; name: string; email: string | null; }
+interface Customer { id: string; name: string; email: string | null; customerCode?: string; }
 
 interface CreditNote {
   id: string;
@@ -124,6 +124,11 @@ export function CreditNotesPage() {
   const { data: notes, isLoading, isError } = useQuery<CreditNote[]>({
     queryKey: ['sales', 'credit-notes'],
     queryFn: async () => { const r = await api.get('/sales/credit-notes'); return r.data; },
+  });
+
+  const { data: customers } = useQuery<Customer[]>({
+    queryKey: ['sales', 'customers'],
+    queryFn: async () => { const r = await api.get('/sales/customers'); return r.data; },
   });
 
   const voidMutation = useMutation({
@@ -366,9 +371,10 @@ export function CreditNotesPage() {
               const idx = headers.findIndex(h => h.toLowerCase() === key.toLowerCase());
               return idx >= 0 ? row[idx]?.trim() : '';
             };
-            const customerName = get('customerId (or name)') || get('customerId') || get('customer');
+            const customerName = get('customerCode (or name)') || get('customerId (or name)') || get('customerId') || get('customer');
+            const customer = (customers || []).find(c => c.id === customerName || c.name === customerName || c.customerCode === customerName);
             return {
-              customerId: customerName,
+              customerId: customer?.id || customerName,
               invoiceId: get('invoiceNumber (optional)') || get('invoiceNumber') || get('invoice') || null,
               date: get('date (YYYY-MM-DD)') || get('date') || undefined,
               subtotal: Math.round(parseFloat(get('subtotal (NGN)') || get('subtotal') || '0') * 100),
