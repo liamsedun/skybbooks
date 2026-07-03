@@ -520,6 +520,36 @@ export async function getTrialBalance(
     });
   }
 
+  // Roll up child balances into parent accounts for hierarchical reporting
+  const parentChildren = new Map<string, string[]>();
+  const accById = new Map<string, typeof orgAccounts[0]>();
+  for (const acct of orgAccounts) {
+    accById.set(acct.id, acct);
+    if (acct.parentId) {
+      if (!parentChildren.has(acct.parentId)) parentChildren.set(acct.parentId, []);
+      parentChildren.get(acct.parentId)!.push(acct.id);
+    }
+  }
+  const resultMap = new Map(resultList.map(r => [r.accountId, r]));
+  function aggregateParent(accountId: string): { debit: number; credit: number } {
+    const row = resultMap.get(accountId);
+    let debit = row?.closingDebit || 0;
+    let credit = row?.closingCredit || 0;
+    const children = parentChildren.get(accountId) || [];
+    for (const childId of children) {
+      const childAgg = aggregateParent(childId);
+      debit += childAgg.debit;
+      credit += childAgg.credit;
+    }
+    return { debit, credit };
+  }
+  for (const acct of orgAccounts) {
+    if (acct.parentId || !parentChildren.has(acct.id)) continue;
+    const agg = aggregateParent(acct.id);
+    const row = resultMap.get(acct.id);
+    if (row) { row.closingDebit = agg.debit; row.closingCredit = agg.credit; }
+  }
+
   // System suspense account absorbs unreconciled sub-ledger vs GL differences
   const totalDr = resultList.reduce((s, r) => s + r.closingDebit, 0);
   const totalCr = resultList.reduce((s, r) => s + r.closingCredit, 0);

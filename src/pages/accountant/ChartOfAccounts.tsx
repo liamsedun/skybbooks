@@ -91,6 +91,18 @@ function buildTree(accounts: Account[]): TreeNode[] {
   return roots;
 }
 
+function computeAggregateBalances(nodes: TreeNode[]): Map<string, number> {
+  const map = new Map<string, number>();
+  function walk(node: TreeNode): number {
+    let sum = node.balance ?? 0;
+    for (const child of node.children) sum += walk(child);
+    map.set(node.id, sum);
+    return sum;
+  }
+  for (const root of nodes) walk(root);
+  return map;
+}
+
 function visibleNodeIds(nodes: TreeNode[], term: string, typeFilter: string): Set<string> {
   const matches = new Set<string>();
   const lower = term.toLowerCase();
@@ -163,6 +175,7 @@ export function ChartOfAccountsPage() {
 
   const effectiveAccounts = accounts || [];
   const tree = useMemo(() => buildTree(effectiveAccounts || []), [effectiveAccounts]);
+  const aggBalances = useMemo(() => computeAggregateBalances(tree), [tree]);
   const visibleIds = useMemo(() => visibleNodeIds(tree, searchTerm, activeFilter), [tree, searchTerm, activeFilter]);
 
   const counts = useMemo(() => {
@@ -286,7 +299,7 @@ export function ChartOfAccountsPage() {
           </td>
           {showBalances && (
             <td className="py-2.5 pr-3 text-right whitespace-nowrap">
-              {renderBalance(node)}
+              {renderBalance(hasChildren ? { ...node, balance: aggBalances.get(node.id) ?? node.balance ?? 0 } : node)}
             </td>
           )}
           <td className="py-2.5 pr-2 text-right">
