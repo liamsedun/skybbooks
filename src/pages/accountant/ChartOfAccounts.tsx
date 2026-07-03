@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, accountantApi, apiDownload, printWindow } from '../../lib/api';
+import { api, accountantApi, printWindow } from '../../lib/api';
 import {
   Plus,
   Search,
@@ -18,7 +18,7 @@ import {
   Printer,
   Eye,
 } from 'lucide-react';
-import { downloadCsv } from '../../lib/csvTemplates';
+import { downloadCsv, exportToCsv } from '../../lib/csvTemplates';
 
 interface Account {
   id: string;
@@ -208,7 +208,32 @@ export function ChartOfAccountsPage() {
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
   const handleExportCsv = () => {
-    apiDownload('/accountant/accounts/export-csv', 'chart_of_accounts.csv');
+    const list = effectiveAccounts || [];
+    const parentIds = new Set(list.filter(a => list.some(c => c.parentId === a.id)).map(a => a.id));
+    let totDr = 0, totCr = 0;
+    const csvRows: string[][] = [];
+    for (const a of list) {
+      const dc = toDebitCredit(a.balance ?? 0, a.type);
+      if (!parentIds.has(a.id)) { totDr += dc.debit; totCr += dc.credit; }
+      csvRows.push([
+        a.code,
+        `"${(a.name || '').replace(/"/g, '""')}"`,
+        a.type,
+        a.subType || '',
+        a.isActive ? 'Active' : 'Inactive',
+        (dc.debit / 100).toFixed(2),
+        (dc.credit / 100).toFixed(2),
+      ]);
+    }
+    csvRows.push([
+      'TOTAL', '', '', '', '',
+      (totDr / 100).toFixed(2),
+      (totCr / 100).toFixed(2),
+    ]);
+    exportToCsv('chart_of_accounts.csv',
+      ['Code', 'Account Name', 'Type', 'Sub-type', 'Status', 'Debit (NGN)', 'Credit (NGN)'],
+      csvRows
+    );
   };
 
   const handlePrintPdf = () => {
