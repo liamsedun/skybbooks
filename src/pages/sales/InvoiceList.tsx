@@ -254,12 +254,16 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
   };
 
   // Bulk Actions
-  const handleBulkSend = () => {
+  const handleBulkSend = async () => {
     if (selectedInvoices.length === 0) return;
-    selectedInvoices.forEach((id) => {
-      sendInvoiceMutation.mutate(id);
-    });
-    setSelectedInvoices([]);
+    try {
+      await salesApi.bulkSendInvoices(selectedInvoices);
+      setSelectedInvoices([]);
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      refetch();
+    } catch (e) {
+      console.error('Bulk send failed', e);
+    }
   };
 
   const handleBulkVoid = () => {

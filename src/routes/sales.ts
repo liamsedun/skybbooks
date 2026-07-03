@@ -13,6 +13,7 @@ import {
   createInvoice,
   updateInvoice,
   sendInvoice,
+  bulkSendInvoices,
   voidInvoice,
   duplicateInvoice,
   getInvoice,
@@ -293,6 +294,21 @@ router.patch('/invoices/:id', async (req: AuthenticatedRequest, res: Response, n
     if (err instanceof z.ZodError) {
       return next(new AppError(err.issues[0]?.message || 'Validation failed', 400));
     }
+    return next(err);
+  }
+});
+
+// Bulk send invoices (single transaction)
+router.post('/invoices/bulk-send', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId;
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return next(new AppError('ids must be a non-empty array.', 400));
+    }
+    const results = await bulkSendInvoices(ids, userId);
+    return res.status(200).json({ sent: results.length });
+  } catch (err) {
     return next(err);
   }
 });

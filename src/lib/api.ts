@@ -424,6 +424,10 @@ export const salesApi = {
     const res = await api.post(`/sales/invoices/${id}/send`);
     return res.data;
   },
+  bulkSendInvoices: async (ids: string[]) => {
+    const res = await api.post('/sales/invoices/bulk-send', { ids });
+    return res.data;
+  },
   voidInvoice: async (id: string) => {
     const res = await api.post(`/sales/invoices/${id}/void`);
     return res.data;

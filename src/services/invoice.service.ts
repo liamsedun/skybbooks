@@ -565,8 +565,8 @@ export async function updateInvoice(id: string, input: any, updatedBy: string): 
   });
 }
 
-export async function sendInvoice(id: string, userId: string): Promise<any> {
-  return await db.transaction(async (tx) => {
+export async function sendInvoice(id: string, userId: string, txClient?: any): Promise<any> {
+  const run = async (tx: any) => {
     const [invoice] = await tx
       .select()
       .from(invoices)
@@ -600,6 +600,20 @@ export async function sendInvoice(id: string, userId: string): Promise<any> {
       ...updatedInvoice,
       lines
     };
+  };
+
+  if (txClient) return run(txClient);
+  return await db.transaction(run);
+}
+
+export async function bulkSendInvoices(ids: string[], userId: string): Promise<any[]> {
+  return await db.transaction(async (tx) => {
+    const results: any[] = [];
+    for (const id of ids) {
+      const result = await sendInvoice(id, userId, tx);
+      results.push(result);
+    }
+    return results;
   });
 }
 
