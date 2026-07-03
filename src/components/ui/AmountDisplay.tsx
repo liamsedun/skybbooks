@@ -26,7 +26,7 @@ export function AmountDisplay({
 
   const formattedValue = formatNaira(value, decimals);
 
-  let textColor = 'text-gray-900 dark:text-gray-100';
+  let textColor = 'text-black';
 
   if (colorize === 'profit-loss') {
     textColor = value > 0 ? 'text-emerald-600 font-medium' : value < 0 ? 'text-rose-600 font-medium' : 'text-gray-500';
