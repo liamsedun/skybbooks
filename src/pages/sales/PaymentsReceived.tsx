@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../lib/api';
@@ -121,6 +121,14 @@ const STATUS_META: Record<string, { label: string; className: string }> = {
 
 const PAYMENT_METHODS = ['bank_transfer', 'cash', 'card', 'cheque', 'pos', 'ussd'];
 
+type AllocationItem = {
+  invoiceId: string;
+  invoiceNumber: string;
+  balanceDue: number;
+  allocatedAmount: number;
+  selected: boolean;
+};
+
 type AddFormState = {
   category: 'sales_invoice' | 'other_income';
   payerName: string;
@@ -132,6 +140,7 @@ type AddFormState = {
   accountId: string;
   incomeAccountId: string;
   notes: string;
+  allocations: AllocationItem[];
 };
 
 const EMPTY_ADD_FORM: AddFormState = {
@@ -145,6 +154,7 @@ const EMPTY_ADD_FORM: AddFormState = {
   accountId: '',
   incomeAccountId: '',
   notes: '',
+  allocations: [],
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -266,6 +276,16 @@ export function PaymentsReceivedPage() {
     queryFn: async () => { const r = await api.get('/banking/accounts'); return r.data; },
   });
 
+  const { data: allInvoicesResult } = useQuery<any>({
+    queryKey: ['invoices'],
+    queryFn: async () => { const r = await api.get('/sales/invoices', { params: { limit: 200 } }); return r.data; },
+  });
+
+  const invoicesList = useMemo(() => {
+    if (!allInvoicesResult) return [];
+    return Array.isArray(allInvoicesResult) ? allInvoicesResult : (allInvoicesResult.invoices || allInvoicesResult.data || []);
+  }, [allInvoicesResult]);
+
   const { data: detail, isLoading: loadingDetail } = useQuery<PaymentDetail>({
     queryKey: ['sales', 'payment-detail', selectedPaymentId],
     queryFn: async () => { const r = await api.get(`/sales/payments/${selectedPaymentId}`); return r.data; },
@@ -285,6 +305,60 @@ export function PaymentsReceivedPage() {
   });
 
   // ── Derived ────────────────────────────────────────────────────────────────
+
+  const outstandingInvoices = useMemo(() => {
+    if (!addForm.customerId || !invoicesList.length) return [];
+    return invoicesList.filter((inv: any) => {
+      const match = inv.customerId === addForm.customerId || inv.clientName === addForm.customerId;
+      const outstanding = ['Unpaid', 'Overdue', 'sent', 'partial', 'draft'].includes(inv.status?.toLowerCase());
+      return match && outstanding && (inv.balanceDue || inv.total) > 0;
+    });
+  }, [addForm.customerId, invoicesList]);
+
+  useEffect(() => {
+    if (addForm.category === 'sales_invoice' && outstandingInvoices.length > 0) {
+      const allocs: AllocationItem[] = outstandingInvoices.map((inv: any) => ({
+        invoiceId: inv.id,
+        invoiceNumber: inv.invoiceNumber || `INV-${inv.id.substring(0, 6).toUpperCase()}`,
+        balanceDue: inv.balanceDue ?? inv.total ?? 0,
+        allocatedAmount: 0,
+        selected: false,
+      }));
+      setAddForm(f => ({ ...f, allocations: allocs }));
+    } else {
+      setAddForm(f => ({ ...f, allocations: [] }));
+    }
+  }, [addForm.customerId, addForm.category, outstandingInvoices]);
+
+  const handleAllocToggle = (index: number) => {
+    setAddForm(f => {
+      const allocs = [...f.allocations];
+      allocs[index] = { ...allocs[index], selected: !allocs[index].selected };
+      return { ...f, allocations: allocs };
+    });
+  };
+
+  const totalAllocated = useMemo(() => {
+    return addForm.allocations
+      .filter(a => a.selected)
+      .reduce((s, a) => s + (a.allocatedAmount || 0), 0);
+  }, [addForm.allocations]);
+
+  // Auto-distribute amount across selected invoices
+  useEffect(() => {
+    const amountKobo = Math.round((parseFloat(addForm.amount) || 0) * 100);
+    const selected = addForm.allocations.filter(a => a.selected);
+    if (!selected.length) return;
+    let remaining = amountKobo;
+    const updated = addForm.allocations.map(a => {
+      if (!a.selected) return { ...a, allocatedAmount: 0 };
+      const applied = Math.max(0, Math.min(remaining, a.balanceDue));
+      remaining -= applied;
+      return { ...a, allocatedAmount: applied };
+    });
+    const changed = updated.some((a, i) => a.allocatedAmount !== addForm.allocations[i].allocatedAmount);
+    if (changed) setAddForm(f => ({ ...f, allocations: updated }));
+  }, [addForm.amount, addForm.allocations.map(a => a.selected).join(',')]);
 
   const customerMap = useMemo(() => {
     const m = new Map<string, Customer>();
@@ -370,6 +444,9 @@ export function PaymentsReceivedPage() {
     if (addForm.category === 'other_income' && !addForm.payerName.trim() && !addForm.customerId) {
       setAddError('Payer name or customer is required.'); return;
     }
+    const activeAllocations = addForm.allocations
+      .filter(a => a.selected && a.allocatedAmount > 0)
+      .map(a => ({ invoiceId: a.invoiceId, amount: Math.round(a.allocatedAmount) }));
     const payload: any = {
       category: addForm.category,
       payerName: addForm.payerName.trim() || null,
@@ -381,7 +458,7 @@ export function PaymentsReceivedPage() {
       accountId: addForm.accountId,
       incomeAccountId: addForm.incomeAccountId || null,
       notes: addForm.notes.trim() || null,
-      allocations: [],
+      allocations: activeAllocations,
     };
     createMutation.mutate(payload);
   }
@@ -778,7 +855,34 @@ export function PaymentsReceivedPage() {
                     <option value="">Select customer...</option>
                     {(customers || []).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
-                  <p className="text-xs text-slate-400 mt-1">After saving, open the invoice to allocate this payment against it.</p>
+                </div>
+              )}
+
+              {addForm.category === 'sales_invoice' && addForm.customerId && (
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Outstanding Invoices</label>
+                  {addForm.allocations.length === 0 ? (
+                    <p className="text-xs text-slate-400">No outstanding invoices for this customer.</p>
+                  ) : (
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {addForm.allocations.map((alloc, idx) => (
+                        <label key={alloc.invoiceId} className="flex items-center gap-3 p-2 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                          <input type="checkbox" checked={alloc.selected}
+                            onChange={() => handleAllocToggle(idx)}
+                            className="h-4 w-4 text-slate-900 border-slate-300 rounded focus:ring-slate-900" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-slate-800">{alloc.invoiceNumber}</p>
+                            <p className="text-xs text-slate-400">Balance: {formatNaira(alloc.balanceDue)}</p>
+                          </div>
+                          <div className="text-right">
+                            {alloc.selected && (
+                              <p className="text-sm font-semibold text-emerald-700">{formatNaira(alloc.allocatedAmount || 0)}</p>
+                            )}
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
