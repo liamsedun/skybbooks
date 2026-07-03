@@ -672,16 +672,14 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
 
                       {/* Amount */}
                       <td className="px-3 align-middle h-12 text-right tabular-nums">
-                        <AmountDisplay amountInKobo={invoice.total} className="text-[13px] font-bold text-slate-900" />
+                        <AmountDisplay amountInKobo={invoice.total} className="text-[13px] font-bold text-black" />
                       </td>
 
                       {/* Balance Due */}
                       <td className="px-3 align-middle h-12 text-right tabular-nums">
                         <AmountDisplay
                           amountInKobo={invoice.balanceDue !== undefined ? invoice.balanceDue : (invoice.total || 0)}
-                          className={`text-[13px] font-bold ${
-                            invoice.balanceDue > 0 ? (invoice.status || '').toLowerCase() === 'overdue' ? 'text-danger-custom' : 'text-slate-900' : 'text-slate-500'
-                          }`}
+                          className="text-[13px] font-bold text-black"
                         />
                       </td>
 
@@ -781,6 +779,27 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
                   );
                 })}
               </tbody>
+              {filteredInvoices.length > 0 && (
+              <tfoot>
+                <tr className="border-t-2 border-slate-300 bg-slate-100">
+                  <td className="px-4 align-middle h-10"></td>
+                  <td className="px-4 align-middle h-10 text-sm font-bold text-slate-900" colSpan={4}>Total</td>
+                  <td className="px-3 align-middle h-10 text-right text-sm font-bold text-black tabular-nums">
+                    {(() => {
+                      const t = filteredInvoices.reduce((s: number, inv: any) => s + (inv.total || 0), 0);
+                      return `₦${(t / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
+                    })()}
+                  </td>
+                  <td className="px-3 align-middle h-10 text-right text-sm font-bold text-black tabular-nums">
+                    {(() => {
+                      const t = filteredInvoices.reduce((s: number, inv: any) => s + (inv.balanceDue ?? inv.total ?? 0), 0);
+                      return `₦${(t / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
+                    })()}
+                  </td>
+                  <td className="px-4 align-middle h-10" colSpan={3}></td>
+                </tr>
+              </tfoot>
+              )}
             </table>
           </div>
         )}
