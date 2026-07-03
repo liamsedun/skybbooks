@@ -125,6 +125,18 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
     enabled: !!token,
   });
 
+  const { data: customersData } = useQuery({
+    queryKey: ['customers'],
+    queryFn: () => salesApi.getCustomers(),
+    staleTime: 60000,
+    enabled: !!token,
+  });
+
+  const customers = useMemo(() => {
+    if (!customersData) return [];
+    return Array.isArray(customersData) ? customersData : (customersData as any)?.customers || (customersData as any)?.data || [];
+  }, [customersData]);
+
   // Safe destructure invoices list
   const invoicesList = useMemo(() => {
     if (!invoicesResult) return [];
@@ -798,11 +810,24 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
           onSuccess={() => {
             queryClient.invalidateQueries({ queryKey: ['invoices'] });
           }}
-          transformRow={(row, headers) => {
+          transformRow={async (row, headers) => {
             const data: Record<string, string> = {};
             headers.forEach((h, i) => { data[h.trim()] = (row[i] || '').trim(); });
+
+            let customerId = data['customerId (or name)'];
+            if (customerId) {
+              const existing = customers.find((c: any) => c.id === customerId || c.name === customerId);
+              if (existing) {
+                customerId = existing.id;
+              } else if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(customerId)) {
+                const newCustomer = await salesApi.createCustomer({ name: customerId });
+                customerId = newCustomer.id || (newCustomer as any)?.data?.id;
+                queryClient.invalidateQueries({ queryKey: ['customers'] });
+              }
+            }
+
             return {
-              customerId: data['customerId (or name)'],
+              customerId,
               date: data['date (YYYY-MM-DD)'] || undefined,
               dueDate: data['dueDate'] || undefined,
               currency: data['currency'] || undefined,

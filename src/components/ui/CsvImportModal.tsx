@@ -8,7 +8,7 @@ interface Props {
   endpoint: string;
   onClose: () => void;
   onSuccess: (ids?: string[]) => void;
-  transformRow: (row: string[], headers: string[]) => any;
+  transformRow: (row: string[], headers: string[]) => any | Promise<any>;
 }
 
 export function CsvImportModal({ entity, endpoint, onClose, onSuccess, transformRow }: Props) {
@@ -52,7 +52,7 @@ export function CsvImportModal({ entity, endpoint, onClose, onSuccess, transform
 
     for (let i = 0; i < preview.rows.length; i++) {
       try {
-        const payload = transformRow(preview.rows[i], preview.headers);
+        const payload = await transformRow(preview.rows[i], preview.headers);
         const res = await api.post(endpoint, payload);
         if (res.data?.id) importedIds.push(res.data.id);
         success++;
