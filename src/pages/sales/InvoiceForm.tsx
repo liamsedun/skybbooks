@@ -703,8 +703,8 @@ export function InvoiceForm({ invoiceId, onNavigate }: InvoiceFormProps) {
                         </td>
 
                         {/* Line Amount (read-only final calculation) */}
-                        <td className="py-3 px-2 text-right font-bold text-slate-800">
-                          <AmountDisplay amountInKobo={finalLineValKobo} className="text-xs font-bold" />
+                        <td className="py-3 px-2 text-right font-bold">
+                          <AmountDisplay amountInKobo={finalLineValKobo} className="text-xs font-bold text-black" />
                         </td>
 
                         {/* Rev / Delete row */}
