@@ -9,6 +9,7 @@ import { db, contacts, invoices, invoiceLines, quotes, salesOrders, paymentsRece
 import { eq, and, desc, asc, sql, inArray, getTableColumns } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
+import { generateInvoicePDF } from '../services/pdf.service';
 import {
   createInvoice,
   updateInvoice,
@@ -358,21 +359,11 @@ router.get('/invoices/:id/pdf', async (req: AuthenticatedRequest, res: Response,
     const orgId = req.user!.orgId!;
     const { id } = req.params;
 
-    const invoice = await getInvoice(id, orgId);
+    const pdfBuffer = await generateInvoicePDF(id, orgId);
 
-    // Prompt 7 handles full rich PDF template engines. For now, let's output metadata 
-    // or set headers for simple attachment streaming.
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Content-Disposition', `attachment; filename="Invoice-${invoice.invoiceNumber}.json"`);
-    return res.status(200).json({
-      message: 'FinanceOS Invoice PDF Payload Stream Structure',
-      invoiceId: invoice.id,
-      invoiceNumber: invoice.invoiceNumber,
-      customer: invoice.customer?.name,
-      currency: invoice.currency,
-      total: invoice.total,
-      lines: invoice.lines
-    });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="Invoice-${id}.pdf"`);
+    return res.status(200).send(pdfBuffer);
   } catch (err) {
     return next(err);
   }
