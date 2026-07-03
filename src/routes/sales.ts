@@ -653,6 +653,34 @@ router.post('/customers', async (req: AuthenticatedRequest, res: Response, next:
     const orgId = req.user!.orgId!;
     const body = createCustomerSchema.parse(req.body);
 
+    // Check for existing customer with same name to prevent duplicates on re-import
+    const [existing] = await db
+      .select()
+      .from(contacts)
+      .where(and(eq(contacts.orgId, orgId), eq(contacts.type, 'customer'), eq(contacts.name, body.name)))
+      .limit(1);
+
+    if (existing) {
+      const [updated] = await db
+        .update(contacts)
+        .set({
+          email: body.email ?? existing.email,
+          phone: body.phone ?? existing.phone,
+          address: body.address ?? existing.address,
+          city: body.city ?? existing.city,
+          state: body.state ?? existing.state,
+          country: body.country ?? existing.country,
+          taxPin: body.taxPin ?? existing.taxPin,
+          paymentTerms: body.paymentTerms ?? existing.paymentTerms,
+          creditLimit: body.creditLimit ?? existing.creditLimit,
+          balance: sql`${contacts.balance} + ${body.balance || 0}`,
+          notes: body.notes ?? existing.notes
+        })
+        .where(eq(contacts.id, existing.id))
+        .returning();
+      return res.status(200).json(updated);
+    }
+
     // Auto-generate next customer code
     const countResult = await db
       .select({ count: sql<number>`count(*)` })

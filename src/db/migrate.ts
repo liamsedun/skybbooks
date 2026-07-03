@@ -229,6 +229,38 @@ export async function runMigration() {
     `);
     // Add customer_code to contacts for auto-generated CS-XXXX identifiers
     await db.execute(`ALTER TABLE contacts ADD COLUMN IF NOT EXISTS customer_code text`);
+    // Merge duplicate customers by name within each org (prevented by POST /customers now)
+    const dupes = await db.execute(`
+      SELECT c1.org_id, c1.name, c1.id as keep_id, c2.id as dup_id, c2.balance as dup_balance, c2.customer_code as dup_code
+      FROM contacts c1
+      JOIN contacts c2 ON c1.org_id = c2.org_id AND c1.name = c2.name AND c1.type = 'customer' AND c2.type = 'customer'
+      WHERE c1.id < c2.id
+        AND c1.created_at <= c2.created_at
+    `);
+    if (dupes.rows.length > 0) {
+      console.log(`[Migration] Found ${dupes.rows.length} duplicate customer pair(s). Merging...`);
+      for (const row of dupes.rows) {
+        const keepId = row.keep_id;
+        const dupId = row.dup_id;
+        const dupBalance = Number(row.dup_balance || 0);
+        // Add duplicate balance to the kept customer
+        if (dupBalance !== 0) {
+          await db.execute(sql`UPDATE contacts SET balance = COALESCE(balance, 0) + ${dupBalance} WHERE id = ${keepId}`);
+        }
+        // Reassign invoices pointing to the duplicate
+        await db.execute(sql`UPDATE invoices SET customer_id = ${keepId} WHERE customer_id = ${dupId}`);
+        await db.execute(sql`UPDATE payments_received SET customer_id = ${keepId} WHERE customer_id = ${dupId}`);
+        await db.execute(sql`UPDATE credit_notes SET customer_id = ${keepId} WHERE customer_id = ${dupId}`);
+        await db.execute(sql`UPDATE quotes SET customer_id = ${keepId} WHERE customer_id = ${dupId}`);
+        await db.execute(sql`UPDATE sales_orders SET customer_id = ${keepId} WHERE customer_id = ${dupId}`);
+        await db.execute(sql`UPDATE recurring_invoices SET customer_id = ${keepId} WHERE customer_id = ${dupId}`);
+        await db.execute(sql`UPDATE expenses SET customer_id = ${keepId} WHERE customer_id = ${dupId}`);
+        // Delete the duplicate
+        await db.execute(sql`DELETE FROM contacts WHERE id = ${dupId}`);
+        console.log(`  Merged "${row.name}" (${row.dup_code}) into existing customer.`);
+      }
+      console.log(`[Migration] Duplicate customer merge complete.`);
+    }
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema push:', err);
