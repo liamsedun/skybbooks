@@ -129,24 +129,14 @@ export function ChartOfAccountsPage() {
   const [importMsg, setImportMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [importing, setImporting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const [showBalances, setShowBalances] = useState(false);
+  const [showBalances, setShowBalances] = useState(true);
 
   const { data: accounts, isLoading, isError } = useQuery<Account[]>({
-    queryKey: ['accountant', 'accounts', showBalances],
-    queryFn: async () => {
-      const res = await api.get(`/accountant/accounts${showBalances ? '?includeBalances=true' : ''}`);
-      return res.data;
-    },
-  });
-
-  const { data: accountsWithBal, isLoading: balancesLoading } = useQuery<Account[]>({
-    queryKey: ['accountant', 'accounts', true],
+    queryKey: ['accountant', 'accounts', 'withBalances'],
     queryFn: async () => {
       const res = await api.get('/accountant/accounts?includeBalances=true');
       return res.data;
     },
-    enabled: showBalances,
-    staleTime: 30_000,
   });
 
   const createMutation = useMutation({
@@ -171,7 +161,7 @@ export function ChartOfAccountsPage() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['accountant', 'accounts'] }); },
   });
 
-  const effectiveAccounts = showBalances && accountsWithBal ? accountsWithBal : accounts;
+  const effectiveAccounts = accounts || [];
   const tree = useMemo(() => buildTree(effectiveAccounts || []), [effectiveAccounts]);
   const visibleIds = useMemo(() => visibleNodeIds(tree, searchTerm, activeFilter), [tree, searchTerm, activeFilter]);
 
@@ -249,9 +239,6 @@ export function ChartOfAccountsPage() {
   const debitNormalTypes = new Set(['asset', 'expense']);
 
   function renderBalance(account: Account): React.ReactNode {
-    if (balancesLoading) {
-      return <div className="h-4 w-20 bg-slate-200 rounded animate-pulse" />;
-    }
     const balance = account.balance ?? 0;
     const isDebitNormal = debitNormalTypes.has(account.type);
     if (balance === 0) {

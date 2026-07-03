@@ -4,7 +4,7 @@
  */
 import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { db, accounts, journalEntries, journalLines } from '../db/schema';
+import { db, accounts, journalEntries, journalLines, bankAccounts, fixedAssets, inventoryLots } from '../db/schema';
 import { authenticate, requireOrg, requireRole, AuthenticatedRequest } from '../middleware/auth';
 import { eq, and, asc, sql } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
@@ -59,16 +59,79 @@ router.get('/accounts', async (req: AuthenticatedRequest, res: Response, next: N
       balanceMap.set(row.accountId, { debits: Number(row.totalDebits), credits: Number(row.totalCredits) });
     }
 
+    // Sub-ledger overrides (same logic as Trial Balance)
+    const [faByAccount, bankByAccount, invBalance] = await Promise.all([
+      db.select({
+        accountId: fixedAssets.accountId,
+        totalCost: sql<number>`coalesce(sum(${fixedAssets.purchaseCost}), 0)`,
+        totalDepr: sql<number>`coalesce(sum(${fixedAssets.accumulatedDepreciation}), 0)`
+      }).from(fixedAssets).where(and(eq(fixedAssets.orgId, orgId), eq(fixedAssets.status, 'active'))).groupBy(fixedAssets.accountId),
+      db.select({
+        accountId: bankAccounts.accountId,
+        totalBalance: sql<number>`coalesce(sum(${bankAccounts.currentBalance}), 0)`
+      }).from(bankAccounts).where(eq(bankAccounts.orgId, orgId)).groupBy(bankAccounts.accountId),
+      db.select({
+        totalValue: sql<number>`coalesce(sum(${inventoryLots.quantity}::numeric * ${inventoryLots.costPerUnit}), 0)`
+      }).from(inventoryLots).where(eq(inventoryLots.orgId, orgId))
+    ]);
+
+    const faMap = new Map<string, { totalCost: number; totalDepr: number }>();
+    for (const r of faByAccount) faMap.set(r.accountId, r);
+    const bankMap = new Map<string, number>();
+    for (const r of bankByAccount) bankMap.set(r.accountId, r.totalBalance);
+    const inventoryValue = Number(invBalance[0]?.totalValue || 0);
+    const invAccount = list.find(a => a.code.startsWith('102') && !a.name.toLowerCase().includes('contra'));
+
     const debitNormalTypes = new Set(['asset', 'expense']);
 
     const enriched = list.map((acc) => {
       const b = balanceMap.get(acc.id);
-      let balance = 0;
-      if (b) {
-        balance = debitNormalTypes.has(acc.type)
-          ? b.debits - b.credits
-          : b.credits - b.debits;
+      let debits = b?.debits || 0;
+      let credits = b?.credits || 0;
+
+      // Incorporate openingBalance from accounts table
+      const isDebitBook = debitNormalTypes.has(acc.type);
+      const isContraAsset = acc.type === 'asset' && (acc.name.toLowerCase().includes('accumulated depreciation') || acc.name.toLowerCase().includes('accumulated amortisation'));
+      const isDebitBookOpening = (acc.type === 'asset' && !isContraAsset) || acc.type === 'expense';
+      if (acc.openingBalance !== 0) {
+        const ob = acc.openingBalance;
+        if (isDebitBookOpening) {
+          if (ob > 0) debits += ob;
+          else credits += Math.abs(ob);
+        } else {
+          if (ob > 0) credits += ob;
+          else debits += Math.abs(ob);
+        }
       }
+
+      // Fixed assets override
+      const faData = faMap.get(acc.id);
+      if (faData && acc.type === 'asset') {
+        const jeBalance = debits - credits;
+        const trueBalance = faData.totalCost - faData.totalDepr;
+        const diff = trueBalance - jeBalance;
+        if (diff > 0) debits += diff;
+        else if (diff < 0) credits += Math.abs(diff);
+      }
+
+      // Bank accounts override
+      const bankBal = bankMap.get(acc.id);
+      if (bankBal !== undefined && acc.type === 'asset') {
+        const jeBalance = debits - credits;
+        const diff = bankBal - jeBalance;
+        if (diff > 0) debits += diff;
+        else if (diff < 0) credits += Math.abs(diff);
+      }
+
+      // Inventory override
+      if (inventoryValue > 0 && invAccount && acc.id === invAccount.id) {
+        const jeBalance = debits - credits;
+        const diff = inventoryValue - jeBalance;
+        if (diff > 0) debits += diff;
+        else if (diff < 0) credits += Math.abs(diff);
+      }
+
+      const balance = isDebitBook ? debits - credits : credits - debits;
       return { ...acc, balance };
     });
 
