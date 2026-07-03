@@ -17,18 +17,19 @@ interface Vendor {
   address: string | null; city: string | null; state: string | null;
   country: string; taxPin: string | null; paymentTerms: number | null;
   currency: string; notes: string | null; isActive: boolean; createdAt: string;
+  balance?: number;
 }
 
 type FormState = {
   name: string; email: string; phone: string; address: string;
   city: string; state: string; country: string; taxPin: string;
-  paymentTerms: string; currency: string; notes: string;
+  paymentTerms: string; currency: string; notes: string; openingBalance: string;
 };
 
 const EMPTY_FORM: FormState = {
   name: '', email: '', phone: '', address: '',
   city: '', state: '', country: 'Nigeria',
-  taxPin: '', paymentTerms: '30', currency: 'NGN', notes: '',
+  taxPin: '', paymentTerms: '30', currency: 'NGN', notes: '', openingBalance: '',
 };
 
 function initials(name: string) { return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2); }
@@ -36,11 +37,11 @@ const COLORS = ['bg-violet-100 text-violet-700','bg-blue-100 text-blue-700','bg-
 function colorFor(name: string) { return COLORS[name.charCodeAt(0) % COLORS.length]; }
 
 function exportVendorsCSV(vendors: Vendor[]) {
-  const headers = ['Name','Email','Phone','Address','City','State','Country','Tax PIN','Payment Terms','Currency','Notes','Status'];
+  const headers = ['Name','Email','Phone','Address','City','State','Country','Tax PIN','Payment Terms','Currency','Opening Balance','Notes','Status'];
   const rows = vendors.map(v => [
     v.name, v.email||'', v.phone||'', v.address||'', v.city||'', v.state||'',
     v.country, v.taxPin||'', v.paymentTerms ? `Net ${v.paymentTerms}` : '',
-    v.currency, v.notes||'', v.isActive ? 'Active' : 'Inactive'
+    v.currency, v.balance ? (v.balance / 100).toFixed(2) : '', v.notes||'', v.isActive ? 'Active' : 'Inactive'
   ]);
   const csv = [headers,...rows].map(r => r.map(val => `"${val}"`).join(',')).join('\n');
   const blob = new Blob([csv],{type:'text/csv'});
@@ -150,7 +151,7 @@ export function VendorsPage() {
     setForm({ name:v.name, email:v.email||'', phone:v.phone||'', address:v.address||'',
       city:v.city||'', state:v.state||'', country:v.country||'Nigeria',
       taxPin:v.taxPin||'', paymentTerms:v.paymentTerms?.toString()||'30',
-      currency:v.currency||'NGN', notes:v.notes||'' });
+      currency:v.currency||'NGN', notes:v.notes||'', openingBalance: v.balance ? (v.balance / 100).toFixed(2) : '' });
     setFormError(null); setModalOpen(true);
   }
   function closeModal() { setModalOpen(false); setEditingId(null); setFormError(null); }
@@ -161,7 +162,8 @@ export function VendorsPage() {
     const payload = { ...form, email:form.email||null, phone:form.phone||null,
       address:form.address||null, city:form.city||null, state:form.state||null,
       taxPin:form.taxPin||null, notes:form.notes||null,
-      paymentTerms:parseInt(form.paymentTerms)||null };
+      paymentTerms:parseInt(form.paymentTerms)||null,
+      balance: form.openingBalance ? Math.round(parseFloat(form.openingBalance) * 100) : 0 };
     if (editingId) updateMutation.mutate({ id: editingId, p: payload });
     else createMutation.mutate(payload);
   }
@@ -202,7 +204,7 @@ export function VendorsPage() {
           <p className="text-sm text-slate-500 mt-0.5">{vendors.length} vendors · {activeCount} active</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => downloadCsv('vendors-template.csv', ['Name','Email','Phone','Address','City','State','Country','Tax PIN','Payment Terms','Currency','Notes'], ['ABC Supplies Ltd','vendor@company.com','+2348000000000','123 Marina Street','Lagos','Lagos State','Nigeria','TIN-1234567890','30','NGN','Main supplier for office materials'])} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
+          <button onClick={() => downloadCsv('vendors-template.csv', ['Name','Email','Phone','Address','City','State','Country','Tax PIN','Payment Terms','Opening Balance','Currency','Notes'], ['ABC Supplies Ltd','vendor@company.com','+2348000000000','123 Marina Street','Lagos','Lagos State','Nigeria','TIN-1234567890','30','500000','NGN','Main supplier for office materials'])} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
             <FileText size={14} /> Sample CSV
           </button>
           <button onClick={() => setShowImport(true)} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
@@ -364,6 +366,10 @@ export function VendorsPage() {
                   <label className="block text-xs font-medium text-slate-500 mb-1">Payment Terms (days)</label>
                   <input type="number" min="0" value={form.paymentTerms} onChange={e=>setForm({...form,paymentTerms:e.target.value})} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"/>
                 </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Opening Balance (NGN)</label>
+                  <input type="number" step="0.01" min="0" value={form.openingBalance} onChange={e=>setForm({...form,openingBalance:e.target.value})} placeholder="0.00" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"/>
+                </div>
                 <div className="col-span-2">
                   <label className="block text-xs font-medium text-slate-500 mb-1">Notes</label>
                   <textarea value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} rows={2} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 resize-none"/>
@@ -389,8 +395,8 @@ export function VendorsPage() {
               <h2 className="text-lg font-bold text-slate-900">Import Vendors</h2>
               <button onClick={() => { setShowImport(false); setImportMsg(null); setCsvText(''); }} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
             </div>
-            <p className="text-sm text-slate-500">Upload a CSV file with columns: <code className="text-xs bg-slate-100 px-1 rounded">Name</code>, <code className="text-xs bg-slate-100 px-1 rounded">Email</code>, <code className="text-xs bg-slate-100 px-1 rounded">Phone</code>, <code className="text-xs bg-slate-100 px-1 rounded">Address</code>, <code className="text-xs bg-slate-100 px-1 rounded">City</code>, <code className="text-xs bg-slate-100 px-1 rounded">State</code>, <code className="text-xs bg-slate-100 px-1 rounded">Country</code>, <code className="text-xs bg-slate-100 px-1 rounded">Tax PIN</code>, <code className="text-xs bg-slate-100 px-1 rounded">Payment Terms</code>. Only <code className="text-xs bg-slate-100 px-1 rounded">Name</code> is required.</p>
-            <button onClick={() => downloadCsv('vendors-template.csv', ['Name','Email','Phone','Address','City','State','Country','Tax PIN','Payment Terms','Currency','Notes'], ['ABC Supplies Ltd','vendor@company.com','+2348000000000','123 Marina Street','Lagos','Lagos State','Nigeria','TIN-1234567890','30','NGN','Main supplier for office materials'])} className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-800">
+            <p className="text-sm text-slate-500">Upload a CSV file with columns: <code className="text-xs bg-slate-100 px-1 rounded">Name</code>, <code className="text-xs bg-slate-100 px-1 rounded">Email</code>, <code className="text-xs bg-slate-100 px-1 rounded">Phone</code>, <code className="text-xs bg-slate-100 px-1 rounded">Address</code>, <code className="text-xs bg-slate-100 px-1 rounded">City</code>, <code className="text-xs bg-slate-100 px-1 rounded">State</code>, <code className="text-xs bg-slate-100 px-1 rounded">Country</code>, <code className="text-xs bg-slate-100 px-1 rounded">Tax PIN</code>, <code className="text-xs bg-slate-100 px-1 rounded">Payment Terms</code>, <code className="text-xs bg-slate-100 px-1 rounded">Opening Balance</code>. Only <code className="text-xs bg-slate-100 px-1 rounded">Name</code> is required.</p>
+            <button onClick={() => downloadCsv('vendors-template.csv', ['Name','Email','Phone','Address','City','State','Country','Tax PIN','Payment Terms','Opening Balance','Currency','Notes'], ['ABC Supplies Ltd','vendor@company.com','+2348000000000','123 Marina Street','Lagos','Lagos State','Nigeria','TIN-1234567890','30','500000','NGN','Main supplier for office materials'])} className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-800">
               <FileText className="w-3.5 h-3.5" /> Download Sample CSV
             </button>
             <input ref={fileRef} type="file" accept=".csv" onChange={handleFileUpload} className="block w-full text-sm text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />

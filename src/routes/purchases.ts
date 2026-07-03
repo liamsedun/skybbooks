@@ -685,6 +685,7 @@ router.post('/vendors/import-csv', async (req: AuthenticatedRequest, res: Respon
     const termsIdx = headers.findIndex(h => h === 'payment terms' || h === 'payment_terms' || h === 'terms');
     const currencyIdx = headers.findIndex(h => h === 'currency');
     const notesIdx = headers.findIndex(h => h === 'notes');
+    const balanceIdx = headers.findIndex(h => h === 'opening balance' || h === 'opening_balance' || h === 'balance');
 
     if (nameIdx === -1) throw new AppError('CSV must contain a "name" column.', 400);
 
@@ -709,11 +710,13 @@ router.post('/vendors/import-csv', async (req: AuthenticatedRequest, res: Respon
       const paymentTerms = termsIdx >= 0 ? (parseInt(row[termsIdx]?.trim()) || null) : null;
       const currency = currencyIdx >= 0 ? (row[currencyIdx]?.trim() || 'NGN') : 'NGN';
       const notes = notesIdx >= 0 ? (row[notesIdx]?.trim() || null) : null;
+      const balance = balanceIdx >= 0 ? (Math.round(parseFloat(row[balanceIdx]?.replace(/[₦,]/g, '') || '0') * 100)) : 0;
 
       try {
         const [vendor] = await db.insert(contacts).values({
           orgId, name, email, phone, address, city, state, country,
-          taxPin, paymentTerms, currency, notes, type: 'vendor', isActive: true
+          taxPin, paymentTerms, currency, notes, balance,
+          type: 'vendor', isActive: true
         }).returning();
         created.push(vendor);
       } catch (err: any) {
