@@ -637,13 +637,22 @@ router.post('/customers', async (req: AuthenticatedRequest, res: Response, next:
     const orgId = req.user!.orgId!;
     const body = createCustomerSchema.parse(req.body);
 
+    // Auto-generate next customer code
+    const countResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(contacts)
+      .where(and(eq(contacts.orgId, orgId), eq(contacts.type, 'customer')));
+    const nextNum = Number(countResult[0]?.count || 0) + 1;
+    const customerCode = `CS-${String(nextNum).padStart(4, '0')}`;
+
     const [customer] = await db
       .insert(contacts)
       .values({
         ...body,
         orgId,
         type: 'customer',
-        isActive: true
+        isActive: true,
+        customerCode
       })
       .returning();
 

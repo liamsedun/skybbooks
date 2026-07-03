@@ -227,6 +227,8 @@ export async function runMigration() {
         WHEN duplicate_object THEN NULL;
       END $$;
     `);
+    // Add customer_code to contacts for auto-generated CS-XXXX identifiers
+    await db.execute(`ALTER TABLE contacts ADD COLUMN IF NOT EXISTS customer_code text`);
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema push:', err);

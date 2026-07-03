@@ -29,6 +29,7 @@ interface Customer {
   id: string;
   orgId: string;
   type: 'customer' | 'vendor' | 'both';
+  customerCode?: string;
   name: string;
   email: string | null;
   phone: string | null;
@@ -48,6 +49,7 @@ interface Customer {
 }
 
 type CustomerFormState = {
+  customerCode: string;
   name: string;
   email: string;
   phone: string;
@@ -63,6 +65,7 @@ type CustomerFormState = {
 };
 
 const EMPTY_FORM: CustomerFormState = {
+  customerCode: '',
   name: '',
   email: '',
   phone: '',
@@ -101,6 +104,7 @@ function buildPayload(form: CustomerFormState) {
 
 function formFromCustomer(c: Customer): CustomerFormState {
   return {
+    customerCode: c.customerCode || '',
     name: c.name,
     email: c.email || '',
     phone: c.phone || '',
@@ -517,6 +521,14 @@ function CustomerFormModal({
           {formError && (
             <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2">{formError}</div>
           )}
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1">Customer Code</label>
+            <input
+              value={form.customerCode || (mode === 'add' ? 'Auto-generated' : '')}
+              readOnly
+              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-slate-50 text-slate-400 cursor-not-allowed"
+            />
+          </div>
           <div>
             <label className="block text-xs font-medium text-slate-500 mb-1">Customer Name</label>
             <input

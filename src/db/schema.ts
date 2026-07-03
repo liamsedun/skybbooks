@@ -298,6 +298,7 @@ export const contacts = pgTable('contacts', {
   currency: text('currency').default('NGN').notNull(),
   notes: text('notes'),
   isActive: boolean('is_active').default(true).notNull(),
+  customerCode: text('customer_code'),
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
