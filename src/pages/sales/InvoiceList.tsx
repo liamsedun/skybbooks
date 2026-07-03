@@ -680,16 +680,19 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
                       </td>
 
                       {/* Amount */}
-                      <td className="px-3 align-middle h-12 text-right tabular-nums">
-                        <AmountDisplay amountInKobo={invoice.total} className="text-[13px] font-bold text-slate-900" />
+                      <td className="px-3 align-middle h-12 text-right tabular-nums font-bold text-gray-900 text-[13px]">
+                        {(() => {
+                          const v = (invoice.total || 0) / 100;
+                          return `₦${v.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
+                        })()}
                       </td>
 
                       {/* Balance Due */}
-                      <td className="px-3 align-middle h-12 text-right tabular-nums">
-                        <AmountDisplay
-                          amountInKobo={invoice.balanceDue !== undefined ? invoice.balanceDue : (invoice.total || 0)}
-                          className="text-[13px] font-bold text-slate-900"
-                        />
+                      <td className="px-3 align-middle h-12 text-right tabular-nums font-bold text-gray-900 text-[13px]">
+                        {(() => {
+                          const v = (invoice.balanceDue !== undefined ? invoice.balanceDue : (invoice.total || 0)) / 100;
+                          return `₦${v.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
+                        })()}
                       </td>
 
                       {/* Status */}
