@@ -43,13 +43,16 @@ interface InvoiceListProps {
   onNavigate: (viewId: string, invoiceId?: string) => void;
 }
 
-function exportInvoicesCSV(invoices: any[]) {
+function exportInvoicesCSV(invoices: any[], customerMap?: Map<string, any>) {
   const headers = ['Invoice #','Customer','Date','Due Date','Status','Subtotal (₦)','Tax (₦)','Total (₦)','Balance Due (₦)'];
-  const rows = invoices.map((inv: any) => [
-    inv.invoiceNumber, inv.customer?.name||inv.customerId||'', inv.date, inv.dueDate||'',
-    inv.status, (inv.subtotal/100).toFixed(2), (inv.taxAmount/100).toFixed(2),
-    (inv.total/100).toFixed(2), (inv.balanceDue/100).toFixed(2),
-  ]);
+  const rows = invoices.map((inv: any) => {
+    const cust = inv.customer?.name || (customerMap?.get(inv.customerId)?.name) || inv.customerId || '';
+    return [
+      inv.invoiceNumber, cust, inv.date, inv.dueDate||'',
+      inv.status, (inv.subtotal/100).toFixed(2), (inv.taxAmount/100).toFixed(2),
+      (inv.total/100).toFixed(2), (inv.balanceDue/100).toFixed(2),
+    ];
+  });
   const csv = [headers,...rows].map(r => r.map(val => `"${val}"`).join(',')).join('\n');
   const blob = new Blob([csv],{type:'text/csv'});
   const url = URL.createObjectURL(blob);
@@ -136,6 +139,12 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
     if (!customersData) return [];
     return Array.isArray(customersData) ? customersData : (customersData as any)?.customers || (customersData as any)?.data || [];
   }, [customersData]);
+
+  const customerMap = useMemo(() => {
+    const m = new Map<string, any>();
+    (customers || []).forEach((c: any) => m.set(c.id, c));
+    return m;
+  }, [customers]);
 
   // Safe destructure invoices list
   const invoicesList = useMemo(() => {
@@ -315,7 +324,7 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
             <RefreshCw className="w-3.5 h-3.5" />
           </button>
           
-          <button onClick={() => exportInvoicesCSV(filteredInvoices)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
+          <button onClick={() => exportInvoicesCSV(filteredInvoices, customerMap)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
             <Download size={14} /> CSV
           </button>
           <button onClick={() => exportInvoicesPDF(filteredInvoices)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
