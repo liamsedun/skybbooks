@@ -86,8 +86,8 @@ export const CSV_TEMPLATES: Record<string, { headers: string[]; sample: string[]
   },
   paymentsReceived: {
     filename: 'payments-received-template.csv',
-    headers: ['customerCode (or name)', 'payerName', 'date (YYYY-MM-DD)', 'amount (NGN)', 'paymentMethod', 'reference', 'category', 'notes'],
-    sample: ['CS-0002', 'Acme Corp', '2026-06-24', '50000', 'bank_transfer', 'TXN-12345', 'sales_invoice', 'Payment for INV-0001'],
+    headers: ['customerCode (or name)', 'payerName', 'date (YYYY-MM-DD)', 'amount (NGN)', 'paymentMethod', 'reference', 'category', 'invoiceNumber', 'notes'],
+    sample: ['CS-0002', 'Acme Corp', '2026-06-24', '50000', 'bank_transfer', 'TXN-12345', 'sales_invoice', 'INV-000001', 'Payment for INV-000001'],
   },
   creditNotes: {
     filename: 'credit-notes-template.csv',

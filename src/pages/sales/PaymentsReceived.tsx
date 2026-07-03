@@ -1042,17 +1042,21 @@ export function PaymentsReceivedPage() {
             const custName = row[custIdx]?.trim();
             const customer = (customers || []).find(c => c.id === custName || c.name === custName || c.customerCode === custName);
             const amountStr = row[headers.indexOf('amount (NGN)')]?.replace(/[,₦]/g, '').trim();
+            const invNum = row[headers.indexOf('invoiceNumber')]?.trim() || row[headers.indexOf('invoice')]?.trim() || '';
+            const matchedInvoice = invNum ? (invoicesList || []).find((inv: any) => (inv.invoiceNumber || '') === invNum || inv.id === invNum) : null;
+            const amountKobo = Math.round((parseFloat(amountStr) || 0) * 100);
+            const allocations = matchedInvoice ? [{ invoiceId: matchedInvoice.id, amount: amountKobo }] : [];
             return {
               category: row[headers.indexOf('category')]?.trim() || 'other_income',
               customerId: customer?.id || custName || null,
               payerName: row[headers.indexOf('payerName')]?.trim() || null,
               date: row[headers.indexOf('date (YYYY-MM-DD)')] || undefined,
-              amount: Math.round((parseFloat(amountStr) || 0) * 100),
+              amount: amountKobo,
               paymentMethod: row[headers.indexOf('paymentMethod')]?.trim() || 'bank_transfer',
               reference: row[headers.indexOf('reference')]?.trim() || null,
               accountId: '',
               notes: row[headers.indexOf('notes')]?.trim() || null,
-              allocations: [],
+              allocations,
             };
           }}
         />
