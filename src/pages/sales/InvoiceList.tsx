@@ -671,16 +671,16 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
                       </td>
 
                       {/* Amount */}
-                      <td className="px-3 align-middle h-12 text-right font-semibold tabular-nums text-[13px]">
-                        <AmountDisplay amountInKobo={invoice.total} className="text-[13px] font-semibold" />
+                      <td className="px-3 align-middle h-12 text-right tabular-nums">
+                        <AmountDisplay amountInKobo={invoice.total} className="text-[13px] font-bold text-slate-900" />
                       </td>
 
                       {/* Balance Due */}
-                      <td className="px-3 align-middle h-12 text-right font-semibold tabular-nums text-[13px]">
+                      <td className="px-3 align-middle h-12 text-right tabular-nums">
                         <AmountDisplay
                           amountInKobo={invoice.balanceDue !== undefined ? invoice.balanceDue : (invoice.total || 0)}
-                          className={`text-[13px] font-semibold ${
-                            invoice.balanceDue > 0 ? (invoice.status || '').toLowerCase() === 'overdue' ? 'text-danger-custom font-semibold' : 'text-slate-700' : 'text-slate-400'
+                          className={`text-[13px] font-bold ${
+                            invoice.balanceDue > 0 ? (invoice.status || '').toLowerCase() === 'overdue' ? 'text-danger-custom' : 'text-slate-900' : 'text-slate-500'
                           }`}
                         />
                       </td>
@@ -704,12 +704,12 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
 
                       {/* Row Actions */}
                       <td className="px-4 align-middle h-12 text-right">
-                        <div className="flex items-center justify-end space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-                          
+                        <div className="flex items-center justify-end space-x-1">
+
                           {/* View details */}
                           <button
                             onClick={() => onNavigate('invoice-detail', invoice.id)}
-                            className="p-1.5 hover:bg-slate-150 text-slate-400 hover:text-ink-900 rounded-lg outline-none transition"
+                            className="p-1.5 hover:bg-slate-200 text-slate-500 hover:text-slate-900 rounded-lg outline-none transition"
                             title="Audit Invoice"
                           >
                             <ExternalLink className="w-4 h-4" />
@@ -719,7 +719,7 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
                           {isDraft && (
                             <button
                               onClick={() => onNavigate('edit-invoice', invoice.id)}
-                              className="p-1.5 hover:bg-slate-150 text-slate-400 hover:text-primary rounded-lg outline-none transition-colors"
+                              className="p-1.5 hover:bg-slate-200 text-slate-500 hover:text-primary rounded-lg outline-none transition-colors"
                               title="Edit draft details"
                             >
                               <Edit2 className="w-4 h-4" />
@@ -730,7 +730,7 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
                           {(isDraft || invoice.status?.toLowerCase() === 'unpaid') && (
                             <button
                               onClick={() => sendInvoiceMutation.mutate(invoice.id)}
-                              className="p-1.5 hover:bg-slate-150 text-slate-400 hover:text-amber-600 rounded-lg outline-none transition"
+                              className="p-1.5 hover:bg-slate-200 text-slate-500 hover:text-amber-600 rounded-lg outline-none transition"
                               title="Send to client via email"
                             >
                               <Send className="w-4 h-4" />
@@ -744,7 +744,7 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
                                 setSelectedInvoiceForPayment({ id: invoice.id, customerId: invoice.clientName || invoice.customerId });
                                 setPaymentDrawerOpen(true);
                               }}
-                              className="p-1.5 hover:bg-slate-150 text-slate-400 hover:text-emerald-600 rounded-lg outline-none transition"
+                              className="p-1.5 hover:bg-slate-200 text-slate-500 hover:text-emerald-600 rounded-lg outline-none transition"
                               title="Record payment ticket"
                             >
                               <CreditCard className="w-4 h-4" />
@@ -754,7 +754,7 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
                           {/* Print PDF */}
                           <button
                             onClick={() => handleDownloadPdf(invoice.id, invoiceNo)}
-                            className="p-1.5 hover:bg-slate-150 text-slate-400 hover:text-primary rounded-lg outline-none transition"
+                            className="p-1.5 hover:bg-slate-200 text-slate-500 hover:text-primary rounded-lg outline-none transition"
                             title="Download GAAP PDF Certificate"
                           >
                             <Download className="w-4 h-4" />
@@ -768,7 +768,7 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
                                   voidInvoiceMutation.mutate(invoice.id);
                                 }
                               }}
-                              className="p-1.5 hover:bg-slate-150 text-slate-400 hover:text-danger-custom rounded-lg outline-none transition"
+                              className="p-1.5 hover:bg-slate-200 text-slate-500 hover:text-danger-custom rounded-lg outline-none transition"
                               title="Void invoice"
                             >
                               <Ban className="w-4 h-4" />
