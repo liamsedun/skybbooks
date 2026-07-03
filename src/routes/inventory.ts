@@ -10,6 +10,69 @@ import { eq, and, lte, sql } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
 import { createJournalEntry } from '../services/ledger.service';
 
+// Helper: auto-create opening stock lot when item has trackInventory + purchasePrice + numeric unit
+async function autoCreateOpeningStock(item: any, orgId: string, userId: string) {
+  if (!item.trackInventory || !item.inventoryAccountId) return;
+  const purchasePrice = item.purchasePrice || 0;
+  if (purchasePrice <= 0) return;
+  const qty = parseInt(item.unit, 10);
+  if (isNaN(qty) || qty <= 0) return;
+  // Only auto-create if no lots already exist for this item
+  const [existing] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(inventoryLots)
+    .where(eq(inventoryLots.itemId, item.id));
+  if (Number(existing?.count || 0) > 0) return;
+
+  const totalValue = qty * purchasePrice;
+
+  const [lot] = await db
+    .insert(inventoryLots)
+    .values({
+      itemId: item.id,
+      orgId,
+      quantity: String(qty),
+      costPerUnit: purchasePrice,
+      receivedDate: new Date(),
+      reference: 'Opening Stock'
+    })
+    .returning();
+
+  await db.insert(inventoryTransactions).values({
+    itemId: item.id,
+    orgId,
+    lotId: lot.id,
+    type: 'purchase',
+    quantity: String(qty),
+    unitCost: purchasePrice,
+    referenceType: 'opening_stock',
+    referenceId: lot.id,
+    date: new Date()
+  });
+
+  // Post journal entry: DR Inventory, CR Retained Earnings
+  const [reAcct] = await db
+    .select()
+    .from(accounts)
+    .where(and(eq(accounts.orgId, orgId), eq(accounts.systemAccountRole, 'retained_earnings')))
+    .limit(1);
+  if (reAcct) {
+    await createJournalEntry({
+      orgId,
+      date: new Date(),
+      description: `Opening stock — ${item.name} (${qty} units @ ₦${(purchasePrice / 100).toLocaleString()})`,
+      reference: 'Opening Stock',
+      source: 'opening_stock',
+      sourceId: lot.id,
+      createdBy: userId,
+      lines: [
+        { accountId: item.inventoryAccountId, debit: totalValue, description: `Opening stock — ${item.name}` },
+        { accountId: reAcct.id, credit: totalValue, description: `Opening stock offset — ${item.name}` }
+      ]
+    });
+  }
+}
+
 const router = Router();
 router.use(authenticate);
 router.use(requireOrg);
@@ -65,6 +128,7 @@ router.get('/items', async (req: AuthenticatedRequest, res: Response, next: Next
 router.post('/items', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const orgId = req.user!.orgId!;
+    const userId = req.user!.userId!;
     const body = itemSchema.parse(req.body);
     const sku = body.sku?.trim() || `SKU-${Date.now()}`;
 
@@ -87,6 +151,9 @@ router.post('/items', async (req: AuthenticatedRequest, res: Response, next: Nex
       })
       .returning();
 
+    // Auto-create opening stock if conditions are met
+    await autoCreateOpeningStock(newItem, orgId, userId);
+
     return res.status(201).json(newItem);
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -100,6 +167,7 @@ router.post('/items', async (req: AuthenticatedRequest, res: Response, next: Nex
 router.patch('/items/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const orgId = req.user!.orgId!;
+    const userId = req.user!.userId!;
     const { id } = req.params;
     const body = itemSchema.partial().parse(req.body);
 
@@ -115,6 +183,10 @@ router.patch('/items/:id', async (req: AuthenticatedRequest, res: Response, next
       .returning();
 
     if (!updated) throw new AppError('Item not found.', 404);
+
+    // Auto-create opening stock if conditions are now met
+    await autoCreateOpeningStock(updated, orgId, userId);
+
     return res.status(200).json(updated);
   } catch (err) {
     if (err instanceof z.ZodError) {
