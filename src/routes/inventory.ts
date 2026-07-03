@@ -4,10 +4,11 @@
  */
 import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { db, items, inventoryLots, inventoryTransactions } from '../db/schema';
+import { db, items, inventoryLots, inventoryTransactions, accounts } from '../db/schema';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
 import { eq, and, lte, sql } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
+import { createJournalEntry } from '../services/ledger.service';
 
 const router = Router();
 router.use(authenticate);
@@ -156,6 +157,7 @@ router.delete('/items/:id', async (req: AuthenticatedRequest, res: Response, nex
 router.post('/items/import-opening-stock', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const orgId = req.user!.orgId!;
+    const userId = req.user!.userId!;
     const { itemName, quantity, unitCost } = req.body;
     if (!itemName) throw new AppError('itemName is required.', 400);
 
@@ -169,7 +171,8 @@ router.post('/items/import-opening-stock', async (req: AuthenticatedRequest, res
 
     const qty = parseInt(quantity, 10);
     if (isNaN(qty) || qty <= 0) throw new AppError('Invalid quantity.', 400);
-    const cost = unitCost ? Math.round(parseFloat(unitCost) * 100) : 0;
+    const cost = unitCost ? Math.round(parseFloat(unitCost) * 100) : (item.purchasePrice || 0);
+    const totalValue = qty * cost;
 
     const [lot] = await db
       .insert(inventoryLots)
@@ -195,6 +198,30 @@ router.post('/items/import-opening-stock', async (req: AuthenticatedRequest, res
       date: new Date()
     });
 
+    // Post journal entry: DR Inventory, CR Retained Earnings
+    if (item.inventoryAccountId && totalValue > 0) {
+      const [reAcct] = await db
+        .select()
+        .from(accounts)
+        .where(and(eq(accounts.orgId, orgId), eq(accounts.systemAccountRole, 'retained_earnings')))
+        .limit(1);
+      if (reAcct) {
+        await createJournalEntry({
+          orgId,
+          date: new Date(),
+          description: `Opening stock — ${item.name} (${qty} units @ ₦${(cost / 100).toLocaleString()})`,
+          reference: 'Opening Stock',
+          source: 'opening_stock',
+          sourceId: lot.id,
+          createdBy: userId,
+          lines: [
+            { accountId: item.inventoryAccountId, debit: totalValue, description: `Opening stock — ${item.name}` },
+            { accountId: reAcct.id, credit: totalValue, description: `Opening stock offset — ${item.name}` }
+          ]
+        });
+      }
+    }
+
     return res.status(201).json({ message: 'Opening stock recorded.', item: item.name });
   } catch (err) {
     return next(err);
@@ -205,11 +232,11 @@ router.post('/items/import-opening-stock', async (req: AuthenticatedRequest, res
 router.post('/items/record-opening-stock', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const orgId = req.user!.orgId!;
+    const userId = req.user!.userId!;
     const { itemId, quantity, unitCost } = req.body;
     if (!itemId) throw new AppError('itemId is required.', 400);
     const qty = parseInt(quantity, 10);
     if (isNaN(qty) || qty <= 0) throw new AppError('Quantity must be a positive number.', 400);
-    const cost = Math.round(parseFloat(unitCost || '0') * 100);
 
     const [item] = await db
       .select()
@@ -217,6 +244,10 @@ router.post('/items/record-opening-stock', async (req: AuthenticatedRequest, res
       .where(and(eq(items.id, itemId), eq(items.orgId, orgId)))
       .limit(1);
     if (!item) throw new AppError('Item not found.', 404);
+
+    // Use provided unitCost or fall back to item's purchasePrice (both in kobo)
+    const cost = unitCost ? Math.round(parseFloat(String(unitCost)) * 100) : (item.purchasePrice || 0);
+    const totalValue = qty * cost;
 
     const [lot] = await db
       .insert(inventoryLots)
@@ -241,6 +272,30 @@ router.post('/items/record-opening-stock', async (req: AuthenticatedRequest, res
       referenceId: lot.id,
       date: new Date()
     });
+
+    // Post journal entry: DR inventory asset account, CR retained earnings
+    if (item.inventoryAccountId && totalValue > 0) {
+      const [reAcct] = await db
+        .select()
+        .from(accounts)
+        .where(and(eq(accounts.orgId, orgId), eq(accounts.systemAccountRole, 'retained_earnings')))
+        .limit(1);
+      if (reAcct) {
+        await createJournalEntry({
+          orgId,
+          date: new Date(),
+          description: `Opening stock — ${item.name} (${qty} units @ ₦${(cost / 100).toLocaleString()})`,
+          reference: 'Opening Stock',
+          source: 'opening_stock',
+          sourceId: lot.id,
+          createdBy: userId,
+          lines: [
+            { accountId: item.inventoryAccountId, debit: totalValue, description: `Opening stock — ${item.name}` },
+            { accountId: reAcct.id, credit: totalValue, description: `Opening stock offset — ${item.name}` }
+          ]
+        });
+      }
+    }
 
     return res.status(201).json({ message: 'Opening stock recorded.', lot });
   } catch (err) {

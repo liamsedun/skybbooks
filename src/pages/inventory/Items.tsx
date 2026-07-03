@@ -717,7 +717,11 @@ export function ItemsPage() {
                 <label className="block text-xs font-medium text-slate-500 mb-1">Item</label>
                 <select
                   value={stockForm.itemId}
-                  onChange={(e) => setStockForm({ ...stockForm, itemId: e.target.value })}
+                  onChange={(e) => {
+                    const selected = (items || []).find(i => i.id === e.target.value);
+                    const purchasePriceNaira = selected?.purchasePrice ? (selected.purchasePrice / 100).toString() : '';
+                    setStockForm({ itemId: e.target.value, quantity: stockForm.quantity, unitCost: purchasePriceNaira });
+                  }}
                   className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
                 >
                   <option value="">Select item...</option>
@@ -736,6 +740,13 @@ export function ItemsPage() {
                   <label className="block text-xs font-medium text-slate-500 mb-1">Unit Cost (₦)</label>
                   <input type="number" step="0.01" min="0" value={stockForm.unitCost} onChange={(e) => setStockForm({ ...stockForm, unitCost: e.target.value })}
                     className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                  {(() => {
+                    const q = parseFloat(stockForm.quantity || '0');
+                    const uc = parseFloat(stockForm.unitCost || '0');
+                    return q > 0 && uc > 0
+                      ? <p className="text-xs text-slate-400 mt-1">Total: ₦{(q * uc).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</p>
+                      : null;
+                  })()}
                 </div>
               </div>
               <div className="flex justify-end gap-2 pt-2">
