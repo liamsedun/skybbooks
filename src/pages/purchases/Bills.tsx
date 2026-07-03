@@ -9,7 +9,7 @@ import { api, printWindow } from '../../lib/api';
 import {
   Plus, X, Loader2, AlertCircle, Search, FileText,
   CheckCircle2, Download, Ban, ChevronDown, ChevronUp,
-  Pencil, Trash2, Copy, Upload, Package, ArrowLeft, Eye, ExternalLink
+  Pencil, Trash2, Copy, Upload, Package, ArrowLeft, Eye, ExternalLink, Undo2
 } from 'lucide-react';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
 import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
@@ -188,6 +188,11 @@ function BillList() {
     mutationFn: (id: string) => api.post(`/purchases/bills/${id}/approve`).then(r => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['bills'] }),
     onError: (e: any) => alert(e?.response?.data?.message || 'Failed to approve bill'),
+  });
+  const unapproveMutation = useMutation({
+    mutationFn: (id: string) => api.post(`/purchases/bills/${id}/unapprove`).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['bills'] }),
+    onError: (e: any) => alert(e?.response?.data?.message || 'Failed to unapprove bill'),
   });
   const voidMutation = useMutation({
     mutationFn: (id: string) => api.post(`/purchases/bills/${id}/void`).then(r => r.data),
@@ -475,6 +480,16 @@ function BillList() {
                               className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 rounded-md transition-colors disabled:opacity-50"
                               title="Approve bill">
                               <CheckCircle2 size={12} /> Approve
+                            </button>
+                          )}
+
+                          {/* Unapprove — only on open (approved) bills */}
+                          {bill.status === 'open' && (
+                            <button onClick={() => { if (window.confirm('Unapprove this bill? It will revert to draft for editing.')) unapproveMutation.mutate(bill.id); }}
+                              disabled={unapproveMutation.isPending}
+                              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-md transition-colors disabled:opacity-50"
+                              title="Unapprove bill">
+                              <Undo2 size={12} /> Unapprove
                             </button>
                           )}
 
@@ -809,6 +824,11 @@ function BillDetail({ id, onBack }: { id: string; onBack: () => void }) {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['bill', id] }); qc.invalidateQueries({ queryKey: ['bills'] }); },
     onError: (e: any) => alert(e?.response?.data?.message || 'Failed to approve bill'),
   });
+  const unapproveMutation = useMutation({
+    mutationFn: (bid: string) => api.post(`/purchases/bills/${bid}/unapprove`).then(r => r.data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['bill', id] }); qc.invalidateQueries({ queryKey: ['bills'] }); },
+    onError: (e: any) => alert(e?.response?.data?.message || 'Failed to unapprove bill'),
+  });
   const duplicateMutation = useMutation({
     mutationFn: (bid: string) => api.post(`/purchases/bills/${bid}/duplicate`).then(r => r.data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['bills'] }); navigate('/purchases/bills'); },
@@ -878,6 +898,13 @@ function BillDetail({ id, onBack }: { id: string; onBack: () => void }) {
               disabled={approveMutation.isPending}
               className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 rounded-lg disabled:opacity-50">
               <CheckCircle2 size={14} /> Approve
+            </button>
+          )}
+          {bill.status === 'open' && (
+            <button onClick={() => { if (window.confirm('Unapprove this bill? It will revert to draft for editing.')) unapproveMutation.mutate(bill.id); }}
+              disabled={unapproveMutation.isPending}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg disabled:opacity-50">
+              <Undo2 size={14} /> Unapprove
             </button>
           )}
           {['draft', 'open', 'partial', 'overdue'].includes(bill.status) && (

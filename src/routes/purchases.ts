@@ -26,6 +26,7 @@ import {
   createBill,
   updateBill,
   approveBill,
+  unapproveBill,
   voidBill,
   duplicateBill,
   getBill,
@@ -275,6 +276,19 @@ router.post('/bills/:id/approve', async (req: AuthenticatedRequest, res: Respons
 
     const approved = await approveBill(id, userId);
     return res.status(200).json(approved);
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// Reverse bill approval: reverse journal entries and set back to draft
+router.post('/bills/:id/unapprove', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId;
+    const { id } = req.params;
+
+    const unapproved = await unapproveBill(id, userId);
+    return res.status(200).json(unapproved);
   } catch (err) {
     return next(err);
   }

@@ -544,6 +544,71 @@ export async function voidBill(billId: string, userId: string): Promise<any> {
   });
 }
 
+export async function unapproveBill(billId: string, userId: string): Promise<any> {
+  return await db.transaction(async (tx) => {
+    const [bill] = await tx
+      .select()
+      .from(bills)
+      .where(eq(bills.id, billId))
+      .limit(1);
+
+    if (!bill) throw new AppError('Bill not found.', 404);
+    if (bill.status !== 'open') {
+      throw new AppError('Only approved (open) bills can be unapproved.', 400);
+    }
+    if (bill.amountPaid > 0) {
+      throw new AppError('Cannot unapprove a bill with payments made against it.', 400);
+    }
+
+    // Reverse the journal entry if one exists
+    if (bill.journalEntryId) {
+      await reverseJournalEntry(bill.journalEntryId, new Date(), userId);
+    }
+
+    // Reverse inventory lots and transactions created by bill approval
+    const billTxns = await tx
+      .select()
+      .from(inventoryTransactions)
+      .where(and(
+        eq(inventoryTransactions.referenceType, 'bill'),
+        eq(inventoryTransactions.referenceId, billId)
+      ));
+
+    for (const txn of billTxns) {
+      await tx.delete(inventoryTransactions)
+        .where(eq(inventoryTransactions.id, txn.id));
+      if (txn.lotId) {
+        const [lot] = await tx
+          .select()
+          .from(inventoryLots)
+          .where(eq(inventoryLots.id, txn.lotId))
+          .limit(1);
+        if (lot) {
+          const lotQty = Number(lot.quantity);
+          const txnQty = Number(txn.quantity);
+          const remaining = lotQty - txnQty;
+          if (remaining <= 0) {
+            await tx.delete(inventoryLots).where(eq(inventoryLots.id, txn.lotId));
+          } else {
+            await tx.update(inventoryLots)
+              .set({ quantity: String(remaining) })
+              .where(eq(inventoryLots.id, txn.lotId));
+          }
+        }
+      }
+    }
+
+    // Set status back to draft and clear journal reference
+    const [unapproved] = await tx
+      .update(bills)
+      .set({ status: 'draft', journalEntryId: null })
+      .where(eq(bills.id, billId))
+      .returning();
+
+    return unapproved;
+  });
+}
+
 export async function duplicateBill(billId: string, userId: string): Promise<any> {
   return await db.transaction(async (tx) => {
     const [origin] = await tx
