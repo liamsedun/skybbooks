@@ -214,10 +214,11 @@ export function ChartOfAccountsPage() {
   const handlePrintPdf = () => {
     try {
       const list = effectiveAccounts || [];
+      const parentIds = new Set(list.filter(a => list.some(c => c.parentId === a.id)).map(a => a.id));
       let totDr = 0, totCr = 0;
       const rows = list.map((a: Account) => {
         const dc = toDebitCredit(a.balance ?? 0, a.type);
-        totDr += dc.debit; totCr += dc.credit;
+        if (!parentIds.has(a.id)) { totDr += dc.debit; totCr += dc.credit; }
         return `<tr><td>${a.code||''}</td><td>${a.name||''}</td><td>${a.type||''}</td><td class="c">${a.isActive ? 'Active' : 'Inactive'}</td><td class="r">${dc.debit > 0 ? '₦'+Number(dc.debit/100).toLocaleString() : ''}</td><td class="r">${dc.credit > 0 ? '₦'+Number(dc.credit/100).toLocaleString() : ''}</td></tr>`;
       }).join('');
       const footer = `<tr style="font-weight:bold;border-top:2px solid #333;background:#f8fafc"><td colspan="4">Total</td><td class="r">₦${Number(totDr/100).toLocaleString()}</td><td class="r">₦${Number(totCr/100).toLocaleString()}</td></tr>`;
@@ -402,8 +403,10 @@ export function ChartOfAccountsPage() {
             </thead>
             <tbody className="divide-y divide-slate-50">{tree.map((node) => renderNode(node, 0))}</tbody>
             {showBalances && effectiveAccounts.length > 0 && (() => {
+              const parentIds = new Set(effectiveAccounts.filter(a => effectiveAccounts.some(c => c.parentId === a.id)).map(a => a.id));
               let totDr = 0, totCr = 0;
               for (const a of effectiveAccounts) {
+                if (parentIds.has(a.id)) continue;
                 const dc = toDebitCredit(a.balance ?? 0, a.type);
                 totDr += dc.debit; totCr += dc.credit;
               }

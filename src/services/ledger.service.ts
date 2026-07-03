@@ -550,8 +550,8 @@ export async function getTrialBalance(
   }
 
   // System suspense account absorbs unreconciled sub-ledger vs GL differences
-  const totalDr = resultList.reduce((s, r) => s + r.closingDebit, 0);
-  const totalCr = resultList.reduce((s, r) => s + r.closingCredit, 0);
+  const totalDr = resultList.reduce((s, r) => s + (parentChildren.has(r.accountId) ? 0 : r.closingDebit), 0);
+  const totalCr = resultList.reduce((s, r) => s + (parentChildren.has(r.accountId) ? 0 : r.closingCredit), 0);
   const tbDiff = totalDr - totalCr;
   if (Math.abs(tbDiff) > 1) {
     resultList.push({
