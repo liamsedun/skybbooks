@@ -172,8 +172,6 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
 
   const handlePdfDownload = async () => {
     try {
-      const printArea = document.getElementById('invoice-pdf-mock-container');
-      if (printArea) { window.print(); return; }
       const blob = await salesApi.getInvoicePdf(invoiceId);
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -513,6 +511,21 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
                     <span className="text-base font-bold text-slate-800">Total</span>
                     <span className="text-base font-black text-slate-900 font-mono">{formatNaira(computedPricing.totalKobo)}</span>
                   </div>
+                  {(invoiceData.payments?.length > 0) && (
+                    <div className="space-y-1 pt-1 pb-2">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Payments</p>
+                      {invoiceData.payments.map((p: any, i: number) => (
+                        <div key={i} className="flex justify-between text-xs text-slate-500 pl-3">
+                          <span>{p.paymentNumber} ({p.reference || ''})</span>
+                          <span className="font-mono text-emerald-700">{formatNaira(p.amountAllocated ?? p.amount)}</span>
+                        </div>
+                      ))}
+                      <div className="flex justify-between text-sm font-medium text-slate-600 pt-1 border-t border-dashed border-slate-200">
+                        <span>Amount Paid</span>
+                        <span className="font-mono">{formatNaira(invoiceData.amountPaid ?? 0)}</span>
+                      </div>
+                    </div>
+                  )}
                   <div className={`flex justify-between items-center px-4 py-3 rounded-xl border ${
                     isPaid ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'
                   }`}>
