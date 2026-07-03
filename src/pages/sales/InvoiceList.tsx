@@ -627,7 +627,7 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
                   <th className="px-4 text-right align-middle bg-surface-subtle">Row Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 font-medium text-ink-600">
+              <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
                 {filteredInvoices.map((invoice: any) => {
                   const isSelected = selectedInvoices.includes(invoice.id);
                   const isDraft = (invoice.status || '').toLowerCase() === 'draft';
@@ -653,42 +653,42 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
                       </td>
 
                       {/* Invoice number link */}
-                      <td className="px-4 align-middle h-12 font-semibold text-ink-900 font-mono">
+                      <td className="px-4 align-middle h-12 font-semibold text-slate-900 font-mono">
                         <button
                           onClick={() => onNavigate('invoice-detail', invoice.id)}
-                          className="hover:text-primary hover:underline flex items-center border-none bg-transparent p-0 text-left cursor-pointer outline-none font-semibold text-ink-900 font-mono text-[13px]"
+                          className="hover:text-primary hover:underline flex items-center border-none bg-transparent p-0 text-left cursor-pointer outline-none font-semibold text-slate-900 font-mono text-[13px]"
                         >
                           {invoiceNo}
-                          <ExternalLink className="w-3.5 h-3.5 ml-1 text-slate-300" />
+                          <ExternalLink className="w-3.5 h-3.5 ml-1 text-slate-400" />
                         </button>
                       </td>
 
                       {/* Customer Info */}
                       <td className="px-4 align-middle h-12">
-                        <div className="font-semibold text-ink-900 text-[13px]">{invoice.clientName || invoice.customerId || "�"}</div>
-                        <div className="text-[10px] text-ink-400 mt-0.5 font-bold">{invoice.clientEmail || ""}</div>
+                        <div className="font-semibold text-slate-900 text-[13px]">{invoice.clientName || invoice.customerId || "�"}</div>
+                        <div className="text-[10px] text-slate-600 mt-0.5 font-bold">{invoice.clientEmail || ""}</div>
                       </td>
 
                       {/* Issue date */}
-                      <td className="px-4 align-middle h-12 font-mono text-ink-600 font-medium text-[13px]">{invoice.date ? new Date(invoice.date).toLocaleDateString("en-GB", { day:"2-digit", month:"short", year:"numeric" }) : "�"}</td>
+                      <td className="px-4 align-middle h-12 font-mono text-slate-700 font-medium text-[13px]">{invoice.date ? new Date(invoice.date).toLocaleDateString("en-GB", { day:"2-digit", month:"short", year:"numeric" }) : "�"}</td>
 
                       {/* Due Date */}
-                      <td className="px-4 align-middle h-12 font-mono text-ink-650 font-medium text-[13px]">
-                        <span className={(invoice.status || '').toLowerCase() === 'overdue' ? 'text-danger-custom font-bold' : 'text-slate-500'}>
+                      <td className="px-4 align-middle h-12 font-mono text-slate-700 font-medium text-[13px]">
+                        <span className={(invoice.status || '').toLowerCase() === 'overdue' ? 'text-red-700 font-bold' : 'text-slate-700'}>
                           {invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString("en-GB", { day:"2-digit", month:"short", year:"numeric" }) : "�"}
                         </span>
                       </td>
 
                       {/* Amount */}
                       <td className="px-3 align-middle h-12 text-right tabular-nums">
-                        <AmountDisplay amountInKobo={invoice.total} className="text-[13px] font-bold text-black" />
+                        <AmountDisplay amountInKobo={invoice.total} className="text-[13px] font-bold text-slate-900" />
                       </td>
 
                       {/* Balance Due */}
                       <td className="px-3 align-middle h-12 text-right tabular-nums">
                         <AmountDisplay
                           amountInKobo={invoice.balanceDue !== undefined ? invoice.balanceDue : (invoice.total || 0)}
-                          className="text-[13px] font-bold text-black"
+                          className="text-[13px] font-bold text-slate-900"
                         />
                       </td>
 
