@@ -423,9 +423,10 @@ export async function getTrialBalance(
   const inventoryValue = Number(invBalance[0]?.totalValue || 0);
 
   // Identify single AR, AP, and Inventory accounts
-  const arAccount = orgAccounts.find(a => a.type === 'asset' && (a.name.toLowerCase().includes('receivable') || a.code.startsWith('12')));
-  const apAccount = orgAccounts.find(a => a.type === 'liability' && a.name.toLowerCase().includes('creditor'))
-    || orgAccounts.find(a => a.type === 'liability' && a.name.toLowerCase().includes('payable'));
+  const arAccount = orgAccounts.find(a => a.systemAccountRole === 'accounts_receivable')
+    || orgAccounts.find(a => a.type === 'asset' && (a.name.toLowerCase().includes('receivable') || a.code.startsWith('12')));
+  const apAccount = orgAccounts.find(a => a.systemAccountRole === 'accounts_payable')
+    || orgAccounts.find(a => a.type === 'liability' && (a.name.toLowerCase().includes('creditor') || a.name.toLowerCase().includes('payable')));
   const invAccount = orgAccounts.find(a => a.code.startsWith('102') && !a.name.toLowerCase().includes('contra'));
 
   const resultList: TrialBalanceRow[] = [];
@@ -491,16 +492,12 @@ export async function getTrialBalance(
 
     // Customer opening balance → single AR account only
     if (customerOB > 0 && arAccount && acct.id === arAccount.id) {
-      const jeAr = (openingDebits + periodDebits) - (openingCredits + periodCredits);
-      const extraAr = Math.max(0, customerOB - jeAr);
-      if (extraAr > 0) { openingDebits += extraAr; }
+      openingDebits += customerOB;
     }
 
     // Vendor opening balance → single AP account only
     if (vendorOB > 0 && apAccount && acct.id === apAccount.id) {
-      const jeAp = (openingCredits + periodCredits) - (openingDebits + periodDebits);
-      const extraAp = Math.max(0, vendorOB - jeAp);
-      if (extraAp > 0) { openingCredits += extraAp; }
+      openingCredits += vendorOB;
     }
 
     const opened = isDebitBook ? openingDebits - openingCredits : openingCredits - openingDebits;

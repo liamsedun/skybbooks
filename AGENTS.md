@@ -1,26 +1,29 @@
-# SkyBooks — Session Summary
-
-## Goal
-Fix UI issues (dropdowns, datepickers not opening on navigation), align backend payroll formulas with the PAYE calculator spec, and modernise payslip print/PDF layout.
+Goal
+====================
+Maintain and enhance accounting features: fix kobo/naira display, parent-child account rollups, debit/credit columns with totals, CSV exports, vendor import with opening balance, trial balance drill-down links, and auto-generated customer IDs (CS-XXXX).
 
 ## Constraints & Preferences
-- Backend: Express + Drizzle ORM + Neon Postgres + TypeScript
-- PAYE calculator spec: `basicSalaryPct` (default 50%) vs `pensionablePortionPct` (default 80%) are separate; allowances computed from their percentage fields; NHIS/NHF toggles; tax bands: 0% first ₦800k, 15% next ₦2.2M, 18% next ₦9M, 21% next ₦13M, 23% next ₦25M, 25% above ₦50M
-- Native `<select>` and `<input type="date">` fail to open on first conditional render in SPAs — fix uses `key` prop to force DOM remount
-- Payslip redesign must preserve calculation formulas unchanged (cosmetic changes only)
+- Balance values stored in kobo (bigint); frontend must divide by 100 for display (`fmtNaira`)
+- Parent accounts must NOT contribute to totals (would double-count children's balances)
+- Trial balance drill-down links use `MODULE_LINKS` prefix-matching in `ReportsPage.tsx`
+- Contacts table used for both customers and vendors (differentiated by `type` column)
 
 ## Progress
 ### Done
-- Fixed PAYE Schedules, Pension Schedules, Payslips page dropdowns: added `key={runs.length}` to remount `<select>` when data arrives, plus loading state
-- Fixed New Payroll Run date inputs: added `modalKey` counter + `key` on each `<input type="date">` to force fresh DOM on modal open
-- Fixed `calculatePayrollForEmployee()` in `payroll.service.ts`:
-  - Basic salary now uses `basicSalaryPct` (from employee record) instead of `pensionablePortionPct`
-  - Allowances (housing, transport, utilities, meals, others) computed from their respective pct fields instead of hardcoded 0
-  - Pension base stays on `pensionablePortionPct` (separate from basic %)
-- Updated `PayrollCalculation` interface with `utilities`, `meals` fields
-- Updated `generatePayslip()` return payload with allowance breakdown + `taxReliefs` + `employeeContributions` sections
-- Redesigned frontend `printPayslip()` in `PayslipsPage.tsx`: dark header with org initial logo, clean employee row, card-based two-column earnings/deductions, gradient net pay panel, tax computation card, tax band table, reliefs card, employer contributions card, payment info card, annual overview metrics grid
-- Redesigned backend `generatePayslipPDF()` in `pdf.service.ts` with matching modern structure: dark header with logo initial, card-based layout with bordered rows, gradient net pay panel, two-column tax/payment info, band breakdown table, reliefs card, employer contributions card, annual metrics grid, footer
+- **Chart of Accounts `fmtNaira` fix**: Both positive and negative balance formatting now divide by 100 (kobo→naira), matching Trial Balance implementation
+- **Parent-child aggregation**: `computeAggregateBalances()` in Chart of Accounts and backend rollup in `getTrialBalance()` sum child balances into parent accounts recursively
+- **Debit/Credit columns**: Replaced single Balance column with separate Debit/Credit columns in Chart of Accounts; added totals footer row excluding parent accounts
+- **Double-counting fix**: Parent accounts excluded from totals in Chart of Accounts (frontend `parentIds` set), Trial Balance backend (`parentChildren.has(r.accountId) ? 0`), and print/CSV exports
+- **Chart of Accounts CSV export**: Replaced backend `apiDownload` with client-side `exportToCsv()` using loaded `effectiveAccounts` data, including Debit/Credit columns and parent-excluded TOTAL row
+- **Trial Balance hierarchical tree (reverted)**: Added `parentId` to `TrialBalanceRow` type, built tree rendering with indentation — reverted because drill-down links to Customers/Banking/Items were lost
+- **Vendor bulk CSV import**: Backend `POST /purchases/vendors/import-csv` route parses CSV with flexible column matching, validates emails, inserts into contacts table; frontend Sample CSV + Import CSV modal with file upload, preview, error handling
+- **Vendor opening balance**: Added `openingBalance` field to Add/Edit Vendor form (NGN input, converted to kobo); included in CSV template, export (`Opening Balance` column), and import route (`balance` column)
+- **Trial balance revert**: Hierarchical tree reverted to restore flat rendering with ExternalLink drill-down buttons
+- **1010 prefix → Customers**: Trade & Other Receivables (101000) links to `/sales/customers`
+- **3000 prefix → Bills**: Trade & Other Payables (300000) links to `/purchases/bills`
+- **Customer ID (CS-XXXX)**: Auto-generated sequential customer code on create; displayed as read-only field in Add/Edit Customer form; stored in `contacts.customer_code` column
+- **TB AR/AP account resolution fix**: Changed `arAccount`/`apAccount` resolution to use `systemAccountRole` first (matching all transaction services), with fallback to name-based search for backward compatibility (`src/services/ledger.service.ts:426-429`)
+- **TB Customer/Vendor OB logic fix**: Replaced broken `max(0, customerOB - jeAr)` gap formula with simple `openingDebits += customerOB` — always adds customer opening balances on top of JE activity, so TB Trade Receivables matches the Customers page total (₦103.2M) exactly
 
 ### In Progress
 - (none)
@@ -29,29 +32,32 @@ Fix UI issues (dropdowns, datepickers not opening on navigation), align backend 
 - (none)
 
 ## Key Decisions
-- `basicSalaryPct` and `pensionablePortionPct` are kept as separate employee fields per the PAYE calculator spec — basic salary uses `basicSalaryPct`, pension base uses `pensionablePortionPct`
-- `utilities` and `meals` are computed in the calculation return object but not stored in `payroll_lines` table (no migration needed — frontend falls back to deriving from employee pcts on older runs)
-- For conditionally-rendered native HTML elements (`<select>`, `<input type="date">`) that fail to initialise on React Router navigation, adding a dynamic `key` prop forces the browser to create fresh DOM nodes, fixing the native popup/open behaviour
+- Parent-child rollup done post-hoc after individual account balances are computed (backend for Trial Balance, `useMemo` for Chart of Accounts frontend)
+- Parents identified by which account IDs are referenced as `parentId` by other accounts
+- Vendor CSV import uses custom CSV parser (handle quoted fields) rather than a library
+- Trial balance drill-down links preserved over hierarchical tree display when trade-off arose
+- `balance` column in contacts table doubles as opening balance for vendors, stored in kobo
+- Customer code uses count+1 of existing customer records per org (not a dedicated sequence table)
 
 ## Next Steps
-1. Push to main and verify Render auto-deploy completes
+1. Push to origin/main and verify Render auto-deploy completes
 2. Test period close flow end-to-end
 3. Test bank reconciliation statement print
 
 ## Critical Context
-- `printWindow()` defined in `src/lib/api.ts:907` — opens popup and triggers browser print
-- All pushes to `origin/main` trigger Render auto-deploy
-- `formatNaira(kobo)` converts kobo to display string with ₦ symbol
-- `fmtDate()` formats ISO date to `DD Mon YYYY`
-- Org data fetched via `orgApi.getOrg()` returns `{ success, data }`
-- PAYE bands hardcoded both in backend calc and PDF rendering (annual scale in kobo)
+- `TrialBalanceRow` type no longer includes `parentId` after revert (field removed from backend type and response)
+- `MODULE_LINKS` prefix-matching is sequential — order matters; `1010` before `1011` to avoid `1011` catching `1010` prefixes
+- `contacts.balance` is in kobo; form inputs in Naira are multiplied by 100 before sending
+- `parentChildren.has(accountId)` guards prevent double-counting in Trial Balance totals; frontend uses `parentIds` set derived from `effectiveAccounts`
+- Pre-existing TS errors (module resolution, `opening_stock` enum) still present in `ledger.service.ts:273` and `ReportsPage.tsx:1177,1179`
 
 ## Relevant Files
-- `src/pages/payroll/PayeSchedulesPage.tsx`: Dropdown fix (loading state + key)
-- `src/pages/payroll/PensionSchedulesPage.tsx`: Dropdown fix (loading state + key)
-- `src/pages/payroll/PayslipsPage.tsx`: Dropdown fix; redesigned `printPayslip()` with card-based modern layout
-- `src/pages/payroll/PayrollRunsPage.tsx`: Datepicker fix (`modalKey` key on date inputs)
-- `src/services/payroll.service.ts`: `calculatePayrollForEmployee()` formula fix (basicSalaryPct, allowance computation); updated `generatePayslip()` payload
-- `src/services/pdf.service.ts`: Redesigned `generatePayslipPDF()` with card-based modern layout
-- `src/db/schema.ts`: `payrollLines` columns (basic, housing, transport, otherAllowances, paye, pensionEmployee, pensionEmployer, nhf, nhis, internalDeductions, netPay, taxRelief, annualGross)
-- `src/lib/api.ts`: `printWindow()`, `orgApi`, `payrollApi`
+- `src/pages/accountant/ChartOfAccounts.tsx`: `fmtNaira()` kobo→naira fix, `computeAggregateBalances()` parent rollup, `toDebitCredit()` helper, debit/credit columns, parent-excluded totals, client-side CSV export
+- `src/services/ledger.service.ts`: `parentChildren` aggregation in `getTrialBalance()`, parent-excluded totalDr/totalCr
+- `src/pages/reports/ReportsPage.tsx`: `MODULE_LINKS` array (1010→Customers, 3000→Bills), flat trial balance rendering with ExternalLink buttons, parent-excluded CSV totals
+- `src/pages/purchases/Vendors.tsx`: `openingBalance` in form state/modal/export, Sample CSV + Import CSV modal
+- `src/routes/purchases.ts`: `POST /vendors/import-csv` route with CSV parsing, validation, opening balance column
+- `src/pages/sales/Customers.tsx`: Auto-generated read-only customer code (CS-XXXX) in Add/Edit modal
+- `src/routes/sales.ts`: `POST /customers` generates sequential `customerCode` per org
+- `src/db/schema.ts`: `contacts.customerCode` column added
+- `src/db/migrate.ts`: Migration for `customer_code` column
