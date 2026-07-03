@@ -151,7 +151,7 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
       invoiceData.payments.forEach((p: any, idx: number) => {
         steps.push({
           id: `step-pay-${idx}`, title: 'Payment Received',
-          description: `${formatNaira(p.amount)} via ${p.paymentMethod?.replace('_', ' ')}${p.reference ? ` · Ref: ${p.reference}` : ''}`,
+          description: `${formatNaira(p.amountAllocated ?? p.amount)} via ${p.paymentMethod?.replace('_', ' ')}${p.reference ? ` · Ref: ${p.reference}` : ''}`,
           timestamp: fmt(p.date),
           icon: CheckCircle, color: 'bg-emerald-500 text-white',
         });
