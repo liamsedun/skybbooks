@@ -10,7 +10,6 @@ const MODULE_LINKS: { prefix: string; path: string; label: string }[] = [
   { prefix: '1003', path: '/banking', label: 'Banking' },
   { prefix: '1004', path: '/banking', label: 'Banking' },
   { prefix: '1005', path: '/banking', label: 'Banking' },
-  { prefix: '1010', path: '/sales/customers', label: 'Customers' },
   { prefix: '1011', path: '/sales/customers', label: 'Customers' },
   { prefix: '102', path: '/inventory/items', label: 'Items' },
   { prefix: '200', path: '/accountant/fixed-assets', label: 'Fixed Assets' },
