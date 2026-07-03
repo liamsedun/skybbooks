@@ -20,6 +20,7 @@ const MODULE_LINKS: { prefix: string; path: string; label: string }[] = [
   { prefix: '204', path: '/accountant/fixed-assets', label: 'Fixed Assets' },
   { prefix: '205', path: '/accountant/fixed-assets', label: 'Fixed Assets' },
   { prefix: '206', path: '/accountant/fixed-assets', label: 'Fixed Assets' },
+  { prefix: '3000', path: '/purchases/bills', label: 'Bills' },
   { prefix: '3001', path: '/purchases/bills', label: 'Bills' },
   { prefix: '500', path: '/accountant/manual-journals', label: 'Manual Journals' },
   { prefix: '501', path: '/accountant/manual-journals', label: 'Manual Journals' },
