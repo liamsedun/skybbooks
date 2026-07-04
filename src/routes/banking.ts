@@ -927,70 +927,150 @@ router.get('/accounts/:id/unmatched-journal-lines', async (req: AuthenticatedReq
   }
 });
 
-// GET payments received/made linked to a bank account's paired GL cash account
+// GET journal-ledger view for a bank account's paired GL cash account
 router.get('/accounts/:id/payments', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const orgId = req.user!.orgId!;
     const { id } = req.params;
 
     const [ba] = await db
-      .select({ accountId: bankAccounts.accountId })
+      .select({ accountId: bankAccounts.accountId, accountCode: accounts.code, accountName: accounts.name })
       .from(bankAccounts)
+      .leftJoin(accounts, eq(bankAccounts.accountId, accounts.id))
       .where(and(eq(bankAccounts.id, id), eq(bankAccounts.orgId, orgId)))
       .limit(1);
 
     if (!ba) throw new AppError('Bank account not found.', 404);
 
-    // Fetch payments received against this cash GL account
-    const receipts = await db
-      .select({
-        id: paymentsReceived.id,
-        type: sql<string>`'receipt'`,
-        number: paymentsReceived.paymentNumber,
-        date: paymentsReceived.date,
-        amount: paymentsReceived.amount,
-        reference: paymentsReceived.reference,
-        method: paymentsReceived.paymentMethod,
-        contactName: contacts.name,
-        docNumber: invoices.invoiceNumber
-      })
-      .from(paymentsReceived)
-      .leftJoin(contacts, eq(paymentsReceived.customerId, contacts.id))
-      .leftJoin(paymentAllocations, eq(paymentAllocations.paymentId, paymentsReceived.id))
-      .leftJoin(invoices, eq(paymentAllocations.invoiceId, invoices.id))
-      .where(and(
-        eq(paymentsReceived.accountId, ba.accountId),
-        eq(paymentsReceived.orgId, orgId)
-      ))
-      .orderBy(desc(paymentsReceived.date));
+    // Fetch all journal lines hitting this cash GL account, with contra-account info
+    const rows = await db.execute(sql`
+      WITH bank_lines AS (
+        SELECT
+          jl.id,
+          je.id AS entry_id,
+          je.entry_number,
+          je.date,
+          je.source,
+          je.source_id,
+          jl.debit_amount,
+          jl.credit_amount,
+          jl.description AS line_desc,
+          jl.account_id
+        FROM journal_lines jl
+        INNER JOIN journal_entries je ON jl.entry_id = je.id
+        WHERE jl.account_id = ${ba.accountId}::uuid
+          AND je.org_id = ${orgId}::uuid
+          AND je.is_reversed = false
+      ),
+      contra AS (
+        SELECT
+          jl.entry_id,
+          a.name AS contra_name,
+          a.code AS contra_code,
+          jl.description AS contra_desc
+        FROM journal_lines jl
+        INNER JOIN accounts a ON jl.account_id = a.id
+        WHERE jl.entry_id IN (SELECT entry_id FROM bank_lines)
+          AND jl.account_id != ${ba.accountId}::uuid
+      )
+      SELECT
+        bl.id,
+        bl.entry_number,
+        bl.date,
+        bl.source,
+        bl.source_id,
+        bl.debit_amount,
+        bl.credit_amount,
+        bl.line_desc,
+        COALESCE(
+          (SELECT string_agg(contra_name, '; ' ORDER BY contra_name) FROM contra WHERE contra.entry_id = bl.entry_id),
+          ''
+        ) AS contra_accounts,
+        COALESCE(
+          (SELECT string_agg(contra_desc, '; ' ORDER BY contra_desc) FROM contra WHERE contra.entry_id = bl.entry_id),
+          ''
+        ) AS contra_descs
+      FROM bank_lines bl
+      ORDER BY bl.date ASC, bl.entry_number ASC
+    `);
 
-    // Fetch payments made against this cash GL account
-    const outlays = await db
-      .select({
-        id: paymentsMade.id,
-        type: sql<string>`'payment'`,
-        number: paymentsMade.paymentNumber,
-        date: paymentsMade.date,
-        amount: paymentsMade.amount,
-        reference: paymentsMade.reference,
-        method: paymentsMade.paymentMethod,
-        contactName: contacts.name,
-        docNumber: bills.billNumber
-      })
-      .from(paymentsMade)
-      .leftJoin(contacts, eq(paymentsMade.vendorId, contacts.id))
-      .leftJoin(paymentMadeAllocations, eq(paymentMadeAllocations.paymentId, paymentsMade.id))
-      .leftJoin(bills, eq(paymentMadeAllocations.billId, bills.id))
-      .where(and(
-        eq(paymentsMade.accountId, ba.accountId),
-        eq(paymentsMade.orgId, orgId)
-      ))
-      .orderBy(desc(paymentsMade.date));
+    // Enrich with source document details
+    const enriched: any[] = [];
+    for (const row of rows.rows || rows) {
+      let txnType = row.source;
+      let txnNumber = row.entry_number;
+      let contactName = '';
+      let docRef = '';
 
-    // Combine sorted by date descending
-    const all = [...receipts, ...outlays].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      // Look up source document for description enrichment
+      switch (row.source) {
+        case 'invoice': {
+          const [inv] = await db
+            .select({
+              number: invoices.invoiceNumber,
+              contact: contacts.name,
+              lineItems: sql<string>`string_agg(DISTINCT inv_lines.description, '; ')`
+            })
+            .from(invoices)
+            .leftJoin(contacts, eq(invoices.customerId, contacts.id))
+            .leftJoin(sql`invoice_lines inv_lines`, eq(sql`inv_lines.invoice_id`, invoices.id))
+            .where(eq(invoices.id, row.source_id))
+            .groupBy(invoices.id, contacts.name)
+            .limit(1);
+          if (inv) { txnType = 'Receipt'; txnNumber = inv.number; contactName = inv.contact || ''; docRef = inv.lineItems || ''; }
+          break;
+        }
+        case 'payment': {
+          // payment could be received or made — check both
+          const [pmtRec] = await db
+            .select({ number: paymentsReceived.paymentNumber, contact: contacts.name })
+            .from(paymentsReceived)
+            .leftJoin(contacts, eq(paymentsReceived.customerId, contacts.id))
+            .where(eq(paymentsReceived.id, row.source_id))
+            .limit(1);
+          if (pmtRec) { txnType = 'Receipt'; txnNumber = `Receipt — ${pmtRec.number}`; contactName = pmtRec.contact || ''; break; }
+          const [pmtMade] = await db
+            .select({ number: paymentsMade.paymentNumber, contact: contacts.name })
+            .from(paymentsMade)
+            .leftJoin(contacts, eq(paymentsMade.vendorId, contacts.id))
+            .where(eq(paymentsMade.id, row.source_id))
+            .limit(1);
+          if (pmtMade) { txnType = 'Payment'; txnNumber = `Payment — ${pmtMade.number}`; contactName = pmtMade.contact || ''; }
+          break;
+        }
+        case 'opening_balance':
+          txnType = 'Opening Balance';
+          break;
+      }
 
-    return res.status(200).json(all);
+      const amount = Number(row.debit_amount || 0) - Number(row.credit_amount || 0);
+      enriched.push({
+        id: row.id,
+        date: row.date,
+        txnType,
+        txnNumber,
+        contraAccounts: row.contra_accounts || '',
+        contactName,
+        description: row.line_desc || docRef,
+        // Debit positive = money in, Credit positive = money out (for asset account)
+        amount: amount > 0 ? amount : -Number(row.credit_amount || 0),
+        isDebit: row.debit_amount > 0
+      });
+    }
+
+    // Compute running balance
+    let running = 0;
+    for (const row of enriched) {
+      running += row.isDebit ? row.amount : -row.amount;
+      row.balance = running;
+    }
+
+    return res.status(200).json({
+      accountCode: ba.accountCode,
+      accountName: ba.accountName,
+      openingBalance: running - enriched.reduce((s: number, r: any) => s + (r.isDebit ? r.amount : -r.amount), 0),
+      transactions: enriched.reverse()
+    });
   } catch (err) {
     next(err);
   }

@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { bankingApi } from '../../lib/api';
 import { useCurrency } from '../../hooks/useCurrency';
+import { format } from 'date-fns';
 import { useAuth } from '../../hooks/useAuth';
 import { FlutterwaveConnectButton } from '../../components/banking/FlutterwaveConnectButton';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
@@ -923,10 +924,10 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
         </div>
       )}
 
-      {/* Bank Account Detail Drawer */}
+      {/* Bank Account Detail Drawer — Ledger View */}
       {detailAccount && (
         <div className="fixed inset-0 bg-neutral-950/60 backdrop-blur-sm z-50 flex justify-end">
-          <div className="bg-white w-full max-w-2xl h-full overflow-y-auto shadow-2xl">
+          <div className="bg-white w-full max-w-5xl h-full overflow-y-auto shadow-2xl">
             {/* Header */}
             <div className="sticky top-0 bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between z-10">
               <div>
@@ -939,46 +940,87 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
             </div>
 
             {/* Summary */}
-            <div className="px-6 py-4 bg-slate-50 border-b border-slate-100">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Current Bank Balance</p>
-              <p className="text-2xl font-black text-slate-900 font-mono">{formatNaira(detailAccount.currentBalance || 0)}</p>
+            <div className="px-6 py-3 bg-slate-50 border-b border-slate-100 flex items-center gap-6">
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Bank or Cash Account</p>
+                <p className="text-sm font-bold text-slate-800">{accountPayments.accountCode || ''} — {detailAccount.name}</p>
+              </div>
+              <div className="ml-auto text-right">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Current Balance</p>
+                <p className="text-lg font-black text-slate-900 font-mono">{formatNaira(detailAccount.currentBalance || 0)}</p>
+              </div>
             </div>
 
-            {/* Transactions */}
+            {/* Transactions Table */}
             <div className="px-6 py-4">
-              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Transaction History</h4>
+              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Bank or Cash Account — Transactions</h4>
               {loadingPayments ? (
                 <div className="flex items-center justify-center py-12 text-slate-400">
                   <Loader2 className="w-5 h-5 animate-spin" />
                 </div>
-              ) : accountPayments.length === 0 ? (
+              ) : !accountPayments.transactions || accountPayments.transactions.length === 0 ? (
                 <div className="text-center py-12 text-slate-400 text-sm">No payments or receipts found for this account.</div>
               ) : (
-                <div className="space-y-2">
-                  {accountPayments.map((txn: any, i: number) => (
-                    <div key={`${txn.type}-${txn.id}-${i}`} className="flex items-center justify-between p-3 rounded-lg border border-slate-100 hover:border-slate-200 transition">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className={`p-1.5 rounded-full shrink-0 ${txn.type === 'receipt' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
-                          {txn.type === 'receipt' ? <ArrowDownLeft className="w-3.5 h-3.5" /> : <ArrowUpRight className="w-3.5 h-3.5" />}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-slate-800 truncate">{txn.number}</p>
-                          <p className="text-xs text-slate-400 truncate">
-                            {txn.contactName && <span>{txn.contactName}{txn.docNumber ? ` · ` : ''}</span>}
-                            {txn.docNumber && <span>Ref: {txn.docNumber}</span>}
-                            {!txn.contactName && !txn.docNumber && (txn.reference || '—')}
-                          </p>
-                          <p className="text-[10px] text-slate-400">{new Date(txn.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
-                        </div>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className={`text-sm font-bold font-mono ${txn.type === 'receipt' ? 'text-emerald-700' : 'text-rose-700'}`}>
-                          {txn.type === 'receipt' ? '+' : '-'}{formatNaira(txn.amount)}
-                        </p>
-                        <p className="text-[10px] text-slate-400 capitalize">{txn.method?.replace(/_/g, ' ')}</p>
-                      </div>
-                    </div>
-                  ))}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                        <th className="text-left py-2 pr-2"></th>
+                        <th className="text-left py-2 pr-2">Date</th>
+                        <th className="text-left py-2 pr-2">Transaction</th>
+                        <th className="text-left py-2 pr-2">Account</th>
+                        <th className="text-left py-2 pr-2">Description</th>
+                        <th className="text-right py-2 pl-2">Amount</th>
+                        <th className="text-right py-2 pl-2">Balance</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {accountPayments.transactions.map((txn: any, i: number) => (
+                        <tr key={`${txn.id}-${i}`} className="border-b border-slate-50 hover:bg-slate-50/50 transition">
+                          <td className="py-2 pr-2 whitespace-nowrap">
+                            <div className="flex items-center gap-1">
+                              <button
+                                className="p-1 text-slate-300 hover:text-blue-600 transition"
+                                title="Edit"
+                                onClick={() => {
+                                  // Could navigate to the source document for editing
+                                }}
+                              >
+                                <Edit3 className="w-3 h-3" />
+                              </button>
+                              <button
+                                className="p-1 text-slate-300 hover:text-slate-600 transition"
+                                title="View"
+                              >
+                                <ArrowRight className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </td>
+                          <td className="py-2 pr-2 whitespace-nowrap text-slate-600 font-medium">
+                            {format(new Date(txn.date), 'MM/dd/yyyy')}
+                          </td>
+                          <td className="py-2 pr-2 whitespace-nowrap font-medium max-w-[140px]">
+                            <span className={`${txn.isDebit ? 'text-emerald-700' : 'text-rose-700'}`}>
+                              {txn.txnType}{txn.txnNumber ? ` — ${txn.txnNumber}` : ''}
+                            </span>
+                          </td>
+                          <td className="py-2 pr-2 max-w-[200px] text-slate-600 truncate" title={txn.contraAccounts || txn.contactName}>
+                            <span className="font-medium text-slate-700">{txn.contraAccounts ? `${txn.contraAccounts} — ` : ''}</span>
+                            <span>{txn.contactName}</span>
+                          </td>
+                          <td className="py-2 pr-2 max-w-[240px] text-slate-500 truncate" title={txn.description}>
+                            {txn.description || '—'}
+                          </td>
+                          <td className={`py-2 pl-2 whitespace-nowrap text-right font-mono font-bold ${txn.isDebit ? 'text-emerald-700' : 'text-rose-700'}`}>
+                            {txn.isDebit ? '' : '- '}{formatNaira(Math.abs(txn.amount || 0))}
+                          </td>
+                          <td className="py-2 pl-2 whitespace-nowrap text-right font-mono font-medium text-slate-800">
+                            {formatNaira(txn.balance || 0)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
