@@ -1001,6 +1001,8 @@ router.get('/accounts/:id/payments', async (req: AuthenticatedRequest, res: Resp
       let txnNumber = row.entry_number;
       let contactName = '';
       let docRef = '';
+      let sourceDocType = '';
+      let sourceDocId = row.source_id;
 
       // Look up source document for description enrichment
       switch (row.source) {
@@ -1017,7 +1019,7 @@ router.get('/accounts/:id/payments', async (req: AuthenticatedRequest, res: Resp
             .where(eq(invoices.id, row.source_id))
             .groupBy(invoices.id, contacts.name)
             .limit(1);
-          if (inv) { txnType = 'Receipt'; txnNumber = inv.number; contactName = inv.contact || ''; docRef = inv.lineItems || ''; }
+          if (inv) { txnType = 'Receipt'; txnNumber = inv.number; contactName = inv.contact || ''; docRef = inv.lineItems || ''; sourceDocType = 'invoice'; }
           break;
         }
         case 'payment': {
@@ -1028,14 +1030,14 @@ router.get('/accounts/:id/payments', async (req: AuthenticatedRequest, res: Resp
             .leftJoin(contacts, eq(paymentsReceived.customerId, contacts.id))
             .where(eq(paymentsReceived.id, row.source_id))
             .limit(1);
-          if (pmtRec) { txnType = 'Receipt'; txnNumber = `Receipt — ${pmtRec.number}`; contactName = pmtRec.contact || ''; break; }
+          if (pmtRec) { txnType = 'Receipt'; txnNumber = `Receipt — ${pmtRec.number}`; contactName = pmtRec.contact || ''; sourceDocType = 'receipt'; break; }
           const [pmtMade] = await db
             .select({ number: paymentsMade.paymentNumber, contact: contacts.name })
             .from(paymentsMade)
             .leftJoin(contacts, eq(paymentsMade.vendorId, contacts.id))
             .where(eq(paymentsMade.id, row.source_id))
             .limit(1);
-          if (pmtMade) { txnType = 'Payment'; txnNumber = `Payment — ${pmtMade.number}`; contactName = pmtMade.contact || ''; }
+          if (pmtMade) { txnType = 'Payment'; txnNumber = `Payment — ${pmtMade.number}`; contactName = pmtMade.contact || ''; sourceDocType = 'payment'; }
           break;
         }
         case 'opening_balance':
@@ -1054,7 +1056,9 @@ router.get('/accounts/:id/payments', async (req: AuthenticatedRequest, res: Resp
         description: row.line_desc || docRef,
         // Debit positive = money in, Credit positive = money out (for asset account)
         amount: amount > 0 ? amount : -Number(row.credit_amount || 0),
-        isDebit: row.debit_amount > 0
+        isDebit: row.debit_amount > 0,
+        sourceDocType,
+        sourceDocId
       });
     }
 
