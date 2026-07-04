@@ -5,7 +5,7 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { api, salesApi } from '../../lib/api';
+import { api, orgApi } from '../../lib/api';
 import {
   Plus, Search, Pencil, Trash2, X, Loader2, AlertCircle, Upload,
   FileText, ArrowRight, CheckCircle2, Clock, XCircle, RefreshCw, ChevronRight,
@@ -174,6 +174,8 @@ export function QuotesPage() {
     queryKey: ['inventory','items'],
     queryFn: async () => { const r = await api.get('/inventory/items'); return r.data; },
   });
+
+  const { data: org } = useQuery({ queryKey: ['org'], queryFn: orgApi.getOrg, staleTime: 60000 });
 
   const customerMap = useMemo(() => { const m=new Map<string,Customer>(); (customers||[]).forEach(c=>m.set(c.id,c)); return m; }, [customers]);
 
@@ -461,17 +463,9 @@ export function QuotesPage() {
                 {/* Actions */}
                 <div className="border-t border-slate-100 pt-3 space-y-2">
                   <button
-                    onClick={async () => {
-                      try {
-                        const blob = await salesApi.getQuotePdf(selectedQuote.id);
-                        const url = window.URL.createObjectURL(blob);
-                        const link = document.createElement('a');
-                        link.href = url;
-                        link.download = `${selectedQuote.quoteNumber}.pdf`;
-                        document.body.appendChild(link);
-                        link.click();
-                        window.URL.revokeObjectURL(url);
-                      } catch { /* silent */ }
+                    onClick={() => {
+                      const el = document.getElementById('quote-pdf-mock-container');
+                      if (el) { window.print(); }
                     }}
                     className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50"
                   >
@@ -509,6 +503,136 @@ export function QuotesPage() {
           </div>
         )}
       </div>
+
+      {/* Quote Print Container */}
+      {selectedQuote && (
+        <div id="quote-pdf-mock-container" className="bg-white" style={{ display: 'none' }}>
+          <div className="p-8 sm:p-10 space-y-8 max-w-4xl mx-auto">
+            <div className="h-1.5 bg-gradient-to-r from-indigo-600 via-violet-500 to-indigo-400" />
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-8 pt-4">
+              <div className="flex flex-col items-start gap-2">
+                <div className="w-14 h-14 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-xl font-bold">
+                  {org?.name?.[0]?.toUpperCase() ?? 'S'}
+                </div>
+                <div className="space-y-0.5">
+                  <h2 className="text-sm font-bold text-slate-900">{org?.name || 'Your Company'}</h2>
+                  <div className="flex flex-col gap-y-0 mt-0.5">
+                    {org?.address && <span className="text-[11px] text-slate-500">{org.address}</span>}
+                    {(org as any)?.city && <span className="text-[11px] text-slate-500">{(org as any).city}</span>}
+                    {(org as any)?.state && <span className="text-[11px] text-slate-500">{(org as any).state}</span>}
+                  </div>
+                  <div className="flex flex-col gap-y-0 mt-1">
+                    {org?.phone && <span className="text-[11px] text-slate-500">{org.phone}</span>}
+                    {org?.email && <span className="text-[11px] text-slate-500">{org.email}</span>}
+                  </div>
+                </div>
+              </div>
+              <div className="sm:text-right shrink-0 space-y-1">
+                <p className="text-xs font-semibold text-indigo-500 uppercase tracking-widest">Quotation</p>
+                <p className="text-2xl font-black text-slate-900 tracking-tight">{selectedQuote.quoteNumber}</p>
+                <span className="inline-block mt-1 px-3 py-0.5 rounded-full text-xs font-semibold capitalize bg-slate-100 text-slate-600 border border-slate-200">{selectedQuote.status}</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 py-6 border-y border-slate-100">
+              <div className="sm:col-span-2 space-y-0.5">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Bill To</p>
+                <p className="text-sm font-bold text-slate-900">{customerMap.get(selectedQuote.customerId)?.name || '—'}</p>
+                {(() => { const c = customers?.find(c => c.id === selectedQuote.customerId); return c ? (
+                  <div className="flex flex-col gap-y-0 mt-1">
+                    {(c as any).address && <span className="text-[11px] text-slate-500">{(c as any).address}</span>}
+                    {(c as any).city && <span className="text-[11px] text-slate-500">{(c as any).city}</span>}
+                    {(c as any).state && <span className="text-[11px] text-slate-500">{(c as any).state}</span>}
+                    {(c as any).email && <span className="text-[11px] text-slate-500">{(c as any).email}</span>}
+                    {(c as any).phone && <span className="text-[11px] text-slate-500">{(c as any).phone}</span>}
+                  </div>
+                ) : null; })()}
+              </div>
+              <div className="space-y-2 sm:text-right">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Quote Details</p>
+                <div className="space-y-1 text-sm">
+                  <div className="flex sm:justify-end gap-2">
+                    <span className="text-slate-400 w-24 sm:w-auto">Issued</span>
+                    <span className="font-medium text-slate-700">{fmtDate(selectedQuote.date)}</span>
+                  </div>
+                  <div className="flex sm:justify-end gap-2">
+                    <span className="text-slate-400 w-24 sm:w-auto">Expires</span>
+                    <span className="font-medium text-slate-700">{fmtDate(selectedQuote.expiryDate)}</span>
+                  </div>
+                  <div className="flex sm:justify-end gap-2">
+                    <span className="text-slate-400 w-24 sm:w-auto">Status</span>
+                    <span className="font-medium text-slate-700">{selectedQuote.status}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-slate-50 rounded-lg">
+                  <th className="text-left py-3 pl-3 pr-2 text-xs font-semibold text-slate-500 uppercase tracking-wide w-8">#</th>
+                  <th className="text-left py-3 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wide">Description</th>
+                  <th className="text-center py-3 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wide w-14">Qty</th>
+                  <th className="text-right py-3 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wide w-32">Unit Price</th>
+                  <th className="text-center py-3 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wide w-14">VAT</th>
+                  <th className="text-right py-3 pl-2 pr-3 text-xs font-semibold text-slate-500 uppercase tracking-wide w-32 rounded-r-lg">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(selectedQuote.lines || []).map((line: QuoteLine, index: number) => {
+                  const lineTotal = line.quantity * line.unitPrice * (1 - (line.discountPct || 0) / 100) * (1 + (line.taxRate || 7.5) / 100);
+                  return (
+                    <tr key={index} className="border-b border-slate-50">
+                      <td className="py-4 pl-3 pr-2 text-slate-400 text-sm">{index + 1}</td>
+                      <td className="py-4 px-2 font-medium text-slate-800">{line.description}</td>
+                      <td className="py-4 px-2 text-center text-slate-600">{line.quantity}</td>
+                      <td className="py-4 px-2 text-right text-slate-600 font-mono">{formatNaira(line.unitPrice)}</td>
+                      <td className="py-4 px-2 text-center text-slate-500 text-xs">{line.taxRate ? `${line.taxRate}%` : '—'}</td>
+                      <td className="py-4 pl-2 pr-3 text-right font-semibold text-slate-900 font-mono">{formatNaira(Math.round(lineTotal))}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+
+            <div className="flex flex-col sm:flex-row justify-between gap-8 pt-2">
+              <div className="flex-1 max-w-sm space-y-4">
+                {selectedQuote.notes && (
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Notes</p>
+                    <p className="text-sm text-slate-500 leading-relaxed whitespace-pre-line">{selectedQuote.notes}</p>
+                  </div>
+                )}
+                {selectedQuote.terms && (
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Terms</p>
+                    <p className="text-sm text-slate-500 leading-relaxed whitespace-pre-line">{selectedQuote.terms}</p>
+                  </div>
+                )}
+              </div>
+              <div className="shrink-0 w-full sm:w-[300px] space-y-2">
+                <div className="flex justify-between text-sm text-slate-500 pb-2">
+                  <span>Subtotal</span>
+                  <span className="font-medium text-slate-700 font-mono">{formatNaira(selectedQuote.subtotal)}</span>
+                </div>
+                <div className="flex justify-between text-sm text-slate-500 pb-2">
+                  <span>VAT (7.5%)</span>
+                  <span className="font-medium text-slate-700 font-mono">{formatNaira(selectedQuote.tax)}</span>
+                </div>
+                <div className="flex justify-between py-3 border-t border-slate-200">
+                  <span className="text-base font-bold text-slate-800">Total</span>
+                  <span className="text-base font-black text-slate-900 font-mono">{formatNaira(selectedQuote.total)}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-6 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-400">
+              <span>{org?.name} &middot; Thank you for considering our proposal.</span>
+              <span className="font-mono">{selectedQuote.quoteNumber}</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add/Edit Modal */}
       {modalOpen&&(

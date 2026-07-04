@@ -78,4 +78,13 @@
     top: 0;
     width: 100%;
   }
+  #quote-pdf-mock-container, #quote-pdf-mock-container * {
+    visibility: visible;
+  }
+  #quote-pdf-mock-container {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
 }
