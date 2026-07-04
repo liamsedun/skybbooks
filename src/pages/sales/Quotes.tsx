@@ -9,7 +9,7 @@ import { api, orgApi } from '../../lib/api';
 import {
   Plus, Search, Pencil, Trash2, X, Loader2, AlertCircle, Upload,
   FileText, ArrowRight, CheckCircle2, Clock, XCircle, RefreshCw, ChevronRight,
-  RotateCcw, Download, Copy,
+  RotateCcw, Download, Copy, Send, ClipboardList,
 } from 'lucide-react';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
 
@@ -205,6 +205,15 @@ export function QuotesPage() {
     },
     onError: (e:any) => { setConvertingId(null); alert(e?.response?.data?.error||'Conversion failed.'); },
   });
+  const convertToSoMutation = useMutation({
+    mutationFn: (id: string) => api.post(`/sales/quotes/${id}/convert-to-sales-order`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({queryKey:['sales','quotes']});
+      queryClient.invalidateQueries({queryKey:['sales','sales-orders']});
+    },
+    onError: (e:any) => alert(e?.response?.data?.error||'Failed to convert to sales order.'),
+  });
+
   const statusUpdateMutation = useMutation({
     mutationFn: ({id, status}: {id: string; status: string}) => api.patch(`/sales/quotes/${id}`, {status}),
     onSuccess: () => { queryClient.invalidateQueries({queryKey:['sales','quotes']}); },
@@ -481,22 +490,36 @@ export function QuotesPage() {
                     <button onClick={()=> statusUpdateMutation.mutate({id: selectedQuote.id, status: 'sent'})}
                       disabled={statusUpdateMutation.isPending}
                       className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-50 disabled:opacity-50">
-                      <ArrowRight size={14}/>{statusUpdateMutation.isPending?'Marking...':'Mark as Sent'}
+                      <Send size={14}/>{statusUpdateMutation.isPending?'Sending...':'Send'}
                     </button>
                   )}
                   {selectedQuote.status==='sent' && (
-                    <button onClick={()=> statusUpdateMutation.mutate({id: selectedQuote.id, status: 'accepted'})}
-                      disabled={statusUpdateMutation.isPending}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-emerald-700 border border-emerald-200 rounded-lg hover:bg-emerald-50 disabled:opacity-50">
-                      <CheckCircle2 size={14}/>{statusUpdateMutation.isPending?'Accepting...':'Mark as Accepted'}
-                    </button>
+                    <>
+                      <button onClick={()=> statusUpdateMutation.mutate({id: selectedQuote.id, status: 'accepted'})}
+                        disabled={statusUpdateMutation.isPending}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-emerald-700 border border-emerald-200 rounded-lg hover:bg-emerald-50 disabled:opacity-50">
+                        <CheckCircle2 size={14}/>{statusUpdateMutation.isPending?'Accepting...':'Accepted'}
+                      </button>
+                      <button onClick={()=> statusUpdateMutation.mutate({id: selectedQuote.id, status: 'declined'})}
+                        disabled={statusUpdateMutation.isPending}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-rose-700 border border-rose-200 rounded-lg hover:bg-rose-50 disabled:opacity-50">
+                        <XCircle size={14}/>{statusUpdateMutation.isPending?'Declining...':'Decline'}
+                      </button>
+                    </>
                   )}
                   {selectedQuote.status==='accepted' && (
-                    <button onClick={()=>{ setConvertingId(selectedQuote.id); convertMutation.mutate(selectedQuote.id); }}
-                      disabled={convertMutation.isPending&&convertingId===selectedQuote.id}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-violet-700 border border-violet-200 rounded-lg hover:bg-violet-50 disabled:opacity-50">
-                      <RefreshCw size={14}/>{convertMutation.isPending&&convertingId===selectedQuote.id?'Converting...':'Convert to Invoice'}
-                    </button>
+                    <>
+                      <button onClick={()=>{ setConvertingId(selectedQuote.id); convertMutation.mutate(selectedQuote.id); }}
+                        disabled={convertMutation.isPending&&convertingId===selectedQuote.id}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-violet-700 border border-violet-200 rounded-lg hover:bg-violet-50 disabled:opacity-50">
+                        <RefreshCw size={14}/>{convertMutation.isPending&&convertingId===selectedQuote.id?'Converting...':'To Invoice'}
+                      </button>
+                      <button onClick={()=> convertToSoMutation.mutate(selectedQuote.id)}
+                        disabled={convertToSoMutation.isPending}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-indigo-700 border border-indigo-200 rounded-lg hover:bg-indigo-50 disabled:opacity-50">
+                        <ClipboardList size={14}/>{convertToSoMutation.isPending?'Converting...':'Sale Order'}
+                      </button>
+                    </>
                   )}
                   {selectedQuote.status==='converted'&&(
                     <button onClick={()=>{ setForm(formFromQuote(selectedQuote)); setEditingId(null); setFormError(null); setModalOpen(true); }}

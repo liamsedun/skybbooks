@@ -1076,6 +1076,42 @@ router.post('/quotes/:id/unconvert', authenticate, requireOrg, async (req: Authe
   } catch (err) { return next(err); }
 });
 
+// POST /api/sales/quotes/:id/convert-to-sales-order
+router.post('/quotes/:id/convert-to-sales-order', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const userId = req.user!.userId!;
+    const { id } = req.params;
+    const [quote] = await db.select().from(quotes)
+      .where(and(eq(quotes.id, id), eq(quotes.orgId, orgId))).limit(1);
+    if (!quote) throw new AppError('Quote not found.', 404);
+    if (quote.status !== 'accepted') throw new AppError('Only accepted quotes can be converted to sales orders.', 400);
+
+    const count = await db.select({ c: sql`count(*)` }).from(salesOrders).where(eq(salesOrders.orgId, orgId));
+    const seq = (Number((count[0] as any).c) + 1).toString().padStart(4, '0');
+    const soNumber = `SO-${seq}`;
+    const quoteLines = (quote as any).lines || [];
+    const [so] = await db.insert(salesOrders).values({
+      orgId, soNumber,
+      customerId: quote.customerId,
+      quoteId: quote.id,
+      date: new Date(),
+      expectedDelivery: null,
+      status: 'draft',
+      currency: quote.currency,
+      subtotal: quote.subtotal,
+      discount: quote.discount,
+      tax: quote.tax,
+      total: quote.total,
+      notes: quote.notes || null,
+      lines: quoteLines,
+      createdBy: userId,
+    } as any).returning();
+
+    return res.status(201).json({ salesOrder: so, message: 'Sales order created from quote successfully.' });
+  } catch (err) { return next(err); }
+});
+
 // GET /api/sales/quotes/:id/pdf
 router.get('/quotes/:id/pdf', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
