@@ -531,9 +531,13 @@ export function QuotesPage() {
             <div className="h-1.5 bg-gradient-to-r from-indigo-600 via-violet-500 to-indigo-400" />
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-8 pt-4">
               <div className="flex flex-col items-start gap-2">
-                <div className="w-14 h-14 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-xl font-bold">
-                  {org?.name?.[0]?.toUpperCase() ?? 'S'}
-                </div>
+                {org?.logoUrl ? (
+                  <img src={org.logoUrl} alt={org?.name || 'Logo'} className="w-14 h-14 rounded-xl object-contain border border-slate-100 bg-white p-1" />
+                ) : (
+                  <div className="w-14 h-14 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-xl font-bold">
+                    {org?.name?.[0]?.toUpperCase() ?? 'S'}
+                  </div>
+                )}
                 <div className="space-y-0.5">
                   <h2 className="text-sm font-bold text-slate-900">{org?.name || 'Your Company'}</h2>
                   <div className="flex flex-col gap-y-0 mt-0.5">
