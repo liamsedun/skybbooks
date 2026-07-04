@@ -205,6 +205,12 @@ export function QuotesPage() {
     },
     onError: (e:any) => { setConvertingId(null); alert(e?.response?.data?.error||'Conversion failed.'); },
   });
+  const statusUpdateMutation = useMutation({
+    mutationFn: ({id, status}: {id: string; status: string}) => api.patch(`/sales/quotes/${id}`, {status}),
+    onSuccess: () => { queryClient.invalidateQueries({queryKey:['sales','quotes']}); },
+    onError: (e:any) => alert(e?.response?.data?.error||'Failed to update status.'),
+  });
+
   const unconvertMutation = useMutation({
     mutationFn: (id:string) => api.post(`/sales/quotes/${id}/unconvert`),
     onSuccess: () => {
@@ -471,7 +477,21 @@ export function QuotesPage() {
                   >
                     <Download size={14}/>Download PDF
                   </button>
-                  {selectedQuote.status!=='converted'&&selectedQuote.status!=='declined'&&(
+                  {selectedQuote.status==='draft' && (
+                    <button onClick={()=> statusUpdateMutation.mutate({id: selectedQuote.id, status: 'sent'})}
+                      disabled={statusUpdateMutation.isPending}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-50 disabled:opacity-50">
+                      <ArrowRight size={14}/>{statusUpdateMutation.isPending?'Marking...':'Mark as Sent'}
+                    </button>
+                  )}
+                  {selectedQuote.status==='sent' && (
+                    <button onClick={()=> statusUpdateMutation.mutate({id: selectedQuote.id, status: 'accepted'})}
+                      disabled={statusUpdateMutation.isPending}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-emerald-700 border border-emerald-200 rounded-lg hover:bg-emerald-50 disabled:opacity-50">
+                      <CheckCircle2 size={14}/>{statusUpdateMutation.isPending?'Accepting...':'Mark as Accepted'}
+                    </button>
+                  )}
+                  {selectedQuote.status==='accepted' && (
                     <button onClick={()=>{ setConvertingId(selectedQuote.id); convertMutation.mutate(selectedQuote.id); }}
                       disabled={convertMutation.isPending&&convertingId===selectedQuote.id}
                       className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-violet-700 border border-violet-200 rounded-lg hover:bg-violet-50 disabled:opacity-50">
@@ -491,7 +511,7 @@ export function QuotesPage() {
                       <RotateCcw size={14}/>{unconvertMutation.isPending&&unconvertingId===selectedQuote.id?'Reverting...':'Unconvert (Reset to Accepted)'}
                     </button>
                   )}
-                  {selectedQuote.status!=='converted'&&(
+                  {selectedQuote.status==='draft' && (
                     <button onClick={()=>{ setDeleteTarget(selectedQuote); setDeleteError(null); }}
                       className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-rose-600 border border-rose-200 rounded-lg hover:bg-rose-50">
                       <Trash2 size={14}/>Delete Quote
