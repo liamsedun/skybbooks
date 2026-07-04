@@ -6,7 +6,7 @@
 import { Router, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { z } from 'zod';
-import { eq, and, desc, or, like } from 'drizzle-orm';
+import { eq, and, desc, or, like, sql } from 'drizzle-orm';
 import {
   db,
   bankAccounts,
@@ -15,7 +15,14 @@ import {
   currencyRates,
   accounts,
   journalLines,
-  journalEntries
+  journalEntries,
+  paymentsReceived,
+  paymentsMade,
+  paymentAllocations,
+  paymentMadeAllocations,
+  contacts,
+  invoices,
+  bills
 } from '../db/schema';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
 import { AppError } from '../lib/errors';
@@ -915,6 +922,75 @@ router.get('/accounts/:id/unmatched-journal-lines', async (req: AuthenticatedReq
     const unmatchedLines = lines.filter((line) => !excludedIds.includes(line.id));
 
     return res.status(200).json(unmatchedLines);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET payments received/made linked to a bank account's paired GL cash account
+router.get('/accounts/:id/payments', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { id } = req.params;
+
+    const [ba] = await db
+      .select({ accountId: bankAccounts.accountId })
+      .from(bankAccounts)
+      .where(and(eq(bankAccounts.id, id), eq(bankAccounts.orgId, orgId)))
+      .limit(1);
+
+    if (!ba) throw new AppError('Bank account not found.', 404);
+
+    // Fetch payments received against this cash GL account
+    const receipts = await db
+      .select({
+        id: paymentsReceived.id,
+        type: sql<string>`'receipt'`,
+        number: paymentsReceived.paymentNumber,
+        date: paymentsReceived.date,
+        amount: paymentsReceived.amount,
+        reference: paymentsReceived.reference,
+        method: paymentsReceived.paymentMethod,
+        contactName: contacts.name,
+        docNumber: invoices.invoiceNumber
+      })
+      .from(paymentsReceived)
+      .leftJoin(contacts, eq(paymentsReceived.customerId, contacts.id))
+      .leftJoin(paymentAllocations, eq(paymentAllocations.paymentId, paymentsReceived.id))
+      .leftJoin(invoices, eq(paymentAllocations.invoiceId, invoices.id))
+      .where(and(
+        eq(paymentsReceived.accountId, ba.accountId),
+        eq(paymentsReceived.orgId, orgId)
+      ))
+      .orderBy(desc(paymentsReceived.date));
+
+    // Fetch payments made against this cash GL account
+    const outlays = await db
+      .select({
+        id: paymentsMade.id,
+        type: sql<string>`'payment'`,
+        number: paymentsMade.paymentNumber,
+        date: paymentsMade.date,
+        amount: paymentsMade.amount,
+        reference: paymentsMade.reference,
+        method: paymentsMade.paymentMethod,
+        contactName: contacts.name,
+        docNumber: bills.billNumber
+      })
+      .from(paymentsMade)
+      .leftJoin(contacts, eq(paymentsMade.vendorId, contacts.id))
+      .leftJoin(paymentMadeAllocations, eq(paymentMadeAllocations.paymentId, paymentsMade.id))
+      .leftJoin(bills, eq(paymentMadeAllocations.billId, bills.id))
+      .where(and(
+        eq(paymentsMade.accountId, ba.accountId),
+        eq(paymentsMade.orgId, orgId)
+      ))
+      .orderBy(desc(paymentsMade.date));
+
+    // Combine sorted by date descending
+    const all = [...receipts, ...outlays].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    return res.status(200).json(all);
   } catch (err) {
     next(err);
   }

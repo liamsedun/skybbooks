@@ -341,6 +341,10 @@ export const bankingApi = {
     const res = await api.get(`/banking/accounts/${accountId}/unmatched-journal-lines`);
     return res.data;
   },
+  getPaymentsByAccount: async (accountId: string) => {
+    const res = await api.get(`/banking/accounts/${accountId}/payments`);
+    return res.data;
+  },
   reconcileTransaction: async (transactionId: string, journalLineId: string) => {
     const res = await api.patch(`/banking/transactions/${transactionId}/reconcile`, { journalLineId });
     return res.data;

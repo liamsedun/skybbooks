@@ -29,7 +29,10 @@ import {
   Loader2,
   Download,
   Database,
-  Edit3
+  Edit3,
+  ArrowUpRight,
+  ArrowDownLeft,
+  XCircle
 } from 'lucide-react';
 
 interface BankAccountsProps {
@@ -93,6 +96,14 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
   const [balanceForm, setBalanceForm] = useState({ bankAccountId: '', openingBalance: '' });
   const [balanceSuccess, setBalanceSuccess] = useState<string | null>(null);
   const [balanceError, setBalanceError] = useState<string | null>(null);
+
+  // Bank account detail drill-down
+  const [detailAccount, setDetailAccount] = useState<any | null>(null);
+  const { data: accountPayments = [], isLoading: loadingPayments } = useQuery({
+    queryKey: ['bankAccountPayments', detailAccount?.id],
+    queryFn: () => bankingApi.getPaymentsByAccount(detailAccount!.id),
+    enabled: !!detailAccount,
+  });
 
   // Form states for manual add
   const [manualForm, setManualForm] = useState({
@@ -381,7 +392,8 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
               <div
                 key={account.id}
                 id={`bank-account-card-${account.id}`}
-                className="bg-white border border-slate-200/80 rounded-xl overflow-hidden hover:border-slate-300 transition-all duration-200 shadow-sm hover:shadow-md flex flex-col justify-between"
+                className="bg-white border border-slate-200/80 rounded-xl overflow-hidden hover:border-slate-300 transition-all duration-200 shadow-sm hover:shadow-md flex flex-col justify-between cursor-pointer"
+                onClick={() => setDetailAccount(account)}
               >
                 {/* Upper Body */}
                 <div className="p-5 space-y-4">
@@ -404,7 +416,8 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                     <div className="flex items-center gap-1 shrink-0">
                       <button
                         type="button"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           setEditAccount(account);
                           setManualForm({
                             name: account.name || '',
@@ -424,7 +437,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleDeleteAccount(account.id, account.name)}
+                        onClick={(e) => { e.stopPropagation(); handleDeleteAccount(account.id, account.name); }}
                         className="text-slate-400 hover:text-red-600 p-1 rounded hover:bg-slate-50 transition"
                         title="Deactivate Account"
                       >
@@ -483,14 +496,14 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                       <button
                         type="button"
                         disabled={syncingAccountId === account.id}
-                        onClick={() => handleSyncNow(account.id)}
+                        onClick={(e) => { e.stopPropagation(); handleSyncNow(account.id); }}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-tight text-indigo-600 border border-indigo-100 hover:bg-indigo-50 bg-white rounded transition cursor-pointer"
                       >
                         <RefreshCw className={`w-3 h-3 ${syncingAccountId === account.id ? 'animate-spin' : ''}`} />
                         <span>Sync Feed</span>
                       </button>
                     ) : (
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                         <FlutterwaveConnectButton
                           bankAccountId={account.id}
                           onSuccess={() => {
@@ -500,7 +513,8 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                         />
                         <button
                           type="button"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setSelectedUploadAccountId(account.id);
                             setShowUploadModal(true);
                           }}
@@ -513,7 +527,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                     )}
                     <button
                       type="button"
-                      onClick={() => onNavigate('reconciliation', account.id)}
+                      onClick={(e) => { e.stopPropagation(); onNavigate('reconciliation', account.id); }}
                       className="inline-flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-bold font-sans uppercase tracking-tight bg-slate-900 text-white rounded hover:bg-black transition cursor-pointer"
                     >
                       Reconcile
@@ -905,6 +919,69 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Bank Account Detail Drawer */}
+      {detailAccount && (
+        <div className="fixed inset-0 bg-neutral-950/60 backdrop-blur-sm z-50 flex justify-end">
+          <div className="bg-white w-full max-w-2xl h-full overflow-y-auto shadow-2xl">
+            {/* Header */}
+            <div className="sticky top-0 bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between z-10">
+              <div>
+                <h3 className="font-bold text-sm text-slate-800">{detailAccount.name}</h3>
+                <p className="text-xs text-slate-400">{detailAccount.bankName} • {detailAccount.accountNumber?.slice(-4)?.padStart(10, '•')}</p>
+              </div>
+              <button onClick={() => setDetailAccount(null)} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition">
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Summary */}
+            <div className="px-6 py-4 bg-slate-50 border-b border-slate-100">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Current Bank Balance</p>
+              <p className="text-2xl font-black text-slate-900 font-mono">{formatNaira(detailAccount.currentBalance || 0)}</p>
+            </div>
+
+            {/* Transactions */}
+            <div className="px-6 py-4">
+              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Transaction History</h4>
+              {loadingPayments ? (
+                <div className="flex items-center justify-center py-12 text-slate-400">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                </div>
+              ) : accountPayments.length === 0 ? (
+                <div className="text-center py-12 text-slate-400 text-sm">No payments or receipts found for this account.</div>
+              ) : (
+                <div className="space-y-2">
+                  {accountPayments.map((txn: any, i: number) => (
+                    <div key={`${txn.type}-${txn.id}-${i}`} className="flex items-center justify-between p-3 rounded-lg border border-slate-100 hover:border-slate-200 transition">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={`p-1.5 rounded-full shrink-0 ${txn.type === 'receipt' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                          {txn.type === 'receipt' ? <ArrowDownLeft className="w-3.5 h-3.5" /> : <ArrowUpRight className="w-3.5 h-3.5" />}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-slate-800 truncate">{txn.number}</p>
+                          <p className="text-xs text-slate-400 truncate">
+                            {txn.contactName && <span>{txn.contactName}{txn.docNumber ? ` · ` : ''}</span>}
+                            {txn.docNumber && <span>Ref: {txn.docNumber}</span>}
+                            {!txn.contactName && !txn.docNumber && (txn.reference || '—')}
+                          </p>
+                          <p className="text-[10px] text-slate-400">{new Date(txn.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className={`text-sm font-bold font-mono ${txn.type === 'receipt' ? 'text-emerald-700' : 'text-rose-700'}`}>
+                          {txn.type === 'receipt' ? '+' : '-'}{formatNaira(txn.amount)}
+                        </p>
+                        <p className="text-[10px] text-slate-400 capitalize">{txn.method?.replace(/_/g, ' ')}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
