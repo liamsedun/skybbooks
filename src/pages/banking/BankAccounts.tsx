@@ -31,8 +31,7 @@ import {
   Download,
   Database,
   Edit3,
-  ArrowUpRight,
-  ArrowDownLeft,
+  Eye,
   XCircle
 } from 'lucide-react';
 
@@ -947,9 +946,15 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Bank or Cash Account</p>
                 <p className="text-sm font-bold text-slate-800">{accountPayments.accountCode || ''} — {detailAccount.name}</p>
               </div>
-              <div className="ml-auto text-right">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Current Balance</p>
-                <p className="text-base font-black text-slate-900 font-mono">{formatNaira(detailAccount.currentBalance || 0)}</p>
+              <div className="flex items-center gap-6 ml-auto">
+                <div className="text-right">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Opening Balance</p>
+                  <p className="text-sm font-bold text-slate-700 font-mono">{formatNaira((accountPayments.transactions?.find((t: any) => t.txnType === 'Opening Balance')?.amount || 0))}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Current Balance</p>
+                  <p className="text-base font-black text-slate-900 font-mono">{formatNaira(detailAccount.currentBalance || 0)}</p>
+                </div>
               </div>
             </div>
 
@@ -994,7 +999,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                                       navigate(path);
                                     }}
                                   >
-                                    <ArrowRight className="w-3 h-3" />
+                                    <Eye className="w-3 h-3" />
                                   </button>
                                 </>
                               )}

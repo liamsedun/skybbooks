@@ -1030,14 +1030,14 @@ router.get('/accounts/:id/payments', async (req: AuthenticatedRequest, res: Resp
             .leftJoin(contacts, eq(paymentsReceived.customerId, contacts.id))
             .where(eq(paymentsReceived.id, row.source_id))
             .limit(1);
-          if (pmtRec) { txnType = 'Receipt'; txnNumber = `Receipt — ${pmtRec.number}`; contactName = pmtRec.contact || ''; sourceDocType = 'receipt'; break; }
+          if (pmtRec) { txnType = 'Receipt'; txnNumber = pmtRec.number; contactName = pmtRec.contact || ''; sourceDocType = 'receipt'; break; }
           const [pmtMade] = await db
             .select({ number: paymentsMade.paymentNumber, contact: contacts.name })
             .from(paymentsMade)
             .leftJoin(contacts, eq(paymentsMade.vendorId, contacts.id))
             .where(eq(paymentsMade.id, row.source_id))
             .limit(1);
-          if (pmtMade) { txnType = 'Payment'; txnNumber = `Payment — ${pmtMade.number}`; contactName = pmtMade.contact || ''; sourceDocType = 'payment'; }
+          if (pmtMade) { txnType = 'Payment'; txnNumber = pmtMade.number; contactName = pmtMade.contact || ''; sourceDocType = 'payment'; }
           break;
         }
         case 'opening_balance':
