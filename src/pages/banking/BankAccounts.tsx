@@ -927,7 +927,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
       {/* Bank Account Detail Drawer — Ledger View */}
       {detailAccount && (
         <div className="fixed inset-0 bg-neutral-950/60 backdrop-blur-sm z-50 flex justify-end">
-          <div className="bg-white w-full max-w-5xl h-full overflow-y-auto shadow-2xl">
+          <div className="bg-white w-full max-w-7xl h-full overflow-y-auto shadow-2xl">
             {/* Header */}
             <div className="sticky top-0 bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between z-10">
               <div>
@@ -964,20 +964,20 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead>
-                      <tr className="border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                        <th className="text-left py-2 pr-2"></th>
-                        <th className="text-left py-2 pr-2">Date</th>
-                        <th className="text-left py-2 pr-2">Transaction</th>
-                        <th className="text-left py-2 pr-2">Account</th>
-                        <th className="text-left py-2 pr-2">Description</th>
-                        <th className="text-right py-2 pl-2">Amount</th>
-                        <th className="text-right py-2 pl-2">Balance</th>
+                      <tr className="border-b border-slate-200 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        <th className="text-left py-2.5 pr-2 w-16"></th>
+                        <th className="text-left py-2.5 pr-2 w-28">Date</th>
+                        <th className="text-left py-2.5 pr-2 w-52">Transaction</th>
+                        <th className="text-left py-2.5 pr-2">Account</th>
+                        <th className="text-left py-2.5 pr-2">Description</th>
+                        <th className="text-right py-2.5 pl-2 w-36">Amount</th>
+                        <th className="text-right py-2.5 pl-2 w-36">Balance</th>
                       </tr>
                     </thead>
                     <tbody>
                       {accountPayments.transactions.map((txn: any, i: number) => (
                         <tr key={`${txn.id}-${i}`} className="border-b border-slate-50 hover:bg-slate-50/50 transition">
-                          <td className="py-2 pr-2 whitespace-nowrap">
+                          <td className="py-2.5 pr-2 whitespace-nowrap">
                             <div className="flex items-center gap-1">
                               <button
                                 className="p-1 text-slate-300 hover:text-blue-600 transition"
@@ -986,35 +986,35 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                                   // Could navigate to the source document for editing
                                 }}
                               >
-                                <Edit3 className="w-3 h-3" />
+                                <Edit3 className="w-3.5 h-3.5" />
                               </button>
                               <button
                                 className="p-1 text-slate-300 hover:text-slate-600 transition"
                                 title="View"
                               >
-                                <ArrowRight className="w-3 h-3" />
+                                <ArrowRight className="w-3.5 h-3.5" />
                               </button>
                             </div>
                           </td>
-                          <td className="py-2 pr-2 whitespace-nowrap text-slate-600 font-medium">
+                          <td className="py-2.5 pr-2 whitespace-nowrap text-slate-600 font-medium text-sm">
                             {format(new Date(txn.date), 'MM/dd/yyyy')}
                           </td>
-                          <td className="py-2 pr-2 whitespace-nowrap font-medium max-w-[140px]">
+                          <td className="py-2.5 pr-2 whitespace-nowrap font-medium text-sm">
                             <span className={`${txn.isDebit ? 'text-emerald-700' : 'text-rose-700'}`}>
                               {txn.txnType}{txn.txnNumber ? ` — ${txn.txnNumber}` : ''}
                             </span>
                           </td>
-                          <td className="py-2 pr-2 max-w-[200px] text-slate-600 truncate" title={txn.contraAccounts || txn.contactName}>
-                            <span className="font-medium text-slate-700">{txn.contraAccounts ? `${txn.contraAccounts} — ` : ''}</span>
-                            <span>{txn.contactName}</span>
+                          <td className="py-2.5 pr-2 text-slate-600 text-sm" title={txn.contraAccounts || txn.contactName}>
+                            <span className="font-medium text-slate-700">{txn.contraAccounts ? `${txn.contraAccounts}` : ''}</span>
+                            {txn.contactName && <span className="text-slate-500"> — {txn.contactName}</span>}
                           </td>
-                          <td className="py-2 pr-2 max-w-[240px] text-slate-500 truncate" title={txn.description}>
+                          <td className="py-2.5 pr-2 text-slate-500 text-sm" title={txn.description}>
                             {txn.description || '—'}
                           </td>
-                          <td className={`py-2 pl-2 whitespace-nowrap text-right font-mono font-bold ${txn.isDebit ? 'text-emerald-700' : 'text-rose-700'}`}>
+                          <td className={`py-2.5 pl-2 whitespace-nowrap text-right font-mono font-bold text-sm ${txn.isDebit ? 'text-emerald-700' : 'text-rose-700'}`}>
                             {txn.isDebit ? '' : '- '}{formatNaira(Math.abs(txn.amount || 0))}
                           </td>
-                          <td className="py-2 pl-2 whitespace-nowrap text-right font-mono font-medium text-slate-800">
+                          <td className="py-2.5 pl-2 whitespace-nowrap text-right font-mono font-medium text-slate-800 text-sm">
                             {formatNaira(txn.balance || 0)}
                           </td>
                         </tr>
