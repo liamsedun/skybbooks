@@ -5,7 +5,7 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../../lib/api';
+import { api, salesApi } from '../../lib/api';
 import {
   Plus, Search, Pencil, Trash2, X, Loader2, AlertCircle, Upload,
   FileText, ArrowRight, CheckCircle2, Clock, XCircle, RefreshCw, ChevronRight,
@@ -460,6 +460,23 @@ export function QuotesPage() {
                 )}
                 {/* Actions */}
                 <div className="border-t border-slate-100 pt-3 space-y-2">
+                  <button
+                    onClick={async () => {
+                      try {
+                        const blob = await salesApi.getQuotePdf(selectedQuote.id);
+                        const url = window.URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.download = `${selectedQuote.quoteNumber}.pdf`;
+                        document.body.appendChild(link);
+                        link.click();
+                        window.URL.revokeObjectURL(url);
+                      } catch { /* silent */ }
+                    }}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50"
+                  >
+                    <Download size={14}/>Download PDF
+                  </button>
                   {selectedQuote.status!=='converted'&&selectedQuote.status!=='declined'&&(
                     <button onClick={()=>{ setConvertingId(selectedQuote.id); convertMutation.mutate(selectedQuote.id); }}
                       disabled={convertMutation.isPending&&convertingId===selectedQuote.id}

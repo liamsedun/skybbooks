@@ -9,7 +9,7 @@ import { db, contacts, invoices, invoiceLines, quotes, salesOrders, paymentsRece
 import { eq, and, desc, asc, sql, inArray, getTableColumns } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
-import { generateInvoicePDF } from '../services/pdf.service';
+import { generateInvoicePDF, generateQuotePDF } from '../services/pdf.service';
 import {
   createInvoice,
   updateInvoice,
@@ -1076,6 +1076,21 @@ router.post('/quotes/:id/unconvert', authenticate, requireOrg, async (req: Authe
   } catch (err) { return next(err); }
 });
 
+// GET /api/sales/quotes/:id/pdf
+router.get('/quotes/:id/pdf', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { id } = req.params;
+
+    const pdfBuffer = await generateQuotePDF(id, orgId);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="Quote-${id}.pdf"`);
+    return res.status(200).send(pdfBuffer);
+  } catch (err) {
+    return next(err);
+  }
+});
 
 // =========================================================================
 // SALES ORDERS ENDPOINTS

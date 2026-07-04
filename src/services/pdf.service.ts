@@ -7,6 +7,7 @@ import PDFDocument from 'pdfkit';
 import { eq, and, sql, gte, lte, desc, asc } from 'drizzle-orm';
 import {
   db,
+  quotes,
   invoices,
   invoiceLines,
   contacts,
@@ -332,6 +333,167 @@ export async function generateInvoicePDF(invoiceId: string, orgId: string): Prom
     doc.text(invoice.terms || 'Payment is strictly due within specified due-date terms. Late payments might attract a standard fine.', 300, y, { width: 255 });
 
     doc.fillColor('#9ca3af').fontSize(7).text('FinanceOS Cloud Ledger Workstation — Thank you for your business.', startX, 750, { align: 'center' });
+  });
+}
+
+// =========================================================================
+// 1b. QUOTE PDF GENERATION
+// =========================================================================
+export async function generateQuotePDF(quoteId: string, orgId: string): Promise<Buffer> {
+  const [quote] = await db
+    .select()
+    .from(quotes)
+    .where(and(eq(quotes.id, quoteId), eq(quotes.orgId, orgId)))
+    .limit(1);
+
+  if (!quote) {
+    throw new AppError('Requested quote was not found under this organisation.', 404);
+  }
+
+  const [org] = await db
+    .select()
+    .from(organisations)
+    .where(eq(organisations.id, orgId))
+    .limit(1);
+
+  if (!org) {
+    throw new AppError('Organization context not found.', 404);
+  }
+
+  const [client] = await db
+    .select()
+    .from(contacts)
+    .where(eq(contacts.id, quote.customerId))
+    .limit(1);
+
+  if (!client) {
+    throw new AppError('Quote customer profile was not found.', 404);
+  }
+
+  const quoteLines = (quote.lines || []) as any[];
+  const orgSettings = typeof org.settings === 'string' ? JSON.parse(org.settings) : (org.settings || {});
+  const brandColor = orgSettings.branding?.primaryColor || '#1e3a8a';
+
+  return generatePDFBuffer((doc) => {
+    const PRIMARY_COLOR = brandColor;
+    const TEXT_PRIMARY = '#1f2937';
+    const MUTED_COLOR = '#4b5563';
+    const ACCENT_COLOR = '#10b981';
+
+    const colWidth = [30, 220, 60, 80, 50, 75];
+    const startX = 40;
+
+    doc.rect(startX, 40, 50, 50).fill(PRIMARY_COLOR);
+    doc.fillColor('#ffffff').fontSize(22).font('Helvetica-Bold').text(org.name.substring(0, 2).toUpperCase(), startX + 11, 52);
+
+    doc.fillColor(TEXT_PRIMARY).fontSize(14).font('Helvetica-Bold').text(org.name, startX + 65, 40);
+    doc.fontSize(8).font('Helvetica').fillColor(MUTED_COLOR);
+    doc.text(org.address || 'No 1, Commercial Avenue, Lagos, Nigeria', startX + 65, 55);
+    doc.text(`Phone: ${org.phone || '+234-800-FINANCEOS'} | Email: ${org.email || 'billing@financeos.ng'}`, startX + 65, 66);
+    if (org.rcNumber || org.vatNumber) {
+      doc.text(`RC Number: ${org.rcNumber || 'RC-XXXXXX'} | VAT: ${org.vatNumber || 'VAT-NGR-XXXX'}`, startX + 65, 77);
+    }
+
+    doc.fillColor(PRIMARY_COLOR).fontSize(20).font('Helvetica-Bold').text('QUOTATION', 400, 40, { align: 'right' });
+    const statusText = (quote.status || 'draft').toUpperCase();
+    doc.fontSize(10).fillColor(quote.status === 'accepted' ? ACCENT_COLOR : '#f59e0b').text(statusText, 400, 63, { align: 'right' });
+
+    doc.moveTo(startX, 105).lineTo(555, 105).strokeColor('#e5e7eb').lineWidth(1).stroke();
+
+    let y = 120;
+    doc.fillColor(TEXT_PRIMARY).fontSize(9).font('Helvetica-Bold').text('BILL TO:', startX, y);
+    doc.font('Helvetica-Bold').text('QUOTE DETAILS:', 350, y);
+
+    y += 13;
+    doc.fontSize(10).font('Helvetica-Bold').text(client.name, startX, y);
+    doc.font('Helvetica-Bold').fontSize(9).text(`Quote Number:`, 350, y);
+    doc.font('Helvetica').text(quote.quoteNumber, 440, y);
+
+    y += 13;
+    doc.font('Helvetica').fontSize(8).fillColor(MUTED_COLOR).text(client.address || '-', startX, y);
+    doc.text(`${client.city || ''}, ${client.state || ''}`, startX, y + 10);
+    doc.text(`Email: ${client.email || '-'}`, startX, y + 20);
+    doc.text(`TIN: ${client.taxPin || '-'}`, startX, y + 30);
+
+    doc.fillColor(TEXT_PRIMARY).font('Helvetica-Bold').text(`Issue Date:`, 350, y);
+    doc.font('Helvetica').text(formatShortDate(quote.date), 440, y);
+    doc.font('Helvetica-Bold').text(`Expiry Date:`, 350, y + 12);
+    doc.font('Helvetica').text(formatShortDate(quote.expiryDate), 440, y + 12);
+    doc.font('Helvetica-Bold').text(`Terms:`, 350, y + 24);
+    doc.font('Helvetica').text(quote.terms ? `${quote.terms}` : 'Standard Terms Apply', 440, y + 24);
+
+    y = 205;
+    doc.rect(startX, y, 515, 20).fill(brandColor);
+    doc.fillColor('#ffffff').fontSize(8).font('Helvetica-Bold');
+
+    doc.text('#', startX + 5, y + 6);
+    doc.text('Description', startX + colWidth[0] + 5, y + 6);
+    doc.text('Qty', startX + colWidth[0] + colWidth[1] + 5, y + 6, { width: colWidth[2] - 10, align: 'right' });
+    doc.text('Unit Price', startX + colWidth[0] + colWidth[1] + colWidth[2] + 5, y + 6, { width: colWidth[3] - 10, align: 'right' });
+    doc.text('VAT%', startX + colWidth[0] + colWidth[1] + colWidth[2] + colWidth[3] + 5, y + 6, { width: colWidth[4] - 10, align: 'right' });
+    doc.text('Amount', startX + colWidth[0] + colWidth[1] + colWidth[2] + colWidth[3] + colWidth[4] + 5, y + 6, { width: colWidth[5] - 10, align: 'right' });
+
+    y += 20;
+
+    doc.fillColor(TEXT_PRIMARY).font('Helvetica').fontSize(8);
+    quoteLines.forEach((line: any, index: number) => {
+      if (index % 2 === 1) {
+        doc.rect(startX, y, 515, 18).fill('#fafdff');
+      }
+      doc.fillColor(TEXT_PRIMARY);
+      const lineTotal = line.quantity * line.unitPrice * (1 - (line.discountPct || 0) / 100) * (1 + (line.taxRate || 7.5) / 100);
+      doc.text(String(index + 1), startX + 5, y + 5);
+      doc.text(line.description || 'Line Item', startX + colWidth[0] + 5, y + 5, { width: colWidth[1] - 10, lineBreak: false });
+      doc.text(Number(line.quantity).toString(), startX + colWidth[0] + colWidth[1] + 5, y + 5, { width: colWidth[2] - 10, align: 'right' });
+      doc.text(formatNaira(line.unitPrice), startX + colWidth[0] + colWidth[1] + colWidth[2] + 5, y + 5, { width: colWidth[3] - 10, align: 'right' });
+      doc.text(line.taxRate ? `${parseFloat(line.taxRate.toString())}%` : '0%', startX + colWidth[0] + colWidth[1] + colWidth[2] + colWidth[3] + 5, y + 5, { width: colWidth[4] - 10, align: 'right' });
+      doc.text(formatNaira(Math.round(lineTotal)), startX + colWidth[0] + colWidth[1] + colWidth[2] + colWidth[3] + colWidth[4] + 5, y + 5, { width: colWidth[5] - 10, align: 'right' });
+
+      y += 18;
+    });
+
+    doc.moveTo(startX, y).lineTo(555, y).strokeColor('#e5e7eb').stroke();
+    y += 10;
+
+    const summaryLabelX = 350;
+    const summaryValX = 475;
+
+    doc.fillColor(MUTED_COLOR).fontSize(8).font('Helvetica');
+    doc.text('Subtotal:', summaryLabelX, y);
+    doc.fillColor(TEXT_PRIMARY).text(formatNaira(quote.subtotal), summaryValX, y, { align: 'right' });
+
+    y += 12;
+    doc.fillColor(MUTED_COLOR).text('Discount Amount:', summaryLabelX, y);
+    doc.fillColor(TEXT_PRIMARY).text(formatNaira(quote.discount), summaryValX, y, { align: 'right' });
+
+    y += 12;
+    doc.fillColor(MUTED_COLOR).text('VAT Tax:', summaryLabelX, y);
+    doc.fillColor(TEXT_PRIMARY).text(formatNaira(quote.tax), summaryValX, y, { align: 'right' });
+
+    y += 14;
+    doc.rect(summaryLabelX - 10, y - 4, 215, 20).fill('#f3f4f6');
+    doc.fillColor(TEXT_PRIMARY).font('Helvetica-Bold').fontSize(10);
+    doc.text('TOTAL:', summaryLabelX, y + 1);
+    doc.text(formatNaira(quote.total), summaryValX, y + 1, { align: 'right' });
+
+    y = 520;
+    doc.moveTo(startX, y).lineTo(555, y).strokeColor('#e5e7eb').stroke();
+    y += 15;
+
+    if (quote.notes) {
+      doc.fillColor(PRIMARY_COLOR).fontSize(9).font('Helvetica-Bold').text('NOTES', startX, y);
+      y += 12;
+      doc.fontSize(8).fillColor(TEXT_PRIMARY).font('Helvetica');
+      doc.text(quote.notes, startX, y, { width: 515 });
+      y += 20;
+    }
+
+    doc.fillColor(MUTED_COLOR).fontSize(9).font('Helvetica-Bold').text('TERMS AND CONDITIONS', startX, y);
+    y += 12;
+    doc.fontSize(8).fillColor(TEXT_PRIMARY).font('Helvetica');
+    doc.text(quote.terms || 'This quotation is valid until the expiry date stated above. Acceptance of this quotation constitutes a binding agreement.', startX, y, { width: 515 });
+
+    doc.fillColor('#9ca3af').fontSize(7).text('SkyBooks Cloud Ledger — Thank you for considering our proposal.', startX, 750, { align: 'center' });
   });
 }
 

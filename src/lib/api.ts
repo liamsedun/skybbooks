@@ -444,6 +444,10 @@ export const salesApi = {
     const res = await api.get(`/sales/invoices/${id}/pdf`, { responseType: 'blob' });
     return res.data;
   },
+  getQuotePdf: async (id: string) => {
+    const res = await api.get(`/sales/quotes/${id}/pdf`, { responseType: 'blob' });
+    return res.data;
+  },
   getPaymentsReceived: async (params?: any) => {
     const res = await api.get('/sales/payments', { params });
     return res.data;
