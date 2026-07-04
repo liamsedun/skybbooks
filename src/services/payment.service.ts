@@ -13,7 +13,8 @@ import {
   bills,
   paymentsMade,
   paymentMadeAllocations,
-  journalEntries
+  journalEntries,
+  journalLines
 } from '../db/schema';
 import { AppError } from '../lib/errors';
 import { createJournalEntry, reverseJournalEntry } from './ledger.service';
@@ -249,6 +250,57 @@ export async function updatePaymentReceived(paymentId: string, orgId: string, in
 
     if (!existing) throw new AppError('Payment not found.', 404);
 
+    // Check if this is a metadata-only update (no amount or allocation changes)
+    const isMetadataOnly = input.allocations === undefined
+      && (input.amount === undefined || Number(input.amount) === existing.amount);
+
+    if (isMetadataOnly) {
+      // Lightweight update: just update the payment record and journal line account
+      const accountId = input.accountId || existing.accountId;
+      const date = input.date ? new Date(input.date) : existing.date;
+
+      const [updated] = await tx
+        .update(paymentsReceived)
+        .set({
+          date,
+          amount: existing.amount,
+          currency: input.currency || existing.currency,
+          paymentMethod: input.paymentMethod || existing.paymentMethod,
+          reference: input.reference !== undefined ? input.reference : existing.reference,
+          accountId,
+          notes: input.notes !== undefined ? input.notes : existing.notes,
+          payerName: input.payerName ?? existing.payerName,
+        })
+        .where(eq(paymentsReceived.id, paymentId))
+        .returning();
+
+      // Update the journal entry line's accountId if bank account changed
+      if (input.accountId && input.accountId !== existing.accountId) {
+        const [entry] = await tx
+          .select({ id: journalEntries.id })
+          .from(journalEntries)
+          .where(and(
+            eq(journalEntries.source, 'payment'),
+            eq(journalEntries.sourceId, paymentId),
+            eq(journalEntries.isReversed, false)
+          ))
+          .limit(1);
+
+        if (entry) {
+          await tx
+            .update(journalLines)
+            .set({ accountId: input.accountId })
+            .where(and(
+              eq(journalLines.entryId, entry.id),
+              eq(journalLines.debitAmount, existing.amount)
+            ));
+        }
+      }
+
+      return { ...updated, allocations: [] };
+    }
+
+    // Full update with reversal (amount or allocations changed)
     // 1. Reverse old allocations (restore invoice balances)
     const oldAllocations = await tx
       .select()

@@ -4,10 +4,10 @@
  */
 
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { bankingApi, api } from '../../lib/api';
+import { bankingApi } from '../../lib/api';
 import { useCurrency } from '../../hooks/useCurrency';
-import { format } from 'date-fns';
 import { useAuth } from '../../hooks/useAuth';
 import { FlutterwaveConnectButton } from '../../components/banking/FlutterwaveConnectButton';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
@@ -73,6 +73,7 @@ function UnreconciledBadge({ accountId, onClick }: { accountId: string; onClick:
 }
 
 export function BankAccounts({ onNavigate }: BankAccountsProps) {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { formatNaira } = useCurrency();
   const { token } = useAuth();
@@ -100,50 +101,6 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
 
   // Bank account detail drill-down
   const [detailAccount, setDetailAccount] = useState<any | null>(null);
-  const [detailViewTxn, setDetailViewTxn] = useState<any | null>(null);
-  const [editViewTxn, setEditViewTxn] = useState<any | null>(null);
-  const [editForm, setEditForm] = useState({ date: '', amount: '', reference: '', notes: '', accountId: '' });
-  const [editSaving, setEditSaving] = useState(false);
-  const [editError, setEditError] = useState('');
-
-  function openEditModal(txn: any) {
-    setEditViewTxn(txn);
-    setEditForm({
-      date: txn.date ? format(new Date(txn.date), 'yyyy-MM-dd') : '',
-      amount: txn.amount ? (Math.abs(txn.amount) / 100).toFixed(2) : '',
-      reference: '',
-      notes: '',
-      accountId: detailAccount?.accountId || '',
-    });
-    setEditError('');
-  }
-
-  async function handleEditSave() {
-    if (!editViewTxn) return;
-    setEditSaving(true);
-    setEditError('');
-    try {
-      const payload: any = {
-        date: editForm.date || undefined,
-        reference: editForm.reference || null,
-        notes: editForm.notes || null,
-      };
-      if (editForm.amount) payload.amount = Math.round(parseFloat(editForm.amount) * 100);
-      if (editForm.accountId) payload.accountId = editForm.accountId;
-
-      const endpoint = editViewTxn.sourceDocType === 'payment'
-        ? `/purchases/payments/${editViewTxn.sourceDocId}`
-        : `/sales/payments/${editViewTxn.sourceDocId}`;
-
-      await api.patch(endpoint, payload);
-      queryClient.invalidateQueries({ queryKey: ['bankAccountPayments'] });
-      setEditViewTxn(null);
-    } catch (err: any) {
-      setEditError(err?.response?.data?.message || err?.message || 'Failed to update payment.');
-    } finally {
-      setEditSaving(false);
-    }
-  }
 
   const { data: accountPayments = [], isLoading: loadingPayments } = useQuery({
     queryKey: ['bankAccountPayments', detailAccount?.id],
@@ -979,7 +936,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                 <h3 className="font-bold text-sm text-slate-800">{detailAccount.name}</h3>
                 <p className="text-xs text-slate-400">{detailAccount.bankName} • {detailAccount.accountNumber?.slice(-4)?.padStart(10, '•')}</p>
               </div>
-              <button onClick={() => { setDetailAccount(null); setDetailViewTxn(null); setEditViewTxn(null); }} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition">
+              <button onClick={() => setDetailAccount(null)} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition">
                 <XCircle className="w-5 h-5" />
               </button>
             </div>
@@ -998,200 +955,76 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
 
             {/* Transactions Table */}
             <div className="px-6 py-3">
-              {!detailViewTxn && !editViewTxn && (
-                <>
-                  <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Bank or Cash Account — Transactions</h4>
-                  {loadingPayments ? (
-                    <div className="flex items-center justify-center py-12 text-slate-400">
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                    </div>
-                  ) : !accountPayments.transactions || accountPayments.transactions.length === 0 ? (
-                    <div className="text-center py-12 text-slate-400 text-sm">No payments or receipts found for this account.</div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                            <th className="text-left py-1.5 pr-1"></th>
-                            <th className="text-left py-1.5 pr-1">Date</th>
-                            <th className="text-left py-1.5 pr-1">Transaction</th>
-                            <th className="text-left py-1.5 pr-1">Account</th>
-                            <th className="text-left py-1.5 pr-1">Description</th>
-                            <th className="text-right py-1.5 pl-1">Amount</th>
-                            <th className="text-right py-1.5 pl-1">Balance</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {accountPayments.transactions.map((txn: any, i: number) => (
-                            <tr key={`${txn.id}-${i}`} className="border-b border-slate-50 hover:bg-slate-50/50 transition">
-                              <td className="py-1.5 pr-1 whitespace-nowrap">
-                                <div className="flex items-center gap-0.5">
-                                  {(txn.sourceDocType === 'receipt' || txn.sourceDocType === 'payment') && (
-                                    <>
-                                      <button
-                                        className="p-0.5 text-slate-300 hover:text-blue-600 transition"
-                                        title="Edit"
-                                        onClick={(e) => { e.stopPropagation(); openEditModal(txn); }}
-                                      >
-                                        <Edit3 className="w-3 h-3" />
-                                      </button>
-                                      <button
-                                        className="p-0.5 text-slate-300 hover:text-slate-600 transition"
-                                        title="View"
-                                        onClick={(e) => { e.stopPropagation(); setDetailViewTxn(txn); }}
-                                      >
-                                        <ArrowRight className="w-3 h-3" />
-                                      </button>
-                                    </>
-                                  )}
-                                </div>
-                              </td>
-                              <td className="py-1.5 pr-1 whitespace-nowrap text-slate-600 font-medium text-xs">
-                                {format(new Date(txn.date), 'MM/dd/yyyy')}
-                              </td>
-                              <td className="py-1.5 pr-1 whitespace-nowrap font-medium text-xs">
-                                <span className={`${txn.isDebit ? 'text-emerald-700' : 'text-rose-700'}`}>
-                                  {txn.txnType}{txn.txnNumber ? ` — ${txn.txnNumber}` : ''}
-                                </span>
-                              </td>
-                              <td className="py-1.5 pr-1 text-slate-600 text-xs" title={txn.contraAccounts || txn.contactName}>
-                                <span className="font-medium text-slate-700">{txn.contraAccounts ? `${txn.contraAccounts}` : ''}</span>
-                                {txn.contactName && <span className="text-slate-500"> — {txn.contactName}</span>}
-                              </td>
-                              <td className="py-1.5 pr-1 text-slate-500 text-xs" title={txn.description}>
-                                {txn.description || '—'}
-                              </td>
-                              <td className={`py-1.5 pl-1 whitespace-nowrap text-right font-mono font-bold text-xs ${txn.isDebit ? 'text-emerald-700' : 'text-rose-700'}`}>
-                                {txn.isDebit ? '' : '- '}{formatNaira(Math.abs(txn.amount || 0))}
-                              </td>
-                              <td className="py-1.5 pl-1 whitespace-nowrap text-right font-mono font-medium text-slate-800 text-xs">
-                                {formatNaira(txn.balance || 0)}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </>
-              )}
-
-              {/* View Detail Panel */}
-              {detailViewTxn && !editViewTxn && (
-                <div className="max-w-lg mx-auto mt-4">
-                  <button onClick={() => setDetailViewTxn(null)} className="text-xs text-slate-400 hover:text-slate-600 mb-3 flex items-center gap-1">
-                    <ArrowRight className="w-3 h-3 rotate-180" /> Back to transactions
-                  </button>
-                  <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-bold text-slate-800">{detailViewTxn.txnNumber || 'Transaction'}</h3>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${detailViewTxn.isDebit ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
-                        {detailViewTxn.isDebit ? 'Receipt' : 'Payment'}
-                      </span>
-                    </div>
-                    <div className="space-y-2 text-xs">
-                      {detailViewTxn.contactName && (
-                        <div className="flex justify-between">
-                          <span className="text-slate-400">From</span>
-                          <span className="font-medium text-slate-700">{detailViewTxn.contactName}</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between">
-                        <span className="text-slate-400">Date</span>
-                        <span className="font-medium text-slate-700">{format(new Date(detailViewTxn.date), 'dd MMM yyyy')}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-400">Amount</span>
-                        <span className={`font-bold font-mono ${detailViewTxn.isDebit ? 'text-emerald-700' : 'text-rose-700'}`}>
-                          {detailViewTxn.isDebit ? '' : '-'}{formatNaira(Math.abs(detailViewTxn.amount || 0))}
-                        </span>
-                      </div>
-                      {detailViewTxn.contraAccounts && (
-                        <div className="flex justify-between">
-                          <span className="text-slate-400">Account</span>
-                          <span className="font-medium text-slate-700 text-right max-w-[250px]">{detailViewTxn.contraAccounts}</span>
-                        </div>
-                      )}
-                      {detailViewTxn.description && (
-                        <div>
-                          <span className="text-slate-400 block mb-0.5">Description</span>
-                          <p className="font-medium text-slate-700 text-xs leading-relaxed">{detailViewTxn.description}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  {(detailViewTxn.sourceDocType === 'receipt' || detailViewTxn.sourceDocType === 'payment') && (
-                    <div className="mt-3 text-center">
-                      <button
-                        onClick={() => { setDetailViewTxn(null); openEditModal(detailViewTxn); }}
-                        className="text-xs text-blue-600 hover:text-blue-700 font-medium"
-                      >
-                        Edit this payment
-                      </button>
-                    </div>
-                  )}
+              <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Bank or Cash Account — Transactions</h4>
+              {loadingPayments ? (
+                <div className="flex items-center justify-center py-12 text-slate-400">
+                  <Loader2 className="w-5 h-5 animate-spin" />
                 </div>
-              )}
-
-              {/* Edit Panel */}
-              {editViewTxn && !detailViewTxn && (
-                <div className="max-w-lg mx-auto mt-4">
-                  <button onClick={() => { setEditViewTxn(null); setEditError(''); }} className="text-xs text-slate-400 hover:text-slate-600 mb-3 flex items-center gap-1">
-                    <ArrowRight className="w-3 h-3 rotate-180" /> Back to transactions
-                  </button>
-                  <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
-                    <h3 className="text-sm font-bold text-slate-800">Edit Payment — {editViewTxn.txnNumber}</h3>
-                    {editError && <p className="text-xs text-red-600 bg-red-50 p-2 rounded">{editError}</p>}
-                    <div className="space-y-3">
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Date</label>
-                        <input type="date" value={editForm.date}
-                          onChange={(e) => setEditForm({ ...editForm, date: e.target.value })}
-                          className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Reference</label>
-                        <input value={editForm.reference}
-                          onChange={(e) => setEditForm({ ...editForm, reference: e.target.value })}
-                          className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Notes</label>
-                        <textarea value={editForm.notes}
-                          onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
-                          rows={2}
-                          className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Amount (₦)</label>
-                        <input type="number" step="0.01" value={editForm.amount}
-                          onChange={(e) => setEditForm({ ...editForm, amount: e.target.value })}
-                          className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Bank Account</label>
-                          <select value={editForm.accountId}
-                          onChange={(e) => setEditForm({ ...editForm, accountId: e.target.value })}
-                          className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
-                        >
-                          <option value="">Select bank account</option>
-                          {bankAccounts.map((ba: any) => (
-                            <option key={ba.id} value={ba.accountId}>{ba.name} ({ba.bankName})</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                    <p className="text-[10px] text-slate-400">Note: Amount and allocation cannot be edited after recording. Reverse and re-record if needed.</p>
-                    <div className="flex justify-end gap-2 pt-1">
-                      <button onClick={() => { setEditViewTxn(null); setEditError(''); }}
-                        className="px-4 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
-                      <button onClick={handleEditSave}
-                        disabled={editSaving}
-                        className="px-4 py-1.5 text-xs font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 disabled:opacity-50">
-                        {editSaving ? 'Saving...' : 'Save Changes'}
-                      </button>
-                    </div>
-                  </div>
+              ) : !accountPayments.transactions || accountPayments.transactions.length === 0 ? (
+                <div className="text-center py-12 text-slate-400 text-sm">No payments or receipts found for this account.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                        <th className="text-left py-1.5 pr-1"></th>
+                        <th className="text-left py-1.5 pr-1">Date</th>
+                        <th className="text-left py-1.5 pr-1">Transaction</th>
+                        <th className="text-left py-1.5 pr-1">Account</th>
+                        <th className="text-left py-1.5 pr-1">Description</th>
+                        <th className="text-right py-1.5 pl-1">Amount</th>
+                        <th className="text-right py-1.5 pl-1">Balance</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {accountPayments.transactions.map((txn: any, i: number) => (
+                        <tr key={`${txn.id}-${i}`} className="border-b border-slate-50 hover:bg-slate-50/50 transition">
+                          <td className="py-1.5 pr-1 whitespace-nowrap">
+                            <div className="flex items-center gap-0.5">
+                              {(txn.sourceDocType === 'receipt' || txn.sourceDocType === 'payment') && (
+                                <>
+                                  <button
+                                    className="p-0.5 text-slate-300 hover:text-blue-600 transition"
+                                    title="View"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const path = txn.sourceDocType === 'payment'
+                                        ? `/purchases/payments?selected=${txn.sourceDocId}`
+                                        : `/sales/payments?selected=${txn.sourceDocId}`;
+                                      navigate(path);
+                                    }}
+                                  >
+                                    <ArrowRight className="w-3 h-3" />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-1.5 pr-1 whitespace-nowrap text-slate-600 font-medium text-xs">
+                            {new Date(txn.date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}
+                          </td>
+                          <td className="py-1.5 pr-1 whitespace-nowrap font-medium text-xs">
+                            <span className={`${txn.isDebit ? 'text-emerald-700' : 'text-rose-700'}`}>
+                              {txn.txnType}{txn.txnNumber ? ` — ${txn.txnNumber}` : ''}
+                            </span>
+                          </td>
+                          <td className="py-1.5 pr-1 text-slate-600 text-xs" title={txn.contraAccounts || txn.contactName}>
+                            <span className="font-medium text-slate-700">{txn.contraAccounts ? `${txn.contraAccounts}` : ''}</span>
+                            {txn.contactName && <span className="text-slate-500"> — {txn.contactName}</span>}
+                          </td>
+                          <td className="py-1.5 pr-1 text-slate-500 text-xs" title={txn.description}>
+                            {txn.description || '—'}
+                          </td>
+                          <td className={`py-1.5 pl-1 whitespace-nowrap text-right font-mono font-bold text-xs ${txn.isDebit ? 'text-emerald-700' : 'text-rose-700'}`}>
+                            {txn.isDebit ? '' : '- '}{formatNaira(Math.abs(txn.amount || 0))}
+                          </td>
+                          <td className="py-1.5 pl-1 whitespace-nowrap text-right font-mono font-medium text-slate-800 text-xs">
+                            {formatNaira(txn.balance || 0)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>

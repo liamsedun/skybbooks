@@ -4,7 +4,7 @@
  */
 import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../../lib/api';
 import {
   Search, Loader2, AlertCircle, CreditCard, Plus, Pencil,
@@ -228,10 +228,16 @@ export function PaymentsReceivedPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
+  const [searchParams] = useSearchParams();
   const [searchTerm, setSearchTerm]           = useState('');
   const [methodFilter, setMethodFilter]       = useState('all');
   const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null);
   const [receiptPaymentId, setReceiptPaymentId]   = useState<string | null>(null);
+
+  useEffect(() => {
+    const selected = searchParams.get('selected');
+    if (selected) setSelectedPaymentId(selected);
+  }, [searchParams]);
 
   // Add modal
   const [addOpen, setAddOpen]     = useState(false);
@@ -473,6 +479,7 @@ export function PaymentsReceivedPage() {
       paymentMethod: p.paymentMethod,
       reference: p.reference || '',
       notes: p.notes || '',
+      accountId: p.accountId || '',
     });
     setEditError(null);
   }
@@ -485,6 +492,7 @@ export function PaymentsReceivedPage() {
       date: editForm.date,
       reference: editForm.reference?.trim() || null,
       notes: editForm.notes?.trim() || null,
+      accountId: editForm.accountId || null,
     };
     if (editForm.amount) payload.amount = Math.round(parseFloat(editForm.amount) * 100);
     updateMutation.mutate({ id: editTarget.id, payload });
@@ -986,6 +994,15 @@ export function PaymentsReceivedPage() {
                     className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
                 </div>
               )}
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Bank Account</label>
+                <AccountSearchSelect
+                  accounts={assetAccounts}
+                  value={editForm.accountId || ''}
+                  onChange={id => setEditForm(f => ({ ...f, accountId: id }))}
+                  placeholder="Select account..."
+                />
+              </div>
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">Notes</label>
                 <textarea value={editForm.notes || ''} onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))} rows={2}
