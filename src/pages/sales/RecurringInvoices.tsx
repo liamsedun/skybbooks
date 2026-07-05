@@ -240,7 +240,7 @@ export function RecurringInvoicesPage() {
     const item = (items || []).find(it => it.id === itemId);
     if (!item) return;
     const nl = [...form.lines];
-    nl[idx] = { ...nl[idx], itemId, description: item.name, unitPrice: item.salesPrice ?? 0 };
+    nl[idx] = { ...nl[idx], itemId, description: item.name, unitPrice: (item.salesPrice ?? 0) / 100 };
     setForm({ ...form, lines: nl });
   }
 
