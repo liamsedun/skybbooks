@@ -261,6 +261,20 @@ export function PaymentsReceivedPage() {
     queryFn: async () => { const r = await api.get('/sales/payments'); return r.data; },
   });
 
+  const nextReference = useMemo(() => {
+    if (!payments) return 'TXN-00001';
+    let max = 0;
+    payments.forEach(p => {
+      const ref = p.reference || '';
+      const match = ref.match(/^TXN-(\d+)$/);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (num > max) max = num;
+      }
+    });
+    return `TXN-${String(max + 1).padStart(5, '0')}`;
+  }, [payments]);
+
   const { data: customers } = useQuery<Customer[]>({
     queryKey: ['sales', 'customers'],
     queryFn: async () => { const r = await api.get('/sales/customers'); return r.data; },
@@ -521,7 +535,7 @@ export function PaymentsReceivedPage() {
           </div>
           <div className="flex gap-2">
             <button
-              onClick={() => { setAddForm(EMPTY_ADD_FORM); setAddError(null); setAddOpen(true); }}
+              onClick={() => { setAddForm({ ...EMPTY_ADD_FORM, reference: nextReference }); setAddError(null); setAddOpen(true); }}
               className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-900 text-white text-xs font-medium rounded-lg hover:bg-slate-800 transition-colors">
               <Plus size={14} />Record Payment
             </button>
