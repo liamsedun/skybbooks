@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import {
@@ -118,6 +118,7 @@ function exportPDF(expenses: Expense[], vendorMap: Map<string,string>, accountMa
 
 export function ExpensesPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
@@ -153,6 +154,14 @@ export function ExpensesPage() {
   const accountMap = useMemo(() => new Map(accounts.map(a => [a.id, a.name])), [accounts]);
   const expenseAccounts = useMemo(() => accounts.filter(a => a.type === 'expense'), [accounts]);
   const assetAccounts = useMemo(() => accounts.filter(a => a.type === 'asset'), [accounts]);
+
+  useEffect(() => {
+    const selectedId = searchParams.get('selected');
+    if (selectedId && expenses.length > 0 && !modalOpen) {
+      const exp = expenses.find(e => e.id === selectedId);
+      if (exp) openEdit(exp);
+    }
+  }, [searchParams, expenses, modalOpen]);
 
   const filtered = useMemo(() => {
     const t = search.toLowerCase();

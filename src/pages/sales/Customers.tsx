@@ -875,12 +875,14 @@ function CustomerDetail({ id }: { id: string }) {
                 const isInvoice = line.type === 'invoice';
                 const isPayment = line.type === 'payment';
                 const isCreditNote = line.type === 'credit_note';
+                const isBillableExpense = line.type === 'billable_expense';
                 const isOpening = line.type === 'opening_balance';
-                const isClickable = isInvoice || isPayment || isCreditNote;
+                const isClickable = isInvoice || isPayment || isCreditNote || isBillableExpense;
                 let href = '';
                 if (isInvoice) href = `/sales/invoices/${line.id}`;
                 else if (isPayment) href = `/sales/payments?selected=${line.id}`;
                 else if (isCreditNote) href = `/sales/credit-notes?selected=${line.id}`;
+                else if (isBillableExpense) href = `/purchases/expenses?selected=${line.id}`;
                 return (
                   <tr
                     key={line.id}
@@ -891,7 +893,7 @@ function CustomerDetail({ id }: { id: string }) {
                       {isOpening ? '—' : new Date(line.date).toLocaleDateString('en-GB')}
                     </td>
                     <td className="py-2.5 pr-3">
-                      <span className={`text-xs font-medium capitalize ${isInvoice ? "text-indigo-600" : isPayment ? "text-emerald-600" : isCreditNote ? "text-amber-600" : isOpening ? "text-slate-800" : "text-slate-500"}`}>{line.type.replace('_', ' ')}</span>
+                      <span className={`text-xs font-medium capitalize ${isInvoice ? "text-indigo-600" : isPayment ? "text-emerald-600" : isCreditNote ? "text-amber-600" : isBillableExpense ? "text-rose-600" : isOpening ? "text-slate-800" : "text-slate-500"}`}>{line.type.replace('_', ' ')}</span>
                     </td>
                     <td className="py-2.5 pr-3 text-sm font-mono">
                       {isClickable ? (
