@@ -135,6 +135,7 @@ type AddFormState = {
   customerId: string;
   date: string;
   amount: string;
+  whtAmount: string;
   paymentMethod: string;
   reference: string;
   accountId: string;
@@ -149,6 +150,7 @@ const EMPTY_ADD_FORM: AddFormState = {
   customerId: '',
   date: new Date().toISOString().split('T')[0],
   amount: '',
+  whtAmount: '',
   paymentMethod: 'bank_transfer',
   reference: '',
   accountId: '',
@@ -488,6 +490,7 @@ export function PaymentsReceivedPage() {
       customerId: addForm.customerId || null,
       date: addForm.date,
       amount: Math.round(parseFloat(addForm.amount) * 100),
+      whtAmount: Math.round((parseFloat(addForm.whtAmount) || 0) * 100),
       paymentMethod: addForm.paymentMethod,
       reference: addForm.reference.trim() || null,
       accountId: addForm.accountId,
@@ -938,6 +941,14 @@ export function PaymentsReceivedPage() {
                     placeholder="0.00"
                     className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">WHT Deducted at Source (₦)</label>
+                <input type="number" step="0.01" min="0" value={addForm.whtAmount} onChange={e => setAddForm(f => ({ ...f, whtAmount: e.target.value }))}
+                  placeholder="0.00"
+                  className="w-full px-3 py-2 text-sm border border-amber-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-900/10" />
+                <p className="text-[10px] text-amber-600 font-medium mt-1">Posted to WHT Receivable GL account.</p>
               </div>
 
               <div className="grid grid-cols-2 gap-3">

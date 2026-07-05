@@ -76,7 +76,7 @@ export function PaymentsMadePage() {
 
   const [form, setForm] = useState({
     vendorId: '', date: new Date().toISOString().split('T')[0],
-    amount: '', paymentMethod: 'bank_transfer',
+    amount: '', whtAmount: '', paymentMethod: 'bank_transfer',
     reference: '', notes: '', accountId: '',
     allocations: [] as { billId: string; amount: string }[],
   });
@@ -220,6 +220,7 @@ export function PaymentsMadePage() {
       vendorId: form.vendorId,
       date: form.date,
       amount: Math.round(parseFloat(form.amount) * 100),
+      whtAmount: Math.round((parseFloat(form.whtAmount) || 0) * 100),
       currency: 'NGN',
       paymentMethod: form.paymentMethod,
       reference: form.reference || null,
@@ -419,6 +420,11 @@ export function PaymentsMadePage() {
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Amount (₦) *</label>
                   <input type="number" min="0" step="0.01" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} placeholder="0.00" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">WHT Deducted (₦)</label>
+                  <input type="number" min="0" step="0.01" value={form.whtAmount} onChange={e => setForm({ ...form, whtAmount: e.target.value })} placeholder="0.00" className="w-full px-3 py-2 text-sm border border-amber-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-900/10" />
+                  <p className="text-[10px] text-amber-600 font-medium mt-1">Posted to WHT Payable GL account.</p>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Payment Date</label>

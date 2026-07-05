@@ -34,6 +34,7 @@ interface PaymentFormData {
   customerId: string;
   date: string;
   amount: number;
+  whtAmount: number;
   paymentMethod: 'cash' | 'bank_transfer' | 'card' | 'cheque' | 'pos' | 'ussd';
   reference: string;
   accountId: string;
@@ -91,6 +92,7 @@ export function RecordPaymentDrawer({
       customerId: customerId || '',
       date: new Date().toISOString().split('T')[0],
       amount: 0,
+      whtAmount: 0,
       paymentMethod: 'bank_transfer',
       reference: '',
       accountId: '',
@@ -222,6 +224,7 @@ export function RecordPaymentDrawer({
         customerId: data.customerId,
         date: data.date,
         amount: Math.round(data.amount * 100), // convert Naira back to Kobo
+        whtAmount: Math.round((data.whtAmount || 0) * 100),
         paymentMethod: data.paymentMethod,
         reference: data.reference || `REF-${Math.floor(100000 + Math.random() * 900000)}`,
         accountId: data.accountId,
@@ -439,6 +442,28 @@ export function RecordPaymentDrawer({
                     reduce the amount received.
                   </div>
                 )}
+              </div>
+
+              {/* WHT Deducted at Source */}
+              <div className="bg-amber-50/50 p-4 rounded-2xl border border-amber-100">
+                <label className="block text-[10px] font-extrabold text-amber-700 uppercase tracking-widest mb-1.5">
+                  WHT Deducted at Source (NGN)
+                </label>
+                <div className="relative">
+                  <span className="font-sans font-bold text-slate-500 absolute left-3.5 top-2 ml-0.5">₦</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    id="payment-drawer-wht-input"
+                    {...register('whtAmount')}
+                    placeholder="0.00"
+                    className="w-full pl-8 pr-4 py-2 border border-amber-300 rounded-xl font-bold text-slate-800 bg-white focus:border-amber-600 focus:ring-1 focus:ring-amber-600 outline-none transition text-base"
+                  />
+                </div>
+                <p className="text-[10px] text-amber-600 font-semibold mt-1.5">
+                  Amount of WHT deducted by the customer. This will be posted to the WHT Receivable GL account.
+                </p>
               </div>
 
               {/* 4. Invoices Allocations Stack */}
