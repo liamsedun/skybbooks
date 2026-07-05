@@ -14,12 +14,14 @@ import { CsvImportModal } from '../../components/ui/CsvImportModal';
 import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
 
 interface Vendor { id: string; name: string; }
+interface Customer { id: string; name: string; }
 interface Account { id: string; name: string; type: string; code: string | null; }
 interface Expense {
   id: string; expenseNumber: string; vendorId: string | null;
   date: string; accountId: string; amount: number; taxAmount: number;
   currency: string; paymentMethod: string; reference: string | null;
   description: string | null; isBillable: boolean;
+  customerId?: string | null;
   journalEntryId?: string | null;
   journalEntryNumber?: string | null;
 }
@@ -35,6 +37,7 @@ type FormState = {
   accountId: string; vendorId: string; date: string;
   amount: string; taxAmount: string; paymentMethod: string;
   reference: string; description: string; isBillable: boolean;
+  customerId: string;
   paymentAccountId: string; onAccount: boolean;
 };
 
@@ -45,6 +48,7 @@ const EMPTY_FORM: FormState = {
   accountId: '', vendorId: '', date: new Date().toISOString().split('T')[0],
   amount: '', taxAmount: '0', paymentMethod: 'cash',
   reference: '', description: '', isBillable: false,
+  customerId: '',
   paymentAccountId: '', onAccount: false,
 };
 
@@ -134,6 +138,11 @@ export function ExpensesPage() {
     queryFn: async () => { const r = await api.get('/purchases/vendors'); return r.data; },
   });
 
+  const { data: customers = [] } = useQuery<Customer[]>({
+    queryKey: ['customers'],
+    queryFn: async () => { const r = await api.get('/sales/customers'); return r.data; },
+  });
+
   const { data: accounts = [] } = useQuery<Account[]>({
     queryKey: ['accounts'],
     queryFn: async () => { const r = await api.get('/accountant/accounts'); return r.data; },
@@ -187,6 +196,7 @@ export function ExpensesPage() {
       reference: exp.reference || '',
       description: exp.description || '',
       isBillable: exp.isBillable || false,
+      customerId: exp.customerId || '',
       paymentAccountId: '',
       onAccount: false,
     });
@@ -216,6 +226,7 @@ export function ExpensesPage() {
       reference: form.reference || null,
       description: form.description || null,
       isBillable: form.isBillable,
+      customerId: form.isBillable ? (form.customerId || null) : null,
       onAccount: form.onAccount,
       paymentAccountId: form.paymentAccountId || null,
       currency: 'NGN',
@@ -532,6 +543,15 @@ export function ExpensesPage() {
                     </label>
                   )}
                 </div>
+                {form.isBillable && (
+                  <div className="col-span-2">
+                    <label className="block text-xs font-medium text-slate-500 mb-1">Customer</label>
+                    <select value={form.customerId} onChange={e => setForm({ ...form, customerId: e.target.value })} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10">
+                      <option value="">Select customer...</option>
+                      {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+                )}
               </div>
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
                 <button type="button" onClick={closeModal} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
