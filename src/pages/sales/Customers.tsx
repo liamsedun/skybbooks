@@ -402,8 +402,8 @@ function CustomerList() {
                     <span className="text-sm text-slate-500 font-mono">{c.customerCode || '—'}</span>
                   </td>
                   <td className="py-2.5 pr-3 text-sm text-slate-500">
-                    {c.email && <div>{c.email}</div>}
-                    {c.phone && <div className="text-xs text-slate-400">{c.phone}</div>}
+                    {c.email && <div><a href={`mailto:${c.email}`} onClick={e => e.stopPropagation()} className="hover:text-blue-600 transition-colors">{c.email}</a></div>}
+                    {c.phone && <div className="text-xs text-slate-400"><a href={`tel:${c.phone}`} onClick={e => e.stopPropagation()} className="hover:text-blue-600 transition-colors">{c.phone}</a></div>}
                   </td>
                   <td className="py-2.5 pr-3 text-sm text-slate-500">
                     {[c.city, c.state].filter(Boolean).join(', ') || '—'}
@@ -787,16 +787,16 @@ function CustomerDetail({ id }: { id: string }) {
           <h1 className="text-2xl font-bold text-slate-900">{customer.name}</h1>
           <div className="flex items-center gap-4 mt-1 text-sm text-slate-500">
             {customer.email && (
-              <span className="inline-flex items-center gap-1.5">
+              <a href={`mailto:${customer.email}`} className="inline-flex items-center gap-1.5 hover:text-blue-600 transition-colors">
                 <Mail size={14} />
                 {customer.email}
-              </span>
+              </a>
             )}
             {customer.phone && (
-              <span className="inline-flex items-center gap-1.5">
+              <a href={`tel:${customer.phone}`} className="inline-flex items-center gap-1.5 hover:text-blue-600 transition-colors">
                 <PhoneIcon size={14} />
                 {customer.phone}
-              </span>
+              </a>
             )}
           </div>
         </div>

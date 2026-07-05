@@ -319,8 +319,8 @@ function VendorsList() {
                   </td>
                   <td className="py-3 px-2">
                     <div className="space-y-0.5">
-                      {v.email && <div className="flex items-center gap-1 text-xs text-slate-500"><Mail size={11}/> {v.email}</div>}
-                      {v.phone && <div className="flex items-center gap-1 text-xs text-slate-500"><Phone size={11}/> {v.phone}</div>}
+                      {v.email && <div className="flex items-center gap-1 text-xs text-slate-500"><Mail size={11}/> <a href={`mailto:${v.email}`} onClick={e => e.stopPropagation()} className="hover:text-blue-600 transition-colors">{v.email}</a></div>}
+                      {v.phone && <div className="flex items-center gap-1 text-xs text-slate-500"><Phone size={11}/> <a href={`tel:${v.phone}`} onClick={e => e.stopPropagation()} className="hover:text-blue-600 transition-colors">{v.phone}</a></div>}
                     </div>
                   </td>
                   <td className="py-3 px-2 text-xs text-slate-500">{[v.city,v.state,v.country].filter(Boolean).join(', ')||'—'}</td>
@@ -565,16 +565,16 @@ function VendorDetail({ id }: { id: string }) {
           <h1 className="text-2xl font-bold text-slate-900">{vendor.name}</h1>
           <div className="flex items-center gap-4 mt-1 text-sm text-slate-500">
             {vendor.email && (
-              <span className="inline-flex items-center gap-1.5">
+              <a href={`mailto:${vendor.email}`} className="inline-flex items-center gap-1.5 hover:text-blue-600 transition-colors">
                 <Mail size={14} />
                 {vendor.email}
-              </span>
+              </a>
             )}
             {vendor.phone && (
-              <span className="inline-flex items-center gap-1.5">
+              <a href={`tel:${vendor.phone}`} className="inline-flex items-center gap-1.5 hover:text-blue-600 transition-colors">
                 <Phone size={14} />
                 {vendor.phone}
-              </span>
+              </a>
             )}
           </div>
         </div>
