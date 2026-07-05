@@ -520,7 +520,7 @@ export function ExpensesPage() {
                   <label className="block text-xs font-medium text-slate-500 mb-1">Description</label>
                   <input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="What was this expense for?" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
                 </div>
-{!editingId && (
+{!editingId && !form.onAccount && (
   <div className="col-span-2">
     <label className="block text-xs font-medium text-slate-500 mb-1">Paid from Account (Bank/Cash)</label>
     <AccountSearchSelect
@@ -538,7 +538,7 @@ export function ExpensesPage() {
                   </label>
                   {!editingId && (
                     <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
-                      <input type="checkbox" checked={form.onAccount} onChange={e => setForm({ ...form, onAccount: e.target.checked })} className="rounded" />
+                      <input type="checkbox" checked={form.onAccount} onChange={e => setForm({ ...form, onAccount: e.target.checked, paymentAccountId: e.target.checked ? '' : form.paymentAccountId })} className="rounded" />
                       On account (unpaid)
                     </label>
                   )}
