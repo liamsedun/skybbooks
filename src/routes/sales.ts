@@ -1108,6 +1108,8 @@ router.post('/quotes/:id/convert-to-sales-order', async (req: AuthenticatedReque
       createdBy: userId,
     } as any).returning();
 
+    await db.update(quotes).set({ status: 'converted' }).where(eq(quotes.id, id));
+
     return res.status(201).json({ salesOrder: so, message: 'Sales order created from quote successfully.' });
   } catch (err) { return next(err); }
 });
