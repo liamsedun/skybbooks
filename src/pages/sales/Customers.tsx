@@ -5,7 +5,7 @@
 import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '../../lib/api';
+import { api, orgApi } from '../../lib/api';
 import {
   Plus,
   Search,
@@ -22,6 +22,7 @@ import {
   Power,
   Upload,
   Download,
+  Printer,
 } from 'lucide-react';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
 
@@ -704,6 +705,8 @@ function CustomerDetail({ id }: { id: string }) {
     },
   });
 
+  const { data: org } = useQuery({ queryKey: ['org'], queryFn: orgApi.getOrg, staleTime: 60000 });
+
   const { data: statement, isLoading: loadingStatement } = useQuery<StatementResponse>({
     queryKey: ['sales', 'customer', id, 'statement'],
     queryFn: async () => {
@@ -727,6 +730,15 @@ function CustomerDetail({ id }: { id: string }) {
     setForm(formFromCustomer(customer));
     setFormError(null);
     setModalOpen(true);
+  }
+
+  function fmtDate(d: string): string {
+    return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+
+  function handlePrintStatement() {
+    const el = document.getElementById('customer-statement-pdf-container');
+    if (el) window.print();
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -788,13 +800,22 @@ function CustomerDetail({ id }: { id: string }) {
             )}
           </div>
         </div>
-        <button
-          onClick={openEditModal}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors"
-        >
-          <Pencil size={14} />
-          Edit
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handlePrintStatement}
+            className="inline-flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors"
+          >
+            <Printer size={14} />
+            Print Statement
+          </button>
+          <button
+            onClick={openEditModal}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors"
+          >
+            <Pencil size={14} />
+            Edit
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
@@ -901,6 +922,73 @@ function CustomerDetail({ id }: { id: string }) {
           onClose={() => setModalOpen(false)}
         />
       )}
+
+      {/* Print container for customer statement PDF */}
+      <div id="customer-statement-pdf-container" className="bg-white" style={{ display: 'none' }}>
+        <div className="p-8 sm:p-10 space-y-8">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-8">
+            <div className="flex flex-col items-start gap-2">
+              {org?.logoUrl ? (
+                <img src={org.logoUrl} alt={org?.name || 'Logo'} className="w-14 h-14 rounded-xl object-contain border border-slate-100 bg-white p-1" />
+              ) : (
+                <div className="w-14 h-14 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-xl font-bold">
+                  {org?.name?.[0]?.toUpperCase() ?? 'S'}
+                </div>
+              )}
+              <div className="space-y-0.5">
+                <h2 className="text-sm font-bold text-slate-900 leading-tight tracking-tight">{org?.name || 'Your Company'}</h2>
+                <div className="flex flex-col gap-y-0 mt-0.5">
+                  {org?.address && <span className="text-[11px] text-slate-500 leading-snug">{org.address}</span>}
+                  {(org as any)?.city && <span className="text-[11px] text-slate-500 leading-snug">{(org as any).city}</span>}
+                  {(org as any)?.state && <span className="text-[11px] text-slate-500 leading-snug">{(org as any).state}</span>}
+                </div>
+                <div className="flex flex-col gap-y-0 mt-1">
+                  {org?.phone && <span className="text-[11px] text-slate-500">{org.phone}</span>}
+                  {org?.email && <span className="text-[11px] text-slate-500">{org.email}</span>}
+                </div>
+              </div>
+            </div>
+            <div className="sm:text-right shrink-0 space-y-1">
+              <p className="text-xs font-semibold text-indigo-500 uppercase tracking-widest">Account Statement</p>
+              <p className="text-lg font-bold text-slate-900">{customer.name}</p>
+              {(customer.email || customer.phone) && (
+                <p className="text-xs text-slate-500">{[customer.email, customer.phone].filter(Boolean).join(' · ')}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Statement Table */}
+          <table className="w-full border-collapse" style={{ fontSize: '12px' }}>
+            <thead>
+              <tr className="border-b-2 border-slate-300">
+                <th className="py-2 pr-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Date</th>
+                <th className="py-2 pr-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Type</th>
+                <th className="py-2 pr-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Number</th>
+                <th className="py-2 pr-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Reference</th>
+                <th className="py-2 pr-3 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest">Debit</th>
+                <th className="py-2 pr-3 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest">Credit</th>
+                <th className="py-2 pr-3 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest">Balance</th>
+              </tr>
+            </thead>
+            <tbody>
+              {statement?.ledgerStatement.map((line) => (
+                <tr key={line.id} className="border-b border-slate-100">
+                  <td className="py-2 pr-3 text-sm text-slate-600">
+                    {line.type === 'opening_balance' ? '—' : fmtDate(line.date)}
+                  </td>
+                  <td className="py-2 pr-3 text-sm text-slate-600 capitalize">{line.type.replace('_', ' ')}</td>
+                  <td className="py-2 pr-3 text-sm font-mono text-slate-700">{line.number || '—'}</td>
+                  <td className="py-2 pr-3 text-sm text-slate-500">{line.reference || '—'}</td>
+                  <td className="py-2 pr-3 text-sm text-right text-slate-700">{line.debit > 0 ? formatNaira(line.debit) : '—'}</td>
+                  <td className="py-2 pr-3 text-sm text-right text-slate-700">{line.credit > 0 ? formatNaira(line.credit) : '—'}</td>
+                  <td className="py-2 pr-3 text-sm text-right font-medium text-slate-900">{formatNaira(line.balance)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }

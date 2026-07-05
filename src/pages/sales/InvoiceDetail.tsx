@@ -172,14 +172,16 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
 
   const [searchParams] = useSearchParams();
   useEffect(() => {
-    if (searchParams.get('print') === '1' && invoiceData) {
-      const timer = setTimeout(() => {
-        const el = document.getElementById('invoice-pdf-mock-container');
-        if (el) window.print();
-      }, 800);
-      return () => clearTimeout(timer);
-    }
-  }, [searchParams, invoiceData]);
+    if (searchParams.get('print') !== '1') return;
+    const interval = setInterval(() => {
+      const el = document.getElementById('invoice-pdf-mock-container');
+      if (el && el.children.length > 0) {
+        clearInterval(interval);
+        window.print();
+      }
+    }, 200);
+    return () => clearInterval(interval);
+  }, [searchParams]);
 
   const handlePdfDownload = async () => {
     try {
@@ -485,7 +487,7 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
                 {/* Notes + Terms */}
                 <div className="flex-1 max-w-sm space-y-4">
                   {invoiceData.notes && (
-                    <div>
+                    <div className="no-print">
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Notes</p>
                       <p className="text-sm text-slate-500 leading-relaxed">{invoiceData.notes}</p>
                     </div>

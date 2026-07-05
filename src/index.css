@@ -70,10 +70,14 @@
     visibility: visible;
   }
   #invoice-pdf-mock-container {
+    display: block !important;
     position: absolute;
     left: 0;
     top: 0;
     width: 100%;
+  }
+  #invoice-pdf-mock-container .no-print {
+    display: none !important;
   }
   #receipt-pdf-container, #receipt-pdf-container * {
     visibility: visible;
@@ -98,6 +102,16 @@
     visibility: visible;
   }
   #so-pdf-mock-container {
+    display: block !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+  #customer-statement-pdf-container, #customer-statement-pdf-container * {
+    visibility: visible;
+  }
+  #customer-statement-pdf-container {
     display: block !important;
     position: absolute;
     left: 0;
