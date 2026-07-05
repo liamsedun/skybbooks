@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { budgetsApi, accountantApi, printWindow } from '../../lib/api';
 import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
+import { PageLoader } from '../../components/ui/PageLoader';
 import { Plus, X, Loader2, AlertCircle, CheckCircle2, Trash2, Download, Upload, Printer } from 'lucide-react';
 import { exportToCsv } from '../../lib/csvTemplates';
 
@@ -123,7 +124,7 @@ export function BudgetsPage() {
       {showForm ? (
         <BudgetForm onDone={() => { setShowForm(false); queryClient.invalidateQueries({ queryKey: ['budgets'] }); }} />
       ) : isLoading ? (
-        <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>
+        <PageLoader message="Loading budgets..." />
       ) : (
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
           <table className="w-full text-sm">

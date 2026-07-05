@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { journalsApi, accountantApi, printWindow } from '../../lib/api';
 import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
+import { PageLoader } from '../../components/ui/PageLoader';
 import { Plus, X, Loader2, AlertCircle, CheckCircle2, Eye, Download, Upload, Printer, ExternalLink, ArrowLeft, RotateCcw } from 'lucide-react';
 import { exportToCsv } from '../../lib/csvTemplates';
 
@@ -150,7 +151,7 @@ export function JournalsPage() {
       ) : showForm ? (
         <JournalForm onDone={() => { setShowForm(false); queryClient.invalidateQueries({ queryKey: ['journals'] }); }} />
       ) : isLoading ? (
-        <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>
+        <PageLoader message="Loading journals..." />
       ) : (
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
           <table className="w-full text-sm">
@@ -216,7 +217,7 @@ function JournalDetailView({ journalId, onBack }: { journalId: string; onBack: (
     },
   });
 
-  if (isLoading) return <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>;
+  if (isLoading) return <PageLoader message="Loading journal entry..." />;
   if (!entry) return <div className="text-center py-20 text-slate-400">Journal entry not found.</div>;
 
   const lines = entry.lines || [];

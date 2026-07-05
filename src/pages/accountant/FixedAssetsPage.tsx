@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fixedAssetsApi, accountantApi, printWindow, apiDownload } from '../../lib/api';
 import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
+import { PageLoader } from '../../components/ui/PageLoader';
 import { Plus, X, Loader2, AlertCircle, CheckCircle2, Trash2, Eye, Download, Upload, FileText, Printer, Calculator } from 'lucide-react';
 import { downloadCsv } from '../../lib/csvTemplates';
 
@@ -134,7 +135,7 @@ export function FixedAssetsPage() {
       ) : viewId ? (
         <AssetDetailView assetId={viewId} onBack={() => setViewId(null)} onEdit={(a) => { setViewId(null); setEditAsset(a); }} />
       ) : isLoading ? (
-        <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>
+        <PageLoader message="Loading fixed assets..." />
       ) : (
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden overflow-x-auto">
           <table className="w-full text-xs">
@@ -246,7 +247,7 @@ function AssetDetailView({ assetId, onBack, onEdit }: { assetId: string; onBack:
     queryFn: () => fixedAssetsApi.getAsset(assetId),
   });
 
-  if (isLoading) return <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>;
+  if (isLoading) return <PageLoader message="Loading asset details..." />;
   if (!asset) return <div className="text-center py-20 text-slate-400">Asset not found.</div>;
 
   return (

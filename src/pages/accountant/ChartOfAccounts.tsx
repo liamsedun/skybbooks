@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, accountantApi, printWindow } from '../../lib/api';
+import { PageLoader } from '../../components/ui/PageLoader';
 import {
   Plus,
   Search,
@@ -390,7 +391,7 @@ export function ChartOfAccountsPage() {
 
       <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
         {isLoading ? (
-          <div className="flex items-center justify-center py-16 text-slate-400"><Loader2 size={20} className="animate-spin mr-2" />Loading accounts...</div>
+          <PageLoader message="Loading accounts..." />
         ) : isError ? (
           <div className="flex items-center justify-center gap-2 py-16 text-rose-500 text-sm"><AlertCircle size={16} />Failed to load accounts. Check the API route.</div>
         ) : !effectiveAccounts || effectiveAccounts.length === 0 ? (
