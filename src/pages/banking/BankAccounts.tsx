@@ -983,7 +983,16 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                     </thead>
                     <tbody>
                       {accountPayments.transactions.map((txn: any, i: number) => (
-                        <tr key={`${txn.id}-${i}`} className="border-b border-slate-50 hover:bg-slate-50/50 transition">
+                        <tr key={`${txn.id}-${i}`} className="border-b border-slate-50 hover:bg-slate-50/50 transition cursor-pointer" onClick={() => {
+                          const path = txn.sourceDocType === 'receipt'
+                            ? `/sales/payments?selected=${txn.sourceDocId}`
+                            : txn.sourceDocType === 'payment'
+                              ? `/purchases/payments?selected=${txn.sourceDocId}`
+                              : txn.sourceDocType === 'expense'
+                                ? `/purchases/expenses?selected=${txn.sourceDocId}`
+                                : null;
+                          if (path) navigate(path);
+                        }}>
                           <td className="py-1.5 pr-1 whitespace-nowrap">
                             <div className="flex items-center gap-0.5">
                               {(txn.sourceDocType === 'receipt' || txn.sourceDocType === 'payment') && (
