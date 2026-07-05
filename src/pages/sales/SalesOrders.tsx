@@ -9,7 +9,7 @@ import {
   Plus, Search, Pencil, Trash2, X, Loader2, AlertCircle,
   FileText, Download, CheckCircle2, Clock, XCircle, TrendingDown,
   ShoppingCart, ArrowRight, PackageCheck,
-  Upload,
+  Eye, Upload,
 } from 'lucide-react';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
 
@@ -397,7 +397,10 @@ export function SalesOrdersPage() {
                             {convertMutation.isPending && convertingId === so.id ? <Loader2 size={12} className="animate-spin" /> : <><ArrowRight size={11} /> To Invoice</>}
                           </button>
                         )}
-                        <button onClick={(e) => { e.stopPropagation(); openEdit(so); }} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors" title="View / Edit">
+                        <button onClick={(e) => { e.stopPropagation(); openEdit(so); }} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="View">
+                          <Eye size={14} />
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); openEdit(so); }} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors" title="Edit">
                           <Pencil size={14} />
                         </button>
                         {so.status !== 'fulfilled' && (
