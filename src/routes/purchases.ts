@@ -96,6 +96,7 @@ const recordPaymentMadeSchema = z.object({
   vendorId: z.string().uuid('Invalid vendor id.'),
   date: z.string().optional(),
   amount: z.number().int().positive('Payment amount must be greater than zero (In Kobo).'),
+  whtAmount: z.number().int().min(0).optional().default(0),
   currency: z.string().optional(),
   paymentMethod: z.enum(['cash', 'bank_transfer', 'card', 'cheque', 'pos', 'ussd']),
   reference: z.string().optional().nullable(),
