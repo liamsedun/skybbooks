@@ -644,12 +644,6 @@ export function QuotesPage() {
 
             <div className="flex flex-col sm:flex-row justify-between gap-8 pt-2">
               <div className="flex-1 max-w-sm space-y-4">
-                {selectedQuote.notes && (
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Notes</p>
-                    <p className="text-sm text-slate-500 leading-relaxed whitespace-pre-line">{selectedQuote.notes}</p>
-                  </div>
-                )}
                 {selectedQuote.terms && (
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Terms</p>
