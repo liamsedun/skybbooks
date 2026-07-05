@@ -181,6 +181,9 @@ export function SalesOrdersPage() {
   const [convertingId, setConvertingId] = useState<string | null>(null);
   const [convertSuccess, setConvertSuccess] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [viewOnly, setViewOnly] = useState(false);
+
+  const EDITABLE_STATUSES = useMemo(() => new Set(['draft', 'confirmed', 'partial']), []);
 
   const { data: ordersData, isLoading, isError } = useQuery<SalesOrder[]>({
     queryKey: ['sales', 'orders'],
@@ -257,9 +260,9 @@ export function SalesOrdersPage() {
     return { all, byStatus };
   }, [ordersData]);
 
-  function openCreate() { setEditingId(null); setForm(EMPTY_FORM); setFormError(null); setModalOpen(true); }
-  function openEdit(so: SalesOrder) { setEditingId(so.id); setForm(formFromSO(so)); setFormError(null); setModalOpen(true); }
-  function closeModal() { setModalOpen(false); setEditingId(null); setFormError(null); }
+  function openCreate() { setEditingId(null); setForm(EMPTY_FORM); setFormError(null); setViewOnly(false); setModalOpen(true); }
+  function openEdit(so: SalesOrder, readonly = false) { setEditingId(so.id); setForm(formFromSO(so)); setFormError(null); setViewOnly(readonly); setModalOpen(true); }
+  function closeModal() { setModalOpen(false); setEditingId(null); setFormError(null); setViewOnly(false); }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -375,7 +378,7 @@ export function SalesOrdersPage() {
                 const meta = STATUS_META[so.status];
                 const Icon = meta.icon;
                 return (
-                  <tr key={so.id} className="hover:bg-slate-50 transition-colors cursor-pointer" onClick={() => openEdit(so)}>
+                  <tr key={so.id} className="hover:bg-slate-50 transition-colors cursor-pointer" onClick={() => openEdit(so, !EDITABLE_STATUSES.has(so.status))}>
                     <td className="py-3 pl-4 pr-3 text-sm font-mono font-medium text-slate-700">{so.soNumber}</td>
                     <td className="py-3 pr-3 text-sm text-slate-700">{cust?.name || '—'}</td>
                     <td className="py-3 pr-3 text-sm text-slate-500">{fmtDate(so.date)}</td>
@@ -388,7 +391,7 @@ export function SalesOrdersPage() {
                     </td>
                     <td className="py-3 pr-4">
                       <div className="flex items-center justify-end gap-1">
-                        {so.status !== 'cancelled' && so.status !== 'fulfilled' && (
+                        {EDITABLE_STATUSES.has(so.status) && (
                           <button
                             onClick={() => { setConvertingId(so.id); convertMutation.mutate(so.id); }}
                             disabled={convertMutation.isPending && convertingId === so.id}
@@ -397,13 +400,15 @@ export function SalesOrdersPage() {
                             {convertMutation.isPending && convertingId === so.id ? <Loader2 size={12} className="animate-spin" /> : <><ArrowRight size={11} /> To Invoice</>}
                           </button>
                         )}
-                        <button onClick={(e) => { e.stopPropagation(); openEdit(so); }} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="View">
+                        <button onClick={(e) => { e.stopPropagation(); openEdit(so, true); }} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="View">
                           <Eye size={14} />
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); openEdit(so); }} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors" title="Edit">
-                          <Pencil size={14} />
-                        </button>
-                        {so.status !== 'fulfilled' && (
+                        {EDITABLE_STATUSES.has(so.status) && (
+                          <button onClick={(e) => { e.stopPropagation(); openEdit(so); }} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors" title="Edit">
+                            <Pencil size={14} />
+                          </button>
+                        )}
+                        {EDITABLE_STATUSES.has(so.status) && (
                           <button onClick={() => { setDeleteTarget(so); setDeleteError(null); }} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors">
                             <Trash2 size={14} />
                           </button>
@@ -423,7 +428,7 @@ export function SalesOrdersPage() {
         <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 px-4 py-8 overflow-y-auto">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <h2 className="text-base font-semibold text-slate-900">{editingId ? 'Edit Sales Order' : 'New Sales Order'}</h2>
+              <h2 className="text-base font-semibold text-slate-900">{viewOnly ? 'View Sales Order' : editingId ? 'Edit Sales Order' : 'New Sales Order'}</h2>
               <div className="flex items-center gap-2">
                 {editingId && editingSO && (
                   <button onClick={() => { const el = document.getElementById('so-pdf-mock-container'); if (el) window.print(); }}
@@ -435,7 +440,7 @@ export function SalesOrdersPage() {
               </div>
             </div>
             <form onSubmit={handleSubmit} className="px-6 py-5 space-y-5">
-              {formError && (
+              {formError && !viewOnly && (
                 <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2 flex items-center gap-2">
                   <AlertCircle size={14} /> {formError}
                 </div>
@@ -444,18 +449,18 @@ export function SalesOrdersPage() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div className="col-span-2">
                   <label className="block text-xs font-medium text-slate-500 mb-1">Customer *</label>
-                  <select value={form.customerId} onChange={e => setForm({ ...form, customerId: e.target.value })} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 bg-white">
+                  <select value={form.customerId} onChange={e => setForm({ ...form, customerId: e.target.value })} disabled={viewOnly} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 bg-white disabled:bg-slate-50 disabled:text-slate-500">
                     <option value="">Select a customer...</option>
                     {(customers || []).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Order Date</label>
-                  <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                  <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} disabled={viewOnly} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 disabled:bg-slate-50 disabled:text-slate-500" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Expected Delivery</label>
-                  <input type="date" value={form.expectedDelivery} onChange={e => setForm({ ...form, expectedDelivery: e.target.value })} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                  <input type="date" value={form.expectedDelivery} onChange={e => setForm({ ...form, expectedDelivery: e.target.value })} disabled={viewOnly} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 disabled:bg-slate-50 disabled:text-slate-500" />
                 </div>
               </div>
 
@@ -473,7 +478,7 @@ export function SalesOrdersPage() {
                         <th className="py-2.5 px-2 text-center w-16">Disc %</th>
                         <th className="py-2.5 px-2 text-center w-16">VAT %</th>
                         <th className="py-2.5 px-2 text-right w-32">Amount</th>
-                        <th className="py-2.5 pl-2 pr-3 w-8"></th>
+                        {!viewOnly && <th className="py-2.5 pl-2 pr-3 w-8"></th>}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -482,44 +487,48 @@ export function SalesOrdersPage() {
                         return (
                           <tr key={idx}>
                             <td className="py-2 pl-3 pr-2">
-                              <select value={line.itemId || ''} onChange={e => e.target.value ? selectItem(idx, e.target.value) : updateLine(idx, 'itemId', null)} className="w-full px-2 py-1.5 text-xs border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-slate-900/20 bg-white">
+                              <select value={line.itemId || ''} onChange={e => e.target.value ? selectItem(idx, e.target.value) : updateLine(idx, 'itemId', null)} disabled={viewOnly} className="w-full px-2 py-1.5 text-xs border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-slate-900/20 bg-white disabled:bg-slate-50 disabled:text-slate-500">
                                 <option value="">— Custom —</option>
                                 {(items || []).map(it => <option key={it.id} value={it.id}>{it.name}</option>)}
                               </select>
                             </td>
                             <td className="py-2 px-2">
-                              <input value={line.description} onChange={e => updateLine(idx, 'description', e.target.value)} placeholder="Description" className="w-full px-2 py-1.5 text-xs border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-slate-900/20" />
+                              <input value={line.description} onChange={e => updateLine(idx, 'description', e.target.value)} disabled={viewOnly} placeholder="Description" className="w-full px-2 py-1.5 text-xs border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-slate-900/20 disabled:bg-slate-50 disabled:text-slate-500" />
                             </td>
                             <td className="py-2 px-2">
-                              <input type="number" min="1" step="1" value={line.quantity} onChange={e => updateLine(idx, 'quantity', parseFloat(e.target.value) || 1)} className="w-full px-2 py-1.5 text-xs border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-slate-900/20 text-center" />
+                              <input type="number" min="1" step="1" value={line.quantity} onChange={e => updateLine(idx, 'quantity', parseFloat(e.target.value) || 1)} disabled={viewOnly} className="w-full px-2 py-1.5 text-xs border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-slate-900/20 text-center disabled:bg-slate-50 disabled:text-slate-500" />
                             </td>
                             <td className="py-2 px-2">
-                              <input type="number" min="0" step="0.01" value={line.unitPrice === 0 ? '' : line.unitPrice} onChange={e => updateLine(idx, 'unitPrice', parseFloat(e.target.value) || 0)} placeholder="0.00" className="w-full px-2 py-1.5 text-xs border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-slate-900/20 text-right" />
+                              <input type="number" min="0" step="0.01" value={line.unitPrice === 0 ? '' : line.unitPrice} onChange={e => updateLine(idx, 'unitPrice', parseFloat(e.target.value) || 0)} disabled={viewOnly} placeholder="0.00" className="w-full px-2 py-1.5 text-xs border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-slate-900/20 text-right disabled:bg-slate-50 disabled:text-slate-500" />
                             </td>
                             <td className="py-2 px-2">
-                              <input type="number" min="0" max="100" step="0.1" value={line.discountPct === 0 ? '' : line.discountPct} onChange={e => updateLine(idx, 'discountPct', parseFloat(e.target.value) || 0)} placeholder="0" className="w-full px-2 py-1.5 text-xs border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-slate-900/20 text-center" />
+                              <input type="number" min="0" max="100" step="0.1" value={line.discountPct === 0 ? '' : line.discountPct} onChange={e => updateLine(idx, 'discountPct', parseFloat(e.target.value) || 0)} disabled={viewOnly} placeholder="0" className="w-full px-2 py-1.5 text-xs border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-slate-900/20 text-center disabled:bg-slate-50 disabled:text-slate-500" />
                             </td>
                             <td className="py-2 px-2">
-                              <input type="number" min="0" max="100" step="0.1" value={line.taxRate} onChange={e => updateLine(idx, 'taxRate', parseFloat(e.target.value) || 0)} className="w-full px-2 py-1.5 text-xs border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-slate-900/20 text-center" />
+                              <input type="number" min="0" max="100" step="0.1" value={line.taxRate} onChange={e => updateLine(idx, 'taxRate', parseFloat(e.target.value) || 0)} disabled={viewOnly} className="w-full px-2 py-1.5 text-xs border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-slate-900/20 text-center disabled:bg-slate-50 disabled:text-slate-500" />
                             </td>
                             <td className="py-2 px-2 text-right text-xs font-medium text-slate-900 font-mono">
                               ₦{c.total.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
                             </td>
-                            <td className="py-2 pl-2 pr-3">
-                              <button type="button" onClick={() => removeLine(idx)} disabled={form.lines.length === 1} className="text-slate-300 hover:text-rose-500 disabled:opacity-20 transition-colors">
-                                <X size={14} />
-                              </button>
-                            </td>
+                            {!viewOnly && (
+                              <td className="py-2 pl-2 pr-3">
+                                <button type="button" onClick={() => removeLine(idx)} disabled={form.lines.length === 1} className="text-slate-300 hover:text-rose-500 disabled:opacity-20 transition-colors">
+                                  <X size={14} />
+                                </button>
+                              </td>
+                            )}
                           </tr>
                         );
                       })}
                     </tbody>
                   </table>
-                  <div className="px-3 py-2 border-t border-slate-100 bg-slate-50">
-                    <button type="button" onClick={addLine} className="text-xs font-medium text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
-                      <Plus size={13} /> Add Line Item
-                    </button>
-                  </div>
+                  {!viewOnly && (
+                    <div className="px-3 py-2 border-t border-slate-100 bg-slate-50">
+                      <button type="button" onClick={addLine} className="text-xs font-medium text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+                        <Plus size={13} /> Add Line Item
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -528,11 +537,11 @@ export function SalesOrdersPage() {
                 <div className="space-y-3">
                   <div>
                     <label className="block text-xs font-medium text-slate-500 mb-1">Notes</label>
-                    <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={3} placeholder="Internal notes..." className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 resize-none" />
+                    <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} disabled={viewOnly} rows={3} placeholder="Internal notes..." className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 resize-none disabled:bg-slate-50 disabled:text-slate-500" />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-slate-500 mb-1">Status</label>
-                    <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value as SOStatus })} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 bg-white">
+                    <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value as SOStatus })} disabled={viewOnly} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 bg-white disabled:bg-slate-50 disabled:text-slate-500">
                       {(Object.keys(STATUS_META) as SOStatus[]).map(s => (
                         <option key={s} value={s}>{STATUS_META[s].label}</option>
                       ))}
@@ -562,11 +571,13 @@ export function SalesOrdersPage() {
               </div>
 
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-                <button type="button" onClick={closeModal} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
-                <button type="submit" disabled={isSaving} className="px-5 py-2 text-sm font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 disabled:opacity-50 flex items-center gap-2">
-                  {isSaving && <Loader2 size={14} className="animate-spin" />}
-                  {editingId ? 'Save Changes' : 'Create Order'}
-                </button>
+                <button type="button" onClick={closeModal} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Close</button>
+                {!viewOnly && (
+                  <button type="submit" disabled={isSaving} className="px-5 py-2 text-sm font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 disabled:opacity-50 flex items-center gap-2">
+                    {isSaving && <Loader2 size={14} className="animate-spin" />}
+                    {editingId ? 'Save Changes' : 'Create Order'}
+                  </button>
+                )}
               </div>
             </form>
           </div>
