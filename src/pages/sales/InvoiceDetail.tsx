@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   FileText,
@@ -169,6 +169,17 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
 
     return steps.reverse();
   }, [invoiceData, formatNaira]);
+
+  const [searchParams] = useSearchParams();
+  useEffect(() => {
+    if (searchParams.get('print') === '1' && invoiceData) {
+      const timer = setTimeout(() => {
+        const el = document.getElementById('invoice-pdf-mock-container');
+        if (el) window.print();
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams, invoiceData]);
 
   const handlePdfDownload = async () => {
     try {

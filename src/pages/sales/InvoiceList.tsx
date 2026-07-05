@@ -282,28 +282,8 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
   };
 
   // Single PDF download helper
-  const handleDownloadPdf = async (invoiceId: string, invoiceNumber: string) => {
-    try {
-      const blob = await salesApi.getInvoicePdf(invoiceId);
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `${invoiceNumber}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.parentNode?.removeChild(link);
-    } catch (e) {
-      // Local demo fallback PDF emulation for offline/demo logs
-      const content = `FinanceOS Certified GAAP Invoice Ledger Summary\nInvoice ID: ${invoiceId}\nInvoice #: ${invoiceNumber}\nDate Generated: ${new Date().toLocaleDateString()}\nStatus: Signed Digitally`;
-      const fallbackBlob = new Blob([content], { type: 'text/plain' });
-      const url = window.URL.createObjectURL(fallbackBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `${invoiceNumber}-Ledger-Audit.txt`);
-      document.body.appendChild(link);
-      link.click();
-      link.parentNode?.removeChild(link);
-    }
+  const handleDownloadPdf = (invoiceId: string) => {
+    window.open(`/sales/invoices/${invoiceId}?print=1`, '_blank');
   };
 
   return (
@@ -767,7 +747,7 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
 
                           {/* Print PDF */}
                           <button
-                            onClick={() => handleDownloadPdf(invoice.id, invoiceNo)}
+                            onClick={() => handleDownloadPdf(invoice.id)}
                             className="p-1.5 hover:bg-slate-200 text-slate-500 hover:text-primary rounded-lg outline-none transition"
                             title="Download GAAP PDF Certificate"
                           >
