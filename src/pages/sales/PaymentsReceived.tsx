@@ -326,14 +326,19 @@ export function PaymentsReceivedPage() {
 
   // ── Derived ────────────────────────────────────────────────────────────────
 
+  const invoiceCustomerMap = useMemo(() => {
+    const m = new Map<string, string>();
+    invoicesList.forEach((inv: any) => { if (inv.id && inv.customerId) m.set(inv.id, inv.customerId); });
+    return m;
+  }, [invoicesList]);
+
   const outstandingInvoices = useMemo(() => {
-    if (!addForm.customerId || !invoicesList.length) return [];
+    if (addForm.category !== 'sales_invoice' || !invoicesList.length) return [];
     return invoicesList.filter((inv: any) => {
-      const match = inv.customerId === addForm.customerId || inv.clientName === addForm.customerId;
       const outstanding = ['Unpaid', 'Overdue', 'sent', 'partial', 'draft'].includes(inv.status?.toLowerCase());
-      return match && outstanding && (inv.balanceDue || inv.total) > 0;
+      return outstanding && (inv.balanceDue || inv.total) > 0;
     });
-  }, [addForm.customerId, invoicesList]);
+  }, [addForm.category, invoicesList]);
 
   useEffect(() => {
     if (addForm.category === 'sales_invoice' && outstandingInvoices.length > 0) {
@@ -344,17 +349,27 @@ export function PaymentsReceivedPage() {
         allocatedAmount: 0,
         selected: false,
       }));
-      setAddForm(f => ({ ...f, allocations: allocs }));
-    } else {
+      if (allocs.length !== addForm.allocations.length || allocs.some((a, i) => a.invoiceId !== addForm.allocations[i]?.invoiceId)) {
+        setAddForm(f => ({ ...f, allocations: allocs }));
+      }
+    } else if (addForm.category !== 'sales_invoice') {
       setAddForm(f => ({ ...f, allocations: [] }));
     }
-  }, [addForm.customerId, addForm.category, outstandingInvoices]);
+  }, [addForm.category, outstandingInvoices]);
 
   const handleAllocToggle = (index: number) => {
     setAddForm(f => {
       const allocs = [...f.allocations];
-      allocs[index] = { ...allocs[index], selected: !allocs[index].selected };
-      return { ...f, allocations: allocs };
+      const wasSelected = allocs[index].selected;
+      allocs[index] = { ...allocs[index], selected: !wasSelected };
+      let customerId = f.customerId;
+      if (!wasSelected) {
+        const invCustomerId = invoiceCustomerMap.get(allocs[index].invoiceId);
+        if (invCustomerId && invCustomerId !== customerId) {
+          customerId = invCustomerId;
+        }
+      }
+      return { ...f, allocations: allocs, customerId };
     });
   };
 
@@ -880,29 +895,32 @@ export function PaymentsReceivedPage() {
                 </div>
               )}
 
-              {addForm.category === 'sales_invoice' && addForm.customerId && (
+              {addForm.category === 'sales_invoice' && (
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Outstanding Invoices</label>
                   {addForm.allocations.length === 0 ? (
-                    <p className="text-xs text-slate-400">No outstanding invoices for this customer.</p>
+                    <p className="text-xs text-slate-400">No outstanding invoices found.</p>
                   ) : (
                     <div className="space-y-2 max-h-48 overflow-y-auto">
-                      {addForm.allocations.map((alloc, idx) => (
-                        <label key={alloc.invoiceId} className="flex items-center gap-3 p-2 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
-                          <input type="checkbox" checked={alloc.selected}
-                            onChange={() => handleAllocToggle(idx)}
-                            className="h-4 w-4 text-slate-900 border-slate-300 rounded focus:ring-slate-900" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-slate-800">{alloc.invoiceNumber}</p>
-                            <p className="text-xs text-slate-400">Balance: {formatNaira(alloc.balanceDue)}</p>
-                          </div>
-                          <div className="text-right">
-                            {alloc.selected && (
-                              <p className="text-sm font-semibold text-emerald-700">{formatNaira(alloc.allocatedAmount || 0)}</p>
-                            )}
-                          </div>
-                        </label>
-                      ))}
+                      {addForm.allocations.map((alloc, idx) => {
+                        const cName = customers?.find(c => c.id === invoiceCustomerMap.get(alloc.invoiceId))?.name || '';
+                        return (
+                          <label key={alloc.invoiceId} className="flex items-center gap-3 p-2 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" checked={alloc.selected}
+                              onChange={() => handleAllocToggle(idx)}
+                              className="h-4 w-4 text-slate-900 border-slate-300 rounded focus:ring-slate-900" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-slate-800">{alloc.invoiceNumber}</p>
+                              <p className="text-xs text-slate-400">{cName} &middot; Balance: {formatNaira(alloc.balanceDue)}</p>
+                            </div>
+                            <div className="text-right">
+                              {alloc.selected && (
+                                <p className="text-sm font-semibold text-emerald-700">{formatNaira(alloc.allocatedAmount || 0)}</p>
+                              )}
+                            </div>
+                          </label>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
