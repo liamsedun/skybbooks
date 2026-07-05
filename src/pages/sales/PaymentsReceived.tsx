@@ -337,10 +337,11 @@ export function PaymentsReceivedPage() {
   const outstandingInvoices = useMemo(() => {
     if (addForm.category !== 'sales_invoice' || !invoicesList.length) return [];
     return invoicesList.filter((inv: any) => {
+      if (addForm.customerId && inv.customerId !== addForm.customerId) return false;
       const outstanding = ['Unpaid', 'Overdue', 'sent', 'partial', 'draft'].includes(inv.status?.toLowerCase());
       return outstanding && (inv.balanceDue || inv.total) > 0;
     });
-  }, [addForm.category, invoicesList]);
+  }, [addForm.category, invoicesList, addForm.customerId]);
 
   useEffect(() => {
     if (addForm.category === 'sales_invoice' && outstandingInvoices.length > 0) {
