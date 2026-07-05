@@ -1021,8 +1021,52 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                   </button>
                   <button
                     onClick={() => {
-                      const el = document.getElementById('bank-statement-pdf-container');
-                      if (el) { el.style.display = 'block'; requestAnimationFrame(() => { window.print(); el.style.display = 'none'; }); }
+                      const txs = accountPayments.transactions || [];
+                      const rows = txs.map((txn: any) => `
+                        <tr>
+                          <td style="padding:6px 10px;font-size:11px;color:#475569;border-bottom:1px solid #e2e8f0">${new Date(txn.date).toLocaleDateString('en-GB')}</td>
+                          <td style="padding:6px 10px;font-size:11px;font-weight:500;color:#334155;border-bottom:1px solid #e2e8f0">${txn.txnType}${txn.txnNumber ? ` — ${txn.txnNumber}` : ''}</td>
+                          <td style="padding:6px 10px;font-size:11px;color:#475569;border-bottom:1px solid #e2e8f0">${(txn.contraAccounts || '') + (txn.contactName ? ` — ${txn.contactName}` : '')}</td>
+                          <td style="padding:6px 10px;font-size:11px;color:#64748b;border-bottom:1px solid #e2e8f0">${txn.description || '—'}</td>
+                          <td style="padding:6px 10px;font-size:11px;text-align:right;font-family:monospace;font-weight:700;color:${txn.isDebit ? '#15803d' : '#be123c'};border-bottom:1px solid #e2e8f0">${txn.isDebit ? '' : '- '}${formatNaira(Math.abs(txn.amount || 0))}</td>
+                          <td style="padding:6px 10px;font-size:11px;text-align:right;font-family:monospace;font-weight:500;color:#1e293b;border-bottom:1px solid #e2e8f0">${formatNaira(txn.balance || 0)}</td>
+                        </tr>`).join('');
+                      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Bank Statement - ${detailAccount?.name}</title>
+                      <style>
+                        * { margin:0; padding:0; box-sizing:border-box; }
+                        body { font-family:'Segoe UI',Arial,sans-serif; color:#1e293b; padding:30px 20px; font-size:12px; }
+                        .header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid #0f172a; padding-bottom:16px; margin-bottom:16px; }
+                        .title { font-size:20px; font-weight:700; }
+                        .sub { font-size:11px; color:#64748b; margin-top:2px; }
+                        .summary { display:flex; justify-content:space-between; align-items:center; background:#f8fafc; padding:12px 16px; border-radius:8px; margin-bottom:16px; }
+                        .summary-label { font-size:9px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em; }
+                        .summary-val { font-size:13px; font-weight:700; font-family:monospace; }
+                        table { width:100%; border-collapse:collapse; margin-top:8px; }
+                        th { background:#0f172a; color:#fff; padding:8px 10px; text-align:left; font-size:9px; text-transform:uppercase; letter-spacing:0.05em; }
+                        th:nth-child(5),th:nth-child(6) { text-align:right; }
+                        td:nth-child(5),td:nth-child(6) { text-align:right; }
+                        .footer { text-align:center; font-size:9px; color:#94a3b8; border-top:1px solid #e2e8f0; padding-top:12px; margin-top:24px; }
+                        @media print { body { padding:15mm 10mm; } }
+                      </style></head><body>
+                      <div class="header">
+                        <div><div class="title">SkyBooks</div><div class="sub">By Skyhouse Accountants &amp; Technologies</div></div>
+                        <div style="text-align:right"><div style="font-size:13px;font-weight:700">${detailAccount?.name}</div><div class="sub">${detailAccount?.bankName || ''} ${detailAccount?.accountNumber ? `• ${detailAccount.accountNumber.slice(-4).padStart(10,'•')}` : ''}</div></div>
+                      </div>
+                      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                        <div><span style="font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em">Bank or Cash Account</span><br><span style="font-size:12px;font-weight:700">${accountPayments.accountCode || ''} — ${detailAccount?.name}</span></div>
+                        <div style="text-align:right"><span style="font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em">Statement Period</span><br><span style="font-size:11px;color:#475569">As of ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}</span></div>
+                      </div>
+                      <div class="summary">
+                        <div><div class="summary-label">Opening Balance</div><div class="summary-val" style="color:#475569">${formatNaira(accountPayments.openingBalance || 0)}</div></div>
+                        <div style="text-align:right"><div class="summary-label">Current Balance</div><div class="summary-val">${formatNaira(txs.length > 0 ? txs[txs.length-1].balance : (detailAccount?.currentBalance || 0))}</div></div>
+                      </div>
+                      <table><thead><tr><th style="width:11%">Date</th><th style="width:17%">Transaction</th><th style="width:22%">Account</th><th style="width:28%">Description</th><th style="width:11%">Amount</th><th style="width:11%">Balance</th></tr></thead>
+                      <tbody>${rows}</tbody></table>
+                      <div class="footer">SkyBooks By Skyhouse Accountants &amp; Technologies (Olalekan Williams Edun) &bull; Confidential</div>
+                      <script>window.onload = function() { window.print(); }<\/script>
+                      </body></html>`;
+                      const w = window.open('', '_blank');
+                      if (w) { w.document.write(html); w.document.close(); }
                     }}
                     className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold text-slate-500 bg-white border border-slate-200 rounded hover:bg-slate-50 transition"
                   >
@@ -1116,69 +1160,6 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                   </table>
                 </div>
               )}
-            </div>
-
-            {/* Print container for bank statement PDF */}
-            <div id="bank-statement-pdf-container" className="bg-white" style={{ display: 'none' }}>
-              <div className="p-10 space-y-8">
-                <div className="flex justify-between items-start border-b-2 border-slate-900 pb-6">
-                  <div>
-                    <h1 className="text-xl font-bold text-slate-900">SkyBooks</h1>
-                    <p className="text-xs text-slate-400 mt-0.5">By Skyhouse Accountants &amp; Technologies</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold text-slate-800">{detailAccount?.name}</p>
-                    <p className="text-xs text-slate-400 mt-0.5">{detailAccount?.bankName} • {detailAccount?.accountNumber?.slice(-4)?.padStart(10, '•')}</p>
-                  </div>
-                </div>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Bank or Cash Account</p>
-                    <p className="text-sm font-bold text-slate-800">{accountPayments.accountCode || ''} — {detailAccount?.name}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Statement Period</p>
-                    <p className="text-xs text-slate-600">As of {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
-                  </div>
-                </div>
-                <div className="flex justify-between items-center bg-slate-50 p-4 rounded-lg">
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Opening Balance</p>
-                    <p className="text-sm font-bold text-slate-700 font-mono">{formatNaira(accountPayments.openingBalance || 0)}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Current Balance</p>
-                    <p className="text-base font-black text-slate-900 font-mono">{formatNaira(accountPayments.transactions?.length > 0 ? accountPayments.transactions[accountPayments.transactions.length - 1].balance : (detailAccount?.currentBalance || 0))}</p>
-                  </div>
-                </div>
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b-2 border-slate-300">
-                      <th className="py-2 pr-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Date</th>
-                      <th className="py-2 pr-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Transaction</th>
-                      <th className="py-2 pr-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Account</th>
-                      <th className="py-2 pr-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Description</th>
-                      <th className="py-2 pr-3 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest">Amount</th>
-                      <th className="py-2 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest">Balance</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(accountPayments.transactions || []).map((txn: any, i: number) => (
-                      <tr key={`print-${txn.id}-${i}`} className="border-b border-slate-100">
-                        <td className="py-2 pr-3 text-xs text-slate-600">{new Date(txn.date).toLocaleDateString('en-GB')}</td>
-                        <td className="py-2 pr-3 text-xs font-medium text-slate-700">{txn.txnType}{txn.txnNumber ? ` — ${txn.txnNumber}` : ''}</td>
-                        <td className="py-2 pr-3 text-xs text-slate-600">{txn.contraAccounts}{txn.contactName ? ` — ${txn.contactName}` : ''}</td>
-                        <td className="py-2 pr-3 text-xs text-slate-500">{txn.description || '—'}</td>
-                        <td className={`py-2 pr-3 text-xs text-right font-mono font-bold ${txn.isDebit ? 'text-emerald-700' : 'text-rose-700'}`}>{txn.isDebit ? '' : '- '}{formatNaira(Math.abs(txn.amount || 0))}</td>
-                        <td className="py-2 text-xs text-right font-mono font-medium text-slate-800">{formatNaira(txn.balance || 0)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <div className="text-center text-[10px] text-slate-400 border-t border-slate-100 pt-4">
-                  SkyBooks By Skyhouse Accountants &amp; Technologies (Olalekan Williams Edun) &bull; Confidential
-                </div>
-              </div>
             </div>
 
           </div>

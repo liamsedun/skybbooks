@@ -161,47 +161,4 @@
     word-wrap: break-word;
     overflow-wrap: break-word;
   }
-  #bank-statement-pdf-container {
-    display: block !important;
-    position: fixed;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: auto;
-  }
-  #bank-statement-pdf-container,
-  #bank-statement-pdf-container * {
-    visibility: visible;
-  }
-  #bank-statement-pdf-container table {
-    table-layout: fixed;
-    width: 100%;
-    page-break-inside: auto;
-  }
-  #bank-statement-pdf-container thead {
-    display: table-header-group;
-  }
-  #bank-statement-pdf-container tbody {
-    display: table-row-group;
-  }
-  #bank-statement-pdf-container tr {
-    page-break-inside: avoid;
-  }
-  #bank-statement-pdf-container th,
-  #bank-statement-pdf-container td {
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-  }
-  #bank-statement-pdf-container th:nth-child(1),
-  #bank-statement-pdf-container td:nth-child(1) { width: 12%; }
-  #bank-statement-pdf-container th:nth-child(2),
-  #bank-statement-pdf-container td:nth-child(2) { width: 18%; }
-  #bank-statement-pdf-container th:nth-child(3),
-  #bank-statement-pdf-container td:nth-child(3) { width: 20%; }
-  #bank-statement-pdf-container th:nth-child(4),
-  #bank-statement-pdf-container td:nth-child(4) { width: 28%; }
-  #bank-statement-pdf-container th:nth-child(5),
-  #bank-statement-pdf-container td:nth-child(5) { width: 11%; }
-  #bank-statement-pdf-container th:nth-child(6),
-  #bank-statement-pdf-container td:nth-child(6) { width: 11%; }
 }
