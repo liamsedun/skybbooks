@@ -22,7 +22,8 @@ import {
   paymentMadeAllocations,
   contacts,
   invoices,
-  bills
+  bills,
+  expenses
 } from '../db/schema';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
 import { AppError } from '../lib/errors';
@@ -1043,6 +1044,15 @@ router.get('/accounts/:id/payments', async (req: AuthenticatedRequest, res: Resp
         case 'opening_balance':
           txnType = 'Opening Balance';
           break;
+        case 'manual': {
+          const [exp] = await db
+            .select({ number: expenses.expenseNumber })
+            .from(expenses)
+            .where(eq(expenses.id, row.source_id))
+            .limit(1);
+          if (exp) { txnType = 'Expense'; txnNumber = exp.number; sourceDocType = 'expense'; }
+          break;
+        }
       }
 
       const amount = Number(row.debit_amount || 0) - Number(row.credit_amount || 0);

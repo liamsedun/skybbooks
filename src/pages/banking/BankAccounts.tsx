@@ -1027,12 +1027,14 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                               ? `/purchases/payments?selected=${txn.sourceDocId}`
                               : txn.sourceDocType === 'expense'
                                 ? `/purchases/expenses?selected=${txn.sourceDocId}`
-                                : null;
+                                : txn.sourceDocType === 'invoice'
+                                  ? `/sales/invoices/${txn.sourceDocId}`
+                                  : null;
                           if (path) navigate(path);
                         }}>
                           <td className="py-1.5 pr-1 whitespace-nowrap">
                             <div className="flex items-center gap-0.5">
-                              {(txn.sourceDocType === 'receipt' || txn.sourceDocType === 'payment') && (
+                              {(txn.sourceDocType === 'receipt' || txn.sourceDocType === 'payment' || txn.sourceDocType === 'expense' || txn.sourceDocType === 'invoice') && (
                                 <>
                                   <button
                                     className="p-0.5 text-slate-300 hover:text-blue-600 transition"
@@ -1041,7 +1043,11 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                                       e.stopPropagation();
                                       const path = txn.sourceDocType === 'payment'
                                         ? `/purchases/payments?selected=${txn.sourceDocId}`
-                                        : `/sales/payments?selected=${txn.sourceDocId}`;
+                                        : txn.sourceDocType === 'expense'
+                                          ? `/purchases/expenses?selected=${txn.sourceDocId}`
+                                          : txn.sourceDocType === 'invoice'
+                                            ? `/sales/invoices/${txn.sourceDocId}`
+                                            : `/sales/payments?selected=${txn.sourceDocId}`;
                                       navigate(path);
                                     }}
                                   >
