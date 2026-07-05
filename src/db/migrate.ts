@@ -37,6 +37,10 @@ export async function runMigration() {
         WHEN duplicate_object THEN NULL;
       END $$;
     `);
+    // Add new enum values for existing databases (safe to run even if already present)
+    await db.execute(sql`ALTER TYPE system_account_role ADD VALUE IF NOT EXISTS 'wht_receivable'`);
+    await db.execute(sql`ALTER TYPE system_account_role ADD VALUE IF NOT EXISTS 'wht_payable'`);
+
     await db.execute(sql`
       ALTER TABLE accounts ADD COLUMN IF NOT EXISTS system_account_role system_account_role DEFAULT 'none' NOT NULL
     `);
@@ -51,6 +55,14 @@ export async function runMigration() {
     await db.execute(sql`UPDATE accounts SET system_account_role = 'pension_payable' WHERE code = '301600' AND system_account_role = 'none'`);
     await db.execute(sql`UPDATE accounts SET system_account_role = 'retained_earnings' WHERE code = '502000' AND system_account_role = 'none'`);
     await db.execute(sql`UPDATE accounts SET system_account_role = 'cogs' WHERE code = '700000' AND system_account_role = 'none'`);
+    await db.execute(sql`UPDATE accounts SET system_account_role = 'wht_receivable' WHERE code = '101500' AND system_account_role = 'none'`);
+    await db.execute(sql`UPDATE accounts SET system_account_role = 'wht_payable' WHERE code = '301400' AND system_account_role = 'none'`);
+
+    // Add WHT columns to invoices and bills
+    await db.execute(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS wht_rate numeric`);
+    await db.execute(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS wht_amount bigint DEFAULT 0 NOT NULL`);
+    await db.execute(`ALTER TABLE bills ADD COLUMN IF NOT EXISTS wht_rate numeric`);
+    await db.execute(`ALTER TABLE bills ADD COLUMN IF NOT EXISTS wht_amount bigint DEFAULT 0 NOT NULL`);
 
     // Ensure vendor_credits table has the exact schema needed (drop stale one if it lacks columns)
     await db.execute(sql`

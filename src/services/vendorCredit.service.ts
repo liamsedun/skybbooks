@@ -30,6 +30,26 @@ async function resolveAccountsPayable(orgId: string, tx: any): Promise<string> {
   );
 }
 
+async function resolveVatReceivable(orgId: string, tx: any): Promise<string> {
+  const [vatAccount] = await tx
+    .select()
+    .from(accounts)
+    .where(
+      and(
+        eq(accounts.orgId, orgId),
+        eq(accounts.systemAccountRole, 'vat_receivable')
+      )
+    )
+    .limit(1);
+
+  if (vatAccount) return vatAccount.id;
+
+  throw new AppError(
+    "VAT Receivable account not configured. Go to Chart of Accounts, select an asset account, and set its System Role to 'VAT Receivable'.",
+    400
+  );
+}
+
 async function resolveExpenseAccount(orgId: string, tx: any): Promise<string> {
   const [expAccount] = await tx
     .select()
@@ -92,9 +112,18 @@ export async function createVendorCredit(input: any, createdBy: string): Promise
 
     journalLines.push({
       accountId: expAccountId,
-      credit: total,
+      credit: subtotal,
       description: `Purchase offset for vendor credit ${vcNumber}`,
     });
+
+    if (tax > 0) {
+      const vatRecAccountId = await resolveVatReceivable(orgId, tx);
+      journalLines.push({
+        accountId: vatRecAccountId,
+        credit: tax,
+        description: `VAT Receivable reversal for vendor credit ${vcNumber}`,
+      });
+    }
 
     const journalEntry = await createJournalEntry({
       orgId,

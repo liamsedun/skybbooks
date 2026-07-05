@@ -235,6 +235,9 @@ export async function createBill(input: any, createdBy: string): Promise<any> {
       });
     }
 
+    const whtRate = input.whtRate != null ? Number(input.whtRate) : null;
+    const whtAmount = input.whtAmount != null ? Number(input.whtAmount) : 0;
+
     const total = subtotal + totalTax;
 
     // 3. Create Bill Header in DB
@@ -252,6 +255,8 @@ export async function createBill(input: any, createdBy: string): Promise<any> {
         fxRate: input.fxRate ? String(input.fxRate) : await populateFxRate(orgId, input.currency || defaultCurrency, input.date),
         subtotal,
         taxAmount: totalTax,
+        whtRate: whtRate != null ? String(whtRate) : null,
+        whtAmount,
         total,
         amountPaid: 0,
         balanceDue: total,

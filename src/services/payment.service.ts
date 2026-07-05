@@ -45,6 +45,36 @@ async function resolveAccountsReceivable(orgId: string, tx: any): Promise<string
   );
 }
 
+async function resolveWhtReceivable(orgId: string, tx: any): Promise<string | null> {
+  const [account] = await tx
+    .select()
+    .from(accounts)
+    .where(
+      and(
+        eq(accounts.orgId, orgId),
+        eq(accounts.systemAccountRole, 'wht_receivable')
+      )
+    )
+    .limit(1);
+
+  return account ? account.id : null;
+}
+
+async function resolveWhtPayable(orgId: string, tx: any): Promise<string | null> {
+  const [account] = await tx
+    .select()
+    .from(accounts)
+    .where(
+      and(
+        eq(accounts.orgId, orgId),
+        eq(accounts.systemAccountRole, 'wht_payable')
+      )
+    )
+    .limit(1);
+
+  return account ? account.id : null;
+}
+
 async function resolveAccountsPayable(orgId: string, tx: any): Promise<string> {
   const [apAccount] = await tx
     .select()
@@ -81,6 +111,7 @@ export async function recordPaymentReceived(input: any, createdBy: string): Prom
 
   return await db.transaction(async (tx) => {
     const amount = Number(input.amount || 0);
+    const whtAmount = Number(input.whtAmount || 0);
     const category = input.category || 'sales_invoice';
 
     if (amount <= 0) {
@@ -160,6 +191,7 @@ export async function recordPaymentReceived(input: any, createdBy: string): Prom
       .returning();
 
     // 5. Save allocations and update invoices (sales_invoice category only)
+    let remainingWht = whtAmount;
     const recordedAllocations: any[] = [];
     for (const alloc of allocations) {
       const [invoice] = await tx
@@ -169,8 +201,11 @@ export async function recordPaymentReceived(input: any, createdBy: string): Prom
         .limit(1);
 
       const allocAmt = Number(alloc.amount);
-      const nextAmountPaid = invoice.amountPaid + allocAmt;
-      const nextBalanceDue = invoice.balanceDue - allocAmt;
+      const allocWht = Math.min(remainingWht, allocAmt);
+      remainingWht -= allocWht;
+      const totalCredit = allocAmt + allocWht;
+      const nextAmountPaid = invoice.amountPaid + totalCredit;
+      const nextBalanceDue = invoice.balanceDue - totalCredit;
       const nextStatus = nextBalanceDue <= 0 ? 'paid' : 'partial';
 
       // Update invoice fields
@@ -197,10 +232,56 @@ export async function recordPaymentReceived(input: any, createdBy: string): Prom
 
     // 6. Generate Journal Entry
     // Sales invoice receipt: DR Bank, CR Accounts Receivable
+    // WHT handling: split into DR Bank + DR WHT Receivable / CR AR (full)
     // Other income receipt:  DR Bank, CR the chosen income account
     const creditAccountId = category === 'sales_invoice'
       ? await resolveAccountsReceivable(orgId, tx)
       : input.incomeAccountId;
+
+    const jeLines: any[] = [];
+    if (category === 'sales_invoice' && whtAmount > 0) {
+      const whtRecAccountId = await resolveWhtReceivable(orgId, tx);
+      if (whtRecAccountId) {
+        // DR Bank (net received)
+        jeLines.push({
+          accountId: payment.accountId,
+          debit: amount,
+          description: `Receipt mapping for payment ${payment.paymentNumber}`
+        });
+        // DR WHT Receivable (tax credit)
+        jeLines.push({
+          accountId: whtRecAccountId,
+          debit: whtAmount,
+          description: `WHT credit for payment ${payment.paymentNumber}`
+        });
+        // CR AR (full invoice amount)
+        jeLines.push({
+          accountId: creditAccountId,
+          credit: amount + whtAmount,
+          description: `AR application for payment ${payment.paymentNumber}`
+        });
+      } else {
+        throw new AppError(
+          'WHT Receivable account not configured. Go to Chart of Accounts, select an asset account, and set its System Role to \'WHT Receivable\'.',
+          400
+        );
+      }
+    } else {
+      jeLines.push(
+        {
+          accountId: payment.accountId,
+          debit: amount,
+          description: `Receipt mapping for payment ${payment.paymentNumber}`
+        },
+        {
+          accountId: creditAccountId,
+          credit: amount,
+          description: category === 'sales_invoice'
+            ? `AR application for payment ${payment.paymentNumber}`
+            : `Income recognition for receipt ${payment.paymentNumber}`
+        }
+      );
+    }
 
     await createJournalEntry({
       orgId,
@@ -212,20 +293,7 @@ export async function recordPaymentReceived(input: any, createdBy: string): Prom
       source: 'payment',
       sourceId: payment.id,
       createdBy,
-      lines: [
-        {
-          accountId: payment.accountId, // Bank account ledger
-          debit: amount,
-          description: `Receipt mapping for payment ${payment.paymentNumber}`
-        },
-        {
-          accountId: creditAccountId,
-          credit: amount,
-          description: category === 'sales_invoice'
-            ? `AR application for payment ${payment.paymentNumber}`
-            : `Income recognition for receipt ${payment.paymentNumber}`
-        }
-      ]
+      lines: jeLines
     }, tx);
 
     return {
@@ -414,12 +482,32 @@ export async function updatePaymentReceived(paymentId: string, orgId: string, in
     }
 
     // 6. Re-post journal entry
+    const whtAmount = Number(input.whtAmount || 0);
     const creditAccountId = category === 'sales_invoice'
       ? await resolveAccountsReceivable(orgId, tx)
       : updated.incomeAccountId;
 
     if (!creditAccountId) {
       throw new AppError('An income account is required for non-invoice receipts.', 400);
+    }
+
+    const jeLines: any[] = [];
+    if (category === 'sales_invoice' && whtAmount > 0) {
+      const whtRecAccountId = await resolveWhtReceivable(orgId, tx);
+      if (whtRecAccountId) {
+        jeLines.push(
+          { accountId: updated.accountId, debit: amount, description: `Receipt mapping for payment ${updated.paymentNumber}` },
+          { accountId: whtRecAccountId, debit: whtAmount, description: `WHT credit for payment ${updated.paymentNumber}` },
+          { accountId: creditAccountId, credit: amount + whtAmount, description: `AR application for payment ${updated.paymentNumber}` }
+        );
+      } else {
+        throw new AppError('WHT Receivable account not configured.', 400);
+      }
+    } else {
+      jeLines.push(
+        { accountId: updated.accountId, debit: amount, description: `Receipt mapping for payment ${updated.paymentNumber}` },
+        { accountId: creditAccountId, credit: amount, description: category === 'sales_invoice' ? `AR application for payment ${updated.paymentNumber}` : `Income recognition for receipt ${updated.paymentNumber}` }
+      );
     }
 
     await createJournalEntry({
@@ -432,10 +520,7 @@ export async function updatePaymentReceived(paymentId: string, orgId: string, in
       source: 'payment',
       sourceId: updated.id,
       createdBy: userId,
-      lines: [
-        { accountId: updated.accountId, debit: amount, description: `Receipt mapping for payment ${updated.paymentNumber}` },
-        { accountId: creditAccountId, credit: amount, description: category === 'sales_invoice' ? `AR application for payment ${updated.paymentNumber}` : `Income recognition for receipt ${updated.paymentNumber}` }
-      ]
+      lines: jeLines
     }, tx);
 
     return { ...updated, allocations: recordedAllocations };
@@ -565,6 +650,7 @@ export async function recordPaymentMade(input: any, createdBy: string): Promise<
 
   return await db.transaction(async (tx) => {
     const amount = Number(input.amount || 0);
+    const whtAmount = Number(input.whtAmount || 0);
 
     if (amount <= 0) {
       throw new AppError('Payment amount must be greater than zero.', 400);
@@ -626,6 +712,7 @@ export async function recordPaymentMade(input: any, createdBy: string): Promise<
       .returning();
 
     // Allocations and bill updates
+    let remainingWht = whtAmount;
     const recordedAllocations: any[] = [];
     for (const alloc of allocations) {
       const [bill] = await tx
@@ -635,8 +722,11 @@ export async function recordPaymentMade(input: any, createdBy: string): Promise<
         .limit(1);
 
       const allocAmt = Number(alloc.amount);
-      const nextAmountPaid = bill.amountPaid + allocAmt;
-      const nextBalanceDue = bill.balanceDue - allocAmt;
+      const allocWht = Math.min(remainingWht, allocAmt);
+      remainingWht -= allocWht;
+      const totalCredit = allocAmt + allocWht;
+      const nextAmountPaid = bill.amountPaid + totalCredit;
+      const nextBalanceDue = bill.balanceDue - totalCredit;
       const nextStatus = nextBalanceDue <= 0 ? 'paid' : 'partial';
 
       await tx
@@ -663,17 +753,39 @@ export async function recordPaymentMade(input: any, createdBy: string): Promise<
     // Bookkeeping journal entry
     // DR Accounts Payable (vendor's liability account)
     // CR Bank Account (outgoing asset)
+    // WHT handling: DR AP (full), CR Bank (net), CR WHT Payable (wht)
     const apAccountId = await resolveAccountsPayable(orgId, tx);
 
-    const journalEntry = await createJournalEntry({
-      orgId,
-      date: payment.date,
-      description: `Journal posting of Outbound Supplier Payment ${payment.paymentNumber}`,
-      reference: payment.paymentNumber,
-      source: 'payment',
-      sourceId: payment.id,
-      createdBy,
-      lines: [
+    const jeLines: any[] = [];
+    if (whtAmount > 0) {
+      const whtPayAccountId = await resolveWhtPayable(orgId, tx);
+      if (whtPayAccountId) {
+        // DR AP (full bill amount)
+        jeLines.push({
+          accountId: apAccountId,
+          debit: amount + whtAmount,
+          description: `AP reduction for payment ${payment.paymentNumber}`
+        });
+        // CR Bank (net paid)
+        jeLines.push({
+          accountId: payment.accountId,
+          credit: amount,
+          description: `Disbursement from bank for payment ${payment.paymentNumber}`
+        });
+        // CR WHT Payable (WHT owed to FIRS)
+        jeLines.push({
+          accountId: whtPayAccountId,
+          credit: whtAmount,
+          description: `WHT liability for payment ${payment.paymentNumber}`
+        });
+      } else {
+        throw new AppError(
+          'WHT Payable account not configured. Go to Chart of Accounts, select a liability account, and set its System Role to \'WHT Payable\'.',
+          400
+        );
+      }
+    } else {
+      jeLines.push(
         {
           accountId: apAccountId,
           debit: amount,
@@ -684,7 +796,18 @@ export async function recordPaymentMade(input: any, createdBy: string): Promise<
           credit: amount,
           description: `Disbursement from bank for payment ${payment.paymentNumber}`
         }
-      ]
+      );
+    }
+
+    const journalEntry = await createJournalEntry({
+      orgId,
+      date: payment.date,
+      description: `Journal posting of Outbound Supplier Payment ${payment.paymentNumber}`,
+      reference: payment.paymentNumber,
+      source: 'payment',
+      sourceId: payment.id,
+      createdBy,
+      lines: jeLines
     }, tx);
 
     await tx

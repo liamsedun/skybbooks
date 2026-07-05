@@ -367,36 +367,41 @@ export async function createInvoice(input: any, createdBy: string): Promise<any>
       });
     }
 
-    const total = subtotal - totalDiscount + totalTax;
-    const amountPaid = 0;
-    const balanceDue = total;
+  const whtRate = input.whtRate != null ? Number(input.whtRate) : null;
+  const whtAmount = input.whtAmount != null ? Number(input.whtAmount) : 0;
 
-    // 3. Insert Invoice root node
-    const [invoice] = await tx
-      .insert(invoices)
-      .values({
-        orgId,
-        invoiceNumber,
-        customerId: input.customerId,
-        soId: input.soId || null,
-        date: new Date(input.date || new Date()),
-        dueDate: new Date(input.dueDate || new Date()),
-        status: input.status || 'draft',
-        currency: input.currency || defaultCurrency,
-        fxRate: input.fxRate ? String(input.fxRate) : await populateFxRate(orgId, input.currency || defaultCurrency, input.date),
-        subtotal,
-        discountAmount: totalDiscount,
-        taxAmount: totalTax,
-        total,
-        amountPaid,
-        balanceDue,
-        paymentTerms: input.paymentTerms || null,
-        notes: input.notes || null,
-        terms: input.terms || null,
-        recurringId: input.recurringId || null,
-        createdBy
-      })
-      .returning();
+  const total = subtotal - totalDiscount + totalTax;
+  const amountPaid = 0;
+  const balanceDue = total;
+
+  // 3. Insert Invoice root node
+  const [invoice] = await tx
+    .insert(invoices)
+    .values({
+      orgId,
+      invoiceNumber,
+      customerId: input.customerId,
+      soId: input.soId || null,
+      date: new Date(input.date || new Date()),
+      dueDate: new Date(input.dueDate || new Date()),
+      status: input.status || 'draft',
+      currency: input.currency || defaultCurrency,
+      fxRate: input.fxRate ? String(input.fxRate) : await populateFxRate(orgId, input.currency || defaultCurrency, input.date),
+      subtotal,
+      discountAmount: totalDiscount,
+      taxAmount: totalTax,
+      whtRate: whtRate != null ? String(whtRate) : null,
+      whtAmount,
+      total,
+      amountPaid,
+      balanceDue,
+      paymentTerms: input.paymentTerms || null,
+      notes: input.notes || null,
+      terms: input.terms || null,
+      recurringId: input.recurringId || null,
+      createdBy
+    })
+    .returning();
 
     if (!invoice) throw new AppError('Failed to record invoice root structure.', 500);
 

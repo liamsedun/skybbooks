@@ -60,6 +60,8 @@ export const systemAccountRoleEnum = pgEnum('system_account_role', [
   'payroll_clearing',
   'paye_payable',
   'pension_payable',
+  'wht_receivable',
+  'wht_payable',
   'none',
 ]);
 
@@ -420,6 +422,8 @@ export const invoices = pgTable('invoices', {
   discountAmount: bigint('discount_amount', { mode: 'number' }).default(0).notNull(),
   taxAmount: bigint('tax_amount', { mode: 'number' }).default(0).notNull(),
   total: bigint('total', { mode: 'number' }).default(0).notNull(),
+  whtRate: numeric('wht_rate'),
+  whtAmount: bigint('wht_amount', { mode: 'number' }).default(0).notNull(),
   amountPaid: bigint('amount_paid', { mode: 'number' }).default(0).notNull(),
   balanceDue: bigint('balance_due', { mode: 'number' }).default(0).notNull(),
   paymentTerms: integer('payment_terms'),
@@ -525,6 +529,8 @@ export const bills = pgTable('bills', {
   subtotal: bigint('subtotal', { mode: 'number' }).default(0).notNull(),
   taxAmount: bigint('tax_amount', { mode: 'number' }).default(0).notNull(),
   total: bigint('total', { mode: 'number' }).default(0).notNull(),
+  whtRate: numeric('wht_rate'),
+  whtAmount: bigint('wht_amount', { mode: 'number' }).default(0).notNull(),
   amountPaid: bigint('amount_paid', { mode: 'number' }).default(0).notNull(),
   balanceDue: bigint('balance_due', { mode: 'number' }).default(0).notNull(),
   journalEntryId: uuid('journal_entry_id').references(() => journalEntries.id),
