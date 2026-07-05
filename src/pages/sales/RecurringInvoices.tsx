@@ -331,7 +331,7 @@ export function RecurringInvoicesPage() {
             const lines = t.template?.lines || [];
             const lineTotal = lines.reduce((sum, l) => {
               const c = calcLine(l);
-              return sum + c.total;
+              return sum + c.total / 100;
             }, 0);
 
             return (
@@ -360,7 +360,7 @@ export function RecurringInvoicesPage() {
                             <span className="text-slate-400">•</span>
                             <span>{l.description}</span>
                             <span className="text-slate-400">×{l.quantity}</span>
-                            <span className="font-mono text-slate-600">{formatNaira(calcLine(l).total)}</span>
+                            <span className="font-mono text-slate-600">{formatNaira(calcLine(l).total / 100)}</span>
                           </div>
                         ))}
                       </div>
