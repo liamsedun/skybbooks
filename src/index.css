@@ -88,4 +88,14 @@
     top: 0;
     width: 100%;
   }
+  #so-pdf-mock-container, #so-pdf-mock-container * {
+    visibility: visible;
+  }
+  #so-pdf-mock-container {
+    display: block !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
 }
