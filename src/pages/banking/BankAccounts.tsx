@@ -972,7 +972,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                         `${txn.contraAccounts || ''}${txn.contactName ? ` — ${txn.contactName}` : ''}`,
                         txn.description || '',
                         (Math.abs(txn.amount || 0) / 100).toFixed(2),
-                        (txn.balance || 0) / 100).toFixed(2),
+                        ((txn.balance || 0) / 100).toFixed(2),
                       ]);
                       if (rows.length === 0) return;
                       const csv = [['Date','Transaction','Account','Description','Amount (₦)','Balance (₦)'], ...rows]
