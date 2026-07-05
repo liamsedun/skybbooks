@@ -128,4 +128,14 @@
     top: 0;
     width: 100%;
   }
+  #bank-statement-pdf-container, #bank-statement-pdf-container * {
+    visibility: visible;
+  }
+  #bank-statement-pdf-container {
+    display: block !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
 }

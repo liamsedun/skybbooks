@@ -32,6 +32,7 @@ import {
   Database,
   Edit3,
   Eye,
+  FileText,
   XCircle
 } from 'lucide-react';
 
@@ -960,7 +961,43 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
 
             {/* Transactions Table */}
             <div className="px-6 py-3">
-              <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Bank or Cash Account — Transactions</h4>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Bank or Cash Account — Transactions</h4>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      const rows = (accountPayments.transactions || []).map((txn: any) => [
+                        txn.date ? new Date(txn.date).toLocaleDateString('en-GB') : '',
+                        `${txn.txnType}${txn.txnNumber ? ` — ${txn.txnNumber}` : ''}`,
+                        `${txn.contraAccounts || ''}${txn.contactName ? ` — ${txn.contactName}` : ''}`,
+                        txn.description || '',
+                        (Math.abs(txn.amount || 0) / 100).toFixed(2),
+                        (txn.balance || 0) / 100).toFixed(2),
+                      ]);
+                      if (rows.length === 0) return;
+                      const csv = [['Date','Transaction','Account','Description','Amount (₦)','Balance (₦)'], ...rows]
+                        .map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+                      const blob = new Blob([csv], { type: 'text/csv' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a'); a.href = url;
+                      a.download = `bank-statement-${detailAccount.name.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.csv`;
+                      a.click(); URL.revokeObjectURL(url);
+                    }}
+                    className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold text-slate-500 bg-white border border-slate-200 rounded hover:bg-slate-50 transition"
+                  >
+                    <Download size={11} /> CSV
+                  </button>
+                  <button
+                    onClick={() => {
+                      const el = document.getElementById('bank-statement-pdf-container');
+                      if (el) { el.style.display = 'block'; setTimeout(() => { window.print(); setTimeout(() => { el.style.display = 'none'; }, 100); }, 200); }
+                    }}
+                    className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold text-slate-500 bg-white border border-slate-200 rounded hover:bg-slate-50 transition"
+                  >
+                    <FileText size={11} /> PDF
+                  </button>
+                </div>
+              </div>
               {loadingPayments ? (
                 <div className="flex items-center justify-center py-12 text-slate-400">
                   <Loader2 className="w-5 h-5 animate-spin" />
@@ -1042,6 +1079,70 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                 </div>
               )}
             </div>
+
+            {/* Print container for bank statement PDF */}
+            <div id="bank-statement-pdf-container" className="bg-white" style={{ display: 'none' }}>
+              <div className="p-10 space-y-8">
+                <div className="flex justify-between items-start border-b-2 border-slate-900 pb-6">
+                  <div>
+                    <h1 className="text-xl font-bold text-slate-900">SkyBooks</h1>
+                    <p className="text-xs text-slate-400 mt-0.5">By Skyhouse Accountants &amp; Technologies</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-slate-800">{detailAccount?.name}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">{detailAccount?.bankName} • {detailAccount?.accountNumber?.slice(-4)?.padStart(10, '•')}</p>
+                  </div>
+                </div>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Bank or Cash Account</p>
+                    <p className="text-sm font-bold text-slate-800">{accountPayments.accountCode || ''} — {detailAccount?.name}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Statement Period</p>
+                    <p className="text-xs text-slate-600">As of {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+                  </div>
+                </div>
+                <div className="flex justify-between items-center bg-slate-50 p-4 rounded-lg">
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Opening Balance</p>
+                    <p className="text-sm font-bold text-slate-700 font-mono">{formatNaira((accountPayments.transactions?.find((t: any) => t.txnType === 'Opening Balance')?.amount || 0))}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Current Balance</p>
+                    <p className="text-base font-black text-slate-900 font-mono">{formatNaira(detailAccount?.currentBalance || 0)}</p>
+                  </div>
+                </div>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b-2 border-slate-300">
+                      <th className="py-2 pr-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Date</th>
+                      <th className="py-2 pr-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Transaction</th>
+                      <th className="py-2 pr-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Account</th>
+                      <th className="py-2 pr-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Description</th>
+                      <th className="py-2 pr-3 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest">Amount</th>
+                      <th className="py-2 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest">Balance</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(accountPayments.transactions || []).map((txn: any, i: number) => (
+                      <tr key={`print-${txn.id}-${i}`} className="border-b border-slate-100">
+                        <td className="py-2 pr-3 text-xs text-slate-600">{new Date(txn.date).toLocaleDateString('en-GB')}</td>
+                        <td className="py-2 pr-3 text-xs font-medium text-slate-700">{txn.txnType}{txn.txnNumber ? ` — ${txn.txnNumber}` : ''}</td>
+                        <td className="py-2 pr-3 text-xs text-slate-600">{txn.contraAccounts}{txn.contactName ? ` — ${txn.contactName}` : ''}</td>
+                        <td className="py-2 pr-3 text-xs text-slate-500">{txn.description || '—'}</td>
+                        <td className={`py-2 pr-3 text-xs text-right font-mono font-bold ${txn.isDebit ? 'text-emerald-700' : 'text-rose-700'}`}>{txn.isDebit ? '' : '- '}{formatNaira(Math.abs(txn.amount || 0))}</td>
+                        <td className="py-2 text-xs text-right font-mono font-medium text-slate-800">{formatNaira(txn.balance || 0)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <div className="text-center text-[10px] text-slate-400 border-t border-slate-100 pt-4">
+                  SkyBooks By Skyhouse Accountants &amp; Technologies (Olalekan Williams Edun) &bull; Confidential
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
       )}
