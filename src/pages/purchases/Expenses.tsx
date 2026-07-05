@@ -157,11 +157,11 @@ export function ExpensesPage() {
 
   useEffect(() => {
     const selectedId = searchParams.get('selected');
-    if (selectedId && expenses.length > 0 && !modalOpen) {
+    if (selectedId && expenses.length > 0) {
       const exp = expenses.find(e => e.id === selectedId);
-      if (exp) openEdit(exp);
+      if (exp) openView(exp);
     }
-  }, [searchParams, expenses, modalOpen]);
+  }, [searchParams, expenses]);
 
   const filtered = useMemo(() => {
     const t = search.toLowerCase();
