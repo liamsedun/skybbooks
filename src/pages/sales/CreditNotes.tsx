@@ -2,9 +2,10 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
+import { useSearchParams } from 'react-router-dom';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
 import {
   Search, Upload, Loader2, AlertCircle, X, Plus, FileMinus, ChevronRight,
@@ -113,6 +114,7 @@ function exportCreditNotesPDF(notes: CreditNote[]) {
 
 export function CreditNotesPage() {
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -120,6 +122,11 @@ export function CreditNotesPage() {
   const [importOpen, setImportOpen] = useState(false);
   const [voidTarget, setVoidTarget] = useState<CreditNote | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const selected = searchParams.get('selected');
+    if (selected) setSelectedId(selected);
+  }, [searchParams]);
 
   const { data: notes, isLoading, isError } = useQuery<CreditNote[]>({
     queryKey: ['sales', 'credit-notes'],

@@ -873,21 +873,28 @@ function CustomerDetail({ id }: { id: string }) {
             <tbody className="divide-y divide-slate-50">
               {statement.ledgerStatement.map((line) => {
                 const isInvoice = line.type === 'invoice';
+                const isPayment = line.type === 'payment';
+                const isCreditNote = line.type === 'credit_note';
                 const isOpening = line.type === 'opening_balance';
+                const isClickable = isInvoice || isPayment || isCreditNote;
+                let href = '';
+                if (isInvoice) href = `/sales/invoices/${line.id}`;
+                else if (isPayment) href = `/sales/payments?selected=${line.id}`;
+                else if (isCreditNote) href = `/sales/credit-notes?selected=${line.id}`;
                 return (
                   <tr
                     key={line.id}
-                    onClick={() => isInvoice && navigate(`/sales/invoices/${line.id}`)}
-                    className={`hover:bg-slate-50 transition-colors ${isInvoice ? "cursor-pointer hover:bg-indigo-50/60" : ""} ${isOpening ? "bg-slate-50 font-medium" : ""}`}
+                    onClick={() => isClickable && navigate(href)}
+                    className={`hover:bg-slate-50 transition-colors ${isClickable ? "cursor-pointer hover:bg-indigo-50/60" : ""} ${isOpening ? "bg-slate-50 font-medium" : ""}`}
                   >
                     <td className="py-2.5 pl-4 pr-3 text-sm text-slate-600">
                       {isOpening ? '—' : new Date(line.date).toLocaleDateString('en-GB')}
                     </td>
                     <td className="py-2.5 pr-3">
-                      <span className={`text-xs font-medium capitalize ${isInvoice ? "text-indigo-600" : isOpening ? "text-slate-800" : "text-slate-500"}`}>{line.type.replace('_', ' ')}</span>
+                      <span className={`text-xs font-medium capitalize ${isInvoice ? "text-indigo-600" : isPayment ? "text-emerald-600" : isCreditNote ? "text-amber-600" : isOpening ? "text-slate-800" : "text-slate-500"}`}>{line.type.replace('_', ' ')}</span>
                     </td>
                     <td className="py-2.5 pr-3 text-sm font-mono">
-                      {isInvoice ? (
+                      {isClickable ? (
                         <span className="text-indigo-600 hover:underline font-medium">{line.number}</span>
                       ) : (
                         <span className="text-slate-600">{line.number || '—'}</span>
