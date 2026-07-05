@@ -5,7 +5,7 @@
 
 import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { db, contacts, invoices, invoiceLines, quotes, salesOrders, paymentsReceived, paymentAllocations, creditNotes, accounts, paymentsMade, paymentMadeAllocations, journalEntries } from '../db/schema';
+import { db, contacts, invoices, invoiceLines, quotes, salesOrders, paymentsReceived, paymentAllocations, creditNotes, accounts, paymentsMade, paymentMadeAllocations, journalEntries, expenses } from '../db/schema';
 import { eq, and, desc, asc, sql, inArray, getTableColumns } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
@@ -819,6 +819,24 @@ router.get('/customers/:id/statement', async (req: AuthenticatedRequest, res: Re
         reference: 'Sales Return / Credit Note',
         debit: 0,
         credit: cn.total
+      });
+    }
+
+    // Include billable expenses as outstanding charges
+    const customerBillableExpenses = await db
+      .select()
+      .from(expenses)
+      .where(and(eq(expenses.customerId, id), eq(expenses.orgId, orgId), eq(expenses.isBillable, true)));
+
+    for (const exp of customerBillableExpenses) {
+      transactionsList.push({
+        id: exp.id,
+        date: new Date(exp.date),
+        type: 'billable_expense',
+        number: exp.expenseNumber,
+        reference: exp.description || 'Billable Expense',
+        debit: exp.amount,
+        credit: 0
       });
     }
 
