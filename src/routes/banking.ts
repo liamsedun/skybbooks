@@ -933,6 +933,7 @@ router.get('/accounts/:id/payments', async (req: AuthenticatedRequest, res: Resp
   try {
     const orgId = req.user!.orgId!;
     const { id } = req.params;
+    const { from, to } = req.query;
 
     const [ba] = await db
       .select({ accountId: bankAccounts.accountId, accountCode: accounts.code, accountName: accounts.name })
@@ -943,7 +944,34 @@ router.get('/accounts/:id/payments', async (req: AuthenticatedRequest, res: Resp
 
     if (!ba) throw new AppError('Bank account not found.', 404);
 
-    // Fetch all journal lines hitting this cash GL account, with contra-account info
+    // Calculate opening balance as cumulative balance BEFORE the from date
+    let openingBalance = 0;
+    if (from) {
+      const preResult = await db.execute(sql`
+        SELECT COALESCE(SUM(
+          CASE WHEN jl.debit_amount > 0 THEN jl.debit_amount ELSE -jl.credit_amount END
+        ), 0) AS balance
+        FROM journal_lines jl
+        INNER JOIN journal_entries je ON jl.entry_id = je.id
+        WHERE jl.account_id = ${ba.accountId}::uuid
+          AND je.org_id = ${orgId}::uuid
+          AND je.is_reversed = false
+          AND je.date < ${from}::date
+      `);
+      const preRow = preResult.rows ? preResult.rows[0] : preResult[0];
+      openingBalance = Number(preRow?.balance || 0);
+    }
+
+    // Build date filter clause
+    const dateFilter = from && to
+      ? sql`AND je.date >= ${from}::date AND je.date <= ${to}::date`
+      : from
+        ? sql`AND je.date >= ${from}::date`
+        : to
+          ? sql`AND je.date <= ${to}::date`
+          : sql``;
+
+    // Fetch filtered journal lines hitting this cash GL account
     const rows = await db.execute(sql`
       WITH bank_lines AS (
         SELECT
@@ -962,6 +990,7 @@ router.get('/accounts/:id/payments', async (req: AuthenticatedRequest, res: Resp
         WHERE jl.account_id = ${ba.accountId}::uuid
           AND je.org_id = ${orgId}::uuid
           AND je.is_reversed = false
+          ${dateFilter}
       ),
       contra AS (
         SELECT
@@ -1072,8 +1101,8 @@ router.get('/accounts/:id/payments', async (req: AuthenticatedRequest, res: Resp
       });
     }
 
-    // Compute running balance
-    let running = 0;
+    // Compute running balance starting from opening balance
+    let running = openingBalance;
     for (const row of enriched) {
       running += row.isDebit ? row.amount : -row.amount;
       row.balance = running;
@@ -1082,7 +1111,7 @@ router.get('/accounts/:id/payments', async (req: AuthenticatedRequest, res: Resp
     return res.status(200).json({
       accountCode: ba.accountCode,
       accountName: ba.accountName,
-      openingBalance: running - enriched.reduce((s: number, r: any) => s + (r.isDebit ? r.amount : -r.amount), 0),
+      openingBalance,
       transactions: enriched.reverse()
     });
   } catch (err) {

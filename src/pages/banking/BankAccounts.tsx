@@ -101,10 +101,12 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
 
   // Bank account detail drill-down
   const [detailAccount, setDetailAccount] = useState<any | null>(null);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   const { data: accountPayments = [], isLoading: loadingPayments } = useQuery({
-    queryKey: ['bankAccountPayments', detailAccount?.id],
-    queryFn: () => bankingApi.getPaymentsByAccount(detailAccount!.id),
+    queryKey: ['bankAccountPayments', detailAccount?.id, dateFrom, dateTo],
+    queryFn: () => bankingApi.getPaymentsByAccount(detailAccount!.id, { from: dateFrom || undefined, to: dateTo || undefined }),
     enabled: !!detailAccount,
   });
 
@@ -950,13 +952,43 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
               <div className="flex items-center gap-6 ml-auto">
                 <div className="text-right">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Opening Balance</p>
-                  <p className="text-sm font-bold text-slate-700 font-mono">{formatNaira((accountPayments.transactions?.find((t: any) => t.txnType === 'Opening Balance')?.amount || 0))}</p>
+                  <p className="text-sm font-bold text-slate-700 font-mono">{formatNaira(accountPayments.openingBalance || 0)}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Current Balance</p>
-                  <p className="text-base font-black text-slate-900 font-mono">{formatNaira(detailAccount.currentBalance || 0)}</p>
+                  <p className="text-base font-black text-slate-900 font-mono">{formatNaira(accountPayments.transactions?.length > 0 ? accountPayments.transactions[accountPayments.transactions.length - 1].balance : (detailAccount.currentBalance || 0))}</p>
                 </div>
               </div>
+            </div>
+
+            {/* Date Range Filter */}
+            <div className="px-6 py-2 bg-white border-b border-slate-100 flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">From</label>
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={e => setDateFrom(e.target.value)}
+                  className="px-2 py-1 text-xs border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">To</label>
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={e => setDateTo(e.target.value)}
+                  className="px-2 py-1 text-xs border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                />
+              </div>
+              {(dateFrom || dateTo) && (
+                <button
+                  onClick={() => { setDateFrom(''); setDateTo(''); }}
+                  className="px-2 py-1 text-[10px] font-bold text-slate-500 bg-white border border-slate-200 rounded hover:bg-slate-50 transition"
+                >
+                  Reset
+                </button>
+              )}
             </div>
 
             {/* Transactions Table */}
@@ -1112,11 +1144,11 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                 <div className="flex justify-between items-center bg-slate-50 p-4 rounded-lg">
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Opening Balance</p>
-                    <p className="text-sm font-bold text-slate-700 font-mono">{formatNaira((accountPayments.transactions?.find((t: any) => t.txnType === 'Opening Balance')?.amount || 0))}</p>
+                    <p className="text-sm font-bold text-slate-700 font-mono">{formatNaira(accountPayments.openingBalance || 0)}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Current Balance</p>
-                    <p className="text-base font-black text-slate-900 font-mono">{formatNaira(detailAccount?.currentBalance || 0)}</p>
+                    <p className="text-base font-black text-slate-900 font-mono">{formatNaira(accountPayments.transactions?.length > 0 ? accountPayments.transactions[accountPayments.transactions.length - 1].balance : (detailAccount?.currentBalance || 0))}</p>
                   </div>
                 </div>
                 <table className="w-full text-sm">
