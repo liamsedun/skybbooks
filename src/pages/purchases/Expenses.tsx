@@ -149,6 +149,7 @@ export function ExpensesPage() {
   });
 
   const vendorMap = useMemo(() => new Map(vendors.map(v => [v.id, v.name])), [vendors]);
+  const customersMap = useMemo(() => new Map(customers.map(c => [c.id, c.name])), [customers]);
   const accountMap = useMemo(() => new Map(accounts.map(a => [a.id, a.name])), [accounts]);
   const expenseAccounts = useMemo(() => accounts.filter(a => a.type === 'expense'), [accounts]);
   const assetAccounts = useMemo(() => accounts.filter(a => a.type === 'asset'), [accounts]);
@@ -413,6 +414,9 @@ export function ExpensesPage() {
               {viewingExpense.isBillable && (
                 <div className="col-span-2">
                   <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">Billable to Customer</span>
+                  {viewingExpense.customerId && customersMap.has(viewingExpense.customerId) && (
+                    <span className="text-xs text-slate-600 ml-2">{customersMap.get(viewingExpense.customerId)}</span>
+                  )}
                 </div>
               )}
             </div>

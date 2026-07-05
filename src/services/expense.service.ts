@@ -38,6 +38,23 @@ async function resolveAccountsPayable(orgId: string, tx: any): Promise<string> {
   throw new AppError('Accounts Payable account not configured. Go to Chart of Accounts, select a liability account, and set its System Role to \'Accounts Payable\'.', 404);
 }
 
+async function resolveAccountsReceivable(orgId: string, tx: any): Promise<string> {
+  const [arAccount] = await tx
+    .select()
+    .from(accounts)
+    .where(
+      and(
+        eq(accounts.orgId, orgId),
+        eq(accounts.systemAccountRole, 'accounts_receivable')
+      )
+    )
+    .limit(1);
+
+  if (arAccount) return arAccount.id;
+
+  throw new AppError('Accounts Receivable account not configured. Go to Chart of Accounts, select an asset account, and set its System Role to \'Accounts Receivable\'.', 400);
+}
+
 async function resolveBankOrCashAccount(orgId: string, paymentAccountId: string | null | undefined, tx: any): Promise<string> {
   if (paymentAccountId) {
     const [existing] = await tx
@@ -174,6 +191,23 @@ export async function createExpense(input: any, createdBy: string): Promise<any>
         : `Bank/Cash credit disbursement for expense ${expenseNumber}`
     });
 
+    // If billable to customer, create a receivable
+    if (input.isBillable && input.customerId) {
+      const arAccountId = await resolveAccountsReceivable(orgId, tx);
+      // DR Accounts Receivable (net expense amount — what customer owes)
+      journalLinesPayload.push({
+        accountId: arAccountId,
+        debit: netExpenseAmt,
+        description: `Billable expense ${expenseNumber} - ${input.description || 'Reimbursable'}`
+      });
+      // CR Expense Account (offset the expense — reimbursement at cost)
+      journalLinesPayload.push({
+        accountId: expenseAccountId,
+        credit: netExpenseAmt,
+        description: `Reimbursable offset for expense ${expenseNumber}`
+      });
+    }
+
     const journalEntry = await createJournalEntry({
       orgId,
       date: expense.date,
@@ -291,6 +325,22 @@ export async function updateExpense(expenseId: string, input: any, userId: strin
         ? `AP posting liability for expense ${expense.expenseNumber} (modified)`
         : `Bank/Cash credit disbursement for expense ${expense.expenseNumber} (modified)`
     });
+
+    const isBillable = input.isBillable !== undefined ? !!input.isBillable : expense.isBillable;
+    const billableCustomerId = input.customerId !== undefined ? input.customerId : expense.customerId;
+    if (isBillable && billableCustomerId) {
+      const arAccountId = await resolveAccountsReceivable(expense.orgId, tx);
+      journalLinesPayload.push({
+        accountId: arAccountId,
+        debit: updatedNet,
+        description: `Billable expense ${expense.expenseNumber} (modified) - ${updatedExpense.description || 'Reimbursable'}`
+      });
+      journalLinesPayload.push({
+        accountId: expenseAccountId,
+        credit: updatedNet,
+        description: `Reimbursable offset for expense ${expense.expenseNumber} (modified)`
+      });
+    }
 
     const journalEntry = await createJournalEntry({
       orgId: expense.orgId,
