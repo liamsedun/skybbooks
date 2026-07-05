@@ -29,7 +29,8 @@ interface RecurringExpense {
   id: string; orgId: string; vendorId: string | null;
   accountId: string; frequency: Frequency;
   amount: number; taxAmount: number; description: string | null;
-  paymentMethod: string; startDate: string; endDate: string | null;
+  paymentMethod: string; paymentAccountId?: string | null;
+  startDate: string; endDate: string | null;
   nextRunDate: string | null; isActive: boolean; createdAt: string;
 }
 
@@ -94,13 +95,14 @@ function exportRecurringPDF(items: RecurringExpense[], vendorMap: Map<string, st
 type FormState = {
   vendorId: string; accountId: string; frequency: Frequency;
   amount: string; taxAmount: string; description: string;
-  paymentMethod: string; startDate: string; endDate: string;
+  paymentMethod: string; paymentAccountId: string;
+  startDate: string; endDate: string;
 };
 
 const EMPTY_FORM: FormState = {
   vendorId: '', accountId: '', frequency: 'monthly',
   amount: '', taxAmount: '0', description: '',
-  paymentMethod: 'bank_transfer',
+  paymentMethod: 'bank_transfer', paymentAccountId: '',
   startDate: new Date().toISOString().split('T')[0], endDate: '',
 };
 
@@ -144,6 +146,7 @@ export function RecurringExpensesPage() {
   const vendorMap = useMemo(() => new Map(vendors.map(v => [v.id, v.name])), [vendors]);
   const accountMap = useMemo(() => new Map(accounts.map(a => [a.id, a.name])), [accounts]);
   const expenseAccounts = useMemo(() => accounts.filter(a => a.type === 'expense'), [accounts]);
+  const assetAccounts = useMemo(() => accounts.filter(a => a.type === 'asset'), [accounts]);
 
   const filtered = useMemo(() => {
     const t = search.toLowerCase();
@@ -166,6 +169,7 @@ export function RecurringExpensesPage() {
       taxAmount: String(re.taxAmount / 100),
       description: re.description || '',
       paymentMethod: re.paymentMethod,
+      paymentAccountId: re.paymentAccountId || '',
       startDate: re.startDate?.split('T')[0] || '',
       endDate: re.endDate?.split('T')[0] || '',
     });
@@ -190,6 +194,7 @@ export function RecurringExpensesPage() {
         taxAmount: Math.round(parseFloat(form.taxAmount || '0') * 100),
         description: form.description || null,
         paymentMethod: form.paymentMethod,
+        paymentAccountId: form.paymentAccountId || null,
         startDate: form.startDate,
         endDate: form.endDate || null,
       };
@@ -206,6 +211,7 @@ export function RecurringExpensesPage() {
         taxAmount: Math.round(parseFloat(form.taxAmount || '0') * 100),
         description: form.description || null,
         paymentMethod: form.paymentMethod,
+        paymentAccountId: form.paymentAccountId || null,
         startDate: form.startDate,
         endDate: form.endDate || null,
         nextRunDate: calcNextRun(form.startDate, form.frequency),
@@ -402,6 +408,7 @@ export function RecurringExpensesPage() {
                   <div className="flex flex-wrap gap-4 text-xs text-slate-500 mt-2">
                     <span>Account: <span className="font-medium text-slate-700">{accountMap.get(r.accountId) || '—'}</span></span>
                     {r.vendorId && <span>Vendor: <span className="font-medium text-slate-700">{vendorMap.get(r.vendorId) || '—'}</span></span>}
+                    {r.paymentAccountId && <span>Bank: <span className="font-medium text-slate-700">{accountMap.get(r.paymentAccountId) || '—'}</span></span>}
                     <span>Started: <span className="font-medium text-slate-700">{fmtDate(r.startDate)}</span></span>
                     {r.endDate && <span>Ends: <span className="font-medium text-slate-700">{fmtDate(r.endDate)}</span></span>}
                     <span>Next Run: <span className="font-medium text-slate-700">{fmtDate(r.nextRunDate)}</span></span>
@@ -496,6 +503,15 @@ export function RecurringExpensesPage() {
                 <div className="col-span-2">
                   <label className="block text-xs font-medium text-slate-500 mb-1">Description</label>
                   <input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="e.g. Monthly office rent, SaaS subscription..." className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Paid from Account (Bank/Cash)</label>
+                  <AccountSearchSelect
+                    accounts={assetAccounts}
+                    value={form.paymentAccountId}
+                    onChange={id => setForm({ ...form, paymentAccountId: id })}
+                    placeholder="Auto-resolve bank/cash account"
+                  />
                 </div>
               </div>
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
