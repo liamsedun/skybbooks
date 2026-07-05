@@ -1022,7 +1022,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                   <button
                     onClick={() => {
                       const el = document.getElementById('bank-statement-pdf-container');
-                      if (el) { el.style.display = 'block'; setTimeout(() => { window.print(); setTimeout(() => { el.style.display = 'none'; }, 100); }, 200); }
+                      if (el) { el.style.display = 'block'; requestAnimationFrame(() => { window.print(); el.style.display = 'none'; }); }
                     }}
                     className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold text-slate-500 bg-white border border-slate-200 rounded hover:bg-slate-50 transition"
                   >

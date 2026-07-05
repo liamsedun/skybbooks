@@ -393,7 +393,7 @@ export function ExpensesPage() {
               <button
                 onClick={() => {
                   const el = document.getElementById('expense-pdf-container');
-                  if (el) { el.style.display = 'block'; setTimeout(() => { window.print(); setTimeout(() => { el.style.display = 'none'; }, 100); }, 200); }
+                  if (el) { el.style.display = 'block'; requestAnimationFrame(() => { window.print(); el.style.display = 'none'; }); }
                 }}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors"
               >
