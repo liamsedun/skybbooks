@@ -368,7 +368,7 @@ export function SalesOrdersPage() {
                 const meta = STATUS_META[so.status];
                 const Icon = meta.icon;
                 return (
-                  <tr key={so.id} className="hover:bg-slate-50 transition-colors">
+                  <tr key={so.id} className="hover:bg-slate-50 transition-colors cursor-pointer" onClick={() => openEdit(so)}>
                     <td className="py-3 pl-4 pr-3 text-sm font-mono font-medium text-slate-700">{so.soNumber}</td>
                     <td className="py-3 pr-3 text-sm text-slate-700">{cust?.name || '—'}</td>
                     <td className="py-3 pr-3 text-sm text-slate-500">{fmtDate(so.date)}</td>
@@ -390,11 +390,9 @@ export function SalesOrdersPage() {
                             {convertMutation.isPending && convertingId === so.id ? <Loader2 size={12} className="animate-spin" /> : <><ArrowRight size={11} /> To Invoice</>}
                           </button>
                         )}
-                        {(so.status === 'draft' || so.status === 'confirmed') && (
-                          <button onClick={() => openEdit(so)} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
-                            <Pencil size={14} />
-                          </button>
-                        )}
+                        <button onClick={(e) => { e.stopPropagation(); openEdit(so); }} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors" title="View / Edit">
+                          <Pencil size={14} />
+                        </button>
                         {so.status !== 'fulfilled' && (
                           <button onClick={() => { setDeleteTarget(so); setDeleteError(null); }} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors">
                             <Trash2 size={14} />
