@@ -31,6 +31,8 @@ interface SalesOrder {
   status: SOStatus; currency: string;
   subtotal: number; discount: number; tax: number; total: number;
   notes: string | null; lines: SOLine[] | null; createdAt: string;
+  convertedToInvoiceId?: string | null;
+  convertedToInvoiceNumber?: string | null;
 }
 
 const EMPTY_LINE: SOLine = { itemId: null, description: '', quantity: 1, unitPrice: 0, discountPct: 0, taxRate: 7.5 };
@@ -394,10 +396,11 @@ export function SalesOrdersPage() {
                         {EDITABLE_STATUSES.has(so.status) && (
                           <button
                             onClick={() => { setConvertingId(so.id); convertMutation.mutate(so.id); }}
-                            disabled={convertMutation.isPending && convertingId === so.id}
-                            className="px-2.5 py-1 text-xs font-medium text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-200 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1"
+                            disabled={(convertMutation.isPending && convertingId === so.id) || !!so.convertedToInvoiceId}
+                            title={so.convertedToInvoiceId ? `Already converted to ${so.convertedToInvoiceNumber || 'invoice'}` : 'Convert to Invoice'}
+                            className={`px-2.5 py-1 text-xs font-medium border rounded-lg transition-colors disabled:opacity-40 flex items-center gap-1 ${so.convertedToInvoiceId ? 'text-slate-400 bg-slate-100 border-slate-200 cursor-not-allowed' : 'text-violet-700 bg-violet-50 hover:bg-violet-100 border-violet-200'}`}
                           >
-                            {convertMutation.isPending && convertingId === so.id ? <Loader2 size={12} className="animate-spin" /> : <><ArrowRight size={11} /> To Invoice</>}
+                            {convertMutation.isPending && convertingId === so.id ? <Loader2 size={12} className="animate-spin" /> : <><ArrowRight size={11} /> {so.convertedToInvoiceId ? 'Invoiced' : 'To Invoice'}</>}
                           </button>
                         )}
                         <button onClick={(e) => { e.stopPropagation(); openEdit(so, true); }} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="View">

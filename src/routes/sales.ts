@@ -1162,9 +1162,11 @@ const updateSalesOrderSchema = createSalesOrderSchema.partial();
 router.get('/sales-orders', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const orgId = req.user!.orgId!;
+    const soCols = getTableColumns(salesOrders);
     const list = await db
-      .select()
+      .select({ ...soCols, convertedToInvoiceId: invoices.id, convertedToInvoiceNumber: invoices.invoiceNumber })
       .from(salesOrders)
+      .leftJoin(invoices, eq(invoices.soId, salesOrders.id))
       .where(eq(salesOrders.orgId, orgId))
       .orderBy(desc(salesOrders.createdAt));
     return res.status(200).json(list);
