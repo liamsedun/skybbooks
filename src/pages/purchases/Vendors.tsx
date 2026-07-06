@@ -581,7 +581,7 @@ function VendorDetail({ id }: { id: string }) {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => navigate(`/purchases/payments?vendor=${vendor.id}`)}
+            onClick={() => navigate(`/purchases/payments-made?vendor=${vendor.id}`)}
             className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors"
           >
             <ExternalLink size={14} />
@@ -672,7 +672,7 @@ function VendorDetail({ id }: { id: string }) {
                 const isClickable = (isBill || isPayment || isCredit) && !isDraftBill;
                 function handleRowClick() {
                   if (isBill && !isDraftBill) navigate(`/purchases/bills/${line.id}`);
-                  else if (isPayment) navigate(`/purchases/payments?selected=${line.id}`);
+                  else if (isPayment) navigate(`/purchases/payments-made?selected=${line.id}`);
                   else if (isCredit) navigate(`/purchases/credit-notes?selected=${line.id}`);
                 }
                 return (

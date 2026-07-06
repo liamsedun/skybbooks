@@ -1100,7 +1100,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                           const path = txn.sourceDocType === 'receipt'
                             ? `/sales/payments?selected=${txn.sourceDocId}`
                             : txn.sourceDocType === 'payment'
-                              ? `/purchases/payments?selected=${txn.sourceDocId}`
+                              ? `/purchases/payments-made?selected=${txn.sourceDocId}`
                               : txn.sourceDocType === 'expense'
                                 ? `/purchases/expenses?selected=${txn.sourceDocId}`
                                 : txn.sourceDocType === 'invoice'
@@ -1118,7 +1118,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       const path = txn.sourceDocType === 'payment'
-                                        ? `/purchases/payments?selected=${txn.sourceDocId}`
+                                        ? `/purchases/payments-made?selected=${txn.sourceDocId}`
                                         : txn.sourceDocType === 'expense'
                                           ? `/purchases/expenses?selected=${txn.sourceDocId}`
                                           : txn.sourceDocType === 'invoice'
