@@ -5,7 +5,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '../../lib/api';
+import { api, orgApi } from '../../lib/api';
 import {
   Plus, X, Loader2, AlertCircle, Search, Receipt, Eye,
   CheckCircle2, Trash2, Edit2, Download, FileText, Upload
@@ -148,6 +148,8 @@ export function ExpensesPage() {
     queryKey: ['accounts'],
     queryFn: async () => { const r = await api.get('/accountant/accounts'); return r.data; },
   });
+
+  const { data: org } = useQuery({ queryKey: ['org'], queryFn: orgApi.getOrg, staleTime: 60000 });
 
   const vendorMap = useMemo(() => new Map(vendors.map(v => [v.id, v.name])), [vendors]);
   const customersMap = useMemo(() => new Map(customers.map(c => [c.id, c.name])), [customers]);
@@ -379,132 +381,148 @@ export function ExpensesPage() {
       )}
       {viewingExpense && (
         <div className="fixed top-0 right-0 h-full w-full max-w-xl bg-white shadow-2xl z-50 flex flex-col">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-indigo-50 flex items-center justify-center">
-                <Receipt size={16} className="text-indigo-600" />
-              </div>
-              <div>
-                <h2 className="text-base font-semibold text-slate-900">Expense Details</h2>
-                <p className="text-xs text-slate-400">View expense information</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => {
-                  const el = document.getElementById('expense-pdf-container');
-                  if (el) { el.style.display = 'block'; requestAnimationFrame(() => { window.print(); el.style.display = 'none'; }); }
-                }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors"
-              >
-                <FileText size={13} /> PDF
-              </button>
-              <button onClick={() => setViewingExpense(null)} className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100">
-                <X size={18} />
-              </button>
-            </div>
-          </div>
-          <div className="flex-1 overflow-y-auto px-6 py-6 space-y-5">
+          {/* Scrollable content */}
+          <div className="flex-1 overflow-y-auto">
 
-            {/* Header card */}
-            <div className="bg-gradient-to-br from-slate-50 to-white rounded-xl p-5 border border-slate-100">
+            {/* Company header */}
+            <div className="px-6 pt-6 pb-4 border-b border-slate-100">
               <div className="flex items-start justify-between">
-                <div>
-                  <p className="font-mono text-lg font-bold text-slate-800">{viewingExpense.expenseNumber}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs text-slate-400">{new Date(viewingExpense.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</span>
-                    <span className="text-slate-200">|</span>
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-100">
-                      <CheckCircle2 size={10} /> Posted
-                    </span>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs text-slate-400 uppercase tracking-wide mb-0.5">Total Amount</p>
-                  <p className="text-xl font-bold text-slate-900">{formatNaira(viewingExpense.amount)}</p>
-                </div>
-              </div>
-              {viewingExpense.journalEntryNumber && (
-                <div className="mt-3 pt-3 border-t border-slate-100 flex items-center gap-2 text-xs text-slate-400">
-                  <FileText size={12} /> Ledger: {viewingExpense.journalEntryNumber}
-                </div>
-              )}
-            </div>
-
-            {/* Details grid */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white rounded-xl p-4 border border-slate-100">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Account</p>
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-md bg-blue-50 flex items-center justify-center">
-                    <Receipt size={12} className="text-blue-600" />
-                  </div>
-                  <p className="text-sm font-medium text-slate-800">{accounts.find((a: any) => a.id === viewingExpense.accountId)?.name || viewingExpense.accountId}</p>
-                </div>
-              </div>
-              <div className="bg-white rounded-xl p-4 border border-slate-100">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Vendor</p>
-                <p className="text-sm font-medium text-slate-800">{viewingExpense.vendorId ? (vendorMap.get(viewingExpense.vendorId) || viewingExpense.vendorId) : <span className="text-slate-300 italic">None</span>}</p>
-              </div>
-              <div className="bg-white rounded-xl p-4 border border-slate-100">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Payment Method</p>
-                <p className="text-sm font-medium capitalize text-slate-800">{viewingExpense.paymentMethod.replace('_', ' ')}</p>
-              </div>
-              <div className="bg-white rounded-xl p-4 border border-slate-100">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Reference</p>
-                <p className="text-sm font-medium text-slate-800 font-mono">{viewingExpense.reference || <span className="text-slate-300 italic">—</span>}</p>
-              </div>
-            </div>
-
-            {/* Financial summary */}
-            <div className="bg-white rounded-xl p-4 border border-slate-100">
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Financial Summary</p>
-              <div className="flex items-center justify-between py-2 border-b border-slate-50">
-                <span className="text-sm text-slate-600">Subtotal</span>
-                <span className="text-sm font-mono font-medium text-slate-800">{formatNaira(viewingExpense.amount - viewingExpense.taxAmount)}</span>
-              </div>
-              {viewingExpense.taxAmount > 0 && (
-                <div className="flex items-center justify-between py-2 border-b border-slate-50">
-                  <span className="text-sm text-slate-600">VAT (7.5%)</span>
-                  <span className="text-sm font-mono text-slate-600">{formatNaira(viewingExpense.taxAmount)}</span>
-                </div>
-              )}
-              <div className="flex items-center justify-between py-2">
-                <span className="text-sm font-semibold text-slate-700">Total</span>
-                <span className="text-base font-bold font-mono text-slate-900">{formatNaira(viewingExpense.amount)}</span>
-              </div>
-            </div>
-
-            {/* Billable badge */}
-            {viewingExpense.isBillable && (
-              <div className="flex items-center gap-2 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
-                <div className="w-7 h-7 rounded-md bg-amber-100 flex items-center justify-center">
-                  <Receipt size={12} className="text-amber-700" />
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-amber-800">Billable to Customer</p>
-                  {viewingExpense.customerId && customersMap.has(viewingExpense.customerId) && (
-                    <p className="text-sm font-medium text-amber-700">{customersMap.get(viewingExpense.customerId)}</p>
+                <div className="flex items-start gap-3">
+                  {org?.logoUrl ? (
+                    <img src={org.logoUrl} alt="" className="w-12 h-12 rounded-xl object-contain border border-slate-100 bg-white p-1" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-lg font-bold">
+                      {org?.name?.[0]?.toUpperCase() ?? 'E'}
+                    </div>
                   )}
+                  <div>
+                    <h2 className="text-sm font-bold text-slate-900">{org?.name || 'Your Company'}</h2>
+                    {org?.address && <p className="text-[11px] text-slate-500 mt-0.5">{org.address}</p>}
+                    <div className="flex flex-wrap gap-x-3 gap-y-0 mt-0.5">
+                      {org?.phone && <span className="text-[11px] text-slate-400">{org.phone}</span>}
+                      {org?.email && <span className="text-[11px] text-slate-400">{org.email}</span>}
+                      {(org as any)?.website && <span className="text-[11px] text-slate-400">{(org as any).website}</span>}
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-xs font-semibold text-indigo-600 uppercase tracking-widest">Expense</p>
+                  <p className="text-lg font-black text-slate-900 mt-0.5">{viewingExpense.expenseNumber}</p>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-100">
+                    <CheckCircle2 size={10} /> Posted
+                  </span>
                 </div>
               </div>
-            )}
+              <div className="flex items-center gap-2 mt-4 pt-3 border-t border-slate-100">
+                <button
+                  onClick={() => {
+                    const el = document.getElementById('expense-pdf-container');
+                    if (el) { el.style.display = 'block'; requestAnimationFrame(() => { window.print(); el.style.display = 'none'; }); }
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition-colors"
+                >
+                  <FileText size={14} /> Print PDF
+                </button>
+                <button onClick={() => setViewingExpense(null)} className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 ml-auto">
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
 
-            {/* Description */}
-            {viewingExpense.description && (
+            <div className="px-6 py-5 space-y-5">
+              {/* Header card */}
+              <div className="bg-gradient-to-br from-slate-50 to-white rounded-xl p-4 border border-slate-100">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-slate-400">{new Date(viewingExpense.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+                    {viewingExpense.journalEntryNumber && (
+                      <div className="flex items-center gap-1.5 mt-1 text-xs text-slate-400">
+                        <FileText size={11} /> Ledger: {viewingExpense.journalEntryNumber}
+                      </div>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-slate-400 uppercase tracking-wide mb-0.5">Total Amount</p>
+                    <p className="text-xl font-bold text-slate-900">{formatNaira(viewingExpense.amount)}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Details grid */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white rounded-xl p-4 border border-slate-100">
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Account</p>
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-md bg-blue-50 flex items-center justify-center">
+                      <Receipt size={12} className="text-blue-600" />
+                    </div>
+                    <p className="text-sm font-medium text-slate-800">{accounts.find((a: any) => a.id === viewingExpense.accountId)?.name || viewingExpense.accountId}</p>
+                  </div>
+                </div>
+                <div className="bg-white rounded-xl p-4 border border-slate-100">
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Vendor</p>
+                  <p className="text-sm font-medium text-slate-800">{viewingExpense.vendorId ? (vendorMap.get(viewingExpense.vendorId) || viewingExpense.vendorId) : <span className="text-slate-300 italic">None</span>}</p>
+                </div>
+                <div className="bg-white rounded-xl p-4 border border-slate-100">
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Payment Method</p>
+                  <p className="text-sm font-medium capitalize text-slate-800">{viewingExpense.paymentMethod.replace('_', ' ')}</p>
+                </div>
+                <div className="bg-white rounded-xl p-4 border border-slate-100">
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Reference</p>
+                  <p className="text-sm font-medium text-slate-800 font-mono">{viewingExpense.reference || <span className="text-slate-300 italic">—</span>}</p>
+                </div>
+              </div>
+
+              {/* Financial summary */}
               <div className="bg-white rounded-xl p-4 border border-slate-100">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Description</p>
-                <p className="text-sm text-slate-700 leading-relaxed">{viewingExpense.description}</p>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Financial Summary</p>
+                <div className="flex items-center justify-between py-2 border-b border-slate-50">
+                  <span className="text-sm text-slate-600">Subtotal</span>
+                  <span className="text-sm font-mono font-medium text-slate-800">{formatNaira(viewingExpense.amount - viewingExpense.taxAmount)}</span>
+                </div>
+                {viewingExpense.taxAmount > 0 && (
+                  <div className="flex items-center justify-between py-2 border-b border-slate-50">
+                    <span className="text-sm text-slate-600">VAT (7.5%)</span>
+                    <span className="text-sm font-mono text-slate-600">{formatNaira(viewingExpense.taxAmount)}</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between py-2">
+                  <span className="text-sm font-semibold text-slate-700">Total</span>
+                  <span className="text-base font-bold font-mono text-slate-900">{formatNaira(viewingExpense.amount)}</span>
+                </div>
               </div>
-            )}
 
-            {/* Linked PO */}
-            {(viewingExpense as any).poId && (
-              <div className="flex items-center gap-2 text-sm text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2">
-                <FileText size={14} />
-                Linked to Purchase Order
-              </div>
-            )}
+              {/* Billable badge */}
+              {viewingExpense.isBillable && (
+                <div className="flex items-center gap-2 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
+                  <div className="w-7 h-7 rounded-md bg-amber-100 flex items-center justify-center">
+                    <Receipt size={12} className="text-amber-700" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-amber-800">Billable to Customer</p>
+                    {viewingExpense.customerId && customersMap.has(viewingExpense.customerId) && (
+                      <p className="text-sm font-medium text-amber-700">{customersMap.get(viewingExpense.customerId)}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Description */}
+              {viewingExpense.description && (
+                <div className="bg-white rounded-xl p-4 border border-slate-100">
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Description</p>
+                  <p className="text-sm text-slate-700 leading-relaxed">{viewingExpense.description}</p>
+                </div>
+              )}
+
+              {/* Linked PO */}
+              {(viewingExpense as any).poId && (
+                <div className="flex items-center gap-2 text-sm text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2">
+                  <FileText size={14} />
+                  Linked to Purchase Order
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -512,35 +530,59 @@ export function ExpensesPage() {
       {/* Print container for expense PDF */}
       <div id="expense-pdf-container" className="bg-white" style={{ display: 'none' }}>
         <div className="p-10 space-y-8">
-          <div className="flex justify-between items-start border-b-2 border-slate-900 pb-6">
-            <div>
-              <h1 className="text-xl font-bold text-slate-900">SkyBooks</h1>
-              <p className="text-xs text-slate-400 mt-0.5">By Skyhouse Accountants &amp; Technologies</p>
+          {/* Header with org identity */}
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6 pb-6 border-b-2 border-slate-900">
+            <div className="flex items-start gap-3">
+              {org?.logoUrl ? (
+                <img src={org.logoUrl} alt="" className="w-14 h-14 rounded-xl object-contain border border-slate-100 bg-white p-1" />
+              ) : (
+                <div className="w-14 h-14 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-xl font-bold">
+                  {org?.name?.[0]?.toUpperCase() ?? 'S'}
+                </div>
+              )}
+              <div>
+                <h1 className="text-lg font-bold text-slate-900">{org?.name || 'Your Company'}</h1>
+                <div className="flex flex-col gap-y-0 mt-0.5">
+                  {org?.address && <span className="text-[11px] text-slate-500 leading-snug">{org.address}</span>}
+                  {(org as any)?.city && <span className="text-[11px] text-slate-500 leading-snug">{(org as any).city}</span>}
+                  {(org as any)?.state && <span className="text-[11px] text-slate-500 leading-snug">{(org as any).state}</span>}
+                  {(org as any)?.country && <span className="text-[11px] text-slate-500 leading-snug">{(org as any).country}</span>}
+                </div>
+                <div className="flex flex-wrap gap-x-3 gap-y-0 mt-1">
+                  {org?.phone && <span className="text-[11px] text-slate-500">{org.phone}</span>}
+                  {org?.email && <span className="text-[11px] text-slate-500">{org.email}</span>}
+                  {(org as any)?.website && <span className="text-[11px] text-slate-500">{(org as any).website}</span>}
+                </div>
+              </div>
             </div>
-            <div className="text-right">
-              <p className="text-sm font-bold text-slate-800">{viewingExpense?.expenseNumber}</p>
-              <p className="text-xs text-slate-400 mt-0.5">{viewingExpense ? new Date(viewingExpense.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }) : ''}</p>
+            <div className="sm:text-right shrink-0">
+              <p className="text-xs font-semibold text-indigo-600 uppercase tracking-widest">Expense</p>
+              <p className="text-2xl font-black text-slate-900 mt-0.5 tracking-tight">{viewingExpense?.expenseNumber}</p>
+              <p className="text-xs text-slate-400 mt-1">{viewingExpense ? new Date(viewingExpense.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }) : ''}</p>
+              <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-100">
+                <CheckCircle2 size={10} /> Posted
+              </span>
             </div>
           </div>
           {viewingExpense && (
             <>
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-200">
-                    <th className="py-2 pr-4 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Account</th>
-                    <th className="py-2 pr-4 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Vendor</th>
-                    <th className="py-2 pr-4 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Method</th>
-                    <th className="py-2 pr-4 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest">Reference</th>
-                    <th className="py-2 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest">Amount</th>
+                  <tr className="bg-slate-50 rounded-lg">
+                    <th className="text-left py-3 pl-3 pr-2 text-xs font-semibold text-slate-500 uppercase tracking-wide rounded-l-lg">Account</th>
+                    <th className="text-left py-3 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wide">Vendor</th>
+                    <th className="text-left py-3 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wide">Method</th>
+                    <th className="text-right py-3 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wide">Reference</th>
+                    <th className="text-right py-3 pl-2 pr-3 text-xs font-semibold text-slate-500 uppercase tracking-wide rounded-r-lg">Amount</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr className="border-b border-slate-100">
-                    <td className="py-3 pr-4 text-slate-700">{accounts.find((a: any) => a.id === viewingExpense.accountId)?.name || viewingExpense.accountId}</td>
-                    <td className="py-3 pr-4 text-slate-700">{viewingExpense.vendorId ? (vendorMap.get(viewingExpense.vendorId) || viewingExpense.vendorId) : '—'}</td>
-                    <td className="py-3 pr-4 text-slate-700 capitalize">{viewingExpense.paymentMethod.replace('_', ' ')}</td>
-                    <td className="py-3 pr-4 text-right font-mono text-slate-600">{viewingExpense.reference || '—'}</td>
-                    <td className="py-3 text-right font-mono font-bold text-slate-900">{formatNaira(viewingExpense.amount)}</td>
+                    <td className="py-3 pl-3 pr-2 text-slate-700">{accounts.find((a: any) => a.id === viewingExpense.accountId)?.name || viewingExpense.accountId}</td>
+                    <td className="py-3 px-2 text-slate-700">{viewingExpense.vendorId ? (vendorMap.get(viewingExpense.vendorId) || viewingExpense.vendorId) : '—'}</td>
+                    <td className="py-3 px-2 text-slate-700 capitalize">{viewingExpense.paymentMethod.replace('_', ' ')}</td>
+                    <td className="py-3 px-2 text-right font-mono text-slate-600">{viewingExpense.reference || '—'}</td>
+                    <td className="py-3 pl-2 pr-3 text-right font-mono font-bold text-slate-900">{formatNaira(viewingExpense.amount)}</td>
                   </tr>
                 </tbody>
               </table>
@@ -562,22 +604,33 @@ export function ExpensesPage() {
                   </div>
                 </div>
               )}
-              {viewingExpense.description && (
-                <div className="text-xs text-slate-500 bg-slate-50 p-4 rounded-lg">
-                  <p className="font-bold text-slate-400 uppercase tracking-wide mb-1">Description</p>
-                  {viewingExpense.description}
+              <div className="flex flex-col sm:flex-row justify-between gap-8 pt-2">
+                <div className="flex-1 max-w-sm">
+                  {viewingExpense.description && (
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Description</p>
+                      <p className="text-sm text-slate-500 leading-relaxed">{viewingExpense.description}</p>
+                    </div>
+                  )}
+                  {viewingExpense.isBillable && viewingExpense.customerId && (
+                    <div className="mt-3">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Billable to</p>
+                      <p className="text-sm font-medium text-amber-700">{customersMap.has(viewingExpense.customerId) ? customersMap.get(viewingExpense.customerId) : 'Customer'}</p>
+                    </div>
+                  )}
+                  {org && ((org as any)?.vatNumber || (org as any)?.rcNumber) && (
+                    <div className="mt-3 space-y-0.5">
+                      {(org as any)?.vatNumber && <p className="text-xs text-slate-400">VAT Reg: {(org as any).vatNumber}</p>}
+                      {(org as any)?.rcNumber && <p className="text-xs text-slate-400">RC: {(org as any).rcNumber}</p>}
+                    </div>
+                  )}
                 </div>
-              )}
-              {viewingExpense.isBillable && (
-                <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 p-3 rounded-lg">
-                  <Receipt size={12} />
-                  <span>Billable to {viewingExpense.customerId && customersMap.has(viewingExpense.customerId) ? customersMap.get(viewingExpense.customerId) : 'Customer'}</span>
-                </div>
-              )}
+              </div>
             </>
           )}
           <div className="text-center text-[10px] text-slate-400 border-t border-slate-100 pt-4">
-            SkyBooks By Skyhouse Accountants &amp; Technologies (Olalekan Williams Edun) &bull; Confidential
+            {org?.name || 'SkyBooks'} — {org?.address || ''} — {org?.phone || ''} — {org?.email || ''}
+            {(org as any)?.website && <span> — {(org as any).website}</span>}
           </div>
         </div>
       </div>
