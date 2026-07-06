@@ -997,6 +997,12 @@ function BillDetail({ id, onBack }: { id: string; onBack: () => void }) {
             className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg">
             <FileText size={14} /> PDF
           </button>
+          {bill.status !== 'paid' && bill.status !== 'void' && (
+            <button onClick={() => navigate(`/purchases/payments-made?vendor=${bill.vendor?.id || bill.vendorId}`)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg">
+              Make Payment
+            </button>
+          )}
           {bill.status === 'draft' && (
             <button onClick={() => approveMutation.mutate(bill.id)}
               disabled={approveMutation.isPending}
