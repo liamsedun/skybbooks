@@ -301,6 +301,10 @@ export async function runMigration() {
     await db.execute(sql`ALTER TYPE po_status ADD VALUE IF NOT EXISTS 'approved'`);
     console.log('[Migration] Added PO approval statuses (confirmed, accepted, approved).');
 
+    // Add journal_entry_id to payments_made (missing column in production)
+    await db.execute(`ALTER TABLE payments_made ADD COLUMN IF NOT EXISTS journal_entry_id uuid REFERENCES journal_entries(id)`);
+    console.log('[Migration] Added journal_entry_id column to payments_made.');
+
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema push:', err);
