@@ -8,7 +8,7 @@ import { api } from '../../lib/api';
 import { parseCsv, downloadCsv, CSV_TEMPLATES } from '../../lib/csvTemplates';
 import {
   Plus, X, Loader2, AlertCircle, Search, RefreshCw,
-  CheckCircle2, Play, Pause, Trash2, Calendar, Download, FileText, Upload, FileSpreadsheet, Edit2
+  CheckCircle2, Play, Pause, Trash2, Calendar, Download, FileText, Upload, FileSpreadsheet, Edit2, Eye
 } from 'lucide-react';
 import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
 
@@ -125,6 +125,7 @@ export function RecurringExpensesPage() {
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [formError, setFormError] = useState<string | null>(null);
   const [editingRe, setEditingRe] = useState<RecurringExpense | null>(null);
+  const [viewingRe, setViewingRe] = useState<RecurringExpense | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [csvPreview, setCsvPreview] = useState<{ headers: string[]; rows: string[][] } | null>(null);
@@ -159,6 +160,7 @@ export function RecurringExpensesPage() {
 
   function showSuccess(msg: string) { setSuccessMsg(msg); setTimeout(() => setSuccessMsg(null), 4000); }
   function closeModal() { setModalOpen(false); setForm(EMPTY_FORM); setFormError(null); setEditingRe(null); }
+  function openView(re: RecurringExpense) { setViewingRe(re); }
 
   function openEdit(re: RecurringExpense) {
     setForm({
@@ -423,6 +425,9 @@ export function RecurringExpensesPage() {
                   >
                     {r.isActive ? <><Pause size={12} /> Pause</> : <><Play size={12} /> Resume</>}
                   </button>
+                  <button onClick={() => openView(r)} className="p-1.5 rounded-md text-slate-400 hover:text-sky-600 hover:bg-sky-50" title="View details">
+                    <Eye size={12} />
+                  </button>
                   <button onClick={() => openEdit(r)} className="p-1.5 rounded-md text-slate-400 hover:text-indigo-600 hover:bg-indigo-50" title="Edit">
                     <Edit2 size={12} />
                   </button>
@@ -611,8 +616,81 @@ export function RecurringExpensesPage() {
           </div>
         </div>
       )}
+
+      {/* View Modal */}
+      {viewingRe && (
+        <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 px-4 py-8 overflow-y-auto" onClick={() => setViewingRe(null)}>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              <h2 className="text-base font-semibold text-slate-900">{viewingRe.description || 'Recurring Expense'}</h2>
+              <button onClick={() => setViewingRe(null)} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
+            </div>
+            <div className="px-6 py-5 space-y-5">
+              <div className="flex items-center gap-2">
+                <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${viewingRe.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                  {viewingRe.isActive ? <><Play className="w-3 h-3" /> Active</> : <><Pause className="w-3 h-3" /> Paused</>}
+                </span>
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700">
+                  <Calendar className="w-3 h-3" /> {FREQ_META[viewingRe.frequency]?.label}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
+                <div>
+                  <p className="text-xs text-slate-400 mb-0.5">Expense Account</p>
+                  <p className="font-medium text-slate-800">{accountMap.get(viewingRe.accountId) || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400 mb-0.5">Amount</p>
+                  <p className="font-mono font-semibold text-slate-900">{formatNaira(viewingRe.amount)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400 mb-0.5">VAT Amount</p>
+                  <p className="font-mono font-medium text-slate-800">{viewingRe.taxAmount > 0 ? formatNaira(viewingRe.taxAmount) : '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400 mb-0.5">Payment Method</p>
+                  <p className="font-medium text-slate-800 capitalize">{viewingRe.paymentMethod.replace(/_/g, ' ')}</p>
+                </div>
+                {viewingRe.vendorId && (
+                  <div>
+                    <p className="text-xs text-slate-400 mb-0.5">Vendor</p>
+                    <p className="font-medium text-slate-800">{vendorMap.get(viewingRe.vendorId) || '—'}</p>
+                  </div>
+                )}
+                {viewingRe.paymentAccountId && (
+                  <div>
+                    <p className="text-xs text-slate-400 mb-0.5">Paid from Account</p>
+                    <p className="font-medium text-slate-800">{accountMap.get(viewingRe.paymentAccountId) || '—'}</p>
+                  </div>
+                )}
+                <div>
+                  <p className="text-xs text-slate-400 mb-0.5">Start Date</p>
+                  <p className="font-medium text-slate-800">{fmtDate(viewingRe.startDate)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400 mb-0.5">End Date</p>
+                  <p className="font-medium text-slate-800">{fmtDate(viewingRe.endDate)}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-xs text-slate-400 mb-0.5">Next Run Date</p>
+                  <p className="font-medium text-slate-800">{fmtDate(viewingRe.nextRunDate)}</p>
+                </div>
+                {viewingRe.description && (
+                  <div className="col-span-2">
+                    <p className="text-xs text-slate-400 mb-0.5">Description</p>
+                    <p className="text-sm text-slate-700 bg-slate-50 rounded-lg p-3 border border-slate-100">{viewingRe.description}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                <button onClick={() => setViewingRe(null)} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Close</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
-// updated
