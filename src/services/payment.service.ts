@@ -127,8 +127,8 @@ export async function recordPaymentReceived(input: any, createdBy: string): Prom
         allocatedSum += Number(alloc.amount || 0);
       }
 
-      if (allocatedSum !== amount) {
-        throw new AppError(`Total allocated sum (${allocatedSum} kobo) must exactly match payment amount (${amount} kobo).`, 400);
+      if (allocatedSum !== amount + whtAmount) {
+        throw new AppError(`Total allocated sum (${allocatedSum} kobo) must match net receipt plus WHT (${amount + whtAmount} kobo).`, 400);
       }
 
       // 2. Validate allocations against invoices outstanding balance_due
@@ -422,8 +422,8 @@ export async function updatePaymentReceived(paymentId: string, orgId: string, in
     if (category === 'sales_invoice') {
       let allocatedSum = 0;
       for (const alloc of allocations) allocatedSum += Number(alloc.amount || 0);
-      if (allocations.length > 0 && allocatedSum !== amount) {
-        throw new AppError(`Total allocated sum (${allocatedSum} kobo) must exactly match payment amount (${amount} kobo).`, 400);
+      if (allocations.length > 0 && allocatedSum !== amount + whtAmount) {
+        throw new AppError(`Total allocated sum (${allocatedSum} kobo) must match net receipt plus WHT (${amount + whtAmount} kobo).`, 400);
       }
       for (const alloc of allocations) {
         const [invoice] = await tx.select().from(invoices).where(eq(invoices.id, alloc.invoiceId)).limit(1);

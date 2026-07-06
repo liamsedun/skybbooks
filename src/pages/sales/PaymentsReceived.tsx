@@ -482,6 +482,15 @@ export function PaymentsReceivedPage() {
     if (addForm.category === 'other_income' && !addForm.payerName.trim() && !addForm.customerId) {
       setAddError('Payer name or customer is required.'); return;
     }
+    if (addForm.category === 'sales_invoice') {
+      const totalAlloc = addForm.allocations.filter(a => a.selected).reduce((s, a) => s + Math.round(a.allocatedAmount), 0);
+      const netAmt = Math.round(parseFloat(addForm.amount) * 100);
+      const whtKobo = Math.round((parseFloat(addForm.whtAmount) || 0) * 100);
+      if (totalAlloc > 0 && totalAlloc !== netAmt + whtKobo) {
+        setAddError(`Allocated sum (₦${(totalAlloc/100).toFixed(2)}) must match net receipt plus WHT (₦${((netAmt+whtKobo)/100).toFixed(2)}).`);
+        return;
+      }
+    }
     const activeAllocations = addForm.allocations
       .filter(a => a.selected && a.allocatedAmount > 0)
       .map(a => ({ invoiceId: a.invoiceId, amount: Math.round(a.allocatedAmount) }));
@@ -937,10 +946,11 @@ export function PaymentsReceivedPage() {
                     className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Amount (₦)</label>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Net Amount Received (₦)</label>
                   <input type="number" step="0.01" value={addForm.amount} onChange={e => setAddForm(f => ({ ...f, amount: e.target.value }))}
                     placeholder="0.00"
                     className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                  <p className="text-[10px] text-slate-400 mt-0.5">Invoice total minus WHT deducted at source</p>
                 </div>
               </div>
 
