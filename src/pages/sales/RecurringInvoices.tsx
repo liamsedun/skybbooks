@@ -135,6 +135,7 @@ export function RecurringInvoicesPage() {
   const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [viewLine, setViewLine] = useState<{ line: RecurringLine; template: RecurringInvoice } | null>(null);
 
   const { data: templates, isLoading, isError } = useQuery<RecurringInvoice[]>({
     queryKey: ['recurring-invoices'],
@@ -356,7 +357,7 @@ export function RecurringInvoicesPage() {
                     {lines.length > 0 && (
                       <div className="mt-3 space-y-1">
                         {lines.map((l, i) => (
-                          <div key={i} className="text-xs text-slate-500 flex gap-2">
+                          <div key={i} onClick={() => setViewLine({ line: l, template: t })} className="text-xs text-slate-500 flex gap-2 cursor-pointer hover:text-slate-700 transition-colors">
                             <span className="text-slate-400">•</span>
                             <span>{l.description}</span>
                             <span className="text-slate-400">×{l.quantity}</span>
@@ -562,6 +563,85 @@ export function RecurringInvoicesPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Line Detail Modal */}
+      {viewLine && (
+        <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 px-4 py-8 overflow-y-auto" onClick={() => setViewLine(null)}>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              <h2 className="text-base font-semibold text-slate-900">Line Item Details</h2>
+              <button onClick={() => setViewLine(null)} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                <div className="col-span-2">
+                  <p className="text-xs text-slate-400 uppercase tracking-wide font-medium">Item</p>
+                  <p className="font-medium text-slate-800 mt-0.5">
+                    {(() => {
+                      const it = (items || []).find(i => i.id === viewLine.line.itemId);
+                      return it?.name || viewLine.line.description;
+                    })()}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400 uppercase tracking-wide font-medium">Description</p>
+                  <p className="text-slate-700 mt-0.5">{viewLine.line.description || '\u2014'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400 uppercase tracking-wide font-medium">Quantity</p>
+                  <p className="text-slate-700 mt-0.5">{viewLine.line.quantity}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400 uppercase tracking-wide font-medium">Unit Price (₦)</p>
+                  <p className="font-mono text-slate-700 mt-0.5">{formatNaira(viewLine.line.unitPrice)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400 uppercase tracking-wide font-medium">Discount</p>
+                  <p className="font-mono text-slate-700 mt-0.5">{viewLine.line.discountPct}%</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400 uppercase tracking-wide font-medium">VAT Rate</p>
+                  <p className="font-mono text-slate-700 mt-0.5">{viewLine.line.taxRate}%</p>
+                </div>
+              </div>
+
+              <div className="border-t border-slate-100 pt-4 space-y-2">
+                {(() => {
+                  const c = calcLine(viewLine.line);
+                  return (
+                    <>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-500">Subtotal</span>
+                        <span className="font-mono text-slate-700">{formatNaira(c.base)}</span>
+                      </div>
+                      {c.disc > 0 && (
+                        <div className="flex justify-between text-sm text-violet-600">
+                          <span>Discount ({viewLine.line.discountPct}%)</span>
+                          <span className="font-mono">\u2212 {formatNaira(c.disc)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-sm text-slate-500">
+                        <span>VAT ({viewLine.line.taxRate}%)</span>
+                        <span className="font-mono">{formatNaira(c.vat)}</span>
+                      </div>
+                      <div className="flex justify-between pt-2 border-t border-slate-200 text-base">
+                        <span className="font-semibold text-slate-800">Line Total</span>
+                        <span className="font-black text-slate-900 font-mono">{formatNaira(c.total)}</span>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+
+              {viewLine.template && (
+                <div className="border-t border-slate-100 pt-3 text-xs text-slate-400">
+                  Part of <span className="font-medium text-slate-600">{(customerMap.get(viewLine.template.customerId)?.name || '\u2014')}</span> · {FREQ_META[viewLine.template.frequency]?.label} billing
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
