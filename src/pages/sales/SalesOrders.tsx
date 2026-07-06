@@ -118,7 +118,7 @@ function formFromSO(so: SalesOrder): SOFormState {
 }
 
 function exportSOsCSV(orders: SalesOrder[], customerMap: Map<string, Customer>) {
-  const headers = ['SO #','Customer','Date','Delivery','Status','Subtotal (₦)','Discount (₦)','Tax (₦)','Total (₦)','Notes'];
+  const headers = ['SO #','Customer','Date','Delivery','Status','Subtotal (₦)','Discount (₦)','VAT (₦)','Total (₦)','Notes'];
   const rows = orders.map(o => [
     o.soNumber, customerMap.get(o.customerId)?.name || o.customerId, o.date, o.expectedDelivery||'', o.status,
     (o.subtotal/100).toFixed(2), (o.discount/100).toFixed(2), (o.tax/100).toFixed(2), (o.total/100).toFixed(2),

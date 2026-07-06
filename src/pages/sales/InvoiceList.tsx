@@ -44,7 +44,7 @@ interface InvoiceListProps {
 }
 
 function exportInvoicesCSV(invoices: any[], customerMap?: Map<string, any>) {
-  const headers = ['Invoice #','Customer','Date','Due Date','Status','Subtotal (₦)','Tax (₦)','Total (₦)','Balance Due (₦)'];
+  const headers = ['Invoice #','Customer','Date','Due Date','Status','Subtotal (₦)','VAT (₦)','Total (₦)','Balance Due (₦)'];
   const rows = invoices.map((inv: any) => {
     const cust = inv.customer?.name || (customerMap?.get(inv.customerId)?.name) || inv.customerId || '';
     return [

@@ -790,7 +790,7 @@ export function InvoiceForm({ invoiceId, onNavigate }: InvoiceFormProps) {
             <div className="space-y-3 text-xs font-semibold text-slate-500">
               
               <div className="flex justify-between items-center">
-                <span>Subtotal (Pre-tax)</span>
+                <span>Subtotal (Pre-VAT)</span>
                 <span className="font-mono text-slate-850 font-bold">
                   {formatNaira(totals.subtotalKobo)}
                 </span>

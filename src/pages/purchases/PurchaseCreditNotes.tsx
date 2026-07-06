@@ -53,7 +53,7 @@ function fmtDate(d: string | null): string {
 }
 
 function exportVendorCreditNotesCSV(notes: VendorCredit[]) {
-  const headers = ['VC #','Vendor','Bill','Date','Status','Subtotal (₦)','Tax (₦)','Total (₦)','Remaining (₦)','Notes'];
+  const headers = ['VC #','Vendor','Bill','Date','Status','Subtotal (₦)','VAT (₦)','Total (₦)','Remaining (₦)','Notes'];
   const rows = notes.map(n => [
     n.vcNumber, n.vendor?.name||'', n.billNumber||'', n.date, n.status,
     (n.subtotal/100).toFixed(2), (n.tax/100).toFixed(2), (n.total/100).toFixed(2), (n.remainingCredit/100).toFixed(2),

@@ -964,7 +964,7 @@ export function PaymentsMadePage() {
                       <th className="px-3 py-2 text-left">Description</th>
                       <th className="px-3 py-2 text-right w-16">Qty</th>
                       <th className="px-3 py-2 text-right w-24">Unit Price</th>
-                      <th className="px-3 py-2 text-right w-20">Tax</th>
+                      <th className="px-3 py-2 text-right w-20">VAT</th>
                       <th className="px-3 py-2 text-right w-24">Total</th>
                     </tr>
                   </thead>
@@ -985,7 +985,7 @@ export function PaymentsMadePage() {
                       <td className="px-3 py-2 text-right text-slate-700">{formatNaira(billDetail.subtotal)}</td>
                     </tr>
                     <tr className="bg-slate-50 text-sm">
-                      <td colSpan={4} className="px-3 py-2 text-slate-600">Tax</td>
+                      <td colSpan={4} className="px-3 py-2 text-slate-600">VAT</td>
                       <td className="px-3 py-2 text-right text-slate-600">{formatNaira(billDetail.taxAmount)}</td>
                     </tr>
                     <tr className="bg-slate-50 text-sm font-bold">

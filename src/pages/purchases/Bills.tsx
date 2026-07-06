@@ -530,7 +530,7 @@ function BillList() {
                         <td colSpan={8} className="px-6 py-4 bg-slate-50/80 border-b border-slate-100">
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
                             <div><span className="text-slate-400 uppercase font-semibold tracking-wide">Subtotal</span><p className="font-semibold mt-1">{formatNaira(bill.subtotal)}</p></div>
-                            <div><span className="text-slate-400 uppercase font-semibold tracking-wide">Tax</span><p className="font-semibold mt-1">{formatNaira(bill.taxAmount)}</p></div>
+                            <div><span className="text-slate-400 uppercase font-semibold tracking-wide">VAT</span><p className="font-semibold mt-1">{formatNaira(bill.taxAmount)}</p></div>
                             <div><span className="text-slate-400 uppercase font-semibold tracking-wide">Amount Paid</span><p className="font-semibold mt-1 text-green-600">{formatNaira(bill.amountPaid)}</p></div>
                             <div><span className="text-slate-400 uppercase font-semibold tracking-wide">Currency</span><p className="font-semibold mt-1">{bill.currency}</p></div>
                           </div>
@@ -619,7 +619,7 @@ function BillList() {
                           <th className="px-3 py-2 text-left">Description</th>
                           <th className="px-3 py-2 text-left w-16">Qty</th>
                           <th className="px-3 py-2 text-left w-28">Unit Price (₦)</th>
-                          <th className="px-3 py-2 text-left w-16">Tax %</th>
+                          <th className="px-3 py-2 text-left w-16">VAT %</th>
                           <th className="px-3 py-2 text-left">Account</th>
                           <th className="px-3 py-2 text-right w-28">Total (₦)</th>
                           <th className="px-2 py-2 w-6" />
@@ -708,7 +708,7 @@ function BillList() {
                     <span className="font-medium">₦{subtotal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
                   </div>
                   <div className="flex justify-between text-slate-600">
-                    <span>Tax</span>
+                    <span>VAT</span>
                     <span className="font-medium">₦{taxTotal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
                   </div>
                   <div className="flex justify-between font-bold text-slate-900 pt-2 border-t border-slate-200">
@@ -956,7 +956,7 @@ function BillDetail({ id, onBack }: { id: string; onBack: () => void }) {
                         <th style="padding:10px 12px;text-align:right;font-size:10px;font-weight:600;color:white;text-transform:uppercase;letter-spacing:0.06em">Qty</th>
                         <th style="padding:10px 12px;text-align:right;font-size:10px;font-weight:600;color:white;text-transform:uppercase;letter-spacing:0.06em">Unit Price</th>
                         <th style="padding:10px 12px;text-align:right;font-size:10px;font-weight:600;color:white;text-transform:uppercase;letter-spacing:0.06em">Subtotal</th>
-                        <th style="padding:10px 12px;text-align:right;font-size:10px;font-weight:600;color:white;text-transform:uppercase;letter-spacing:0.06em">Tax</th>
+                        <th style="padding:10px 12px;text-align:right;font-size:10px;font-weight:600;color:white;text-transform:uppercase;letter-spacing:0.06em">VAT</th>
                         <th style="padding:10px 12px;text-align:right;font-size:10px;font-weight:600;color:white;text-transform:uppercase;letter-spacing:0.06em">Total</th>
                       </tr>
                     </thead>
@@ -968,7 +968,7 @@ function BillDetail({ id, onBack }: { id: string; onBack: () => void }) {
                       <span style="font-weight:600;color:#334155;font-family:monospace">${formatNaira(bill.subtotal)}</span>
                     </div>
                     <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0">
-                      <span style="color:#64748b">Tax</span>
+                      <span style="color:#64748b">VAT</span>
                       <span style="font-weight:600;color:#334155;font-family:monospace">${formatNaira(bill.taxAmount)}</span>
                     </div>
                     <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-top:1px solid #e2e8f0;margin-top:4px;padding-top:8px">
@@ -1088,7 +1088,7 @@ function BillDetail({ id, onBack }: { id: string; onBack: () => void }) {
                   <th className="px-4 py-2.5 text-left">Description</th>
                   <th className="px-4 py-2.5 text-right">Qty</th>
                   <th className="px-4 py-2.5 text-right">Unit Price</th>
-                  <th className="px-4 py-2.5 text-right">Tax %</th>
+                  <th className="px-4 py-2.5 text-right">VAT %</th>
                   <th className="px-4 py-2.5 text-right">Total</th>
                 </tr>
               </thead>
@@ -1115,7 +1115,7 @@ function BillDetail({ id, onBack }: { id: string; onBack: () => void }) {
                   <td className="px-4 py-2.5 text-right text-slate-700">{formatNaira(bill.subtotal)}</td>
                 </tr>
                 <tr className="bg-slate-50 text-sm">
-                  <td colSpan={5} className="px-4 py-2.5 text-slate-600 text-right">Tax</td>
+                  <td colSpan={5} className="px-4 py-2.5 text-slate-600 text-right">VAT</td>
                   <td className="px-4 py-2.5 text-right text-slate-700">{formatNaira(bill.taxAmount)}</td>
                 </tr>
                 <tr className="bg-slate-50 border-t border-slate-200 text-sm font-bold">

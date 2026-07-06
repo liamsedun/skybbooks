@@ -93,7 +93,7 @@ function formFromQuote(q: Quote): QuoteFormState {
 }
 
 function exportQuotesCSV(quotes: Quote[], customerMap: Map<string, Customer>) {
-  const headers = ['Quote #','Customer','Date','Expiry','Status','Subtotal (₦)','Discount (₦)','Tax (₦)','Total (₦)','Notes'];
+  const headers = ['Quote #','Customer','Date','Expiry','Status','Subtotal (₦)','Discount (₦)','VAT (₦)','Total (₦)','Notes'];
   const rows = quotes.map(q => [
     q.quoteNumber, customerMap.get(q.customerId)?.name || q.customerId, q.date, q.expiryDate||'', q.status,
     (q.subtotal/100).toFixed(2), (q.discount/100).toFixed(2), (q.tax/100).toFixed(2), (q.total/100).toFixed(2),

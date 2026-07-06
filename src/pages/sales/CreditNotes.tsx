@@ -60,7 +60,7 @@ function fmtDate(d: string | null): string {
 }
 
 function exportCreditNotesCSV(notes: CreditNote[]) {
-  const headers = ['CN #','Customer','Date','Status','Subtotal (₦)','Tax (₦)','Total (₦)','Remaining (₦)','Notes'];
+  const headers = ['CN #','Customer','Date','Status','Subtotal (₦)','VAT (₦)','Total (₦)','Remaining (₦)','Notes'];
   const rows = notes.map(n => [
     n.cnNumber, n.customer?.name||'', n.date, n.status,
     (n.subtotal/100).toFixed(2), (n.tax/100).toFixed(2), (n.total/100).toFixed(2), (n.remainingCredit/100).toFixed(2),
