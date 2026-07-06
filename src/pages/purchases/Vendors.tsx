@@ -325,7 +325,7 @@ function VendorsList() {
                   </td>
                   <td className="py-3 px-2 text-xs text-slate-500">{[v.city,v.state,v.country].filter(Boolean).join(', ')||'—'}</td>
                   <td className="py-3 px-2">
-                    {v.paymentTerms ? <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium">Net {v.paymentTerms}</span> : <span className="text-slate-300">—</span>}
+                    {v.paymentTerms ? <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium whitespace-nowrap">Net {v.paymentTerms}</span> : <span className="text-slate-300">—</span>}
                   </td>
                   <td className="py-3 px-2 text-xs text-slate-500 font-mono">{v.taxPin||'—'}</td>
                   <td className="py-3 px-2 text-center">
