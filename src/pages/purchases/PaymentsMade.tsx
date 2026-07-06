@@ -145,6 +145,12 @@ export function PaymentsMadePage() {
     },
   });
 
+  const { data: org } = useQuery<any>({
+    queryKey: ['org'],
+    queryFn: async () => { const r = await api.get('/org'); return r.data; },
+    staleTime: 60000,
+  });
+
   // Fetch payment detail
   const { data: paymentDetail, isLoading: loadingDetail } = useQuery<PaymentDetail>({
     queryKey: ['payment-detail', detailPaymentId],
@@ -161,6 +167,7 @@ export function PaymentsMadePage() {
 
   const vendorMap = useMemo(() => new Map(vendors.map(v => [v.id, v.name])), [vendors]);
   const accountMap = useMemo(() => new Map(accounts.map(a => [a.id, a.name])), [accounts]);
+  const billNumberMap = useMemo(() => new Map(allBills.map(b => [b.id, b.billNumber])), [allBills]);
   const assetAccounts = useMemo(() => accounts.filter(a => a.type === 'asset'), [accounts]);
 
   const vendorBills = useMemo(() =>
@@ -481,103 +488,195 @@ export function PaymentsMadePage() {
         {detailPaymentId && (
           <div className="w-full lg:w-96 shrink-0">
             <div className="bg-white border border-slate-200 rounded-xl overflow-hidden sticky top-6">
-              <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-                <div>
-                  <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Payment Detail</p>
-                  <p className="text-base font-bold text-slate-900 mt-0.5">{selectedPayment?.paymentNumber}</p>
-                </div>
-                <div className="flex items-center gap-1">
-                  <button onClick={() => selectedPayment && openEditModal(selectedPayment)}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100" title="Edit">
-                    <Pencil size={16} />
-                  </button>
-                  <button onClick={() => setDetailPaymentId(null)}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100">
-                    <X size={16} />
-                  </button>
-                </div>
-              </div>
-
               {loadingDetail ? (
                 <div className="flex items-center justify-center py-12 text-slate-400">
                   <Loader2 size={18} className="animate-spin mr-2" />Loading...
                 </div>
               ) : paymentDetail ? (
-                <div className="p-5 space-y-5">
-                  <div className="space-y-3">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-slate-400">Vendor</span>
-                      <span className="font-medium text-slate-800">{vendorMap.get(paymentDetail.vendorId) || '—'}</span>
+                <>
+                  {/* Voucher header */}
+                  <div className="px-5 pt-5 pb-3 border-b border-slate-100">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        {org?.logoUrl ? (
+                          <img src={org.logoUrl} alt="" className="w-10 h-10 rounded-lg object-contain border border-slate-200 bg-white p-1" />
+                        ) : (
+                          <div className="w-10 h-10 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-lg">{(org?.name||'S')[0].toUpperCase()}</div>
+                        )}
+                        <div>
+                          <p className="text-sm font-bold text-slate-900">{org?.name || 'Your Company'}</p>
+                          {org?.address && <p className="text-[10px] text-slate-400 leading-tight">{org.address}</p>}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => selectedPayment && openEditModal(selectedPayment)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100" title="Edit">
+                          <Pencil size={16} />
+                        </button>
+                        <button onClick={() => setDetailPaymentId(null)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100">
+                          <X size={16} />
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-slate-400">Date</span>
-                      <span className="font-medium text-slate-800">{fmtDate(paymentDetail.date)}</span>
+                    <p className="text-[10px] font-semibold text-indigo-600 uppercase tracking-widest">Payment Voucher</p>
+                    <p className="text-lg font-bold text-slate-900 mt-0.5 tracking-tight">{paymentDetail.paymentNumber}</p>
+                  </div>
+
+                  {/* Voucher body */}
+                  <div className="p-5 space-y-4">
+                    {/* Info grid */}
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-sm">
+                      <div>
+                        <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">Vendor</p>
+                        <p className="font-semibold text-slate-800 mt-0.5">{vendorMap.get(paymentDetail.vendorId) || '—'}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">Date</p>
+                        <p className="font-semibold text-slate-800 mt-0.5">{fmtDate(paymentDetail.date)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">Method</p>
+                        <p className="font-semibold text-slate-800 mt-0.5 capitalize">{paymentDetail.paymentMethod?.replace('_', ' ')}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">Account</p>
+                        <p className="font-semibold text-slate-800 mt-0.5">{accountMap.get(paymentDetail.accountId || '') || '—'}</p>
+                      </div>
+                      {paymentDetail.reference && (
+                        <div className="col-span-2">
+                          <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">Reference</p>
+                          <p className="font-semibold text-slate-800 mt-0.5 text-xs font-mono">{paymentDetail.reference}</p>
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">Currency</p>
+                        <p className="font-semibold text-slate-800 mt-0.5">{paymentDetail.currency || 'NGN'}</p>
+                      </div>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-slate-400">Method</span>
-                      <span className="font-medium text-slate-800 capitalize">{paymentDetail.paymentMethod?.replace('_', ' ')}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-slate-400">Account</span>
-                      <span className="font-medium text-slate-800">{accountMap.get(paymentDetail.accountId || '') || '—'}</span>
-                    </div>
-                    {paymentDetail.reference && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-slate-400">Reference</span>
-                        <span className="font-medium text-slate-800 font-mono text-xs">{paymentDetail.reference}</span>
+
+                    {/* Allocations table */}
+                    {paymentDetail.allocations && paymentDetail.allocations.length > 0 && (
+                      <div>
+                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-2">Allocated Bills</p>
+                        <div className="border border-slate-200 rounded-lg overflow-hidden">
+                          <table className="w-full text-xs">
+                            <thead>
+                              <tr className="bg-slate-50">
+                                <th className="text-left px-3 py-2 font-medium text-slate-500">Bill #</th>
+                                <th className="text-right px-3 py-2 font-medium text-slate-500">Amount</th>
+                                <th className="w-0 px-3 py-2"></th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                              {paymentDetail.allocations.map(alloc => (
+                                <tr key={alloc.id} className="hover:bg-slate-50">
+                                  <td className="px-3 py-2 font-mono font-medium text-slate-800">
+                                    {billNumberMap.get(alloc.billId) || alloc.billId.substring(0, 8) + '...'}
+                                  </td>
+                                  <td className="px-3 py-2 text-right font-mono font-semibold text-rose-700">{formatNaira(alloc.amount)}</td>
+                                  <td className="px-3 py-2">
+                                    <button onClick={() => setViewBillId(alloc.billId)}
+                                      className="text-indigo-600 hover:text-indigo-800 underline font-medium whitespace-nowrap">
+                                      View Bill
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
                     )}
-                    <div className="flex justify-between text-sm">
-                      <span className="text-slate-400">Currency</span>
-                      <span className="font-medium text-slate-800">{paymentDetail.currency || 'NGN'}</span>
-                    </div>
-                    <div className="flex justify-between items-center py-3 border-t border-slate-100">
+
+                    {/* Total */}
+                    <div className="flex items-center justify-between py-3 px-4 bg-slate-50 rounded-lg border border-slate-200">
                       <span className="text-sm font-semibold text-slate-700">Total Disbursed</span>
                       <span className="text-lg font-black text-rose-700 font-mono">{formatNaira(paymentDetail.amount)}</span>
                     </div>
-                  </div>
 
-                  {paymentDetail.allocations && paymentDetail.allocations.length > 0 && (
-                    <div>
-                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-1.5">
-                        <FileText size={12} />Allocated To
-                      </p>
-                      <div className="space-y-2">
-                        {paymentDetail.allocations.map(alloc => (
-                          <div key={alloc.id}
-                            className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100 hover:border-slate-200 transition-colors">
-                            <div className="min-w-0 flex-1">
-                              <p className="text-sm font-semibold text-slate-800 font-mono">
-                                {alloc.billId.substring(0, 8) + '...'}
-                              </p>
-                              <p className="text-xs font-medium text-rose-700 mt-0.5">
-                                Applied: {formatNaira(alloc.amount)}
-                              </p>
-                            </div>
-                            <button onClick={() => setViewBillId(alloc.billId)}
-                              className="ml-2 text-xs text-primary hover:text-primary-hover underline shrink-0">
-                              View Bill
-                            </button>
-                          </div>
-                        ))}
+                    {/* Notes */}
+                    {paymentDetail.notes && (
+                      <div className="p-3 bg-amber-50 border border-amber-100 rounded-lg">
+                        <p className="text-[10px] font-semibold text-amber-600 uppercase tracking-wide mb-1">Notes</p>
+                        <p className="text-sm text-amber-800 leading-relaxed">{paymentDetail.notes}</p>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {paymentDetail.notes && (
-                    <div>
-                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Notes</p>
-                      <p className="text-sm text-slate-600 leading-relaxed">{paymentDetail.notes}</p>
+                    {/* Actions */}
+                    <div className="flex gap-2 pt-2">
+                      <button onClick={() => {
+                        const logoHtml = org?.logoUrl
+                          ? `<img src="${org.logoUrl}" alt="" style="width:48px;height:48px;border-radius:8px;object-fit:contain;border:1px solid #e2e8f0;background:white;padding:4px"/>`
+                          : `<div style="width:48px;height:48px;border-radius:8px;background:#4f46e5;display:flex;align-items:center;justify-content:center;color:white;font-size:22px;font-weight:bold">${(org?.name||'S')[0].toUpperCase()}</div>`;
+                        const allocRows = (paymentDetail.allocations||[]).map(a => `<tr><td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;font-size:12px;font-family:monospace;color:#334155;font-weight:500">${billNumberMap.get(a.billId)||a.billId.substring(0,8)+'...'}</td><td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;font-size:12px;text-align:right;color:#dc2626;font-family:monospace;font-weight:600">${formatNaira(a.amount)}</td></tr>`).join('');
+                        const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Payment Voucher ${paymentDetail.paymentNumber}</title>
+                        <style>
+                          *{margin:0;padding:0;box-sizing:border-box}
+                          body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1e293b;padding:40px;font-size:13px}
+                          @media print{body{padding:20px}}
+                        </style></head><body>
+                          <div style="height:4px;background:linear-gradient(90deg,#4f46e5,#7c3aed,#818cf8);border-radius:2px;margin-bottom:28px"></div>
+                          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:28px">
+                            <div style="display:flex;align-items:flex-start;gap:12px">
+                              ${logoHtml}
+                              <div>
+                                <h2 style="font-size:16px;font-weight:bold;color:#0f172a;margin:0">${org?.name||'Your Company'}</h2>
+                                ${org?.address ? `<p style="font-size:11px;color:#64748b;margin:3px 0">${org.address}</p>` : ''}
+                                <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:2px">
+                                  ${org?.phone ? `<span style="font-size:10px;color:#64748b">${org.phone}</span>` : ''}
+                                  ${org?.email ? `<span style="font-size:10px;color:#64748b">${org.email}</span>` : ''}
+                                  ${org?.website ? `<span style="font-size:10px;color:#4f46e5">${org.website}</span>` : ''}
+                                </div>
+                              </div>
+                            </div>
+                            <div style="text-align:right">
+                              <p style="font-size:10px;font-weight:600;color:#4f46e5;text-transform:uppercase;letter-spacing:0.12em;margin:0 0 4px 0">Payment Voucher</p>
+                              <p style="font-size:22px;font-weight:bold;color:#0f172a;margin:0;letter-spacing:-0.02em">${paymentDetail.paymentNumber}</p>
+                              <p style="font-size:10px;color:#64748b;margin-top:4px">${fmtDate(paymentDetail.date)}</p>
+                            </div>
+                          </div>
+                          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:16px 20px;background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;margin-bottom:24px">
+                            <div>
+                              <p style="font-size:9px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 4px 0">Paid To</p>
+                              <p style="font-size:14px;font-weight:bold;color:#0f172a;margin:0">${vendorMap.get(paymentDetail.vendorId)||'—'}</p>
+                              <p style="font-size:11px;color:#64748b;margin-top:4px">Method: <span style="text-transform:capitalize;font-weight:500">${paymentDetail.paymentMethod?.replace('_',' ')}</span></p>
+                              <p style="font-size:11px;color:#64748b;margin-top:2px">Account: ${accountMap.get(paymentDetail.accountId||'')||'—'}</p>
+                              ${paymentDetail.reference ? `<p style="font-size:11px;color:#64748b;margin-top:2px">Reference: ${paymentDetail.reference}</p>` : ''}
+                              <p style="font-size:11px;color:#64748b;margin-top:2px">Currency: ${paymentDetail.currency||'NGN'}</p>
+                            </div>
+                          </div>
+                          <table style="width:100%;border-collapse:collapse">
+                            <thead>
+                              <tr style="background:#0f172a">
+                                <th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:600;color:white;text-transform:uppercase;letter-spacing:0.06em">Bill #</th>
+                                <th style="padding:10px 12px;text-align:right;font-size:10px;font-weight:600;color:white;text-transform:uppercase;letter-spacing:0.06em">Amount Paid</th>
+                              </tr>
+                            </thead>
+                            <tbody>${allocRows||'<tr><td colspan="2" style="text-align:center;padding:20px;color:#94a3b8">No allocations</td></tr>'}</tbody>
+                            <tfoot>
+                              <tr style="background:#f1f5f9">
+                                <td style="padding:10px 12px;font-size:13px;font-weight:700;color:#0f172a">Total Disbursed</td>
+                                <td style="padding:10px 12px;font-size:13px;font-weight:800;color:#dc2626;text-align:right;font-family:monospace">${formatNaira(paymentDetail.amount)}</td>
+                              </tr>
+                            </tfoot>
+                          </table>
+                          ${paymentDetail.notes ? `<div style="margin-top:20px;padding:12px 16px;background:#fefce8;border:1px solid #fde68a;border-radius:8px;font-size:11px;color:#92400e"><strong style="font-weight:600">Notes:</strong> ${paymentDetail.notes}</div>` : ''}
+                          <div style="text-align:center;font-size:9px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:16px;margin-top:40px">${org?.name||'SkyBooks'} · Payment Voucher · Generated ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}</div>
+                        </body></html>`;
+                        const w = window.open('','_blank');
+                        if(w){w.document.write(html);w.document.close();setTimeout(()=>w.print(),500);}
+                      }}
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors">
+                        <FileText size={14} /> Print PDF
+                      </button>
+                      <button onClick={() => { setDeleteTarget(selectedPayment!); setDeleteError(null); }}
+                        className="flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-rose-600 border border-rose-200 rounded-lg hover:bg-rose-50 transition-colors">
+                        <Trash2 size={14} />Reverse
+                      </button>
                     </div>
-                  )}
-
-                  <div className="pt-2 border-t border-slate-100">
-                    <button onClick={() => { setDeleteTarget(selectedPayment!); setDeleteError(null); }}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-rose-600 border border-rose-200 rounded-lg hover:bg-rose-50 transition-colors">
-                      <Trash2 size={14} />Reverse Payment
-                    </button>
                   </div>
-                </div>
+                </>
               ) : null}
             </div>
           </div>
