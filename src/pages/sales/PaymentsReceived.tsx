@@ -46,6 +46,8 @@ interface PaymentAllocation {
 interface PaymentDetail extends Payment {
   allocations: PaymentAllocation[];
   type: string;
+  whtAmount?: number;
+  totalAllocated?: number;
 }
 
 interface InvoiceDetail {
@@ -790,10 +792,27 @@ export function PaymentsReceivedPage() {
                           <span className="font-medium text-slate-800 font-mono">{detail.reference}</span>
                         </div>
                       )}
-                      <div className="flex justify-between items-center py-3 border-t border-slate-100">
-                        <span className="text-sm font-semibold text-slate-700">Total Received</span>
-                        <span className="text-lg font-black text-emerald-700 font-mono">{formatNaira(detail.amount)}</span>
-                      </div>
+                      {(detail.whtAmount || 0) > 0 ? (
+                        <div className="border-t border-slate-100 pt-3 space-y-1.5">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-slate-500">Invoice Amount</span>
+                            <span className="font-mono text-slate-700">{formatNaira(detail.totalAllocated || detail.amount)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-slate-500">Less: WHT Withheld by Customer</span>
+                            <span className="font-mono text-amber-600">\u2212 {formatNaira(detail.whtAmount!)}</span>
+                          </div>
+                          <div className="flex justify-between items-center pt-1.5 border-t border-slate-100">
+                            <span className="text-sm font-semibold text-slate-700">Net Amount Received</span>
+                            <span className="text-lg font-black text-emerald-700 font-mono">{formatNaira(detail.amount)}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex justify-between items-center py-3 border-t border-slate-100">
+                          <span className="text-sm font-semibold text-slate-700">Total Received</span>
+                          <span className="text-lg font-black text-emerald-700 font-mono">{formatNaira(detail.amount)}</span>
+                        </div>
+                      )}
                     </div>
 
                     {detail.allocations && detail.allocations.length > 0 && (
@@ -1287,10 +1306,29 @@ function ReceiptModal({ paymentId, onClose, customerMap, org }: {
                 </div>
 
                 {/* Amount */}
-                <div className="flex flex-col items-center justify-center py-6 bg-slate-50 rounded-xl border border-slate-100">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Amount Received</p>
-                  <p className="text-3xl font-black text-emerald-700 font-mono tracking-tight">{formatNaira(payment.amount)}</p>
-                  <p className="text-[11px] text-slate-400 mt-1">{payment.currency}</p>
+                <div className="space-y-2 bg-slate-50 rounded-xl border border-slate-100 p-5">
+                  {(payment.whtAmount || 0) > 0 ? (
+                    <>
+                      <div className="flex justify-between text-[11px]">
+                        <span className="text-slate-500">Invoice Amount</span>
+                        <span className="font-mono font-semibold text-slate-700">{formatNaira(payment.totalAllocated || payment.amount)}</span>
+                      </div>
+                      <div className="flex justify-between text-[11px]">
+                        <span className="text-slate-500">Less: WHT Withheld by Customer</span>
+                        <span className="font-mono font-medium text-amber-600">\u2212 {formatNaira(payment.whtAmount!)}</span>
+                      </div>
+                      <div className="flex justify-between items-center pt-2 border-t border-slate-200">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Net Amount Received</p>
+                        <p className="text-xl font-black text-emerald-700 font-mono tracking-tight">{formatNaira(payment.amount)}</p>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Amount Received</p>
+                      <p className="text-3xl font-black text-emerald-700 font-mono tracking-tight">{formatNaira(payment.amount)}</p>
+                    </div>
+                  )}
+                  <p className="text-[11px] text-slate-400 text-center mt-1">{payment.currency}</p>
                 </div>
 
                 {payment.notes && (
