@@ -108,6 +108,7 @@ interface StatementLine {
   debit: number;
   credit: number;
   balance: number;
+  status?: string;
 }
 
 interface StatementResponse {
@@ -476,7 +477,7 @@ function VendorDetail({ id }: { id: string }) {
     staleTime: 60000,
   });
 
-  const { data: statement, isLoading: loadingStatement } = useQuery<StatementResponse>({
+  const { data: statement, isLoading: loadingStatement, isError: isStatementError } = useQuery<StatementResponse>({
     queryKey: ['purchases', 'vendor', id, 'statement'],
     queryFn: async () => {
       const res = await api.get(`/purchases/vendors/${id}/statement`);
@@ -638,6 +639,13 @@ function VendorDetail({ id }: { id: string }) {
             <Loader2 size={18} className="animate-spin mr-2" />
             Loading statement...
           </div>
+        ) : isStatementError ? (
+          <div className="text-center py-12 text-sm text-rose-500 flex flex-col items-center gap-2">
+            <AlertCircle size={18} />
+            <span>Failed to load statement.</span>
+            <button onClick={() => queryClient.invalidateQueries({ queryKey: ['purchases', 'vendor', id, 'statement'] })}
+              className="text-xs text-indigo-600 hover:underline font-medium">Retry</button>
+          </div>
         ) : !statement || statement.ledgerStatement.length === 0 ? (
           <div className="text-center py-12 text-sm text-slate-400">No transactions yet.</div>
         ) : (
@@ -659,9 +667,10 @@ function VendorDetail({ id }: { id: string }) {
                 const isPayment = line.type === 'payment';
                 const isCredit = line.type === 'vendor_credit';
                 const isOpening = line.type === 'opening_balance';
-                const isClickable = isBill || isPayment || isCredit;
+                const isDraftBill = isBill && line.status === 'draft';
+                const isClickable = (isBill || isPayment || isCredit) && !isDraftBill;
                 function handleRowClick() {
-                  if (isBill) navigate(`/purchases/bills/${line.id}`);
+                  if (isBill && !isDraftBill) navigate(`/purchases/bills/${line.id}`);
                   else if (isPayment) navigate(`/purchases/payments?selected=${line.id}`);
                   else if (isCredit) navigate(`/purchases/credit-notes?selected=${line.id}`);
                 }
@@ -669,17 +678,27 @@ function VendorDetail({ id }: { id: string }) {
                   <tr
                     key={line.id}
                     onClick={() => isClickable && handleRowClick()}
-                    className={`hover:bg-slate-50 transition-colors ${isClickable ? "cursor-pointer hover:bg-indigo-50/60" : ""} ${isOpening ? "bg-slate-50 font-medium" : ""}`}
+                    className={`hover:bg-slate-50 transition-colors ${isClickable ? "cursor-pointer hover:bg-indigo-50/60" : ""} ${isOpening ? "bg-slate-50 font-medium" : ""} ${isDraftBill ? "opacity-60" : ""}`}
                   >
                     <td className="py-2.5 pl-4 pr-3 text-sm text-slate-600">
                       {isOpening ? '—' : new Date(line.date).toLocaleDateString('en-GB')}
                     </td>
                     <td className="py-2.5 pr-3">
-                      <span className={`text-xs font-medium capitalize ${isBill ? "text-indigo-600" : isPayment ? "text-emerald-600" : isCredit ? "text-amber-600" : isOpening ? "text-slate-800" : "text-slate-500"}`}>{line.type.replace('_', ' ')}</span>
+                      <span className={`inline-flex items-center gap-1.5 text-xs font-medium capitalize ${isBill ? "text-indigo-600" : isPayment ? "text-emerald-600" : isCredit ? "text-amber-600" : isOpening ? "text-slate-800" : "text-slate-500"}`}>
+                        {line.type.replace('_', ' ')}
+                        {line.status && line.status !== 'posted' && (
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${
+                            line.status === 'draft' ? 'bg-slate-100 text-slate-500' :
+                            line.status === 'paid' ? 'bg-emerald-50 text-emerald-700' :
+                            line.status === 'void' ? 'bg-rose-50 text-rose-500' :
+                            'bg-slate-50 text-slate-400'
+                          }`}>{line.status}</span>
+                        )}
+                      </span>
                     </td>
                     <td className="py-2.5 pr-3 text-sm font-mono">
-                      {isClickable ? (
-                        <span className="text-indigo-600 hover:underline font-medium">{line.number}</span>
+                      {isClickable || isDraftBill ? (
+                        <span className={`${isDraftBill ? 'text-slate-400' : 'text-indigo-600 hover:underline'} font-medium`}>{line.number}</span>
                       ) : (
                         <span className="text-slate-600">{line.number || '—'}</span>
                       )}
@@ -842,17 +861,24 @@ function VendorDetail({ id }: { id: string }) {
             <tbody>
               {statement?.ledgerStatement.map((line, idx) => {
                 const isLast = idx === (statement?.ledgerStatement.length || 0) - 1;
+                const isDraft = line.status === 'draft';
                 return (
                   <tr key={line.id} style={{
                     borderBottom: '1px solid #f1f5f9',
                     background: line.type === 'opening_balance' ? '#f8fafc' : isLast ? '#f0fdf4' : 'transparent',
-                    fontWeight: isLast ? '600' : 'normal'
+                    fontWeight: isLast ? '600' : 'normal',
+                    opacity: isDraft ? '0.5' : '1'
                   }}>
                     <td style={{ padding: '8px', color: '#475569', fontSize: '11px' }}>
                       {line.type === 'opening_balance' ? '—' : fmtDate(line.date)}
                     </td>
-                    <td style={{ padding: '8px', color: '#475569', fontSize: '11px', textTransform: 'capitalize' }}>{line.type.replace('_', ' ')}</td>
-                    <td style={{ padding: '8px', fontFamily: 'monospace', color: '#334155', fontSize: '11px' }}>{line.number || '—'}</td>
+                    <td style={{ padding: '8px', color: '#475569', fontSize: '11px', textTransform: 'capitalize' }}>
+                      {line.type.replace('_', ' ')}
+                      {line.status && line.status !== 'posted' && (
+                        <span style={{ display: 'inline-block', fontSize: '9px', padding: '1px 6px', borderRadius: '10px', fontWeight: '600', marginLeft: '4px', background: line.status === 'draft' ? '#f1f5f9' : '#dcfce7', color: line.status === 'draft' ? '#64748b' : '#166534', verticalAlign: 'middle' }}>{line.status}</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '8px', fontFamily: 'monospace', color: isDraft ? '#94a3b8' : '#334155', fontSize: '11px' }}>{line.number || '—'}</td>
                     <td style={{ padding: '8px', color: '#94a3b8', fontSize: '11px' }}>{line.reference || '—'}</td>
                     <td style={{ padding: '8px', textAlign: 'right', color: '#dc2626', fontSize: '11px' }}>{line.debit > 0 ? formatNaira(line.debit) : '—'}</td>
                     <td style={{ padding: '8px', textAlign: 'right', color: '#16a34a', fontSize: '11px' }}>{line.credit > 0 ? formatNaira(line.credit) : '—'}</td>

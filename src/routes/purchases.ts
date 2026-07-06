@@ -875,15 +875,17 @@ router.get('/vendors/:id/statement', async (req: AuthenticatedRequest, res: Resp
 
     // Map bills: bills are liabilities (CR Accounts Payable)
     for (const bl of vendorBills) {
-      if (bl.status === 'draft' || bl.status === 'void') continue;
+      if (bl.status === 'void') continue;
+      const isDraft = bl.status === 'draft';
       transactionsList.push({
         id: bl.id,
         date: new Date(bl.date),
         type: 'bill',
         number: bl.billNumber,
-        reference: 'Supplier Purchase Invoice',
+        reference: isDraft ? 'Draft Bill (not yet posted)' : 'Supplier Purchase Invoice',
         debit: 0,
-        credit: bl.total
+        credit: isDraft ? 0 : bl.total,
+        status: bl.status
       });
     }
 
@@ -896,7 +898,8 @@ router.get('/vendors/:id/statement', async (req: AuthenticatedRequest, res: Resp
         number: pmt.paymentNumber,
         reference: pmt.reference || 'Vendor Disbursement',
         debit: pmt.amount,
-        credit: 0
+        credit: 0,
+        status: 'posted'
       });
     }
 
@@ -910,7 +913,8 @@ router.get('/vendors/:id/statement', async (req: AuthenticatedRequest, res: Resp
         number: cr.vcNumber,
         reference: 'Supplier Return Credit Note',
         debit: cr.total,
-        credit: 0
+        credit: 0,
+        status: cr.status
       });
     }
 
