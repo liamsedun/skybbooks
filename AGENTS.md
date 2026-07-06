@@ -41,11 +41,14 @@ Maintain and enhance accounting features: fix kobo/naira display, parent-child a
 - Trial balance drill-down links preserved over hierarchical tree display when trade-off arose
 - `balance` column in contacts table doubles as opening balance for vendors, stored in kobo
 - Customer code uses count+1 of existing customer records per org (not a dedicated sequence table)
+- PO approval flow: draft → confirmed → accepted → approved → bill/expense; only draft can be deleted, draft+confirmed can be edited
+- PO status enum extended with `confirmed`, `accepted`, `approved` for the approval workflow
 
 ## Next Steps
 1. Push to origin/main and verify Render auto-deploy completes
 2. Test period close flow end-to-end
 3. Test bank reconciliation statement print
+4. Investigate Purchase Order unit price bug: AMC Tier 2 item shows extra zero (2,500,000 instead of 250,000) — likely a data issue with the item's stored `purchasePrice` value rather than a code bug
 
 ## Critical Context
 - `TrialBalanceRow` type no longer includes `parentId` after revert (field removed from backend type and response)

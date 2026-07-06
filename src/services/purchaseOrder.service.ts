@@ -149,8 +149,8 @@ export async function updatePO(poId: string, input: any, userId: string): Promis
       .limit(1);
 
     if (!po) throw new AppError('Purchase order not found.', 404);
-    if (po.status !== 'draft') {
-      throw new AppError('Only draft purchase orders can be modified.', 400);
+    if (po.status !== 'draft' && po.status !== 'confirmed') {
+      throw new AppError('Only draft or confirmed purchase orders can be modified.', 400);
     }
 
     let subtotal = po.subtotal;
@@ -246,6 +246,45 @@ export async function sendPO(poId: string, userId: string): Promise<any> {
   };
 }
 
+export async function confirmPO(poId: string, userId: string): Promise<any> {
+  const [po] = await db
+    .update(purchaseOrders)
+    .set({ status: 'confirmed' })
+    .where(and(eq(purchaseOrders.id, poId), eq(purchaseOrders.status, 'draft')))
+    .returning();
+
+  if (!po) throw new AppError('Purchase order not found or not in draft status.', 404);
+
+  const decoded = deserializePoNotesAndLines(po.notes);
+  return { ...po, notes: decoded.userNotes, lines: decoded.virtualLines };
+}
+
+export async function acceptPO(poId: string, userId: string): Promise<any> {
+  const [po] = await db
+    .update(purchaseOrders)
+    .set({ status: 'accepted' })
+    .where(and(eq(purchaseOrders.id, poId), eq(purchaseOrders.status, 'confirmed')))
+    .returning();
+
+  if (!po) throw new AppError('Purchase order not found or not in confirmed status.', 404);
+
+  const decoded = deserializePoNotesAndLines(po.notes);
+  return { ...po, notes: decoded.userNotes, lines: decoded.virtualLines };
+}
+
+export async function approvePO(poId: string, userId: string): Promise<any> {
+  const [po] = await db
+    .update(purchaseOrders)
+    .set({ status: 'approved' })
+    .where(and(eq(purchaseOrders.id, poId), eq(purchaseOrders.status, 'accepted')))
+    .returning();
+
+  if (!po) throw new AppError('Purchase order not found or not in accepted status.', 404);
+
+  const decoded = deserializePoNotesAndLines(po.notes);
+  return { ...po, notes: decoded.userNotes, lines: decoded.virtualLines };
+}
+
 export async function convertToBill(poId: string, userId: string): Promise<any> {
   const [poRow] = await db.select({ orgId: purchaseOrders.orgId }).from(purchaseOrders).where(eq(purchaseOrders.id, poId)).limit(1);
   const orgId = poRow?.orgId;
@@ -267,6 +306,9 @@ export async function convertToBill(poId: string, userId: string): Promise<any> 
     if (!po) throw new AppError('Purchase order not found.', 404);
     if (po.status === 'cancelled') {
       throw new AppError('Cancelled purchase orders cannot be converted to bills.', 400);
+    }
+    if (po.status !== 'approved') {
+      throw new AppError('Only approved purchase orders can be converted to bills.', 400);
     }
 
     const decoded = deserializePoNotesAndLines(po.notes);
@@ -404,6 +446,9 @@ export async function convertToExpense(poId: string, userId: string): Promise<an
   if (!po) throw new AppError('Purchase order not found.', 404);
   if (po.status === 'cancelled') {
     throw new AppError('Cancelled purchase orders cannot be converted to expenses.', 400);
+  }
+  if (po.status !== 'approved') {
+    throw new AppError('Only approved purchase orders can be converted to expenses.', 400);
   }
 
   const decoded = deserializePoNotesAndLines(po.notes);

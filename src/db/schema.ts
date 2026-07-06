@@ -131,6 +131,9 @@ export const recurringFrequencyEnum = pgEnum('recurring_frequency', [
 
 export const poStatusEnum = pgEnum('po_status', [
   'draft',
+  'confirmed',
+  'accepted',
+  'approved',
   'sent',
   'partial',
   'received',

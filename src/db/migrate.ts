@@ -295,6 +295,12 @@ export async function runMigration() {
     if (fixedInvoices.rowCount && fixedInvoices.rowCount > 0) {
       console.log(`[Migration] Fixed ${fixedInvoices.rowCount} invoice(s) with mismatched amount_paid/balance_due.`);
     }
+    // Add new PO status values for approval flow
+    await db.execute(sql`ALTER TYPE po_status ADD VALUE IF NOT EXISTS 'confirmed'`);
+    await db.execute(sql`ALTER TYPE po_status ADD VALUE IF NOT EXISTS 'accepted'`);
+    await db.execute(sql`ALTER TYPE po_status ADD VALUE IF NOT EXISTS 'approved'`);
+    console.log('[Migration] Added PO approval statuses (confirmed, accepted, approved).');
+
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema push:', err);

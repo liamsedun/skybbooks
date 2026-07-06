@@ -57,6 +57,9 @@ import {
   createPO,
   updatePO,
   sendPO,
+  confirmPO,
+  acceptPO,
+  approvePO,
   convertToBill,
   convertToExpense,
   getPO,
@@ -580,6 +583,40 @@ router.delete('/orders/:id', async (req: AuthenticatedRequest, res: Response, ne
     const { id } = req.params;
 
     const result = await deletePO(id, orgId);
+    return res.status(200).json(result);
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// Status transitions for PO approval flow
+router.post('/orders/:id/confirm', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId;
+    const { id } = req.params;
+    const result = await confirmPO(id, userId);
+    return res.status(200).json(result);
+  } catch (err) {
+    return next(err);
+  }
+});
+
+router.post('/orders/:id/accept', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId;
+    const { id } = req.params;
+    const result = await acceptPO(id, userId);
+    return res.status(200).json(result);
+  } catch (err) {
+    return next(err);
+  }
+});
+
+router.post('/orders/:id/approve', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId;
+    const { id } = req.params;
+    const result = await approvePO(id, userId);
     return res.status(200).json(result);
   } catch (err) {
     return next(err);

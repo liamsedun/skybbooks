@@ -21,7 +21,7 @@ interface POLine {
 interface PO {
   id: string; poNumber: string; vendorId: string;
   date: string; expectedDate: string | null; status: string;
-  subtotal: number; taxAmount: number; total: number; currency: string; notes: string | null;
+  subtotal: number; tax: number; total: number; currency: string; notes: string | null;
   lines?: POLine[];
 }
 
@@ -60,8 +60,11 @@ function exportPOsPDF(pos: PO[], vendorMap: Map<string,string>) {
 
 const STATUS_STYLES: Record<string, string> = {
   draft: 'bg-slate-100 text-slate-600',
-  sent: 'bg-blue-50 text-blue-700',
-  received: 'bg-emerald-50 text-emerald-700',
+  confirmed: 'bg-amber-50 text-amber-700',
+  accepted: 'bg-blue-50 text-blue-700',
+  approved: 'bg-emerald-50 text-emerald-700',
+  sent: 'bg-indigo-50 text-indigo-700',
+  received: 'bg-teal-50 text-teal-700',
   cancelled: 'bg-rose-50 text-rose-500',
   billed: 'bg-violet-50 text-violet-700',
 };
@@ -128,6 +131,24 @@ export function PurchaseOrdersPage() {
       setMenuOpen(null);
     },
     onError: (e: any) => alert(e?.response?.data?.error || 'Failed to convert PO.'),
+  });
+
+  const confirmMutation = useMutation({
+    mutationFn: (id: string) => api.post(`/purchases/orders/${id}/confirm`),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['purchase-orders'] }); showSuccess('PO confirmed.'); },
+    onError: (e: any) => alert(e?.response?.data?.error || 'Failed to confirm PO.'),
+  });
+
+  const acceptMutation = useMutation({
+    mutationFn: (id: string) => api.post(`/purchases/orders/${id}/accept`),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['purchase-orders'] }); showSuccess('PO accepted.'); },
+    onError: (e: any) => alert(e?.response?.data?.error || 'Failed to accept PO.'),
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: (id: string) => api.post(`/purchases/orders/${id}/approve`),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['purchase-orders'] }); showSuccess('PO approved.'); },
+    onError: (e: any) => alert(e?.response?.data?.error || 'Failed to approve PO.'),
   });
 
   const convertToExpenseMutation = useMutation({
@@ -282,23 +303,40 @@ export function PurchaseOrdersPage() {
                       <button onClick={() => openView(po)} className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100" title="View">
                         <Eye size={14} />
                       </button>
-                      <button onClick={() => openEdit(po)} className="p-1.5 rounded-md text-slate-400 hover:text-indigo-600 hover:bg-indigo-50" title="Edit">
-                        <Edit2 size={14} />
-                      </button>
+                      {(po.status === 'draft' || po.status === 'confirmed') && (
+                        <button onClick={() => openEdit(po)} className="p-1.5 rounded-md text-slate-400 hover:text-indigo-600 hover:bg-indigo-50" title="Edit">
+                          <Edit2 size={14} />
+                        </button>
+                      )}
                       {po.status === 'draft' && (
                         <button onClick={() => { if (window.confirm('Delete this purchase order?')) deleteMutation.mutate(po.id); }} className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50" title="Delete" disabled={deleteMutation.isPending}>
                           <Trash2 size={14} />
                         </button>
                       )}
-                      {(po.status === 'sent' || po.status === 'received') && (
-                        <button onClick={() => convertMutation.mutate(po.id)} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-200 rounded-md transition-colors" title="Convert to Bill">
-                          <ArrowRight size={11} /> To Bill
+                      {po.status === 'draft' && (
+                        <button onClick={() => confirmMutation.mutate(po.id)} disabled={confirmMutation.isPending} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-md transition-colors" title="Confirm">
+                          <ArrowRight size={11} /> Confirm
                         </button>
                       )}
-                      {(po.status === 'draft' || po.status === 'sent') && (
-                        <button onClick={() => convertToExpenseMutation.mutate(po.id)} disabled={convertToExpenseMutation.isPending} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-md transition-colors" title="Convert to Expense">
-                          <ArrowRight size={11} /> To Expense
+                      {po.status === 'confirmed' && (
+                        <button onClick={() => acceptMutation.mutate(po.id)} disabled={acceptMutation.isPending} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-md transition-colors" title="Accept">
+                          <ArrowRight size={11} /> Accept
                         </button>
+                      )}
+                      {po.status === 'accepted' && (
+                        <button onClick={() => approveMutation.mutate(po.id)} disabled={approveMutation.isPending} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-md transition-colors" title="Approve">
+                          <ArrowRight size={11} /> Approve
+                        </button>
+                      )}
+                      {po.status === 'approved' && (
+                        <>
+                          <button onClick={() => convertMutation.mutate(po.id)} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-200 rounded-md transition-colors" title="Convert to Bill">
+                            <ArrowRight size={11} /> To Bill
+                          </button>
+                          <button onClick={() => convertToExpenseMutation.mutate(po.id)} disabled={convertToExpenseMutation.isPending} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-md transition-colors" title="Convert to Expense">
+                            <ArrowRight size={11} /> To Expense
+                          </button>
+                        </>
                       )}
                     </div>
                   </td>
@@ -351,7 +389,7 @@ export function PurchaseOrdersPage() {
                 </div>
                 <div className="flex justify-between text-slate-500">
                   <span>VAT</span>
-                  <span className="font-mono">{formatNaira(viewingPo.taxAmount)}</span>
+                  <span className="font-mono">{formatNaira(viewingPo.tax)}</span>
                 </div>
                 <div className="flex justify-between font-bold text-slate-900 pt-1 border-t border-slate-100">
                   <span>Total</span>
