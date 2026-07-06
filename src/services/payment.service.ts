@@ -203,7 +203,7 @@ export async function recordPaymentReceived(input: any, createdBy: string): Prom
       const allocAmt = Number(alloc.amount);
       const allocWht = Math.min(remainingWht, allocAmt);
       remainingWht -= allocWht;
-      const totalCredit = allocAmt + allocWht;
+      const totalCredit = allocAmt;
       const nextAmountPaid = invoice.amountPaid + totalCredit;
       const nextBalanceDue = invoice.balanceDue - totalCredit;
       const nextStatus = nextBalanceDue <= 0 ? 'paid' : 'partial';
@@ -724,7 +724,7 @@ export async function recordPaymentMade(input: any, createdBy: string): Promise<
       const allocAmt = Number(alloc.amount);
       const allocWht = Math.min(remainingWht, allocAmt);
       remainingWht -= allocWht;
-      const totalCredit = allocAmt + allocWht;
+      const totalCredit = allocAmt;
       const nextAmountPaid = bill.amountPaid + totalCredit;
       const nextBalanceDue = bill.balanceDue - totalCredit;
       const nextStatus = nextBalanceDue <= 0 ? 'paid' : 'partial';

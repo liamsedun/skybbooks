@@ -382,7 +382,10 @@ router.get('/payments/:id', async (req: AuthenticatedRequest, res: Response, nex
       .from(paymentMadeAllocations)
       .where(eq(paymentMadeAllocations.paymentId, id));
 
-    return res.status(200).json({ ...pmt, allocations });
+    const totalAllocated = allocations.reduce((s, a) => s + Number(a.amount), 0);
+    const whtAmount = Math.max(0, totalAllocated - Number(pmt.amount));
+
+    return res.status(200).json({ ...pmt, allocations, whtAmount, totalAllocated });
   } catch (err) {
     return next(err);
   }

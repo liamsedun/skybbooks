@@ -26,6 +26,8 @@ interface PaymentAllocation {
 }
 interface PaymentDetail extends Payment {
   allocations: PaymentAllocation[];
+  whtAmount?: number;
+  totalAllocated?: number;
 }
 interface BillLine {
   id: string; billId: string;
@@ -596,10 +598,26 @@ export function PaymentsMadePage() {
                       </div>
                     )}
 
-                    {/* Total */}
-                    <div className="flex items-center justify-between py-3 px-4 bg-slate-50 rounded-lg border border-slate-200">
-                      <span className="text-sm font-semibold text-slate-700">Net Paid to Vendor</span>
-                      <span className="text-lg font-black text-rose-700 font-mono">{formatNaira(paymentDetail.amount)}</span>
+                    {/* WHT Analysis */}
+                    <div className="border border-slate-200 rounded-lg overflow-hidden">
+                      <table className="w-full text-xs">
+                        <tbody className="divide-y divide-slate-100">
+                          <tr>
+                            <td className="px-3 py-2 text-slate-500">Total Bills Credited</td>
+                            <td className="px-3 py-2 text-right font-mono font-semibold text-slate-800">{formatNaira(paymentDetail.totalAllocated || paymentDetail.amount)}</td>
+                          </tr>
+                          {(paymentDetail.whtAmount || 0) > 0 && (
+                            <tr>
+                              <td className="px-3 py-2 text-slate-500">Less: WHT Withheld</td>
+                              <td className="px-3 py-2 text-right font-mono font-medium text-amber-600">−{formatNaira(paymentDetail.whtAmount!)}</td>
+                            </tr>
+                          )}
+                          <tr className="bg-slate-50">
+                            <td className="px-3 py-2.5 text-sm font-semibold text-slate-700">Net Paid to Vendor</td>
+                            <td className="px-3 py-2.5 text-right text-base font-black text-rose-700 font-mono">{formatNaira(paymentDetail.amount)}</td>
+                          </tr>
+                        </tbody>
+                      </table>
                     </div>
 
                     {/* Notes */}
@@ -662,8 +680,16 @@ export function PaymentsMadePage() {
                             </thead>
                             <tbody>${allocRows||'<tr><td colspan="2" style="text-align:center;padding:20px;color:#94a3b8">No allocations</td></tr>'}</tbody>
                             <tfoot>
+                              <tr style="background:#f8fafc">
+                                <td style="padding:8px 12px;font-size:12px;color:#475569">Total Bills Credited</td>
+                                <td style="padding:8px 12px;font-size:12px;font-weight:600;color:#334155;text-align:right;font-family:monospace">${formatNaira(paymentDetail.totalAllocated || paymentDetail.amount)}</td>
+                              </tr>
+                              ${(paymentDetail.whtAmount||0) > 0 ? `<tr>
+                                <td style="padding:8px 12px;font-size:12px;color:#475569">Less: WHT Withheld</td>
+                                <td style="padding:8px 12px;font-size:12px;font-weight:500;color:#d97706;text-align:right;font-family:monospace">−${formatNaira(paymentDetail.whtAmount!)}</td>
+                              </tr>` : ''}
                               <tr style="background:#f1f5f9">
-                                <td style="padding:10px 12px;font-size:13px;font-weight:700;color:#0f172a">Total Disbursed</td>
+                                <td style="padding:10px 12px;font-size:13px;font-weight:700;color:#0f172a">Net Paid to Vendor</td>
                                 <td style="padding:10px 12px;font-size:13px;font-weight:800;color:#dc2626;text-align:right;font-family:monospace">${formatNaira(paymentDetail.amount)}</td>
                               </tr>
                             </tfoot>
