@@ -887,32 +887,108 @@ function BillDetail({ id, onBack }: { id: string; onBack: () => void }) {
                 const lines = (bill.lines || []).map((l: any) => {
                   const base = l.quantity * l.unitPrice;
                   const tax = base * (l.taxRate / 100);
-                  return `<tr><td>${l.description||''}</td><td class="r">${l.quantity}</td><td class="r">₦${(l.unitPrice/100).toLocaleString()}</td><td class="r">₦${(Math.round(base)/100).toLocaleString()}</td><td class="r">₦${(Math.round(tax)/100).toLocaleString()}</td><td class="r">₦${(Math.round(base+tax)/100).toLocaleString()}</td></tr>`;
+                  return `<tr>
+                    <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#1e293b;font-weight:500">${l.description||'—'}</td>
+                    <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#475569;text-align:right">${l.quantity}</td>
+                    <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#475569;text-align:right;font-family:monospace">₦${(l.unitPrice/100).toLocaleString('en-NG',{minimumFractionDigits:2})}</td>
+                    <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#475569;text-align:right;font-family:monospace">₦${(Math.round(base)/100).toLocaleString('en-NG',{minimumFractionDigits:2})}</td>
+                    <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#475569;text-align:right">${l.taxRate}%</td>
+                    <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#0f172a;text-align:right;font-family:monospace;font-weight:700">₦${(Math.round(base+tax)/100).toLocaleString('en-NG',{minimumFractionDigits:2})}</td>
+                  </tr>`;
                 }).join('');
-                const orgInfo = org ? `
-                  <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid #0f172a">
-                    <div>
-                      ${org.logoUrl ? `<img src="${org.logoUrl}" alt="${org.name}" style="width:48px;height:48px;border-radius:8px;object-fit:contain;border:1px solid #e2e8f0;background:white;padding:4px"/>` : `<div style="width:48px;height:48px;border-radius:8px;background:#4f46e5;display:flex;align-items:center;justify-content:center;color:white;font-size:22px;font-weight:bold">${(org.name||'S')[0].toUpperCase()}</div>`}
-                    </div>
-                    <div style="flex:1">
-                      <h2 style="font-size:16px;font-weight:bold;color:#0f172a;margin:0">${org.name||'Your Company'}</h2>
-                      ${org.address ? `<p style="font-size:11px;color:#64748b;margin:2px 0">${org.address}</p>` : ''}
-                      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px">
-                        ${org.phone ? `<span style="font-size:10px;color:#64748b">${org.phone}</span>` : ''}
-                        ${org.email ? `<span style="font-size:10px;color:#64748b">${org.email}</span>` : ''}
-                        ${org.website ? `<span style="font-size:10px;color:#4f46e5">${org.website}</span>` : ''}
+                const logoHtml = org?.logoUrl
+                  ? `<img src="${org.logoUrl}" alt="${org?.name||'Logo'}" style="width:56px;height:56px;border-radius:10px;object-fit:contain;border:1px solid #e2e8f0;background:white;padding:4px"/>`
+                  : `<div style="width:56px;height:56px;border-radius:10px;background:#4f46e5;display:flex;align-items:center;justify-content:center;color:white;font-size:26px;font-weight:bold">${(org?.name||'S')[0].toUpperCase()}</div>`;
+                const fullHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Bill ${bill.billNumber}</title>
+                <style>
+                  *{margin:0;padding:0;box-sizing:border-box}
+                  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1e293b;padding:40px;font-size:13px}
+                  @media print{body{padding:20px}}
+                </style></head><body>
+                  <div style="height:4px;background:linear-gradient(90deg,#4f46e5,#7c3aed,#818cf8);border-radius:2px;margin-bottom:32px"></div>
+                  <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:32px">
+                    <div style="display:flex;align-items:flex-start;gap:14px">
+                      ${logoHtml}
+                      <div>
+                        <h2 style="font-size:16px;font-weight:bold;color:#0f172a;margin:0">${org?.name||'Your Company'}</h2>
+                        ${org?.address ? `<p style="font-size:11px;color:#64748b;margin:3px 0">${org.address}</p>` : ''}
+                        <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:4px">
+                          ${org?.phone ? `<span style="font-size:10px;color:#64748b">${org.phone}</span>` : ''}
+                          ${org?.email ? `<span style="font-size:10px;color:#64748b">${org.email}</span>` : ''}
+                          ${org?.website ? `<span style="font-size:10px;color:#4f46e5">${org.website}</span>` : ''}
+                        </div>
+                        ${(org?.rcNumber||org?.vatNumber) ? `<div style="display:flex;gap:14px;margin-top:3px">${org?.rcNumber?`<span style="font-size:9px;color:#94a3b8">RC: ${org.rcNumber}</span>`:''}${org?.vatNumber?`<span style="font-size:9px;color:#94a3b8">VAT: ${org.vatNumber}</span>`:''}</div>` : ''}
                       </div>
-                      ${(org.rcNumber||org.vatNumber) ? `<div style="display:flex;gap:12px;margin-top:2px">${org.rcNumber?`<span style="font-size:9px;color:#94a3b8">RC: ${org.rcNumber}</span>`:''}${org.vatNumber?`<span style="font-size:9px;color:#94a3b8">VAT: ${org.vatNumber}</span>`:''}</div>` : ''}
                     </div>
                     <div style="text-align:right;flex-shrink:0">
-                      <p style="font-size:11px;font-weight:600;color:#4f46e5;text-transform:uppercase;letter-spacing:0.1em;margin:0 0 4px 0">Bill</p>
-                      <p style="font-size:20px;font-weight:bold;color:#0f172a;margin:0">${bill.billNumber}</p>
-                      ${bill.status ? `<span style="display:inline-block;margin-top:4px;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:600;background:#e0e7ff;color:#4338ca">${bill.status}</span>` : ''}
+                      <p style="font-size:11px;font-weight:600;color:#4f46e5;text-transform:uppercase;letter-spacing:0.12em;margin:0 0 6px 0">Bill</p>
+                      <p style="font-size:24px;font-weight:bold;color:#0f172a;margin:0;letter-spacing:-0.02em">${bill.billNumber}</p>
+                      <span style="display:inline-block;margin-top:6px;padding:3px 12px;border-radius:20px;font-size:11px;font-weight:600;text-transform:capitalize;background:${bill.status==='open'?'#e0e7ff':bill.status==='paid'?'#dcfce7':bill.status==='overdue'?'#fee2e2':bill.status==='draft'?'#f1f5f9':'#f8fafc'};color:${bill.status==='open'?'#4338ca':bill.status==='paid'?'#166534':bill.status==='overdue'?'#dc2626':bill.status==='draft'?'#64748b':'#94a3b8'}">${bill.status}</span>
                     </div>
-                  </div>` : '';
-                const footer = org?.name ? `<div style="text-align:center;font-size:9px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:12px;margin-top:32px">${org.name} · This bill was generated electronically.</div>` : '';
-                const body = `${orgInfo}<table><thead><tr><th>Item</th><th class="r">Qty</th><th class="r">Unit Price</th><th class="r">Subtotal</th><th class="r">Tax</th><th class="r">Total</th></tr></thead><tbody>${lines||'<tr><td colspan="6" style="text-align:center;color:#94a3b8">No line items</td></tr>'}</tbody></table>${footer}`;
-                printWindow(`Bill ${bill.billNumber}`, body, `${vendorName} · ${formatNaira(bill.total)}`);
+                  </div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;padding:20px 24px;background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0;margin-bottom:28px">
+                    <div>
+                      <p style="font-size:9px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 4px 0">Vendor</p>
+                      <p style="font-size:14px;font-weight:bold;color:#0f172a;margin:0">${vendorName}</p>
+                      ${bill.vendor?.email ? `<p style="font-size:11px;color:#64748b;margin:2px 0">${bill.vendor.email}</p>` : ''}
+                      ${bill.vendor?.phone ? `<p style="font-size:11px;color:#64748b;margin:2px 0">${bill.vendor.phone}</p>` : ''}
+                    </div>
+                    <div style="text-align:right">
+                      <p style="font-size:9px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 4px 0">Bill Info</p>
+                      <div style="display:flex;justify-content:flex-end;gap:16px;font-size:11px;margin:2px 0">
+                        <span style="color:#94a3b8">Date</span>
+                        <span style="font-weight:500;color:#334155">${fmtDate(bill.date)}</span>
+                      </div>
+                      <div style="display:flex;justify-content:flex-end;gap:16px;font-size:11px;margin:2px 0">
+                        <span style="color:#94a3b8">Due Date</span>
+                        <span style="font-weight:500;color:#334155">${fmtDate(bill.dueDate)}</span>
+                      </div>
+                      <div style="display:flex;justify-content:flex-end;gap:16px;font-size:11px;margin:2px 0">
+                        <span style="color:#94a3b8">Currency</span>
+                        <span style="font-weight:500;color:#334155">${bill.currency||'NGN'}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <table style="width:100%;border-collapse:collapse">
+                    <thead>
+                      <tr style="background:#0f172a">
+                        <th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:600;color:white;text-transform:uppercase;letter-spacing:0.06em">Description</th>
+                        <th style="padding:10px 12px;text-align:right;font-size:10px;font-weight:600;color:white;text-transform:uppercase;letter-spacing:0.06em">Qty</th>
+                        <th style="padding:10px 12px;text-align:right;font-size:10px;font-weight:600;color:white;text-transform:uppercase;letter-spacing:0.06em">Unit Price</th>
+                        <th style="padding:10px 12px;text-align:right;font-size:10px;font-weight:600;color:white;text-transform:uppercase;letter-spacing:0.06em">Subtotal</th>
+                        <th style="padding:10px 12px;text-align:right;font-size:10px;font-weight:600;color:white;text-transform:uppercase;letter-spacing:0.06em">Tax</th>
+                        <th style="padding:10px 12px;text-align:right;font-size:10px;font-weight:600;color:white;text-transform:uppercase;letter-spacing:0.06em">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>${lines||'<tr><td colspan="6" style="text-align:center;padding:20px;color:#94a3b8">No line items</td></tr>'}</tbody>
+                  </table>
+                  <div style="margin-top:16px;background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0;padding:16px 20px;max-width:320px;margin-left:auto">
+                    <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0">
+                      <span style="color:#64748b">Subtotal</span>
+                      <span style="font-weight:600;color:#334155;font-family:monospace">${formatNaira(bill.subtotal)}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0">
+                      <span style="color:#64748b">Tax</span>
+                      <span style="font-weight:600;color:#334155;font-family:monospace">${formatNaira(bill.taxAmount)}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-top:1px solid #e2e8f0;margin-top:4px;padding-top:8px">
+                      <span style="font-weight:700;color:#0f172a">Total</span>
+                      <span style="font-weight:700;color:#0f172a;font-family:monospace">${formatNaira(bill.total)}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0">
+                      <span style="color:#16a34a">Amount Paid</span>
+                      <span style="font-weight:600;color:#16a34a;font-family:monospace">${formatNaira(bill.amountPaid)}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;font-size:14px;padding:4px 0;border-top:2px solid #0f172a;margin-top:4px;padding-top:8px">
+                      <span style="font-weight:700;color:#0f172a">Balance Due</span>
+                      <span style="font-weight:800;color:#0f172a;font-family:monospace">${formatNaira(bill.balanceDue)}</span>
+                    </div>
+                  </div>
+                  ${bill.notes ? `<div style="margin-top:24px;padding:12px 16px;background:#fefce8;border:1px solid #fde68a;border-radius:8px;font-size:11px;color:#92400e"><strong style="font-weight:600">Notes:</strong> ${bill.notes}</div>` : ''}
+                  <div style="text-align:center;font-size:9px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:16px;margin-top:40px">${org?.name||'SkyBooks'} · This bill was generated electronically. · ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}</div>
+                </body></html>`;
+                const w = window.open('','_blank');
+                if(w){w.document.write(fullHtml);w.document.close();setTimeout(()=>w.print(),500);}
               } catch (err) {
                 alert('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'));
                 console.error('Print error:', err);
