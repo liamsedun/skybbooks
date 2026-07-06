@@ -4,7 +4,7 @@
  */
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '../../lib/api';
+import { api, orgApi } from '../../lib/api';
 import {
   Plus, X, Loader2, AlertCircle, Search, ShoppingCart,
   CheckCircle2, ArrowRight, Download, FileText, Upload,
@@ -100,6 +100,8 @@ export function PurchaseOrdersPage() {
     queryKey: ['items'],
     queryFn: async () => { const r = await api.get('/inventory/items'); return r.data; },
   });
+
+  const { data: org } = useQuery({ queryKey: ['org'], queryFn: orgApi.getOrg, staleTime: 60000 });
 
   const vendorMap = useMemo(() => new Map(vendors.map(v => [v.id, v.name])), [vendors]);
   const pos: PO[] = posData?.orders || posData?.purchaseOrders || [];
@@ -358,40 +360,63 @@ export function PurchaseOrdersPage() {
       )}
       {viewingPo && (
         <div className="fixed top-0 right-0 h-full w-full max-w-2xl bg-white shadow-2xl z-50 flex flex-col">
-          <div className="bg-gradient-to-r from-slate-900 to-slate-800 px-6 py-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-base font-bold text-white">Purchase Order</h2>
-                <p className="text-xs text-slate-300 mt-0.5">{viewingPo.poNumber}</p>
+          {/* Scrollable content */}
+          <div className="flex-1 overflow-y-auto">
+
+            {/* Company header */}
+            <div className="px-6 pt-6 pb-4 border-b border-slate-100">
+              <div className="flex items-start justify-between">
+                <div className="flex items-start gap-3">
+                  {org?.logoUrl ? (
+                    <img src={org.logoUrl} alt="" className="w-12 h-12 rounded-xl object-contain border border-slate-100 bg-white p-1" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-lg font-bold">
+                      {org?.name?.[0]?.toUpperCase() ?? 'S'}
+                    </div>
+                  )}
+                  <div>
+                    <h2 className="text-sm font-bold text-slate-900">{org?.name || 'Your Company'}</h2>
+                    {org?.address && <p className="text-[11px] text-slate-500 mt-0.5">{org.address}</p>}
+                    <div className="flex flex-wrap gap-x-3 gap-y-0 mt-0.5">
+                      {org?.phone && <span className="text-[11px] text-slate-400">{org.phone}</span>}
+                      {org?.email && <span className="text-[11px] text-slate-400">{org.email}</span>}
+                      {(org as any)?.website && <span className="text-[11px] text-slate-400">{(org as any).website}</span>}
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-xs font-semibold text-indigo-600 uppercase tracking-widest">Purchase Order</p>
+                  <p className="text-lg font-black text-slate-900 mt-0.5">{viewingPo.poNumber}</p>
+                  <span className={`inline-flex items-center mt-1 px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${STATUS_STYLES[viewingPo.status] || 'bg-slate-100 text-slate-500'}`}>{viewingPo.status}</span>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <button onClick={handlePrintPdf} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-white/10 hover:bg-white/20 rounded-lg transition-colors">
+              <div className="flex items-center gap-2 mt-4 pt-3 border-t border-slate-100">
+                <button onClick={handlePrintPdf} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition-colors">
                   <FileText size={14} /> Print PDF
                 </button>
-                <button onClick={() => setViewingPo(null)} className="p-1.5 rounded-md text-slate-300 hover:text-white hover:bg-white/10">
+                <button onClick={() => setViewingPo(null)} className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 ml-auto">
                   <X size={18} />
                 </button>
               </div>
             </div>
-          </div>
-          <div className="flex-1 overflow-y-auto px-6 py-5">
-            <div className="space-y-6">
+
+            <div className="px-6 py-5 space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Vendor</p>
                   <p className="text-sm font-semibold text-slate-800">{vendorMap.get(viewingPo.vendorId) || viewingPo.vendorId}</p>
                 </div>
                 <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Status</p>
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${STATUS_STYLES[viewingPo.status] || 'bg-slate-100 text-slate-500'}`}>{viewingPo.status}</span>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Expected Delivery</p>
+                  <p className="text-sm font-medium text-slate-700">{viewingPo.expectedDate ? fmtDate(viewingPo.expectedDate) : '—'}</p>
                 </div>
                 <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Order Date</p>
                   <p className="text-sm font-medium text-slate-700">{fmtDate(viewingPo.date)}</p>
                 </div>
                 <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Expected Delivery</p>
-                  <p className="text-sm font-medium text-slate-700">{viewingPo.expectedDate ? fmtDate(viewingPo.expectedDate) : '—'}</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Status</p>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${STATUS_STYLES[viewingPo.status] || 'bg-slate-100 text-slate-500'}`}>{viewingPo.status}</span>
                 </div>
               </div>
 
@@ -462,36 +487,68 @@ export function PurchaseOrdersPage() {
       {viewingPo && (
         <div id="po-pdf-container" className="bg-white" style={{ display: 'none' }}>
           <div className="p-10 space-y-8">
-            <div className="flex justify-between items-start border-b-2 border-slate-900 pb-6">
-              <div>
-                <h1 className="text-xl font-bold text-slate-900">SkyBooks</h1>
-                <p className="text-xs text-slate-400 mt-0.5">By Skyhouse Accountants &amp; Technologies</p>
+            {/* Header with org identity */}
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6 pb-6 border-b-2 border-slate-900">
+              <div className="flex items-start gap-3">
+                {org?.logoUrl ? (
+                  <img src={org.logoUrl} alt="" className="w-14 h-14 rounded-xl object-contain border border-slate-100 bg-white p-1" />
+                ) : (
+                  <div className="w-14 h-14 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-xl font-bold">
+                    {org?.name?.[0]?.toUpperCase() ?? 'S'}
+                  </div>
+                )}
+                <div>
+                  <h1 className="text-lg font-bold text-slate-900">{org?.name || 'Your Company'}</h1>
+                  <div className="flex flex-col gap-y-0 mt-0.5">
+                    {org?.address && <span className="text-[11px] text-slate-500 leading-snug">{org.address}</span>}
+                    {(org as any)?.city && <span className="text-[11px] text-slate-500 leading-snug">{(org as any).city}</span>}
+                    {(org as any)?.state && <span className="text-[11px] text-slate-500 leading-snug">{(org as any).state}</span>}
+                    {(org as any)?.country && <span className="text-[11px] text-slate-500 leading-snug">{(org as any).country}</span>}
+                  </div>
+                  <div className="flex flex-wrap gap-x-3 gap-y-0 mt-1">
+                    {org?.phone && <span className="text-[11px] text-slate-500">{org.phone}</span>}
+                    {org?.email && <span className="text-[11px] text-slate-500">{org.email}</span>}
+                    {(org as any)?.website && <span className="text-[11px] text-slate-500">{(org as any).website}</span>}
+                  </div>
+                </div>
               </div>
-              <div className="text-right">
-                <p className="text-sm font-bold text-slate-800">{viewingPo.poNumber}</p>
-                <p className="text-xs text-slate-400 mt-0.5">{new Date(viewingPo.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
-                <span className="inline-flex items-center px-2 py-0.5 mt-1 rounded-full text-[10px] font-medium capitalize bg-slate-100 text-slate-600">{viewingPo.status}</span>
+              <div className="sm:text-right shrink-0">
+                <p className="text-xs font-semibold text-indigo-600 uppercase tracking-widest">Purchase Order</p>
+                <p className="text-2xl font-black text-slate-900 mt-0.5 tracking-tight">{viewingPo.poNumber}</p>
+                <p className="text-xs text-slate-400 mt-1">{new Date(viewingPo.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+                <span className="inline-flex items-center mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-medium capitalize bg-slate-100 text-slate-600">{viewingPo.status}</span>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-6 text-sm">
-              <div>
+
+            {/* Vendor and Order Details */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="space-y-0.5">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Vendor</p>
-                <p className="font-medium text-slate-800">{vendorMap.get(viewingPo.vendorId) || viewingPo.vendorId}</p>
+                <p className="text-sm font-bold text-slate-900">{vendorMap.get(viewingPo.vendorId) || viewingPo.vendorId}</p>
               </div>
-              <div className="text-right">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Expected Delivery</p>
-                <p className="text-slate-600">{viewingPo.expectedDate ? new Date(viewingPo.expectedDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }) : '—'}</p>
+              <div className="sm:text-right space-y-1">
+                <div className="flex sm:justify-end gap-2 text-sm">
+                  <span className="text-slate-400">Expected</span>
+                  <span className="font-medium text-slate-700">{viewingPo.expectedDate ? new Date(viewingPo.expectedDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }) : '—'}</span>
+                </div>
+                <div className="flex sm:justify-end gap-2 text-sm">
+                  <span className="text-slate-400">Ordered</span>
+                  <span className="font-medium text-slate-700">{new Date(viewingPo.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</span>
+                </div>
               </div>
             </div>
+
+            {/* Line Items */}
             {viewingPo.lines && viewingPo.lines.length > 0 && (
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b-2 border-slate-900">
-                    <th className="py-2 pr-4 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Item / Description</th>
-                    <th className="py-2 pr-4 text-center text-[10px] font-bold text-slate-500 uppercase tracking-widest w-16">Qty</th>
-                    <th className="py-2 pr-4 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest w-28">Unit Price</th>
-                    <th className="py-2 pr-4 text-center text-[10px] font-bold text-slate-500 uppercase tracking-widest w-12">VAT%</th>
-                    <th className="py-2 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest w-28">Amount</th>
+                  <tr className="bg-slate-50 rounded-lg">
+                    <th className="text-left py-3 pl-3 pr-2 text-xs font-semibold text-slate-500 uppercase tracking-wide rounded-l-lg">#</th>
+                    <th className="text-left py-3 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wide">Item / Description</th>
+                    <th className="text-center py-3 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wide w-14">Qty</th>
+                    <th className="text-right py-3 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wide w-32">Unit Price</th>
+                    <th className="text-center py-3 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wide w-14">VAT</th>
+                    <th className="text-right py-3 pl-2 pr-3 text-xs font-semibold text-slate-500 uppercase tracking-wide w-32 rounded-r-lg">Amount</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -500,18 +557,24 @@ export function PurchaseOrdersPage() {
                     const tax = Math.round(base * (line.taxRate / 100));
                     const total = base + tax;
                     return (
-                      <tr key={idx} className="border-b border-slate-100">
-                        <td className="py-2.5 pr-4 text-slate-700">{line.description || '—'}</td>
-                        <td className="py-2.5 pr-4 text-center text-slate-700">{line.quantity}</td>
-                        <td className="py-2.5 pr-4 text-right font-mono text-slate-600">{formatNaira(line.unitPrice)}</td>
-                        <td className="py-2.5 pr-4 text-center text-slate-500">{line.taxRate}%</td>
-                        <td className="py-2.5 text-right font-mono font-medium text-slate-900">{formatNaira(total)}</td>
+                      <tr key={idx} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                        <td className="py-3 pl-3 pr-2 text-slate-400 text-sm">{idx + 1}</td>
+                        <td className="py-3 px-2">
+                          <p className="font-medium text-slate-800 text-sm">{line.description}</p>
+                          {line.itemId && <p className="text-xs text-slate-400 mt-0.5 font-mono">SKU: {line.itemId?.substring(0, 8).toUpperCase()}</p>}
+                        </td>
+                        <td className="py-3 px-2 text-center text-slate-600">{line.quantity}</td>
+                        <td className="py-3 px-2 text-right text-slate-600 font-mono">{formatNaira(line.unitPrice)}</td>
+                        <td className="py-3 px-2 text-center text-slate-500 text-xs">{line.taxRate > 0 ? `${line.taxRate}%` : '—'}</td>
+                        <td className="py-3 pl-2 pr-3 text-right font-semibold text-slate-900 font-mono">{formatNaira(total)}</td>
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
             )}
+
+            {/* Totals */}
             <div className="flex justify-end">
               <div className="w-64 border-t border-slate-200 pt-2 space-y-1">
                 <div className="flex justify-between text-xs text-slate-500">
@@ -528,14 +591,29 @@ export function PurchaseOrdersPage() {
                 </div>
               </div>
             </div>
-            {viewingPo.notes && (
-              <div className="text-xs text-slate-500 bg-slate-50 p-4 rounded-lg">
-                <p className="font-bold text-slate-400 uppercase tracking-wide mb-1">Notes</p>
-                {viewingPo.notes}
+
+            {/* Notes / Footer */}
+            <div className="flex flex-col sm:flex-row justify-between gap-8 pt-2">
+              <div className="flex-1 max-w-sm">
+                {viewingPo.notes && (
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Notes</p>
+                    <p className="text-sm text-slate-500 leading-relaxed">{viewingPo.notes}</p>
+                  </div>
+                )}
+                {org && ((org as any)?.vatNumber || (org as any)?.rcNumber) && (
+                  <div className="mt-3 space-y-0.5">
+                    {(org as any)?.vatNumber && <p className="text-xs text-slate-400">VAT Reg: {(org as any).vatNumber}</p>}
+                    {(org as any)?.rcNumber && <p className="text-xs text-slate-400">RC: {(org as any).rcNumber}</p>}
+                  </div>
+                )}
               </div>
-            )}
+            </div>
+
+            {/* Footer */}
             <div className="text-center text-[10px] text-slate-400 border-t border-slate-100 pt-4">
-              SkyBooks By Skyhouse Accountants &amp; Technologies (Olalekan Williams Edun) &bull; Confidential
+              {org?.name || 'SkyBooks'} — {org?.address || ''} — {org?.phone || ''} — {org?.email || ''}
+              {(org as any)?.website && <span> — {(org as any).website}</span>}
             </div>
           </div>
         </div>
