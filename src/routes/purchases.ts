@@ -856,20 +856,11 @@ router.get('/vendors/:id/statement', async (req: AuthenticatedRequest, res: Resp
 
     if (!vendor) throw new AppError('Vendor profile could not be found.', 404);
 
-    const vendorBills = await db
-      .select()
-      .from(bills)
-      .where(and(eq(bills.vendorId, id), eq(bills.orgId, orgId)));
-
-    const paymentsOut = await db
-      .select()
-      .from(paymentsMade)
-      .where(and(eq(paymentsMade.vendorId, id), eq(paymentsMade.orgId, orgId)));
-
-    const credits = await db
-      .select()
-      .from(vendorCredits)
-      .where(and(eq(vendorCredits.vendorId, id), eq(vendorCredits.orgId, orgId)));
+    const [vendorBills, paymentsOut, credits] = await Promise.all([
+      db.select().from(bills).where(and(eq(bills.vendorId, id), eq(bills.orgId, orgId))),
+      db.select().from(paymentsMade).where(and(eq(paymentsMade.vendorId, id), eq(paymentsMade.orgId, orgId))),
+      db.select().from(vendorCredits).where(and(eq(vendorCredits.vendorId, id), eq(vendorCredits.orgId, orgId)))
+    ]);
 
     const transactionsList: any[] = [];
 
@@ -877,27 +868,29 @@ router.get('/vendors/:id/statement', async (req: AuthenticatedRequest, res: Resp
     for (const bl of vendorBills) {
       if (bl.status === 'void') continue;
       const isDraft = bl.status === 'draft';
+      const billDate = bl.date ? new Date(bl.date) : new Date(0);
       transactionsList.push({
         id: bl.id,
-        date: new Date(bl.date),
+        date: billDate,
         type: 'bill',
-        number: bl.billNumber,
+        number: bl.billNumber || '',
         reference: isDraft ? 'Draft Bill (not yet posted)' : 'Supplier Purchase Invoice',
         debit: 0,
-        credit: isDraft ? 0 : bl.total,
+        credit: isDraft ? 0 : (Number(bl.total) || 0),
         status: bl.status
       });
     }
 
     // Map payments: payments paid reduce liability (DR Accounts Payable)
     for (const pmt of paymentsOut) {
+      const pmtDate = pmt.date ? new Date(pmt.date) : new Date(0);
       transactionsList.push({
         id: pmt.id,
-        date: new Date(pmt.date),
+        date: pmtDate,
         type: 'payment',
-        number: pmt.paymentNumber,
+        number: pmt.paymentNumber || '',
         reference: pmt.reference || 'Vendor Disbursement',
-        debit: pmt.amount,
+        debit: Number(pmt.amount) || 0,
         credit: 0,
         status: 'posted'
       });
@@ -906,23 +899,28 @@ router.get('/vendors/:id/statement', async (req: AuthenticatedRequest, res: Resp
     // Map vendor credits: credit notes reduce liability (DR Accounts Payable)
     for (const cr of credits) {
       if (cr.status === 'void') continue;
+      const crDate = cr.date ? new Date(cr.date) : new Date(0);
       transactionsList.push({
         id: cr.id,
-        date: new Date(cr.date),
+        date: crDate,
         type: 'vendor_credit',
-        number: cr.vcNumber,
+        number: cr.vcNumber || '',
         reference: 'Supplier Return Credit Note',
-        debit: cr.total,
+        debit: Number(cr.total) || 0,
         credit: 0,
         status: cr.status
       });
     }
 
     // Sort chronologically
-    transactionsList.sort((a, b) => a.date.getTime() - b.date.getTime());
+    transactionsList.sort((a, b) => {
+      const aTime = a.date instanceof Date && !isNaN(a.date.getTime()) ? a.date.getTime() : 0;
+      const bTime = b.date instanceof Date && !isNaN(b.date.getTime()) ? b.date.getTime() : 0;
+      return aTime - bTime;
+    });
 
     // Prepend opening balance from contacts.balance
-    const openingBalance = vendor.balance || 0;
+    const openingBalance = Number(vendor.balance) || 0;
     transactionsList.unshift({
       id: 'opening',
       date: new Date(0),
@@ -936,9 +934,16 @@ router.get('/vendors/:id/statement', async (req: AuthenticatedRequest, res: Resp
     // Rolling outstanding creditor balance: increases on CR (bill), decreases on DR (payment/credit)
     let rollingBalance = 0;
     const ledgerStatement = transactionsList.map((item) => {
-      rollingBalance += item.credit - item.debit;
+      rollingBalance += (Number(item.credit) || 0) - (Number(item.debit) || 0);
       return {
-        ...item,
+        id: item.id,
+        date: item.date,
+        type: item.type,
+        number: item.number,
+        reference: item.reference,
+        debit: Number(item.debit) || 0,
+        credit: Number(item.credit) || 0,
+        status: item.status || undefined,
         balance: rollingBalance
       };
     });
@@ -955,6 +960,7 @@ router.get('/vendors/:id/statement', async (req: AuthenticatedRequest, res: Resp
       closingCreditorBalance: rollingBalance
     });
   } catch (err) {
+    console.error('[Statement] Error:', err);
     return next(err);
   }
 });

@@ -477,7 +477,7 @@ function VendorDetail({ id }: { id: string }) {
     staleTime: 60000,
   });
 
-  const { data: statement, isLoading: loadingStatement, isError: isStatementError } = useQuery<StatementResponse>({
+  const { data: statement, isLoading: loadingStatement, isError: isStatementError, error: statementError } = useQuery<StatementResponse>({
     queryKey: ['purchases', 'vendor', id, 'statement'],
     queryFn: async () => {
       const res = await api.get(`/purchases/vendors/${id}/statement`);
@@ -643,6 +643,7 @@ function VendorDetail({ id }: { id: string }) {
           <div className="text-center py-12 text-sm text-rose-500 flex flex-col items-center gap-2">
             <AlertCircle size={18} />
             <span>Failed to load statement.</span>
+            {statementError && <span className="text-xs text-rose-400 max-w-md">{(statementError as any)?.response?.data?.error || (statementError as any)?.message}</span>}
             <button onClick={() => queryClient.invalidateQueries({ queryKey: ['purchases', 'vendor', id, 'statement'] })}
               className="text-xs text-indigo-600 hover:underline font-medium">Retry</button>
           </div>
