@@ -186,4 +186,29 @@
     word-wrap: break-word;
     overflow-wrap: break-word;
   }
+  #vendor-statement-pdf-container, #vendor-statement-pdf-container * {
+    visibility: visible;
+  }
+  #vendor-statement-pdf-container {
+    display: block !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+  #vendor-statement-pdf-container table {
+    table-layout: fixed;
+    width: 100%;
+  }
+  #vendor-statement-pdf-container thead {
+    display: table-header-group;
+  }
+  #vendor-statement-pdf-container tr {
+    page-break-inside: avoid;
+  }
+  #vendor-statement-pdf-container th,
+  #vendor-statement-pdf-container td {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
 }

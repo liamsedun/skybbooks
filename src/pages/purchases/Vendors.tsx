@@ -11,7 +11,7 @@ import {
   Plus, X, Loader2, AlertCircle, Search, Building2,
   Phone, Mail, Edit2, Trash2, Download, FileText,
   CheckCircle2, ToggleLeft, ToggleRight,
-  ArrowLeft, Printer, Pencil, MapPin
+  ArrowLeft, Printer, Pencil, MapPin, ExternalLink
 } from 'lucide-react';
 
 interface Vendor {
@@ -579,6 +579,13 @@ function VendorDetail({ id }: { id: string }) {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => navigate(`/purchases/payments?vendor=${vendor.id}`)}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors"
+          >
+            <ExternalLink size={14} />
+            Make Payment
+          </button>
           <button onClick={handlePrintStatement} className="inline-flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
             <Printer size={14} />
             Print Statement
@@ -649,21 +656,29 @@ function VendorDetail({ id }: { id: string }) {
             <tbody className="divide-y divide-slate-50">
               {statement.ledgerStatement.map((line) => {
                 const isBill = line.type === 'bill';
+                const isPayment = line.type === 'payment';
+                const isCredit = line.type === 'vendor_credit';
                 const isOpening = line.type === 'opening_balance';
+                const isClickable = isBill || isPayment || isCredit;
+                function handleRowClick() {
+                  if (isBill) navigate(`/purchases/bills/${line.id}`);
+                  else if (isPayment) navigate(`/purchases/payments?selected=${line.id}`);
+                  else if (isCredit) navigate(`/purchases/credit-notes?selected=${line.id}`);
+                }
                 return (
                   <tr
                     key={line.id}
-                    onClick={() => isBill && navigate(`/purchases/bills/${line.id}`)}
-                    className={`hover:bg-slate-50 transition-colors ${isBill ? "cursor-pointer hover:bg-indigo-50/60" : ""} ${isOpening ? "bg-slate-50 font-medium" : ""}`}
+                    onClick={() => isClickable && handleRowClick()}
+                    className={`hover:bg-slate-50 transition-colors ${isClickable ? "cursor-pointer hover:bg-indigo-50/60" : ""} ${isOpening ? "bg-slate-50 font-medium" : ""}`}
                   >
                     <td className="py-2.5 pl-4 pr-3 text-sm text-slate-600">
                       {isOpening ? '—' : new Date(line.date).toLocaleDateString('en-GB')}
                     </td>
                     <td className="py-2.5 pr-3">
-                      <span className={`text-xs font-medium capitalize ${isBill ? "text-indigo-600" : isOpening ? "text-slate-800" : "text-slate-500"}`}>{line.type.replace('_', ' ')}</span>
+                      <span className={`text-xs font-medium capitalize ${isBill ? "text-indigo-600" : isPayment ? "text-emerald-600" : isCredit ? "text-amber-600" : isOpening ? "text-slate-800" : "text-slate-500"}`}>{line.type.replace('_', ' ')}</span>
                     </td>
                     <td className="py-2.5 pr-3 text-sm font-mono">
-                      {isBill ? (
+                      {isClickable ? (
                         <span className="text-indigo-600 hover:underline font-medium">{line.number}</span>
                       ) : (
                         <span className="text-slate-600">{line.number || '—'}</span>
@@ -753,65 +768,104 @@ function VendorDetail({ id }: { id: string }) {
       {/* Print container for vendor statement PDF */}
       <div id="vendor-statement-pdf-container" className="bg-white" style={{ display: 'none' }}>
         <div className="p-8 sm:p-10 space-y-8">
+          {/* Header gradient bar */}
+          <div style={{ height: '4px', background: 'linear-gradient(90deg, #4f46e5, #7c3aed, #818cf8)', borderRadius: '2px' }} />
+
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-8">
-            <div className="flex flex-col items-start gap-2">
+            <div className="flex items-start gap-3">
               {org?.logoUrl ? (
-                <img src={org.logoUrl} alt={org?.name || 'Logo'} className="w-14 h-14 rounded-xl object-contain border border-slate-100 bg-white p-1" />
+                <img src={org.logoUrl} alt={org?.name || 'Logo'} style={{ width: '48px', height: '48px', borderRadius: '10px', objectFit: 'contain', border: '1px solid #e2e8f0', background: 'white', padding: '4px' }} />
               ) : (
-                <div className="w-14 h-14 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-xl font-bold">
+                <div style={{ width: '48px', height: '48px', borderRadius: '10px', background: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '22px', fontWeight: 'bold' }}>
                   {org?.name?.[0]?.toUpperCase() ?? 'S'}
                 </div>
               )}
               <div className="space-y-0.5">
-                <h2 className="text-sm font-bold text-slate-900 leading-tight tracking-tight">{org?.name || 'Your Company'}</h2>
-                <div className="flex flex-col gap-y-0 mt-0.5">
-                  {org?.address && <span className="text-[11px] text-slate-500 leading-snug">{org.address}</span>}
-                  {org?.city && <span className="text-[11px] text-slate-500 leading-snug">{org.city}</span>}
-                  {org?.state && <span className="text-[11px] text-slate-500 leading-snug">{org.state}</span>}
+                <h2 style={{ fontSize: '16px', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>{org?.name || 'Your Company'}</h2>
+                {org?.address && <p style={{ fontSize: '11px', color: '#64748b', margin: '2px 0' }}>{org.address}</p>}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '4px' }}>
+                  {org?.phone && <span style={{ fontSize: '10px', color: '#64748b' }}>{org.phone}</span>}
+                  {org?.email && <span style={{ fontSize: '10px', color: '#64748b' }}>{org.email}</span>}
+                  {org?.website && <span style={{ fontSize: '10px', color: '#4f46e5' }}>{org.website}</span>}
                 </div>
-                <div className="flex flex-col gap-y-0 mt-1">
-                  {org?.phone && <span className="text-[11px] text-slate-500">{org.phone}</span>}
-                  {org?.email && <span className="text-[11px] text-slate-500">{org.email}</span>}
-                </div>
+                {(org?.rcNumber || org?.vatNumber) && (
+                  <div style={{ display: 'flex', gap: '12px', marginTop: '2px' }}>
+                    {org?.rcNumber && <span style={{ fontSize: '9px', color: '#94a3b8' }}>RC: {org.rcNumber}</span>}
+                    {org?.vatNumber && <span style={{ fontSize: '9px', color: '#94a3b8' }}>VAT: {org.vatNumber}</span>}
+                  </div>
+                )}
               </div>
             </div>
-            <div className="sm:text-right shrink-0 space-y-1">
-              <p className="text-xs font-semibold text-indigo-500 uppercase tracking-widest">Vendor Account Statement</p>
-              <p className="text-lg font-bold text-slate-900">{vendor.name}</p>
+            <div style={{ textAlign: 'right', flexShrink: 0 }}>
+              <p style={{ fontSize: '10px', fontWeight: '600', color: '#4f46e5', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 4px 0' }}>Vendor Account Statement</p>
+              <p style={{ fontSize: '18px', fontWeight: 'bold', color: '#0f172a', margin: '4px 0' }}>{vendor.name}</p>
               {(vendor.email || vendor.phone) && (
-                <p className="text-xs text-slate-500">{[vendor.email, vendor.phone].filter(Boolean).join(' · ')}</p>
+                <p style={{ fontSize: '11px', color: '#64748b', margin: '2px 0' }}>
+                  {[vendor.email, vendor.phone].filter(Boolean).join(' · ')}
+                </p>
               )}
+              {vendor.address && <p style={{ fontSize: '10px', color: '#94a3b8', margin: '2px 0' }}>{vendor.address}</p>}
+              <p style={{ fontSize: '10px', color: '#94a3b8', margin: '4px 0 0 0' }}>
+                Generated: {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}
+              </p>
             </div>
           </div>
 
-          <table className="w-full border-collapse" style={{ fontSize: '12px' }}>
+          {/* Opening/closing summary */}
+          <div style={{ display: 'flex', gap: '24px', padding: '12px 16px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+            <div>
+              <p style={{ fontSize: '9px', fontWeight: '600', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 2px 0' }}>Opening Balance</p>
+              <p style={{ fontSize: '14px', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>{formatNaira(vendor.balance || 0)}</p>
+            </div>
+            <div>
+              <p style={{ fontSize: '9px', fontWeight: '600', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 2px 0' }}>Closing Balance</p>
+              <p style={{ fontSize: '14px', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>{formatNaira(statement?.closingCreditorBalance || 0)}</p>
+            </div>
+            <div>
+              <p style={{ fontSize: '9px', fontWeight: '600', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 2px 0' }}>Total Transactions</p>
+              <p style={{ fontSize: '14px', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>{statement?.ledgerStatement.length || 0}</p>
+            </div>
+          </div>
+
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
             <thead>
-              <tr className="border-b-2 border-slate-300">
-                <th className="py-2 pr-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Date</th>
-                <th className="py-2 pr-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Type</th>
-                <th className="py-2 pr-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Number</th>
-                <th className="py-2 pr-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Reference</th>
-                <th className="py-2 pr-3 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest">Debit</th>
-                <th className="py-2 pr-3 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest">Credit</th>
-                <th className="py-2 pr-3 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest">Balance</th>
+              <tr style={{ borderBottom: '2px solid #cbd5e1' }}>
+                <th style={{ padding: '10px 8px', textAlign: 'left', fontSize: '9px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Date</th>
+                <th style={{ padding: '10px 8px', textAlign: 'left', fontSize: '9px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Type</th>
+                <th style={{ padding: '10px 8px', textAlign: 'left', fontSize: '9px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Number</th>
+                <th style={{ padding: '10px 8px', textAlign: 'left', fontSize: '9px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Reference</th>
+                <th style={{ padding: '10px 8px', textAlign: 'right', fontSize: '9px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Debit (₦)</th>
+                <th style={{ padding: '10px 8px', textAlign: 'right', fontSize: '9px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Credit (₦)</th>
+                <th style={{ padding: '10px 8px', textAlign: 'right', fontSize: '9px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Balance (₦)</th>
               </tr>
             </thead>
             <tbody>
-              {statement?.ledgerStatement.map((line) => (
-                <tr key={line.id} className="border-b border-slate-100">
-                  <td className="py-2 pr-3 text-sm text-slate-600">
-                    {line.type === 'opening_balance' ? '—' : fmtDate(line.date)}
-                  </td>
-                  <td className="py-2 pr-3 text-sm text-slate-600 capitalize">{line.type.replace('_', ' ')}</td>
-                  <td className="py-2 pr-3 text-sm font-mono text-slate-700">{line.number || '—'}</td>
-                  <td className="py-2 pr-3 text-sm text-slate-500">{line.reference || '—'}</td>
-                  <td className="py-2 pr-3 text-sm text-right text-slate-700">{line.debit > 0 ? formatNaira(line.debit) : '—'}</td>
-                  <td className="py-2 pr-3 text-sm text-right text-slate-700">{line.credit > 0 ? formatNaira(line.credit) : '—'}</td>
-                  <td className="py-2 pr-3 text-sm text-right font-medium text-slate-900">{formatNaira(line.balance)}</td>
-                </tr>
-              ))}
+              {statement?.ledgerStatement.map((line, idx) => {
+                const isLast = idx === (statement?.ledgerStatement.length || 0) - 1;
+                return (
+                  <tr key={line.id} style={{
+                    borderBottom: '1px solid #f1f5f9',
+                    background: line.type === 'opening_balance' ? '#f8fafc' : isLast ? '#f0fdf4' : 'transparent',
+                    fontWeight: isLast ? '600' : 'normal'
+                  }}>
+                    <td style={{ padding: '8px', color: '#475569', fontSize: '11px' }}>
+                      {line.type === 'opening_balance' ? '—' : fmtDate(line.date)}
+                    </td>
+                    <td style={{ padding: '8px', color: '#475569', fontSize: '11px', textTransform: 'capitalize' }}>{line.type.replace('_', ' ')}</td>
+                    <td style={{ padding: '8px', fontFamily: 'monospace', color: '#334155', fontSize: '11px' }}>{line.number || '—'}</td>
+                    <td style={{ padding: '8px', color: '#94a3b8', fontSize: '11px' }}>{line.reference || '—'}</td>
+                    <td style={{ padding: '8px', textAlign: 'right', color: '#dc2626', fontSize: '11px' }}>{line.debit > 0 ? formatNaira(line.debit) : '—'}</td>
+                    <td style={{ padding: '8px', textAlign: 'right', color: '#16a34a', fontSize: '11px' }}>{line.credit > 0 ? formatNaira(line.credit) : '—'}</td>
+                    <td style={{ padding: '8px', textAlign: 'right', fontWeight: '600', color: '#0f172a', fontSize: '11px' }}>{formatNaira(line.balance)}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
+
+          <div className="footer" style={{ textAlign: 'center', fontSize: '9px', color: '#94a3b8', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
+            {org?.name || 'SkyBooks'} · This statement was generated electronically and reflects all transactions recorded in the system.
+          </div>
         </div>
       </div>
     </div>

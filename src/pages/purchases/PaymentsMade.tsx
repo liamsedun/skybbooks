@@ -6,7 +6,8 @@ import { CsvImportModal } from '../../components/ui/CsvImportModal';
 import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
 import {
   Upload, Plus, X, Loader2, AlertCircle, Search, CreditCard,
-  CheckCircle2, Download, FileText, Eye, Pencil, Save, Trash2
+  CheckCircle2, Download, FileText, Eye, Pencil, Save, Trash2,
+  Banknote, Smartphone, Building2, Receipt,
 } from 'lucide-react';
 
 interface Vendor { id: string; name: string; }
@@ -42,6 +43,17 @@ interface BillDetail {
   vendor: Vendor;
 }
 
+const METHOD_META: Record<string, { label: string; icon: React.ComponentType<{ className?: string }> }> = {
+  bank_transfer: { label: 'Bank Transfer', icon: Building2 },
+  cash:          { label: 'Cash',          icon: Banknote },
+  card:          { label: 'Card',          icon: CreditCard },
+  cheque:        { label: 'Cheque',        icon: Receipt },
+  pos:           { label: 'POS',           icon: CreditCard },
+  ussd:          { label: 'USSD',          icon: Smartphone },
+};
+
+const PAYMENT_METHODS = ['bank_transfer', 'cash', 'card', 'cheque', 'pos', 'ussd'];
+
 function exportPaymentsCSV(payments: Payment[], vendorMap: Map<string,string>) {
   const headers = ['Payment #','Vendor','Date','Method','Reference','Amount (₦)'];
   const rows = payments.map(p => [p.paymentNumber, vendorMap.get(p.vendorId)||'', fmtDate(p.date), p.paymentMethod?.replace('_',' ')||'', p.reference||'', (p.amount/100).toFixed(2)]);
@@ -62,12 +74,11 @@ function formatNaira(kobo: number) {
 }
 function fmtDate(d: string) { return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }); }
 
-const PAYMENT_METHODS = ['cash', 'bank_transfer', 'card', 'cheque', 'pos', 'ussd'];
-
 export function PaymentsMadePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
+  const [methodFilter, setMethodFilter] = useState('all');
   const [modalOpen, setModalOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -83,18 +94,30 @@ export function PaymentsMadePage() {
 
   const [searchParams] = useSearchParams();
 
-  // Detail modal state
+  // Detail panel state
   const [detailPaymentId, setDetailPaymentId] = useState<string | null>(null);
 
   useEffect(() => {
     const selected = searchParams.get('selected');
     if (selected) setDetailPaymentId(selected);
+    const vendorId = searchParams.get('vendor');
+    if (vendorId) {
+      setForm(f => ({ ...f, vendorId }));
+      setModalOpen(true);
+      setFormError(null);
+    }
   }, [searchParams]);
-  const [detailEditMode, setDetailEditMode] = useState(false);
-  const [detailForm, setDetailForm] = useState({
+
+  // Edit modal state
+  const [editTarget, setEditTarget] = useState<Payment | null>(null);
+  const [editForm, setEditForm] = useState({
     date: '', amount: '', paymentMethod: '', reference: '', notes: '', accountId: ''
   });
-  const [detailFormError, setDetailFormError] = useState('');
+  const [editFormError, setEditFormError] = useState('');
+
+  // Delete confirmation
+  const [deleteTarget, setDeleteTarget] = useState<Payment | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Bill viewing modal state
   const [viewBillId, setViewBillId] = useState<string | null>(null);
@@ -123,7 +146,7 @@ export function PaymentsMadePage() {
   });
 
   // Fetch payment detail
-  const { data: paymentDetail, refetch: refetchDetail } = useQuery<PaymentDetail>({
+  const { data: paymentDetail, isLoading: loadingDetail } = useQuery<PaymentDetail>({
     queryKey: ['payment-detail', detailPaymentId],
     queryFn: async () => { const r = await api.get(`/purchases/payments/${detailPaymentId}`); return r.data; },
     enabled: !!detailPaymentId,
@@ -145,14 +168,24 @@ export function PaymentsMadePage() {
     [allBills, form.vendorId]
   );
 
+  const methods = useMemo(() => Array.from(new Set(payments.map(p => p.paymentMethod))), [payments]);
+
   const filtered = useMemo(() => {
     const t = search.toLowerCase();
-    return payments.filter(p =>
-      !t || p.paymentNumber.toLowerCase().includes(t) ||
-      (vendorMap.get(p.vendorId) || '').toLowerCase().includes(t) ||
-      (p.reference || '').toLowerCase().includes(t)
-    );
-  }, [payments, search, vendorMap]);
+    return payments.filter(p => {
+      if (methodFilter !== 'all' && p.paymentMethod !== methodFilter) return false;
+      return !t || p.paymentNumber.toLowerCase().includes(t) ||
+        (vendorMap.get(p.vendorId) || '').toLowerCase().includes(t) ||
+        (p.reference || '').toLowerCase().includes(t);
+    });
+  }, [payments, search, vendorMap, methodFilter]);
+
+  const totals = useMemo(() => ({
+    count: filtered.length,
+    sum: filtered.reduce((s, p) => s + p.amount, 0),
+  }), [filtered]);
+
+  const selectedPayment = detailPaymentId ? payments.find(p => p.id === detailPaymentId) : null;
 
   const createMutation = useMutation({
     mutationFn: (p: any) => api.post('/purchases/payments', p),
@@ -171,10 +204,10 @@ export function PaymentsMadePage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['payments-made'] });
       queryClient.invalidateQueries({ queryKey: ['payment-detail'] });
-      setDetailEditMode(false);
+      setEditTarget(null);
       showSuccess('Payment updated successfully.');
     },
-    onError: (e: any) => setDetailFormError(e?.response?.data?.message || 'Failed to update payment.'),
+    onError: (e: any) => setEditFormError(e?.response?.data?.message || 'Failed to update payment.'),
   });
 
   const deleteMutation = useMutation({
@@ -184,15 +217,17 @@ export function PaymentsMadePage() {
       queryClient.invalidateQueries({ queryKey: ['bills'] });
       queryClient.invalidateQueries({ queryKey: ['bills-open'] });
       setDetailPaymentId(null);
+      setDeleteTarget(null);
+      setDeleteError(null);
     },
-    onError: (e: any) => setActionError(e?.response?.data?.error || 'Failed to delete payment.'),
+    onError: (e: any) => setDeleteError(e?.response?.data?.error || 'Failed to delete payment.'),
   });
 
   function showSuccess(msg: string) { setSuccessMsg(msg); setTimeout(() => setSuccessMsg(null), 4000); }
 
   function closeModal() {
     setModalOpen(false);
-    setForm({ vendorId: '', date: new Date().toISOString().split('T')[0], amount: '', paymentMethod: 'bank_transfer', reference: '', notes: '', accountId: '', allocations: [] });
+    setForm({ vendorId: '', date: new Date().toISOString().split('T')[0], amount: '', whtAmount: '', paymentMethod: 'bank_transfer', reference: '', notes: '', accountId: '', allocations: [] });
     setFormError(null);
   }
 
@@ -233,222 +268,387 @@ export function PaymentsMadePage() {
     });
   }
 
-  // Detail modal handlers
-  function openDetail(payment: Payment) {
-    setDetailPaymentId(payment.id);
-    setDetailEditMode(false);
-    setDetailFormError('');
-  }
-
-  function closeDetail() {
-    setDetailPaymentId(null);
-    setDetailEditMode(false);
-    setDetailFormError('');
-  }
-
-  function enableDetailEdit() {
-    if (!paymentDetail) return;
-    setDetailForm({
-      date: paymentDetail.date ? paymentDetail.date.split('T')[0] : '',
-      amount: (paymentDetail.amount / 100).toFixed(2),
-      paymentMethod: paymentDetail.paymentMethod,
-      reference: paymentDetail.reference || '',
-      notes: paymentDetail.notes || '',
-      accountId: paymentDetail.accountId || '',
+  // Edit handlers
+  function openEditModal(p: Payment) {
+    setEditTarget(p);
+    setEditForm({
+      date: p.date ? p.date.split('T')[0] : '',
+      amount: (p.amount / 100).toFixed(2),
+      paymentMethod: p.paymentMethod,
+      reference: p.reference || '',
+      notes: p.notes || '',
+      accountId: p.accountId || '',
     });
-    setDetailEditMode(true);
-    setDetailFormError('');
+    setEditFormError('');
   }
 
-  function handleUpdatePayment() {
-    if (!detailPaymentId) return;
-    setDetailFormError('');
-    const amt = parseFloat(detailForm.amount);
-    if (isNaN(amt) || amt <= 0) { setDetailFormError('Amount must be greater than zero.'); return; }
-    if (!detailForm.date) { setDetailFormError('Date is required.'); return; }
+  function handleUpdatePayment(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editTarget) return;
+    setEditFormError('');
+    const amt = parseFloat(editForm.amount);
+    if (isNaN(amt) || amt <= 0) { setEditFormError('Amount must be greater than zero.'); return; }
+    if (!editForm.date) { setEditFormError('Date is required.'); return; }
 
     const payload: any = {
-      date: detailForm.date,
+      date: editForm.date,
       amount: Math.round(amt * 100),
-      paymentMethod: detailForm.paymentMethod,
-      reference: detailForm.reference || null,
-      notes: detailForm.notes || null,
+      paymentMethod: editForm.paymentMethod,
+      reference: editForm.reference || null,
+      notes: editForm.notes || null,
     };
-    if (detailForm.accountId) payload.accountId = detailForm.accountId;
+    if (editForm.accountId) payload.accountId = editForm.accountId;
 
-    updateMutation.mutate({ id: detailPaymentId, data: payload });
+    updateMutation.mutate({ id: editTarget.id, data: payload });
   }
 
   const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
+  const thisMonthPaid = payments.filter(p => {
+    const d = new Date(p.date); const now = new Date();
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  }).reduce((s, p) => s + p.amount, 0);
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between">
+    <div className="max-w-7xl mx-auto px-6 py-8">
+      {/* Page header */}
+      <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Payments Made</h1>
-          <p className="text-sm text-slate-500 mt-0.5">{payments.length} payments · {formatNaira(totalPaid)} total disbursed</p>
+          <h1 className="text-2xl font-bold text-slate-900">Payments Made</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            {totals.count} payments · {formatNaira(totals.sum)} total disbursed
+          </p>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => exportPaymentsCSV(filtered, vendorMap)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
+        <div className="flex gap-2">
+          <button onClick={() => { setModalOpen(true); setFormError(null); }}
+            className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-900 text-white text-xs font-medium rounded-lg hover:bg-slate-800 transition-colors">
+            <Plus size={14} />Record Payment
+          </button>
+          <button onClick={() => exportPaymentsCSV(filtered, vendorMap)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
             <Download size={14} /> CSV
           </button>
-          <button onClick={() => exportPaymentsPDF(filtered, vendorMap, filtered.reduce((s,p)=>s+p.amount,0))} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
+          <button onClick={() => exportPaymentsPDF(filtered, vendorMap, totals.sum)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
             <FileText size={14} /> PDF
           </button>
-          <button onClick={() => setImportOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
-            <Upload size={14} /> Import CSV
-          </button>
-          <button onClick={() => { setModalOpen(true); setFormError(null); }} className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-900 text-white text-xs font-medium rounded-lg hover:bg-slate-800 transition-colors">
-            <Plus size={14} /> Record Payment
+          <button onClick={() => setImportOpen(true)}
+            className="inline-flex items-center gap-2 px-3 py-1.5 bg-white text-slate-700 text-xs font-medium border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
+            <Upload size={14} />Import CSV
           </button>
         </div>
       </div>
 
       {successMsg && (
-        <div className="flex items-center gap-2 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-lg text-sm text-emerald-700">
+        <div className="flex items-center gap-2 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-lg text-sm text-emerald-700 mb-6">
           <CheckCircle2 size={16} /> {successMsg}
         </div>
       )}
 
       {actionError && (
-        <div className="flex items-center gap-2 px-4 py-3 bg-rose-50 border border-rose-200 rounded-lg text-sm text-rose-700">
+        <div className="flex items-center gap-2 px-4 py-3 bg-rose-50 border border-rose-200 rounded-lg text-sm text-rose-700 mb-6">
           <AlertCircle size={16} /> {actionError}
         </div>
       )}
 
-      <div className="relative max-w-sm">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search payments..." className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+      {/* Summary cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <div className="bg-white border border-slate-200 rounded-xl p-4">
+          <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Total Disbursed</p>
+          <p className="text-xl font-bold text-slate-900 mt-1">{formatNaira(totalPaid)}</p>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-xl p-4">
+          <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">This Month</p>
+          <p className="text-xl font-bold text-slate-900 mt-1">{formatNaira(thisMonthPaid)}</p>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-xl p-4">
+          <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Total Count</p>
+          <p className="text-xl font-bold text-slate-900 mt-1">{payments.length} payments</p>
+        </div>
       </div>
 
-      {isLoading ? (
-        <div className="flex items-center justify-center py-16 text-slate-400 bg-white border border-slate-200 rounded-xl">
-          <Loader2 size={20} className="animate-spin mr-2" /> Loading payments...
+      <div className="flex gap-6">
+        {/* List panel */}
+        <div className={`flex-1 min-w-0 ${detailPaymentId ? 'hidden lg:block' : ''}`}>
+          {/* Filter chips */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            <button onClick={() => setMethodFilter('all')}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${methodFilter === 'all' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
+              All Methods
+            </button>
+            {methods.map(m => (
+              <button key={m} onClick={() => setMethodFilter(m)}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${methodFilter === m ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
+                {METHOD_META[m]?.label || m}
+              </button>
+            ))}
+          </div>
+
+          <div className="relative mb-4">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by payment number, vendor, or reference..." className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-16 text-slate-400">
+                <Loader2 size={20} className="animate-spin mr-2" />Loading payments...
+              </div>
+            ) : isError ? (
+              <div className="flex items-center justify-center gap-2 py-16 text-rose-500 text-sm">
+                <AlertCircle size={16} />Failed to load payments.
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center px-4">
+                <CreditCard size={28} className="text-slate-300 mb-3" />
+                <p className="text-sm font-medium text-slate-600">{search || methodFilter !== 'all' ? 'No matching payments' : 'No payments recorded yet'}</p>
+                <p className="text-xs text-slate-400 mt-1">Record a payment to track vendor disbursements.</p>
+              </div>
+            ) : (
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-slate-100 text-left text-xs font-medium text-slate-400 uppercase tracking-wide">
+                    <th className="py-2.5 pl-4 pr-3">Payment #</th>
+                    <th className="py-2.5 pr-3">Vendor</th>
+                    <th className="py-2.5 pr-3">Date</th>
+                    <th className="py-2.5 pr-3">Method</th>
+                    <th className="py-2.5 pr-3 text-right">Amount</th>
+                    <th className="py-2.5 pr-3 text-center">Ledger</th>
+                    <th className="py-2.5 pr-2"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {filtered.map(p => {
+                    const meta = METHOD_META[p.paymentMethod] || { label: p.paymentMethod, icon: Banknote };
+                    const Icon = meta.icon;
+                    const isSelected = p.id === detailPaymentId;
+                    return (
+                      <tr key={p.id} onClick={() => setDetailPaymentId(isSelected ? null : p.id)}
+                        className={`group cursor-pointer transition-colors ${isSelected ? 'bg-indigo-50 border-l-2 border-l-indigo-500' : 'hover:bg-slate-50'}`}>
+                        <td className="py-2.5 pl-4 pr-3">
+                          <p className="font-mono text-sm font-semibold text-slate-700">{p.paymentNumber}</p>
+                        </td>
+                        <td className="py-2.5 pr-3">
+                          <p className="text-sm font-medium text-slate-800">{vendorMap.get(p.vendorId) || '—'}</p>
+                        </td>
+                        <td className="py-2.5 pr-3 text-sm text-slate-500">{fmtDate(p.date)}</td>
+                        <td className="py-2.5 pr-3">
+                          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600">
+                            <Icon className="w-3.5 h-3.5 text-slate-400" />
+                            {meta.label}
+                          </span>
+                        </td>
+                        <td className="py-2.5 pr-3 text-right font-semibold text-rose-700 font-mono">{formatNaira(p.amount)}</td>
+                        <td className="py-2.5 pr-3 text-center">
+                          {p.journalEntryId ? (
+                            <button onClick={(e) => { e.stopPropagation(); navigate(`/accountant/journals?entry=${p.journalEntryNumber || ''}`); }}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
+                            ><CheckCircle2 className="w-3 h-3" /> Posted</button>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500">Not posted</span>
+                          )}
+                        </td>
+                        <td className="py-2.5 pr-2">
+                          <div className="opacity-0 group-hover:opacity-100 flex items-center justify-end gap-1 transition-opacity" onClick={e => e.stopPropagation()}>
+                            <button onClick={() => openEditModal(p)}
+                              className="p-1.5 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100" title="Edit payment">
+                              <Pencil size={14} />
+                            </button>
+                            <button onClick={() => { setDeleteTarget(p); setDeleteError(null); }}
+                              className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50" title="Reverse payment">
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t border-slate-200 bg-slate-50">
+                    <td colSpan={4} className="py-2.5 pl-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                      {filtered.length} payments shown
+                    </td>
+                    <td className="py-2.5 pr-3 text-right font-bold text-slate-800 font-mono">{formatNaira(totals.sum)}</td>
+                    <td />
+                  </tr>
+                </tfoot>
+              </table>
+            )}
+          </div>
         </div>
-      ) : isError ? (
-        <div className="flex items-center justify-center py-16 text-rose-500 gap-2 bg-white border border-slate-200 rounded-xl">
-          <AlertCircle size={18} /> Failed to load payments.
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-16 bg-white border border-slate-200 rounded-xl">
-          <CreditCard size={32} className="mx-auto mb-3 text-slate-300" />
-          <p className="text-sm font-medium text-slate-600">{search ? 'No matching payments' : 'No payments recorded yet'}</p>
-          {!search && <p className="text-xs text-slate-400 mt-1">Record a payment to track vendor disbursements</p>}
-        </div>
-      ) : (
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-slate-50 text-xs font-medium text-slate-500 uppercase tracking-wide border-b border-slate-200">
-                <th className="py-3 pl-4 pr-2 text-left">Payment #</th>
-                <th className="py-3 px-2 text-left">Vendor</th>
-                <th className="py-3 px-2 text-left">Date</th>
-                <th className="py-3 px-2 text-left">Method</th>
-                <th className="py-3 px-2 text-left">Reference</th>
-                <th className="py-3 px-2 text-right">Amount</th>
-                <th className="py-3 px-2 text-center">Ledger</th>
-                <th className="py-3 px-2 text-center w-20">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filtered.map(p => (
-                <tr key={p.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="py-3 pl-4 pr-2 font-mono text-xs font-medium text-slate-700">{p.paymentNumber}</td>
-                  <td className="py-3 px-2 font-medium text-slate-900">{vendorMap.get(p.vendorId) || '—'}</td>
-                  <td className="py-3 px-2 text-xs text-slate-500">{fmtDate(p.date)}</td>
-                  <td className="py-3 px-2">
-                    <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full capitalize">{p.paymentMethod?.replace('_', ' ')}</span>
-                  </td>
-                  <td className="py-3 px-2 text-xs text-slate-500 font-mono">{p.reference || '—'}</td>
-                  <td className="py-3 px-2 text-right font-mono font-medium text-slate-900">{formatNaira(p.amount)}</td>
-                  <td className="py-3 px-2 text-center">
-                    {p.journalEntryId ? (
-                      <button
-                        onClick={() => navigate(`/accountant/journals?entry=${p.journalEntryNumber || ''}`)}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
-                      ><CheckCircle2 className="w-3 h-3" /> Posted</button>
-                    ) : (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500">Not posted</span>
-                    )}
-                  </td>
-                  <td className="py-3 px-2 text-center">
-                    <div className="flex items-center justify-center gap-1">
-                      <button onClick={() => openDetail(p)}
-                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-md transition-colors"
-                        title="View payment">
-                        <Eye size={12} /> View
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); if (window.confirm('Delete this payment? This will reverse allocations and journal entries.')) deleteMutation.mutate(p.id); }}
-                        disabled={deleteMutation.isPending}
-                        className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50"
-                        title="Delete"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+
+        {/* Detail panel */}
+        {detailPaymentId && (
+          <div className="w-full lg:w-96 shrink-0">
+            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden sticky top-6">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+                <div>
+                  <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Payment Detail</p>
+                  <p className="text-base font-bold text-slate-900 mt-0.5">{selectedPayment?.paymentNumber}</p>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button onClick={() => selectedPayment && openEditModal(selectedPayment)}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100" title="Edit">
+                    <Pencil size={16} />
+                  </button>
+                  <button onClick={() => setDetailPaymentId(null)}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100">
+                    <X size={16} />
+                  </button>
+                </div>
+              </div>
+
+              {loadingDetail ? (
+                <div className="flex items-center justify-center py-12 text-slate-400">
+                  <Loader2 size={18} className="animate-spin mr-2" />Loading...
+                </div>
+              ) : paymentDetail ? (
+                <div className="p-5 space-y-5">
+                  <div className="space-y-3">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-400">Vendor</span>
+                      <span className="font-medium text-slate-800">{vendorMap.get(paymentDetail.vendorId) || '—'}</span>
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-400">Date</span>
+                      <span className="font-medium text-slate-800">{fmtDate(paymentDetail.date)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-400">Method</span>
+                      <span className="font-medium text-slate-800 capitalize">{paymentDetail.paymentMethod?.replace('_', ' ')}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-400">Account</span>
+                      <span className="font-medium text-slate-800">{accountMap.get(paymentDetail.accountId || '') || '—'}</span>
+                    </div>
+                    {paymentDetail.reference && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-400">Reference</span>
+                        <span className="font-medium text-slate-800 font-mono text-xs">{paymentDetail.reference}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-400">Currency</span>
+                      <span className="font-medium text-slate-800">{paymentDetail.currency || 'NGN'}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-3 border-t border-slate-100">
+                      <span className="text-sm font-semibold text-slate-700">Total Disbursed</span>
+                      <span className="text-lg font-black text-rose-700 font-mono">{formatNaira(paymentDetail.amount)}</span>
+                    </div>
+                  </div>
+
+                  {paymentDetail.allocations && paymentDetail.allocations.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+                        <FileText size={12} />Allocated To
+                      </p>
+                      <div className="space-y-2">
+                        {paymentDetail.allocations.map(alloc => (
+                          <div key={alloc.id}
+                            className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100 hover:border-slate-200 transition-colors">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-semibold text-slate-800 font-mono">
+                                {alloc.billId.substring(0, 8) + '...'}
+                              </p>
+                              <p className="text-xs font-medium text-rose-700 mt-0.5">
+                                Applied: {formatNaira(alloc.amount)}
+                              </p>
+                            </div>
+                            <button onClick={() => setViewBillId(alloc.billId)}
+                              className="ml-2 text-xs text-primary hover:text-primary-hover underline shrink-0">
+                              View Bill
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {paymentDetail.notes && (
+                    <div>
+                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Notes</p>
+                      <p className="text-sm text-slate-600 leading-relaxed">{paymentDetail.notes}</p>
+                    </div>
+                  )}
+
+                  <div className="pt-2 border-t border-slate-100">
+                    <button onClick={() => { setDeleteTarget(selectedPayment!); setDeleteError(null); }}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-rose-600 border border-rose-200 rounded-lg hover:bg-rose-50 transition-colors">
+                      <Trash2 size={14} />Reverse Payment
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Record Payment Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 px-4 py-8 overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-xl">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4 overflow-y-auto py-8">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
               <h2 className="text-base font-semibold text-slate-900">Record Payment to Vendor</h2>
               <button onClick={closeModal} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
             </div>
-            <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+            <form onSubmit={handleSubmit} className="px-5 py-4 space-y-3 max-h-[75vh] overflow-y-auto">
               {formError && (
-                <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2 flex items-center gap-2">
-                  <AlertCircle size={14} /> {formError}
-                </div>
+                <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2">{formError}</div>
               )}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Vendor *</label>
-                  <select value={form.vendorId} onChange={e => onVendorChange(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 bg-white">
-                    <option value="">Select vendor...</option>
-                    {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
-                  </select>
-                </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Vendor *</label>
+                <select value={form.vendorId} onChange={e => onVendorChange(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 bg-white">
+                  <option value="">Select vendor...</option>
+                  {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Amount (₦) *</label>
-                  <input type="number" min="0" step="0.01" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} placeholder="0.00" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                  <input type="number" min="0" step="0.01" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} placeholder="0.00"
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">WHT Deducted (₦)</label>
-                  <input type="number" min="0" step="0.01" value={form.whtAmount} onChange={e => setForm({ ...form, whtAmount: e.target.value })} placeholder="0.00" className="w-full px-3 py-2 text-sm border border-amber-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-900/10" />
+                  <input type="number" min="0" step="0.01" value={form.whtAmount} onChange={e => setForm({ ...form, whtAmount: e.target.value })} placeholder="0.00"
+                    className="w-full px-3 py-2 text-sm border border-amber-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-900/10" />
                   <p className="text-[10px] text-amber-600 font-medium mt-1">Posted to WHT Payable GL account.</p>
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Payment Date</label>
-                  <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                  <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Payment Method</label>
-                  <select value={form.paymentMethod} onChange={e => setForm({ ...form, paymentMethod: e.target.value })} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 bg-white">
-                    {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}</option>)}
+                  <select value={form.paymentMethod} onChange={e => setForm({ ...form, paymentMethod: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 bg-white">
+                    {PAYMENT_METHODS.map(m => <option key={m} value={m}>{METHOD_META[m]?.label || m}</option>)}
                   </select>
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Paid From Account *</label>
-                  <AccountSearchSelect
-                    accounts={assetAccounts}
-                    value={form.accountId}
-                    onChange={id => setForm({ ...form, accountId: id })}
-                    placeholder="Select account..."
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Reference</label>
-                  <input value={form.reference} onChange={e => setForm({ ...form, reference: e.target.value })} placeholder="Transfer ref / cheque no." className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
-                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Paid From Account *</label>
+                <AccountSearchSelect
+                  accounts={assetAccounts}
+                  value={form.accountId}
+                  onChange={id => setForm({ ...form, accountId: id })}
+                  placeholder="Select account..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Reference</label>
+                <input value={form.reference} onChange={e => setForm({ ...form, reference: e.target.value })} placeholder="Transfer ref / cheque no."
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
               </div>
 
               {form.vendorId && (
@@ -457,31 +657,30 @@ export function PaymentsMadePage() {
                   {vendorBills.length === 0 ? (
                     <p className="text-xs text-slate-400 bg-slate-50 border border-slate-200 rounded-lg px-3 py-3">No open bills for this vendor.</p>
                   ) : (
-                    <div className="border border-slate-200 rounded-lg divide-y divide-slate-100 overflow-hidden">
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
                       {vendorBills.map(b => {
                         const alloc = form.allocations.find(a => a.billId === b.id);
                         return (
-                          <div key={b.id} className={`px-3 py-2.5 flex items-center gap-3 ${alloc ? 'bg-indigo-50' : 'bg-white'}`}>
-                            <input type="checkbox" checked={!!alloc} onChange={() => toggleBillAllocation(b.id, b.balanceDue)} className="rounded" />
-                            <div className="flex-1">
-                              <span className="text-xs font-mono font-medium text-slate-700">{b.billNumber}</span>
-                              <span className="text-xs text-slate-400 ml-2">Balance: {formatNaira(b.balanceDue)}</span>
+                          <label key={b.id} className={`flex items-center gap-3 p-2 rounded-lg border cursor-pointer ${alloc ? 'bg-indigo-50 border-indigo-200' : 'border-slate-200 hover:bg-slate-50'}`}>
+                            <input type="checkbox" checked={!!alloc} onChange={() => toggleBillAllocation(b.id, b.balanceDue)}
+                              className="h-4 w-4 text-slate-900 border-slate-300 rounded focus:ring-slate-900" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-slate-800">{b.billNumber}</p>
+                              <p className="text-xs text-slate-400">Balance: {formatNaira(b.balanceDue)}</p>
                             </div>
                             {alloc && (
                               <div className="flex items-center gap-1">
                                 <span className="text-xs text-slate-400">₦</span>
-                                <input
-                                  type="number" min="0" step="0.01"
-                                  value={alloc.amount}
+                                <input type="number" min="0" step="0.01" value={alloc.amount}
                                   onChange={e => {
                                     const updated = form.allocations.map(a => a.billId === b.id ? { ...a, amount: e.target.value } : a);
                                     setForm({ ...form, allocations: updated });
                                   }}
-                                  className="w-28 px-2 py-1 text-xs border border-indigo-200 rounded focus:outline-none text-right bg-white"
-                                />
+                                  onClick={e => e.stopPropagation()}
+                                  className="w-28 px-2 py-1 text-xs border border-indigo-200 rounded focus:outline-none text-right bg-white" />
                               </div>
                             )}
-                          </div>
+                          </label>
                         );
                       })}
                     </div>
@@ -491,14 +690,16 @@ export function PaymentsMadePage() {
 
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">Notes</label>
-                <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none resize-none" />
+                <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2}
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none resize-none" />
               </div>
 
-              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-                <button type="button" onClick={closeModal} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
-                <button type="submit" disabled={createMutation.isPending} className="px-5 py-2 text-sm font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 disabled:opacity-50 flex items-center gap-2">
-                  {createMutation.isPending && <Loader2 size={14} className="animate-spin" />}
-                  Record Payment
+              <div className="flex justify-end gap-2 pt-2">
+                <button type="button" onClick={closeModal}
+                  className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
+                <button type="submit" disabled={createMutation.isPending}
+                  className="px-4 py-2 text-sm font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 disabled:opacity-50">
+                  {createMutation.isPending ? 'Saving...' : 'Record Payment'}
                 </button>
               </div>
             </form>
@@ -506,149 +707,88 @@ export function PaymentsMadePage() {
         </div>
       )}
 
-      {/* Payment Detail Modal */}
-      {detailPaymentId && paymentDetail && (
-        <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 px-4 py-8 overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <div>
-                <h2 className="text-base font-semibold text-slate-900">{paymentDetail.paymentNumber}</h2>
-                <p className="text-xs text-slate-500 mt-0.5">{vendorMap.get(paymentDetail.vendorId) || '—'}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                {!detailEditMode && (
-                  <>
-                    <button onClick={enableDetailEdit}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">
-                      <Pencil size={12} /> Edit
-                    </button>
-                    <button
-                      onClick={() => { if (window.confirm('Delete this payment? This action cannot be undone.')) deleteMutation.mutate(detailPaymentId!); }}
-                      disabled={deleteMutation.isPending}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-rose-600 bg-white border border-rose-200 rounded-lg hover:bg-rose-50"
-                    >
-                      <Trash2 size={14} /> Delete
-                    </button>
-                  </>
-                )}
-                <button onClick={closeDetail} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
-              </div>
+      {/* Edit Modal */}
+      {editTarget && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <h2 className="text-base font-semibold text-slate-900">Edit Payment — {editTarget.paymentNumber}</h2>
+              <button onClick={() => setEditTarget(null)} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
             </div>
-
-            {detailEditMode ? (
-              <div className="px-6 py-5 space-y-4">
-                {detailFormError && (
-                  <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2 flex items-center gap-2">
-                    <AlertCircle size={14} /> {detailFormError}
-                  </div>
-                )}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">Date</label>
-                    <input type="date" value={detailForm.date} onChange={e => setDetailForm({ ...detailForm, date: e.target.value })}
-                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">Amount (₦)</label>
-                    <input type="number" min="0" step="0.01" value={detailForm.amount} onChange={e => setDetailForm({ ...detailForm, amount: e.target.value })}
-                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">Payment Method</label>
-                    <select value={detailForm.paymentMethod} onChange={e => setDetailForm({ ...detailForm, paymentMethod: e.target.value })}
-                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 bg-white">
-                      {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">Paid From Account</label>
-                    <AccountSearchSelect
-                      accounts={assetAccounts}
-                      value={detailForm.accountId}
-                      onChange={id => setDetailForm({ ...detailForm, accountId: id })}
-                      placeholder="Select account..."
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <label className="block text-xs font-medium text-slate-500 mb-1">Reference</label>
-                    <input value={detailForm.reference} onChange={e => setDetailForm({ ...detailForm, reference: e.target.value })}
-                      placeholder="Transfer ref / cheque no."
-                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
-                  </div>
-                  <div className="col-span-2">
-                    <label className="block text-xs font-medium text-slate-500 mb-1">Notes</label>
-                    <textarea value={detailForm.notes} onChange={e => setDetailForm({ ...detailForm, notes: e.target.value })}
-                      rows={2} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none resize-none" />
-                  </div>
+            <form onSubmit={handleUpdatePayment} className="px-5 py-4 space-y-3">
+              {editFormError && <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2">{editFormError}</div>}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Date</label>
+                  <input type="date" value={editForm.date} onChange={e => setEditForm({ ...editForm, date: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
                 </div>
-                <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-                  <button onClick={() => { setDetailEditMode(false); setDetailFormError(''); }}
-                    className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
-                  <button onClick={handleUpdatePayment} disabled={updateMutation.isPending}
-                    className="px-5 py-2 text-sm font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 disabled:opacity-50 flex items-center gap-2">
-                    {updateMutation.isPending && <Loader2 size={14} className="animate-spin" />}
-                    <Save size={14} /> Save Changes
-                  </button>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Amount (₦)</label>
+                  <input type="number" min="0" step="0.01" value={editForm.amount} onChange={e => setEditForm({ ...editForm, amount: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
                 </div>
               </div>
-            ) : (
-              <div className="px-6 py-5 space-y-5">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-                  <div>
-                    <span className="text-xs font-medium text-slate-400 uppercase tracking-wide">Amount</span>
-                    <p className="font-bold text-slate-900 mt-1">{formatNaira(paymentDetail.amount)}</p>
-                  </div>
-                  <div>
-                    <span className="text-xs font-medium text-slate-400 uppercase tracking-wide">Date</span>
-                    <p className="font-semibold text-slate-700 mt-1">{fmtDate(paymentDetail.date)}</p>
-                  </div>
-                  <div>
-                    <span className="text-xs font-medium text-slate-400 uppercase tracking-wide">Method</span>
-                    <p className="font-semibold text-slate-700 mt-1 capitalize">{paymentDetail.paymentMethod?.replace('_', ' ')}</p>
-                  </div>
-                  <div>
-                    <span className="text-xs font-medium text-slate-400 uppercase tracking-wide">Account</span>
-                    <p className="font-semibold text-slate-700 mt-1">{accountMap.get(paymentDetail.accountId || '') || '—'}</p>
-                  </div>
-                  <div>
-                    <span className="text-xs font-medium text-slate-400 uppercase tracking-wide">Reference</span>
-                    <p className="font-semibold text-slate-700 mt-1 font-mono text-xs">{paymentDetail.reference || '—'}</p>
-                  </div>
-                  <div>
-                    <span className="text-xs font-medium text-slate-400 uppercase tracking-wide">Currency</span>
-                    <p className="font-semibold text-slate-700 mt-1">{paymentDetail.currency || 'NGN'}</p>
-                  </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Payment Method</label>
+                  <select value={editForm.paymentMethod} onChange={e => setEditForm({ ...editForm, paymentMethod: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 bg-white">
+                    {PAYMENT_METHODS.map(m => <option key={m} value={m}>{METHOD_META[m]?.label || m}</option>)}
+                  </select>
                 </div>
-
-                {paymentDetail.notes && (
-                  <div>
-                    <span className="text-xs font-medium text-slate-400 uppercase tracking-wide">Notes</span>
-                    <p className="text-sm text-slate-600 mt-1 italic">{paymentDetail.notes}</p>
-                  </div>
-                )}
-
-                {/* Bill Allocations */}
-                {paymentDetail.allocations && paymentDetail.allocations.length > 0 && (
-                  <div>
-                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Allocated Bills</h3>
-                    <div className="border border-slate-200 rounded-lg divide-y divide-slate-100">
-                      {paymentDetail.allocations.map((alloc: PaymentAllocation) => (
-                        <div key={alloc.id} className="px-4 py-3 flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-mono font-medium text-slate-700">{/* bill number */}</span>
-                            <button onClick={() => setViewBillId(alloc.billId)}
-                              className="text-xs text-primary hover:text-primary-hover underline font-medium">
-                              View Bill
-                            </button>
-                          </div>
-                          <span className="text-xs font-mono font-medium text-slate-900">{formatNaira(alloc.amount)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Reference</label>
+                  <input value={editForm.reference} onChange={e => setEditForm({ ...editForm, reference: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                </div>
               </div>
-            )}
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Paid From Account</label>
+                <AccountSearchSelect
+                  accounts={assetAccounts}
+                  value={editForm.accountId}
+                  onChange={id => setEditForm({ ...editForm, accountId: id })}
+                  placeholder="Select account..."
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Notes</label>
+                <textarea value={editForm.notes} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} rows={2}
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none resize-none" />
+              </div>
+              <p className="text-xs text-slate-400">Note: Amount and allocation cannot be edited after recording. Reverse and re-record if needed.</p>
+              <div className="flex justify-end gap-2 pt-2">
+                <button type="button" onClick={() => setEditTarget(null)}
+                  className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
+                <button type="submit" disabled={updateMutation.isPending}
+                  className="px-4 py-2 text-sm font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 disabled:opacity-50">
+                  {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation */}
+      {deleteTarget && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-5">
+            <h2 className="text-base font-semibold text-slate-900 mb-2">Reverse Payment</h2>
+            <p className="text-sm text-slate-500 mb-4">
+              Reverse <span className="font-medium text-slate-700">{deleteTarget.paymentNumber}</span> ({formatNaira(deleteTarget.amount)})?
+              This will restore any bill balance due and reverse the journal entries.
+            </p>
+            {deleteError && <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2 mb-3">{deleteError}</div>}
+            <div className="flex justify-end gap-2">
+              <button onClick={() => { setDeleteTarget(null); setDeleteError(null); }}
+                className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
+              <button onClick={() => deleteMutation.mutate(deleteTarget.id)} disabled={deleteMutation.isPending}
+                className="px-4 py-2 text-sm font-medium text-white bg-rose-600 rounded-lg hover:bg-rose-700 disabled:opacity-50">
+                {deleteMutation.isPending ? 'Reversing...' : 'Reverse Payment'}
+              </button>
+            </div>
           </div>
         </div>
       )}

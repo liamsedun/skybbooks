@@ -809,6 +809,12 @@ function BillDetail({ id, onBack }: { id: string; onBack: () => void }) {
     queryFn: () => api.get(`/purchases/bills/${id}`).then(r => r.data),
   });
 
+  const { data: org } = useQuery<any>({
+    queryKey: ['org'],
+    queryFn: async () => { const r = await api.get('/org'); return r.data; },
+    staleTime: 60000,
+  });
+
   const { data: items = [] } = useQuery<Item[]>({
     queryKey: ['items'],
     queryFn: async () => { const r = await api.get('/inventory/items'); return r.data; },
@@ -883,7 +889,29 @@ function BillDetail({ id, onBack }: { id: string; onBack: () => void }) {
                   const tax = base * (l.taxRate / 100);
                   return `<tr><td>${l.description||''}</td><td class="r">${l.quantity}</td><td class="r">₦${(l.unitPrice/100).toLocaleString()}</td><td class="r">₦${(Math.round(base)/100).toLocaleString()}</td><td class="r">₦${(Math.round(tax)/100).toLocaleString()}</td><td class="r">₦${(Math.round(base+tax)/100).toLocaleString()}</td></tr>`;
                 }).join('');
-                const body = `<table><thead><tr><th>Item</th><th class="r">Qty</th><th class="r">Unit Price</th><th class="r">Subtotal</th><th class="r">Tax</th><th class="r">Total</th></tr></thead><tbody>${lines||'<tr><td colspan="6" style="text-align:center;color:#94a3b8">No line items</td></tr>'}</tbody></table>`;
+                const orgInfo = org ? `
+                  <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid #0f172a">
+                    <div>
+                      ${org.logoUrl ? `<img src="${org.logoUrl}" alt="${org.name}" style="width:48px;height:48px;border-radius:8px;object-fit:contain;border:1px solid #e2e8f0;background:white;padding:4px"/>` : `<div style="width:48px;height:48px;border-radius:8px;background:#4f46e5;display:flex;align-items:center;justify-content:center;color:white;font-size:22px;font-weight:bold">${(org.name||'S')[0].toUpperCase()}</div>`}
+                    </div>
+                    <div style="flex:1">
+                      <h2 style="font-size:16px;font-weight:bold;color:#0f172a;margin:0">${org.name||'Your Company'}</h2>
+                      ${org.address ? `<p style="font-size:11px;color:#64748b;margin:2px 0">${org.address}</p>` : ''}
+                      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px">
+                        ${org.phone ? `<span style="font-size:10px;color:#64748b">${org.phone}</span>` : ''}
+                        ${org.email ? `<span style="font-size:10px;color:#64748b">${org.email}</span>` : ''}
+                        ${org.website ? `<span style="font-size:10px;color:#4f46e5">${org.website}</span>` : ''}
+                      </div>
+                      ${(org.rcNumber||org.vatNumber) ? `<div style="display:flex;gap:12px;margin-top:2px">${org.rcNumber?`<span style="font-size:9px;color:#94a3b8">RC: ${org.rcNumber}</span>`:''}${org.vatNumber?`<span style="font-size:9px;color:#94a3b8">VAT: ${org.vatNumber}</span>`:''}</div>` : ''}
+                    </div>
+                    <div style="text-align:right;flex-shrink:0">
+                      <p style="font-size:11px;font-weight:600;color:#4f46e5;text-transform:uppercase;letter-spacing:0.1em;margin:0 0 4px 0">Bill</p>
+                      <p style="font-size:20px;font-weight:bold;color:#0f172a;margin:0">${bill.billNumber}</p>
+                      ${bill.status ? `<span style="display:inline-block;margin-top:4px;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:600;background:#e0e7ff;color:#4338ca">${bill.status}</span>` : ''}
+                    </div>
+                  </div>` : '';
+                const footer = org?.name ? `<div style="text-align:center;font-size:9px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:12px;margin-top:32px">${org.name} · This bill was generated electronically.</div>` : '';
+                const body = `${orgInfo}<table><thead><tr><th>Item</th><th class="r">Qty</th><th class="r">Unit Price</th><th class="r">Subtotal</th><th class="r">Tax</th><th class="r">Total</th></tr></thead><tbody>${lines||'<tr><td colspan="6" style="text-align:center;color:#94a3b8">No line items</td></tr>'}</tbody></table>${footer}`;
                 printWindow(`Bill ${bill.billNumber}`, body, `${vendorName} · ${formatNaira(bill.total)}`);
               } catch (err) {
                 alert('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'));
