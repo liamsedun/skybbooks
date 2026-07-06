@@ -164,6 +164,11 @@ export function PurchaseOrdersPage() {
 
   function openView(po: PO) { setViewingPo(po); }
 
+  function handlePrintPdf() {
+    const el = document.getElementById('po-pdf-container');
+    if (el) { el.style.display = 'block'; requestAnimationFrame(() => { window.print(); el.style.display = 'none'; }); }
+  }
+
   function openEdit(po: PO) {
     setForm({
       vendorId: po.vendorId,
@@ -347,62 +352,190 @@ export function PurchaseOrdersPage() {
         </div>
       )}
 
-      {/* Modal */}
       {/* View Detail */}
       {viewingPo && (
         <div className="fixed inset-0 bg-black/30 z-40" onClick={() => setViewingPo(null)} />
       )}
       {viewingPo && (
-        <div className="fixed top-0 right-0 h-full w-full max-w-lg bg-white shadow-2xl z-50 flex flex-col">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-            <h2 className="text-base font-semibold text-slate-900">Purchase Order Details</h2>
-            <button onClick={() => setViewingPo(null)} className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100">
-              <X size={18} />
-            </button>
+        <div className="fixed top-0 right-0 h-full w-full max-w-2xl bg-white shadow-2xl z-50 flex flex-col">
+          <div className="bg-gradient-to-r from-slate-900 to-slate-800 px-6 py-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-bold text-white">Purchase Order</h2>
+                <p className="text-xs text-slate-300 mt-0.5">{viewingPo.poNumber}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={handlePrintPdf} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-white/10 hover:bg-white/20 rounded-lg transition-colors">
+                  <FileText size={14} /> Print PDF
+                </button>
+                <button onClick={() => setViewingPo(null)} className="p-1.5 rounded-md text-slate-300 hover:text-white hover:bg-white/10">
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
           </div>
-          <div className="flex-1 overflow-y-auto px-5 py-5">
+          <div className="flex-1 overflow-y-auto px-6 py-5">
             <div className="space-y-6">
-              <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <p className="font-mono text-sm font-semibold text-slate-700">{viewingPo.poNumber}</p>
-                    <p className="text-xs text-slate-400 mt-0.5">{fmtDate(viewingPo.date)}</p>
-                  </div>
-                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${STATUS_STYLES[viewingPo.status] || 'bg-slate-100 text-slate-500'}`}>{viewingPo.status}</span>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Vendor</p>
+                  <p className="text-sm font-semibold text-slate-800">{vendorMap.get(viewingPo.vendorId) || viewingPo.vendorId}</p>
                 </div>
-                <div className="text-sm">
-                  <p className="text-xs text-slate-400 uppercase tracking-wide mb-0.5">Vendor</p>
-                  <p className="font-medium text-slate-800">{vendorMap.get(viewingPo.vendorId) || viewingPo.vendorId}</p>
+                <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Status</p>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${STATUS_STYLES[viewingPo.status] || 'bg-slate-100 text-slate-500'}`}>{viewingPo.status}</span>
                 </div>
-                {viewingPo.expectedDate && (
-                  <div className="text-sm mt-3">
-                    <p className="text-xs text-slate-400 uppercase tracking-wide mb-0.5">Expected Delivery</p>
-                    <p className="text-slate-700">{fmtDate(viewingPo.expectedDate)}</p>
-                  </div>
-                )}
+                <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Order Date</p>
+                  <p className="text-sm font-medium text-slate-700">{fmtDate(viewingPo.date)}</p>
+                </div>
+                <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Expected Delivery</p>
+                  <p className="text-sm font-medium text-slate-700">{viewingPo.expectedDate ? fmtDate(viewingPo.expectedDate) : '—'}</p>
+                </div>
               </div>
 
-              <div className="border-t border-slate-100 pt-4 space-y-1 text-sm">
-                <div className="flex justify-between text-slate-500">
-                  <span>Subtotal</span>
-                  <span className="font-mono">{formatNaira(viewingPo.subtotal)}</span>
+              {viewingPo.lines && viewingPo.lines.length > 0 && (
+                <div>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Line Items</p>
+                  <div className="border border-slate-200 rounded-xl overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-slate-50 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                          <th className="py-2.5 pl-4 pr-2 text-left">Item / Description</th>
+                          <th className="py-2.5 px-2 text-center w-14">Qty</th>
+                          <th className="py-2.5 px-2 text-right w-28">Unit Price</th>
+                          <th className="py-2.5 px-2 text-center w-12">VAT%</th>
+                          <th className="py-2.5 pl-2 pr-4 text-right w-28">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {viewingPo.lines.map((line: any, idx: number) => {
+                          const base = line.quantity * line.unitPrice;
+                          const tax = Math.round(base * (line.taxRate / 100));
+                          const total = base + tax;
+                          return (
+                            <tr key={idx} className="hover:bg-slate-50">
+                              <td className="py-2.5 pl-4 pr-2 text-xs font-medium text-slate-700">{line.description || '—'}</td>
+                              <td className="py-2.5 px-2 text-xs text-center text-slate-700">{line.quantity}</td>
+                              <td className="py-2.5 px-2 text-xs text-right font-mono text-slate-700">{formatNaira(line.unitPrice)}</td>
+                              <td className="py-2.5 px-2 text-xs text-center text-slate-500">{line.taxRate}%</td>
+                              <td className="py-2.5 pl-2 pr-4 text-xs text-right font-mono font-medium text-slate-900">{formatNaira(total)}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-                <div className="flex justify-between text-slate-500">
-                  <span>VAT</span>
-                  <span className="font-mono">{formatNaira(viewingPo.tax)}</span>
-                </div>
-                <div className="flex justify-between font-bold text-slate-900 pt-1 border-t border-slate-100">
-                  <span>Total</span>
-                  <span className="font-mono">{formatNaira(viewingPo.total)}</span>
+              )}
+
+              <div className="flex justify-end">
+                <div className="w-64 bg-slate-50 rounded-xl p-4 border border-slate-100 space-y-1.5">
+                  <div className="flex justify-between text-xs text-slate-500">
+                    <span>Subtotal</span>
+                    <span className="font-mono">{formatNaira(viewingPo.subtotal)}</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-slate-500">
+                    <span>VAT</span>
+                    <span className="font-mono">{formatNaira(viewingPo.tax)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm font-bold text-slate-900 pt-1.5 border-t border-slate-200">
+                    <span>Total</span>
+                    <span className="font-mono">{formatNaira(viewingPo.total)}</span>
+                  </div>
                 </div>
               </div>
 
               {viewingPo.notes && (
-                <div className="text-sm text-slate-600 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-0.5">Notes</p>
-                  {viewingPo.notes}
+                <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Notes</p>
+                  <p className="text-sm text-slate-600">{viewingPo.notes}</p>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Print container for PO PDF */}
+      {viewingPo && (
+        <div id="po-pdf-container" className="bg-white" style={{ display: 'none' }}>
+          <div className="p-10 space-y-8">
+            <div className="flex justify-between items-start border-b-2 border-slate-900 pb-6">
+              <div>
+                <h1 className="text-xl font-bold text-slate-900">SkyBooks</h1>
+                <p className="text-xs text-slate-400 mt-0.5">By Skyhouse Accountants &amp; Technologies</p>
+              </div>
+              <div className="text-right">
+                <p className="text-sm font-bold text-slate-800">{viewingPo.poNumber}</p>
+                <p className="text-xs text-slate-400 mt-0.5">{new Date(viewingPo.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+                <span className="inline-flex items-center px-2 py-0.5 mt-1 rounded-full text-[10px] font-medium capitalize bg-slate-100 text-slate-600">{viewingPo.status}</span>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-6 text-sm">
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Vendor</p>
+                <p className="font-medium text-slate-800">{vendorMap.get(viewingPo.vendorId) || viewingPo.vendorId}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Expected Delivery</p>
+                <p className="text-slate-600">{viewingPo.expectedDate ? new Date(viewingPo.expectedDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }) : '—'}</p>
+              </div>
+            </div>
+            {viewingPo.lines && viewingPo.lines.length > 0 && (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b-2 border-slate-900">
+                    <th className="py-2 pr-4 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Item / Description</th>
+                    <th className="py-2 pr-4 text-center text-[10px] font-bold text-slate-500 uppercase tracking-widest w-16">Qty</th>
+                    <th className="py-2 pr-4 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest w-28">Unit Price</th>
+                    <th className="py-2 pr-4 text-center text-[10px] font-bold text-slate-500 uppercase tracking-widest w-12">VAT%</th>
+                    <th className="py-2 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest w-28">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {viewingPo.lines.map((line: any, idx: number) => {
+                    const base = line.quantity * line.unitPrice;
+                    const tax = Math.round(base * (line.taxRate / 100));
+                    const total = base + tax;
+                    return (
+                      <tr key={idx} className="border-b border-slate-100">
+                        <td className="py-2.5 pr-4 text-slate-700">{line.description || '—'}</td>
+                        <td className="py-2.5 pr-4 text-center text-slate-700">{line.quantity}</td>
+                        <td className="py-2.5 pr-4 text-right font-mono text-slate-600">{formatNaira(line.unitPrice)}</td>
+                        <td className="py-2.5 pr-4 text-center text-slate-500">{line.taxRate}%</td>
+                        <td className="py-2.5 text-right font-mono font-medium text-slate-900">{formatNaira(total)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+            <div className="flex justify-end">
+              <div className="w-64 border-t border-slate-200 pt-2 space-y-1">
+                <div className="flex justify-between text-xs text-slate-500">
+                  <span>Subtotal</span>
+                  <span className="font-mono">{formatNaira(viewingPo.subtotal)}</span>
+                </div>
+                <div className="flex justify-between text-xs text-slate-500">
+                  <span>VAT</span>
+                  <span className="font-mono">{formatNaira(viewingPo.tax)}</span>
+                </div>
+                <div className="flex justify-between text-sm font-bold text-slate-900 border-t border-slate-200 pt-1">
+                  <span>Total</span>
+                  <span className="font-mono">{formatNaira(viewingPo.total)}</span>
+                </div>
+              </div>
+            </div>
+            {viewingPo.notes && (
+              <div className="text-xs text-slate-500 bg-slate-50 p-4 rounded-lg">
+                <p className="font-bold text-slate-400 uppercase tracking-wide mb-1">Notes</p>
+                {viewingPo.notes}
+              </div>
+            )}
+            <div className="text-center text-[10px] text-slate-400 border-t border-slate-100 pt-4">
+              SkyBooks By Skyhouse Accountants &amp; Technologies (Olalekan Williams Edun) &bull; Confidential
             </div>
           </div>
         </div>

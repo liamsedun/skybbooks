@@ -505,7 +505,7 @@ export function RegisterPage() {
           minLength={6}
           autoComplete="new-password"
         />
-        <SubmitButton loading={loading} idleLabel="Initialize new ledger" loadingLabel="Creating account..." />
+        <SubmitButton loading={loading} idleLabel="Create Account" loadingLabel="Creating account..." />
       </form>
 
       <p className="text-center text-sm text-slate-500 mt-7">

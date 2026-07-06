@@ -161,4 +161,29 @@
     word-wrap: break-word;
     overflow-wrap: break-word;
   }
+  #po-pdf-container, #po-pdf-container * {
+    visibility: visible;
+  }
+  #po-pdf-container {
+    display: block !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+  #po-pdf-container table {
+    table-layout: fixed;
+    width: 100%;
+  }
+  #po-pdf-container thead {
+    display: table-header-group;
+  }
+  #po-pdf-container tr {
+    page-break-inside: avoid;
+  }
+  #po-pdf-container th,
+  #po-pdf-container td {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
 }
