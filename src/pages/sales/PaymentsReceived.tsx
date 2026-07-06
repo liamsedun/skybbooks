@@ -384,12 +384,14 @@ export function PaymentsReceivedPage() {
       .reduce((s, a) => s + (a.allocatedAmount || 0), 0);
   }, [addForm.allocations]);
 
-  // Auto-distribute amount across selected invoices
+  // Auto-distribute net + WHT across selected invoices
   useEffect(() => {
     const amountKobo = Math.round((parseFloat(addForm.amount) || 0) * 100);
+    const whtKobo = Math.round((parseFloat(addForm.whtAmount) || 0) * 100);
+    const grossKobo = amountKobo + whtKobo;
     const selected = addForm.allocations.filter(a => a.selected);
     if (!selected.length) return;
-    let remaining = amountKobo;
+    let remaining = grossKobo;
     const updated = addForm.allocations.map(a => {
       if (!a.selected) return { ...a, allocatedAmount: 0 };
       const applied = Math.max(0, Math.min(remaining, a.balanceDue));
@@ -398,7 +400,7 @@ export function PaymentsReceivedPage() {
     });
     const changed = updated.some((a, i) => a.allocatedAmount !== addForm.allocations[i].allocatedAmount);
     if (changed) setAddForm(f => ({ ...f, allocations: updated }));
-  }, [addForm.amount, addForm.allocations.map(a => a.selected).join(',')]);
+  }, [addForm.amount, addForm.whtAmount, addForm.allocations.map(a => a.selected).join(',')]);
 
   const customerMap = useMemo(() => {
     const m = new Map<string, Customer>();
