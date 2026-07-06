@@ -662,8 +662,8 @@ export async function recordPaymentMade(input: any, createdBy: string): Promise<
       allocatedSum += Number(alloc.amount || 0);
     }
 
-    if (allocatedSum !== amount) {
-      throw new AppError(`Total allocated sum (${allocatedSum} kobo) must exactly match outbound payment amount (${amount} kobo).`, 400);
+    if (allocatedSum !== amount + whtAmount) {
+      throw new AppError(`Total allocated sum (${allocatedSum} kobo) must match net payment plus WHT (${amount + whtAmount} kobo).`, 400);
     }
 
     for (const alloc of allocations) {

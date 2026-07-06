@@ -257,6 +257,13 @@ export function PaymentsMadePage() {
     if (!form.accountId) { setFormError('Please select a bank/cash account.'); return; }
     if (!form.amount || parseFloat(form.amount) <= 0) { setFormError('Amount must be greater than zero.'); return; }
     if (form.allocations.length === 0) { setFormError('Please allocate this payment to at least one bill.'); return; }
+    const totalAlloc = form.allocations.reduce((s, a) => s + Math.round(parseFloat(a.amount) * 100), 0);
+    const netAmount = Math.round(parseFloat(form.amount) * 100);
+    const whtKobo = Math.round((parseFloat(form.whtAmount) || 0) * 100);
+    if (totalAlloc !== netAmount + whtKobo) {
+      setFormError(`Allocated sum (₦${(totalAlloc/100).toFixed(2)}) must match net amount plus WHT (₦${((netAmount+whtKobo)/100).toFixed(2)}).`);
+      return;
+    }
 
     createMutation.mutate({
       vendorId: form.vendorId,
@@ -591,7 +598,7 @@ export function PaymentsMadePage() {
 
                     {/* Total */}
                     <div className="flex items-center justify-between py-3 px-4 bg-slate-50 rounded-lg border border-slate-200">
-                      <span className="text-sm font-semibold text-slate-700">Total Disbursed</span>
+                      <span className="text-sm font-semibold text-slate-700">Net Paid to Vendor</span>
                       <span className="text-lg font-black text-rose-700 font-mono">{formatNaira(paymentDetail.amount)}</span>
                     </div>
 
@@ -707,15 +714,16 @@ export function PaymentsMadePage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Amount (₦) *</label>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Net Amount to Vendor (₦) *</label>
                   <input type="number" min="0" step="0.01" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} placeholder="0.00"
                     className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                  <p className="text-[10px] text-slate-400 mt-0.5">Bill total minus WHT deducted</p>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">WHT Deducted (₦)</label>
                   <input type="number" min="0" step="0.01" value={form.whtAmount} onChange={e => setForm({ ...form, whtAmount: e.target.value })} placeholder="0.00"
                     className="w-full px-3 py-2 text-sm border border-amber-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-900/10" />
-                  <p className="text-[10px] text-amber-600 font-medium mt-1">Posted to WHT Payable GL account.</p>
+                  <p className="text-[10px] text-amber-600 font-medium mt-1">Withholding Tax — credited to WHT Payable GL, owed to FIRS.</p>
                 </div>
               </div>
 
