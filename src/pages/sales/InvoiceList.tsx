@@ -361,7 +361,7 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
           className={`p-4 rounded-xl text-left border transition relative shadow-sm outline-none cursor-pointer ${
             statusFilter === 'draft'
               ? 'bg-slate-100 border-slate-300 text-ink-600'
-              : 'bg-white border-slate-100 hover:border-slate-200 text-slate-505'
+              : 'bg-white border-slate-100 hover:border-slate-200 text-slate-500'
           }`}
         >
           <span className="text-[10px] font-bold uppercase tracking-wider block font-sans text-slate-500">Drafts</span>
@@ -379,7 +379,7 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
           className={`p-4 rounded-xl text-left border transition relative shadow-sm outline-none cursor-pointer ${
             statusFilter === 'sent'
               ? 'bg-info-bg border-info-custom/30 text-info-custom'
-              : 'bg-white border-slate-100 hover:border-slate-200 text-slate-505'
+              : 'bg-white border-slate-100 hover:border-slate-200 text-slate-500'
           }`}
         >
           <span className="text-[10px] font-bold uppercase tracking-wider block font-sans text-info-custom">Issued / Sent</span>
@@ -397,7 +397,7 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
           className={`p-4 rounded-xl text-left border transition relative shadow-sm outline-none cursor-pointer ${
             statusFilter === 'overdue'
               ? 'bg-danger-bg border-danger-custom/30 text-danger-custom'
-              : 'bg-white border-slate-100 hover:border-slate-200 text-slate-505'
+              : 'bg-white border-slate-100 hover:border-slate-200 text-slate-500'
           }`}
         >
           <span className="text-[10px] font-bold uppercase tracking-wider block font-sans text-danger-custom">Overdue Collects</span>
@@ -415,7 +415,7 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
           className={`p-4 rounded-xl text-left border transition relative shadow-sm outline-none cursor-pointer ${
             statusFilter === 'paid'
               ? 'bg-success-bg border-success-custom/30 text-success-custom'
-              : 'bg-white border-slate-100 hover:border-slate-200 text-slate-505'
+              : 'bg-white border-slate-100 hover:border-slate-200 text-slate-500'
           }`}
         >
           <span className="text-[10px] font-bold uppercase tracking-wider block font-sans text-success-custom">Paid Realized</span>
@@ -451,7 +451,7 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 text-slate-650 rounded-lg text-xs font-semibold focus:bg-white focus:border-primary outline-none transition"
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 text-slate-600 rounded-lg text-xs font-semibold focus:bg-white focus:border-primary outline-none transition"
             >
               <option value="all">Filter status: All Accounts</option>
               <option value="draft">Draft State</option>
@@ -560,7 +560,7 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
       {/* 5. MAIN DATA TABLE PORT AREA */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden" id="invoice-records-ledger-table-box">
         {isLoading ? (
-          <div className="py-24 text-center text-slate-450 text-xs flex flex-col items-center justify-center space-y-3.5">
+          <div className="py-24 text-center text-slate-400 text-xs flex flex-col items-center justify-center space-y-3.5">
             <Loader2 className="w-8 h-8 text-primary animate-spin" />
             <span className="font-semibold text-slate-500">Querying corporate records directory...</span>
           </div>
@@ -649,17 +649,17 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
 
                       {/* Customer Info */}
                       <td className="px-4 align-middle h-12">
-                        <div className="font-semibold text-slate-900 text-[13px]">{invoice.clientName || invoice.customerId || "�"}</div>
+                        <div className="font-semibold text-slate-900 text-[13px]">{invoice.clientName || invoice.customerId || "—"}</div>
                         <div className="text-[10px] text-slate-600 mt-0.5 font-bold">{invoice.clientEmail || ""}</div>
                       </td>
 
                       {/* Issue date */}
-                      <td className="px-4 align-middle h-12 font-mono text-slate-700 font-medium text-[13px]">{invoice.date ? new Date(invoice.date).toLocaleDateString("en-GB", { day:"2-digit", month:"short", year:"numeric" }) : "�"}</td>
+                      <td className="px-4 align-middle h-12 font-mono text-slate-700 font-medium text-[13px]">{invoice.date ? new Date(invoice.date).toLocaleDateString("en-GB", { day:"2-digit", month:"short", year:"numeric" }) : "—"}</td>
 
                       {/* Due Date */}
                       <td className="px-4 align-middle h-12 font-mono text-slate-700 font-medium text-[13px]">
                         <span className={(invoice.status || '').toLowerCase() === 'overdue' ? 'text-red-700 font-bold' : 'text-slate-700'}>
-                          {invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString("en-GB", { day:"2-digit", month:"short", year:"numeric" }) : "�"}
+                          {invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString("en-GB", { day:"2-digit", month:"short", year:"numeric" }) : "—"}
                         </span>
                       </td>
 

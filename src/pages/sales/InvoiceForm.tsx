@@ -418,7 +418,7 @@ export function InvoiceForm({ invoiceId, onNavigate }: InvoiceFormProps) {
           </button>
           <div>
             <h2 className="text-xl font-extrabold text-slate-800 tracking-tight">
-              {invoiceId ? `Edit Invoice #${editingInvoice?.invoiceNumber || invoiceFormZodSchema.shape.invoiceNumber}` : 'Create Client Invoice'}
+              {invoiceId ? `Edit Invoice #${editingInvoice?.invoiceNumber || '—'}` : 'Create Client Invoice'}
             </h2>
             <p className="text-xs text-slate-400 font-semibold tracking-wide uppercase mt-1">
               {invoiceId ? 'Revise billing thresholds' : 'Post accounts receivable entries'}
