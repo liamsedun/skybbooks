@@ -620,7 +620,7 @@ export function RecurringInvoicesPage() {
                       {c.disc > 0 && (
                         <div className="flex justify-between text-sm text-violet-600">
                           <span>Discount ({viewLine.line.discountPct}%)</span>
-                          <span className="font-mono">\u2212 {formatNaira(c.disc)}</span>
+                          <span className="font-mono">− {formatNaira(c.disc)}</span>
                         </div>
                       )}
                       <div className="flex justify-between text-sm text-slate-500">

@@ -802,7 +802,7 @@ export function PaymentsReceivedPage() {
                           </div>
                           <div className="flex justify-between text-sm">
                             <span className="text-slate-500">Less: WHT Withheld by Customer</span>
-                            <span className="font-mono text-amber-600">\u2212 {formatNaira(detail.whtAmount!)}</span>
+                            <span className="font-mono text-amber-600">− {formatNaira(detail.whtAmount!)}</span>
                           </div>
                           <div className="flex justify-between items-center pt-1.5 border-t border-slate-100">
                             <span className="text-sm font-semibold text-slate-700">Net Amount Received</span>
@@ -1317,7 +1317,7 @@ function ReceiptModal({ paymentId, onClose, customerMap, org }: {
                       </div>
                       <div className="flex justify-between text-[11px]">
                         <span className="text-slate-500">Less: WHT Withheld by Customer</span>
-                        <span className="font-mono font-medium text-amber-600">\u2212 {formatNaira(payment.whtAmount!)}</span>
+                        <span className="font-mono font-medium text-amber-600">− {formatNaira(payment.whtAmount!)}</span>
                       </div>
                       <div className="flex justify-between items-center pt-2 border-t border-slate-200">
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Net Amount Received</p>
