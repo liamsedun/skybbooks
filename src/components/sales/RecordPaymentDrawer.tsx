@@ -103,6 +103,7 @@ export function RecordPaymentDrawer({
 
   const selectedCustomerId = watch('customerId');
   const watchedAmount = watch('amount');
+  const watchedWhtAmount = watch('whtAmount');
   const watchedAllocations = watch('allocations') || [];
 
   // Filter outstanding invoices for the selected customer
@@ -181,7 +182,9 @@ export function RecordPaymentDrawer({
     const updated = [...watchedAllocations];
     updated[index] = { ...updated[index], selected: !updated[index].selected };
 
-    const totalKobo = Math.round((parseFloat(watchedAmount as any) || 0) * 100);
+    const amountKobo = Math.round((parseFloat(watchedAmount as any) || 0) * 100);
+    const whtKobo = Math.round((parseFloat(watchedWhtAmount as any) || 0) * 100);
+    const totalKobo = amountKobo + whtKobo;
     const redistributed = redistribute(totalKobo, updated);
 
     redistributed.forEach((f, i) => {
@@ -190,10 +193,12 @@ export function RecordPaymentDrawer({
     });
   };
 
-  // Re-run distribution whenever the person edits "Amount Received" so the selected
-  // invoices always reflect the latest figure without needing manual per-row entry.
+  // Re-run distribution whenever the person edits "Amount Received" or "WHT Deducted" so
+  // the selected invoices always reflect the latest gross (net + WHT) without manual per-row entry.
   useEffect(() => {
-    const totalKobo = Math.round((parseFloat(watchedAmount as any) || 0) * 100);
+    const amountKobo = Math.round((parseFloat(watchedAmount as any) || 0) * 100);
+    const whtKobo = Math.round((parseFloat(watchedWhtAmount as any) || 0) * 100);
+    const totalKobo = amountKobo + whtKobo;
     const anySelected = watchedAllocations.some((f) => f.selected);
     if (!anySelected) return;
     const redistributed = redistribute(totalKobo, watchedAllocations);
@@ -203,7 +208,7 @@ export function RecordPaymentDrawer({
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [watchedAmount]);
+  }, [watchedAmount, watchedWhtAmount]);
 
   const createPaymentMutation = useMutation({
     mutationFn: async (data: PaymentFormData) => {
@@ -254,8 +259,10 @@ export function RecordPaymentDrawer({
     .reduce((sum, f) => sum + (f.allocatedAmount || 0), 0);
 
   const paymentAmountKobo = Math.round((parseFloat(watchedAmount as any) || 0) * 100);
-  const unallocatedKobo = Math.max(0, paymentAmountKobo - totalAllocatedKobo);
-  const isMismatched = totalAllocatedKobo > 0 && paymentAmountKobo !== totalAllocatedKobo;
+  const whtKobo = Math.round((parseFloat(watchedWhtAmount as any) || 0) * 100);
+  const grossKobo = paymentAmountKobo + whtKobo;
+  const unallocatedKobo = Math.max(0, grossKobo - totalAllocatedKobo);
+  const isMismatched = totalAllocatedKobo > 0 && grossKobo !== totalAllocatedKobo;
 
   return (
     <AnimatePresence>
@@ -437,9 +444,8 @@ export function RecordPaymentDrawer({
 
                 {isMismatched && (
                   <div className="mt-3 p-2.5 bg-rose-50 border border-rose-200 rounded-lg text-[11px] text-rose-700 font-semibold leading-relaxed">
-                    You've entered {formatNaira(paymentAmountKobo)}, but the invoice(s) checked below can only absorb
-                    {' '}{formatNaira(totalAllocatedKobo)} of it. Select another invoice to apply the remainder, or
-                    reduce the amount received.
+                    The invoice(s) checked total {formatNaira(totalAllocatedKobo)}, which must equal net received plus
+                    WHT ({formatNaira(grossKobo)}). Adjust the amount or WHT, or select additional invoices.
                   </div>
                 )}
               </div>
