@@ -23,7 +23,8 @@ import {
   contacts,
   invoices,
   bills,
-  expenses
+  expenses,
+  payrollRuns
 } from '../db/schema';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
 import { AppError } from '../lib/errors';
@@ -1080,6 +1081,15 @@ router.get('/accounts/:id/payments', async (req: AuthenticatedRequest, res: Resp
             .where(eq(expenses.id, row.source_id))
             .limit(1);
           if (exp) { txnType = 'Expense'; txnNumber = exp.number; sourceDocType = 'expense'; }
+          break;
+        }
+        case 'payroll': {
+          const [pr] = await db
+            .select({ runNumber: payrollRuns.runNumber })
+            .from(payrollRuns)
+            .where(eq(payrollRuns.id, row.source_id))
+            .limit(1);
+          if (pr) { txnType = 'Payroll'; txnNumber = pr.runNumber; sourceDocType = 'payroll'; }
           break;
         }
       }

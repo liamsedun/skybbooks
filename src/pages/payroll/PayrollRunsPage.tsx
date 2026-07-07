@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, payrollApi, printWindow, orgApi } from '../../lib/api';
 import {
@@ -24,6 +25,7 @@ const STATUS_STYLES: Record<string, string> = {
 
 export function PayrollRunsPage() {
   const qc = useQueryClient();
+  const { id: routeRunId } = useParams<{ id: string }>();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [modalKey, setModalKey] = useState(0);
@@ -94,6 +96,14 @@ export function PayrollRunsPage() {
   const [detailRun, setDetailRun] = useState<any>(null);
   const [detailLines, setDetailLines] = useState<any[]>([]);
   const [loadingDetail, setLoadingDetail] = useState(false);
+
+  // Auto-open run detail when navigating from a linked payment
+  useEffect(() => {
+    if (routeRunId && runs.length > 0) {
+      const run = runs.find((r: any) => r.id === routeRunId);
+      if (run) openDetail(run);
+    }
+  }, [routeRunId, runs]);
 
   async function openDetail(run: any) {
     setDetailRun(run);
