@@ -569,7 +569,7 @@ function DetailPanel({
                       <option value="">Select bill...</option>
                       {openBills.map(inv => (
                         <option key={inv.id} value={inv.id}>
-                          {inv.billNumber} \u2014 Balance Due: {formatNaira(inv.balanceDue)}
+                          {inv.billNumber} — Balance Due: {formatNaira(inv.balanceDue)}
                         </option>
                       ))}
                     </select>
@@ -578,7 +578,7 @@ function DetailPanel({
                     )}
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">Amount to Apply (\u20A6)</label>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">Amount to Apply (₦)</label>
                     <input
                       type="number"
                       step="0.01"
@@ -648,6 +648,15 @@ function CreateVendorCreditModal({ onClose, onError, editNote, updateMutation }:
   const [taxRate, setTaxRate] = useState(editNote ? (editNote.subtotal > 0 ? ((editNote.tax / editNote.subtotal) * 100).toFixed(1) : '7.5') : '7.5');
   const [reason, setReason] = useState(editNote?.notes || '');
 
+  // Pre-fill subtotal when a bill is selected
+  useEffect(() => {
+    if (!billId) return;
+    const bill = vendorBills.find(inv => inv.id === billId);
+    if (bill) {
+      setSubtotal((bill.total / 100).toFixed(2));
+    }
+  }, [billId, vendorBills]);
+
   const { data: vendors } = useQuery<Vendor[]>({
     queryKey: ['vendors'],
     queryFn: async () => { const r = await api.get('/purchases/vendors'); return r.data; },
@@ -666,6 +675,10 @@ function CreateVendorCreditModal({ onClose, onError, editNote, updateMutation }:
     const list = vendorBillsData?.invoices || vendorBillsData?.data || vendorBillsData || [];
     return (Array.isArray(list) ? list : []).filter((inv: Bill) => inv.status !== 'draft' && inv.status !== 'void');
   }, [vendorBillsData]);
+
+  const outstandingBills = useMemo(() => {
+    return vendorBills.filter(inv => (inv.balanceDue || 0) > 0);
+  }, [vendorBills]);
 
   const subtotalKobo = Math.round(parseFloat(subtotal || '0') * 100);
   const taxKobo = Math.round(subtotalKobo * (parseFloat(taxRate || '0') / 100));
@@ -731,12 +744,15 @@ function CreateVendorCreditModal({ onClose, onError, editNote, updateMutation }:
               className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 disabled:bg-slate-50 disabled:text-slate-400"
             >
               <option value="">No specific bill / general credit</option>
-              {vendorBills.map(inv => (
-                <option key={inv.id} value={inv.id}>{inv.billNumber} \u2014 {formatNaira(inv.total)}</option>
+              {outstandingBills.length === 0 && vendorBills.length > 0 && (
+                <option value="" disabled>All bills are fully paid</option>
+              )}
+              {outstandingBills.map(inv => (
+                <option key={inv.id} value={inv.id}>{inv.billNumber} — {formatNaira(inv.total)} (Due: {formatNaira(inv.balanceDue)})</option>
               ))}
             </select>
             <p className="text-xs text-slate-400 mt-1">
-              Linking a bill is for reference only \u2014 apply this credit to any open bill once it is issued.
+              Linking a bill is for reference only — apply this credit to any open bill once it is issued.
             </p>
           </div>
 
@@ -763,7 +779,7 @@ function CreateVendorCreditModal({ onClose, onError, editNote, updateMutation }:
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Credit Subtotal (\u20A6, excl. VAT)</label>
+            <label className="block text-xs font-medium text-slate-500 mb-1">Credit Subtotal (₦, excl. VAT)</label>
             <input
               type="number"
               step="0.01"
@@ -780,7 +796,7 @@ function CreateVendorCreditModal({ onClose, onError, editNote, updateMutation }:
               value={reason}
               onChange={e => setReason(e.target.value)}
               rows={2}
-              placeholder="e.g. Returned consignment \u2014 12 units damaged on arrival"
+              placeholder="e.g. Returned consignment — 12 units damaged on arrival"
               className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
             />
           </div>
