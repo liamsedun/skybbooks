@@ -648,15 +648,6 @@ function CreateVendorCreditModal({ onClose, onError, editNote, updateMutation }:
   const [taxRate, setTaxRate] = useState(editNote ? (editNote.subtotal > 0 ? ((editNote.tax / editNote.subtotal) * 100).toFixed(1) : '7.5') : '7.5');
   const [reason, setReason] = useState(editNote?.notes || '');
 
-  // Pre-fill subtotal when a bill is selected
-  useEffect(() => {
-    if (!billId) return;
-    const bill = vendorBills.find(inv => inv.id === billId);
-    if (bill) {
-      setSubtotal((bill.total / 100).toFixed(2));
-    }
-  }, [billId, vendorBills]);
-
   const { data: vendors } = useQuery<Vendor[]>({
     queryKey: ['vendors'],
     queryFn: async () => { const r = await api.get('/purchases/vendors'); return r.data; },
@@ -679,6 +670,15 @@ function CreateVendorCreditModal({ onClose, onError, editNote, updateMutation }:
   const outstandingBills = useMemo(() => {
     return vendorBills.filter(inv => (inv.balanceDue || 0) > 0);
   }, [vendorBills]);
+
+  // Pre-fill subtotal when a bill is selected
+  useEffect(() => {
+    if (!billId) return;
+    const bill = vendorBills.find(inv => inv.id === billId);
+    if (bill) {
+      setSubtotal((bill.total / 100).toFixed(2));
+    }
+  }, [billId, vendorBills]);
 
   const subtotalKobo = Math.round(parseFloat(subtotal || '0') * 100);
   const taxKobo = Math.round(subtotalKobo * (parseFloat(taxRate || '0') / 100));
