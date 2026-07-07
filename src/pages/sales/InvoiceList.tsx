@@ -287,7 +287,7 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
   };
 
   return (
-    <div className="space-y-7 animate-fade-in" id="invoice-list-viewport-surface">
+    <div className="space-y-6 animate-fade-in" id="invoice-list-viewport-surface">
       
       {/* 1. Header Area with Action buttons */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -308,16 +308,16 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
             <RefreshCw className="w-3.5 h-3.5" />
           </button>
           
-          <button onClick={() => exportInvoicesCSV(filteredInvoices, customerMap)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
+          <button onClick={() => exportInvoicesCSV(filteredInvoices, customerMap)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl hover:bg-slate-50 transition-all duration-200">
             <Download size={14} /> CSV
           </button>
-          <button onClick={() => exportInvoicesPDF(filteredInvoices)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
+          <button onClick={() => exportInvoicesPDF(filteredInvoices)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl hover:bg-slate-50 transition-all duration-200">
             <FileText size={14} /> PDF
           </button>
           <button
             type="button"
             onClick={() => setImportOpen(true)}
-            className="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 outline-none rounded-lg shadow-sm cursor-pointer transition flex items-center shrink-0"
+            className="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 outline-none rounded-xl shadow-sm cursor-pointer transition-all duration-200 flex items-center shrink-0"
           >
             <Upload className="w-3.5 h-3.5 mr-1.5 stroke-[2.5]" />
             Import CSV
@@ -325,7 +325,7 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
           <button
             type="button"
             onClick={() => onNavigate('invoice-form')}
-            className="px-3 py-1.5 text-xs font-semibold text-white bg-primary hover:bg-primary-hover outline-none rounded-lg shadow-sm cursor-pointer transition flex items-center shrink-0"
+            className="px-4 py-2 text-xs font-semibold text-white bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 outline-none rounded-xl shadow-sm cursor-pointer transition-all duration-200 flex items-center shrink-0"
             id="btn-invoice-list-new"
           >
             <Plus className="w-3.5 h-3.5 mr-1.5 stroke-[2.5]" />
@@ -430,7 +430,7 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
       </div>
 
       {/* 3. DYNAMIC FILTRATIONS ADVANCED TOOLBAR */}
-      <div className="bg-white rounded-2xl p-4.5 border border-slate-100 shadow-2xs space-y-4" id="invoice-filter-bar">
+      <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm space-y-4" id="invoice-filter-bar">
         
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           
@@ -588,11 +588,11 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
             </button>
           </div>
         ) : (
-          <div className="overflow-x-auto max-h-[600px] border border-slate-200/60 rounded-xl">
+          <div className="overflow-x-auto max-h-[600px]">
             <table className="w-full text-left border-collapse text-[13px] font-sans">
-              <thead className="sticky top-0 z-10 bg-surface-subtle shadow-[inset_0_-1px_0_rgba(15,23,42,0.06)]">
-                <tr className="h-12 border-b border-slate-200 text-[11px] text-ink-600 uppercase font-bold tracking-wider font-sans select-none align-middle bg-surface-subtle">
-                  <th className="px-4 w-10 text-left align-middle bg-surface-subtle">
+              <thead className="sticky top-0 z-10">
+                <tr className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider select-none">
+                  <th className="px-3 py-3 text-left w-10">
                     <input
                       type="checkbox"
                       checked={selectedInvoices.length === filteredInvoices.length && filteredInvoices.length > 0}
@@ -600,15 +600,15 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
                       className="h-3.5 w-3.5 text-primary border-slate-300 rounded focus:ring-primary cursor-pointer"
                     />
                   </th>
-                  <th className="px-4 text-left align-middle bg-surface-subtle">Invoice #</th>
-                  <th className="px-4 text-left align-middle bg-surface-subtle">Customer ID / Client</th>
-                  <th className="px-4 text-left align-middle bg-surface-subtle font-mono">Date Issued</th>
-                  <th className="px-4 text-left align-middle bg-surface-subtle font-mono">Due Date</th>
-                  <th className="px-3 text-right align-middle bg-surface-subtle">Total Amount</th>
-                  <th className="px-3 text-right align-middle bg-surface-subtle">Balance Due</th>
-                  <th className="px-4 text-center align-middle bg-surface-subtle">Status</th>
-                  <th className="px-4 text-center align-middle bg-surface-subtle">Ledger</th>
-                  <th className="px-4 text-right align-middle bg-surface-subtle">Row Actions</th>
+                  <th className="px-3 py-3 text-left">Invoice #</th>
+                  <th className="px-3 py-3 text-left">Customer ID / Client</th>
+                  <th className="px-3 py-3 text-left font-mono">Date Issued</th>
+                  <th className="px-3 py-3 text-left font-mono">Due Date</th>
+                  <th className="px-3 py-3 text-right">Total Amount</th>
+                  <th className="px-3 py-3 text-right">Balance Due</th>
+                  <th className="px-3 py-3 text-center">Status</th>
+                  <th className="px-3 py-3 text-center">Ledger</th>
+                  <th className="px-3 py-3 text-right">Row Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
@@ -622,8 +622,8 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
                   return (
                     <tr
                       key={invoice.id}
-                      className={`h-12 hover:bg-slate-50/50 transition duration-150 align-middle group ${
-                        isSelected ? 'bg-primary-light/20' : ''
+                      className={`hover:bg-slate-50/50 transition-colors align-middle group ${
+                        isSelected ? 'bg-indigo-50/50' : ''
                       }`}
                     >
                       {/* Checkbox */}
@@ -777,22 +777,22 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
               </tbody>
               {filteredInvoices.length > 0 && (
               <tfoot>
-                <tr className="border-t-2 border-slate-300 bg-slate-100">
-                  <td className="px-4 align-middle h-10"></td>
-                  <td className="px-4 align-middle h-10 text-sm font-bold text-slate-900" colSpan={4}>Total</td>
-                  <td className="px-3 align-middle h-10 text-right text-sm font-bold text-black tabular-nums">
+                <tr className="border-t-2 border-slate-200 bg-slate-50/80">
+                  <td className="px-3 py-3"></td>
+                  <td className="px-3 py-3 text-sm font-bold text-slate-900" colSpan={4}>Total</td>
+                  <td className="px-3 py-3 text-right text-sm font-bold text-slate-900 tabular-nums">
                     {(() => {
                       const t = filteredInvoices.reduce((s: number, inv: any) => s + (inv.total || 0), 0);
                       return `₦${(t / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
                     })()}
                   </td>
-                  <td className="px-3 align-middle h-10 text-right text-sm font-bold text-black tabular-nums">
+                  <td className="px-3 py-3 text-right text-sm font-bold text-slate-900 tabular-nums">
                     {(() => {
                       const t = filteredInvoices.reduce((s: number, inv: any) => s + (inv.balanceDue ?? inv.total ?? 0), 0);
                       return `₦${(t / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
                     })()}
                   </td>
-                  <td className="px-4 align-middle h-10" colSpan={3}></td>
+                  <td className="px-3 py-3" colSpan={3}></td>
                 </tr>
               </tfoot>
               )}

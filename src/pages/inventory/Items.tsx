@@ -294,7 +294,7 @@ export function ItemsPage() {
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-8">
+    <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
       <div className="flex items-start justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Items & Inventory</h1>
@@ -304,42 +304,42 @@ export function ItemsPage() {
         </div>
         <button
           onClick={openAddModal}
-          className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-900 text-white text-xs font-medium rounded-lg hover:bg-slate-800 transition-colors"
+          className="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-xs font-medium rounded-xl transition-all duration-200 hover:from-indigo-700 hover:to-indigo-800 shadow-sm"
         >
           <Plus size={14} />
           Add Item
         </button>
         <button
           onClick={() => setImportOpen(true)}
-          className="inline-flex items-center gap-2 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors"
+          className="inline-flex items-center gap-2 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl transition-all duration-200 hover:bg-slate-50 hover:border-slate-300"
         >
           <Upload size={14} />
           Import Opening Stock
         </button>
         <button
           onClick={() => { setStockForm({ itemId: '', quantity: '', unitCost: '' }); setStockError(null); setStockSuccess(null); setOpenStockModal(true); }}
-          className="inline-flex items-center gap-2 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors"
+          className="inline-flex items-center gap-2 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl transition-all duration-200 hover:bg-slate-50 hover:border-slate-300"
         >
           <Database size={14} />
           Record Opening Stock
         </button>
         <button
           onClick={() => exportItemsCSV(filteredItems)}
-          className="inline-flex items-center gap-2 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors"
+          className="inline-flex items-center gap-2 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl transition-all duration-200 hover:bg-slate-50 hover:border-slate-300"
         >
           <Download size={14} />
           CSV
         </button>
         <button
           onClick={() => exportItemsPDF(filteredItems)}
-          className="inline-flex items-center gap-2 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors"
+          className="inline-flex items-center gap-2 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl transition-all duration-200 hover:bg-slate-50 hover:border-slate-300"
         >
           <FileText size={14} />
           PDF
         </button>
         <button
           onClick={() => setValuationOpen(true)}
-          className="inline-flex items-center gap-2 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors"
+          className="inline-flex items-center gap-2 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl transition-all duration-200 hover:bg-slate-50 hover:border-slate-300"
         >
           <BarChart3 size={14} />
           Valuation Statement
@@ -380,11 +380,11 @@ export function ItemsPage() {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           placeholder="Search by name or SKU..."
-          className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300"
+          className="w-full pl-9 pr-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
         />
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center py-16 text-slate-400">
             <Loader2 size={20} className="animate-spin mr-2" />
@@ -404,20 +404,20 @@ export function ItemsPage() {
         ) : (
           <table className="w-full">
             <thead>
-              <tr className="border-b border-slate-100 text-left text-xs font-medium text-slate-400 uppercase tracking-wide">
-                <th className="py-2.5 pl-4 pr-3">SKU</th>
-                <th className="py-2.5 pr-3">Name</th>
-                <th className="py-2.5 pr-3">Type</th>
-                <th className="py-2.5 pr-3">Unit</th>
-                <th className="py-2.5 pr-3">Sales Price</th>
-                <th className="py-2.5 pr-3">Purchase Price</th>
-                <th className="py-2.5 pr-3">Stock</th>
-                <th className="py-2.5 pr-2"></th>
+              <tr className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                <th className="px-3 py-3 text-left">SKU</th>
+                <th className="px-3 py-3 text-left">Name</th>
+                <th className="px-3 py-3 text-left">Type</th>
+                <th className="px-3 py-3 text-left">Unit</th>
+                <th className="px-3 py-3 text-left">Sales Price</th>
+                <th className="px-3 py-3 text-left">Purchase Price</th>
+                <th className="px-3 py-3 text-left">Stock</th>
+                <th className="px-3 py-3 text-left"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {filteredItems.map((item) => (
-                <tr key={item.id} className="group hover:bg-slate-50 transition-colors">
+                <tr key={item.id} className="group hover:bg-slate-50/50 transition-colors">
                   <td className="py-2.5 pl-4 pr-3 font-mono text-sm text-slate-500">{item.sku || '—'}</td>
                   <td className="py-2.5 pr-3">
                     <span className="text-sm font-medium text-slate-900">{item.name}</span>
@@ -427,8 +427,8 @@ export function ItemsPage() {
                   </td>
                   <td className="py-2.5 pr-3">
                     <span
-                      className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${
-                        item.type === 'product' ? 'bg-blue-50 text-blue-700' : 'bg-violet-50 text-violet-700'
+                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${
+                        item.type === 'product' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-violet-50 text-violet-700 border-violet-200'
                       }`}
                     >
                       {item.type === 'product' ? <Package size={12} /> : <Briefcase size={12} />}
@@ -451,7 +451,7 @@ export function ItemsPage() {
                     <div className="opacity-0 group-hover:opacity-100 flex items-center justify-end gap-1 transition-opacity">
                       <button
                         onClick={() => openEditModal(item)}
-                        className="p-1.5 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all duration-200"
                         aria-label="Edit item"
                       >
                         <Pencil size={14} />
@@ -461,7 +461,7 @@ export function ItemsPage() {
                           setDeleteTarget(item);
                           setDeleteError(null);
                         }}
-                        className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all duration-200"
                         aria-label="Delete item"
                       >
                         <Trash2 size={14} />
@@ -476,15 +476,15 @@ export function ItemsPage() {
       </div>
 
       {modalOpen && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4 overflow-y-auto py-8">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
               <h2 className="text-base font-semibold text-slate-900">{editingId ? 'Edit Item' : 'Add Item'}</h2>
-              <button onClick={closeModal} className="text-slate-400 hover:text-slate-600">
+              <button onClick={closeModal} className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all duration-200">
                 <X size={18} />
               </button>
             </div>
-            <form onSubmit={handleSubmit} className="px-5 py-4 space-y-3 max-h-[70vh] overflow-y-auto">
+            <form onSubmit={handleSubmit} className="px-5 py-4 space-y-3 overflow-y-auto flex-1">
               {formError && (
                 <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2">
                   {formError}
@@ -497,7 +497,7 @@ export function ItemsPage() {
                   <select
                     value={form.type}
                     onChange={(e) => setForm({ ...form, type: e.target.value as 'product' | 'service' })}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
                   >
                     <option value="product">Product</option>
                     <option value="service">Service</option>
@@ -509,7 +509,7 @@ export function ItemsPage() {
                     value={form.sku}
                     onChange={(e) => setForm({ ...form, sku: e.target.value })}
                     placeholder="Auto-generated if blank"
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
                   />
                 </div>
               </div>
@@ -519,7 +519,7 @@ export function ItemsPage() {
                 <input
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
                 />
               </div>
 
@@ -529,7 +529,7 @@ export function ItemsPage() {
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
                   rows={2}
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
                 />
               </div>
 
@@ -540,7 +540,7 @@ export function ItemsPage() {
                     value={form.unit}
                     onChange={(e) => setForm({ ...form, unit: e.target.value })}
                     placeholder="pcs, hrs, kg..."
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
                   />
                 </div>
                 <div>
@@ -550,7 +550,7 @@ export function ItemsPage() {
                     step="0.01"
                     value={form.salesPrice}
                     onChange={(e) => setForm({ ...form, salesPrice: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
                   />
                 </div>
                 <div>
@@ -560,7 +560,7 @@ export function ItemsPage() {
                     step="0.01"
                     value={form.purchasePrice}
                     onChange={(e) => setForm({ ...form, purchasePrice: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
                   />
                 </div>
               </div>
@@ -615,7 +615,7 @@ export function ItemsPage() {
                           type="number"
                           value={form.reorderPoint}
                           onChange={(e) => setForm({ ...form, reorderPoint: e.target.value })}
-                          className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                          className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
                         />
                       </div>
                     </div>
@@ -627,14 +627,14 @@ export function ItemsPage() {
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg"
+                  className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition-all duration-200"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="px-4 py-2 text-sm font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 disabled:opacity-50"
+                  className="px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl transition-all duration-200 hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50 shadow-sm"
                 >
                   {isSaving ? 'Saving...' : editingId ? 'Save Changes' : 'Add Item'}
                 </button>
@@ -645,8 +645,8 @@ export function ItemsPage() {
       )}
 
       {deleteTarget && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-5">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5">
             <h2 className="text-base font-semibold text-slate-900 mb-2">Delete Item</h2>
             <p className="text-sm text-slate-500 mb-4">
               Are you sure you want to delete{' '}
@@ -663,14 +663,14 @@ export function ItemsPage() {
                   setDeleteTarget(null);
                   setDeleteError(null);
                 }}
-                className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg"
+                className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition-all duration-200"
               >
                 Cancel
               </button>
               <button
                 onClick={() => deleteMutation.mutate(deleteTarget.id)}
                 disabled={deleteMutation.isPending}
-                className="px-4 py-2 text-sm font-medium text-white bg-rose-600 rounded-lg hover:bg-rose-700 disabled:opacity-50"
+                className="px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-rose-600 to-rose-700 rounded-xl transition-all duration-200 hover:from-rose-700 hover:to-rose-800 disabled:opacity-50 shadow-sm"
               >
                 {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
               </button>
@@ -699,11 +699,11 @@ export function ItemsPage() {
       )}
 
       {openStockModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-5">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-5">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-base font-semibold text-slate-900">Record Opening Stock</h2>
-              <button onClick={() => setOpenStockModal(false)} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
+              <button onClick={() => setOpenStockModal(false)} className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all duration-200"><X size={18} /></button>
             </div>
             {stockSuccess && (
               <div className="flex items-center gap-2 px-3 py-2 mb-3 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg">
@@ -723,7 +723,7 @@ export function ItemsPage() {
                     const purchasePriceNaira = selected?.purchasePrice ? (selected.purchasePrice / 100).toString() : '';
                     setStockForm({ itemId: e.target.value, quantity: stockForm.quantity, unitCost: purchasePriceNaira });
                   }}
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
                 >
                   <option value="">Select item...</option>
                   {(items || []).filter(i => i.trackInventory).map(i => (
@@ -735,12 +735,12 @@ export function ItemsPage() {
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Quantity</label>
                   <input type="number" min="1" value={stockForm.quantity} onChange={(e) => setStockForm({ ...stockForm, quantity: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Unit Cost (₦)</label>
                   <input type="number" step="0.01" min="0" value={stockForm.unitCost} onChange={(e) => setStockForm({ ...stockForm, unitCost: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
                   {(() => {
                     const q = parseFloat(stockForm.quantity || '0');
                     const uc = parseFloat(stockForm.unitCost || '0');
@@ -752,9 +752,9 @@ export function ItemsPage() {
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <button type="button" onClick={() => setOpenStockModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
+                  className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition-all duration-200">Cancel</button>
                 <button type="submit" disabled={recordStockMutation.isPending || !stockForm.itemId || !stockForm.quantity}
-                  className="px-4 py-2 text-sm font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 disabled:opacity-50">
+                  className="px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl transition-all duration-200 hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50 shadow-sm">
                   {recordStockMutation.isPending ? 'Saving...' : 'Record Stock'}
                 </button>
               </div>
@@ -942,18 +942,18 @@ function ValuationStatementModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 px-4 py-8 overflow-y-auto">
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 px-4 py-8 overflow-y-auto">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl my-auto">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <h2 className="text-base font-bold text-slate-900">Inventory Valuation Statement</h2>
           <div className="flex items-center gap-2">
-            <button onClick={exportValuationCSV} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
+            <button onClick={exportValuationCSV} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-sm font-medium rounded-xl transition-all duration-200 hover:bg-slate-50 hover:border-slate-300">
               <Download size={14} /> CSV
             </button>
-            <button onClick={exportValuationPDF} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
+            <button onClick={exportValuationPDF} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-sm font-medium rounded-xl transition-all duration-200 hover:bg-slate-50 hover:border-slate-300">
               <FileText size={14} /> PDF
             </button>
-            <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors">
+            <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-xl transition-all duration-200">
               <X size={18} className="text-slate-500" />
             </button>
           </div>
@@ -963,7 +963,7 @@ function ValuationStatementModal({
           <select
             value={selectedItemId}
             onChange={(e) => onSelectItem(e.target.value)}
-            className="max-w-xs px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+            className="max-w-xs px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
           >
             <option value="">All tracked items</option>
             {itemsWithStock.map((it) => (
@@ -978,7 +978,7 @@ function ValuationStatementModal({
               type="date"
               value={asOfDate}
               onChange={(e) => setAsOfDate(e.target.value)}
-              className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+              className="px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
             />
           </div>
         </div>
@@ -992,8 +992,8 @@ function ValuationStatementModal({
             <div className="text-center py-12 text-sm text-slate-400">No inventory items with tracked stock found.</div>
           ) : (
             filtered.map((vi) => (
-              <div key={vi.item.id} className="border border-slate-200 rounded-xl overflow-hidden">
-                <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+              <div key={vi.item.id} className="border border-slate-200/80 rounded-xl overflow-hidden">
+                <div className="px-4 py-3 bg-slate-50 border-b border-slate-200/80 flex items-center justify-between">
                   <div>
                     <span className="font-semibold text-slate-900">{vi.item.name}</span>
                     <span className="text-xs text-slate-400 ml-2">
@@ -1014,16 +1014,16 @@ function ValuationStatementModal({
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead>
-                      <tr className="bg-slate-50 text-xs font-medium text-slate-500 uppercase tracking-wide">
-                        <th className="px-3 py-2 text-left">Date</th>
-                        <th className="px-3 py-2 text-left">Type</th>
-                        <th className="px-3 py-2 text-left">Reference</th>
-                        <th className="px-3 py-2 text-right">In Qty</th>
-                        <th className="px-3 py-2 text-right">Out Qty</th>
-                        <th className="px-3 py-2 text-right">Unit Cost</th>
-                        <th className="px-3 py-2 text-right">Value</th>
-                        <th className="px-3 py-2 text-right">Bal Qty</th>
-                        <th className="px-3 py-2 text-right">Bal Value</th>
+                      <tr className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                        <th className="px-3 py-3 text-left">Date</th>
+                        <th className="px-3 py-3 text-left">Type</th>
+                        <th className="px-3 py-3 text-left">Reference</th>
+                        <th className="px-3 py-3 text-right">In Qty</th>
+                        <th className="px-3 py-3 text-right">Out Qty</th>
+                        <th className="px-3 py-3 text-right">Unit Cost</th>
+                        <th className="px-3 py-3 text-right">Value</th>
+                        <th className="px-3 py-3 text-right">Bal Qty</th>
+                        <th className="px-3 py-3 text-right">Bal Value</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">

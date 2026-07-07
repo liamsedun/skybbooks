@@ -841,7 +841,7 @@ export function InvoiceForm({ invoiceId, onNavigate }: InvoiceFormProps) {
                 type="button"
                 disabled={saveInvoiceMutation.isPending || !isValid}
                 onClick={handleSubmit((vals) => handleFormSubmission(vals as InvoiceFormValues, false))}
-                className="w-full py-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-semibold rounded-lg transition text-xs flex items-center justify-center outline-none cursor-pointer disabled:opacity-50"
+                className="w-full py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-semibold rounded-xl transition-all duration-200 text-xs flex items-center justify-center outline-none cursor-pointer disabled:opacity-50"
               >
                 {saveInvoiceMutation.isPending ? (
                   <Loader2 className="w-4 h-4 text-primary animate-spin mr-1.5" />
@@ -855,12 +855,12 @@ export function InvoiceForm({ invoiceId, onNavigate }: InvoiceFormProps) {
                 type="button"
                 disabled={saveInvoiceMutation.isPending || !isValid}
                 onClick={handleSubmit((vals) => handleFormSubmission(vals as InvoiceFormValues, true))}
-                className="w-full py-3 bg-primary hover:bg-primary-hover text-white font-semibold text-xs rounded-lg shadow-sm transition cursor-pointer flex items-center justify-center outline-none disabled:opacity-50"
+                className="w-full py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-semibold text-xs rounded-xl shadow-sm transition-all duration-200 cursor-pointer flex items-center justify-center outline-none disabled:opacity-50"
               >
                 {saveInvoiceMutation.isPending ? (
                   <Loader2 className="w-4 h-4 text-white animate-spin mr-1.5" />
                 ) : (
-                  <Send className="w-4 h-4 mr-1.5 text-primary-light stroke-[2.5]" />
+                  <Send className="w-4 h-4 mr-1.5" />
                 )}
                 Approve & Send to client
               </button>
@@ -868,7 +868,7 @@ export function InvoiceForm({ invoiceId, onNavigate }: InvoiceFormProps) {
               <button
                 type="button"
                 onClick={() => onNavigate('invoices')}
-                className="w-full text-center py-2 text-slate-400 hover:text-rose-600 text-[11px] font-bold uppercase tracking-wider transition select-none outline-none"
+                className="w-full text-center py-2.5 text-slate-400 hover:text-rose-600 text-[11px] font-bold uppercase tracking-wider transition-all duration-200 select-none outline-none"
               >
                 Cancel posting
               </button>
@@ -883,18 +883,18 @@ export function InvoiceForm({ invoiceId, onNavigate }: InvoiceFormProps) {
 
       {/* SEARCHABLE INLINE ADD CUSTOMER LIGHT MODAL */}
       {showAddCustomerModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs select-none">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm select-none">
           <div
-            className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden"
+            className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200/80 overflow-hidden"
             id="inline-customer-modal-container"
           >
-            <div className="px-5 py-4 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
-              <h4 className="text-sm font-black text-slate-800 uppercase tracking-wide">
+            <div className="px-5 py-4 border-b border-slate-50 flex items-center justify-between bg-slate-50/80">
+              <h4 className="text-sm font-bold text-slate-900">
                 Register New Customer
               </h4>
               <button
                 onClick={() => setShowAddCustomerModal(false)}
-                className="text-slate-400 hover:text-slate-600 outline-none"
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors outline-none"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -902,8 +902,8 @@ export function InvoiceForm({ invoiceId, onNavigate }: InvoiceFormProps) {
 
             <form onSubmit={executeAddCustomer} className="p-5 space-y-4 text-xs font-semibold">
               {addCustomerError && (
-                <div className="p-3 bg-rose-50 text-rose-750 font-bold rounded-xl leading-relaxed">
-                  ⚠️ {addCustomerError}
+                <div className="p-3 bg-rose-50 text-rose-700 font-bold rounded-xl leading-relaxed">
+                  {addCustomerError}
                 </div>
               )}
 
@@ -917,7 +917,7 @@ export function InvoiceForm({ invoiceId, onNavigate }: InvoiceFormProps) {
                   placeholder="e.g. Aliko Container Holdings Ltd"
                   value={newCustomerName}
                   onChange={(e) => setNewCustomerName(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:border-primary focus:ring-1 focus:ring-primary text-slate-800"
+                  className="w-full px-3 py-2.5 border border-slate-200 rounded-xl outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-900/10 transition-shadow text-slate-800"
                 />
               </div>
 
@@ -930,7 +930,7 @@ export function InvoiceForm({ invoiceId, onNavigate }: InvoiceFormProps) {
                   placeholder="accounts@alikoholdings.com"
                   value={newCustomerEmail}
                   onChange={(e) => setNewCustomerEmail(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:border-primary focus:ring-1 focus:ring-primary text-slate-800"
+                  className="w-full px-3 py-2.5 border border-slate-200 rounded-xl outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-900/10 transition-shadow text-slate-800"
                 />
               </div>
 
@@ -938,14 +938,14 @@ export function InvoiceForm({ invoiceId, onNavigate }: InvoiceFormProps) {
                 <button
                   type="button"
                   onClick={() => setShowAddCustomerModal(false)}
-                  className="px-4 py-2 border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 font-semibold rounded-lg transition cursor-pointer"
+                  className="px-4 py-2.5 border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 font-semibold rounded-xl transition-all duration-200 cursor-pointer"
                 >
                   Discard
                 </button>
                 <button
                   type="submit"
                   disabled={isAddingCustomer}
-                  className="px-5 py-2 bg-primary hover:bg-primary-hover text-white font-semibold rounded-lg transition cursor-pointer flex items-center justify-center"
+                  className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-semibold rounded-xl transition-all duration-200 shadow-sm cursor-pointer flex items-center justify-center"
                 >
                   {isAddingCustomer ? (
                     <Loader2 className="w-4 h-4 animate-spin text-white" />

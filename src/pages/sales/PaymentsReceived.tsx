@@ -556,9 +556,9 @@ export function PaymentsReceivedPage() {
         }
       `}</style>
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
         {/* Page header */}
-        <div className="flex items-start justify-between mb-6">
+        <div className="flex items-start justify-between">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Payments Received</h1>
             <p className="text-sm text-slate-500 mt-1">
@@ -568,29 +568,29 @@ export function PaymentsReceivedPage() {
           <div className="flex gap-2">
             <button
               onClick={() => { setAddForm({ ...EMPTY_ADD_FORM, reference: nextReference }); setAddError(null); setAddOpen(true); }}
-              className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-900 text-white text-xs font-medium rounded-lg hover:bg-slate-800 transition-colors">
+              className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-xs font-medium rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200 shadow-sm">
               <Plus size={14} />Record Payment
             </button>
-            <button onClick={() => exportPaymentsCSV(filtered)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
+            <button onClick={() => exportPaymentsCSV(filtered)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl hover:bg-slate-50 transition-all duration-200">
               <Download size={14} /> CSV
             </button>
-            <button onClick={() => exportPaymentsPDF(filtered)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
+            <button onClick={() => exportPaymentsPDF(filtered)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl hover:bg-slate-50 transition-all duration-200">
               <FileText size={14} /> PDF
             </button>
             <button onClick={() => setImportOpen(true)}
-              className="inline-flex items-center gap-2 px-3 py-1.5 bg-white text-slate-700 text-xs font-medium border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
+              className="inline-flex items-center gap-2 px-3 py-1.5 bg-white text-slate-700 text-xs font-medium border border-slate-200 rounded-xl hover:bg-slate-50 transition-all duration-200">
               <Upload size={14} />Import CSV
             </button>
           </div>
         </div>
 
         {/* Summary cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-          <div className="bg-white border border-slate-200 rounded-xl p-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
             <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Total Receipts</p>
             <p className="text-xl font-bold text-slate-900 mt-1">{formatNaira((payments || []).reduce((s, p) => s + p.amount, 0))}</p>
           </div>
-          <div className="bg-white border border-slate-200 rounded-xl p-4">
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
             <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">This Month</p>
             <p className="text-xl font-bold text-slate-900 mt-1">
               {formatNaira((payments || []).filter(p => {
@@ -599,7 +599,7 @@ export function PaymentsReceivedPage() {
               }).reduce((s, p) => s + p.amount, 0))}
             </p>
           </div>
-          <div className="bg-white border border-slate-200 rounded-xl p-4">
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
             <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Total Count</p>
             <p className="text-xl font-bold text-slate-900 mt-1">{(payments || []).length} payments</p>
           </div>
@@ -609,27 +609,27 @@ export function PaymentsReceivedPage() {
           {/* List panel */}
           <div className={`flex-1 min-w-0 ${selectedPaymentId ? 'hidden lg:block' : ''}`}>
             {/* Filters */}
-            <div className="flex flex-wrap gap-2 mb-4">
+            <div className="flex flex-wrap gap-2">
               <button onClick={() => setMethodFilter('all')}
-                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${methodFilter === 'all' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
+                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${methodFilter === 'all' ? 'bg-slate-900 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
                 All Methods
               </button>
               {methods.map(m => (
                 <button key={m} onClick={() => setMethodFilter(m)}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${methodFilter === m ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${methodFilter === m ? 'bg-slate-900 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
                   {METHOD_META[m]?.label || m}
                 </button>
               ))}
             </div>
 
-            <div className="relative mb-4">
+            <div className="relative">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
                 placeholder="Search by payment number, customer, or reference..."
-                className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                className="w-full px-9 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
             </div>
 
-            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
               {isLoading ? (
                 <div className="flex items-center justify-center py-16 text-slate-400">
                   <Loader2 size={20} className="animate-spin mr-2" />Loading payments...
@@ -647,17 +647,17 @@ export function PaymentsReceivedPage() {
               ) : (
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-slate-100 text-left text-xs font-medium text-slate-400 uppercase tracking-wide">
-                      <th className="py-2.5 pl-4 pr-3">Payment #</th>
-                      <th className="py-2.5 pr-3">From</th>
-                      <th className="py-2.5 pr-3">Date</th>
-                      <th className="py-2.5 pr-3">Method</th>
-                      <th className="py-2.5 pr-3 text-right">Amount</th>
-                      <th className="py-2.5 pr-3 text-center">Ledger</th>
-                      <th className="py-2.5 pr-2"></th>
+                    <tr className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                      <th className="px-3 py-3 text-left">Payment #</th>
+                      <th className="px-3 py-3 text-left">From</th>
+                      <th className="px-3 py-3 text-left">Date</th>
+                      <th className="px-3 py-3 text-left">Method</th>
+                      <th className="px-3 py-3 text-right">Amount</th>
+                      <th className="px-3 py-3 text-center">Ledger</th>
+                      <th className="px-3 py-3"></th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-50">
+                  <tbody className="divide-y divide-slate-100">
                     {filtered.map(p => {
                       const cust = p.customerId ? customerMap.get(p.customerId) : null;
                       const displayName = cust?.name || p.payerName || '—';
@@ -667,51 +667,51 @@ export function PaymentsReceivedPage() {
                       const isSelected = p.id === selectedPaymentId;
                       return (
                         <tr key={p.id} onClick={() => setSelectedPaymentId(isSelected ? null : p.id)}
-                          className={`group cursor-pointer transition-colors ${isSelected ? 'bg-indigo-50 border-l-2 border-l-indigo-500' : 'hover:bg-slate-50'}`}>
-                          <td className="py-2.5 pl-4 pr-3">
+                          className={`group cursor-pointer hover:bg-slate-50/50 transition-colors ${isSelected ? 'bg-indigo-50 border-l-2 border-l-indigo-500' : ''}`}>
+                          <td className="px-3 py-3">
                             <p className="font-mono text-sm font-semibold text-slate-700">{p.paymentNumber}</p>
                             {p.category === 'other_income' && (
-                              <span className="text-[10px] font-medium text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">Other Income</span>
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">Other Income</span>
                             )}
                           </td>
-                          <td className="py-2.5 pr-3">
+                          <td className="px-3 py-3">
                             <p className="text-sm font-medium text-slate-800">{displayName}</p>
                             {displayEmail && <p className="text-xs text-slate-400">{displayEmail}</p>}
                           </td>
-                          <td className="py-2.5 pr-3 text-sm text-slate-500">{fmtDate(p.date)}</td>
-                          <td className="py-2.5 pr-3">
+                          <td className="px-3 py-3 text-sm text-slate-500">{fmtDate(p.date)}</td>
+                          <td className="px-3 py-3">
                             <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600">
                               <Icon className="w-3.5 h-3.5 text-slate-400" />
                               {meta.label}
                             </span>
                           </td>
-                          <td className="py-2.5 pr-3 text-right font-semibold text-emerald-700 font-mono">
+                          <td className="px-3 py-3 text-right font-semibold text-emerald-700 font-mono">
                             {formatNaira(p.amount)}
                           </td>
-                          <td className="py-2.5 pr-3 text-center">
+                          <td className="px-3 py-3 text-center">
                             {p.journalEntryId ? (
                               <button
                                 onClick={(e) => { e.stopPropagation(); navigate(`/accountant/journals?entry=${p.journalEntryNumber || ''}`); }}
-                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
+                                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-all duration-200"
                               ><CheckCircle2 className="w-3 h-3" /> Posted</button>
                             ) : (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500">Not posted</span>
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-500 border border-slate-200">Not posted</span>
                             )}
                           </td>
-                          <td className="py-2.5 pr-2">
+                          <td className="px-3 py-3">
                             <div className="opacity-0 group-hover:opacity-100 flex items-center justify-end gap-1 transition-opacity" onClick={e => e.stopPropagation()}>
                               {p.category === 'sales_invoice' && (
                                 <button onClick={() => setReceiptPaymentId(p.id)}
-                                  className="p-1.5 rounded-md text-slate-400 hover:text-indigo-600 hover:bg-indigo-50" title="Download receipt">
+                                  className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200" title="Download receipt">
                                   <Download size={14} />
                                 </button>
                               )}
                               <button onClick={() => openEditModal(p)}
-                                className="p-1.5 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100" title="Edit payment">
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all duration-200" title="Edit payment">
                                 <Pencil size={14} />
                               </button>
                               <button onClick={() => { setDeleteTarget(p); setDeleteError(null); }}
-                                className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50" title="Reverse payment">
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all duration-200" title="Reverse payment">
                                 <Trash2 size={14} />
                               </button>
                             </div>
@@ -721,11 +721,11 @@ export function PaymentsReceivedPage() {
                     })}
                   </tbody>
                   <tfoot>
-                    <tr className="border-t border-slate-200 bg-slate-50">
-                      <td colSpan={4} className="py-2.5 pl-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                    <tr className="border-t-2 border-slate-200 bg-slate-50/80">
+                      <td colSpan={4} className="px-3 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
                         {filtered.length} payments shown
                       </td>
-                      <td className="py-2.5 pr-3 text-right font-bold text-slate-800 font-mono">{formatNaira(totals.sum)}</td>
+                      <td className="px-3 py-3 text-right font-bold text-slate-800 font-mono">{formatNaira(totals.sum)}</td>
                       <td />
                     </tr>
                   </tfoot>
@@ -737,7 +737,7 @@ export function PaymentsReceivedPage() {
           {/* Detail panel */}
           {selectedPaymentId && (
             <div className="w-full lg:w-96 shrink-0">
-              <div className="bg-white border border-slate-200 rounded-xl overflow-hidden sticky top-6">
+              <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden sticky top-6">
                 <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
                   <div>
                     <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Payment Detail</p>
@@ -883,14 +883,14 @@ export function PaymentsReceivedPage() {
 
       {/* ── Add Payment Modal ────────────────────────────────────────────────── */}
       {addOpen && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4 overflow-y-auto py-8">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 px-4 overflow-y-auto py-8">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-              <h2 className="text-base font-semibold text-slate-900">Record Payment Received</h2>
-              <button onClick={() => { setAddOpen(false); setAddError(null); }} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
+              <h2 className="text-base font-bold text-slate-900">Record Payment Received</h2>
+              <button onClick={() => { setAddOpen(false); setAddError(null); }} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors"><X size={18} /></button>
             </div>
             <form onSubmit={handleAddSubmit} className="px-5 py-4 space-y-3 max-h-[75vh] overflow-y-auto">
-              {addError && <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2">{addError}</div>}
+              {addError && <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2">{addError}</div>}
 
               {/* Category toggle */}
               <div>
@@ -899,7 +899,7 @@ export function PaymentsReceivedPage() {
                   {(['other_income', 'sales_invoice'] as const).map(cat => (
                     <button key={cat} type="button"
                       onClick={() => setAddForm(f => ({ ...f, category: cat }))}
-                      className={`py-2 px-3 rounded-lg text-sm font-medium border transition-colors ${addForm.category === cat ? 'bg-slate-900 text-white border-slate-900' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                      className={`py-2 px-3 rounded-xl text-sm font-medium border transition-all duration-200 ${addForm.category === cat ? 'bg-slate-900 text-white border-slate-900 shadow-sm' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
                       {cat === 'sales_invoice' ? 'Invoice Payment' : 'Other Income'}
                     </button>
                   ))}
@@ -916,13 +916,13 @@ export function PaymentsReceivedPage() {
                   <label className="block text-xs font-medium text-slate-500 mb-1">Payer Name</label>
                   <input value={addForm.payerName} onChange={e => setAddForm(f => ({ ...f, payerName: e.target.value }))}
                     placeholder="e.g. Federal Government Grant, Asset Disposal"
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
                 </div>
               ) : (
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Customer</label>
                   <select value={addForm.customerId} onChange={e => setAddForm(f => ({ ...f, customerId: e.target.value }))}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10">
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow">
                     <option value="">Select customer...</option>
                     {(customers || []).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
@@ -939,7 +939,7 @@ export function PaymentsReceivedPage() {
                       {addForm.allocations.map((alloc, idx) => {
                         const cName = customers?.find(c => c.id === invoiceCustomerMap.get(alloc.invoiceId))?.name || '';
                         return (
-                          <label key={alloc.invoiceId} className="flex items-center gap-3 p-2 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                          <label key={alloc.invoiceId} className="flex items-center gap-3 p-2 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer">
                             <input type="checkbox" checked={alloc.selected}
                               onChange={() => handleAllocToggle(idx)}
                               className="h-4 w-4 text-slate-900 border-slate-300 rounded focus:ring-slate-900" />
@@ -964,13 +964,13 @@ export function PaymentsReceivedPage() {
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Date</label>
                   <input type="date" value={addForm.date} onChange={e => setAddForm(f => ({ ...f, date: e.target.value }))}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Net Amount Received (₦)</label>
                   <input type="number" step="0.01" value={addForm.amount} onChange={e => setAddForm(f => ({ ...f, amount: e.target.value }))}
                     placeholder="0.00"
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
                   <p className="text-[10px] text-slate-400 mt-0.5">Invoice total minus WHT deducted at source</p>
                 </div>
               </div>
@@ -979,7 +979,7 @@ export function PaymentsReceivedPage() {
                 <label className="block text-xs font-medium text-slate-500 mb-1">WHT Deducted at Source (₦)</label>
                 <input type="number" step="0.01" min="0" value={addForm.whtAmount} onChange={e => setAddForm(f => ({ ...f, whtAmount: e.target.value }))}
                   placeholder="0.00"
-                  className="w-full px-3 py-2 text-sm border border-amber-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-900/10" />
+                  className="w-full px-3 py-2.5 text-sm border border-amber-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-900/10 focus:border-amber-300 transition-shadow" />
                 <p className="text-[10px] text-amber-600 font-medium mt-1">Posted to WHT Receivable GL account.</p>
               </div>
 
@@ -987,7 +987,7 @@ export function PaymentsReceivedPage() {
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Payment Method</label>
                   <select value={addForm.paymentMethod} onChange={e => setAddForm(f => ({ ...f, paymentMethod: e.target.value }))}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10">
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow">
                     {PAYMENT_METHODS.map(m => <option key={m} value={m}>{METHOD_META[m]?.label || m}</option>)}
                   </select>
                 </div>
@@ -995,7 +995,7 @@ export function PaymentsReceivedPage() {
                   <label className="block text-xs font-medium text-slate-500 mb-1">Reference</label>
                   <input value={addForm.reference} onChange={e => setAddForm(f => ({ ...f, reference: e.target.value }))}
                     placeholder="TXN-xxxxx"
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
                 </div>
               </div>
 
@@ -1024,14 +1024,14 @@ export function PaymentsReceivedPage() {
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">Notes</label>
                 <textarea value={addForm.notes} onChange={e => setAddForm(f => ({ ...f, notes: e.target.value }))} rows={2}
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
               </div>
 
               <div className="flex justify-end gap-2 pt-2">
                 <button type="button" onClick={() => { setAddOpen(false); setAddError(null); }}
-                  className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
+                  className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-xl transition-all duration-200">Cancel</button>
                 <button type="submit" disabled={createMutation.isPending}
-                  className="px-4 py-2 text-sm font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 disabled:opacity-50">
+                  className="px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 rounded-xl shadow-sm disabled:opacity-50 transition-all duration-200">
                   {createMutation.isPending ? 'Saving...' : 'Record Payment'}
                 </button>
               </div>
@@ -1042,31 +1042,31 @@ export function PaymentsReceivedPage() {
 
       {/* ── Edit Modal ───────────────────────────────────────────────────────── */}
       {editTarget && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-              <h2 className="text-base font-semibold text-slate-900">Edit Payment — {editTarget.paymentNumber}</h2>
-              <button onClick={() => setEditTarget(null)} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
+              <h2 className="text-base font-bold text-slate-900">Edit Payment — {editTarget.paymentNumber}</h2>
+              <button onClick={() => setEditTarget(null)} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors"><X size={18} /></button>
             </div>
             <form onSubmit={handleEditSubmit} className="px-5 py-4 space-y-3">
-              {editError && <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2">{editError}</div>}
+              {editError && <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2">{editError}</div>}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Date</label>
                   <input type="date" value={editForm.date || ''} onChange={e => setEditForm(f => ({ ...f, date: e.target.value }))}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Reference</label>
                   <input value={editForm.reference || ''} onChange={e => setEditForm(f => ({ ...f, reference: e.target.value }))}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
                 </div>
               </div>
               {editTarget.category === 'other_income' && (
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Payer Name</label>
                   <input value={editForm.payerName || ''} onChange={e => setEditForm(f => ({ ...f, payerName: e.target.value }))}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
                 </div>
               )}
               <div>
@@ -1081,14 +1081,14 @@ export function PaymentsReceivedPage() {
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">Notes</label>
                 <textarea value={editForm.notes || ''} onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))} rows={2}
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
               </div>
               <p className="text-xs text-slate-400">Note: Amount and allocation cannot be edited after recording. Reverse and re-record if needed.</p>
               <div className="flex justify-end gap-2 pt-2">
                 <button type="button" onClick={() => setEditTarget(null)}
-                  className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
+                  className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-xl transition-all duration-200">Cancel</button>
                 <button type="submit" disabled={updateMutation.isPending}
-                  className="px-4 py-2 text-sm font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 disabled:opacity-50">
+                  className="px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 rounded-xl shadow-sm disabled:opacity-50 transition-all duration-200">
                   {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
@@ -1099,19 +1099,19 @@ export function PaymentsReceivedPage() {
 
       {/* ── Delete Confirmation ──────────────────────────────────────────────── */}
       {deleteTarget && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-5">
-            <h2 className="text-base font-semibold text-slate-900 mb-2">Reverse Payment</h2>
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5">
+            <h2 className="text-base font-bold text-slate-900 mb-2">Reverse Payment</h2>
             <p className="text-sm text-slate-500 mb-4">
               Reverse <span className="font-medium text-slate-700">{deleteTarget.paymentNumber}</span> ({formatNaira(deleteTarget.amount)})?
               This will restore any invoice balance due and reverse the journal entries.
             </p>
-            {deleteError && <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2 mb-3">{deleteError}</div>}
+            {deleteError && <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2 mb-3">{deleteError}</div>}
             <div className="flex justify-end gap-2">
               <button onClick={() => { setDeleteTarget(null); setDeleteError(null); }}
-                className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
+                className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-xl transition-all duration-200">Cancel</button>
               <button onClick={() => deleteMutation.mutate(deleteTarget.id)} disabled={deleteMutation.isPending}
-                className="px-4 py-2 text-sm font-medium text-white bg-rose-600 rounded-lg hover:bg-rose-700 disabled:opacity-50">
+                className="px-4 py-2.5 text-sm font-medium text-white bg-rose-600 rounded-xl hover:bg-rose-700 disabled:opacity-50 transition-all duration-200">
                 {deleteMutation.isPending ? 'Reversing...' : 'Reverse Payment'}
               </button>
             </div>

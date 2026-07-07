@@ -271,30 +271,30 @@ export function QuotesPage() {
   const isSaving = createMutation.isPending||updateMutation.isPending;
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-8">
-      <div className="flex items-start justify-between mb-6">
+    <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
+      <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Quotes</h1>
           <p className="text-sm text-slate-500 mt-1">{counts.all} total · {counts.byStatus['draft']||0} draft · {counts.byStatus['accepted']||0} accepted</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => exportQuotesCSV(filtered, customerMap)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
+          <button onClick={() => exportQuotesCSV(filtered, customerMap)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl hover:bg-slate-50 transition-all duration-200">
             <Download size={14} /> CSV
           </button>
-          <button onClick={() => exportQuotesPDF(filtered, customerMap)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
+          <button onClick={() => exportQuotesPDF(filtered, customerMap)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl hover:bg-slate-50 transition-all duration-200">
             <FileText size={14} /> PDF
           </button>
-          <button onClick={() => setImportOpen(true)} className="inline-flex items-center gap-2 px-3 py-1.5 bg-white text-slate-700 text-xs font-medium border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
+          <button onClick={() => setImportOpen(true)} className="inline-flex items-center gap-2 px-3 py-1.5 bg-white text-slate-700 text-xs font-medium border border-slate-200 rounded-xl hover:bg-slate-50 transition-all duration-200">
             <Upload size={14} /> Import CSV
           </button>
-          <button onClick={openAddModal} className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-900 text-white text-xs font-medium rounded-lg hover:bg-slate-800 transition-colors">
+          <button onClick={openAddModal} className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-xs font-medium rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200 shadow-sm">
             <Plus size={14} />New Quote
           </button>
         </div>
       </div>
 
       {convertSuccess && (
-        <div className="mb-4 flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-4 py-3">
+        <div className="flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3">
           <CheckCircle2 size={16} />{convertSuccess}
         </div>
       )}
@@ -302,20 +302,20 @@ export function QuotesPage() {
       <div className="flex gap-6">
         {/* List */}
         <div className={`flex-1 min-w-0 ${selectedId?'hidden lg:block':''}`}>
-          <div className="flex flex-wrap gap-2 mb-4">
+          <div className="flex flex-wrap gap-2">
             {(['all','draft','sent','accepted','declined','expired','converted'] as const).map(s=>(
               <button key={s} onClick={()=>setStatusFilter(s)}
-                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${statusFilter===s?'bg-slate-900 text-white':'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
+                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${statusFilter===s?'bg-slate-900 text-white shadow-sm':'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
                 {s==='all'?`All (${counts.all})`:`${STATUS_META[s].label} (${counts.byStatus[s]||0})`}
               </button>
             ))}
           </div>
-          <div className="relative mb-4">
+          <div className="relative">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input type="text" value={searchTerm} onChange={e=>setSearchTerm(e.target.value)} placeholder="Search quotes..."
-              className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+              className="w-full px-9 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
           </div>
-          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
             {isLoading ? <div className="flex items-center justify-center py-16 text-slate-400"><Loader2 size={20} className="animate-spin mr-2"/>Loading...</div>
             : isError ? <div className="flex items-center justify-center gap-2 py-16 text-rose-500 text-sm"><AlertCircle size={16}/>Failed to load.</div>
             : filtered.length===0 ? (
@@ -327,10 +327,10 @@ export function QuotesPage() {
             ) : (
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-slate-100 text-left text-xs font-medium text-slate-400 uppercase tracking-wide">
-                    <th className="py-2.5 pl-4 pr-3">Quote #</th><th className="py-2.5 pr-3">Customer</th>
-                    <th className="py-2.5 pr-3">Date</th><th className="py-2.5 pr-3">Expires</th>
-                    <th className="py-2.5 pr-3 text-right">Total</th><th className="py-2.5 pr-3">Status</th><th className="py-2.5 pr-2"></th>
+                  <tr className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                    <th className="px-3 py-3 text-left">Quote #</th><th className="px-3 py-3 text-left">Customer</th>
+                    <th className="px-3 py-3 text-left">Date</th><th className="px-3 py-3 text-left">Expires</th>
+                    <th className="px-3 py-3 text-right">Total</th><th className="px-3 py-3 text-left">Status</th><th className="px-3 py-3 text-right"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
@@ -339,7 +339,7 @@ export function QuotesPage() {
                     const isSelected=q.id===selectedId;
                     return (
                       <tr key={q.id} onClick={()=>setSelectedId(isSelected?null:q.id)}
-                        className={`cursor-pointer group transition-colors ${isSelected?'bg-indigo-50 border-l-2 border-l-indigo-500':'hover:bg-slate-50'}`}>
+                        className={`cursor-pointer group transition-colors ${isSelected?'bg-indigo-50 border-l-2 border-l-indigo-500':'hover:bg-slate-50/50'}`}>
                         <td className="py-2.5 pl-4 pr-3 font-mono text-sm font-semibold text-slate-700">{q.quoteNumber}</td>
                         <td className="py-2.5 pr-3 text-sm text-slate-700">{cust?.name||'—'}</td>
                         <td className="py-2.5 pr-3 text-sm text-slate-500">{fmtDate(q.date)}</td>
@@ -352,7 +352,7 @@ export function QuotesPage() {
                               className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-violet-50 text-violet-700 hover:bg-violet-100 border border-violet-200 transition-colors"
                             ><RefreshCw className="w-3 h-3" /> {q.convertedToInvoiceNumber || 'Converted'}</button>
                           ) : (
-                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${meta.color} ${meta.bg}`}>
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${meta.color} ${meta.bg}`}>
                               <Icon className="w-3 h-3"/>{meta.label}
                             </span>
                           )}
@@ -396,7 +396,7 @@ export function QuotesPage() {
         {/* Detail panel */}
         {selectedId && selectedQuote && (
           <div className="w-full lg:w-96 shrink-0">
-            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden sticky top-6">
+            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden sticky top-6">
               <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
                 <div>
                   <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Quote</p>
@@ -677,19 +677,19 @@ export function QuotesPage() {
 
       {/* Add/Edit Modal */}
       {modalOpen&&(
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4 overflow-y-auto py-8">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 shrink-0">
               <h2 className="text-base font-semibold text-slate-900">{editingId?'Edit Quote':'New Quote'}</h2>
-              <button onClick={closeModal} className="text-slate-400 hover:text-slate-600"><X size={18}/></button>
+              <button onClick={closeModal} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors"><X size={18}/></button>
             </div>
-            <form onSubmit={handleSubmit} className="px-5 py-4 space-y-4 max-h-[80vh] overflow-y-auto">
-              {formError&&<div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2">{formError}</div>}
+            <form onSubmit={handleSubmit} className="px-5 py-4 space-y-4 overflow-y-auto">
+              {formError&&<div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2">{formError}</div>}
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2">
                   <label className="block text-xs font-medium text-slate-500 mb-1">Customer</label>
                   <select value={form.customerId} onChange={e=>setForm({...form,customerId:e.target.value})}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10">
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow">
                     <option value="">Select a customer...</option>
                     {(customers||[]).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
@@ -697,17 +697,17 @@ export function QuotesPage() {
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Quote Date</label>
                   <input type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"/>
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"/>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Expiry Date</label>
                   <input type="date" value={form.expiryDate} onChange={e=>setForm({...form,expiryDate:e.target.value})}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"/>
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"/>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Status</label>
                   <select value={form.status} onChange={e=>setForm({...form,status:e.target.value as QuoteStatus})}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10">
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow">
                     {(['draft','sent','accepted','declined','expired'] as QuoteStatus[]).map(s=>
                       <option key={s} value={s}>{STATUS_META[s].label}</option>
                     )}
@@ -766,16 +766,16 @@ export function QuotesPage() {
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">Notes</label>
                 <textarea value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} rows={2}
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"/>
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"/>
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">Payment Terms</label>
                 <textarea value={form.terms} onChange={e=>setForm({...form,terms:e.target.value})} rows={2}
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"/>
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"/>
               </div>
               <div className="flex justify-end gap-2 pt-2">
-                <button type="button" onClick={closeModal} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
-                <button type="submit" disabled={isSaving} className="px-4 py-2 text-sm font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 disabled:opacity-50">
+                <button type="button" onClick={closeModal} className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-xl transition-all duration-200">Cancel</button>
+                <button type="submit" disabled={isSaving} className="px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50 transition-all duration-200 shadow-sm">
                   {isSaving?'Saving...':editingId?'Save Changes':'Create Quote'}
                 </button>
               </div>
@@ -785,15 +785,15 @@ export function QuotesPage() {
       )}
 
       {deleteTarget&&(
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-5">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5">
             <h2 className="text-base font-semibold text-slate-900 mb-2">Delete Quote</h2>
             <p className="text-sm text-slate-500 mb-4">Delete <span className="font-medium text-slate-700">{deleteTarget.quoteNumber}</span>? This cannot be undone.</p>
-            {deleteError&&<div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2 mb-3">{deleteError}</div>}
+            {deleteError&&<div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2 mb-3">{deleteError}</div>}
             <div className="flex justify-end gap-2">
-              <button onClick={()=>{ setDeleteTarget(null); setDeleteError(null); }} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
+              <button onClick={()=>{ setDeleteTarget(null); setDeleteError(null); }} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-xl transition-all duration-200">Cancel</button>
               <button onClick={()=>deleteMutation.mutate(deleteTarget.id)} disabled={deleteMutation.isPending}
-                className="px-4 py-2 text-sm font-medium text-white bg-rose-600 rounded-lg hover:bg-rose-700 disabled:opacity-50">
+                className="px-4 py-2 text-sm font-medium text-white bg-rose-600 rounded-xl hover:bg-rose-700 disabled:opacity-50 transition-all duration-200">
                 {deleteMutation.isPending?'Deleting...':'Delete'}
               </button>
             </div>

@@ -269,7 +269,7 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
           {isDraft && (
             <button
               onClick={() => onNavigate('edit-invoice', invoiceData.id)}
-              className="px-3.5 py-2 text-sm bg-white border border-slate-200 hover:border-slate-300 text-slate-700 rounded-lg transition flex items-center gap-1.5"
+              className="px-3.5 py-2 text-sm bg-white border border-slate-200 hover:border-slate-300 text-slate-700 rounded-xl transition-all duration-200 flex items-center gap-1.5"
             >
               <Edit className="w-3.5 h-3.5" /> Edit
             </button>
@@ -277,7 +277,7 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
           {!isVoid && (isDraft || invoiceData.status?.toLowerCase() === 'unpaid') && (
             <button
               onClick={() => sendInvoiceMutation.mutate()}
-              className="px-3.5 py-2 text-sm bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition flex items-center gap-1.5"
+              className="px-3.5 py-2 text-sm bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 rounded-xl transition-all duration-200 flex items-center gap-1.5"
             >
               <Send className="w-3.5 h-3.5" /> Send Invoice
             </button>
@@ -285,14 +285,14 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
           {!isPaid && !isVoid && !isDraft && (
             <button
               onClick={() => setPaymentDrawerOpen(true)}
-              className="px-3.5 py-2 text-sm bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-lg transition flex items-center gap-1.5 font-medium"
+              className="px-3.5 py-2 text-sm bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-xl transition-all duration-200 flex items-center gap-1.5 font-medium"
             >
               <CreditCard className="w-3.5 h-3.5" /> Record Payment
             </button>
           )}
           <button
             onClick={handlePdfDownload}
-            className="px-3.5 py-2 text-sm bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100 rounded-lg transition flex items-center gap-1.5"
+            className="px-3.5 py-2 text-sm bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100 rounded-xl transition-all duration-200 flex items-center gap-1.5"
           >
             <Download className="w-3.5 h-3.5" /> Download PDF
           </button>
@@ -303,7 +303,7 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
                   voidInvoiceMutation.mutate();
                 }
               }}
-              className="px-3.5 py-2 text-sm bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 rounded-lg transition flex items-center gap-1.5"
+              className="px-3.5 py-2 text-sm bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 rounded-xl transition-all duration-200 flex items-center gap-1.5"
             >
               <Ban className="w-3.5 h-3.5" /> Void
             </button>
@@ -563,7 +563,7 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
 
         {/* Timeline sidebar */}
         <div className="space-y-6">
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6">
             <div className="border-b border-slate-100 pb-4 mb-5">
               <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
                 <Clock className="w-4 h-4 text-slate-400" /> Activity

@@ -303,11 +303,11 @@ function BillList() {
   // RENDER
   // =========================================================================
   return (
-    <div className="space-y-6">
+    <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
 
       {/* ── Header ── */}
       {accountCode && (
-        <div className="flex items-center gap-2 px-4 py-3 bg-indigo-50 border border-indigo-200 rounded-xl text-sm text-indigo-800">
+        <div className="flex items-center gap-2 px-4 py-3 bg-indigo-50 border border-indigo-200/80 rounded-2xl text-sm text-indigo-800 shadow-sm">
           <ExternalLink className="w-4 h-4 flex-shrink-0" />
           <span>Showing bills for <strong>{accountName || `Account ${accountCode}`}</strong></span>
           <button onClick={() => navigate('/purchases/bills')} className="ml-auto text-xs font-medium text-indigo-600 hover:text-indigo-800 underline">Clear filter</button>
@@ -330,19 +330,19 @@ function BillList() {
                 console.error('Print error:', err);
               }
             }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl hover:bg-slate-50 transition-all duration-200">
             <FileText size={14} /> PDF
           </button>
           <button onClick={() => exportBillsCSV(filtered, vendorMap)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl hover:bg-slate-50 transition-all duration-200">
             <Download size={14} /> CSV
           </button>
           <button onClick={() => setImportOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl hover:bg-slate-50 transition-all duration-200">
             <Upload size={14} /> Import CSV
           </button>
           <button onClick={openCreate}
-            className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary text-white text-xs font-medium rounded-lg hover:bg-primary-hover transition-colors">
+            className="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-xs font-medium rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200">
             <Plus size={14} /> New Bill
           </button>
         </div>
@@ -356,7 +356,7 @@ function BillList() {
           { label: 'Outstanding',    value: formatNaira(totals.outstanding), sub: 'balance due',  color: 'text-blue-600' },
           { label: 'Overdue',        value: formatNaira(totals.overdue),     sub: 'past due',     color: 'text-red-600' },
         ].map(card => (
-          <div key={card.label} className="bg-white border border-slate-200 rounded-xl p-4">
+          <div key={card.label} className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
             <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{card.label}</p>
             <p className={`text-lg font-bold mt-1 ${card.color || 'text-slate-900'}`}>{card.value}</p>
             <p className="text-xs text-slate-400 mt-0.5">{card.sub}</p>
@@ -370,10 +370,10 @@ function BillList() {
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search bills or vendor..."
-            className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white" />
+            className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow bg-white" />
         </div>
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-          className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none bg-white text-slate-700">
+          className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow bg-white text-slate-700">
           <option value="all">All Statuses</option>
           <option value="draft">Draft</option>
           <option value="open">Open</option>
@@ -386,39 +386,39 @@ function BillList() {
 
       {/* ── Table ── */}
       {isLoading ? (
-        <div className="flex items-center justify-center py-16 gap-3 text-slate-400 bg-white border border-slate-200 rounded-xl">
+        <div className="flex items-center justify-center py-16 gap-3 text-slate-400 bg-gradient-to-r from-slate-200 to-slate-100 animate-pulse rounded-xl">
           <Loader2 size={20} className="animate-spin" /> Loading bills...
         </div>
       ) : error ? (
-        <div className="flex items-center justify-center py-16 gap-2 text-red-500 bg-white border border-slate-200 rounded-xl">
+        <div className="flex items-center justify-center py-16 gap-2 text-red-500 bg-white rounded-2xl border border-slate-200/80 shadow-sm">
           <AlertCircle size={18} /> Failed to load bills
         </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-16 bg-white border border-slate-200 rounded-xl">
+        <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-slate-200/80 shadow-sm">
           <FileText size={36} className="mx-auto text-slate-300 mb-3" />
           <p className="text-sm font-medium text-slate-600">{search || statusFilter !== 'all' ? 'No matching bills' : 'No bills yet'}</p>
           {!search && statusFilter === 'all' && <p className="text-xs text-slate-400 mt-1">Record supplier bills to track what you owe</p>}
         </div>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[820px] text-sm">
               <thead>
-                <tr className="bg-slate-50 text-xs font-medium text-slate-500 uppercase tracking-wide border-b border-slate-200">
-                  <th className="px-4 py-3 text-left">Bill #</th>
-                  <th className="px-4 py-3 text-left">Vendor</th>
-                  <th className="px-4 py-3 text-left">Date</th>
-                  <th className="px-4 py-3 text-left">Due Date</th>
-                  <th className="px-4 py-3 text-left">Status</th>
-                  <th className="px-4 py-3 text-right">Total</th>
-                  <th className="px-4 py-3 text-right">Balance Due</th>
-                  <th className="px-4 py-3 text-center min-w-[200px]">Actions</th>
+                <tr className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-200">
+                  <th className="px-3 py-3 text-left">Bill #</th>
+                  <th className="px-3 py-3 text-left">Vendor</th>
+                  <th className="px-3 py-3 text-left">Date</th>
+                  <th className="px-3 py-3 text-left">Due Date</th>
+                  <th className="px-3 py-3 text-left">Status</th>
+                  <th className="px-3 py-3 text-right">Total</th>
+                  <th className="px-3 py-3 text-right">Balance Due</th>
+                  <th className="px-3 py-3 text-center min-w-[200px]">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filtered.map(bill => (
                   <React.Fragment key={bill.id}>
-                    <tr className="hover:bg-slate-50/60 transition-colors">
+                    <tr className="hover:bg-slate-50/50 transition-colors">
                       {/* Bill number + expand */}
                       <td className="px-4 py-3 font-mono text-xs font-semibold text-slate-700">
                         <div className="flex items-center gap-1">
@@ -436,17 +436,17 @@ function BillList() {
                       <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{fmtDate(bill.date)}</td>
                       <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{fmtDate(bill.dueDate)}</td>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_STYLES[bill.status] || 'bg-slate-100 text-slate-600'}`}>
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${STATUS_STYLES[bill.status] || 'bg-slate-100 text-slate-600 border-slate-100/50'}`}>
                           {bill.status}
                         </span>
                         <div className="mt-1">
                           {bill.journalEntryId ? (
                             <button
                               onClick={() => navigate(`/accountant/journals?entry=${bill.journalEntryNumber || ''}`)}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
+                              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border border-emerald-100/50 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-all duration-200"
                             ><CheckCircle2 className="w-3 h-3" /> Posted</button>
                           ) : (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500">Not posted</span>
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border border-slate-100/50 bg-slate-100 text-slate-500">Not posted</span>
                           )}
                         </div>
                       </td>
@@ -459,7 +459,7 @@ function BillList() {
 
                           {/* View — always */}
                           <button onClick={() => navigate(`/purchases/bills/${bill.id}`)}
-                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-md transition-colors"
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl transition-all duration-200"
                             title="View bill details">
                             <Eye size={12} /> View
                           </button>
@@ -467,7 +467,7 @@ function BillList() {
                           {/* Edit — all except paid and void */}
                           {!['paid', 'void'].includes(bill.status) && (
                             <button onClick={() => openEdit(bill)}
-                              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-md transition-colors"
+                              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl transition-all duration-200"
                               title="Edit bill">
                               <Pencil size={12} /> Edit
                             </button>
@@ -477,7 +477,7 @@ function BillList() {
                           {bill.status === 'draft' && (
                             <button onClick={() => approveMutation.mutate(bill.id)}
                               disabled={approveMutation.isPending}
-                              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 rounded-md transition-colors disabled:opacity-50"
+                              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 rounded-xl transition-all duration-200 disabled:opacity-50"
                               title="Approve bill">
                               <CheckCircle2 size={12} /> Approve
                             </button>
@@ -487,7 +487,7 @@ function BillList() {
                           {bill.status === 'open' && (
                             <button onClick={() => { if (window.confirm('Unapprove this bill? It will revert to draft for editing.')) unapproveMutation.mutate(bill.id); }}
                               disabled={unapproveMutation.isPending}
-                              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-md transition-colors disabled:opacity-50"
+                              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl transition-all duration-200 disabled:opacity-50"
                               title="Unapprove bill">
                               <Undo2 size={12} /> Unapprove
                             </button>
@@ -496,7 +496,7 @@ function BillList() {
                           {/* Duplicate — always */}
                           <button onClick={() => { if (window.confirm('Duplicate this bill as a new draft?')) duplicateMutation.mutate(bill.id); }}
                             disabled={duplicateMutation.isPending}
-                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-md transition-colors disabled:opacity-50"
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition-all duration-200 disabled:opacity-50"
                             title="Duplicate bill">
                             <Copy size={12} /> Copy
                           </button>
@@ -505,7 +505,7 @@ function BillList() {
                           {['draft', 'open', 'partial', 'overdue'].includes(bill.status) && (
                             <button onClick={() => { if (window.confirm('Void this bill? This cannot be undone.')) voidMutation.mutate(bill.id); }}
                               disabled={voidMutation.isPending}
-                              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-md transition-colors disabled:opacity-50"
+                              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-xl transition-all duration-200 disabled:opacity-50"
                               title="Void bill">
                               <Ban size={12} /> Void
                             </button>
@@ -515,7 +515,7 @@ function BillList() {
                           {bill.status === 'draft' && (
                             <button onClick={() => { if (window.confirm('Permanently delete this draft bill?')) deleteMutation.mutate(bill.id); }}
                               disabled={deleteMutation.isPending}
-                              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-md transition-colors disabled:opacity-50"
+                              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl transition-all duration-200 disabled:opacity-50"
                               title="Delete bill">
                               <Trash2 size={12} /> Delete
                             </button>
@@ -527,7 +527,7 @@ function BillList() {
                     {/* Expanded detail row */}
                     {expandedId === bill.id && (
                       <tr>
-                        <td colSpan={8} className="px-6 py-4 bg-slate-50/80 border-b border-slate-100">
+                        <td colSpan={8} className="px-3 py-4 bg-slate-50/80 border-b border-slate-100">
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
                             <div><span className="text-slate-400 uppercase font-semibold tracking-wide">Subtotal</span><p className="font-semibold mt-1">{formatNaira(bill.subtotal)}</p></div>
                             <div><span className="text-slate-400 uppercase font-semibold tracking-wide">VAT</span><p className="font-semibold mt-1">{formatNaira(bill.taxAmount)}</p></div>
@@ -543,9 +543,9 @@ function BillList() {
               </tbody>
               <tfoot>
                 <tr className="bg-slate-50 border-t border-slate-200 font-semibold text-sm">
-                  <td colSpan={5} className="px-4 py-3 text-slate-600">Totals ({filtered.length} bills)</td>
-                  <td className="px-4 py-3 text-right text-slate-700">{formatNaira(totals.total)}</td>
-                  <td className="px-4 py-3 text-right text-slate-900">{formatNaira(totals.outstanding)}</td>
+                  <td colSpan={5} className="px-3 py-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Totals ({filtered.length} bills)</td>
+                  <td className="px-3 py-3 text-right text-slate-700">{formatNaira(totals.total)}</td>
+                  <td className="px-3 py-3 text-right text-slate-900">{formatNaira(totals.outstanding)}</td>
                   <td />
                 </tr>
               </tfoot>
@@ -558,8 +558,8 @@ function BillList() {
       {/* CREATE / EDIT BILL MODAL                                     */}
       {/* =========================================================== */}
       {(modalMode === 'create' || modalMode === 'edit') && (
-        <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 px-4 py-8 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl my-auto">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
               <h2 className="text-base font-bold text-slate-900">
                 {modalMode === 'edit' ? `Edit ${editingBill?.billNumber}` : 'New Bill'}
@@ -569,9 +569,9 @@ function BillList() {
               </button>
             </div>
 
-            <div className="px-6 py-5 space-y-5">
+                <div className="px-6 py-5 space-y-5 overflow-y-auto">
               {formError && (
-                <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2 flex items-center gap-2">
+                <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2 flex items-center gap-2">
                   <AlertCircle size={15} /> {formError}
                 </div>
               )}
@@ -580,7 +580,7 @@ function BillList() {
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1">Vendor *</label>
                   <select value={form.vendorId} onChange={e => setForm(f => ({ ...f, vendorId: e.target.value }))}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow">
                     <option value="">Select vendor...</option>
                     {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
                   </select>
@@ -588,7 +588,7 @@ function BillList() {
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1">Currency</label>
                   <select value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow">
                     <option value="NGN">NGN</option>
                     <option value="USD">USD</option>
                     <option value="GBP">GBP</option>
@@ -598,31 +598,31 @@ function BillList() {
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1">Bill Date *</label>
                   <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1">Due Date *</label>
                   <input type="date" value={form.dueDate} onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
                 </div>
               </div>
 
               {/* Line items */}
               <div>
                 <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wide mb-2">Line Items</h3>
-                <div className="border border-slate-200 rounded-lg overflow-hidden">
+                <div className="border border-slate-200 rounded-xl overflow-hidden">
                   <div className="overflow-x-auto">
                     <table className="w-full min-w-[560px] text-sm">
                       <thead>
-                        <tr className="bg-slate-50 text-xs font-medium text-slate-500 uppercase tracking-wide">
-                          <th className="px-3 py-2 text-left w-44">Item</th>
-                          <th className="px-3 py-2 text-left">Description</th>
-                          <th className="px-3 py-2 text-left w-16">Qty</th>
-                          <th className="px-3 py-2 text-left w-28">Unit Price (₦)</th>
-                          <th className="px-3 py-2 text-left w-16">VAT %</th>
-                          <th className="px-3 py-2 text-left">Account</th>
-                          <th className="px-3 py-2 text-right w-28">Total (₦)</th>
-                          <th className="px-2 py-2 w-6" />
+                        <tr className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                          <th className="px-3 py-3 text-left w-44">Item</th>
+                          <th className="px-3 py-3 text-left">Description</th>
+                          <th className="px-3 py-3 text-left w-16">Qty</th>
+                          <th className="px-3 py-3 text-left w-28">Unit Price (₦)</th>
+                          <th className="px-3 py-3 text-left w-16">VAT %</th>
+                          <th className="px-3 py-3 text-left">Account</th>
+                          <th className="px-3 py-3 text-right w-28">Total (₦)</th>
+                          <th className="px-3 py-3 w-6" />
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -632,7 +632,7 @@ function BillList() {
                             <tr key={i}>
                               <td className="px-3 py-2">
                                 <select value={line.itemId || ''} onChange={e => e.target.value ? selectItem(i, e.target.value) : setLine(i, { itemId: null })}
-                                  className="w-full text-xs px-2 py-1.5 border border-slate-200 rounded focus:outline-none focus:border-primary bg-white">
+                                  className="w-full text-xs px-2 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 bg-white">
                                   <option value="">— Custom —</option>
                                   {items.map(it => <option key={it.id} value={it.id}>{it.name}</option>)}
                                 </select>
@@ -644,22 +644,22 @@ function BillList() {
                               <td className="px-3 py-2">
                                 <input value={line.description} onChange={e => setLine(i, { description: e.target.value })}
                                   placeholder="Description"
-                                  className="w-full text-xs px-2 py-1.5 border border-slate-200 rounded focus:outline-none focus:border-primary" />
+                                  className="w-full text-xs px-2 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
                               </td>
                               <td className="px-3 py-2">
                                 <input type="number" min="0" step="1" value={line.quantity}
                                   onChange={e => setLine(i, { quantity: Number(e.target.value) })}
-                                  className="w-14 text-xs px-2 py-1.5 border border-slate-200 rounded focus:outline-none focus:border-primary" />
+                                  className="w-14 text-xs px-2 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
                               </td>
                               <td className="px-3 py-2">
                                 <input type="number" min="0" step="0.01" value={line.unitPrice}
                                   onChange={e => setLine(i, { unitPrice: Number(e.target.value) })}
-                                  className="w-24 text-xs px-2 py-1.5 border border-slate-200 rounded focus:outline-none focus:border-primary" />
+                                  className="w-24 text-xs px-2 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
                               </td>
                               <td className="px-3 py-2">
                                 <input type="number" min="0" max="100" step="0.5" value={line.taxRate}
                                   onChange={e => setLine(i, { taxRate: Number(e.target.value) })}
-                                  className="w-14 text-xs px-2 py-1.5 border border-slate-200 rounded focus:outline-none focus:border-primary" />
+                                  className="w-14 text-xs px-2 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
                               </td>
                               <td className="px-3 py-2">
                                 <AccountSearchSelect
@@ -700,9 +700,9 @@ function BillList() {
                   <label className="block text-xs font-semibold text-slate-600 mb-1">Notes</label>
                   <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
                     rows={3} placeholder="Optional notes..."
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
                 </div>
-                <div className="bg-slate-50 rounded-lg p-4 space-y-2 text-sm self-start">
+                <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 space-y-2 text-sm self-start">
                   <div className="flex justify-between text-slate-600">
                     <span>Subtotal</span>
                     <span className="font-medium">₦{subtotal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
@@ -719,12 +719,12 @@ function BillList() {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50 rounded-b-2xl">
-              <button onClick={closeModal} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200/80 bg-slate-50 rounded-b-2xl">
+              <button onClick={closeModal} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition-all duration-200">
                 Cancel
               </button>
               <button onClick={handleSubmit} disabled={isSaving}
-                className="px-5 py-2 bg-primary hover:bg-primary-hover text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-60 flex items-center gap-2">
+                className="px-5 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white text-sm font-semibold rounded-xl transition-all duration-200 disabled:opacity-60 flex items-center gap-2">
                 {isSaving && <Loader2 size={14} className="animate-spin" />}
                 {modalMode === 'edit' ? 'Save Changes' : 'Save Bill'}
               </button>
@@ -762,27 +762,27 @@ function BillList() {
 
       {/* New Item Modal */}
       {showNewItem && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[60] px-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[60] px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
             <h3 className="text-sm font-semibold text-slate-900 mb-4">Add New Item</h3>
             <div className="space-y-3">
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">Item Name *</label>
                 <input value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder="e.g. Office Chair"
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">Purchase Price (₦)</label>
                 <input type="number" min="0" step="0.01" value={newItemPrice} onChange={e => setNewItemPrice(e.target.value)} placeholder="0.00"
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
               </div>
             </div>
-            <div className="flex justify-end gap-2 mt-5 pt-3 border-t border-slate-100">
-              <button onClick={() => { setShowNewItem(false); setNewItemName(''); setNewItemPrice(''); }}
-                className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
-              <button onClick={() => { if (newItemName.trim()) createItemMutation.mutate({ name: newItemName.trim(), purchasePrice: Math.round(parseFloat(newItemPrice || '0') * 100), type: 'inventory' }); }}
-                disabled={!newItemName.trim() || createItemMutation.isPending}
-                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-50 flex items-center gap-1">
+            <div className="flex justify-end gap-2 mt-5 pt-3 border-t border-slate-200/80">
+                <button onClick={() => { setShowNewItem(false); setNewItemName(''); setNewItemPrice(''); }}
+                  className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-xl transition-all duration-200">Cancel</button>
+                <button onClick={() => { if (newItemName.trim()) createItemMutation.mutate({ name: newItemName.trim(), purchasePrice: Math.round(parseFloat(newItemPrice || '0') * 100), type: 'inventory' }); }}
+                  disabled={!newItemName.trim() || createItemMutation.isPending}
+                  className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50 flex items-center gap-1 transition-all duration-200">
                 {createItemMutation.isPending && <Loader2 size={14} className="animate-spin" />}
                 Create Item
               </button>
@@ -851,14 +851,14 @@ function BillDetail({ id, onBack }: { id: string; onBack: () => void }) {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-16 gap-3 text-slate-400">
+      <div className="flex items-center justify-center py-16 gap-3 text-slate-400 max-w-7xl mx-auto px-6 py-6">
         <Loader2 size={20} className="animate-spin" /> Loading bill...
       </div>
     );
   }
   if (error || !bill) {
     return (
-      <div className="flex items-center justify-center py-16 gap-2 text-red-500">
+      <div className="flex items-center justify-center py-16 gap-2 text-red-500 max-w-7xl mx-auto px-6 py-6">
         <AlertCircle size={18} /> Failed to load bill
         <button onClick={onBack} className="ml-4 text-sm text-primary hover:underline">Go back</button>
       </div>
@@ -866,11 +866,11 @@ function BillDetail({ id, onBack }: { id: string; onBack: () => void }) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+          <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-xl transition-all duration-200">
             <ArrowLeft size={18} className="text-slate-500" />
           </button>
           <div>
@@ -879,7 +879,7 @@ function BillDetail({ id, onBack }: { id: string; onBack: () => void }) {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_STYLES[bill.status] || 'bg-slate-100 text-slate-600'}`}>
+          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${STATUS_STYLES[bill.status] || 'bg-slate-100 text-slate-600 border-slate-200'}`}>
             {bill.status}
           </span>
           <button onClick={() => {
@@ -994,45 +994,45 @@ function BillDetail({ id, onBack }: { id: string; onBack: () => void }) {
                 console.error('Print error:', err);
               }
             }}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg">
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl transition-all duration-200">
             <FileText size={14} /> PDF
           </button>
           {bill.status !== 'paid' && bill.status !== 'void' && (
             <button onClick={() => navigate(`/purchases/payments-made?vendor=${bill.vendor?.id || bill.vendorId}`)}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg">
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-all duration-200">
               Make Payment
             </button>
           )}
           {bill.status === 'draft' && (
             <button onClick={() => approveMutation.mutate(bill.id)}
               disabled={approveMutation.isPending}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 rounded-lg disabled:opacity-50">
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 rounded-xl transition-all duration-200 disabled:opacity-50">
               <CheckCircle2 size={14} /> Approve
             </button>
           )}
           {bill.status === 'open' && (
             <button onClick={() => { if (window.confirm('Unapprove this bill? It will revert to draft for editing.')) unapproveMutation.mutate(bill.id); }}
               disabled={unapproveMutation.isPending}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg disabled:opacity-50">
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl transition-all duration-200 disabled:opacity-50">
               <Undo2 size={14} /> Unapprove
             </button>
           )}
           {['draft', 'open', 'partial', 'overdue'].includes(bill.status) && (
             <button onClick={() => { if (window.confirm('Void this bill? This cannot be undone.')) voidMutation.mutate(bill.id); }}
               disabled={voidMutation.isPending}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-lg disabled:opacity-50">
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-xl transition-all duration-200 disabled:opacity-50">
               <Ban size={14} /> Void
             </button>
           )}
           <button onClick={() => { if (window.confirm('Duplicate this bill as a new draft?')) duplicateMutation.mutate(bill.id); }}
             disabled={duplicateMutation.isPending}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg disabled:opacity-50">
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition-all duration-200 disabled:opacity-50">
             <Copy size={14} /> Copy
           </button>
           {bill.status === 'draft' && (
             <button onClick={() => { if (window.confirm('Permanently delete this draft bill?')) deleteMutation.mutate(bill.id); }}
               disabled={deleteMutation.isPending}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg disabled:opacity-50">
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl transition-all duration-200 disabled:opacity-50">
               <Trash2 size={14} /> Delete
             </button>
           )}
@@ -1041,19 +1041,19 @@ function BillDetail({ id, onBack }: { id: string; onBack: () => void }) {
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-white border border-slate-200 rounded-xl p-4">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
           <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Total</p>
           <p className="text-lg font-bold mt-1 text-slate-900">{formatNaira(bill.total)}</p>
         </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
           <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Amount Paid</p>
           <p className="text-lg font-bold mt-1 text-green-600">{formatNaira(bill.amountPaid)}</p>
         </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
           <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Balance Due</p>
           <p className="text-lg font-bold mt-1 text-blue-600">{formatNaira(bill.balanceDue)}</p>
         </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
           <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Due Date</p>
           <p className="text-lg font-bold mt-1 text-slate-900">{fmtDate(bill.dueDate)}</p>
         </div>
@@ -1062,34 +1062,34 @@ function BillDetail({ id, onBack }: { id: string; onBack: () => void }) {
       {/* Bill details + Line Items */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Info panel */}
-        <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-3 text-sm">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 space-y-3 text-sm">
           <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wide">Bill Info</h3>
           <div className="space-y-2">
             <div><span className="text-slate-400 text-xs block">Bill Number</span><span className="font-medium">{bill.billNumber}</span></div>
             <div><span className="text-slate-400 text-xs block">Vendor</span><span className="font-medium">{vendorName}</span></div>
             <div><span className="text-slate-400 text-xs block">Date</span><span className="font-medium">{fmtDate(bill.date)}</span></div>
             <div><span className="text-slate-400 text-xs block">Due Date</span><span className="font-medium">{fmtDate(bill.dueDate)}</span></div>
-            <div><span className="text-slate-400 text-xs block">Status</span><span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_STYLES[bill.status] || 'bg-slate-100 text-slate-600'}`}>{bill.status}</span></div>
+            <div><span className="text-slate-400 text-xs block">Status</span><span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${STATUS_STYLES[bill.status] || 'bg-slate-100 text-slate-600 border-slate-200'}`}>{bill.status}</span></div>
             <div><span className="text-slate-400 text-xs block">Currency</span><span className="font-medium">{bill.currency}</span></div>
             {bill.notes && <div><span className="text-slate-400 text-xs block">Notes</span><span className="font-medium italic">{bill.notes}</span></div>}
           </div>
         </div>
 
         {/* Line items table */}
-        <div className="lg:col-span-2 bg-white border border-slate-200 rounded-xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100">
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-200/80">
             <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wide">Line Items</h3>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-slate-50 text-xs font-medium text-slate-500 uppercase tracking-wide">
-                  <th className="px-4 py-2.5 text-left">Item</th>
-                  <th className="px-4 py-2.5 text-left">Description</th>
-                  <th className="px-4 py-2.5 text-right">Qty</th>
-                  <th className="px-4 py-2.5 text-right">Unit Price</th>
-                  <th className="px-4 py-2.5 text-right">VAT %</th>
-                  <th className="px-4 py-2.5 text-right">Total</th>
+                <tr className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                  <th className="px-3 py-3 text-left">Item</th>
+                  <th className="px-3 py-3 text-left">Description</th>
+                  <th className="px-3 py-3 text-right">Qty</th>
+                  <th className="px-3 py-3 text-right">Unit Price</th>
+                  <th className="px-3 py-3 text-right">VAT %</th>
+                  <th className="px-3 py-3 text-right">Total</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -1098,29 +1098,29 @@ function BillDetail({ id, onBack }: { id: string; onBack: () => void }) {
                   const tax = base * (line.taxRate / 100);
                   const lineTotal = base + tax;
                   return (
-                    <tr key={line.id || i} className="hover:bg-slate-50/60">
-                      <td className="px-4 py-2.5 text-slate-700 font-medium">{items.find(it => it.id === line.itemId)?.name || '—'}</td>
-                      <td className="px-4 py-2.5 text-slate-500">{line.description || '—'}</td>
-                      <td className="px-4 py-2.5 text-right text-slate-700 font-medium">{line.quantity}</td>
-                      <td className="px-4 py-2.5 text-right text-slate-700">{formatNaira(line.unitPrice)}</td>
-                      <td className="px-4 py-2.5 text-right text-slate-700">{line.taxRate}%</td>
-                      <td className="px-4 py-2.5 text-right font-semibold text-slate-900">{formatNaira(Math.round(lineTotal))}</td>
+                    <tr key={line.id || i} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-3 py-3 text-slate-700 font-medium">{items.find(it => it.id === line.itemId)?.name || '—'}</td>
+                      <td className="px-3 py-3 text-slate-500">{line.description || '—'}</td>
+                      <td className="px-3 py-3 text-right text-slate-700 font-medium">{line.quantity}</td>
+                      <td className="px-3 py-3 text-right text-slate-700">{formatNaira(line.unitPrice)}</td>
+                      <td className="px-3 py-3 text-right text-slate-700">{line.taxRate}%</td>
+                      <td className="px-3 py-3 text-right font-semibold text-slate-900">{formatNaira(Math.round(lineTotal))}</td>
                     </tr>
                   );
                 })}
               </tbody>
               <tfoot>
-                <tr className="bg-slate-50 border-t border-slate-200 text-sm font-semibold">
-                  <td colSpan={5} className="px-4 py-2.5 text-slate-600 text-right">Subtotal</td>
-                  <td className="px-4 py-2.5 text-right text-slate-700">{formatNaira(bill.subtotal)}</td>
+                <tr className="bg-slate-50 border-t border-slate-200/80 text-sm font-semibold">
+                  <td colSpan={5} className="px-3 py-3 text-slate-600 text-right">Subtotal</td>
+                  <td className="px-3 py-3 text-right text-slate-700">{formatNaira(bill.subtotal)}</td>
                 </tr>
                 <tr className="bg-slate-50 text-sm">
-                  <td colSpan={5} className="px-4 py-2.5 text-slate-600 text-right">VAT</td>
-                  <td className="px-4 py-2.5 text-right text-slate-700">{formatNaira(bill.taxAmount)}</td>
+                  <td colSpan={5} className="px-3 py-3 text-slate-600 text-right">VAT</td>
+                  <td className="px-3 py-3 text-right text-slate-700">{formatNaira(bill.taxAmount)}</td>
                 </tr>
-                <tr className="bg-slate-50 border-t border-slate-200 text-sm font-bold">
-                  <td colSpan={5} className="px-4 py-2.5 text-slate-900 text-right">Total</td>
-                  <td className="px-4 py-2.5 text-right text-slate-900">{formatNaira(bill.total)}</td>
+                <tr className="bg-slate-50 border-t border-slate-200/80 text-sm font-bold">
+                  <td colSpan={5} className="px-3 py-3 text-slate-900 text-right">Total</td>
+                  <td className="px-3 py-3 text-right text-slate-900">{formatNaira(bill.total)}</td>
                 </tr>
               </tfoot>
             </table>

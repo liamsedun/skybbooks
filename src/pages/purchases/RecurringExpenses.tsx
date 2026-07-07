@@ -353,41 +353,41 @@ export function RecurringExpensesPage() {
   const activeCount = schedules.filter(r => r.isActive).length;
 
   return (
-    <div className="space-y-5">
+    <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-slate-900">Recurring Expenses</h1>
           <p className="text-sm text-slate-500 mt-0.5">{schedules.length} schedules · {activeCount} active</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => exportRecurringCSV(filtered, vendorMap, accountMap)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
+          <button onClick={() => exportRecurringCSV(filtered, vendorMap, accountMap)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl hover:bg-slate-50 transition-all duration-200">
             <Download size={14} /> CSV
           </button>
-          <button onClick={() => exportRecurringPDF(filtered, vendorMap, accountMap)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
+          <button onClick={() => exportRecurringPDF(filtered, vendorMap, accountMap)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl hover:bg-slate-50 transition-all duration-200">
             <FileText size={14} /> PDF
           </button>
-          <button onClick={() => { setImportOpen(true); setCsvPreview(null); setCsvError(''); setCsvResults(null); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
+          <button onClick={() => { setImportOpen(true); setCsvPreview(null); setCsvError(''); setCsvResults(null); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl hover:bg-slate-50 transition-all duration-200">
             <Upload size={14} /> Import CSV
           </button>
-          <button onClick={() => { setForm(EMPTY_FORM); setFormError(null); setEditingRe(null); setModalOpen(true); }} className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-900 text-white text-xs font-medium rounded-lg hover:bg-slate-800 transition-colors">
+          <button onClick={() => { setForm(EMPTY_FORM); setFormError(null); setEditingRe(null); setModalOpen(true); }} className="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-xs font-medium rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200">
             <Plus size={14} /> New Schedule
           </button>
         </div>
       </div>
 
       {successMsg && (
-        <div className="flex items-center gap-2 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-lg text-sm text-emerald-700">
+        <div className="flex items-center gap-2 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl text-sm text-emerald-700">
           <CheckCircle2 size={16} /> {successMsg}
         </div>
       )}
 
       <div className="relative max-w-sm">
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search schedules..." className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search schedules..." className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
       </div>
 
       {filtered.length === 0 ? (
-        <div className="text-center py-16 bg-white border border-slate-200 rounded-xl">
+        <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-slate-200/80 shadow-sm">
           <RefreshCw size={32} className="mx-auto mb-3 text-slate-300" />
           <p className="text-sm font-medium text-slate-600">{search ? 'No matching schedules' : 'No recurring expenses yet'}</p>
           {!search && <p className="text-xs text-slate-400 mt-1">Set up schedules for rent, subscriptions, and recurring costs</p>}
@@ -395,15 +395,15 @@ export function RecurringExpensesPage() {
       ) : (
         <div className="space-y-3">
           {filtered.map(r => (
-            <div key={r.id} className={`bg-white border rounded-xl p-5 transition-all ${r.isActive ? 'border-slate-200' : 'border-slate-100 opacity-60'}`}>
+            <div key={r.id} className={`bg-white rounded-2xl border shadow-sm p-5 transition-all ${r.isActive ? 'border-slate-200/80' : 'border-slate-100/80 opacity-60'}`}>
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className="text-sm font-bold text-slate-900">{r.description || accountMap.get(r.accountId) || '—'}</h3>
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${r.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${r.isActive ? 'bg-emerald-50 text-emerald-700 border-emerald-100/50' : 'bg-slate-100 text-slate-500 border-slate-100/50'}`}>
                       {r.isActive ? <><Play className="w-2.5 h-2.5" /> Active</> : <><Pause className="w-2.5 h-2.5" /> Paused</>}
                     </span>
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border border-indigo-100/50 bg-indigo-50 text-indigo-700">
                       <Calendar className="w-2.5 h-2.5" /> {FREQ_META[r.frequency]?.label}
                     </span>
                   </div>
@@ -420,20 +420,20 @@ export function RecurringExpensesPage() {
                 <div className="flex items-center gap-1 shrink-0">
                   <button
                     onClick={() => toggleActive(r.id)}
-                    className={`inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-colors ${r.isActive ? 'text-amber-700 bg-amber-50 hover:bg-amber-100 border-amber-200' : 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border-emerald-200'}`}
+                    className={`inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-xl border transition-all duration-200 ${r.isActive ? 'text-amber-700 bg-amber-50 hover:bg-amber-100 border-amber-200' : 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border-emerald-200'}`}
                     title={r.isActive ? 'Pause schedule' : 'Resume schedule'}
                   >
                     {r.isActive ? <><Pause size={12} /> Pause</> : <><Play size={12} /> Resume</>}
                   </button>
-                  <button onClick={() => openView(r)} className="p-1.5 rounded-md text-slate-400 hover:text-sky-600 hover:bg-sky-50" title="View details">
+                  <button onClick={() => openView(r)} className="p-1.5 rounded-xl text-slate-400 hover:text-sky-600 hover:bg-sky-50 transition-all duration-200" title="View details">
                     <Eye size={12} />
                   </button>
-                  <button onClick={() => openEdit(r)} className="p-1.5 rounded-md text-slate-400 hover:text-indigo-600 hover:bg-indigo-50" title="Edit">
+                  <button onClick={() => openEdit(r)} className="p-1.5 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200" title="Edit">
                     <Edit2 size={12} />
                   </button>
                   <button
                     onClick={() => { if (confirm('Delete this recurring expense schedule?')) deleteSchedule(r.id); }}
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors"
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl transition-all duration-200"
                   >
                     <Trash2 size={12} /> Delete
                   </button>
@@ -446,15 +446,15 @@ export function RecurringExpensesPage() {
 
       {/* Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 px-4 py-8 overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-xl">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
               <h2 className="text-base font-semibold text-slate-900">{editingRe ? 'Edit Recurring Expense' : 'New Recurring Expense Schedule'}</h2>
               <button onClick={closeModal} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
             </div>
-            <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+            <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4 overflow-y-auto">
               {formError && (
-                <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2 flex items-center gap-2">
+                <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2 flex items-center gap-2">
                   <AlertCircle size={14} /> {formError}
                 </div>
               )}
@@ -470,15 +470,15 @@ export function RecurringExpensesPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Amount (₦) *</label>
-                  <input type="number" min="0" step="0.01" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} placeholder="0.00" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                  <input type="number" min="0" step="0.01" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} placeholder="0.00" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">VAT Amount (₦)</label>
-                  <input type="number" min="0" step="0.01" value={form.taxAmount} onChange={e => setForm({ ...form, taxAmount: e.target.value })} placeholder="0.00" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                  <input type="number" min="0" step="0.01" value={form.taxAmount} onChange={e => setForm({ ...form, taxAmount: e.target.value })} placeholder="0.00" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Frequency *</label>
-                  <select value={form.frequency} onChange={e => setForm({ ...form, frequency: e.target.value as Frequency })} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 bg-white">
+                  <select value={form.frequency} onChange={e => setForm({ ...form, frequency: e.target.value as Frequency })} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow bg-white">
                     {(Object.keys(FREQ_META) as Frequency[]).map(f => (
                       <option key={f} value={f}>{FREQ_META[f].label}</option>
                     ))}
@@ -486,28 +486,28 @@ export function RecurringExpensesPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Payment Method</label>
-                  <select value={form.paymentMethod} onChange={e => setForm({ ...form, paymentMethod: e.target.value })} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 bg-white">
+                  <select value={form.paymentMethod} onChange={e => setForm({ ...form, paymentMethod: e.target.value })} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow bg-white">
                     {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Start Date *</label>
-                  <input type="date" value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                  <input type="date" value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">End Date (optional)</label>
-                  <input type="date" value={form.endDate} onChange={e => setForm({ ...form, endDate: e.target.value })} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                  <input type="date" value={form.endDate} onChange={e => setForm({ ...form, endDate: e.target.value })} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
                 </div>
                 <div className="col-span-2">
                   <label className="block text-xs font-medium text-slate-500 mb-1">Vendor (optional)</label>
-                  <select value={form.vendorId} onChange={e => setForm({ ...form, vendorId: e.target.value })} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 bg-white">
+                  <select value={form.vendorId} onChange={e => setForm({ ...form, vendorId: e.target.value })} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow bg-white">
                     <option value="">No specific vendor</option>
                     {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
                   </select>
                 </div>
                 <div className="col-span-2">
                   <label className="block text-xs font-medium text-slate-500 mb-1">Description</label>
-                  <input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="e.g. Monthly office rent, SaaS subscription..." className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                  <input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="e.g. Monthly office rent, SaaS subscription..." className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
                 </div>
                 <div className="col-span-2">
                   <label className="block text-xs font-medium text-slate-500 mb-1">Paid from Account (Bank/Cash)</label>
@@ -520,8 +520,8 @@ export function RecurringExpensesPage() {
                 </div>
               </div>
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-                <button type="button" onClick={closeModal} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
-                <button type="submit" className="px-5 py-2 text-sm font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 flex items-center gap-2">
+                <button type="button" onClick={closeModal} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-xl transition-all duration-200">Cancel</button>
+                <button type="submit" className="px-5 py-2 text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl hover:from-indigo-700 hover:to-indigo-800 flex items-center gap-2 transition-all duration-200">
                   {editingRe ? 'Save Changes' : 'Add Schedule'}
                 </button>
               </div>
@@ -532,8 +532,8 @@ export function RecurringExpensesPage() {
 
       {/* Import CSV Modal */}
       {importOpen && (
-        <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 px-4 py-8 overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
               <h2 className="text-base font-semibold text-slate-900">Import Recurring Expenses</h2>
               <button onClick={() => { setImportOpen(false); setCsvPreview(null); setCsvError(''); setCsvResults(null); }} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
@@ -582,9 +582,9 @@ export function RecurringExpensesPage() {
 
                   <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
                     <button onClick={() => { setCsvPreview(null); setCsvError(''); setCsvResults(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
-                      className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
+                      className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-xl transition-all duration-200">Cancel</button>
                     <button onClick={handleCsvImport} disabled={csvImporting}
-                      className="px-5 py-2 text-sm font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 disabled:opacity-50 flex items-center gap-2">
+                      className="px-5 py-2 text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50 flex items-center gap-2 transition-all duration-200">
                       {csvImporting && <Loader2 size={14} className="animate-spin" />}
                       Import {csvPreview.rows.length} {csvPreview.rows.length === 1 ? 'row' : 'rows'}
                     </button>
@@ -597,7 +597,7 @@ export function RecurringExpensesPage() {
                     <p className="text-sm font-medium text-slate-600 mb-1">Upload a CSV file to import recurring expenses</p>
                     <p className="text-xs text-slate-400 mb-4">Maximum 500 rows</p>
                     <button onClick={() => fileInputRef.current?.click()}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors">
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-sm font-medium rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200">
                       <Upload size={15} /> Select CSV File
                     </button>
                     <input ref={fileInputRef} type="file" accept=".csv" onChange={handleCsvFile} className="hidden" />
@@ -619,8 +619,8 @@ export function RecurringExpensesPage() {
 
       {/* View Modal */}
       {viewingRe && (
-        <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 px-4 py-8 overflow-y-auto" onClick={() => setViewingRe(null)}>
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 px-4" onClick={() => setViewingRe(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
               <h2 className="text-base font-semibold text-slate-900">{viewingRe.description || 'Recurring Expense'}</h2>
               <button onClick={() => setViewingRe(null)} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>

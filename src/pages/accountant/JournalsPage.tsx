@@ -93,30 +93,30 @@ export function JournalsPage() {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-slate-900">Manual Journals</h1>
         <div className="flex items-center gap-2">
           <button onClick={() => setShowImport(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors">
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium border border-slate-200/80 text-slate-600 rounded-xl hover:bg-slate-50 transition-all duration-200">
             <Upload size={14} /> Import CSV
           </button>
           <button onClick={exportJournalsCSV}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors">
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium border border-slate-200/80 text-slate-600 rounded-xl hover:bg-slate-50 transition-all duration-200">
             <Download size={14} /> CSV
           </button>
-          <button onClick={handlePrintPdf} className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700"><Printer className="w-3.5 h-3.5" /> PDF</button>
-          <button onClick={() => { setShowForm(true); setViewId(null); }} className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700"><Plus className="w-4 h-4" /> New Journal Entry</button>
+          <button onClick={handlePrintPdf} className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-white bg-red-600 rounded-xl hover:bg-red-700 transition-all duration-200"><Printer className="w-3.5 h-3.5" /> PDF</button>
+          <button onClick={() => { setShowForm(true); setViewId(null); }} className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200"><Plus className="w-4 h-4" /> New Journal Entry</button>
         </div>
       </div>
 
       {/* Import Modal */}
       {showImport && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => { setShowImport(false); setImportMsg(null); }}>
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 p-6 space-y-4" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => { setShowImport(false); setImportMsg(null); }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 space-y-4 border border-slate-200/80 max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between shrink-0">
               <h2 className="text-lg font-bold text-slate-900">Import Journal Entries</h2>
-              <button onClick={() => { setShowImport(false); setImportMsg(null); }} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+              <button onClick={() => { setShowImport(false); setImportMsg(null); }} className="text-slate-400 hover:text-slate-600 p-1 rounded-xl hover:bg-slate-100 transition-all duration-200"><X className="w-5 h-5" /></button>
             </div>
             <p className="text-xs text-slate-500">Upload a CSV file with columns: date, entryNumber, description, reference, line_accountCode, line_debit (NGN), line_credit (NGN), line_description</p>
             <input ref={fileRef} type="file" accept=".csv" onChange={e => {
@@ -125,20 +125,20 @@ export function JournalsPage() {
               const reader = new FileReader();
               reader.onload = (ev) => setCsvText(ev.target?.result as string);
               reader.readAsText(file);
-            }} className="w-full text-sm" />
+            }} className="w-full text-sm file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
             {csvText && (
-              <div className="text-xs text-emerald-600 bg-emerald-50 px-3 py-2 rounded-lg">File loaded ({csvText.split(/\n/).length} rows)</div>
+              <div className="text-xs text-emerald-600 bg-emerald-50 px-3 py-2 rounded-xl">File loaded ({csvText.split(/\n/).length} rows)</div>
             )}
             {importMsg && (
-              <div className={`flex items-center gap-2 p-3 rounded-lg text-sm ${importMsg.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+              <div className={`flex items-center gap-2 p-3 rounded-xl text-sm ${importMsg.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/80' : 'bg-red-50 text-red-700 border border-red-100/80'}`}>
                 {importMsg.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
                 {importMsg.text}
               </div>
             )}
-            <div className="flex justify-end gap-3">
-              <button onClick={() => { setShowImport(false); setImportMsg(null); }} className="px-4 py-2 text-sm font-semibold text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200">Cancel</button>
+            <div className="flex justify-end gap-3 shrink-0">
+              <button onClick={() => { setShowImport(false); setImportMsg(null); }} className="px-4 py-2 text-sm font-semibold text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200 transition-all duration-200 border border-slate-200/80">Cancel</button>
               <button onClick={handleImport} disabled={!csvText || importing}
-                className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50">
+                className="px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50 transition-all duration-200">
                 {importing ? <Loader2 className="w-4 h-4 animate-spin inline" /> : null} Import
               </button>
             </div>
@@ -153,20 +153,20 @@ export function JournalsPage() {
       ) : isLoading ? (
         <PageLoader message="Loading journals..." />
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-slate-50">
+            <thead className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
               <tr>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Entry #</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Date</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Description</th>
-                <th className="text-right px-4 py-3 font-semibold text-slate-600">Source</th>
-                <th className="text-right px-4 py-3 font-semibold text-slate-600">Actions</th>
+                <th className="px-3 py-3 text-left">Entry #</th>
+                <th className="px-3 py-3 text-left">Date</th>
+                <th className="px-3 py-3 text-left">Description</th>
+                <th className="px-3 py-3 text-right">Source</th>
+                <th className="px-3 py-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {(Array.isArray(journals) ? journals : []).map((entry: any) => (
-                <tr key={entry.id} className="border-t border-slate-100 hover:bg-slate-50">
+                <tr key={entry.id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-50">
                   <td className="px-4 py-3 font-mono font-medium text-slate-800">{entry.entryNumber}</td>
                   <td className="px-4 py-3 text-slate-600">{fmtDate(entry.date)}</td>
                   <td className="px-4 py-3 text-slate-600 max-w-xs truncate">{entry.description || '—'}</td>
@@ -175,10 +175,10 @@ export function JournalsPage() {
                       <a
                         href={sourceDocLink(entry.source, entry.sourceId) || '#'}
                         onClick={(e) => { e.preventDefault(); const p = sourceDocLink(entry.source, entry.sourceId); if (p) navigate(p); }}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors"
+                        className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border border-indigo-200/50 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-all duration-200"
                       ><ExternalLink className="w-3 h-3" /> {entry.source.replace(/_/g, ' ')}</a>
                     ) : (
-                      <span className="inline-block px-2 py-0.5 text-xs font-semibold rounded-full bg-slate-100 text-slate-600 capitalize">{entry.source}</span>
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border border-slate-200/50 bg-slate-100 text-slate-600 capitalize">{entry.source}</span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-right">
@@ -286,13 +286,13 @@ function JournalDetailView({ journalId, onBack }: { journalId: string; onBack: (
       </button>
 
       {/* Header card */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-6 py-5 border-b border-slate-100 flex items-start justify-between">
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+        <div className="px-6 py-5 border-b border-slate-200/80 flex items-start justify-between">
           <div>
             <div className="flex items-center gap-3 mb-1">
               <h2 className="text-xl font-bold text-slate-900 font-mono">{entry.entryNumber}</h2>
               {entry.isReversed && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700 border border-red-200">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border border-red-200/50 bg-red-50 text-red-700">
                   <RotateCcw className="w-3 h-3" /> Reversed
                 </span>
               )}
@@ -303,11 +303,11 @@ function JournalDetailView({ journalId, onBack }: { journalId: string; onBack: (
             <a
               href={sourceDocLink(entry.source, entry.sourceId) || '#'}
               onClick={(e) => { e.preventDefault(); const p = sourceDocLink(entry.source, entry.sourceId); if (p) navigate(p); }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition-colors shrink-0"
+              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border border-indigo-200/50 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-all duration-200 shrink-0"
             ><ExternalLink className="w-3.5 h-3.5" /> View Source</a>
           )}
         </div>
-        <div className="grid grid-cols-4 gap-6 px-6 py-4 bg-slate-50/50 text-sm">
+        <div className="grid grid-cols-4 gap-6 px-6 py-4 bg-slate-50/50 text-sm border-b border-slate-200/80">
           <div>
             <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide block">Date</span>
             <span className="text-slate-800 font-medium">{fmtDate(entry.date)}</span>
@@ -328,16 +328,16 @@ function JournalDetailView({ journalId, onBack }: { journalId: string; onBack: (
       </div>
 
       {/* Lines table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-slate-100">
+            <thead className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
               <tr>
-                <th className="text-left px-5 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Account Code</th>
-                <th className="text-left px-5 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Account Name</th>
-                <th className="text-left px-5 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Description</th>
-                <th className="text-right px-5 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider w-44">Debit (₦)</th>
-                <th className="text-right px-5 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider w-44">Credit (₦)</th>
+                <th className="px-3 py-3 text-left">Account Code</th>
+                <th className="px-3 py-3 text-left">Account Name</th>
+                <th className="px-3 py-3 text-left">Description</th>
+                <th className="px-3 py-3 text-right w-44">Debit (₦)</th>
+                <th className="px-3 py-3 text-right w-44">Credit (₦)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -399,15 +399,15 @@ function JournalDetailView({ journalId, onBack }: { journalId: string; onBack: (
             <button
               onClick={handleReverse}
               disabled={reverseMutation.isPending}
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200/80 rounded-xl transition-all duration-200 disabled:opacity-50"
             >{reverseMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />} Reverse Entry</button>
           )}
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={handlePrintPdf} className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors">
+          <button onClick={handlePrintPdf} className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-all duration-200">
             <Printer className="w-4 h-4" /> Print / PDF
           </button>
-          <button onClick={onBack} className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">
+          <button onClick={onBack} className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all duration-200">
             Close
           </button>
         </div>
@@ -415,12 +415,12 @@ function JournalDetailView({ journalId, onBack }: { journalId: string; onBack: (
 
       {/* Reversal error */}
       {reverseMutation.isError && (
-        <div className="flex items-center gap-2 p-3 bg-red-50 text-red-700 rounded-lg text-sm border border-red-200">
+        <div className="flex items-center gap-2 p-3 bg-red-50 text-red-700 rounded-xl text-sm border border-red-200/80">
           <AlertCircle className="w-4 h-4 shrink-0" /> {(reverseMutation.error as any)?.response?.data?.error || (reverseMutation.error as any)?.message || 'Reverse failed.'}
         </div>
       )}
       {reverseMutation.isSuccess && (
-        <div className="flex items-center gap-2 p-3 bg-emerald-50 text-emerald-700 rounded-lg text-sm border border-emerald-200">
+        <div className="flex items-center gap-2 p-3 bg-emerald-50 text-emerald-700 rounded-xl text-sm border border-emerald-200/80">
           <CheckCircle2 className="w-4 h-4 shrink-0" /> Entry reversed successfully.
         </div>
       )}
@@ -480,18 +480,18 @@ function JournalForm({ onDone }: { onDone: () => void }) {
   const accList = Array.isArray(accounts) ? accounts : [];
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
-      {success && <div className="flex items-center gap-2 p-3 bg-emerald-50 text-emerald-700 rounded-lg text-sm"><CheckCircle2 className="w-4 h-4" /> {success}</div>}
-      {error && <div className="flex items-center gap-2 p-3 bg-red-50 text-red-700 rounded-lg text-sm"><AlertCircle className="w-4 h-4" /> {error}</div>}
+    <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 space-y-4">
+      {success && <div className="flex items-center gap-2 p-3 bg-emerald-50 text-emerald-700 rounded-xl text-sm border border-emerald-200/80"><CheckCircle2 className="w-4 h-4" /> {success}</div>}
+      {error && <div className="flex items-center gap-2 p-3 bg-red-50 text-red-700 rounded-xl text-sm border border-red-100/80"><AlertCircle className="w-4 h-4" /> {error}</div>}
 
       <div className="grid grid-cols-3 gap-4">
-        <div><label className="text-xs font-semibold text-slate-500 uppercase">Entry #</label><input value={entryNumber} onChange={e => setEntryNumber(e.target.value)} className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm mt-1" /></div>
-        <div><label className="text-xs font-semibold text-slate-500 uppercase">Date</label><input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm mt-1" /></div>
-        <div><label className="text-xs font-semibold text-slate-500 uppercase">Reference</label><input value={reference} onChange={e => setReference(e.target.value)} className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm mt-1" /></div>
+        <div><label className="text-xs font-semibold text-slate-500 uppercase">Entry #</label><input value={entryNumber} onChange={e => setEntryNumber(e.target.value)} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow mt-1" /></div>
+        <div><label className="text-xs font-semibold text-slate-500 uppercase">Date</label><input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow mt-1" /></div>
+        <div><label className="text-xs font-semibold text-slate-500 uppercase">Reference</label><input value={reference} onChange={e => setReference(e.target.value)} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow mt-1" /></div>
       </div>
-      <div><label className="text-xs font-semibold text-slate-500 uppercase">Description</label><textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm mt-1" /></div>
+      <div><label className="text-xs font-semibold text-slate-500 uppercase">Description</label><textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow mt-1" /></div>
 
-      <div className="bg-slate-50 rounded-lg p-4 space-y-3">
+      <div className="bg-slate-50 rounded-xl p-4 space-y-3">
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold text-slate-500 uppercase">Journal Lines</span>
           <button type="button" onClick={addLine} className="text-xs text-blue-600 hover:text-blue-800 font-semibold">+ Add Line</button>
@@ -504,9 +504,9 @@ function JournalForm({ onDone }: { onDone: () => void }) {
               onChange={id => updateLine(i, 'accountId', id)}
               placeholder="Select account"
             />
-            <input placeholder="Debit (₦)" type="number" value={line.debitAmount || ''} onChange={e => updateLine(i, 'debitAmount', e.target.value)} className="w-32 border border-slate-300 rounded-lg px-3 py-1.5 text-sm" />
-            <input placeholder="Credit (₦)" type="number" value={line.creditAmount || ''} onChange={e => updateLine(i, 'creditAmount', e.target.value)} className="w-32 border border-slate-300 rounded-lg px-3 py-1.5 text-sm" />
-            <input placeholder="Description" value={line.description} onChange={e => updateLine(i, 'description', e.target.value)} className="flex-1 border border-slate-300 rounded-lg px-3 py-1.5 text-sm" />
+            <input placeholder="Debit (₦)" type="number" value={line.debitAmount || ''} onChange={e => updateLine(i, 'debitAmount', e.target.value)} className="w-32 px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+            <input placeholder="Credit (₦)" type="number" value={line.creditAmount || ''} onChange={e => updateLine(i, 'creditAmount', e.target.value)} className="w-32 px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+            <input placeholder="Description" value={line.description} onChange={e => updateLine(i, 'description', e.target.value)} className="flex-1 px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
             {lines.length > 1 && <button type="button" onClick={() => removeLine(i)} className="p-1.5 text-red-500 hover:text-red-700"><X className="w-4 h-4" /></button>}
           </div>
         ))}
@@ -518,8 +518,8 @@ function JournalForm({ onDone }: { onDone: () => void }) {
       </div>
 
       <div className="flex justify-end gap-3">
-        <button type="button" onClick={onDone} className="px-4 py-2 text-sm font-semibold text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200">Cancel</button>
-        <button type="submit" disabled={mutation.isPending} className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50">
+        <button type="button" onClick={onDone} className="px-4 py-2 text-sm font-semibold text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200 transition-all duration-200 border border-slate-200/80">Cancel</button>
+        <button type="submit" disabled={mutation.isPending} className="px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50 transition-all duration-200">
           {mutation.isPending ? <Loader2 className="w-4 h-4 animate-spin inline" /> : null} Create Journal Entry
         </button>
       </div>

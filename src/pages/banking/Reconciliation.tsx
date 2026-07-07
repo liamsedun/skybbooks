@@ -356,14 +356,14 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
   const navigate = useNavigate();
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto p-1 lg:p-4 font-sans">
+    <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
       {/* Upper Context Bar */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between pb-4 border-b border-slate-100 gap-4">
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={onNavigateHome}
-            className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition cursor-pointer"
+            className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all duration-200 cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
@@ -385,7 +385,7 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
                 setSelectedBankAccountId(e.target.value);
                 setSelectedFeedTxnId(null);
               }}
-              className="px-2.5 py-1.5 text-xs font-bold border border-slate-200 focus:outline-none bg-white rounded-lg text-slate-800"
+              className="px-2.5 py-1.5 text-xs font-bold border border-slate-200 focus:outline-none bg-white rounded-xl text-slate-800 transition-all duration-200"
             >
               {bankAccounts.map((account: any) => (
                 <option key={account.id} value={account.id}>
@@ -399,7 +399,7 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
             type="button"
             disabled={autoMatchMutation.isPending || unreconciledFeed.length === 0}
             onClick={triggerAutoMatch}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold bg-primary hover:bg-primary-hover text-white rounded-lg disabled:bg-primary-light disabled:text-primary transition cursor-pointer font-sans shadow-xs"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer font-sans shadow-xs"
           >
             <Sparkles className="w-3.5 h-3.5 animate-pulse" />
             <span>Auto-Match Bot</span>
@@ -408,7 +408,7 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
             type="button"
             onClick={handlePrintStatement}
             disabled={!recStatement?.data && !recStatement}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg disabled:opacity-50 transition cursor-pointer font-sans shadow-xs"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold bg-white border border-slate-200/80 hover:bg-slate-50 text-slate-700 rounded-xl disabled:opacity-50 transition-all duration-200 cursor-pointer font-sans shadow-xs"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
             <span>Print Statement</span>
@@ -418,14 +418,14 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
 
       {/* Bot success alert modal overlay if active */}
       {botResults?.show && (
-        <div className="bg-primary-light/60 border border-primary/20 rounded-xl p-4 flex items-center justify-between gap-4 shadow-2xs animate-fade-in animate-duration-150">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 flex items-center justify-between gap-4">
           <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-lg bg-primary-light text-primary flex items-center justify-center shrink-0 mt-0.5">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 text-white flex items-center justify-center shrink-0 mt-0.5">
               <Sparkles className="w-4 h-4" />
             </div>
             <div>
               <h3 className="font-bold text-xs text-slate-900 font-sans">Automated AI Reconciliation Completed</h3>
-              <p className="text-[11px] text-ink-600 mt-0.5 max-w-xl leading-relaxed">
+              <p className="text-[11px] text-slate-600 mt-0.5 max-w-xl leading-relaxed">
                 Matched <span className="font-bold">{botResults.autoMatched} ledger entries</span> automatically, applied <span className="font-bold">{botResults.rulesMatched} automated rule categories</span>. Under review: <span className="font-semibold">{botResults.needsReview}</span> items.
               </p>
             </div>
@@ -433,7 +433,7 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
           <button
             type="button"
             onClick={() => setBotResults(null)}
-            className="text-slate-400 hover:text-slate-600 p-1.5 rounded hover:bg-slate-100"
+            className="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100 transition-all duration-200"
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -444,7 +444,7 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
       <div className="grid grid-cols-1 lg:grid-cols-10 gap-5 items-start">
         {/* LEFT COLUMN: Bank Feeds Statement (40%) */}
         <div className="lg:col-span-4 space-y-3.5">
-          <div className="bg-slate-50 border border-slate-200/60 rounded-xl p-4 flex items-center justify-between">
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 flex items-center justify-between">
             <div>
               <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block font-sans">Bank Stream Feed</span>
               <span className="text-xs font-bold text-slate-800 font-sans">{unreconciledFeed.length} Unreconciled Records</span>
@@ -454,7 +454,7 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
                 type="button"
                 onClick={handleClearImport}
                 disabled={clearImportMutation.isPending}
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-bold uppercase rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 disabled:opacity-50 transition cursor-pointer"
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-bold uppercase rounded-xl border border-rose-200/80 text-rose-600 hover:bg-rose-50 disabled:opacity-50 transition-all duration-200 cursor-pointer"
               >
                 <Trash2 className="w-3 h-3" />
                 <span>Clear Import</span>
@@ -463,12 +463,12 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
           </div>
 
           {isLoadingFeed ? (
-            <div className="py-20 text-center text-xs text-slate-400 font-sans bg-white border border-slate-100 rounded-xl">
+            <div className="py-20 text-center text-xs text-slate-400 font-sans bg-gradient-to-r from-slate-200 to-slate-100 animate-pulse rounded-xl flex items-center justify-center gap-2">
               <RefreshCw className="w-6 h-6 mx-auto mb-2.5 animate-spin text-slate-300" />
               Loading statement feed...
             </div>
           ) : unreconciledFeed.length === 0 ? (
-            <div className="py-20 text-center px-4 bg-white border border-slate-100 rounded-xl shadow-xs">
+            <div className="py-20 text-center px-4 bg-white rounded-2xl border border-slate-200/80 shadow-sm">
               <CheckCircle className="w-9 h-9 text-emerald-500 mx-auto mb-3" />
               <h3 className="font-sans font-bold text-slate-900 text-xs">Feed is fully reconciled!</h3>
               <p className="font-sans text-[10px] text-slate-400 mt-1 max-w-[200px] mx-auto">
@@ -491,12 +491,12 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
                     onDragOver={(e) => handleDragOver(e, txn.id, 'bank')}
                     onDrop={(e) => handleDrop(e, txn.id, 'bank')}
                     onClick={() => setSelectedFeedTxnId(isSelected ? null : txn.id)}
-                    className={`p-3.5 rounded-lg border transition-all duration-150 text-left select-none cursor-pointer relative group flex flex-col justify-between ${
+                    className={`p-3.5 rounded-xl border transition-all duration-200 text-left select-none cursor-pointer relative group flex flex-col justify-between ${
                       isSelected
                         ? 'bg-slate-900 border-slate-900 text-white shadow-sm'
                         : dragOverTxnId === txn.id
-                        ? 'bg-primary-light border-primary ring-2 ring-primary/25'
-                        : 'bg-white border-slate-200 hover:border-slate-300'
+                        ? 'bg-indigo-50 border-indigo-300 ring-2 ring-indigo-200'
+                        : 'bg-white border-slate-200/80 hover:border-slate-300 hover:shadow-sm'
                     }`}
                   >
                     {/* Upper date/amount info */}
@@ -531,9 +531,9 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
 
                     {/* AI Perfect Candidate Suggestion Badge */}
                     {suggestedMatch && !isSelected && (
-                      <div className="mt-3 flex items-center justify-between bg-primary-light border border-primary/25 rounded-lg p-2 text-left animate-pulse">
+                      <div className="mt-3 flex items-center justify-between bg-indigo-50/50 border border-indigo-200/50 rounded-xl p-2 text-left">
                         <div className="min-w-0">
-                          <span className="text-[9px] font-black uppercase text-primary block leading-none">Perfect Candidate Match</span>
+                          <span className="text-[9px] font-black uppercase text-indigo-600 block leading-none">Perfect Candidate Match</span>
                           <span className="text-[10px] font-bold text-slate-700 truncate block mt-0.5">
                             {suggestedMatch.description} ({suggestedMatch.entryNum})
                           </span>
@@ -544,7 +544,7 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
                             e.stopPropagation();
                             handleMatch(txn.id, suggestedMatch.id);
                           }}
-                          className="px-2 py-1 bg-primary text-white rounded text-[9px] font-semibold uppercase transition hover:bg-primary-hover flex items-center gap-0.5"
+                          className="px-2 py-1 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-xl text-[9px] font-semibold uppercase transition-all duration-200 hover:from-indigo-700 hover:to-indigo-800 flex items-center gap-0.5"
                         >
                           <Check className="w-2.5 h-2.5" /> Book
                         </button>
@@ -567,7 +567,7 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
 
                         {/* Quick create button controllers */}
                         <div className="flex flex-col gap-1 px-0.5 pt-1.5">
-                          <span className="text-[9px] font-bold text-primary-light uppercase tracking-wide block mb-1">Unmatched? Create ledger record:</span>
+                          <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-wide block mb-1">Unmatched? Create ledger record:</span>
                           <div className="flex flex-wrap gap-1.5">
                             <button
                               type="button"
@@ -575,7 +575,7 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
                                 e.stopPropagation();
                                 openQuickCreate(txn);
                               }}
-                              className="px-2.5 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-[10px] font-bold uppercase rounded border border-neutral-700/80 text-orange-400 inline-flex items-center gap-1 cursor-pointer transition-all shrink-0"
+                              className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-[10px] font-bold uppercase rounded-xl border border-slate-700/80 text-orange-400 inline-flex items-center gap-1 cursor-pointer transition-all duration-200 shrink-0"
                             >
                               <PlusCircle className="w-3.5 h-3.5" />
                               <span>{isDebit ? 'Record Expense' : 'Record Revenue'}</span>
@@ -594,7 +594,7 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
                                 });
                                 setShowQuickCreate(true);
                               }}
-                              className="px-2.5 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-[10px] font-bold uppercase rounded border border-neutral-700/80 text-white inline-flex items-center gap-1 cursor-pointer transition-all shrink-0"
+                              className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-[10px] font-bold uppercase rounded-xl border border-slate-700/80 text-white inline-flex items-center gap-1 cursor-pointer transition-all duration-200 shrink-0"
                             >
                               <ArrowRightLeft className="w-3.5 h-3.5" />
                               <span>Record Transfer</span>
@@ -613,7 +613,7 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
         {/* RIGHT COLUMN: FinanceOS General Ledger Cash Lines (60%) */}
         <div className="lg:col-span-6 space-y-3.5">
           {/* Header toolbar & filtration desk */}
-          <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3 shadow-xs">
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 space-y-3">
             <div className="flex items-center justify-between">
               <div>
                 <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block font-sans">FinanceOS Accounting Ledger</span>
@@ -621,11 +621,11 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
               </div>
 
               {/* Filtering segmented controls */}
-              <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200/50">
+              <div className="flex bg-slate-100 p-0.5 rounded-xl border border-slate-200/50">
                 <button
                   type="button"
                   onClick={() => setGlTypeFilter('all')}
-                  className={`px-2.5 py-1 text-[10px] font-bold rounded-md font-sans transition ${
+                  className={`px-2.5 py-1 text-[10px] font-bold rounded-xl font-sans transition-all duration-200 ${
                     glTypeFilter === 'all' ? 'bg-white shadow-xs text-slate-900' : 'text-slate-500 hover:text-slate-800'
                   }`}
                 >
@@ -634,8 +634,8 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
                 <button
                   type="button"
                   onClick={() => setGlTypeFilter('debit')}
-                  className={`px-2.5 py-1 text-[10px] font-bold rounded-md font-sans transition ${
-                    glTypeFilter === 'debit' ? 'bg-white shadow-xs text-primary' : 'text-slate-500 hover:text-slate-800'
+                  className={`px-2.5 py-1 text-[10px] font-bold rounded-xl font-sans transition-all duration-200 ${
+                    glTypeFilter === 'debit' ? 'bg-white shadow-xs text-indigo-600' : 'text-slate-500 hover:text-slate-800'
                   }`}
                 >
                   Debits
@@ -643,7 +643,7 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
                 <button
                   type="button"
                   onClick={() => setGlTypeFilter('credit')}
-                  className={`px-2.5 py-1 text-[10px] font-bold rounded-md font-sans transition ${
+                  className={`px-2.5 py-1 text-[10px] font-bold rounded-xl font-sans transition-all duration-200 ${
                     glTypeFilter === 'credit' ? 'bg-white shadow-xs text-rose-600' : 'text-slate-500 hover:text-slate-800'
                   }`}
                 >
@@ -660,18 +660,18 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
                 placeholder="Search ledger by transaction descriptions or ledger entry numbers..."
                 value={glSearchKey}
                 onChange={(e) => setGlSearchKey(e.target.value)}
-                className="w-full text-xs font-sans border border-slate-200 focus:border-primary focus:ring-1 focus:ring-primary/25 rounded-md pl-9 pr-4 py-2 text-slate-800 placeholder-slate-400 focus:outline-none block"
+                className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow pl-9 pr-4 text-slate-800 placeholder-slate-400 block"
               />
             </div>
           </div>
 
           {isLoadingGL ? (
-            <div className="py-20 text-center text-xs text-slate-400 font-sans bg-white border border-slate-100 rounded-xl">
+            <div className="py-20 text-center text-xs text-slate-400 font-sans bg-gradient-to-r from-slate-200 to-slate-100 animate-pulse rounded-xl flex items-center justify-center gap-2">
               <RefreshCw className="w-6 h-6 mx-auto mb-2.5 animate-spin text-slate-300" />
               Loading general ledger accounts...
             </div>
           ) : filteredJournalEntries.length === 0 ? (
-            <div className="py-20 text-center px-4 bg-slate-50 border border-slate-200/50 border-dashed rounded-xl">
+            <div className="py-20 text-center px-4 bg-white rounded-2xl border border-slate-200/80 shadow-sm">
               <AlertCircle className="w-8 h-8 text-slate-400 mx-auto mb-2" />
               <h3 className="font-sans font-bold text-slate-700 text-xs">No ledger rows found</h3>
               <p className="font-sans text-[10px] text-slate-400 mt-1">
@@ -708,12 +708,12 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
                         handleMatch(selectedFeedTxnId, line.id);
                       }
                     }}
-                    className={`p-3.5 border rounded-lg transition-all duration-150 flex flex-col justify-between text-left relative overflow-hidden group select-none cursor-pointer ${
+                    className={`p-3.5 border rounded-xl transition-all duration-200 flex flex-col justify-between text-left relative overflow-hidden group select-none cursor-pointer ${
                       canMatch
                         ? 'bg-amber-50/70 border-amber-300 ring-2 ring-amber-100 hover:bg-amber-50'
                         : dragOverLineId === line.id
-                        ? 'bg-primary-light border-primary ring-2 ring-primary/25'
-                        : 'bg-white border-slate-200 hover:border-slate-300'
+                        ? 'bg-indigo-50 border-indigo-300 ring-2 ring-indigo-200'
+                        : 'bg-white border-slate-200/80 hover:border-slate-300 hover:shadow-sm'
                     }`}
                   >
                     {/* Top Section */}
@@ -722,8 +722,8 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
                         <span className="text-[9px] font-mono font-bold text-slate-400 uppercase">
                           {line.entryNum || 'JOURNAL'}
                         </span>
-                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${
-                          isDebit ? 'bg-primary-light text-primary' : 'bg-rose-50 text-rose-600'
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${
+                          isDebit ? 'bg-indigo-50 text-indigo-700 border-indigo-100/50' : 'bg-rose-50 text-rose-700 border-rose-100/50'
                         }`}>
                           {isDebit ? 'Debit (+) Cash' : 'Credit (-) Cash'}
                         </span>
@@ -761,7 +761,7 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
 
       {/* SESSION RESULTS PANELS: LOCKED LIST AT BOTTOM */}
       {sessionMatches.length > 0 && (
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
           <div className="bg-slate-50 px-5 py-3 border-b border-slate-200 flex items-center justify-between">
             <h4 className="font-bold text-xs uppercase tracking-wider text-slate-800 font-sans">
               Reconciliation audit trails ({sessionMatches.length} locked this session)
@@ -773,7 +773,7 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
 
           <div className="divide-y divide-slate-100 max-h-[220px] overflow-y-auto">
             {sessionMatches.map((match, idx) => (
-              <div key={idx} className="p-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-slate-700 bg-emerald-50/10">
+              <div key={idx} className="p-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-slate-700 hover:bg-emerald-50/30 transition-colors">
                 <div className="flex items-start sm:items-center gap-3">
                   <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold shrink-0">
                     ✓
@@ -809,7 +809,7 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
                 setSessionMatches([]);
                 onNavigateHome();
               }}
-              className="px-4 py-2 font-sans font-semibold text-xs bg-slate-900 hover:bg-black text-white rounded transition shadow-sm"
+              className="px-4 py-2 font-sans font-semibold text-xs bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white rounded-xl transition-all duration-200 shadow-sm"
             >
               Confirm Reconciliation & Done
             </button>
@@ -819,10 +819,10 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
 
       {/* QUICK CREATE SIDE DRAWER */}
       {showQuickCreate && (
-        <div className="fixed inset-0 bg-neutral-950/80 backdrop-blur-sm z-50 flex justify-end">
-          <div className="bg-white h-screen max-w-sm w-full shadow-2xl flex flex-col border-l border-slate-100 animate-slide-in">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex justify-end">
+          <div className="bg-white h-screen max-w-sm w-full shadow-2xl flex flex-col border-l border-slate-200/80 animate-slide-in">
             {/* Header */}
-            <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+            <div className="p-4 border-b border-slate-200/80 bg-slate-50 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-indigo-600" />
                 <h3 className="font-bold text-xs text-slate-900 uppercase tracking-tight">Record Quick Payment</h3>
@@ -830,7 +830,7 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
               <button
                 type="button"
                 onClick={() => setShowQuickCreate(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100"
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-xl hover:bg-slate-100 transition-all duration-200"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -840,7 +840,7 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
             <form onSubmit={submitQuickCreate} className="p-5 flex-1 flex flex-col justify-between overflow-y-auto">
               <div className="space-y-4">
                 {/* Visual feed details banner */}
-                <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3.5 text-xs text-indigo-950 space-y-1">
+                <div className="bg-indigo-50/50 border border-indigo-200/50 rounded-2xl p-3.5 text-xs text-indigo-950 space-y-1">
                   <span className="font-bold block tracking-tight">Statement Line Item Details:</span>
                   <div className="font-semibold">{quickCreateTxn.description}</div>
                   <div className="font-mono font-bold mt-1.5 text-indigo-700">
@@ -860,7 +860,7 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
                     <select
                       value={quickCreateForm.type}
                       onChange={(e) => setQuickCreateForm({ ...quickCreateForm, type: e.target.value as any })}
-                      className="w-full text-xs font-sans border border-slate-200 rounded px-3 py-2 bg-white text-slate-800 focus:outline-none"
+                      className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow bg-white text-slate-800"
                     >
                       {quickCreateTxn.type === 'debit' ? (
                         <>
@@ -905,7 +905,7 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
                       <select
                         value={quickCreateForm.contactId}
                         onChange={(e) => setQuickCreateForm({ ...quickCreateForm, contactId: e.target.value })}
-                        className="w-full text-xs font-sans border border-slate-200 rounded px-2.5 py-2 bg-white text-slate-800 focus:outline-none"
+                        className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow bg-white text-slate-800"
                       >
                         <option value="">-- No linked contact / public deposit --</option>
                         {customers.map((c: any) => (
@@ -926,25 +926,25 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
                       rows={3}
                       value={quickCreateForm.description}
                       onChange={(e) => setQuickCreateForm({ ...quickCreateForm, description: e.target.value })}
-                      className="w-full text-xs font-sans border border-slate-200 rounded px-3 py-2 text-slate-800 focus:outline-none"
+                      className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow text-slate-800 placeholder-slate-400"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Drawer footer controls */}
-              <div className="flex gap-2 bg-slate-50 p-4 border-t border-slate-100 max-w-sm w-full mx-[-20px] mb-[-20px] self-end mt-10">
+              <div className="flex gap-2 bg-slate-50 p-4 border-t border-slate-200/80 max-w-sm w-full mx-[-20px] mb-[-20px] self-end mt-10">
                 <button
                   type="button"
                   onClick={() => setShowQuickCreate(false)}
-                  className="flex-1 py-2 text-xs font-bold border border-slate-200 hover:bg-slate-100 text-slate-600 rounded inline-flex items-center justify-center cursor-pointer"
+                  className="flex-1 py-2 text-xs font-bold border border-slate-200/80 hover:bg-slate-100 text-slate-600 rounded-xl inline-flex items-center justify-center cursor-pointer transition-all duration-200"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={createRecordMutation.isPending}
-                  className="flex-grow py-2 text-xs font-bold bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:bg-indigo-300 transition-colors uppercase inline-flex items-center justify-center cursor-pointer"
+                  className="flex-grow py-2 text-xs font-bold bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-xl hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50 transition-all duration-200 uppercase inline-flex items-center justify-center cursor-pointer"
                 >
                   {createRecordMutation.isPending ? 'Syncing...' : 'Book Record'}
                 </button>

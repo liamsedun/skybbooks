@@ -258,14 +258,14 @@ export function BankRules() {
   const navigate = useNavigate();
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto p-1 lg:p-4 font-sans">
+    <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
       {/* Header Area */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-slate-100 gap-4">
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => navigate('/banking')}
-            className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition cursor-pointer"
+            className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all duration-200 cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
@@ -280,7 +280,7 @@ export function BankRules() {
         <button
           id="btn-create-rule"
           onClick={openNewRuleDrawer}
-          className="inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg bg-orange-500 text-white hover:bg-orange-600 transition shadow-sm cursor-pointer self-start sm:self-center"
+          className="inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 text-white hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200 shadow-sm cursor-pointer self-start sm:self-center"
         >
           <Plus className="w-4 h-4" />
           <span>Add Custom Rule</span>
@@ -288,12 +288,12 @@ export function BankRules() {
       </div>
 
       {isLoading ? (
-        <div className="py-20 text-center text-xs text-slate-400 font-sans">
+        <div className="py-20 text-center text-xs text-slate-400 font-sans bg-gradient-to-r from-slate-200 to-slate-100 animate-pulse rounded-xl flex items-center justify-center gap-2">
           <Clock className="w-6 h-6 mx-auto mb-2 animate-spin text-slate-300" />
           Reading automated categorization policies...
         </div>
       ) : rules.length === 0 ? (
-        <div className="py-16 text-center bg-white border border-slate-200/65 rounded-xl px-4 shadow-xs">
+        <div className="py-16 text-center bg-white rounded-2xl border border-slate-200/80 shadow-sm px-4">
           <BookOpen className="w-10 h-10 text-indigo-500 mx-auto mb-3.5" />
           <h3 className="font-sans font-bold text-slate-950 text-xs">No Active Rules</h3>
           <p className="font-sans text-[11px] text-slate-400 mt-1 max-w-sm mx-auto mb-4 leading-normal">
@@ -301,7 +301,7 @@ export function BankRules() {
           </p>
           <button
             onClick={openNewRuleDrawer}
-            className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded font-bold uppercase text-[10px]"
+            className="px-3.5 py-1.5 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white rounded-xl font-bold uppercase text-[10px] transition-all duration-200"
           >
             Create First Rule
           </button>
@@ -316,8 +316,8 @@ export function BankRules() {
               <div
                 key={rule.id}
                 id={`rule-card-${rule.id}`}
-                className={`bg-white border rounded-xl overflow-hidden p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 transition shadow-xs hover:shadow-sm ${
-                  rule.isActive === false ? 'border-slate-200/60 opacity-65' : 'border-slate-200 hover:border-slate-300'
+                className={`bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all duration-200 hover:shadow-md ${
+                  rule.isActive === false ? 'border-slate-200/60 opacity-65' : 'border-slate-200/80 hover:border-slate-300'
                 }`}
               >
                 {/* Left metadata */}
@@ -372,14 +372,14 @@ export function BankRules() {
 
                   <button
                     onClick={() => openEditRuleDrawer(rule)}
-                    className="p-1 px-1.5 border border-slate-200 hover:bg-slate-50 rounded text-slate-600 hover:text-slate-950"
+                    className="p-1 px-1.5 border border-slate-200/80 hover:bg-slate-50 rounded-xl text-slate-600 hover:text-slate-950 transition-all duration-200"
                   >
                     <Edit2 className="w-3.5 h-3.5" />
                   </button>
 
                   <button
                     onClick={() => handleDeleteRule(rule.id, rule.name)}
-                    className="p-1 px-1.5 border border-slate-100 rounded text-rose-500 hover:bg-rose-50 hover:border-rose-200"
+                    className="p-1 px-1.5 border border-slate-200/80 rounded-xl text-rose-500 hover:bg-rose-50 hover:border-rose-200 transition-all duration-200"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -392,16 +392,16 @@ export function BankRules() {
 
       {/* DRAWER RULE EDITOR */}
       {showDrawer && (
-        <div className="fixed inset-0 bg-neutral-950/80 backdrop-blur-sm z-50 flex justify-end">
-          <div className="bg-white h-screen max-w-md w-full shadow-2xl flex flex-col border-l border-slate-100 animate-slide-in">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex justify-end">
+          <div className="bg-white h-screen max-w-md w-full shadow-2xl flex flex-col border-l border-slate-200/80">
             {/* Header toolbar */}
-            <div className="p-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+            <div className="p-4 bg-slate-50 border-b border-slate-200/80 flex items-center justify-between">
               <h3 className="font-extrabold text-xs uppercase tracking-wider text-slate-800">
                 {editingRuleId ? 'Modify Automation Policy' : 'Configure Custom Rule'}
               </h3>
               <button
                 type="button"
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100 transition animate-hover-pulse"
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-xl hover:bg-slate-100 transition-all duration-200"
                 onClick={() => setShowDrawer(false)}
               >
                 <X className="w-4 h-4" />
@@ -422,7 +422,7 @@ export function BankRules() {
                       placeholder="e.g. Uber Ride Expenses"
                       value={ruleName}
                       onChange={(e) => setRuleName(e.target.value)}
-                      className="w-full text-xs font-sans border border-slate-200 rounded px-3 py-2 text-slate-800 placeholder-slate-400 focus:outline-none"
+                      className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow text-slate-800 placeholder-slate-400"
                     />
                   </div>
 
@@ -435,7 +435,7 @@ export function BankRules() {
                       min={0}
                       value={priority}
                       onChange={(e) => setPriority(Number(e.target.value))}
-                      className="w-full text-xs font-sans border border-slate-200 rounded px-2.5 py-1.5 text-slate-800 focus:outline-none"
+                      className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow text-slate-800"
                     />
                   </div>
                 </div>
@@ -474,7 +474,7 @@ export function BankRules() {
                           <select
                             value={cond.field}
                             onChange={(e) => handleConditionChange(idx, 'field', e.target.value)}
-                            className="w-full text-[11px] font-sans border border-slate-100 rounded px-2 py-1 bg-white text-slate-800 focus:outline-none"
+                            className="w-full px-2 py-1.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow bg-white text-slate-800"
                           >
                             <option value="description">Narration Description</option>
                             <option value="amount">Transaction Amount</option>
@@ -488,7 +488,7 @@ export function BankRules() {
                           <select
                             value={cond.operator}
                             onChange={(e) => handleConditionChange(idx, 'operator', e.target.value)}
-                            className="w-full text-[11px] font-sans border border-slate-100 rounded px-2 py-1 bg-white text-slate-800 focus:outline-none"
+                            className="w-full px-2 py-1.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow bg-white text-slate-800"
                           >
                             {cond.field === 'description' && (
                               <>
@@ -518,7 +518,7 @@ export function BankRules() {
                             <select
                               value={cond.value}
                               onChange={(e) => handleConditionChange(idx, 'value', e.target.value)}
-                              className="w-full text-xs font-sans border border-slate-200 bg-white rounded px-3 py-1.5 focus:outline-none"
+                              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow bg-white text-slate-800"
                             >
                               <option value="debit">Debit (Disbursements/Money Out)</option>
                               <option value="credit">Credit (Deposits/Money In)</option>
@@ -530,7 +530,7 @@ export function BankRules() {
                                 placeholder="Min Naira (₦)"
                                 value={cond.valueMin}
                                 onChange={(e) => handleConditionChange(idx, 'valueMin', e.target.value)}
-                                className="w-full text-xs font-sans border border-slate-200 rounded px-2 py-1.5 focus:outline-none"
+                                className="w-full px-2 py-1.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
                               />
                               <span className="text-slate-400 text-xs">to</span>
                               <input
@@ -538,7 +538,7 @@ export function BankRules() {
                                 placeholder="Max Naira (₦)"
                                 value={cond.valueMax}
                                 onChange={(e) => handleConditionChange(idx, 'valueMax', e.target.value)}
-                                className="w-full text-xs font-sans border border-slate-200 rounded px-2 py-1.5 focus:outline-none"
+                                className="w-full px-2 py-1.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
                               />
                             </div>
                           ) : (
@@ -547,7 +547,7 @@ export function BankRules() {
                               placeholder={cond.field === 'amount' ? 'Expected amount in Kobo' : 'e.g. UBER, BOLT, INTEREST'}
                               value={cond.value}
                               onChange={(e) => handleConditionChange(idx, 'value', e.target.value)}
-                              className="w-full text-xs font-sans border border-slate-200 rounded px-3 py-1.5 focus:outline-none"
+                              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
                             />
                           )}
                         </div>
@@ -584,7 +584,7 @@ export function BankRules() {
                         placeholder="e.g. Transportation, Digital Utilities"
                         value={actionCategory}
                         onChange={(e) => setActionCategory(e.target.value)}
-                        className="w-full text-xs font-sans border border-slate-200 rounded px-3 py-2 text-slate-800 placeholder-slate-400 focus:outline-none"
+                        className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow text-slate-800 placeholder-slate-400"
                       />
                       <span className="text-[10px] text-slate-400 block mt-1.5">
                         Defaults to match target general ledger account name details if empty.
@@ -595,18 +595,18 @@ export function BankRules() {
               </div>
 
               {/* Drawer footer controls */}
-              <div className="flex gap-2.5 bg-slate-50 p-4 border-t border-slate-100 max-w-sm w-full mx-[-20px] mb-[-20px] self-end mt-10">
+              <div className="flex gap-2.5 bg-slate-50 p-4 border-t border-slate-200/80 max-w-sm w-full mx-[-20px] mb-[-20px] self-end mt-10">
                 <button
                   type="button"
                   onClick={() => setShowDrawer(false)}
-                  className="flex-1 py-2 text-xs font-bold border border-slate-200 hover:bg-slate-100 text-slate-600 rounded inline-flex items-center justify-center cursor-pointer"
+                  className="flex-1 py-2 text-xs font-bold border border-slate-200/80 hover:bg-slate-100 text-slate-600 rounded-xl inline-flex items-center justify-center cursor-pointer transition-all duration-200"
                 >
                   Discard Close
                 </button>
                 <button
                   type="submit"
                   disabled={createRuleMutation.isPending || updateRuleMutation.isPending}
-                  className="flex-grow py-2 text-xs font-bold bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:bg-indigo-300 transition-colors uppercase inline-flex items-center justify-center cursor-pointer"
+                  className="flex-grow py-2 text-xs font-bold bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-xl hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50 transition-all duration-200 uppercase inline-flex items-center justify-center cursor-pointer"
                 >
                   {createRuleMutation.isPending || updateRuleMutation.isPending ? 'Saving...' : 'Deploy Rule'}
                 </button>

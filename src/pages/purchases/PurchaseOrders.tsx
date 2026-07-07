@@ -231,116 +231,116 @@ export function PurchaseOrdersPage() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-slate-900">Purchase Orders</h1>
           <p className="text-sm text-slate-500 mt-0.5">Manage procurement requests to vendors</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => exportPOsCSV(pos, vendorMap)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
+          <button onClick={() => exportPOsCSV(pos, vendorMap)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl hover:bg-slate-50 transition-all duration-200">
             <Download size={14} /> CSV
           </button>
-          <button onClick={() => exportPOsPDF(pos, vendorMap)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
+          <button onClick={() => exportPOsPDF(pos, vendorMap)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl hover:bg-slate-50 transition-all duration-200">
             <FileText size={14} /> PDF
           </button>
-          <button onClick={() => setImportOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
+          <button onClick={() => setImportOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl hover:bg-slate-50 transition-all duration-200">
             <Upload size={14} /> Import CSV
           </button>
-          <button onClick={() => { setModalOpen(true); setFormError(null); }} className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-900 text-white text-xs font-medium rounded-lg hover:bg-slate-800 transition-colors">
+          <button onClick={() => { setModalOpen(true); setFormError(null); }} className="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-xs font-medium rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200">
             <Plus size={14} /> New Purchase Order
           </button>
         </div>
       </div>
 
       {successMsg && (
-        <div className="flex items-center gap-2 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-lg text-sm text-emerald-700">
+        <div className="flex items-center gap-2 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl text-sm text-emerald-700">
           <CheckCircle2 size={16} /> {successMsg}
         </div>
       )}
 
       <div className="relative max-w-sm">
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search orders..." className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search orders..." className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
       </div>
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-16 text-slate-400 bg-white border border-slate-200 rounded-xl">
+        <div className="flex items-center justify-center py-16 text-slate-400 bg-gradient-to-r from-slate-200 to-slate-100 animate-pulse rounded-xl">
           <Loader2 size={20} className="animate-spin mr-2" /> Loading orders...
         </div>
       ) : isError ? (
-        <div className="flex items-center justify-center py-16 text-rose-500 gap-2 bg-white border border-slate-200 rounded-xl">
+        <div className="flex items-center justify-center py-16 text-rose-500 gap-2 bg-white rounded-2xl border border-slate-200/80 shadow-sm">
           <AlertCircle size={18} /> Failed to load purchase orders.
         </div>
       ) : pos.length === 0 ? (
-        <div className="text-center py-16 bg-white border border-slate-200 rounded-xl">
+        <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-slate-200/80 shadow-sm">
           <ShoppingCart size={32} className="mx-auto mb-3 text-slate-300" />
           <p className="text-sm font-medium text-slate-600">No purchase orders yet</p>
           <p className="text-xs text-slate-400 mt-1">Create your first PO to begin procurement tracking</p>
         </div>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-slate-50 text-xs font-medium text-slate-500 uppercase tracking-wide border-b border-slate-200">
-                <th className="py-3 pl-4 pr-2 text-left">PO #</th>
-                <th className="py-3 px-2 text-left">Vendor</th>
-                <th className="py-3 px-2 text-left">Date</th>
-                <th className="py-3 px-2 text-left">Expected</th>
-                <th className="py-3 px-2 text-left">Status</th>
-                <th className="py-3 px-2 text-right">Total</th>
-                <th className="py-3 pl-2 pr-4 w-10"></th>
+              <tr className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-200">
+                <th className="px-3 py-3 text-left">PO #</th>
+                <th className="px-3 py-3 text-left">Vendor</th>
+                <th className="px-3 py-3 text-left">Date</th>
+                <th className="px-3 py-3 text-left">Expected</th>
+                <th className="px-3 py-3 text-left">Status</th>
+                <th className="px-3 py-3 text-right">Total</th>
+                <th className="px-3 py-3 w-10"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {pos.map(po => (
-                <tr key={po.id} className="hover:bg-slate-50 transition-colors">
+                <tr key={po.id} className="hover:bg-slate-50/50 transition-colors">
                   <td className="py-3 pl-4 pr-2 font-mono text-xs font-medium text-slate-700">{po.poNumber}</td>
                   <td className="py-3 px-2 font-medium text-slate-900">{vendorMap.get(po.vendorId) || '—'}</td>
                   <td className="py-3 px-2 text-xs text-slate-500">{fmtDate(po.date)}</td>
                   <td className="py-3 px-2 text-xs text-slate-500">{fmtDate(po.expectedDate)}</td>
                   <td className="py-3 px-2">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${STATUS_STYLES[po.status] || 'bg-slate-100 text-slate-500'}`}>
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold capitalize ${STATUS_STYLES[po.status] || 'bg-slate-100 text-slate-500'}`}>
                       {po.status}
                     </span>
                   </td>
                   <td className="py-3 px-2 text-right font-mono text-slate-900">{formatNaira(po.total)}</td>
                   <td className="py-3 pl-2 pr-4">
                     <div className="flex items-center justify-center gap-1">
-                      <button onClick={() => openView(po)} className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100" title="View">
+                      <button onClick={() => openView(po)} className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all duration-200" title="View">
                         <Eye size={14} />
                       </button>
                       {(po.status === 'draft' || po.status === 'confirmed') && (
-                        <button onClick={() => openEdit(po)} className="p-1.5 rounded-md text-slate-400 hover:text-indigo-600 hover:bg-indigo-50" title="Edit">
+                        <button onClick={() => openEdit(po)} className="p-1.5 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200" title="Edit">
                           <Edit2 size={14} />
                         </button>
                       )}
                       {po.status === 'draft' && (
-                        <button onClick={() => { if (window.confirm('Delete this purchase order?')) deleteMutation.mutate(po.id); }} className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50" title="Delete" disabled={deleteMutation.isPending}>
+                        <button onClick={() => { if (window.confirm('Delete this purchase order?')) deleteMutation.mutate(po.id); }} className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all duration-200" title="Delete" disabled={deleteMutation.isPending}>
                           <Trash2 size={14} />
                         </button>
                       )}
                       {po.status === 'draft' && (
-                        <button onClick={() => confirmMutation.mutate(po.id)} disabled={confirmMutation.isPending} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-md transition-colors" title="Confirm">
+                        <button onClick={() => confirmMutation.mutate(po.id)} disabled={confirmMutation.isPending} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl transition-all duration-200" title="Confirm">
                           <ArrowRight size={11} /> Confirm
                         </button>
                       )}
                       {po.status === 'confirmed' && (
-                        <button onClick={() => acceptMutation.mutate(po.id)} disabled={acceptMutation.isPending} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-md transition-colors" title="Accept">
+                        <button onClick={() => acceptMutation.mutate(po.id)} disabled={acceptMutation.isPending} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl transition-all duration-200" title="Accept">
                           <ArrowRight size={11} /> Accept
                         </button>
                       )}
                       {po.status === 'accepted' && (
-                        <button onClick={() => approveMutation.mutate(po.id)} disabled={approveMutation.isPending} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-md transition-colors" title="Approve">
+                        <button onClick={() => approveMutation.mutate(po.id)} disabled={approveMutation.isPending} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-all duration-200" title="Approve">
                           <ArrowRight size={11} /> Approve
                         </button>
                       )}
                       {po.status === 'approved' && (
                         <>
-                          <button onClick={() => convertMutation.mutate(po.id)} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-200 rounded-md transition-colors" title="Convert to Bill">
+                          <button onClick={() => convertMutation.mutate(po.id)} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-200 rounded-xl transition-all duration-200" title="Convert to Bill">
                             <ArrowRight size={11} /> To Bill
                           </button>
-                          <button onClick={() => convertToExpenseMutation.mutate(po.id)} disabled={convertToExpenseMutation.isPending} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-md transition-colors" title="Convert to Expense">
+                          <button onClick={() => convertToExpenseMutation.mutate(po.id)} disabled={convertToExpenseMutation.isPending} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl transition-all duration-200" title="Convert to Expense">
                             <ArrowRight size={11} /> To Expense
                           </button>
                         </>
@@ -621,49 +621,49 @@ export function PurchaseOrdersPage() {
 
       {/* Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 px-4 py-8 overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
               <h2 className="text-base font-semibold text-slate-900">{editingPo ? 'Edit Purchase Order' : 'New Purchase Order'}</h2>
               <button onClick={closeModal} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
             </div>
-            <form onSubmit={handleSubmit} className="px-6 py-5 space-y-5">
+            <form onSubmit={handleSubmit} className="px-6 py-5 space-y-5 overflow-y-auto">
               {formError && (
-                <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2 flex items-center gap-2">
+                <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2 flex items-center gap-2">
                   <AlertCircle size={14} /> {formError}
                 </div>
               )}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div className="col-span-2">
                   <label className="block text-xs font-medium text-slate-500 mb-1">Vendor *</label>
-                  <select value={form.vendorId} onChange={e => setForm({ ...form, vendorId: e.target.value })} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 bg-white">
+                  <select value={form.vendorId} onChange={e => setForm({ ...form, vendorId: e.target.value })} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow bg-white">
                     <option value="">Select vendor...</option>
                     {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Order Date</label>
-                  <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                  <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Expected Delivery</label>
-                  <input type="date" value={form.expectedDate} onChange={e => setForm({ ...form, expectedDate: e.target.value })} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                  <input type="date" value={form.expectedDate} onChange={e => setForm({ ...form, expectedDate: e.target.value })} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
                 </div>
               </div>
 
               <div>
                 <label className="text-xs font-medium text-slate-500 uppercase tracking-wide block mb-2">Line Items</label>
-                <div className="border border-slate-200 rounded-lg overflow-hidden">
+                <div className="border border-slate-200 rounded-xl overflow-hidden">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-slate-50 text-xs font-medium text-slate-500 uppercase tracking-wide">
-                        <th className="py-2.5 pl-3 pr-2 text-left w-44">Item</th>
-                        <th className="py-2.5 px-2 text-left">Description</th>
-                        <th className="py-2.5 px-2 text-center w-14">Qty</th>
-                        <th className="py-2.5 px-2 text-right w-32">Unit Price (₦)</th>
-                        <th className="py-2.5 px-2 text-center w-14">VAT %</th>
-                        <th className="py-2.5 px-2 text-right w-28">Amount</th>
-                        <th className="py-2.5 pl-2 pr-3 w-8"></th>
+                      <tr className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                        <th className="px-3 py-3 text-left w-44">Item</th>
+                        <th className="px-3 py-3 text-left">Description</th>
+                        <th className="px-3 py-3 text-center w-14">Qty</th>
+                        <th className="px-3 py-3 text-right w-32">Unit Price (₦)</th>
+                        <th className="px-3 py-3 text-center w-14">VAT %</th>
+                        <th className="px-3 py-3 text-right w-28">Amount</th>
+                        <th className="px-3 py-3 w-8"></th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -672,15 +672,15 @@ export function PurchaseOrdersPage() {
                         return (
                           <tr key={idx}>
                             <td className="py-2 pl-3 pr-2">
-                              <select value={line.itemId || ''} onChange={e => e.target.value ? selectItem(idx, e.target.value) : updateLine(idx, 'itemId', null)} className="w-full px-2 py-1.5 text-xs border border-slate-200 rounded focus:outline-none bg-white">
+                              <select value={line.itemId || ''} onChange={e => e.target.value ? selectItem(idx, e.target.value) : updateLine(idx, 'itemId', null)} className="w-full px-2 py-1.5 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 bg-white">
                                 <option value="">— Custom —</option>
                                 {items.map(it => <option key={it.id} value={it.id}>{it.name}</option>)}
                               </select>
                             </td>
-                            <td className="py-2 px-2"><input value={line.description} onChange={e => updateLine(idx, 'description', e.target.value)} placeholder="Description" className="w-full px-2 py-1.5 text-xs border border-slate-200 rounded focus:outline-none" /></td>
-                            <td className="py-2 px-2"><input type="number" min="1" value={line.quantity} onChange={e => updateLine(idx, 'quantity', parseFloat(e.target.value) || 1)} className="w-full px-2 py-1.5 text-xs border border-slate-200 rounded text-center focus:outline-none" /></td>
-                            <td className="py-2 px-2"><input type="number" min="0" step="0.01" value={line.unitPrice || ''} onChange={e => updateLine(idx, 'unitPrice', parseFloat(e.target.value) || 0)} placeholder="0.00" className="w-full px-2 py-1.5 text-xs border border-slate-200 rounded text-right focus:outline-none" /></td>
-                            <td className="py-2 px-2"><input type="number" min="0" max="100" step="0.1" value={line.taxRate} onChange={e => updateLine(idx, 'taxRate', parseFloat(e.target.value) || 0)} className="w-full px-2 py-1.5 text-xs border border-slate-200 rounded text-center focus:outline-none" /></td>
+                            <td className="py-2 px-2"><input value={line.description} onChange={e => updateLine(idx, 'description', e.target.value)} placeholder="Description" className="w-full px-2 py-1.5 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10" /></td>
+                            <td className="py-2 px-2"><input type="number" min="1" value={line.quantity} onChange={e => updateLine(idx, 'quantity', parseFloat(e.target.value) || 1)} className="w-full px-2 py-1.5 text-xs border border-slate-200 rounded-xl text-center focus:outline-none focus:ring-2 focus:ring-slate-900/10" /></td>
+                            <td className="py-2 px-2"><input type="number" min="0" step="0.01" value={line.unitPrice || ''} onChange={e => updateLine(idx, 'unitPrice', parseFloat(e.target.value) || 0)} placeholder="0.00" className="w-full px-2 py-1.5 text-xs border border-slate-200 rounded-xl text-right focus:outline-none focus:ring-2 focus:ring-slate-900/10" /></td>
+                            <td className="py-2 px-2"><input type="number" min="0" max="100" step="0.1" value={line.taxRate} onChange={e => updateLine(idx, 'taxRate', parseFloat(e.target.value) || 0)} className="w-full px-2 py-1.5 text-xs border border-slate-200 rounded-xl text-center focus:outline-none focus:ring-2 focus:ring-slate-900/10" /></td>
                             <td className="py-2 px-2 text-right text-xs font-mono font-medium text-slate-900">₦{c.total.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</td>
                             <td className="py-2 pl-2 pr-3">
                               <button type="button" onClick={() => { if (form.lines.length > 1) setForm({ ...form, lines: form.lines.filter((_, i) => i !== idx) }); }} disabled={form.lines.length === 1} className="text-slate-300 hover:text-rose-500 disabled:opacity-20"><X size={14} /></button>
@@ -701,9 +701,9 @@ export function PurchaseOrdersPage() {
               <div className="grid grid-cols-2 gap-6">
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Notes</label>
-                  <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none resize-none" />
+                  <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow resize-none" />
                 </div>
-                <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 space-y-2">
+                <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 space-y-2">
                   <div className="flex justify-between text-sm text-slate-500"><span>Subtotal</span><span className="font-mono">₦{totals.sub.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span></div>
                   <div className="flex justify-between text-sm text-slate-500"><span>VAT</span><span className="font-mono">₦{totals.tax.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span></div>
                   <div className="flex justify-between pt-2 border-t border-slate-200"><span className="font-bold text-slate-800">Total</span><span className="font-black text-slate-900 font-mono">₦{totals.total.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span></div>
@@ -711,8 +711,8 @@ export function PurchaseOrdersPage() {
               </div>
 
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-                <button type="button" onClick={closeModal} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
-                <button type="submit" disabled={createMutation.isPending || updateMutation.isPending} className="px-5 py-2 text-sm font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 disabled:opacity-50 flex items-center gap-2">
+                <button type="button" onClick={closeModal} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-xl transition-all duration-200">Cancel</button>
+                <button type="submit" disabled={createMutation.isPending || updateMutation.isPending} className="px-5 py-2 text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50 flex items-center gap-2 transition-all duration-200">
                   {(createMutation.isPending || updateMutation.isPending) && <Loader2 size={14} className="animate-spin" />}
                   {editingPo ? 'Save Changes' : 'Create PO'}
                 </button>

@@ -167,8 +167,8 @@ export function CreditNotesPage() {
   }, [notes]);
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-8">
-      <div className="flex items-start justify-between mb-6">
+    <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
+      <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Client Credit Notes</h1>
           <p className="text-sm text-slate-500 mt-1">
@@ -178,26 +178,26 @@ export function CreditNotesPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => exportCreditNotesCSV(filtered)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded-lg hover:bg-slate-50 transition shadow-sm"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl hover:bg-slate-50 transition-all duration-200"
           >
             <Download size={14} /> CSV
           </button>
           <button
             onClick={() => exportCreditNotesPDF(filtered)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded-lg hover:bg-slate-50 transition shadow-sm"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl hover:bg-slate-50 transition-all duration-200"
           >
             <FileText size={14} /> PDF
           </button>
           <button
             onClick={() => setImportOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded-lg hover:bg-slate-50 transition shadow-sm"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl hover:bg-slate-50 transition-all duration-200"
           >
             <Upload size={14} />
             Import CSV
           </button>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-slate-900 transition shadow-sm"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-xs font-medium rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200 shadow-sm"
           >
             <Plus size={14} />
             New Credit Note
@@ -206,23 +206,23 @@ export function CreditNotesPage() {
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white border border-slate-200 rounded-xl p-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
           <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Total Credit Notes</p>
           <p className="text-xl font-bold text-slate-900 mt-1">{totals.count}</p>
         </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
           <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Total Issued Value</p>
           <p className="text-xl font-bold text-slate-900 mt-1">{formatNaira(totals.totalIssued)}</p>
         </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
           <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Outstanding Credit</p>
           <p className="text-xl font-bold text-amber-600 mt-1">{formatNaira(totals.totalOutstanding)}</p>
         </div>
       </div>
 
       {actionError && (
-        <div className="flex items-center gap-2 text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2 mb-4">
+        <div className="flex items-center gap-2 text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2">
           <AlertCircle size={14} />
           {actionError}
           <button onClick={() => setActionError(null)} className="ml-auto text-rose-400 hover:text-rose-600">
@@ -232,25 +232,25 @@ export function CreditNotesPage() {
       )}
 
       {/* Status filter */}
-      <div className="flex flex-wrap gap-2 mb-4">
+      <div className="flex flex-wrap gap-2">
         {['all', 'issued', 'applied', 'void'].map(s => (
           <button key={s} onClick={() => setStatusFilter(s)}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-              statusFilter === s ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
+              statusFilter === s ? 'bg-slate-900 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             }`}>
             {s === 'all' ? 'All' : STATUS_META[s]?.label || s}
           </button>
         ))}
       </div>
 
-      <div className="relative mb-4">
+      <div className="relative">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
         <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
           placeholder="Search by credit note number, customer, or invoice..."
-          className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+          className="w-full px-9 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center py-16 text-slate-400">
             <Loader2 size={20} className="animate-spin mr-2" />Loading credit notes...
@@ -276,48 +276,48 @@ export function CreditNotesPage() {
         ) : (
           <table className="w-full">
             <thead>
-              <tr className="border-b border-slate-100 text-left text-xs font-medium text-slate-400 uppercase tracking-wide">
-                <th className="py-2.5 pl-4 pr-3">CN #</th>
-                <th className="py-2.5 pr-3">Customer</th>
-                <th className="py-2.5 pr-3">Invoice</th>
-                <th className="py-2.5 pr-3">Date</th>
-                <th className="py-2.5 pr-3 text-right">Total</th>
-                <th className="py-2.5 pr-3 text-right">Remaining</th>
-                <th className="py-2.5 pr-3">Status</th>
-                <th className="py-2.5 pr-2"></th>
+              <tr className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                <th className="px-3 py-3 text-left">CN #</th>
+                <th className="px-3 py-3 text-left">Customer</th>
+                <th className="px-3 py-3 text-left">Invoice</th>
+                <th className="px-3 py-3 text-left">Date</th>
+                <th className="px-3 py-3 text-right">Total</th>
+                <th className="px-3 py-3 text-right">Remaining</th>
+                <th className="px-3 py-3 text-left">Status</th>
+                <th className="px-3 py-3"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-50">
+            <tbody className="divide-y divide-slate-100">
               {filtered.map(n => {
                 const statusMeta = STATUS_META[n.status] || { label: n.status, className: 'bg-slate-100 text-slate-600' };
                 return (
                   <tr
                     key={n.id}
-                    className="group hover:bg-slate-50 transition-colors cursor-pointer"
+                    className="group hover:bg-slate-50/50 transition-colors cursor-pointer"
                     onClick={() => setSelectedId(n.id)}
                   >
-                    <td className="py-2.5 pl-4 pr-3 font-mono text-sm font-semibold text-slate-700">{n.cnNumber}</td>
-                    <td className="py-2.5 pr-3">
+                    <td className="px-3 py-3 font-mono text-sm font-semibold text-slate-700">{n.cnNumber}</td>
+                    <td className="px-3 py-3">
                       <p className="text-sm font-medium text-slate-800">{n.customer?.name || '—'}</p>
                       {n.customer?.email && <p className="text-xs text-slate-400">{n.customer.email}</p>}
                     </td>
-                    <td className="py-2.5 pr-3 text-sm text-slate-500 font-mono">{n.invoiceNumber || '—'}</td>
-                    <td className="py-2.5 pr-3 text-sm text-slate-500">{fmtDate(n.date)}</td>
-                    <td className="py-2.5 pr-3 text-right font-semibold text-slate-700 font-mono">{formatNaira(n.total)}</td>
-                    <td className="py-2.5 pr-3 text-right font-semibold text-amber-600 font-mono">{formatNaira(n.remainingCredit)}</td>
-                    <td className="py-2.5 pr-3">
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusMeta.className}`}>
+                    <td className="px-3 py-3 text-sm text-slate-500 font-mono">{n.invoiceNumber || '—'}</td>
+                    <td className="px-3 py-3 text-sm text-slate-500">{fmtDate(n.date)}</td>
+                    <td className="px-3 py-3 text-right font-semibold text-slate-700 font-mono">{formatNaira(n.total)}</td>
+                    <td className="px-3 py-3 text-right font-semibold text-amber-600 font-mono">{formatNaira(n.remainingCredit)}</td>
+                    <td className="px-3 py-3">
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${statusMeta.className} ${statusMeta.className.includes('bg-slate-100') ? 'border-slate-200' : n.status === 'issued' ? 'border-amber-200' : 'border-emerald-200'}`}>
                         {statusMeta.label}
                       </span>
                     </td>
-                    <td className="py-2.5 pr-2">
+                    <td className="px-3 py-3">
                       <div className="flex items-center justify-end gap-1">
                         <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity">
                           {n.status === 'issued' && n.remainingCredit === n.total && (
                             <button
                               onClick={(e) => { e.stopPropagation(); setVoidTarget(n); }}
                               title="Void credit note"
-                              className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all duration-200"
                             >
                               <Ban size={14} />
                             </button>
@@ -339,18 +339,18 @@ export function CreditNotesPage() {
       )}
 
       {voidTarget && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-5">
-            <h2 className="text-base font-semibold text-slate-900 mb-2">Void Credit Note</h2>
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5">
+            <h2 className="text-base font-bold text-slate-900 mb-2">Void Credit Note</h2>
             <p className="text-sm text-slate-500 mb-4">
               Void <span className="font-medium text-slate-700">{voidTarget.cnNumber}</span> ({formatNaira(voidTarget.total)})?
               This reverses its ledger entry and makes it unusable. This cannot be undone.
             </p>
             <div className="flex justify-end gap-2">
               <button onClick={() => setVoidTarget(null)}
-                className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
+                className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-xl transition-all duration-200">Cancel</button>
               <button onClick={() => voidMutation.mutate(voidTarget.id)} disabled={voidMutation.isPending}
-                className="px-4 py-2 text-sm font-medium text-white bg-rose-600 rounded-lg hover:bg-rose-700 disabled:opacity-50">
+                className="px-4 py-2.5 text-sm font-medium text-white bg-rose-600 rounded-xl hover:bg-rose-700 disabled:opacity-50 transition-all duration-200">
                 {voidMutation.isPending ? 'Voiding...' : 'Void Credit Note'}
               </button>
             </div>
@@ -462,11 +462,11 @@ function DetailPanel({
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
+      <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40" onClick={onClose} />
       <div className="fixed top-0 right-0 h-full w-full max-w-lg bg-white shadow-2xl z-50 flex flex-col">
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-          <h2 className="text-base font-semibold text-slate-900">Credit Note</h2>
-          <button onClick={onClose} className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100">
+          <h2 className="text-base font-bold text-slate-900">Credit Note</h2>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
             <X size={18} />
           </button>
         </div>
@@ -478,14 +478,14 @@ function DetailPanel({
             </div>
           ) : (
             <div className="space-y-6">
-              <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+              <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
                 <div className="flex items-start justify-between mb-3">
                   <div>
                     <p className="font-mono text-sm font-semibold text-slate-700">{note.cnNumber}</p>
                     <p className="text-xs text-slate-400 mt-0.5">{fmtDate(note.date)}</p>
                   </div>
                   {statusMeta && (
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusMeta.className}`}>
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${statusMeta.className} ${statusMeta.className.includes('bg-slate-100') ? 'border-slate-200' : statusMeta.className.includes('bg-amber') ? 'border-amber-200' : 'border-emerald-200'}`}>
                       {statusMeta.label}
                     </span>
                   )}
@@ -504,15 +504,15 @@ function DetailPanel({
               </div>
 
               <div className="grid grid-cols-3 gap-3 text-sm">
-                <div className="bg-white border border-slate-100 rounded-lg p-3">
+                <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-3">
                   <p className="text-xs text-slate-400 uppercase tracking-wide mb-0.5">Subtotal</p>
                   <p className="font-mono font-semibold text-slate-800">{formatNaira(note.subtotal)}</p>
                 </div>
-                <div className="bg-white border border-slate-100 rounded-lg p-3">
+                <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-3">
                   <p className="text-xs text-slate-400 uppercase tracking-wide mb-0.5">VAT</p>
                   <p className="font-mono font-semibold text-slate-800">{formatNaira(note.tax)}</p>
                 </div>
-                <div className="bg-white border border-slate-100 rounded-lg p-3">
+                <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-3">
                   <p className="text-xs text-slate-400 uppercase tracking-wide mb-0.5">Total</p>
                   <p className="font-mono font-semibold text-slate-900">{formatNaira(note.total)}</p>
                 </div>
@@ -526,7 +526,7 @@ function DetailPanel({
                 {canApply && !showApplyForm && (
                   <button
                     onClick={() => setShowApplyForm(true)}
-                    className="flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold bg-indigo-600 text-white rounded-lg hover:bg-slate-900 transition"
+                    className="flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200 shadow-sm"
                   >
                     <ReceiptText size={14} />
                     Apply to Invoice
@@ -535,7 +535,7 @@ function DetailPanel({
               </div>
 
               {showApplyForm && (
-                <div className="border border-slate-200 rounded-xl p-4 space-y-3">
+                <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 space-y-3">
                   <h3 className="text-sm font-semibold text-slate-700">Apply Credit to an Invoice</h3>
                   <div>
                     <label className="block text-xs font-medium text-slate-500 mb-1">Select Open Invoice</label>
@@ -549,7 +549,7 @@ function DetailPanel({
                           setApplyAmount((amt / 100).toFixed(2));
                         }
                       }}
-                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                      className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
                     >
                       <option value="">Select invoice...</option>
                       {openInvoices.map(inv => (
@@ -569,21 +569,21 @@ function DetailPanel({
                       step="0.01"
                       value={applyAmount}
                       onChange={e => setApplyAmount(e.target.value)}
-                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                      className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
                     />
                     <p className="text-xs text-slate-400 mt-1">Maximum applicable: {formatNaira(maxApplyAmount)}</p>
                   </div>
                   <div className="flex justify-end gap-2 pt-1">
                     <button
                       onClick={() => { setShowApplyForm(false); setApplyInvoiceId(''); setApplyAmount(''); }}
-                      className="px-3.5 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg"
+                      className="px-3.5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-xl transition-all duration-200"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={handleApply}
                       disabled={applyMutation.isPending}
-                      className="px-3.5 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-slate-900 disabled:opacity-50"
+                      className="px-3.5 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 rounded-xl shadow-sm disabled:opacity-50 transition-all duration-200"
                     >
                       {applyMutation.isPending ? 'Applying...' : 'Apply Credit'}
                     </button>
@@ -592,14 +592,14 @@ function DetailPanel({
               )}
 
               {note.notes && (
-                <div className="text-sm text-slate-600 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
+                <div className="text-sm text-slate-600 bg-slate-50 rounded-2xl border border-slate-200/80 px-3 py-2">
                   <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-0.5">Reason / Notes</p>
                   {note.notes}
                 </div>
               )}
 
               {note.status === 'applied' && (
-                <div className="flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
+                <div className="flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
                   <CheckCircle2 size={14} />
                   This credit note has been fully applied.
                 </div>
@@ -675,11 +675,11 @@ function CreateCreditNoteModal({ onClose, onError }: { onClose: () => void; onEr
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4 py-8">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 px-4 py-8">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-          <h2 className="text-base font-semibold text-slate-900">New Credit Note</h2>
-          <button onClick={onClose} className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100">
+          <h2 className="text-base font-bold text-slate-900">New Credit Note</h2>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
             <X size={18} />
           </button>
         </div>
@@ -690,7 +690,7 @@ function CreateCreditNoteModal({ onClose, onError }: { onClose: () => void; onEr
             <select
               value={customerId}
               onChange={e => { setCustomerId(e.target.value); setInvoiceId(''); }}
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
             >
               <option value="">Select customer...</option>
               {(customers || []).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -703,7 +703,7 @@ function CreateCreditNoteModal({ onClose, onError }: { onClose: () => void; onEr
               value={invoiceId}
               onChange={e => setInvoiceId(e.target.value)}
               disabled={!customerId}
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 disabled:bg-slate-50 disabled:text-slate-400"
+              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow disabled:bg-slate-50 disabled:text-slate-400"
             >
               <option value="">No specific invoice / general credit</option>
               {customerInvoices.map(inv => (
@@ -722,7 +722,7 @@ function CreateCreditNoteModal({ onClose, onError }: { onClose: () => void; onEr
                 type="date"
                 value={date}
                 onChange={e => setDate(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
               />
             </div>
             <div>
@@ -732,7 +732,7 @@ function CreateCreditNoteModal({ onClose, onError }: { onClose: () => void; onEr
                 step="0.1"
                 value={taxRate}
                 onChange={e => setTaxRate(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
               />
             </div>
           </div>
@@ -745,7 +745,7 @@ function CreateCreditNoteModal({ onClose, onError }: { onClose: () => void; onEr
               value={subtotal}
               onChange={e => setSubtotal(e.target.value)}
               placeholder="0.00"
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
             />
           </div>
 
@@ -756,11 +756,11 @@ function CreateCreditNoteModal({ onClose, onError }: { onClose: () => void; onEr
               onChange={e => setReason(e.target.value)}
               rows={2}
               placeholder="e.g. Returned consignment — 12 units damaged on arrival"
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
             />
           </div>
 
-          <div className="bg-slate-50 rounded-lg p-3 space-y-1 text-sm border border-slate-100">
+          <div className="bg-slate-50 rounded-2xl p-3 space-y-1 text-sm border border-slate-200/80">
             <div className="flex justify-between">
               <span className="text-slate-500">Subtotal</span>
               <span className="font-mono text-slate-700">{formatNaira(subtotalKobo)}</span>
@@ -777,13 +777,13 @@ function CreateCreditNoteModal({ onClose, onError }: { onClose: () => void; onEr
         </div>
 
         <div className="flex justify-end gap-2 px-5 py-4 border-t border-slate-100">
-          <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">
+          <button onClick={onClose} className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-xl transition-all duration-200">
             Cancel
           </button>
           <button
             onClick={handleSubmit}
             disabled={createMutation.isPending}
-            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-slate-900 disabled:opacity-50"
+            className="px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 rounded-xl shadow-sm disabled:opacity-50 transition-all duration-200"
           >
             {createMutation.isPending ? 'Creating...' : 'Issue Credit Note'}
           </button>

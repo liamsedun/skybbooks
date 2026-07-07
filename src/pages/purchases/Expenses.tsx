@@ -251,103 +251,103 @@ export function ExpensesPage() {
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
   return (
-    <div className="space-y-5">
+    <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-slate-900">Expenses</h1>
           <p className="text-sm text-slate-500 mt-0.5">{expenses.length} records · {formatNaira(expenses.reduce((s,e)=>s+e.amount,0))} total</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => exportCSV(filtered, vendorMap, accountMap)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
+          <button onClick={() => exportCSV(filtered, vendorMap, accountMap)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl hover:bg-slate-50 transition-all duration-200">
             <Download size={14} /> CSV
           </button>
-          <button onClick={() => exportPDF(filtered, vendorMap, accountMap, totalExpenses)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
+          <button onClick={() => exportPDF(filtered, vendorMap, accountMap, totalExpenses)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl hover:bg-slate-50 transition-all duration-200">
             <FileText size={14} /> PDF
           </button>
-          <button onClick={() => setImportOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
+          <button onClick={() => setImportOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl hover:bg-slate-50 transition-all duration-200">
             <Upload size={14} /> Import CSV
           </button>
-          <button onClick={openCreate} className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-900 text-white text-xs font-medium rounded-lg hover:bg-slate-800 transition-colors">
+          <button onClick={openCreate} className="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-xs font-medium rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200">
             <Plus size={14} /> Record Expense
           </button>
         </div>
       </div>
 
       {successMsg && (
-        <div className="flex items-center gap-2 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-lg text-sm text-emerald-700">
+        <div className="flex items-center gap-2 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl text-sm text-emerald-700">
           <CheckCircle2 size={16} /> {successMsg}
         </div>
       )}
 
       <div className="relative max-w-sm">
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search expenses..." className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search expenses..." className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
       </div>
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-16 text-slate-400 bg-white border border-slate-200 rounded-xl">
+        <div className="flex items-center justify-center py-16 text-slate-400 bg-gradient-to-r from-slate-200 to-slate-100 animate-pulse rounded-xl">
           <Loader2 size={20} className="animate-spin mr-2" /> Loading expenses...
         </div>
       ) : isError ? (
-        <div className="flex items-center justify-center py-16 text-rose-500 gap-2 bg-white border border-slate-200 rounded-xl">
+        <div className="flex items-center justify-center py-16 text-rose-500 gap-2 bg-white rounded-2xl border border-slate-200/80 shadow-sm">
           <AlertCircle size={18} /> Failed to load expenses.
         </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-16 bg-white border border-slate-200 rounded-xl">
+        <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-slate-200/80 shadow-sm">
           <Receipt size={32} className="mx-auto mb-3 text-slate-300" />
           <p className="text-sm font-medium text-slate-600">{search ? 'No matching expenses' : 'No expenses yet'}</p>
           {!search && <p className="text-xs text-slate-400 mt-1">Record your first expense to track outgoings</p>}
         </div>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-slate-50 text-xs font-medium text-slate-500 uppercase tracking-wide border-b border-slate-200">
-                <th className="py-3 pl-4 pr-2 text-left">Ref #</th>
-                <th className="py-3 px-2 text-left">Date</th>
-                <th className="py-3 px-2 text-left">Description</th>
-                <th className="py-3 px-2 text-left">Account</th>
-                <th className="py-3 px-2 text-left">Vendor</th>
-                <th className="py-3 px-2 text-left">Method</th>
-                <th className="py-3 px-2 text-right">Amount</th>
-                <th className="py-3 px-2 text-center">Ledger</th>
-                <th className="py-3 pl-2 pr-4 text-center w-24">Actions</th>
+              <tr className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-200">
+                <th className="px-3 py-3 text-left">Ref #</th>
+                <th className="px-3 py-3 text-left">Date</th>
+                <th className="px-3 py-3 text-left">Description</th>
+                <th className="px-3 py-3 text-left">Account</th>
+                <th className="px-3 py-3 text-left">Vendor</th>
+                <th className="px-3 py-3 text-left">Method</th>
+                <th className="px-3 py-3 text-right">Amount</th>
+                <th className="px-3 py-3 text-center">Ledger</th>
+                <th className="px-3 py-3 text-center w-24">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filtered.map(exp => (
-                <tr key={exp.id} className="hover:bg-slate-50 transition-colors">
+                <tr key={exp.id} className="hover:bg-slate-50/50 transition-colors">
                   <td className="py-3 pl-4 pr-2 font-mono text-xs text-slate-600">{exp.expenseNumber}</td>
                   <td className="py-3 px-2 text-xs text-slate-500">{fmtDate(exp.date)}</td>
                   <td className="py-3 px-2 text-slate-700 max-w-[180px] truncate">{exp.description || '—'}</td>
                   <td className="py-3 px-2 text-xs text-slate-500 max-w-[120px] truncate">{accountMap.get(exp.accountId) || '—'}</td>
                   <td className="py-3 px-2 text-xs text-slate-500">{exp.vendorId ? (vendorMap.get(exp.vendorId) || '—') : '—'}</td>
                   <td className="py-3 px-2">
-                    <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full capitalize">{exp.paymentMethod?.replace('_', ' ')}</span>
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border border-slate-100/50 bg-slate-100 text-slate-600 capitalize">{exp.paymentMethod?.replace('_', ' ')}</span>
                   </td>
                   <td className="py-3 px-2 text-right font-mono text-slate-900 font-medium">{formatNaira(exp.amount)}</td>
                   <td className="py-3 px-2">
                     {exp.journalEntryId ? (
                       <button
                         onClick={() => navigate(`/accountant/journals?entry=${exp.journalEntryNumber || ''}`)}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
+                        className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border border-emerald-100/50 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-all duration-200"
                       ><CheckCircle2 className="w-3 h-3" /> Posted</button>
                     ) : (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500">Not posted</span>
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border border-slate-100/50 bg-slate-100 text-slate-500">Not posted</span>
                     )}
                   </td>
                   <td className="py-3 pl-2 pr-4">
                     <div className="flex items-center justify-center gap-1">
                       <button
                         onClick={() => openView(exp)}
-                        className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                        className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all duration-200"
                         title="View"
                       >
                         <Eye size={14} />
                       </button>
                       <button
                         onClick={() => openEdit(exp)}
-                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-md transition-colors"
+                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl transition-all duration-200"
                         title="Edit expense"
                       >
                         <Edit2 size={11} /> Edit
@@ -355,7 +355,7 @@ export function ExpensesPage() {
                       <button
                         onClick={() => { if (confirm(`Delete ${exp.expenseNumber}? This will reverse the journal entry.`)) deleteMutation.mutate(exp.id); }}
                         disabled={deleteMutation.isPending}
-                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-md transition-colors disabled:opacity-50"
+                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl transition-all duration-200 disabled:opacity-50"
                         title="Delete expense"
                       >
                         <Trash2 size={11} /> Delete
@@ -367,8 +367,8 @@ export function ExpensesPage() {
             </tbody>
             <tfoot>
               <tr className="bg-slate-50 border-t-2 border-slate-200">
-                <td colSpan={6} className="py-3 pl-4 pr-2 text-xs font-bold text-slate-700 uppercase tracking-wide">Total ({filtered.length} records)</td>
-                <td className="py-3 px-2 text-right font-mono font-bold text-slate-900">{formatNaira(totalExpenses)}</td>
+                <td colSpan={6} className="px-3 py-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total ({filtered.length} records)</td>
+                <td className="px-3 py-3 text-right font-mono font-bold text-slate-900">{formatNaira(totalExpenses)}</td>
                 <td></td>
               </tr>
             </tfoot>
@@ -666,15 +666,15 @@ export function ExpensesPage() {
 
       {/* Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 px-4 py-8 overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-xl">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
               <h2 className="text-base font-semibold text-slate-900">{editingId ? 'Edit Expense' : 'Record Expense'}</h2>
               <button onClick={closeModal} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
             </div>
-            <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+            <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4 overflow-y-auto">
               {formError && (
-                <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2 flex items-center gap-2">
+                <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2 flex items-center gap-2">
                   <AlertCircle size={14} /> {formError}
                 </div>
               )}
@@ -690,36 +690,36 @@ export function ExpensesPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Amount (₦) *</label>
-                  <input type="number" min="0" step="0.01" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} placeholder="0.00" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                  <input type="number" min="0" step="0.01" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} placeholder="0.00" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">VAT Amount (₦)</label>
-                  <input type="number" min="0" step="0.01" value={form.taxAmount} onChange={e => setForm({ ...form, taxAmount: e.target.value })} placeholder="0.00" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                  <input type="number" min="0" step="0.01" value={form.taxAmount} onChange={e => setForm({ ...form, taxAmount: e.target.value })} placeholder="0.00" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Date</label>
-                  <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                  <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Payment Method</label>
-                  <select value={form.paymentMethod} onChange={e => setForm({ ...form, paymentMethod: e.target.value })} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 bg-white">
+                  <select value={form.paymentMethod} onChange={e => setForm({ ...form, paymentMethod: e.target.value })} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow bg-white">
                     {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Vendor (optional)</label>
-                  <select value={form.vendorId} onChange={e => setForm({ ...form, vendorId: e.target.value })} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 bg-white">
+                  <select value={form.vendorId} onChange={e => setForm({ ...form, vendorId: e.target.value })} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow bg-white">
                     <option value="">No vendor</option>
                     {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Reference</label>
-                  <input value={form.reference} onChange={e => setForm({ ...form, reference: e.target.value })} placeholder="Receipt / ref number" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                  <input value={form.reference} onChange={e => setForm({ ...form, reference: e.target.value })} placeholder="Receipt / ref number" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
                 </div>
                 <div className="col-span-2">
                   <label className="block text-xs font-medium text-slate-500 mb-1">Description</label>
-                  <input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="What was this expense for?" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                  <input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="What was this expense for?" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
                 </div>
 {!editingId && !form.onAccount && (
   <div className="col-span-2">
@@ -747,7 +747,7 @@ export function ExpensesPage() {
                 {form.isBillable && (
                   <div className="col-span-2">
                     <label className="block text-xs font-medium text-slate-500 mb-1">Customer</label>
-                    <select value={form.customerId} onChange={e => setForm({ ...form, customerId: e.target.value })} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10">
+                    <select value={form.customerId} onChange={e => setForm({ ...form, customerId: e.target.value })} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow">
                       <option value="">Select customer...</option>
                       {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
@@ -755,8 +755,8 @@ export function ExpensesPage() {
                 )}
               </div>
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-                <button type="button" onClick={closeModal} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
-                <button type="submit" disabled={isSaving} className="px-5 py-2 text-sm font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 disabled:opacity-50 flex items-center gap-2">
+                <button type="button" onClick={closeModal} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-xl transition-all duration-200">Cancel</button>
+                <button type="submit" disabled={isSaving} className="px-5 py-2 text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50 flex items-center gap-2 transition-all duration-200">
                   {isSaving && <Loader2 size={14} className="animate-spin" />}
                   {editingId ? 'Save Changes' : 'Record Expense'}
                 </button>

@@ -48,47 +48,47 @@ export function AuditLogsPage() {
           {data?.total !== undefined && (
             <span className="text-xs text-slate-400">{data.total} total entries</span>
           )}
-          <button onClick={exportAuditLogsCSV} className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors"><Download className="w-3.5 h-3.5" /> CSV</button>
-          <button onClick={handleDownloadPdf} className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"><Download className="w-3.5 h-3.5" /> PDF</button>
+          <button onClick={exportAuditLogsCSV} className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-all duration-200"><Download className="w-3.5 h-3.5" /> CSV</button>
+          <button onClick={handleDownloadPdf} className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200"><Download className="w-3.5 h-3.5" /> PDF</button>
         </div>
       </div>
 
-      <div className="flex gap-4 items-center bg-white p-4 rounded-xl border border-slate-200">
+      <div className="flex gap-4 items-center bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5">
         <div className="flex items-center gap-2">
           <Search className="w-4 h-4 text-slate-400" />
-          <input placeholder="Filter by action..." value={actionFilter} onChange={e => setActionFilter(e.target.value)} className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-48" />
+          <input placeholder="Filter by action..." value={actionFilter} onChange={e => setActionFilter(e.target.value)} className="border border-slate-200 rounded-xl px-3 py-2.5 text-sm w-48 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
         </div>
-        <input placeholder="Filter by entity..." value={entityFilter} onChange={e => setEntityFilter(e.target.value)} className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-48" />
+        <input placeholder="Filter by entity..." value={entityFilter} onChange={e => setEntityFilter(e.target.value)} className="border border-slate-200 rounded-xl px-3 py-2.5 text-sm w-48 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
       </div>
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>
+        <div className="flex items-center justify-center py-20"><div className="bg-gradient-to-r from-slate-200 to-slate-100 animate-pulse rounded-xl h-8 w-48"></div></div>
       ) : error ? (
         <div className="flex items-center gap-2 p-4 bg-red-50 text-red-700 rounded-xl text-sm"><AlertCircle className="w-4 h-4" /> Failed to load audit logs.</div>
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden overflow-x-auto">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-slate-50">
+            <thead className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
               <tr>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Timestamp</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Action</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Entity Type</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Entity ID</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">IP Address</th>
+                <th className="text-left px-3 py-3">Timestamp</th>
+                <th className="text-left px-3 py-3">Action</th>
+                <th className="text-left px-3 py-3">Entity Type</th>
+                <th className="text-left px-3 py-3">Entity ID</th>
+                <th className="text-left px-3 py-3">IP Address</th>
               </tr>
             </thead>
             <tbody>
               {logs.map((log: any) => (
-                <tr key={log.id} className="border-t border-slate-100 hover:bg-slate-50">
-                  <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{fmtDate(log.createdAt)}</td>
-                  <td className="px-4 py-3"><span className="inline-block px-2 py-0.5 text-xs font-semibold rounded-full bg-slate-100 text-slate-600">{log.action}</span></td>
-                  <td className="px-4 py-3 text-slate-600">{log.entityType}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-slate-500 max-w-[120px] truncate">{log.entityId || '—'}</td>
-                  <td className="px-4 py-3 text-slate-500">{log.ipAddress || '—'}</td>
+                <tr key={log.id} className="border-t border-slate-100 hover:bg-slate-50/50 even:bg-slate-50/50 transition-colors">
+                  <td className="px-3 py-3 text-slate-600 whitespace-nowrap">{fmtDate(log.createdAt)}</td>
+                  <td className="px-3 py-3"><span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border border-slate-200 bg-slate-100 text-slate-600">{log.action}</span></td>
+                  <td className="px-3 py-3 text-slate-600">{log.entityType}</td>
+                  <td className="px-3 py-3 font-mono text-xs text-slate-500 max-w-[120px] truncate">{log.entityId || '—'}</td>
+                  <td className="px-3 py-3 text-slate-500">{log.ipAddress || '—'}</td>
                 </tr>
               ))}
               {logs.length === 0 && (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-400">No audit log entries found.</td></tr>
+                <tr><td colSpan={5} className="px-3 py-8 text-center text-slate-400">No audit log entries found.</td></tr>
               )}
             </tbody>
           </table>

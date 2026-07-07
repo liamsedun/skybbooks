@@ -305,7 +305,7 @@ export function ChartOfAccountsPage() {
 
     return (
       <React.Fragment key={node.id}>
-        <tr className="group hover:bg-slate-50 transition-colors">
+        <tr className="group hover:bg-slate-50/50 transition-colors">
           <td className="py-2.5 pr-3">
             <div className="flex items-center" style={{ paddingLeft: `${depth * 20}px` }}>
               {hasChildren ? (
@@ -341,9 +341,9 @@ export function ChartOfAccountsPage() {
           })()}
           <td className="py-2.5 pr-2 text-right">
             <div className="opacity-0 group-hover:opacity-100 flex items-center justify-end gap-1 transition-opacity">
-              <button onClick={() => openEditModal(node)} className="p-1.5 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100" aria-label="Edit account"><Pencil size={14} /></button>
+              <button onClick={() => openEditModal(node)} className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all duration-200" aria-label="Edit account"><Pencil size={14} /></button>
               {!node.isSystem && (
-                <button onClick={() => setDeleteTarget(node)} className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50" aria-label="Delete account"><Trash2 size={14} /></button>
+                <button onClick={() => setDeleteTarget(node)} className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all duration-200" aria-label="Delete account"><Trash2 size={14} /></button>
               )}
             </div>
           </td>
@@ -354,8 +354,8 @@ export function ChartOfAccountsPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
-      <div className="flex items-start justify-between mb-6">
+    <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
+      <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Chart of Accounts</h1>
           <p className="text-sm text-slate-500 mt-1">{counts.all} accounts · Double-entry general ledger structure</p>
@@ -363,48 +363,48 @@ export function ChartOfAccountsPage() {
         <div className="flex gap-2">
           <button
             onClick={() => setShowBalances((v) => !v)}
-            className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border transition-colors ${
+            className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl border transition-all duration-200 ${
               showBalances
                 ? 'bg-indigo-100 text-indigo-700 border-indigo-300'
                 : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
             }`}
           ><Eye className="w-3.5 h-3.5" /> {showBalances ? 'Hide Balances' : 'Show Balances'}</button>
-          <button onClick={() => downloadCsv('chart-of-accounts-template.csv', ['code', 'name', 'type', 'sub-type', 'parent code', 'description', 'active', 'opening balance (NGN)'], ['100000', 'Cash and Cash Equivalents', 'asset', 'Current Assets', '', '', 'Yes', '5000000'])} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-slate-500 rounded-lg hover:bg-slate-600"><FileText className="w-3.5 h-3.5" /> Sample CSV</button>
-          <button onClick={() => setShowImport(true)} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700"><Upload className="w-3.5 h-3.5" /> Import CSV</button>
-          <button onClick={handleExportCsv} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700"><Download className="w-3.5 h-3.5" /> CSV</button>
-          <button onClick={handlePrintPdf} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700"><Printer className="w-3.5 h-3.5" /> PDF</button>
-          <button onClick={openAddModal} className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-900 text-white text-xs font-medium rounded-lg hover:bg-slate-800 transition-colors"><Plus size={14} /> Add Account</button>
+          <button onClick={() => downloadCsv('chart-of-accounts-template.csv', ['code', 'name', 'type', 'sub-type', 'parent code', 'description', 'active', 'opening balance (NGN)'], ['100000', 'Cash and Cash Equivalents', 'asset', 'Current Assets', '', '', 'Yes', '5000000'])} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-slate-500 rounded-xl hover:bg-slate-600 transition-all duration-200"><FileText className="w-3.5 h-3.5" /> Sample CSV</button>
+          <button onClick={() => setShowImport(true)} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200"><Upload className="w-3.5 h-3.5" /> Import CSV</button>
+          <button onClick={handleExportCsv} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 transition-all duration-200"><Download className="w-3.5 h-3.5" /> CSV</button>
+          <button onClick={handlePrintPdf} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-red-600 rounded-xl hover:bg-red-700 transition-all duration-200"><Printer className="w-3.5 h-3.5" /> PDF</button>
+          <button onClick={openAddModal} className="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-xs font-medium rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200"><Plus size={14} /> Add Account</button>
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2 mb-4">
-        <button onClick={() => setActiveFilter('all')} className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${activeFilter === 'all' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>All Accounts ({counts.all})</button>
+      <div className="flex flex-wrap gap-2">
+        <button onClick={() => setActiveFilter('all')} className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${activeFilter === 'all' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>All Accounts ({counts.all})</button>
         {ACCOUNT_TYPES.map((t) => (
-          <button key={t} onClick={() => setActiveFilter(t)} className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${activeFilter === t ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>{TYPE_META[t].plural} ({counts[t]})</button>
+          <button key={t} onClick={() => setActiveFilter(t)} className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${activeFilter === t ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>{TYPE_META[t].plural} ({counts[t]})</button>
         ))}
       </div>
 
-      <div className="relative mb-4">
+      <div className="relative">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-        <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search by name, code, or sub-type..." className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300" />
+        <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search by name, code, or sub-type..." className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow pl-9 pr-3 text-slate-800 placeholder-slate-400" />
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-x-auto">
         {isLoading ? (
           <PageLoader message="Loading accounts..." />
         ) : isError ? (
           <div className="flex items-center justify-center gap-2 py-16 text-rose-500 text-sm"><AlertCircle size={16} />Failed to load accounts. Check the API route.</div>
         ) : !effectiveAccounts || effectiveAccounts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 px-6">
-            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4"><Download size={28} className="text-slate-400" /></div>
+            <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mb-4"><Download size={28} className="text-slate-400" /></div>
             <h3 className="text-base font-semibold text-slate-800 mb-1">No Chart of Accounts</h3>
             <p className="text-sm text-slate-500 mb-6 text-center max-w-md">Load the Nigerian-compliant Chart of Accounts template (150+ accounts) compliant with IFRS, CAMA 2020, CITA, and FIRS regulations, or add accounts manually.</p>
             <div className="flex gap-3">
-              <button onClick={() => seedMutation.mutate()} disabled={seedMutation.isPending} className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 disabled:opacity-50 transition-colors">
+              <button onClick={() => seedMutation.mutate()} disabled={seedMutation.isPending} className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-sm font-medium rounded-xl hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50 transition-all duration-200">
                 {seedMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
                 {seedMutation.isPending ? 'Loading Template...' : 'Load Nigerian COA Template'}
               </button>
-              <button onClick={openAddModal} className="inline-flex items-center gap-2 px-5 py-2.5 border border-slate-300 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors"><Plus size={16} /> Add Manually</button>
+              <button onClick={openAddModal} className="inline-flex items-center gap-2 px-5 py-2.5 border border-slate-200/80 text-slate-700 text-sm font-medium rounded-xl hover:bg-slate-50 transition-all duration-200"><Plus size={16} /> Add Manually</button>
             </div>
             {seedMutation.isSuccess && <div className="flex items-center gap-2 mt-4 text-sm text-emerald-600"><CheckCircle2 size={16} />Template loaded successfully!</div>}
             {seedMutation.isError && <div className="flex items-center gap-2 mt-4 text-sm text-rose-500"><AlertCircle size={16} />Failed to load template. You may already have accounts.</div>}
@@ -412,19 +412,19 @@ export function ChartOfAccountsPage() {
         ) : (
           <table className="w-full">
             <thead>
-              <tr className="border-b border-slate-100 text-left text-xs font-medium text-slate-400 uppercase tracking-wide">
-                <th className="py-2.5 pl-4 pr-3">Code</th>
-                <th className="py-2.5 pr-3">Account Name</th>
-                <th className="py-2.5 pr-3">Type</th>
-                <th className="py-2.5 pr-3">Sub-type</th>
-                <th className="py-2.5 pr-3">Status</th>
+              <tr className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-200/80">
+                <th className="px-3 py-3 text-left">Code</th>
+                <th className="px-3 py-3 text-left">Account Name</th>
+                <th className="px-3 py-3 text-left">Type</th>
+                <th className="px-3 py-3 text-left">Sub-type</th>
+                <th className="px-3 py-3 text-left">Status</th>
                 {showBalances && (
-                  <th className="py-2.5 pr-3 text-right">Debit</th>
+                  <th className="px-3 py-3 text-right">Debit</th>
                 )}
                 {showBalances && (
-                  <th className="py-2.5 pr-3 text-right">Credit</th>
+                  <th className="px-3 py-3 text-right">Credit</th>
                 )}
-                <th className="py-2.5 pr-2"></th>
+                <th className="px-3 py-3"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">{tree.map((node) => renderNode(node, 0))}</tbody>
@@ -453,38 +453,38 @@ export function ChartOfAccountsPage() {
       </div>
 
       {modalOpen && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col border border-slate-200/80">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200/80 shrink-0">
               <h2 className="text-base font-semibold text-slate-900">{modalMode === 'add' ? 'Add Account' : 'Edit Account'}</h2>
-              <button onClick={closeModal} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
+              <button onClick={closeModal} className="text-slate-400 hover:text-slate-600 p-1 rounded-xl hover:bg-slate-100 transition-all duration-200"><X size={18} /></button>
             </div>
-            <form onSubmit={handleSubmit} className="px-5 py-4 space-y-3">
-              {formError && <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2">{formError}</div>}
+            <form onSubmit={handleSubmit} className="px-5 py-4 space-y-3 overflow-y-auto">
+              {formError && <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100/80 rounded-xl px-3 py-2">{formError}</div>}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Code</label>
-                  <input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                  <input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Type</label>
-                  <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as Account['type'] })} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10">
+                  <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as Account['type'] })} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow">
                     {ACCOUNT_TYPES.map((t) => (<option key={t} value={t}>{TYPE_META[t].plural}</option>))}
                   </select>
                 </div>
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">Account Name</label>
-                <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Sub-type</label>
-                  <input value={form.subType} onChange={(e) => setForm({ ...form, subType: e.target.value })} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                  <input value={form.subType} onChange={(e) => setForm({ ...form, subType: e.target.value })} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Parent Account</label>
-                  <select value={form.parentId} onChange={(e) => setForm({ ...form, parentId: e.target.value })} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10">
+                  <select value={form.parentId} onChange={(e) => setForm({ ...form, parentId: e.target.value })} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow">
                     <option value="">None (top-level)</option>
                     {(effectiveAccounts || []).filter((a) => a.id !== editingId).map((a) => (<option key={a.id} value={a.id}>{a.code} — {a.name}</option>))}
                   </select>
@@ -492,12 +492,12 @@ export function ChartOfAccountsPage() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">Description</label>
-                <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
               </div>
               {modalMode === 'edit' && (
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Opening Balance (NGN)</label>
-                  <input type="number" step="0.01" min="0" value={form.openingBalance} onChange={(e) => setForm({ ...form, openingBalance: e.target.value })} placeholder="0.00" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                  <input type="number" step="0.01" min="0" value={form.openingBalance} onChange={(e) => setForm({ ...form, openingBalance: e.target.value })} placeholder="0.00" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
                 </div>
               )}
               <label className="flex items-center gap-2 text-sm text-slate-600">
@@ -505,8 +505,8 @@ export function ChartOfAccountsPage() {
                 Active
               </label>
               <div className="flex justify-end gap-2 pt-2">
-                <button type="button" onClick={closeModal} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
-                <button type="submit" disabled={isSaving} className="px-4 py-2 text-sm font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 disabled:opacity-50">{isSaving ? 'Saving...' : modalMode === 'add' ? 'Add Account' : 'Save Changes'}</button>
+                <button type="button" onClick={closeModal} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-xl transition-all duration-200 border border-slate-200/80">Cancel</button>
+                <button type="submit" disabled={isSaving} className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50 transition-all duration-200">{isSaving ? 'Saving...' : modalMode === 'add' ? 'Add Account' : 'Save Changes'}</button>
               </div>
             </form>
           </div>
@@ -514,33 +514,33 @@ export function ChartOfAccountsPage() {
       )}
 
       {deleteTarget && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-5">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5 border border-slate-200/80">
             <h2 className="text-base font-semibold text-slate-900 mb-2">Delete Account</h2>
             <p className="text-sm text-slate-500 mb-4">Are you sure you want to delete <span className="font-medium text-slate-700">{deleteTarget.code} — {deleteTarget.name}</span>? This cannot be undone.</p>
             <div className="flex justify-end gap-2">
-              <button onClick={() => setDeleteTarget(null)} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
-              <button onClick={() => deleteMutation.mutate(deleteTarget.id)} disabled={deleteMutation.isPending} className="px-4 py-2 text-sm font-medium text-white bg-rose-600 rounded-lg hover:bg-rose-700 disabled:opacity-50">{deleteMutation.isPending ? 'Deleting...' : 'Delete'}</button>
+              <button onClick={() => setDeleteTarget(null)} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-xl transition-all duration-200 border border-slate-200/80">Cancel</button>
+              <button onClick={() => deleteMutation.mutate(deleteTarget.id)} disabled={deleteMutation.isPending} className="px-4 py-2 text-sm font-medium text-white bg-rose-600 rounded-xl hover:bg-rose-700 disabled:opacity-50 transition-all duration-200">{deleteMutation.isPending ? 'Deleting...' : 'Delete'}</button>
             </div>
           </div>
         </div>
       )}
 
       {showImport && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowImport(false)}>
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 p-6 space-y-4" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setShowImport(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 space-y-4 border border-slate-200/80 max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between shrink-0">
               <h2 className="text-lg font-bold text-slate-900">Import Chart of Accounts</h2>
-              <button onClick={() => setShowImport(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+              <button onClick={() => setShowImport(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-xl hover:bg-slate-100 transition-all duration-200"><X className="w-5 h-5" /></button>
             </div>
             <p className="text-sm text-slate-500">Upload a CSV file exported from your previous accounting system. Required columns: <code className="text-xs bg-slate-100 px-1 rounded">code</code>, <code className="text-xs bg-slate-100 px-1 rounded">name</code>, <code className="text-xs bg-slate-100 px-1 rounded">type</code> (asset/liability/equity/revenue/expense). Optional: <code className="text-xs bg-slate-100 px-1 rounded">sub-type</code>, <code className="text-xs bg-slate-100 px-1 rounded">parent code</code>, <code className="text-xs bg-slate-100 px-1 rounded">description</code>, <code className="text-xs bg-slate-100 px-1 rounded">active</code>, <code className="text-xs bg-slate-100 px-1 rounded">opening balance (NGN)</code>.</p>
             <p className="text-xs text-slate-400">Click "Sample CSV" above to download a template.</p>
-            <input ref={fileRef} type="file" accept=".csv" onChange={handleFileUpload} className="block w-full text-sm text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
-            {csvText && <div className="text-xs text-slate-500 bg-slate-50 rounded p-2 max-h-24 overflow-auto">{csvText.slice(0, 500)}{csvText.length > 500 ? '...' : ''}</div>}
-            {importMsg && <div className={`text-sm p-2 rounded ${importMsg.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>{importMsg.text}</div>}
-            <div className="flex justify-end gap-2">
-              <button onClick={() => setShowImport(false)} className="px-4 py-2 text-sm border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50">Cancel</button>
-              <button onClick={handleImport} disabled={!csvText.trim() || importing} className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50">{importing ? 'Importing...' : 'Import'}</button>
+            <input ref={fileRef} type="file" accept=".csv" onChange={handleFileUpload} className="block w-full text-sm text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
+            {csvText && <div className="text-xs text-slate-500 bg-slate-50 rounded-xl p-2 max-h-24 overflow-auto">{csvText.slice(0, 500)}{csvText.length > 500 ? '...' : ''}</div>}
+            {importMsg && <div className={`text-sm p-2 rounded-xl ${importMsg.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>{importMsg.text}</div>}
+            <div className="flex justify-end gap-2 shrink-0">
+              <button onClick={() => setShowImport(false)} className="px-4 py-2 text-sm border border-slate-200/80 rounded-xl text-slate-600 hover:bg-slate-50 transition-all duration-200">Cancel</button>
+              <button onClick={handleImport} disabled={!csvText.trim() || importing} className="px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50 transition-all duration-200">{importing ? 'Importing...' : 'Import'}</button>
             </div>
           </div>
         </div>

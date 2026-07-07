@@ -230,33 +230,33 @@ function VendorsList() {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-slate-900">Vendors</h1>
           <p className="text-sm text-slate-500 mt-0.5">{vendors.length} vendors · {activeCount} active</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => downloadCsv('vendors-template.csv', ['Name','Email','Phone','Address','City','State','Country','Tax PIN','Payment Terms','Opening Balance','Currency','Notes'], ['ABC Supplies Ltd','vendor@company.com','+2348000000000','123 Marina Street','Lagos','Lagos State','Nigeria','TIN-1234567890','30','500000','NGN','Main supplier for office materials'])} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
+          <button onClick={() => downloadCsv('vendors-template.csv', ['Name','Email','Phone','Address','City','State','Country','Tax PIN','Payment Terms','Opening Balance','Currency','Notes'], ['ABC Supplies Ltd','vendor@company.com','+2348000000000','123 Marina Street','Lagos','Lagos State','Nigeria','TIN-1234567890','30','500000','NGN','Main supplier for office materials'])} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-xl hover:bg-slate-50 transition-all duration-200">
             <FileText size={14} /> Sample CSV
           </button>
-          <button onClick={() => setShowImport(true)} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
+          <button onClick={() => setShowImport(true)} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-xl hover:bg-slate-50 transition-all duration-200">
             <Download size={14} /> Import CSV
           </button>
-          <button onClick={() => exportVendorsCSV(filtered)} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
+          <button onClick={() => exportVendorsCSV(filtered)} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-xl hover:bg-slate-50 transition-all duration-200">
             <Download size={14} /> CSV
           </button>
-          <button onClick={() => exportVendorsPDF(filtered)} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
+          <button onClick={() => exportVendorsPDF(filtered)} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-xl hover:bg-slate-50 transition-all duration-200">
             <FileText size={14} /> PDF
           </button>
-          <button onClick={openCreate} className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors">
+          <button onClick={openCreate} className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-sm font-medium rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200">
             <Plus size={15} /> Add Vendor
           </button>
         </div>
       </div>
 
       {successMsg && (
-        <div className="flex items-center gap-2 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-lg text-sm text-emerald-700">
+        <div className="flex items-center gap-2 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl text-sm text-emerald-700">
           <CheckCircle2 size={16} /> {successMsg}
         </div>
       )}
@@ -264,9 +264,9 @@ function VendorsList() {
       <div className="flex gap-3">
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search vendors..." className="pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 w-56" />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search vendors..." className="pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow w-56" />
         </div>
-        <div className="flex rounded-lg border border-slate-200 overflow-hidden text-sm">
+        <div className="flex rounded-xl border border-slate-200 overflow-hidden text-sm">
           {(['all','active','inactive'] as const).map(s => (
             <button key={s} onClick={() => setStatusFilter(s)}
               className={`px-3 py-2 font-medium capitalize transition-colors ${statusFilter===s ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>
@@ -277,36 +277,36 @@ function VendorsList() {
       </div>
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-16 text-slate-400 bg-white border border-slate-200 rounded-xl">
+        <div className="flex items-center justify-center py-16 text-slate-400 bg-gradient-to-r from-slate-200 to-slate-100 animate-pulse rounded-xl">
           <Loader2 size={20} className="animate-spin mr-2" /> Loading vendors...
         </div>
       ) : isError ? (
-        <div className="flex items-center justify-center py-16 text-rose-500 gap-2 bg-white border border-slate-200 rounded-xl">
+        <div className="flex items-center justify-center py-16 text-rose-500 gap-2 bg-white rounded-2xl border border-slate-200/80 shadow-sm">
           <AlertCircle size={18} /> Failed to load vendors.
         </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-16 bg-white border border-slate-200 rounded-xl">
+        <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-slate-200/80 shadow-sm">
           <Building2 size={32} className="mx-auto mb-3 text-slate-300" />
           <p className="text-sm font-medium text-slate-600">{search ? 'No vendors match your search' : 'No vendors yet'}</p>
           {!search && <p className="text-xs text-slate-400 mt-1">Add your first supplier to get started</p>}
         </div>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
           <div className="overflow-x-auto"><table className="w-full min-w-[640px] text-sm">
             <thead>
-              <tr className="bg-slate-50 text-xs font-medium text-slate-500 uppercase tracking-wide border-b border-slate-200">
-                <th className="py-3 pl-4 pr-2 text-left">Vendor</th>
-                <th className="py-3 px-2 text-left">Contact</th>
-                <th className="py-3 px-2 text-left">Location</th>
-                <th className="py-3 px-2 text-left">Terms</th>
-                <th className="py-3 px-2 text-left">Tax PIN</th>
-                <th className="py-3 px-2 text-center">Status</th>
-                <th className="py-3 pl-2 pr-4 text-center w-28">Actions</th>
+              <tr className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-200">
+                <th className="px-3 py-3 text-left">Vendor</th>
+                <th className="px-3 py-3 text-left">Contact</th>
+                <th className="px-3 py-3 text-left">Location</th>
+                <th className="px-3 py-3 text-left">Terms</th>
+                <th className="px-3 py-3 text-left">Tax PIN</th>
+                <th className="px-3 py-3 text-center">Status</th>
+                <th className="px-3 py-3 text-center w-28">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filtered.map(v => (
-                <tr key={v.id} onClick={() => navigate(`/purchases/vendors/${v.id}`)} className={`hover:bg-slate-50 transition-colors cursor-pointer ${!v.isActive ? 'opacity-60' : ''}`}>
+                <tr key={v.id} onClick={() => navigate(`/purchases/vendors/${v.id}`)} className={`hover:bg-slate-50/50 transition-colors cursor-pointer ${!v.isActive ? 'opacity-60' : ''}`}>
                   <td className="py-3 pl-4 pr-2">
                     <div className="flex items-center gap-3">
                       <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${colorFor(v.name)}`}>
@@ -330,18 +330,18 @@ function VendorsList() {
                   </td>
                   <td className="py-3 px-2 text-xs text-slate-500 font-mono">{v.taxPin||'—'}</td>
                   <td className="py-3 px-2 text-center">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${v.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${v.isActive ? 'bg-emerald-50 text-emerald-700 border-emerald-100/50' : 'bg-slate-100 text-slate-500 border-slate-100/50'}`}>
                       {v.isActive ? 'Active' : 'Inactive'}
                     </span>
                   </td>
                   <td className="py-3 pl-2 pr-4">
                     <div className="flex items-center justify-center gap-1">
-                      <button onClick={e => { e.stopPropagation(); openEdit(v); }} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-md transition-colors" title="Edit">
+                      <button onClick={e => { e.stopPropagation(); openEdit(v); }} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl transition-all duration-200" title="Edit">
                         <Edit2 size={11}/> Edit
                       </button>
                       <button
                         onClick={e => { e.stopPropagation(); toggleMutation.mutate({ id: v.id, isActive: !v.isActive }); }}
-                        className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md border transition-colors ${v.isActive ? 'text-amber-700 bg-amber-50 hover:bg-amber-100 border-amber-200' : 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border-emerald-200'}`}
+                        className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-xl border transition-all duration-200 ${v.isActive ? 'text-amber-700 bg-amber-50 hover:bg-amber-100 border-amber-200' : 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border-emerald-200'}`}
                         title={v.isActive ? 'Deactivate' : 'Activate'}
                       >
                         {v.isActive ? <ToggleRight size={11}/> : <ToggleLeft size={11}/>}
@@ -358,59 +358,59 @@ function VendorsList() {
 
       {/* Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 px-4 py-8 overflow-y-auto" onClick={e => { if (e.target===e.currentTarget) closeModal(); }}>
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 px-4" onClick={e => { if (e.target===e.currentTarget) closeModal(); }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
               <h2 className="text-base font-semibold text-slate-900">{editingId ? 'Edit Vendor' : 'Add New Vendor'}</h2>
               <button onClick={closeModal} className="text-slate-400 hover:text-slate-600"><X size={18}/></button>
             </div>
-            <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
-              {formError && <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2 flex items-center gap-2"><AlertCircle size={14}/> {formError}</div>}
-              <div className="grid grid-cols-2 gap-4">
+            <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4 overflow-y-auto">
+              {formError && <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2 flex items-center gap-2"><AlertCircle size={14}/> {formError}</div>}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="col-span-2">
                   <label className="block text-xs font-medium text-slate-500 mb-1">Vendor Name *</label>
-                  <input value={form.name} onChange={e => setForm({...form,name:e.target.value})} placeholder="e.g. ABC Supplies Ltd" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"/>
+                  <input value={form.name} onChange={e => setForm({...form,name:e.target.value})} placeholder="e.g. ABC Supplies Ltd" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"/>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Email</label>
-                  <input type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})} placeholder="vendor@company.com" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"/>
+                  <input type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})} placeholder="vendor@company.com" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"/>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Phone</label>
-                  <input value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} placeholder="+234 800 000 0000" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"/>
+                  <input value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} placeholder="+234 800 000 0000" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"/>
                 </div>
                 <div className="col-span-2">
                   <label className="block text-xs font-medium text-slate-500 mb-1">Address</label>
-                  <input value={form.address} onChange={e=>setForm({...form,address:e.target.value})} placeholder="Street address" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"/>
+                  <input value={form.address} onChange={e=>setForm({...form,address:e.target.value})} placeholder="Street address" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"/>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">City</label>
-                  <input value={form.city} onChange={e=>setForm({...form,city:e.target.value})} placeholder="Lagos" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"/>
+                  <input value={form.city} onChange={e=>setForm({...form,city:e.target.value})} placeholder="Lagos" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"/>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">State</label>
-                  <input value={form.state} onChange={e=>setForm({...form,state:e.target.value})} placeholder="Lagos State" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"/>
+                  <input value={form.state} onChange={e=>setForm({...form,state:e.target.value})} placeholder="Lagos State" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"/>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Tax PIN</label>
-                  <input value={form.taxPin} onChange={e=>setForm({...form,taxPin:e.target.value})} placeholder="TIN-XXXXXXXXX" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 font-mono"/>
+                  <input value={form.taxPin} onChange={e=>setForm({...form,taxPin:e.target.value})} placeholder="TIN-XXXXXXXXX" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow font-mono"/>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Payment Terms (days)</label>
-                  <input type="number" min="0" value={form.paymentTerms} onChange={e=>setForm({...form,paymentTerms:e.target.value})} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"/>
+                  <input type="number" min="0" value={form.paymentTerms} onChange={e=>setForm({...form,paymentTerms:e.target.value})} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"/>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Opening Balance (NGN)</label>
-                  <input type="number" step="0.01" min="0" value={form.openingBalance} onChange={e=>setForm({...form,openingBalance:e.target.value})} placeholder="0.00" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"/>
+                  <input type="number" step="0.01" min="0" value={form.openingBalance} onChange={e=>setForm({...form,openingBalance:e.target.value})} placeholder="0.00" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"/>
                 </div>
                 <div className="col-span-2">
                   <label className="block text-xs font-medium text-slate-500 mb-1">Notes</label>
-                  <textarea value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} rows={2} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 resize-none"/>
+                  <textarea value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} rows={2} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow resize-none"/>
                 </div>
               </div>
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-                <button type="button" onClick={closeModal} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
-                <button type="submit" disabled={isSaving} className="px-5 py-2 text-sm font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 disabled:opacity-50 flex items-center gap-2">
+                <button type="button" onClick={closeModal} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-xl transition-all duration-200">Cancel</button>
+                <button type="submit" disabled={isSaving} className="px-5 py-2 text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50 flex items-center gap-2 transition-all duration-200">
                   {isSaving && <Loader2 size={14} className="animate-spin"/>}
                   {editingId ? 'Save Changes' : 'Add Vendor'}
                 </button>
@@ -422,8 +422,8 @@ function VendorsList() {
 
       {/* Import CSV Modal */}
       {showImport && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4" onClick={() => { setShowImport(false); setImportMsg(null); setCsvText(''); }}>
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 p-6 space-y-4" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 px-4" onClick={() => { setShowImport(false); setImportMsg(null); setCsvText(''); }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col p-6 space-y-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-bold text-slate-900">Import Vendors</h2>
               <button onClick={() => { setShowImport(false); setImportMsg(null); setCsvText(''); }} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
@@ -432,19 +432,19 @@ function VendorsList() {
             <button onClick={() => downloadCsv('vendors-template.csv', ['Name','Email','Phone','Address','City','State','Country','Tax PIN','Payment Terms','Opening Balance','Currency','Notes'], ['ABC Supplies Ltd','vendor@company.com','+2348000000000','123 Marina Street','Lagos','Lagos State','Nigeria','TIN-1234567890','30','500000','NGN','Main supplier for office materials'])} className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-800">
               <FileText className="w-3.5 h-3.5" /> Download Sample CSV
             </button>
-            <input ref={fileRef} type="file" accept=".csv" onChange={handleFileUpload} className="block w-full text-sm text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
+            <input ref={fileRef} type="file" accept=".csv" onChange={handleFileUpload} className="block w-full text-sm text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
             {csvText && (
               <div className="text-xs text-slate-500 bg-slate-50 rounded p-2 max-h-24 overflow-auto">{csvText.slice(0, 500)}{csvText.length > 500 ? '...' : ''}</div>
             )}
             {importMsg && (
-              <div className={`flex items-center gap-2 text-sm rounded-lg px-3 py-2 ${importMsg.type === 'success' ? 'text-emerald-600 bg-emerald-50' : 'text-rose-600 bg-rose-50'}`}>
+              <div className={`flex items-center gap-2 text-sm rounded-xl px-3 py-2 ${importMsg.type === 'success' ? 'text-emerald-600 bg-emerald-50' : 'text-rose-600 bg-rose-50'}`}>
                 {importMsg.type === 'success' ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
                 {importMsg.text}
               </div>
             )}
             <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-              <button type="button" onClick={() => { setShowImport(false); setImportMsg(null); setCsvText(''); }} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
-              <button type="button" disabled={!csvText.trim() || importing} onClick={handleImport} className="px-5 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2">
+              <button type="button" onClick={() => { setShowImport(false); setImportMsg(null); setCsvText(''); }} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-xl transition-all duration-200">Cancel</button>
+              <button type="button" disabled={!csvText.trim() || importing} onClick={handleImport} className="px-5 py-2 text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50 flex items-center gap-2 transition-all duration-200">
                 {importing && <Loader2 size={14} className="animate-spin" />}
                 {importing ? 'Importing...' : 'Import'}
               </button>
@@ -582,16 +582,16 @@ function VendorDetail({ id }: { id: string }) {
         <div className="flex items-center gap-2">
           <button
             onClick={() => navigate(`/purchases/payments-made?vendor=${vendor.id}`)}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-xl hover:bg-emerald-700 transition-all duration-200"
           >
             <ExternalLink size={14} />
             Make Payment
           </button>
-          <button onClick={handlePrintStatement} className="inline-flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
+          <button onClick={handlePrintStatement} className="inline-flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-xl hover:bg-slate-50 transition-all duration-200">
             <Printer size={14} />
             Print Statement
           </button>
-          <button onClick={openEditModal} className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors">
+          <button onClick={openEditModal} className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-sm font-medium rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200">
             <Pencil size={14} />
             Edit
           </button>
@@ -599,19 +599,19 @@ function VendorDetail({ id }: { id: string }) {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white border border-slate-200 rounded-xl p-4">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
           <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Creditor Balance</p>
           <p className="text-xl font-bold text-slate-900 mt-1">
             {formatNaira((vendor.balance || 0) + (vendor.outstanding || 0))}
           </p>
         </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
           <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Payment Terms</p>
           <p className="text-xl font-bold text-slate-900 mt-1">
             {vendor.paymentTerms != null ? `Net ${vendor.paymentTerms}` : '—'}
           </p>
         </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
           <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Opening Balance</p>
           <p className="text-xl font-bold text-slate-900 mt-1">
             {formatNaira(vendor.balance || 0)}
@@ -620,7 +620,7 @@ function VendorDetail({ id }: { id: string }) {
       </div>
 
       {(vendor.address || vendor.city || vendor.taxPin) && (
-        <div className="bg-white border border-slate-200 rounded-xl p-4 mb-6 flex items-start gap-2.5 text-sm text-slate-600">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 mb-6 flex items-start gap-2.5 text-sm text-slate-600">
           <MapPin size={16} className="text-slate-400 mt-0.5 shrink-0" />
           <div>
             {[vendor.address, vendor.city, vendor.state, vendor.country].filter(Boolean).join(', ')}
@@ -633,9 +633,9 @@ function VendorDetail({ id }: { id: string }) {
         <FileText size={16} className="text-slate-400" />
         Account Statement
       </h2>
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
         {loadingStatement ? (
-          <div className="flex items-center justify-center py-12 text-slate-400">
+          <div className="flex items-center justify-center py-12 text-slate-400 bg-gradient-to-r from-slate-200 to-slate-100 animate-pulse rounded-xl">
             <Loader2 size={18} className="animate-spin mr-2" />
             Loading statement...
           </div>
@@ -652,14 +652,14 @@ function VendorDetail({ id }: { id: string }) {
         ) : (
           <table className="w-full">
             <thead>
-              <tr className="border-b border-slate-100 text-left text-xs font-medium text-slate-400 uppercase tracking-wide">
-                <th className="py-2.5 pl-4 pr-3">Date</th>
-                <th className="py-2.5 pr-3">Type</th>
-                <th className="py-2.5 pr-3">Number</th>
-                <th className="py-2.5 pr-3">Reference</th>
-                <th className="py-2.5 pr-3 text-right">Debit</th>
-                <th className="py-2.5 pr-3 text-right">Credit</th>
-                <th className="py-2.5 pr-4 text-right">Balance</th>
+              <tr className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                <th className="px-3 py-3 text-left">Date</th>
+                <th className="px-3 py-3 text-left">Type</th>
+                <th className="px-3 py-3 text-left">Number</th>
+                <th className="px-3 py-3 text-left">Reference</th>
+                <th className="px-3 py-3 text-right">Debit</th>
+                <th className="px-3 py-3 text-right">Credit</th>
+                <th className="px-3 py-3 text-right">Balance</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -679,7 +679,7 @@ function VendorDetail({ id }: { id: string }) {
                   <tr
                     key={line.id}
                     onClick={() => isClickable && handleRowClick()}
-                    className={`hover:bg-slate-50 transition-colors ${isClickable ? "cursor-pointer hover:bg-indigo-50/60" : ""} ${isOpening ? "bg-slate-50 font-medium" : ""} ${isDraftBill ? "opacity-60" : ""}`}
+                    className={`hover:bg-slate-50/50 transition-colors ${isClickable ? "cursor-pointer hover:bg-indigo-50/60" : ""} ${isOpening ? "bg-slate-50 font-medium" : ""} ${isDraftBill ? "opacity-60" : ""}`}
                   >
                     <td className="py-2.5 pl-4 pr-3 text-sm text-slate-600">
                       {isOpening ? '—' : new Date(line.date).toLocaleDateString('en-GB')}
@@ -723,59 +723,59 @@ function VendorDetail({ id }: { id: string }) {
       </div>
 
       {modalOpen && (
-        <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 px-4 py-8 overflow-y-auto" onClick={e => { if (e.target === e.currentTarget) setModalOpen(false); }}>
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 px-4" onClick={e => { if (e.target === e.currentTarget) setModalOpen(false); }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
               <h2 className="text-base font-semibold text-slate-900">Edit Vendor</h2>
               <button onClick={() => setModalOpen(false)} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
             </div>
-            <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
-              {formError && <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2 flex items-center gap-2"><AlertCircle size={14} /> {formError}</div>}
-              <div className="grid grid-cols-2 gap-4">
+            <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4 overflow-y-auto">
+              {formError && <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2 flex items-center gap-2"><AlertCircle size={14} /> {formError}</div>}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="col-span-2">
                   <label className="block text-xs font-medium text-slate-500 mb-1">Vendor Name *</label>
-                  <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="e.g. ABC Supplies Ltd" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                  <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="e.g. ABC Supplies Ltd" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Email</label>
-                  <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="vendor@company.com" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                  <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="vendor@company.com" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Phone</label>
-                  <input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="+234 800 000 0000" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                  <input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="+234 800 000 0000" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
                 </div>
                 <div className="col-span-2">
                   <label className="block text-xs font-medium text-slate-500 mb-1">Address</label>
-                  <input value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} placeholder="Street address" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                  <input value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} placeholder="Street address" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">City</label>
-                  <input value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} placeholder="Lagos" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                  <input value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} placeholder="Lagos" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">State</label>
-                  <input value={form.state} onChange={e => setForm({ ...form, state: e.target.value })} placeholder="Lagos State" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                  <input value={form.state} onChange={e => setForm({ ...form, state: e.target.value })} placeholder="Lagos State" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Tax PIN</label>
-                  <input value={form.taxPin} onChange={e => setForm({ ...form, taxPin: e.target.value })} placeholder="TIN-XXXXXXXXX" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 font-mono" />
+                  <input value={form.taxPin} onChange={e => setForm({ ...form, taxPin: e.target.value })} placeholder="TIN-XXXXXXXXX" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow font-mono" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Payment Terms (days)</label>
-                  <input type="number" min="0" value={form.paymentTerms} onChange={e => setForm({ ...form, paymentTerms: e.target.value })} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                  <input type="number" min="0" value={form.paymentTerms} onChange={e => setForm({ ...form, paymentTerms: e.target.value })} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Opening Balance (NGN)</label>
-                  <input type="number" step="0.01" min="0" value={form.openingBalance} onChange={e => setForm({ ...form, openingBalance: e.target.value })} placeholder="0.00" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                  <input type="number" step="0.01" min="0" value={form.openingBalance} onChange={e => setForm({ ...form, openingBalance: e.target.value })} placeholder="0.00" className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
                 </div>
                 <div className="col-span-2">
                   <label className="block text-xs font-medium text-slate-500 mb-1">Notes</label>
-                  <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 resize-none" />
+                  <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow resize-none" />
                 </div>
               </div>
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-                <button type="button" onClick={() => setModalOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
-                <button type="submit" disabled={updateMutation.isPending} className="px-5 py-2 text-sm font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 disabled:opacity-50 flex items-center gap-2">
+                <button type="button" onClick={() => setModalOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-xl transition-all duration-200">Cancel</button>
+                <button type="submit" disabled={updateMutation.isPending} className="px-5 py-2 text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50 flex items-center gap-2 transition-all duration-200">
                   {updateMutation.isPending && <Loader2 size={14} className="animate-spin" />}
                   Save Changes
                 </button>

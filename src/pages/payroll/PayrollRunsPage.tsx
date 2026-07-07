@@ -125,7 +125,7 @@ export function PayrollRunsPage() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-slate-900">Payroll Runs</h1>
@@ -134,12 +134,12 @@ export function PayrollRunsPage() {
         <div className="flex items-center gap-2">
           {selectedRunIds.length > 0 && (
             <button onClick={() => { if (confirm(`Delete ${selectedRunIds.length} selected run(s)? Only draft runs will be deleted.`)) bulkDeleteRunsMutation.mutate(selectedRunIds); }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-rose-600 bg-rose-50 border border-rose-200 rounded-lg hover:bg-rose-100">
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-rose-600 bg-rose-50 border border-rose-200 rounded-xl transition-all duration-200 hover:bg-rose-100">
               <Trash2 size={14} /> Delete ({selectedRunIds.length})
             </button>
           )}
           <button onClick={exportPayrollRunsCSV}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors">
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-slate-200 text-slate-600 rounded-xl transition-all duration-200 hover:bg-slate-50 hover:border-slate-300">
             <Download size={14} /> CSV
           </button>
           <button onClick={() => {
@@ -153,58 +153,58 @@ export function PayrollRunsPage() {
                 console.error('Print error:', err);
               }
             }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl transition-all duration-200 hover:from-blue-700 hover:to-blue-800 shadow-sm">
             <Download size={14} /> PDF
           </button>
           <button onClick={() => { setShowCreate(true); setModalKey(k => k + 1); setForm({ periodStart: '', periodEnd: '', payDate: '', bankAccountId: '', accruedSalaryAccountId: '' }); setFormError(''); }}
-            className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-900 text-white text-xs font-medium rounded-lg hover:bg-slate-800 transition-colors">
+            className="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-xs font-medium rounded-xl transition-all duration-200 hover:from-indigo-700 hover:to-indigo-800 shadow-sm">
             <Plus size={15} /> Run Payroll
           </button>
         </div>
       </div>
 
       {actionMsg && (
-        <div className={`flex items-center gap-2 p-3 rounded-lg text-sm ${actionMsg.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+        <div className={`flex items-center gap-2 p-3 rounded-xl text-sm ${actionMsg.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
           {actionMsg.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
           {actionMsg.text}
         </div>
       )}
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-16 text-slate-400 bg-white border border-slate-200 rounded-xl">
+        <div className="flex items-center justify-center py-16 text-slate-400 bg-white rounded-2xl border border-slate-200/80 shadow-sm">
           <Loader2 size={20} className="animate-spin mr-2" /> Loading runs...
         </div>
       ) : runs.length === 0 ? (
-        <div className="text-center py-16 bg-white border border-slate-200 rounded-xl">
+        <div className="text-center py-16 bg-white rounded-2xl border border-slate-200/80 shadow-sm">
           <Play size={32} className="mx-auto mb-3 text-slate-300" />
           <p className="text-sm font-medium text-slate-600">No payroll runs yet</p>
           <p className="text-xs text-slate-400 mt-1">Create your first payroll run to process salaries</p>
         </div>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-slate-50 text-xs font-medium text-slate-500 uppercase tracking-wide border-b border-slate-200">
-                <th className="py-3 pl-3 pr-1 w-10">
+              <tr className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                <th className="px-3 py-3 text-left w-10">
                   <input type="checkbox" checked={selectedRunIds.length === runs.length && runs.length > 0}
                     onChange={e => { if (e.target.checked) { setSelectedRunIds(runs.map((r: any) => r.id)); } else { setSelectedRunIds([]); } }}
                     className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
                 </th>
-                <th className="py-3 pl-2 pr-2 text-left">Run #</th>
-                <th className="py-3 px-2 text-left">Period</th>
-                <th className="py-3 px-2 text-left">Pay Date</th>
-                <th className="py-3 px-2 text-left">Status</th>
-                <th className="py-3 px-2 text-right">Gross</th>
-                <th className="py-3 px-2 text-right">PAYE</th>
-                <th className="py-3 px-2 text-right">Pension</th>
-                <th className="py-3 px-2 text-right">Net</th>
-                <th className="py-3 pl-2 pr-4 w-44"></th>
+                <th className="px-3 py-3 text-left">Run #</th>
+                <th className="px-3 py-3 text-left">Period</th>
+                <th className="px-3 py-3 text-left">Pay Date</th>
+                <th className="px-3 py-3 text-left">Status</th>
+                <th className="px-3 py-3 text-right">Gross</th>
+                <th className="px-3 py-3 text-right">PAYE</th>
+                <th className="px-3 py-3 text-right">Pension</th>
+                <th className="px-3 py-3 text-right">Net</th>
+                <th className="px-3 py-3 text-left w-44"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
                   {runs.map(run => (
                 <React.Fragment key={run.id}>
-                  <tr className="hover:bg-slate-50 transition-colors">
+                  <tr className="hover:bg-slate-50/50 transition-colors">
                     <td className="py-3 pl-3 pr-1">
                       <input type="checkbox" checked={selectedRunIds.includes(run.id)}
                         onChange={e => { setSelectedRunIds(prev => e.target.checked ? [...prev, run.id] : prev.filter(i => i !== run.id)); }}
@@ -220,7 +220,7 @@ export function PayrollRunsPage() {
                     <td className="py-3 px-2 text-xs text-slate-500">{fmtDate(run.periodStart)} – {fmtDate(run.periodEnd)}</td>
                     <td className="py-3 px-2 text-xs text-slate-500">{fmtDate(run.payDate)}</td>
                     <td className="py-3 px-2">
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium capitalize ${STATUS_STYLES[run.status] || 'bg-slate-100 text-slate-500'}`}>{run.status}</span>
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border capitalize ${STATUS_STYLES[run.status] ? STATUS_STYLES[run.status] + ' border-current' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>{run.status}</span>
                     </td>
                     <td className="py-3 px-2 text-right font-mono text-slate-900">{formatNaira(run.totalGross)}</td>
                     <td className="py-3 px-2 text-right font-mono text-slate-900">{formatNaira(run.totalPaye)}</td>
@@ -228,28 +228,28 @@ export function PayrollRunsPage() {
                     <td className="py-3 px-2 text-right font-mono font-semibold text-slate-900">{formatNaira(run.totalNet)}</td>
                     <td className="py-3 pl-2 pr-4">
                       <div className="flex items-center gap-1">
-                        <button onClick={() => openDetail(run)} className="px-2 py-1 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-md">View</button>
+                        <button onClick={() => openDetail(run)} className="px-2 py-1 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-all duration-200">View</button>
                         {run.status === 'draft' && (
                           <>
                             <button onClick={() => approveMutation.mutate(run.id)} disabled={approveMutation.isPending}
-                              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 rounded-md disabled:opacity-50">
+                              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 rounded-lg transition-all duration-200 disabled:opacity-50">
                               {approveMutation.isPending ? <Loader2 size={11} className="animate-spin" /> : <CheckCircle2 size={11} />} Approve
                             </button>
                             <button onClick={() => { if (confirm('Delete this payroll run? This cannot be undone.')) deleteRunMutation.mutate(run.id); }} disabled={deleteRunMutation.isPending}
-                              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-md">
+                              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-all duration-200">
                               <Trash2 size={11} /> Delete
                             </button>
                           </>
                         )}
                         {run.status === 'approved' && (
                           <button onClick={() => { if (confirm('Mark this payroll run as paid?')) payMutation.mutate(run.id); }} disabled={payMutation.isPending}
-                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-md disabled:opacity-50">
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-all duration-200 disabled:opacity-50">
                             {payMutation.isPending ? <Loader2 size={11} className="animate-spin" /> : <DollarSign size={11} />} Pay
                           </button>
                         )}
                         {run.status === 'approved' && (
                           <button onClick={() => { if (confirm('Unapprove this payroll run? This will reverse all posted journals.')) unapproveMutation.mutate(run.id); }} disabled={unapproveMutation.isPending}
-                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-md disabled:opacity-50">
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-lg transition-all duration-200 disabled:opacity-50">
                             {unapproveMutation.isPending ? <Loader2 size={11} className="animate-spin" /> : <Ban size={11} />} Unapprove
                           </button>
                         )}
@@ -258,7 +258,7 @@ export function PayrollRunsPage() {
                   </tr>
                   {expandedId === run.id && (
                     <tr>
-                      <td colSpan={10} className="px-6 py-4 bg-slate-50/80 border-b border-slate-100 text-xs">
+                      <td colSpan={10} className="px-6 py-4 bg-slate-50/80 text-xs">
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                           <div><span className="text-slate-400 uppercase font-semibold">Employees</span><p className="font-semibold mt-1 text-slate-900">—</p></div>
                           <div><span className="text-slate-400 uppercase font-semibold">NHF</span><p className="font-semibold mt-1 text-slate-900">{formatNaira(run.totalNhf)}</p></div>
@@ -282,30 +282,30 @@ export function PayrollRunsPage() {
           <div className="fixed top-0 right-0 h-full w-full max-w-2xl bg-white shadow-2xl z-50 flex flex-col">
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
               <h2 className="text-base font-semibold text-slate-900">{detailRun.runNumber} — Details</h2>
-              <button onClick={() => { setDetailRun(null); setDetailLines([]); }} className="p-1 rounded-md text-slate-400 hover:text-slate-600"><X size={18} /></button>
+              <button onClick={() => { setDetailRun(null); setDetailLines([]); }} className="p-1 rounded-lg text-slate-400 hover:text-slate-600 transition-all duration-200"><X size={18} /></button>
             </div>
             <div className="flex-1 overflow-y-auto px-5 py-5">
               {loadingDetail ? (
                 <div className="flex items-center justify-center py-16"><Loader2 size={20} className="animate-spin" /></div>
               ) : (
                 <div className="space-y-4">
-                  <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
-                    <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">Period</p>
-                    <p className="text-sm font-semibold text-slate-800">{fmtDate(detailRun.periodStart)} – {fmtDate(detailRun.periodEnd)}</p>
-                    <p className="text-xs text-slate-400 mt-2">Pay Date: <span className="font-semibold text-slate-700">{fmtDate(detailRun.payDate)}</span></p>
-                  </div>
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="text-xs text-slate-500 uppercase tracking-wide border-b border-slate-100">
-                        <th className="py-2 text-left">Employee</th>
-                        <th className="py-2 text-right">Gross</th>
-                        <th className="py-2 text-right">PAYE</th>
-                        <th className="py-2 text-right">Pension</th>
-                        <th className="py-2 text-right">NHF</th>
-                        <th className="py-2 text-right">Net</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-50">
+          <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200/80">
+            <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">Period</p>
+            <p className="text-sm font-semibold text-slate-800">{fmtDate(detailRun.periodStart)} – {fmtDate(detailRun.periodEnd)}</p>
+            <p className="text-xs text-slate-400 mt-2">Pay Date: <span className="font-semibold text-slate-700">{fmtDate(detailRun.payDate)}</span></p>
+          </div>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                <th className="px-3 py-3 text-left">Employee</th>
+                <th className="px-3 py-3 text-right">Gross</th>
+                <th className="px-3 py-3 text-right">PAYE</th>
+                <th className="px-3 py-3 text-right">Pension</th>
+                <th className="px-3 py-3 text-right">NHF</th>
+                <th className="px-3 py-3 text-right">Net</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
                       {detailLines.map((line: any) => (
                         <tr key={line.id}>
                           <td className="py-2 text-xs text-slate-700">
@@ -330,35 +330,35 @@ export function PayrollRunsPage() {
 
       {/* Create Run Modal */}
       {showCreate && (
-        <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 px-4 py-8 overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
               <h2 className="text-base font-semibold text-slate-900">New Payroll Run</h2>
-              <button onClick={() => setShowCreate(false)} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
+              <button onClick={() => setShowCreate(false)} className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all duration-200"><X size={18} /></button>
             </div>
-            <div className="px-6 py-5 space-y-4">
+            <div className="px-6 py-5 space-y-4 overflow-y-auto flex-1">
               {formError && (
-                <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2">{formError}</div>
+                <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2">{formError}</div>
               )}
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">Period Start *</label>
                 <input key={`ps-${modalKey}`} type="date" value={form.periodStart} onChange={e => setForm({ ...form, periodStart: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">Period End *</label>
                 <input key={`pe-${modalKey}`} type="date" value={form.periodEnd} onChange={e => setForm({ ...form, periodEnd: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">Pay Date *</label>
                 <input key={`pd-${modalKey}`} type="date" value={form.payDate} onChange={e => setForm({ ...form, payDate: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">Disburse From *</label>
                 <select value={form.bankAccountId} onChange={e => setForm({ ...form, bankAccountId: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10">
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow">
                   <option value="">Select bank account</option>
                   {(Array.isArray(bankAccountsData) ? bankAccountsData : []).map((ba: any) => (
                     <option key={ba.id} value={ba.id}>{ba.bankName} — {ba.accountNumber} ({ba.name})</option>
@@ -368,7 +368,7 @@ export function PayrollRunsPage() {
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">Accrued Salary Account (optional)</label>
                 <select value={form.accruedSalaryAccountId} onChange={e => setForm({ ...form, accruedSalaryAccountId: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10">
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow">
                   <option value="">Direct disbursement (no accrual)</option>
                   {(Array.isArray(accountsData) ? accountsData : []).filter((a: any) => a.type === 'liability').map((a: any) => (
                     <option key={a.id} value={a.id}>{a.code} {a.name}</option>
@@ -379,9 +379,9 @@ export function PayrollRunsPage() {
               <p className="text-xs text-slate-400">This will calculate payroll for all active employees.</p>
             </div>
             <div className="flex justify-end gap-2 px-6 py-4 border-t border-slate-100">
-              <button onClick={() => setShowCreate(false)} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
+              <button onClick={() => setShowCreate(false)} className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition-all duration-200">Cancel</button>
               <button onClick={handleCreate} disabled={createMutation.isPending}
-                className="px-5 py-2 text-sm font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 disabled:opacity-50 flex items-center gap-2">
+                className="px-5 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl transition-all duration-200 hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50 flex items-center gap-2 shadow-sm">
                 {createMutation.isPending && <Loader2 size={14} className="animate-spin" />}
                 Generate Run
               </button>

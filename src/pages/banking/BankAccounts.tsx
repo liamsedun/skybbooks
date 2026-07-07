@@ -52,7 +52,7 @@ function UnreconciledBadge({ accountId, onClick }: { accountId: string; onClick:
 
   if (count === 0) {
     return (
-      <div className="flex items-center gap-1 text-[11px] font-sans font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+      <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border border-emerald-100/50 bg-emerald-50 text-emerald-600">
         <CheckCircle2 className="w-3 h-3" />
         <span>Reconciled</span>
       </div>
@@ -63,7 +63,7 @@ function UnreconciledBadge({ accountId, onClick }: { accountId: string; onClick:
     <button
       type="button"
       onClick={onClick}
-      className="flex items-center gap-1.5 text-[11px] font-sans font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 hover:text-amber-800 px-2 py-1 rounded-full transition-colors cursor-pointer group"
+      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border border-amber-100/50 bg-amber-50 text-amber-700 hover:bg-amber-100 hover:text-amber-800 transition-all duration-200 cursor-pointer group"
     >
       <AlertCircle className="w-3 h-3 text-amber-500 animate-pulse" />
       <span>{count} Unreconciled</span>
@@ -322,7 +322,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto p-1 lg:p-4">
+    <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 pb-5">
         <div>
@@ -335,14 +335,14 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setImportOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border border-slate-200/80 text-slate-600 rounded-xl hover:bg-slate-50 transition-all duration-200 cursor-pointer"
           >
             <Download size={14} />
             Import Opening Balances
           </button>
           <button
             onClick={() => { setBalanceForm({ bankAccountId: '', openingBalance: '' }); setBalanceError(null); setBalanceSuccess(null); setBalanceModalOpen(true); }}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border border-slate-200/80 text-slate-600 rounded-xl hover:bg-slate-50 transition-all duration-200 cursor-pointer"
           >
             <Database size={14} />
             Record Opening Balance
@@ -353,7 +353,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
               setConnectMethod('select');
               setShowConnectModal(true);
             }}
-            className="inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg bg-orange-500 text-white hover:bg-orange-600 transition-colors cursor-pointer self-start sm:self-center font-sans shadow-sm"
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 text-white hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200 cursor-pointer self-start sm:self-center font-sans shadow-sm"
           >
             <Plus className="w-4 h-4" />
             <span>Connect Account</span>
@@ -362,12 +362,12 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
       </div>
 
       {isLoading ? (
-        <div className="flex flex-col items-center justify-center py-20 bg-slate-50 border border-dashed border-slate-200 rounded-xl">
+        <div className="flex flex-col items-center justify-center py-20 bg-gradient-to-r from-slate-200 to-slate-100 animate-pulse rounded-xl">
           <RefreshCw className="w-8 h-8 text-indigo-500 animate-spin mb-3" />
           <p className="font-sans text-xs text-slate-500">Querying registered banking accounts feed...</p>
         </div>
       ) : bankAccounts.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 px-4 bg-white border border-slate-100 rounded-xl shadow-sm text-center">
+        <div className="flex flex-col items-center justify-center py-16 px-4 bg-white rounded-2xl border border-slate-200/80 shadow-sm text-center">
           <div className="w-12 h-12 bg-orange-50 rounded-full flex items-center justify-center mb-4 text-orange-500">
             <Wallet className="w-6 h-6" />
           </div>
@@ -380,7 +380,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
               setConnectMethod('select');
               setShowConnectModal(true);
             }}
-            className="inline-flex items-center gap-1.5 px-4.5 py-2 text-xs font-bold bg-indigo-600 text-white rounded hover:bg-indigo-700 transition"
+            className="inline-flex items-center gap-1.5 px-4.5 py-2 text-xs font-bold bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200"
           >
             <Plus className="w-3.5 h-3.5" />
             Connect First Account
@@ -397,7 +397,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
               <div
                 key={account.id}
                 id={`bank-account-card-${account.id}`}
-                className="bg-white border border-slate-200/80 rounded-xl overflow-hidden hover:border-slate-300 transition-all duration-200 shadow-sm hover:shadow-md flex flex-col justify-between cursor-pointer"
+                className="bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md overflow-hidden hover:border-slate-300 transition-all duration-200 flex flex-col justify-between cursor-pointer"
                 onClick={() => setDetailAccount(account)}
               >
                 {/* Upper Body */}
@@ -405,7 +405,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                   {/* Account Metadata Row */}
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                      <div className={`w-9 h-9 rounded-lg border flex items-center justify-center text-xs font-bold leading-none shrink-0 ${logoColorClass}`}>
+                      <div className={`w-9 h-9 rounded-xl border flex items-center justify-center text-xs font-bold leading-none shrink-0 ${logoColorClass}`}>
                         {account.bankName ? account.bankName.substring(0, 2).toUpperCase() : 'BK'}
                       </div>
                       <div className="min-w-0 flex-1">
@@ -435,7 +435,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                           setErrorMessage(null);
                           setShowConnectModal(true);
                         }}
-                        className="text-slate-400 hover:text-blue-600 p-1 rounded hover:bg-slate-50 transition"
+                        className="text-slate-400 hover:text-blue-600 p-1 rounded-xl hover:bg-slate-50 transition-all duration-200"
                         title="Edit Account"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
@@ -443,7 +443,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                       <button
                         type="button"
                         onClick={(e) => { e.stopPropagation(); handleDeleteAccount(account.id, account.name); }}
-                        className="text-slate-400 hover:text-red-600 p-1 rounded hover:bg-slate-50 transition"
+                        className="text-slate-400 hover:text-red-600 p-1 rounded-xl hover:bg-slate-50 transition-all duration-200"
                         title="Deactivate Account"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -483,12 +483,12 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                 <div className="bg-slate-50 px-5 py-3 border-t border-slate-100 flex items-center justify-between gap-2.5">
                   <div className="flex items-center gap-1 text-[10px] text-slate-400 font-sans">
                     {hasMono ? (
-                      <span className="inline-flex items-center gap-1.5">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border border-emerald-100/50 bg-emerald-50 text-emerald-600">
                         <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
                         Live Feed Active
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1.5">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border border-amber-100/50 bg-amber-50 text-amber-600">
                         <span className="w-1.5 h-1.5 bg-amber-400 rounded-full" />
                         Manual Feed
                       </span>
@@ -502,7 +502,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                         type="button"
                         disabled={syncingAccountId === account.id}
                         onClick={(e) => { e.stopPropagation(); handleSyncNow(account.id); }}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-tight text-indigo-600 border border-indigo-100 hover:bg-indigo-50 bg-white rounded transition cursor-pointer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-tight text-indigo-600 border border-indigo-100 hover:bg-indigo-50 bg-white rounded-xl transition-all duration-200 cursor-pointer"
                       >
                         <RefreshCw className={`w-3 h-3 ${syncingAccountId === account.id ? 'animate-spin' : ''}`} />
                         <span>Sync Feed</span>
@@ -523,7 +523,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                             setSelectedUploadAccountId(account.id);
                             setShowUploadModal(true);
                           }}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-bold font-sans uppercase tracking-tight border border-slate-250 hover:bg-slate-50 bg-white text-slate-700 rounded transition cursor-pointer"
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-bold font-sans uppercase tracking-tight border border-slate-200/80 hover:bg-slate-50 bg-white text-slate-700 rounded-xl transition-all duration-200 cursor-pointer"
                         >
                           <UploadCloud className="w-3 h-3 text-indigo-500" />
                           <span>Upload Stmt</span>
@@ -533,7 +533,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); onNavigate('reconciliation', account.id); }}
-                      className="inline-flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-bold font-sans uppercase tracking-tight bg-slate-900 text-white rounded hover:bg-black transition cursor-pointer"
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-bold font-sans uppercase tracking-tight bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200 cursor-pointer"
                     >
                       Reconcile
                     </button>
@@ -547,14 +547,14 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
 
       {/* Connection Drawer/Modal */}
       {showConnectModal && (
-        <div className="fixed inset-0 bg-neutral-950/80 backdrop-blur-sm z-40 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-100 font-sans">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col border border-slate-200/80 font-sans">
             {/* Modal Header */}
-            <div className="bg-slate-50 p-4 border-b border-slate-100 flex items-center justify-between">
+            <div className="bg-slate-50 px-5 py-4 border-b border-slate-200/80 flex items-center justify-between shrink-0">
               <h3 className="font-bold text-sm text-slate-800 uppercase tracking-tight">{editAccount ? 'Edit Bank Account' : 'Connect Corporate Account'}</h3>
               <button
                 type="button"
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100 transition"
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-xl hover:bg-slate-100 transition-all duration-200"
                 onClick={() => {
                   setShowConnectModal(false);
                   setEditAccount(null);
@@ -567,7 +567,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
 
             {/* Selection Step */}
             {connectMethod === 'select' && (
-              <div className="p-6 space-y-4">
+              <div className="p-5 space-y-4 overflow-y-auto">
                 <p className="text-xs text-slate-500 leading-relaxed">
                   Select how you would like to pair. Integrating your accounts guarantees instant transaction importing.
                 </p>
@@ -576,9 +576,9 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                   <button
                     type="button"
                     onClick={() => setConnectMethod('manual')}
-                    className="p-4 border border-slate-200/80 hover:border-slate-300 bg-slate-50/50 hover:bg-slate-50 rounded-xl text-left transition-all duration-150 flex items-start gap-3.5 group"
+                    className="p-4 border border-slate-200/80 hover:border-slate-300 bg-slate-50/50 hover:bg-slate-50 rounded-2xl text-left transition-all duration-200 flex items-start gap-3.5 group"
                   >
-                    <div className="w-10 h-10 bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center shrink-0">
+                    <div className="w-10 h-10 bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center shrink-0">
                       <Plus className="w-5 h-5" />
                     </div>
                     <div>
@@ -589,8 +589,8 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                     </div>
                   </button>
 
-                  <div className="p-4 border border-slate-200 rounded-xl bg-slate-50/20 text-left flex items-start gap-3.5">
-                    <div className="w-10 h-10 bg-emerald-50 border border-emerald-100 text-emerald-600 rounded-lg flex items-center justify-center shrink-0">
+                  <div className="p-4 border border-slate-200/80 rounded-2xl bg-slate-50/20 text-left flex items-start gap-3.5">
+                    <div className="w-10 h-10 bg-emerald-50 border border-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center shrink-0">
                       <Building className="w-5 h-5" />
                     </div>
                     <div className="flex-1">
@@ -601,7 +601,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                       <button
                         type="button"
                         onClick={() => setConnectMethod('manual')}
-                        className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[10px] uppercase rounded"
+                        className="px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-bold text-[10px] uppercase rounded-xl transition-all duration-200"
                       >
                         Start Setup
                       </button>
@@ -615,7 +615,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
             {connectMethod === 'manual' && (
               <form onSubmit={handleManualSubmit} className="p-6 space-y-4">
                 {errorMessage && (
-                  <div className="p-3 bg-rose-50 border border-rose-100 text-rose-600 rounded-lg text-xs leading-normal font-sans">
+                  <div className="p-3 bg-rose-50 border border-rose-100/80 text-rose-600 rounded-xl text-xs leading-normal font-sans">
                     {errorMessage}
                   </div>
                 )}
@@ -631,7 +631,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                       placeholder="e.g. GTB Business Escrow"
                       value={manualForm.name}
                       onChange={(e) => setManualForm({ ...manualForm, name: e.target.value })}
-                      className="w-full text-xs font-sans border border-slate-200 focus:border-indigo-500 rounded px-3 py-2 text-slate-800 placeholder-slate-400 focus:outline-none"
+                      className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow text-slate-800 placeholder-slate-400"
                     />
                   </div>
 
@@ -645,7 +645,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                       placeholder="e.g. Guaranty Trust Bank"
                       value={manualForm.bankName}
                       onChange={(e) => setManualForm({ ...manualForm, bankName: e.target.value })}
-                      className="w-full text-xs font-sans border border-slate-200 focus:border-indigo-500 rounded px-3 py-2 text-slate-800 placeholder-slate-400 focus:outline-none"
+                      className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow text-slate-800 placeholder-slate-400"
                     />
                   </div>
 
@@ -656,7 +656,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                     <select
                       value={manualForm.type}
                       onChange={(e) => setManualForm({ ...manualForm, type: e.target.value as any })}
-                      className="w-full text-xs font-sans border border-slate-200 focus:border-indigo-500 rounded px-3 py-1.5 bg-white text-slate-800 focus:outline-none"
+                      className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow bg-white text-slate-800"
                     >
                       <option value="Checking">Checking</option>
                       <option value="Savings">Savings</option>
@@ -675,7 +675,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                       placeholder="10 Digits"
                       value={manualForm.accountNumber}
                       onChange={(e) => setManualForm({ ...manualForm, accountNumber: e.target.value.replace(/\D/g, '') })}
-                      className="w-full text-xs font-sans border border-slate-200 focus:border-indigo-500 rounded px-3 py-2 text-slate-800 placeholder-slate-400 focus:outline-none"
+                      className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow text-slate-800 placeholder-slate-400"
                     />
                   </div>
 
@@ -690,7 +690,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                       placeholder="0.00"
                       value={manualForm.currentBalance}
                       onChange={(e) => setManualForm({ ...manualForm, currentBalance: e.target.value })}
-                      className="w-full text-xs font-sans border border-slate-200 focus:border-indigo-500 rounded px-3 py-2 text-slate-800 placeholder-slate-400 focus:outline-none"
+                      className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow text-slate-800 placeholder-slate-400"
                     />
                   </div>
 
@@ -711,7 +711,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                 </div>
 
                 {/* Footer Controls */}
-                <div className="flex gap-2 border-t border-slate-100 pt-4 mt-6">
+                <div className="flex gap-2 border-t border-slate-200/80 pt-4 mt-6">
                   <button
                     type="button"
                     onClick={() => {
@@ -719,14 +719,14 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                       setEditAccount(null);
                       resetManualForm();
                     }}
-                    className="flex-1 py-2 text-xs font-bold border border-slate-200 hover:bg-slate-50 text-slate-600 rounded cursor-pointer"
+                    className="flex-1 py-2 text-xs font-bold border border-slate-200/80 hover:bg-slate-50 text-slate-600 rounded-xl transition-all duration-200 cursor-pointer"
                   >
                     Go Back
                   </button>
                   <button
                     type="submit"
                     disabled={createAccountMutation.isPending}
-                    className="flex-grow py-2 text-xs font-bold bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:bg-indigo-300 transition-colors uppercase cursor-pointer"
+                    className="flex-grow py-2 text-xs font-bold bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-xl hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50 transition-all duration-200 uppercase cursor-pointer"
                   >
                     {createAccountMutation.isPending || updateAccountMutation.isPending ? 'Saving...' : editAccount ? 'Update Account' : 'Register Account'}
                   </button>
@@ -739,17 +739,17 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
 
       {/* MANUAL BANK STATEMENT UPLOADER MODAL */}
       {showUploadModal && (
-        <div className="fixed inset-0 bg-neutral-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-100 font-sans">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col border border-slate-200/80 font-sans">
             {/* Header */}
-            <div className="bg-slate-50 p-4 border-b border-slate-100 flex items-center justify-between">
+            <div className="bg-slate-50 px-5 py-4 border-b border-slate-200/80 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
-                <span className="w-6 h-6 bg-indigo-600 text-white font-extrabold flex items-center justify-center rounded-lg text-xs">S</span>
+                <span className="w-6 h-6 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-extrabold flex items-center justify-center rounded-xl text-xs">S</span>
                 <h3 className="font-extrabold text-xs uppercase tracking-wider text-slate-800">Upload Bank Statement</h3>
               </div>
               <button
                 type="button"
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100 cursor-pointer outline-none"
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-xl hover:bg-slate-100 transition-all duration-200 cursor-pointer outline-none"
                 onClick={() => {
                   setShowUploadModal(false);
                   setStatementFile(null);
@@ -877,19 +877,19 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
       )}
 
       {balanceModalOpen && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-5">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col p-5 border border-slate-200/80">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-base font-semibold text-slate-900">Record Opening Balance</h2>
-              <button onClick={() => setBalanceModalOpen(false)} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
+              <button onClick={() => setBalanceModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-xl hover:bg-slate-100 transition-all duration-200"><X size={18} /></button>
             </div>
             {balanceSuccess && (
-              <div className="flex items-center gap-2 px-3 py-2 mb-3 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg">
+              <div className="flex items-center gap-2 px-3 py-2 mb-3 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200/80 rounded-xl">
                 <CheckCircle2 size={14} /> {balanceSuccess}
               </div>
             )}
             {balanceError && (
-              <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2 mb-3">{balanceError}</div>
+              <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100/80 rounded-xl px-3 py-2 mb-3">{balanceError}</div>
             )}
             <form onSubmit={(e) => {
               e.preventDefault();
@@ -901,7 +901,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                 <select
                   value={balanceForm.bankAccountId}
                   onChange={(e) => setBalanceForm({ ...balanceForm, bankAccountId: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
                 >
                   <option value="">Select account...</option>
                   {bankAccounts.map((acc: any) => (
@@ -913,13 +913,13 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                 <label className="block text-xs font-medium text-slate-500 mb-1">Opening Balance (₦)</label>
                 <input type="number" step="0.01" min="0" value={balanceForm.openingBalance}
                   onChange={(e) => setBalanceForm({ ...balanceForm, openingBalance: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <button type="button" onClick={() => setBalanceModalOpen(false)}
-                  className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
+                  className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-xl transition-all duration-200 border border-slate-200/80">Cancel</button>
                 <button type="submit" disabled={updateBalanceMutation.isPending || !balanceForm.bankAccountId || !balanceForm.openingBalance}
-                  className="px-4 py-2 text-sm font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 disabled:opacity-50">
+                  className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50 transition-all duration-200">
                   {updateBalanceMutation.isPending ? 'Saving...' : 'Save Balance'}
                 </button>
               </div>
@@ -930,21 +930,21 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
 
       {/* Bank Account Detail Drawer — Ledger View */}
       {detailAccount && (
-        <div className="fixed inset-0 bg-neutral-950/60 backdrop-blur-sm z-50 flex justify-end">
-          <div className="bg-white w-full max-w-7xl h-full overflow-y-auto shadow-2xl">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex justify-end">
+          <div className="bg-white w-full max-w-7xl h-full overflow-y-auto shadow-2xl border-l border-slate-200/80">
             {/* Header */}
-            <div className="sticky top-0 bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between z-10">
+            <div className="sticky top-0 bg-white border-b border-slate-200/80 px-6 py-4 flex items-center justify-between z-10">
               <div>
                 <h3 className="font-bold text-sm text-slate-800">{detailAccount.name}</h3>
                 <p className="text-xs text-slate-400">{detailAccount.bankName} • {detailAccount.accountNumber?.slice(-4)?.padStart(10, '•')}</p>
               </div>
-              <button onClick={() => setDetailAccount(null)} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition">
+              <button onClick={() => setDetailAccount(null)} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl transition-all duration-200">
                 <XCircle className="w-5 h-5" />
               </button>
             </div>
 
             {/* Summary */}
-            <div className="px-6 py-2 bg-slate-50 border-b border-slate-100 flex items-center gap-6">
+            <div className="px-6 py-2 bg-slate-50 border-b border-slate-200/80 flex items-center gap-6">
               <div>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Bank or Cash Account</p>
                 <p className="text-sm font-bold text-slate-800">{accountPayments.accountCode || ''} — {detailAccount.name}</p>
@@ -962,14 +962,14 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
             </div>
 
             {/* Date Range Filter */}
-            <div className="px-6 py-2 bg-white border-b border-slate-100 flex items-center gap-3">
+            <div className="px-6 py-2 bg-white border-b border-slate-200/80 flex items-center gap-3">
               <div className="flex items-center gap-2">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">From</label>
                 <input
                   type="date"
                   value={dateFrom}
                   onChange={e => setDateFrom(e.target.value)}
-                  className="px-2 py-1 text-xs border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                  className="px-2 py-1 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 transition-shadow"
                 />
               </div>
               <div className="flex items-center gap-2">
@@ -978,13 +978,13 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                   type="date"
                   value={dateTo}
                   onChange={e => setDateTo(e.target.value)}
-                  className="px-2 py-1 text-xs border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                  className="px-2 py-1 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 transition-shadow"
                 />
               </div>
               {(dateFrom || dateTo) && (
                 <button
                   onClick={() => { setDateFrom(''); setDateTo(''); }}
-                  className="px-2 py-1 text-[10px] font-bold text-slate-500 bg-white border border-slate-200 rounded hover:bg-slate-50 transition"
+                  className="px-2 py-1 text-[10px] font-bold text-slate-500 bg-white border border-slate-200/80 rounded-xl hover:bg-slate-50 transition-all duration-200"
                 >
                   Reset
                 </button>
@@ -1015,7 +1015,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                       a.download = `bank-statement-${detailAccount.name.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.csv`;
                       a.click(); URL.revokeObjectURL(url);
                     }}
-                    className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold text-slate-500 bg-white border border-slate-200 rounded hover:bg-slate-50 transition"
+                    className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold text-slate-500 bg-white border border-slate-200/80 rounded-xl hover:bg-slate-50 transition-all duration-200"
                   >
                     <Download size={11} /> CSV
                   </button>
@@ -1068,7 +1068,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                       const w = window.open('', '_blank');
                       if (w) { w.document.write(html); w.document.close(); }
                     }}
-                    className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold text-slate-500 bg-white border border-slate-200 rounded hover:bg-slate-50 transition"
+                    className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold text-slate-500 bg-white border border-slate-200/80 rounded-xl hover:bg-slate-50 transition-all duration-200"
                   >
                     <FileText size={11} /> PDF
                   </button>
@@ -1084,19 +1084,19 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
-                      <tr className="border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                        <th className="text-left py-1.5 pr-1"></th>
-                        <th className="text-left py-1.5 pr-1">Date</th>
-                        <th className="text-left py-1.5 pr-1">Transaction</th>
-                        <th className="text-left py-1.5 pr-1">Account</th>
-                        <th className="text-left py-1.5 pr-1">Description</th>
-                        <th className="text-right py-1.5 pl-1">Amount</th>
-                        <th className="text-right py-1.5 pl-1">Balance</th>
-                      </tr>
+                    <tr className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                      <th className="px-3 py-3 text-left"></th>
+                      <th className="px-3 py-3 text-left">Date</th>
+                      <th className="px-3 py-3 text-left">Transaction</th>
+                      <th className="px-3 py-3 text-left">Account</th>
+                      <th className="px-3 py-3 text-left">Description</th>
+                      <th className="px-3 py-3 text-right">Amount</th>
+                      <th className="px-3 py-3 text-right">Balance</th>
+                    </tr>
                     </thead>
                     <tbody>
                       {accountPayments.transactions.map((txn: any, i: number) => (
-                        <tr key={`${txn.id}-${i}`} className="border-b border-slate-50 hover:bg-slate-50/50 transition cursor-pointer" onClick={() => {
+                        <tr key={`${txn.id}-${i}`} className="hover:bg-slate-50/50 transition-colors cursor-pointer border-b border-slate-50" onClick={() => {
                           const path = txn.sourceDocType === 'receipt'
                             ? `/sales/payments?selected=${txn.sourceDocId}`
                             : txn.sourceDocType === 'payment'

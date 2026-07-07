@@ -71,7 +71,7 @@ export function PensionSchedulesPage() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-slate-900">Pension Schedules</h1>
@@ -81,7 +81,7 @@ export function PensionSchedulesPage() {
           <div className="flex items-center gap-2">
             {selectedPensionIds.length > 0 && selectedRun?.status === 'draft' && (
               <button onClick={() => { if (confirm(`Delete ${selectedPensionIds.length} selected line(s)?`)) bulkDeletePensionMutation.mutate(selectedPensionIds); }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-rose-600 bg-rose-50 border border-rose-200 rounded-lg hover:bg-rose-100">
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-rose-600 bg-rose-50 border border-rose-200 rounded-xl transition-all duration-200 hover:bg-rose-100">
                 <Trash2 size={14} /> Delete ({selectedPensionIds.length})
               </button>
             )}
@@ -95,10 +95,10 @@ export function PensionSchedulesPage() {
                 alert('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'));
                 console.error('Print error:', err);
               }
-            }} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-colors">
+            }} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-xs font-medium rounded-xl transition-all duration-200 hover:from-blue-700 hover:to-blue-800 shadow-sm">
               <Printer size={14} /> PDF
             </button>
-            <button onClick={exportCSV} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
+            <button onClick={exportCSV} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl transition-all duration-200 hover:bg-slate-50 hover:border-slate-300">
               <Download size={14} /> Export CSV
             </button>
           </div>
@@ -107,12 +107,12 @@ export function PensionSchedulesPage() {
 
       <div className="flex gap-3 items-center">
         {runsLoading ? (
-          <select disabled className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-slate-50 text-slate-400">
+          <select disabled className="px-3 py-2.5 text-sm border border-slate-200 rounded-xl bg-slate-50 text-slate-400">
             <option>Loading runs...</option>
           </select>
         ) : (
           <select key={runs.length} value={selectedRunId} onChange={e => setSelectedRunId(e.target.value)}
-            className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-slate-900/10">
+            className="px-3 py-2.5 text-sm border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow">
             <option value="">Select a payroll run...</option>
             {runs.map(r => (
               <option key={r.id} value={r.id}>{r.runNumber} — {fmtDate(r.periodStart)} to {fmtDate(r.periodEnd)}</option>
@@ -122,38 +122,38 @@ export function PensionSchedulesPage() {
       </div>
 
       {!selectedRunId ? (
-        <div className="text-center py-16 bg-white border border-slate-200 rounded-xl">
+        <div className="text-center py-16 bg-white rounded-2xl border border-slate-200/80 shadow-sm">
           <FileText size={32} className="mx-auto mb-3 text-slate-300" />
           <p className="text-sm font-medium text-slate-600">Select a payroll run</p>
           <p className="text-xs text-slate-400 mt-1">Choose a run to view its pension schedule</p>
         </div>
       ) : isLoading ? (
-        <div className="flex items-center justify-center py-16 text-slate-400 bg-white border border-slate-200 rounded-xl">
+        <div className="flex items-center justify-center py-16 text-slate-400 bg-white rounded-2xl border border-slate-200/80 shadow-sm">
           <Loader2 size={20} className="animate-spin mr-2" /> Loading...
         </div>
       ) : lines.length === 0 ? (
-        <div className="text-center py-16 bg-white border border-slate-200 rounded-xl">
+        <div className="text-center py-16 bg-white rounded-2xl border border-slate-200/80 shadow-sm">
           <AlertCircle size={24} className="mx-auto mb-3 text-slate-300" />
           <p className="text-sm text-slate-500">No employee lines found in this run.</p>
         </div>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-slate-50 text-xs font-medium text-slate-500 uppercase tracking-wide border-b border-slate-200">
-                <th className="py-3 pl-3 pr-1 w-10">
+              <tr className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                <th className="px-3 py-3 text-left w-10">
                   <input type="checkbox" checked={selectedPensionIds.length === lines.length && lines.length > 0}
                     onChange={e => { if (e.target.checked) { setSelectedPensionIds(lines.map((l: any) => l.employeeId)); } else { setSelectedPensionIds([]); } }}
                     className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
                 </th>
-                <th className="py-3 px-4 text-left">Staff ID</th>
-                <th className="py-3 px-2 text-left">Employee</th>
-                <th className="py-3 px-2 text-right">Gross Pay</th>
-                <th className="py-3 px-2 text-right">Pensionable</th>
-                <th className="py-3 px-2 text-right">Employee 8%</th>
-                <th className="py-3 px-2 text-right">Employer 10%</th>
-                <th className="py-3 px-2 text-right">Total</th>
-                <th className="py-3 px-2 w-16"></th>
+                <th className="px-3 py-3 text-left">Staff ID</th>
+                <th className="px-3 py-3 text-left">Employee</th>
+                <th className="px-3 py-3 text-right">Gross Pay</th>
+                <th className="px-3 py-3 text-right">Pensionable</th>
+                <th className="px-3 py-3 text-right">Employee 8%</th>
+                <th className="px-3 py-3 text-right">Employer 10%</th>
+                <th className="px-3 py-3 text-right">Total</th>
+                <th className="px-3 py-3 text-left w-16"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -161,7 +161,7 @@ export function PensionSchedulesPage() {
                 const pensionable = line.basic || 0;
                 const totalPension = (line.pensionEmployee || 0) + (line.pensionEmployer || 0);
                 return (
-                  <tr key={line.id} className="hover:bg-slate-50">
+                  <tr key={line.id} className="hover:bg-slate-50/50 transition-colors">
                     <td className="py-2.5 pl-3 pr-1">
                       <input type="checkbox" checked={selectedPensionIds.includes(line.employeeId)}
                         onChange={e => { setSelectedPensionIds(prev => e.target.checked ? [...prev, line.employeeId] : prev.filter(i => i !== line.employeeId)); }}
@@ -177,7 +177,7 @@ export function PensionSchedulesPage() {
                     <td className="py-2.5 px-2">
                       {selectedRun?.status === 'draft' && (
                         <button onClick={() => { if (confirm(`Delete pension line for ${line.employee?.firstName} ${line.employee?.lastName}?`)) deletePensionLineMutation.mutate({ runId: selectedRunId, employeeId: line.employeeId }); }}
-                          className="p-1 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded" title="Delete">
+                          className="p-1 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition-all duration-200" title="Delete">
                           <Trash2 size={13} />
                         </button>
                       )}
@@ -187,7 +187,7 @@ export function PensionSchedulesPage() {
               })}
             </tbody>
             <tfoot>
-              <tr className="bg-slate-50 border-t border-slate-200 font-semibold text-sm">
+              <tr className="bg-slate-50/80 border-t border-slate-200 font-semibold text-sm">
                 <td colSpan={3} className="px-4 py-3 text-slate-600">Totals</td>
                 <td className="px-2 py-3 text-right">—</td>
                 <td className="px-2 py-3 text-right">{formatNaira(totals.pensionable)}</td>

@@ -61,9 +61,9 @@ const ALERTS: ThreatAlert[] = [
 ];
 
 const THREAT_META = {
-  low: { icon: Info, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200', badge: 'bg-blue-100 text-blue-700' },
-  medium: { icon: AlertTriangle, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200', badge: 'bg-amber-100 text-amber-700' },
-  high: { icon: ShieldAlert, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', badge: 'bg-red-100 text-red-700' },
+  low: { icon: Info, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200', badge: 'bg-blue-100 text-blue-700 border-blue-200' },
+  medium: { icon: AlertTriangle, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200', badge: 'bg-amber-100 text-amber-700 border-amber-200' },
+  high: { icon: ShieldAlert, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', badge: 'bg-red-100 text-red-700 border-red-200' },
 };
 
 function fmtNaira(kobo: number): string {
@@ -107,8 +107,8 @@ export function CustomReportsPage() {
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => { const today = new Date().toISOString().split('T')[0]; const rows = filtered.map(a => [a.id, a.title, a.description, a.category, a.threat, fmtDate(a.date), fmtNaira(a.amount)]); exportToCsv(`audit_shield_${today}.csv`, ['ID', 'Title', 'Description', 'Category', 'Threat', 'Date', 'Amount'], rows); }}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50"><Download className="w-4 h-4" /> CSV</button>
-          <button onClick={handleReset} disabled={resetting} className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50">
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all duration-200"><Download className="w-4 h-4" /> CSV</button>
+          <button onClick={handleReset} disabled={resetting} className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all duration-200">
             <RefreshCw className={`w-4 h-4 ${resetting ? 'animate-spin' : ''}`} /> Rescan
           </button>
         </div>
@@ -119,11 +119,11 @@ export function CustomReportsPage() {
           const meta = t === 'all' ? { badge: 'bg-slate-100 text-slate-700' } : THREAT_META[t];
           return (
             <button key={t} onClick={() => setThreatFilter(t)}
-              className={`text-left p-4 rounded-xl border transition-all ${
-                threatFilter === t ? 'ring-2 ring-indigo-500 border-indigo-500 bg-white' : 'bg-white border-slate-200 hover:border-slate-300'
+              className={`text-left p-5 rounded-2xl border transition-all duration-200 bg-white shadow-sm ${
+                threatFilter === t ? 'ring-2 ring-indigo-500 border-indigo-500 bg-white' : 'border-slate-200/80 hover:border-slate-300'
               }`}>
               <p className="text-2xl font-bold text-slate-900">{counts[t]}</p>
-              <p className="text-xs font-semibold mt-0.5 capitalize"><span className={`inline-block px-2 py-0.5 rounded-full ${meta.badge}`}>{t === 'all' ? 'Total' : t}</span></p>
+              <p className="text-xs font-semibold mt-0.5 capitalize"><span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${meta.badge}`}>{t === 'all' ? 'Total' : t}</span></p>
             </button>
           );
         })}
@@ -131,7 +131,7 @@ export function CustomReportsPage() {
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-        <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search alerts..." className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+        <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search alerts..." className="w-full pl-9 pr-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
       </div>
 
       <div className="space-y-3">
@@ -139,9 +139,9 @@ export function CustomReportsPage() {
           const meta = THREAT_META[alert.threat];
           const Icon = meta.icon;
           return (
-            <div key={alert.id} className={`bg-white rounded-xl border ${meta.border} p-5 hover:shadow-md transition-shadow`}>
+            <div key={alert.id} className={`bg-white rounded-2xl border ${meta.border} p-5 hover:shadow-md transition-shadow shadow-sm`}>
               <div className="flex items-start gap-4">
-                <div className={`w-10 h-10 rounded-xl ${meta.bg} flex items-center justify-center flex-shrink-0`}>
+                <div className={`w-10 h-10 rounded-2xl ${meta.bg} flex items-center justify-center flex-shrink-0`}>
                   <Icon className={`w-5 h-5 ${meta.color}`} />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -151,12 +151,12 @@ export function CustomReportsPage() {
                       <p className="text-xs text-slate-500 mt-1">{alert.description}</p>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <span className={`inline-block px-2 py-0.5 text-xs font-semibold rounded-full capitalize ${meta.badge}`}>{alert.threat} Threat</span>
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${meta.badge}`}>{alert.threat} Threat</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-4 mt-3 text-xs text-slate-500">
                     <span>{fmtDate(alert.date)}</span>
-                    <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-medium">{alert.category}</span>
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border border-slate-200 bg-slate-100 text-slate-600">{alert.category}</span>
                   </div>
                   <div className="mt-2">
                     <span className="text-xs font-semibold text-slate-500 uppercase">Indexed sum:</span>
@@ -168,7 +168,7 @@ export function CustomReportsPage() {
           );
         })}
         {filtered.length === 0 && (
-          <div className="text-center py-16 text-slate-400">
+          <div className="text-center py-16 text-slate-400 bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5">
             <Shield className="w-10 h-10 mx-auto mb-3 text-slate-300" />
             <p className="text-sm font-medium">No threats match your filter.</p>
           </div>

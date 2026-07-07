@@ -337,21 +337,21 @@ export function PayslipsPage() {
       <div className="flex flex-wrap gap-3 items-center">
         {selectedPayslipIds.length > 0 && (
           <button onClick={() => { if (confirm(`Delete ${selectedPayslipIds.length} selected payslip(s)?`)) bulkDeletePayslipsMutation.mutate(selectedPayslipIds); }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-rose-600 bg-rose-50 border border-rose-200 rounded-lg hover:bg-rose-100 disabled:opacity-50">
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-rose-600 bg-rose-50 border border-rose-200 rounded-xl transition-all duration-200 hover:bg-rose-100 disabled:opacity-50">
             <Trash2 size={14} /> Delete ({selectedPayslipIds.length})
           </button>
         )}
           <button onClick={exportPayslipsCSV} disabled={!selectedRunId || filtered.length === 0}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50">
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-slate-200 text-slate-600 rounded-xl transition-all duration-200 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-50">
             <Download size={14} /> CSV
           </button>
         {runsLoading ? (
-          <select disabled className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-slate-50 text-slate-400">
+          <select disabled className="px-3 py-2.5 text-sm border border-slate-200 rounded-xl bg-slate-50 text-slate-400">
             <option>Loading runs...</option>
           </select>
         ) : (
           <select key={runs.length} value={selectedRunId} onChange={e => setSelectedRunId(e.target.value)}
-            className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-slate-900/10">
+            className="px-3 py-2.5 text-sm border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow">
             <option value="">Select a payroll run...</option>
             {runs.map(r => (
               <option key={r.id} value={r.id}>{r.runNumber} — {fmtDate(r.periodStart)} to {fmtDate(r.periodEnd)}</option>
@@ -362,50 +362,50 @@ export function PayslipsPage() {
           <div className="relative flex-1 max-w-xs">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search employee..."
-              className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+              className="w-full pl-9 pr-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
           </div>
         )}
       </div>
 
       {!selectedRunId ? (
-        <div className="text-center py-16 bg-white border border-slate-200 rounded-xl">
+        <div className="text-center py-16 bg-white rounded-2xl border border-slate-200/80 shadow-sm">
           <FileText size={32} className="mx-auto mb-3 text-slate-300" />
           <p className="text-sm font-medium text-slate-600">Select a payroll run</p>
           <p className="text-xs text-slate-400 mt-1">Choose a run to view employee payslips</p>
         </div>
       ) : isLoading ? (
-        <div className="flex items-center justify-center py-16 text-slate-400 bg-white border border-slate-200 rounded-xl">
+        <div className="flex items-center justify-center py-16 text-slate-400 bg-white rounded-2xl border border-slate-200/80 shadow-sm">
           <Loader2 size={20} className="animate-spin mr-2" /> Loading payslips...
         </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-16 bg-white border border-slate-200 rounded-xl">
+        <div className="text-center py-16 bg-white rounded-2xl border border-slate-200/80 shadow-sm">
           <AlertCircle size={24} className="mx-auto mb-3 text-slate-300" />
           <p className="text-sm text-slate-500">{search ? 'No matching employees' : 'No payslips found'}</p>
         </div>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-slate-50 text-xs font-medium text-slate-500 uppercase tracking-wide border-b border-slate-200">
-                <th className="py-3 pl-3 pr-1 w-10">
+              <tr className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                <th className="px-3 py-3 text-left w-10">
                   <input type="checkbox" checked={selectedPayslipIds.length === filtered.length && filtered.length > 0}
                     onChange={e => { if (e.target.checked) { setSelectedPayslipIds(filtered.map((l: any) => l.employeeId)); } else { setSelectedPayslipIds([]); } }}
                     className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
                 </th>
-                <th className="py-3 px-4 text-left">Staff ID</th>
-                <th className="py-3 px-2 text-left">Employee</th>
-                <th className="py-3 px-2 text-left">Department</th>
-                <th className="py-3 px-2 text-right">Gross</th>
-                <th className="py-3 px-2 text-right">PAYE</th>
-                <th className="py-3 px-2 text-right">Pension</th>
-                <th className="py-3 px-2 text-right">NHF</th>
-                <th className="py-3 px-2 text-right">Net</th>
-                <th className="py-3 pl-2 pr-4 w-28"></th>
+                <th className="px-3 py-3 text-left">Staff ID</th>
+                <th className="px-3 py-3 text-left">Employee</th>
+                <th className="px-3 py-3 text-left">Department</th>
+                <th className="px-3 py-3 text-right">Gross</th>
+                <th className="px-3 py-3 text-right">PAYE</th>
+                <th className="px-3 py-3 text-right">Pension</th>
+                <th className="px-3 py-3 text-right">NHF</th>
+                <th className="px-3 py-3 text-right">Net</th>
+                <th className="px-3 py-3 text-left w-28"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filtered.map((line: any) => (
-                <tr key={line.id} className="hover:bg-slate-50">
+                <tr key={line.id} className="hover:bg-slate-50/50 transition-colors">
                   <td className="py-2.5 pl-3 pr-1">
                     <input type="checkbox" checked={selectedPayslipIds.includes(line.employeeId)}
                       onChange={e => { setSelectedPayslipIds(prev => e.target.checked ? [...prev, line.employeeId] : prev.filter(i => i !== line.employeeId)); }}
@@ -422,12 +422,12 @@ export function PayslipsPage() {
                   <td className="py-2.5 pl-2 pr-4">
                     <div className="flex items-center gap-1">
                       <button onClick={() => viewPayslip(line)}
-                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-md">
+                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-all duration-200">
                         <FileText size={11} /> View
                       </button>
                       {selectedRun && selectedRun.status === 'draft' && (
                         <button onClick={() => { if (confirm(`Delete payslip for ${line.employee?.firstName} ${line.employee?.lastName}?`)) deletePayslipMutation.mutate({ runId: selectedRunId, employeeId: line.employeeId }); }}
-                          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-md">
+                          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-all duration-200">
                           <Trash2 size={11} /> Delete
                         </button>
                       )}
@@ -443,21 +443,21 @@ export function PayslipsPage() {
       {/* Payslip Detail */}
       {viewingPayslip && (
         <>
-          <div className="fixed inset-0 bg-black/30 z-40" onClick={() => setViewingPayslip(null)} />
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40" onClick={() => setViewingPayslip(null)} />
           <div className="fixed top-0 right-0 h-full w-full max-w-lg bg-white shadow-2xl z-50 flex flex-col">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 shrink-0">
               <h2 className="text-base font-semibold text-slate-900">Payslip</h2>
               <div className="flex items-center gap-2">
-                <button onClick={printPayslip} className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg">
+                <button onClick={printPayslip} className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all duration-200">
                   <Printer size={13} /> Print
                 </button>
-                <button onClick={printPayslip} className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg">
+                <button onClick={printPayslip} className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-xl transition-all duration-200">
                   <Download size={13} /> PDF
                 </button>
-                <button onClick={() => setViewingPayslip(null)} className="p-1 rounded-md text-slate-400 hover:text-slate-600"><X size={18} /></button>
+                <button onClick={() => setViewingPayslip(null)} className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all duration-200"><X size={18} /></button>
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto px-5 py-5">
+            <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
               {(() => {
                 const { line, run, employee } = viewingPayslip;
                 if (!line) return <p className="text-sm text-slate-400">No data available.</p>;
@@ -466,7 +466,7 @@ export function PayslipsPage() {
                 const intDedTotal = intDedArr.reduce((s: number, d: any) => s + (d.amount || 0), 0);
                 const totalDed = (line.paye || 0) + (line.pensionEmployee || 0) + nhisVal + (line.nhf || 0) + intDedTotal;
                 return (
-                  <div className="space-y-5">
+    <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
                     <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 text-center">
                       <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Net Pay</p>
                       <p className="text-2xl font-black text-emerald-600 mt-1">{formatNaira(line.netPay)}</p>

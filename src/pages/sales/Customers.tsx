@@ -291,8 +291,8 @@ function CustomerList() {
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-8">
-      <div className="flex items-start justify-between mb-6">
+    <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
+      <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Customers</h1>
           <p className="text-sm text-slate-500 mt-1">
@@ -300,19 +300,19 @@ function CustomerList() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => exportCustomersCSV(filtered)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
+          <button onClick={() => exportCustomersCSV(filtered)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl hover:bg-slate-50 transition-all duration-200">
             <Download size={14} /> CSV
           </button>
-          <button onClick={() => exportCustomersPDF(filtered)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
+          <button onClick={() => exportCustomersPDF(filtered)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl hover:bg-slate-50 transition-all duration-200">
             <FileText size={14} /> PDF
           </button>
           <button onClick={() => setImportOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl hover:bg-slate-50 transition-all duration-200">
             <Upload size={14} /> Import CSV
           </button>
           <button
             onClick={openAddModal}
-            className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-900 text-white text-xs font-medium rounded-lg hover:bg-slate-800 transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-xs font-medium rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200 shadow-sm"
           >
             <Plus size={14} />
             Add Customer
@@ -320,45 +320,45 @@ function CustomerList() {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2 mb-4">
+      <div className="flex flex-wrap gap-2">
         <button
           onClick={() => setStatusFilter('all')}
-          className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-            statusFilter === 'all' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+          className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
+            statusFilter === 'all' ? 'bg-slate-900 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
           }`}
         >
           All ({counts.all})
         </button>
         <button
           onClick={() => setStatusFilter('active')}
-          className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-            statusFilter === 'active' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+          className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
+            statusFilter === 'active' ? 'bg-slate-900 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
           }`}
         >
           Active ({counts.active})
         </button>
         <button
           onClick={() => setStatusFilter('inactive')}
-          className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-            statusFilter === 'inactive' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+          className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
+            statusFilter === 'inactive' ? 'bg-slate-900 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
           }`}
         >
           Inactive ({counts.inactive})
         </button>
       </div>
 
-      <div className="relative mb-4">
+      <div className="relative">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
         <input
           type="text"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           placeholder="Search by name, email, or phone..."
-          className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300"
+          className="w-full px-9 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
         />
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center py-16 text-slate-400">
             <Loader2 size={20} className="animate-spin mr-2" />
@@ -378,14 +378,14 @@ function CustomerList() {
         ) : (
           <table className="w-full">
             <thead>
-              <tr className="border-b border-slate-100 text-left text-xs font-medium text-slate-400 uppercase tracking-wide">
-                <th className="py-2.5 pl-4 pr-3">Name</th>
-                <th className="py-2.5 pr-3 text-xs font-medium text-slate-400 uppercase tracking-wide">Code</th>
-                <th className="py-2.5 pr-3">Contact</th>
-                <th className="py-2.5 pr-3">Location</th>
-                <th className="py-2.5 pr-3">Balance</th>
-                <th className="py-2.5 pr-3">Status</th>
-                <th className="py-2.5 pr-2"></th>
+              <tr className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                <th className="px-3 py-3 text-left">Name</th>
+                <th className="px-3 py-3 text-left">Code</th>
+                <th className="px-3 py-3 text-left">Contact</th>
+                <th className="px-3 py-3 text-left">Location</th>
+                <th className="px-3 py-3 text-left">Balance</th>
+                <th className="px-3 py-3 text-left">Status</th>
+                <th className="px-3 py-3 text-right"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -393,7 +393,7 @@ function CustomerList() {
                 <tr
                   key={c.id}
                   onClick={() => navigate(`/sales/customers/${c.id}`)}
-                  className="group hover:bg-slate-50 transition-colors cursor-pointer"
+                  className="group hover:bg-slate-50/50 transition-colors cursor-pointer"
                 >
                   <td className="py-2.5 pl-4 pr-3">
                     <span className="text-sm font-medium text-slate-900">{c.name}</span>
@@ -410,7 +410,7 @@ function CustomerList() {
                   </td>
                   <td className="py-2.5 pr-3 text-sm text-slate-700">{formatNaira((c.balance || 0) + (c.outstanding || 0))}</td>
                   <td className="py-2.5 pr-3">
-                    <span className={`text-xs font-medium ${c.isActive ? 'text-emerald-600' : 'text-slate-400'}`}>
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${c.isActive ? 'text-emerald-700 bg-emerald-50 border-emerald-100/50' : 'text-slate-500 bg-slate-100 border-slate-200/50'}`}>
                       {c.isActive ? 'Active' : 'Inactive'}
                     </span>
                   </td>
@@ -441,9 +441,9 @@ function CustomerList() {
             </tbody>
             {filtered.length > 0 && (
             <tfoot>
-              <tr className="border-t-2 border-slate-200 bg-slate-50">
-                <td colSpan={4} className="py-2.5 pl-4 pr-3 text-sm font-bold text-slate-800">Total</td>
-                <td className="py-2.5 pr-3 text-sm font-bold text-slate-800">{formatNaira(filtered.reduce((s, c) => s + (c.balance || 0) + (c.outstanding || 0), 0))}</td>
+              <tr className="border-t-2 border-slate-200 bg-slate-50/80">
+                <td colSpan={4} className="px-3 py-3 text-sm font-bold text-slate-800">Total</td>
+                <td className="px-3 py-3 text-sm font-bold text-slate-800">{formatNaira(filtered.reduce((s, c) => s + (c.balance || 0) + (c.outstanding || 0), 0))}</td>
                 <td colSpan={2}></td>
               </tr>
             </tfoot>
@@ -516,24 +516,24 @@ function CustomerFormModal({
   onClose: () => void;
 }) {
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4 overflow-y-auto py-8">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 shrink-0">
           <h2 className="text-base font-semibold text-slate-900">{mode === 'add' ? 'Add Customer' : 'Edit Customer'}</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors">
             <X size={18} />
           </button>
         </div>
-        <form onSubmit={onSubmit} className="px-5 py-4 space-y-3 max-h-[70vh] overflow-y-auto">
+        <form onSubmit={onSubmit} className="px-5 py-4 space-y-3 overflow-y-auto">
           {formError && (
-            <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2">{formError}</div>
+            <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2">{formError}</div>
           )}
           <div>
             <label className="block text-xs font-medium text-slate-500 mb-1">Customer Code</label>
             <input
               value={form.customerCode || (mode === 'add' ? 'Auto-generated' : '')}
               readOnly
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-slate-50 text-slate-400 cursor-not-allowed"
+              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl bg-slate-50 text-slate-400 cursor-not-allowed"
             />
           </div>
           <div>
@@ -541,7 +541,7 @@ function CustomerFormModal({
             <input
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -551,7 +551,7 @@ function CustomerFormModal({
                 type="email"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
               />
             </div>
             <div>
@@ -559,7 +559,7 @@ function CustomerFormModal({
               <input
                 value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
               />
             </div>
           </div>
@@ -568,7 +568,7 @@ function CustomerFormModal({
             <input
               value={form.address}
               onChange={(e) => setForm({ ...form, address: e.target.value })}
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
             />
           </div>
           <div className="grid grid-cols-3 gap-3">
@@ -577,7 +577,7 @@ function CustomerFormModal({
               <input
                 value={form.city}
                 onChange={(e) => setForm({ ...form, city: e.target.value })}
-                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
               />
             </div>
             <div>
@@ -585,7 +585,7 @@ function CustomerFormModal({
               <input
                 value={form.state}
                 onChange={(e) => setForm({ ...form, state: e.target.value })}
-                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
               />
             </div>
             <div>
@@ -593,7 +593,7 @@ function CustomerFormModal({
               <input
                 value={form.country}
                 onChange={(e) => setForm({ ...form, country: e.target.value })}
-                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
               />
             </div>
           </div>
@@ -603,7 +603,7 @@ function CustomerFormModal({
               <input
                 value={form.taxPin}
                 onChange={(e) => setForm({ ...form, taxPin: e.target.value })}
-                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
               />
             </div>
             <div>
@@ -613,7 +613,7 @@ function CustomerFormModal({
                 value={form.paymentTerms}
                 onChange={(e) => setForm({ ...form, paymentTerms: e.target.value })}
                 placeholder="30"
-                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
               />
             </div>
             <div>
@@ -623,7 +623,7 @@ function CustomerFormModal({
                 step="0.01"
                 value={form.creditLimit}
                 onChange={(e) => setForm({ ...form, creditLimit: e.target.value })}
-                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
               />
             </div>
           </div>
@@ -635,7 +635,7 @@ function CustomerFormModal({
               value={form.balance}
               onChange={(e) => setForm({ ...form, balance: e.target.value })}
               placeholder="0.00"
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
             />
           </div>
           <div>
@@ -644,21 +644,21 @@ function CustomerFormModal({
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
               rows={2}
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
             />
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg"
+              className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-xl transition-all duration-200"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSaving}
-              className="px-4 py-2 text-sm font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 disabled:opacity-50"
+              className="px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50 transition-all duration-200 shadow-sm"
             >
               {isSaving ? 'Saving...' : mode === 'add' ? 'Add Customer' : 'Save Changes'}
             </button>
@@ -752,16 +752,18 @@ function CustomerDetail({ id }: { id: string }) {
 
   if (loadingCustomer) {
     return (
-      <div className="max-w-5xl mx-auto px-6 py-16 flex items-center justify-center text-slate-400">
-        <Loader2 size={20} className="animate-spin mr-2" />
-        Loading customer...
+      <div className="max-w-7xl mx-auto px-6 py-16 flex items-center justify-center text-slate-400">
+        <div className="bg-gradient-to-r from-slate-200 to-slate-100 animate-pulse rounded-2xl p-6 flex items-center gap-3">
+          <Loader2 size={20} className="animate-spin" />
+          <span className="text-sm">Loading customer...</span>
+        </div>
       </div>
     );
   }
 
   if (!customer) {
     return (
-      <div className="max-w-5xl mx-auto px-6 py-16 text-center text-slate-500">
+      <div className="max-w-7xl mx-auto px-6 py-16 text-center text-slate-500">
         Customer not found.
         <div className="mt-3">
           <Link to="/sales/customers" className="text-indigo-600 hover:underline text-sm">
@@ -773,16 +775,16 @@ function CustomerDetail({ id }: { id: string }) {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-8">
+    <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
       <button
         onClick={() => navigate('/sales/customers')}
-        className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 mb-4"
+        className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 transition-colors"
       >
         <ArrowLeft size={14} />
         Back to customers
       </button>
 
-      <div className="flex items-start justify-between mb-6">
+      <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">{customer.name}</h1>
           <div className="flex items-center gap-4 mt-1 text-sm text-slate-500">
@@ -803,14 +805,14 @@ function CustomerDetail({ id }: { id: string }) {
         <div className="flex items-center gap-2">
           <button
             onClick={handlePrintStatement}
-            className="inline-flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-xl hover:bg-slate-50 transition-all duration-200"
           >
             <Printer size={14} />
             Print Statement
           </button>
           <button
             onClick={openEditModal}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-sm font-medium rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200 shadow-sm"
           >
             <Pencil size={14} />
             Edit
@@ -818,16 +820,16 @@ function CustomerDetail({ id }: { id: string }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white border border-slate-200 rounded-xl p-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
           <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Outstanding Balance</p>
           <p className="text-xl font-bold text-slate-900 mt-1">{formatNaira((customer.balance || 0) + (customer.outstanding || 0))}</p>
         </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
           <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Credit Limit</p>
           <p className="text-xl font-bold text-slate-900 mt-1">{formatNaira(customer.creditLimit)}</p>
         </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
           <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Payment Terms</p>
           <p className="text-xl font-bold text-slate-900 mt-1">
             {customer.paymentTerms != null ? `Net ${customer.paymentTerms}` : '—'}
@@ -836,7 +838,7 @@ function CustomerDetail({ id }: { id: string }) {
       </div>
 
       {(customer.address || customer.city || customer.taxPin) && (
-        <div className="bg-white border border-slate-200 rounded-xl p-4 mb-6 flex items-start gap-2.5 text-sm text-slate-600">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 flex items-start gap-2.5 text-sm text-slate-600">
           <MapPin size={16} className="text-slate-400 mt-0.5 shrink-0" />
           <div>
             {[customer.address, customer.city, customer.state, customer.country].filter(Boolean).join(', ')}
@@ -845,11 +847,11 @@ function CustomerDetail({ id }: { id: string }) {
         </div>
       )}
 
-      <h2 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
+      <h2 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
         <FileText size={16} className="text-slate-400" />
         Account Statement
       </h2>
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
         {loadingStatement ? (
           <div className="flex items-center justify-center py-12 text-slate-400">
             <Loader2 size={18} className="animate-spin mr-2" />
@@ -860,14 +862,14 @@ function CustomerDetail({ id }: { id: string }) {
         ) : (
           <table className="w-full">
             <thead>
-              <tr className="border-b border-slate-100 text-left text-xs font-medium text-slate-400 uppercase tracking-wide">
-                <th className="py-2.5 pl-4 pr-3">Date</th>
-                <th className="py-2.5 pr-3">Type</th>
-                <th className="py-2.5 pr-3">Number</th>
-                <th className="py-2.5 pr-3">Reference</th>
-                <th className="py-2.5 pr-3 text-right">Debit</th>
-                <th className="py-2.5 pr-3 text-right">Credit</th>
-                <th className="py-2.5 pr-4 text-right">Balance</th>
+              <tr className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                <th className="px-3 py-3 text-left">Date</th>
+                <th className="px-3 py-3 text-left">Type</th>
+                <th className="px-3 py-3 text-left">Number</th>
+                <th className="px-3 py-3 text-left">Reference</th>
+                <th className="px-3 py-3 text-right">Debit</th>
+                <th className="px-3 py-3 text-right">Credit</th>
+                <th className="px-3 py-3 text-right">Balance</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -887,29 +889,29 @@ function CustomerDetail({ id }: { id: string }) {
                   <tr
                     key={line.id}
                     onClick={() => isClickable && navigate(href)}
-                    className={`hover:bg-slate-50 transition-colors ${isClickable ? "cursor-pointer hover:bg-indigo-50/60" : ""} ${isOpening ? "bg-slate-50 font-medium" : ""}`}
+                    className={`hover:bg-slate-50/50 transition-colors ${isClickable ? "cursor-pointer hover:bg-indigo-50/60" : ""} ${isOpening ? "bg-slate-50/50 font-medium" : ""}`}
                   >
-                    <td className="py-2.5 pl-4 pr-3 text-sm text-slate-600">
+                    <td className="px-3 py-3 text-sm text-slate-600">
                       {isOpening ? '—' : new Date(line.date).toLocaleDateString('en-GB')}
                     </td>
-                    <td className="py-2.5 pr-3">
+                    <td className="px-3 py-3">
                       <span className={`text-xs font-medium capitalize ${isInvoice ? "text-indigo-600" : isPayment ? "text-emerald-600" : isCreditNote ? "text-amber-600" : isBillableExpense ? "text-rose-600" : isOpening ? "text-slate-800" : "text-slate-500"}`}>{line.type.replace('_', ' ')}</span>
                     </td>
-                    <td className="py-2.5 pr-3 text-sm font-mono">
+                    <td className="px-3 py-3 text-sm font-mono">
                       {isClickable ? (
                         <span className="text-indigo-600 hover:underline font-medium">{line.number}</span>
                       ) : (
                         <span className="text-slate-600">{line.number || '—'}</span>
                       )}
                     </td>
-                    <td className="py-2.5 pr-3 text-sm text-slate-500">{line.reference}</td>
-                    <td className="py-2.5 pr-3 text-sm text-right text-slate-700">
+                    <td className="px-3 py-3 text-sm text-slate-500">{line.reference}</td>
+                    <td className="px-3 py-3 text-sm text-right text-slate-700">
                       {line.debit > 0 ? formatNaira(line.debit) : '—'}
                     </td>
-                    <td className="py-2.5 pr-3 text-sm text-right text-slate-700">
+                    <td className="px-3 py-3 text-sm text-right text-slate-700">
                       {line.credit > 0 ? formatNaira(line.credit) : '—'}
                     </td>
-                    <td className="py-2.5 pr-4 text-sm text-right font-medium text-slate-900">
+                    <td className="px-3 py-3 text-sm text-right font-medium text-slate-900">
                       {formatNaira(line.balance)}
                     </td>
                   </tr>

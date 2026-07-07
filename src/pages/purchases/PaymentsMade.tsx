@@ -325,9 +325,9 @@ export function PaymentsMadePage() {
   }).reduce((s, p) => s + p.amount, 0);
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-8">
+    <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
       {/* Page header */}
-      <div className="flex items-start justify-between mb-6">
+      <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Payments Made</h1>
           <p className="text-sm text-slate-500 mt-1">
@@ -336,48 +336,48 @@ export function PaymentsMadePage() {
         </div>
         <div className="flex gap-2">
           <button onClick={() => { setModalOpen(true); setFormError(null); }}
-            className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-900 text-white text-xs font-medium rounded-lg hover:bg-slate-800 transition-colors">
-            <Plus size={14} />Record Payment
+            className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-sm font-semibold rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200 shadow-sm">
+            <Plus size={15} /> Record Payment
           </button>
           <button onClick={() => exportPaymentsCSV(filtered, vendorMap)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
+            className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl hover:bg-slate-50 transition-all duration-200">
             <Download size={14} /> CSV
           </button>
           <button onClick={() => exportPaymentsPDF(filtered, vendorMap, totals.sum)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
+            className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl hover:bg-slate-50 transition-all duration-200">
             <FileText size={14} /> PDF
           </button>
           <button onClick={() => setImportOpen(true)}
-            className="inline-flex items-center gap-2 px-3 py-1.5 bg-white text-slate-700 text-xs font-medium border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
-            <Upload size={14} />Import CSV
+            className="inline-flex items-center gap-2 px-3 py-2 bg-white text-slate-700 text-xs font-medium border border-slate-200 rounded-xl hover:bg-slate-50 transition-all duration-200">
+            <Upload size={14} /> Import CSV
           </button>
         </div>
       </div>
 
       {successMsg && (
-        <div className="flex items-center gap-2 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-lg text-sm text-emerald-700 mb-6">
+        <div className="flex items-center gap-2 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl text-sm text-emerald-700">
           <CheckCircle2 size={16} /> {successMsg}
         </div>
       )}
 
       {actionError && (
-        <div className="flex items-center gap-2 px-4 py-3 bg-rose-50 border border-rose-200 rounded-lg text-sm text-rose-700 mb-6">
+        <div className="flex items-center gap-2 px-4 py-3 bg-rose-50 border border-rose-200 rounded-xl text-sm text-rose-700">
           <AlertCircle size={16} /> {actionError}
         </div>
       )}
 
       {/* Summary cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white border border-slate-200 rounded-xl p-4">
-          <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Total Disbursed</p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5">
+          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total Disbursed</p>
           <p className="text-xl font-bold text-slate-900 mt-1">{formatNaira(totalPaid)}</p>
         </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4">
-          <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">This Month</p>
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5">
+          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">This Month</p>
           <p className="text-xl font-bold text-slate-900 mt-1">{formatNaira(thisMonthPaid)}</p>
         </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4">
-          <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Total Count</p>
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5">
+          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total Count</p>
           <p className="text-xl font-bold text-slate-900 mt-1">{payments.length} payments</p>
         </div>
       </div>
@@ -388,12 +388,12 @@ export function PaymentsMadePage() {
           {/* Filter chips */}
           <div className="flex flex-wrap gap-2 mb-4">
             <button onClick={() => setMethodFilter('all')}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${methodFilter === 'all' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${methodFilter === 'all' ? 'bg-slate-900 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
               All Methods
             </button>
             {methods.map(m => (
               <button key={m} onClick={() => setMethodFilter(m)}
-                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${methodFilter === m ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
+                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${methodFilter === m ? 'bg-slate-900 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
                 {METHOD_META[m]?.label || m}
               </button>
             ))}
@@ -401,13 +401,13 @@ export function PaymentsMadePage() {
 
           <div className="relative mb-4">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by payment number, vendor, or reference..." className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by payment number, vendor, or reference..." className="w-full pl-9 pr-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
             {isLoading ? (
               <div className="flex items-center justify-center py-16 text-slate-400">
-                <Loader2 size={20} className="animate-spin mr-2" />Loading payments...
+                <div className="bg-gradient-to-r from-slate-200 to-slate-100 animate-pulse rounded-xl h-8 w-48" />
               </div>
             ) : isError ? (
               <div className="flex items-center justify-center gap-2 py-16 text-rose-500 text-sm">
@@ -422,55 +422,55 @@ export function PaymentsMadePage() {
             ) : (
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-slate-100 text-left text-xs font-medium text-slate-400 uppercase tracking-wide">
-                    <th className="py-2.5 pl-4 pr-3">Payment #</th>
-                    <th className="py-2.5 pr-3">Vendor</th>
-                    <th className="py-2.5 pr-3">Date</th>
-                    <th className="py-2.5 pr-3">Method</th>
-                    <th className="py-2.5 pr-3 text-right">Amount</th>
-                    <th className="py-2.5 pr-3 text-center">Ledger</th>
-                    <th className="py-2.5 pr-2"></th>
+                  <tr className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                    <th className="px-3 py-3 text-left">Payment #</th>
+                    <th className="px-3 py-3 text-left">Vendor</th>
+                    <th className="px-3 py-3 text-left">Date</th>
+                    <th className="px-3 py-3 text-left">Method</th>
+                    <th className="px-3 py-3 text-right">Amount</th>
+                    <th className="px-3 py-3 text-center">Ledger</th>
+                    <th className="px-3 py-3"></th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-50">
+                <tbody className="divide-y divide-slate-100">
                   {filtered.map(p => {
                     const meta = METHOD_META[p.paymentMethod] || { label: p.paymentMethod, icon: Banknote };
                     const Icon = meta.icon;
                     const isSelected = p.id === detailPaymentId;
                     return (
                       <tr key={p.id} onClick={() => setDetailPaymentId(isSelected ? null : p.id)}
-                        className={`group cursor-pointer transition-colors ${isSelected ? 'bg-indigo-50 border-l-2 border-l-indigo-500' : 'hover:bg-slate-50'}`}>
-                        <td className="py-2.5 pl-4 pr-3">
+                        className={`group cursor-pointer transition-colors ${isSelected ? 'bg-indigo-50 border-l-2 border-l-indigo-500' : 'hover:bg-slate-50/50'}`}>
+                        <td className="px-3 py-3">
                           <p className="font-mono text-sm font-semibold text-slate-700">{p.paymentNumber}</p>
                         </td>
-                        <td className="py-2.5 pr-3">
+                        <td className="px-3 py-3">
                           <p className="text-sm font-medium text-slate-800">{vendorMap.get(p.vendorId) || '—'}</p>
                         </td>
-                        <td className="py-2.5 pr-3 text-sm text-slate-500">{fmtDate(p.date)}</td>
-                        <td className="py-2.5 pr-3">
+                        <td className="px-3 py-3 text-sm text-slate-500">{fmtDate(p.date)}</td>
+                        <td className="px-3 py-3">
                           <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600">
                             <Icon className="w-3.5 h-3.5 text-slate-400" />
                             {meta.label}
                           </span>
                         </td>
-                        <td className="py-2.5 pr-3 text-right font-semibold text-rose-700 font-mono">{formatNaira(p.amount)}</td>
-                        <td className="py-2.5 pr-3 text-center">
+                        <td className="px-3 py-3 text-right font-semibold text-rose-700 font-mono">{formatNaira(p.amount)}</td>
+                        <td className="px-3 py-3 text-center">
                           {p.journalEntryId ? (
                             <button onClick={(e) => { e.stopPropagation(); navigate(`/accountant/journals?entry=${p.journalEntryNumber || ''}`); }}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
+                              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-all duration-200"
                             ><CheckCircle2 className="w-3 h-3" /> Posted</button>
                           ) : (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500">Not posted</span>
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border border-slate-200 bg-slate-100 text-slate-500">Not posted</span>
                           )}
                         </td>
-                        <td className="py-2.5 pr-2">
+                        <td className="px-3 py-3">
                           <div className="opacity-0 group-hover:opacity-100 flex items-center justify-end gap-1 transition-opacity" onClick={e => e.stopPropagation()}>
                             <button onClick={() => openEditModal(p)}
-                              className="p-1.5 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100" title="Edit payment">
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all duration-200" title="Edit payment">
                               <Pencil size={14} />
                             </button>
                             <button onClick={() => { setDeleteTarget(p); setDeleteError(null); }}
-                              className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50" title="Reverse payment">
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all duration-200" title="Reverse payment">
                               <Trash2 size={14} />
                             </button>
                           </div>
@@ -480,11 +480,11 @@ export function PaymentsMadePage() {
                   })}
                 </tbody>
                 <tfoot>
-                  <tr className="border-t border-slate-200 bg-slate-50">
-                    <td colSpan={4} className="py-2.5 pl-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                  <tr className="border-t border-slate-200/80 bg-slate-50">
+                    <td colSpan={4} className="px-3 py-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
                       {filtered.length} payments shown
                     </td>
-                    <td className="py-2.5 pr-3 text-right font-bold text-slate-800 font-mono">{formatNaira(totals.sum)}</td>
+                    <td className="px-3 py-3 text-right font-bold text-slate-800 font-mono">{formatNaira(totals.sum)}</td>
                     <td />
                   </tr>
                 </tfoot>
@@ -496,21 +496,21 @@ export function PaymentsMadePage() {
         {/* Detail panel */}
         {detailPaymentId && (
           <div className="w-full lg:w-96 shrink-0">
-            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden sticky top-6">
+            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden sticky top-6">
               {loadingDetail ? (
                 <div className="flex items-center justify-center py-12 text-slate-400">
-                  <Loader2 size={18} className="animate-spin mr-2" />Loading...
+                  <div className="bg-gradient-to-r from-slate-200 to-slate-100 animate-pulse rounded-xl h-8 w-32" />
                 </div>
               ) : paymentDetail ? (
                 <>
                   {/* Voucher header */}
-                  <div className="px-5 pt-5 pb-3 border-b border-slate-100">
+                  <div className="px-5 pt-5 pb-3 border-b border-slate-200/80">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-3">
                         {org?.logoUrl ? (
-                          <img src={org.logoUrl} alt="" className="w-10 h-10 rounded-lg object-contain border border-slate-200 bg-white p-1" />
+                          <img src={org.logoUrl} alt="" className="w-10 h-10 rounded-xl object-contain border border-slate-200 bg-white p-1" />
                         ) : (
-                          <div className="w-10 h-10 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-lg">{(org?.name||'S')[0].toUpperCase()}</div>
+                          <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold text-lg">{(org?.name||'S')[0].toUpperCase()}</div>
                         )}
                         <div>
                           <p className="text-sm font-bold text-slate-900">{org?.name || 'Your Company'}</p>
@@ -519,11 +519,11 @@ export function PaymentsMadePage() {
                       </div>
                       <div className="flex items-center gap-1">
                         <button onClick={() => selectedPayment && openEditModal(selectedPayment)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100" title="Edit">
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all duration-200" title="Edit">
                           <Pencil size={16} />
                         </button>
                         <button onClick={() => setDetailPaymentId(null)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100">
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all duration-200">
                           <X size={16} />
                         </button>
                       </div>
@@ -568,18 +568,18 @@ export function PaymentsMadePage() {
                     {paymentDetail.allocations && paymentDetail.allocations.length > 0 && (
                       <div>
                         <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-2">Allocated Bills</p>
-                        <div className="border border-slate-200 rounded-lg overflow-hidden">
+                        <div className="border border-slate-200 rounded-xl overflow-hidden">
                           <table className="w-full text-xs">
                             <thead>
-                              <tr className="bg-slate-50">
-                                <th className="text-left px-3 py-2 font-medium text-slate-500">Bill #</th>
-                                <th className="text-right px-3 py-2 font-medium text-slate-500">Amount</th>
-                                <th className="w-0 px-3 py-2"></th>
+                              <tr className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                                <th className="text-left px-3 py-3 font-medium">Bill #</th>
+                                <th className="text-right px-3 py-3 font-medium">Amount</th>
+                                <th className="w-0 px-3 py-3"></th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                               {paymentDetail.allocations.map(alloc => (
-                                <tr key={alloc.id} className="hover:bg-slate-50">
+                                <tr key={alloc.id} className="hover:bg-slate-50/50 transition-colors">
                                   <td className="px-3 py-2 font-mono font-medium text-slate-800">
                                     {billNumberMap.get(alloc.billId) || alloc.billId.substring(0, 8) + '...'}
                                   </td>
@@ -599,7 +599,7 @@ export function PaymentsMadePage() {
                     )}
 
                     {/* WHT Analysis */}
-                    <div className="border border-slate-200 rounded-lg overflow-hidden">
+                    <div className="border border-slate-200 rounded-xl overflow-hidden">
                       <table className="w-full text-xs">
                         <tbody className="divide-y divide-slate-100">
                           <tr>
@@ -622,7 +622,7 @@ export function PaymentsMadePage() {
 
                     {/* Notes */}
                     {paymentDetail.notes && (
-                      <div className="p-3 bg-amber-50 border border-amber-100 rounded-lg">
+                      <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl">
                         <p className="text-[10px] font-semibold text-amber-600 uppercase tracking-wide mb-1">Notes</p>
                         <p className="text-sm text-amber-800 leading-relaxed">{paymentDetail.notes}</p>
                       </div>
@@ -700,11 +700,11 @@ export function PaymentsMadePage() {
                         const w = window.open('','_blank');
                         if(w){w.document.write(html);w.document.close();setTimeout(()=>w.print(),500);}
                       }}
-                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors">
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-xl hover:bg-blue-100 transition-all duration-200">
                         <FileText size={14} /> Print PDF
                       </button>
                       <button onClick={() => { setDeleteTarget(selectedPayment!); setDeleteError(null); }}
-                        className="flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-rose-600 border border-rose-200 rounded-lg hover:bg-rose-50 transition-colors">
+                        className="flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-rose-600 border border-rose-200 rounded-xl hover:bg-rose-50 transition-all duration-200">
                         <Trash2 size={14} />Reverse
                       </button>
                     </div>
@@ -718,21 +718,21 @@ export function PaymentsMadePage() {
 
       {/* Record Payment Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4 overflow-y-auto py-8">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200/80">
               <h2 className="text-base font-semibold text-slate-900">Record Payment to Vendor</h2>
-              <button onClick={closeModal} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
+              <button onClick={closeModal} className="text-slate-400 hover:text-slate-600 transition-all duration-200"><X size={18} /></button>
             </div>
-            <form onSubmit={handleSubmit} className="px-5 py-4 space-y-3 max-h-[75vh] overflow-y-auto">
+            <form onSubmit={handleSubmit} className="px-5 py-4 space-y-3 overflow-y-auto">
               {formError && (
-                <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2">{formError}</div>
+                <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2">{formError}</div>
               )}
 
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Vendor *</label>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Vendor *</label>
                 <select value={form.vendorId} onChange={e => onVendorChange(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 bg-white">
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow bg-white">
                   <option value="">Select vendor...</option>
                   {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
                 </select>
@@ -740,36 +740,36 @@ export function PaymentsMadePage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Net Amount to Vendor (₦) *</label>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Net Amount to Vendor (₦) *</label>
                   <input type="number" min="0" step="0.01" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} placeholder="0.00"
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
                   <p className="text-[10px] text-slate-400 mt-0.5">Bill total minus WHT deducted</p>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">WHT Deducted (₦)</label>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">WHT Deducted (₦)</label>
                   <input type="number" min="0" step="0.01" value={form.whtAmount} onChange={e => setForm({ ...form, whtAmount: e.target.value })} placeholder="0.00"
-                    className="w-full px-3 py-2 text-sm border border-amber-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-900/10" />
+                    className="w-full px-3 py-2.5 text-sm border border-amber-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-900/10 focus:border-amber-300 transition-shadow" />
                   <p className="text-[10px] text-amber-600 font-medium mt-1">Withholding Tax — credited to WHT Payable GL, owed to FIRS.</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Payment Date</label>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Payment Date</label>
                   <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Payment Method</label>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Payment Method</label>
                   <select value={form.paymentMethod} onChange={e => setForm({ ...form, paymentMethod: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 bg-white">
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow bg-white">
                     {PAYMENT_METHODS.map(m => <option key={m} value={m}>{METHOD_META[m]?.label || m}</option>)}
                   </select>
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Paid From Account *</label>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Paid From Account *</label>
                 <AccountSearchSelect
                   accounts={assetAccounts}
                   value={form.accountId}
@@ -779,22 +779,22 @@ export function PaymentsMadePage() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Reference</label>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Reference</label>
                 <input value={form.reference} onChange={e => setForm({ ...form, reference: e.target.value })} placeholder="Transfer ref / cheque no."
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
               </div>
 
               {form.vendorId && (
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-2 uppercase tracking-wide">Allocate to Bills *</label>
+                  <label className="block text-xs font-semibold text-slate-600 mb-2 uppercase tracking-wide">Allocate to Bills *</label>
                   {vendorBills.length === 0 ? (
-                    <p className="text-xs text-slate-400 bg-slate-50 border border-slate-200 rounded-lg px-3 py-3">No open bills for this vendor.</p>
+                    <p className="text-xs text-slate-400 bg-slate-50 border border-slate-200 rounded-xl px-3 py-3">No open bills for this vendor.</p>
                   ) : (
                     <div className="space-y-2 max-h-48 overflow-y-auto">
                       {vendorBills.map(b => {
                         const alloc = form.allocations.find(a => a.billId === b.id);
                         return (
-                          <label key={b.id} className={`flex items-center gap-3 p-2 rounded-lg border cursor-pointer ${alloc ? 'bg-indigo-50 border-indigo-200' : 'border-slate-200 hover:bg-slate-50'}`}>
+                          <label key={b.id} className={`flex items-center gap-3 p-2 rounded-xl border cursor-pointer transition-all duration-200 ${alloc ? 'bg-indigo-50 border-indigo-200' : 'border-slate-200 hover:bg-slate-50'}`}>
                             <input type="checkbox" checked={!!alloc} onChange={() => toggleBillAllocation(b.id, b.balanceDue)}
                               className="h-4 w-4 text-slate-900 border-slate-300 rounded focus:ring-slate-900" />
                             <div className="flex-1 min-w-0">
@@ -810,7 +810,7 @@ export function PaymentsMadePage() {
                                     setForm({ ...form, allocations: updated });
                                   }}
                                   onClick={e => e.stopPropagation()}
-                                  className="w-28 px-2 py-1 text-xs border border-indigo-200 rounded focus:outline-none text-right bg-white" />
+                                  className="w-28 px-2 py-1 text-xs border border-indigo-200 rounded-lg focus:outline-none text-right bg-white" />
                               </div>
                             )}
                           </label>
@@ -822,16 +822,16 @@ export function PaymentsMadePage() {
               )}
 
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Notes</label>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Notes</label>
                 <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2}
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none resize-none" />
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow resize-none" />
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-200/80">
                 <button type="button" onClick={closeModal}
-                  className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
+                  className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-xl transition-all duration-200">Cancel</button>
                 <button type="submit" disabled={createMutation.isPending}
-                  className="px-4 py-2 text-sm font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 disabled:opacity-50">
+                  className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50 transition-all duration-200">
                   {createMutation.isPending ? 'Saving...' : 'Record Payment'}
                 </button>
               </div>
@@ -842,42 +842,42 @@ export function PaymentsMadePage() {
 
       {/* Edit Modal */}
       {editTarget && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200/80">
               <h2 className="text-base font-semibold text-slate-900">Edit Payment — {editTarget.paymentNumber}</h2>
-              <button onClick={() => setEditTarget(null)} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
+              <button onClick={() => setEditTarget(null)} className="text-slate-400 hover:text-slate-600 transition-all duration-200"><X size={18} /></button>
             </div>
             <form onSubmit={handleUpdatePayment} className="px-5 py-4 space-y-3">
-              {editFormError && <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2">{editFormError}</div>}
+              {editFormError && <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2">{editFormError}</div>}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Date</label>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Date</label>
                   <input type="date" value={editForm.date} onChange={e => setEditForm({ ...editForm, date: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Amount (₦)</label>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Amount (₦)</label>
                   <input type="number" min="0" step="0.01" value={editForm.amount} onChange={e => setEditForm({ ...editForm, amount: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Payment Method</label>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Payment Method</label>
                   <select value={editForm.paymentMethod} onChange={e => setEditForm({ ...editForm, paymentMethod: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 bg-white">
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow bg-white">
                     {PAYMENT_METHODS.map(m => <option key={m} value={m}>{METHOD_META[m]?.label || m}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Reference</label>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Reference</label>
                   <input value={editForm.reference} onChange={e => setEditForm({ ...editForm, reference: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Paid From Account</label>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Paid From Account</label>
                 <AccountSearchSelect
                   accounts={assetAccounts}
                   value={editForm.accountId}
@@ -886,16 +886,16 @@ export function PaymentsMadePage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Notes</label>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Notes</label>
                 <textarea value={editForm.notes} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} rows={2}
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none resize-none" />
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow resize-none" />
               </div>
               <p className="text-xs text-slate-400">Note: Amount and allocation cannot be edited after recording. Reverse and re-record if needed.</p>
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-200/80">
                 <button type="button" onClick={() => setEditTarget(null)}
-                  className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
+                  className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-xl transition-all duration-200">Cancel</button>
                 <button type="submit" disabled={updateMutation.isPending}
-                  className="px-4 py-2 text-sm font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 disabled:opacity-50">
+                  className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50 transition-all duration-200">
                   {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
@@ -906,19 +906,19 @@ export function PaymentsMadePage() {
 
       {/* Delete Confirmation */}
       {deleteTarget && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-5">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5">
             <h2 className="text-base font-semibold text-slate-900 mb-2">Reverse Payment</h2>
             <p className="text-sm text-slate-500 mb-4">
               Reverse <span className="font-medium text-slate-700">{deleteTarget.paymentNumber}</span> ({formatNaira(deleteTarget.amount)})?
               This will restore any bill balance due and reverse the journal entries.
             </p>
-            {deleteError && <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2 mb-3">{deleteError}</div>}
+            {deleteError && <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2 mb-3">{deleteError}</div>}
             <div className="flex justify-end gap-2">
               <button onClick={() => { setDeleteTarget(null); setDeleteError(null); }}
-                className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
+                className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-xl transition-all duration-200">Cancel</button>
               <button onClick={() => deleteMutation.mutate(deleteTarget.id)} disabled={deleteMutation.isPending}
-                className="px-4 py-2 text-sm font-medium text-white bg-rose-600 rounded-lg hover:bg-rose-700 disabled:opacity-50">
+                className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-rose-600 to-rose-700 rounded-xl hover:from-rose-700 hover:to-rose-800 disabled:opacity-50 transition-all duration-200">
                 {deleteMutation.isPending ? 'Reversing...' : 'Reverse Payment'}
               </button>
             </div>
@@ -928,69 +928,69 @@ export function PaymentsMadePage() {
 
       {/* Bill Viewing Modal */}
       {viewBillId && billDetail && (
-        <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 px-4 py-8 overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200/80">
               <div>
                 <h2 className="text-base font-semibold text-slate-900">{billDetail.billNumber}</h2>
                 <p className="text-xs text-slate-500 mt-0.5">{billDetail.vendor?.name || '—'}</p>
               </div>
-              <button onClick={() => setViewBillId(null)} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
+              <button onClick={() => setViewBillId(null)} className="text-slate-400 hover:text-slate-600 transition-all duration-200"><X size={18} /></button>
             </div>
-            <div className="px-6 py-5 space-y-4">
+            <div className="px-6 py-5 space-y-4 overflow-y-auto">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
                 <div>
-                  <span className="text-xs font-medium text-slate-400 uppercase tracking-wide">Status</span>
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</span>
                   <p className="font-semibold mt-1 capitalize">{billDetail.status}</p>
                 </div>
                 <div>
-                  <span className="text-xs font-medium text-slate-400 uppercase tracking-wide">Date</span>
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Date</span>
                   <p className="font-semibold text-slate-700 mt-1">{fmtDate(billDetail.date)}</p>
                 </div>
                 <div>
-                  <span className="text-xs font-medium text-slate-400 uppercase tracking-wide">Due Date</span>
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Due Date</span>
                   <p className="font-semibold text-slate-700 mt-1">{fmtDate(billDetail.dueDate)}</p>
                 </div>
                 <div>
-                  <span className="text-xs font-medium text-slate-400 uppercase tracking-wide">Currency</span>
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Currency</span>
                   <p className="font-semibold text-slate-700 mt-1">{billDetail.currency}</p>
                 </div>
               </div>
 
-              <div className="border border-slate-200 rounded-lg overflow-hidden">
+              <div className="border border-slate-200 rounded-xl overflow-hidden">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-slate-50 text-xs font-medium text-slate-500 uppercase tracking-wide">
-                      <th className="px-3 py-2 text-left">Description</th>
-                      <th className="px-3 py-2 text-right w-16">Qty</th>
-                      <th className="px-3 py-2 text-right w-24">Unit Price</th>
-                      <th className="px-3 py-2 text-right w-20">VAT</th>
-                      <th className="px-3 py-2 text-right w-24">Total</th>
+                    <tr className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                      <th className="px-3 py-3 text-left">Description</th>
+                      <th className="px-3 py-3 text-right w-16">Qty</th>
+                      <th className="px-3 py-3 text-right w-24">Unit Price</th>
+                      <th className="px-3 py-3 text-right w-20">VAT</th>
+                      <th className="px-3 py-3 text-right w-24">Total</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {billDetail.lines?.map((line: BillLine) => (
-                      <tr key={line.id}>
-                        <td className="px-3 py-2 text-slate-700">{line.description}</td>
-                        <td className="px-3 py-2 text-right text-slate-600">{line.quantity}</td>
-                        <td className="px-3 py-2 text-right text-slate-600">{formatNaira(line.unitPrice)}</td>
-                        <td className="px-3 py-2 text-right text-slate-600">{formatNaira(line.taxAmount)}</td>
-                        <td className="px-3 py-2 text-right font-medium text-slate-700">{formatNaira(line.lineTotal)}</td>
+                      <tr key={line.id} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="px-3 py-3 text-slate-700">{line.description}</td>
+                        <td className="px-3 py-3 text-right text-slate-600">{line.quantity}</td>
+                        <td className="px-3 py-3 text-right text-slate-600">{formatNaira(line.unitPrice)}</td>
+                        <td className="px-3 py-3 text-right text-slate-600">{formatNaira(line.taxAmount)}</td>
+                        <td className="px-3 py-3 text-right font-medium text-slate-700">{formatNaira(line.lineTotal)}</td>
                       </tr>
                     ))}
                   </tbody>
                   <tfoot>
                     <tr className="bg-slate-50 text-sm font-semibold">
-                      <td colSpan={4} className="px-3 py-2 text-slate-600">Subtotal</td>
-                      <td className="px-3 py-2 text-right text-slate-700">{formatNaira(billDetail.subtotal)}</td>
+                      <td colSpan={4} className="px-3 py-3 text-slate-600">Subtotal</td>
+                      <td className="px-3 py-3 text-right text-slate-700">{formatNaira(billDetail.subtotal)}</td>
                     </tr>
                     <tr className="bg-slate-50 text-sm">
-                      <td colSpan={4} className="px-3 py-2 text-slate-600">VAT</td>
-                      <td className="px-3 py-2 text-right text-slate-600">{formatNaira(billDetail.taxAmount)}</td>
+                      <td colSpan={4} className="px-3 py-3 text-slate-600">VAT</td>
+                      <td className="px-3 py-3 text-right text-slate-600">{formatNaira(billDetail.taxAmount)}</td>
                     </tr>
                     <tr className="bg-slate-50 text-sm font-bold">
-                      <td colSpan={4} className="px-3 py-2 text-slate-800">Total</td>
-                      <td className="px-3 py-2 text-right text-slate-900">{formatNaira(billDetail.total)}</td>
+                      <td colSpan={4} className="px-3 py-3 text-slate-800">Total</td>
+                      <td className="px-3 py-3 text-right text-slate-900">{formatNaira(billDetail.total)}</td>
                     </tr>
                   </tfoot>
                 </table>
@@ -998,11 +998,11 @@ export function PaymentsMadePage() {
 
               <div className="grid grid-cols-3 gap-4 text-sm">
                 <div>
-                  <span className="text-xs font-medium text-slate-400 uppercase tracking-wide">Amount Paid</span>
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Amount Paid</span>
                   <p className="font-semibold text-green-600 mt-1">{formatNaira(billDetail.amountPaid)}</p>
                 </div>
                 <div>
-                  <span className="text-xs font-medium text-slate-400 uppercase tracking-wide">Balance Due</span>
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Balance Due</span>
                   <p className="font-semibold text-slate-900 mt-1">{formatNaira(billDetail.balanceDue)}</p>
                 </div>
               </div>
@@ -1011,9 +1011,9 @@ export function PaymentsMadePage() {
                 <p className="text-sm text-slate-500 italic">Notes: {billDetail.notes}</p>
               )}
             </div>
-            <div className="flex justify-end px-6 py-4 border-t border-slate-100 bg-slate-50 rounded-b-xl">
+            <div className="flex justify-end px-6 py-4 border-t border-slate-200/80 bg-slate-50 rounded-b-2xl">
               <button onClick={() => setViewBillId(null)}
-                className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Close</button>
+                className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-xl transition-all duration-200">Close</button>
             </div>
           </div>
         </div>

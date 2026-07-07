@@ -68,30 +68,30 @@ export function BudgetsPage() {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-slate-900">Budgets</h1>
         <div className="flex items-center gap-2">
           <button onClick={() => setShowImport(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors">
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium border border-slate-200/80 text-slate-600 rounded-xl hover:bg-slate-50 transition-all duration-200">
             <Upload size={14} /> Import CSV
           </button>
           <button onClick={exportBudgetsCSV}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors">
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium border border-slate-200/80 text-slate-600 rounded-xl hover:bg-slate-50 transition-all duration-200">
             <Download size={14} /> CSV
           </button>
-          <button onClick={handlePrintPdf} className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700"><Printer className="w-3.5 h-3.5" /> PDF</button>
-          <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700"><Plus className="w-4 h-4" /> New Budget</button>
+          <button onClick={handlePrintPdf} className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-white bg-red-600 rounded-xl hover:bg-red-700 transition-all duration-200"><Printer className="w-3.5 h-3.5" /> PDF</button>
+          <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200"><Plus className="w-4 h-4" /> New Budget</button>
         </div>
       </div>
 
       {/* Import Modal */}
       {showImport && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => { setShowImport(false); setImportMsg(null); }}>
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 p-6 space-y-4" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => { setShowImport(false); setImportMsg(null); }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 space-y-4 border border-slate-200/80 max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between shrink-0">
               <h2 className="text-lg font-bold text-slate-900">Import Budgets</h2>
-              <button onClick={() => { setShowImport(false); setImportMsg(null); }} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+              <button onClick={() => { setShowImport(false); setImportMsg(null); }} className="text-slate-400 hover:text-slate-600 p-1 rounded-xl hover:bg-slate-100 transition-all duration-200"><X className="w-5 h-5" /></button>
             </div>
             <p className="text-xs text-slate-500">Upload a CSV file with columns: name, fiscalYear, period, line_accountCode, line_period (1-12), line_amount (NGN)</p>
             <input ref={fileRef} type="file" accept=".csv" onChange={e => {
@@ -100,20 +100,20 @@ export function BudgetsPage() {
               const reader = new FileReader();
               reader.onload = (ev) => setCsvText(ev.target?.result as string);
               reader.readAsText(file);
-            }} className="w-full text-sm" />
+            }} className="w-full text-sm file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
             {csvText && (
-              <div className="text-xs text-emerald-600 bg-emerald-50 px-3 py-2 rounded-lg">File loaded ({csvText.split(/\n/).length} rows)</div>
+              <div className="text-xs text-emerald-600 bg-emerald-50 px-3 py-2 rounded-xl">File loaded ({csvText.split(/\n/).length} rows)</div>
             )}
             {importMsg && (
-              <div className={`flex items-center gap-2 p-3 rounded-lg text-sm ${importMsg.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+              <div className={`flex items-center gap-2 p-3 rounded-xl text-sm ${importMsg.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/80' : 'bg-red-50 text-red-700 border border-red-100/80'}`}>
                 {importMsg.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
                 {importMsg.text}
               </div>
             )}
-            <div className="flex justify-end gap-3">
-              <button onClick={() => { setShowImport(false); setImportMsg(null); }} className="px-4 py-2 text-sm font-semibold text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200">Cancel</button>
+            <div className="flex justify-end gap-3 shrink-0">
+              <button onClick={() => { setShowImport(false); setImportMsg(null); }} className="px-4 py-2 text-sm font-semibold text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200 transition-all duration-200 border border-slate-200/80">Cancel</button>
               <button onClick={handleImport} disabled={!csvText || importing}
-                className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50">
+                className="px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50 transition-all duration-200">
                 {importing ? <Loader2 className="w-4 h-4 animate-spin inline" /> : null} Import
               </button>
             </div>
@@ -126,24 +126,24 @@ export function BudgetsPage() {
       ) : isLoading ? (
         <PageLoader message="Loading budgets..." />
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-slate-50">
+            <thead className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
               <tr>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Name</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Fiscal Year</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Period</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Status</th>
-                <th className="text-right px-4 py-3 font-semibold text-slate-600">Actions</th>
+                <th className="px-3 py-3 text-left">Name</th>
+                <th className="px-3 py-3 text-left">Fiscal Year</th>
+                <th className="px-3 py-3 text-left">Period</th>
+                <th className="px-3 py-3 text-left">Status</th>
+                <th className="px-3 py-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {(Array.isArray(budgets) ? budgets : []).map((budget: any) => (
-                <tr key={budget.id} className="border-t border-slate-100 hover:bg-slate-50">
+                <tr key={budget.id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-50">
                   <td className="px-4 py-3 font-medium text-slate-800">{budget.name}</td>
                   <td className="px-4 py-3 text-slate-600">{budget.fiscalYear}</td>
                   <td className="px-4 py-3 text-slate-600">{PERIOD_LABELS[budget.period] || budget.period}</td>
-                  <td className="px-4 py-3"><span className={`inline-block px-2 py-0.5 text-xs font-semibold rounded-full ${STATUS_COLORS[budget.status] || 'bg-slate-100 text-slate-600'}`}>{budget.status}</span></td>
+                  <td className="px-3 py-3"><span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${STATUS_COLORS[budget.status] === 'bg-slate-100 text-slate-600' ? 'border-slate-200/50 bg-slate-100 text-slate-600' : STATUS_COLORS[budget.status] === 'bg-emerald-100 text-emerald-700' ? 'border-emerald-100/50 bg-emerald-100 text-emerald-700' : 'border-amber-100/50 bg-amber-100 text-amber-700'}`}>{budget.status}</span></td>
                   <td className="px-4 py-3 text-right">
                     <button onClick={() => deleteMutation.mutate(budget.id)} className="text-red-500 hover:text-red-700"><Trash2 className="w-4 h-4" /></button>
                   </td>
@@ -203,13 +203,13 @@ function BudgetForm({ onDone }: { onDone: () => void }) {
   const accList = Array.isArray(accounts) ? accounts : [];
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
-      {error && <div className="flex items-center gap-2 p-3 bg-red-50 text-red-700 rounded-lg text-sm"><AlertCircle className="w-4 h-4" /> {error}</div>}
+    <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 space-y-4">
+      {error && <div className="flex items-center gap-2 p-3 bg-red-50 text-red-700 rounded-xl text-sm border border-red-100/80"><AlertCircle className="w-4 h-4" /> {error}</div>}
       <div className="grid grid-cols-3 gap-4">
-        <div><label className="text-xs font-semibold text-slate-500 uppercase">Name</label><input value={name} onChange={e => setName(e.target.value)} className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm mt-1" /></div>
-        <div><label className="text-xs font-semibold text-slate-500 uppercase">Fiscal Year</label><input type="number" value={fiscalYear} onChange={e => setFiscalYear(Number(e.target.value))} className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm mt-1" /></div>
+        <div><label className="text-xs font-semibold text-slate-500 uppercase">Name</label><input value={name} onChange={e => setName(e.target.value)} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow mt-1" /></div>
+        <div><label className="text-xs font-semibold text-slate-500 uppercase">Fiscal Year</label><input type="number" value={fiscalYear} onChange={e => setFiscalYear(Number(e.target.value))} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow mt-1" /></div>
         <div><label className="text-xs font-semibold text-slate-500 uppercase">Period</label>
-          <select value={period} onChange={e => setPeriod(e.target.value as any)} className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm mt-1">
+          <select value={period} onChange={e => setPeriod(e.target.value as any)} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow mt-1">
             <option value="monthly">Monthly</option>
             <option value="quarterly">Quarterly</option>
             <option value="annual">Annual</option>
@@ -217,7 +217,7 @@ function BudgetForm({ onDone }: { onDone: () => void }) {
         </div>
       </div>
 
-      <div className="bg-slate-50 rounded-lg p-4 space-y-3">
+      <div className="bg-slate-50 rounded-xl p-4 space-y-3">
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold text-slate-500 uppercase">Budget Lines</span>
           <button type="button" onClick={addLine} className="text-xs text-blue-600 hover:text-blue-800 font-semibold">+ Add Line</button>
@@ -230,16 +230,16 @@ function BudgetForm({ onDone }: { onDone: () => void }) {
               onChange={id => updateLine(i, 'accountId', id)}
               placeholder="Select account"
             />
-            <input type="number" value={line.period} onChange={e => updateLine(i, 'period', e.target.value)} min={1} max={12} className="w-20 border border-slate-300 rounded-lg px-3 py-1.5 text-sm" placeholder="Period" />
-            <input type="number" value={line.amount || ''} onChange={e => updateLine(i, 'amount', e.target.value)} className="w-32 border border-slate-300 rounded-lg px-3 py-1.5 text-sm" placeholder="Amount (₦)" />
+            <input type="number" value={line.period} onChange={e => updateLine(i, 'period', e.target.value)} min={1} max={12} className="w-20 px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" placeholder="Period" />
+            <input type="number" value={line.amount || ''} onChange={e => updateLine(i, 'amount', e.target.value)} className="w-32 px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" placeholder="Amount (₦)" />
             {lines.length > 1 && <button type="button" onClick={() => removeLine(i)} className="p-1.5 text-red-500 hover:text-red-700"><X className="w-4 h-4" /></button>}
           </div>
         ))}
       </div>
 
       <div className="flex justify-end gap-3">
-        <button type="button" onClick={onDone} className="px-4 py-2 text-sm font-semibold text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200">Cancel</button>
-        <button type="submit" disabled={mutation.isPending} className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50">
+        <button type="button" onClick={onDone} className="px-4 py-2 text-sm font-semibold text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200 transition-all duration-200 border border-slate-200/80">Cancel</button>
+        <button type="submit" disabled={mutation.isPending} className="px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50 transition-all duration-200">
           {mutation.isPending ? <Loader2 className="w-4 h-4 animate-spin inline" /> : null} Create Budget
         </button>
       </div>
