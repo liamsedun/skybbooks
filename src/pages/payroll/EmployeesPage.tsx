@@ -176,14 +176,18 @@ export function EmployeesPage() {
     });
   }, [employeesData, search, filterDept, filterStatus]);
 
+  const [formError, setFormError] = useState<string | null>(null);
+
   const createMutation = useMutation({
     mutationFn: payrollApi.createEmployee,
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['employees'] }); resetForm(); },
+    onError: (err: any) => setFormError(err?.response?.data?.error || err?.message || 'Failed to create employee.'),
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: any) => payrollApi.updateEmployee(id, data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['employees'] }); resetForm(); },
+    onError: (err: any) => setFormError(err?.response?.data?.error || err?.message || 'Failed to update employee.'),
   });
 
   const toggleActiveMutation = useMutation({
@@ -215,7 +219,7 @@ export function EmployeesPage() {
     setForm({ ...emptyForm });
     setEduQuals([]); setProfQuals([]); setInstitutions([]);
     setNextOfKin([]); setGuarantors([]); setReferences([]);
-    setShowForm(false); setEditingId(null);
+    setShowForm(false); setEditingId(null); setFormError(null);
   }
 
   function openEdit(emp: any) {
@@ -251,17 +255,26 @@ export function EmployeesPage() {
     setGuarantors(emp.guarantors || []);
     setReferences(emp.references || []);
     setEditingId(emp.id);
-    setShowForm(true);
+    setShowForm(true); setFormError(null);
   }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const toNum = (v: any) => Number(v) || 0;
     const payload = {
       ...form,
-      grossSalary: Math.round(Number(form.grossSalary) * 100),
-      annualRent: Math.round(Number(form.annualRent) * 100),
-      annualMortgageInterest: Math.round(Number(form.annualMortgageInterest) * 100),
-      annualLifeAssurance: Math.round(Number(form.annualLifeAssurance) * 100),
+      grossSalary: Math.round(toNum(form.grossSalary) * 100),
+      annualRent: Math.round(toNum(form.annualRent) * 100),
+      annualMortgageInterest: Math.round(toNum(form.annualMortgageInterest) * 100),
+      annualLifeAssurance: Math.round(toNum(form.annualLifeAssurance) * 100),
+      pensionablePortionPct: Math.round(toNum(form.pensionablePortionPct)),
+      pensionRatePct: Math.round(toNum(form.pensionRatePct)),
+      basicSalaryPct: Math.round(toNum(form.basicSalaryPct)),
+      housingPct: Math.round(toNum(form.housingPct)),
+      transportPct: Math.round(toNum(form.transportPct)),
+      utilitiesPct: Math.round(toNum(form.utilitiesPct)),
+      mealsPct: Math.round(toNum(form.mealsPct)),
+      othersPct: Math.round(toNum(form.othersPct)),
       eduQuals, profQuals, institutions, nextOfKin, guarantors, references,
     };
     if (editingId) updateMutation.mutate({ id: editingId, data: payload });
@@ -502,6 +515,12 @@ export function EmployeesPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="flex-1 p-6 space-y-6">
+
+              {formError && (
+                <div className="flex items-center gap-2 px-4 py-2 bg-rose-50 text-rose-700 rounded-xl text-xs font-semibold border border-rose-200">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {formError}
+                </div>
+              )}
 
               {/* 1. Personal Information */}
               <div className="space-y-4">
