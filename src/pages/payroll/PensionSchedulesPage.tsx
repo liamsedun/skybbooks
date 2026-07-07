@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, payrollApi, printWindow, downloadBlob } from '../../lib/api';
+import { api, payrollApi, printWindow, downloadBlob, orgApi } from '../../lib/api';
 import {
   Loader2, AlertCircle, FileText, Download, Printer, Trash2
 } from 'lucide-react';
@@ -34,6 +34,8 @@ export function PensionSchedulesPage() {
   });
 
   const runs: any[] = useMemo(() => Array.isArray(runsData) ? runsData : [], [runsData]);
+
+  const { data: org } = useQuery({ queryKey: ['org'], queryFn: orgApi.getOrg, staleTime: 60000 });
 
   const { data: detailData, isLoading } = useQuery({
     queryKey: ['payroll-run-detail', selectedRunId],
@@ -87,10 +89,75 @@ export function PensionSchedulesPage() {
             )}
             <button onClick={() => {
               try {
-                const rows = lines.map((l: any) =>
-                  `<tr><td>${l.employee?.staffId||''}</td><td>${l.employee?.firstName||''} ${l.employee?.lastName||''}</td><td class="r">₦${(l.grossPay/100).toFixed(2)}</td><td class="r">₦${(l.pensionEmployee/100).toFixed(2)}</td><td class="r">₦${(l.pensionEmployer/100).toFixed(2)}</td><td class="r">₦${((l.pensionEmployee+l.pensionEmployer)/100).toFixed(2)}</td></tr>`
-                ).join('');
-                printWindow('Pension Schedule', `<table><thead><tr><th>Staff ID</th><th>Employee</th><th class="r">Gross Pay</th><th class="r">Employee</th><th class="r">Employer</th><th class="r">Total</th></tr></thead><tbody>${rows}</tbody></table>`, `${lines.length} employees · ${selectedRun?.runNumber || ''}`);
+                const logoHtml = org?.logoUrl
+                  ? `<img src="${org.logoUrl}" alt="" style="width:56px;height:56px;border-radius:10px;object-fit:contain;border:1px solid #e2e8f0;background:white;padding:4px"/>`
+                  : '';
+                const fmt = (v: number) => `₦${(v/100).toLocaleString('en-NG',{minimumFractionDigits:2})}`;
+                const rowsHtml = lines.map((l: any) => {
+                  const pen = l.basic || 0;
+                  const tot = (l.pensionEmployee||0) + (l.pensionEmployer||0);
+                  return `<tr>
+                    <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;font-size:12px;font-family:monospace;color:#64748b">${l.employee?.staffId||'—'}</td>
+                    <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;font-size:12px">${l.employee?.firstName||''} ${l.employee?.lastName||''}</td>
+                    <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;font-size:12px;text-align:right;font-family:monospace">${fmt(l.grossPay)}</td>
+                    <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;font-size:12px;text-align:right;font-family:monospace">${fmt(pen)}</td>
+                    <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;font-size:12px;text-align:right;font-family:monospace;color:#d97706">${fmt(l.pensionEmployee)}</td>
+                    <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;font-size:12px;text-align:right;font-family:monospace;color:#4f46e5">${fmt(l.pensionEmployer)}</td>
+                    <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;font-size:12px;text-align:right;font-family:monospace;font-weight:700">${fmt(tot)}</td>
+                  </tr>`;
+                }).join('');
+                const totalRow = `<tr style="background:#f8fafc;font-weight:700">
+                  <td style="padding:10px 12px;font-size:12px" colspan="2">TOTAL (${lines.length} employees)</td>
+                  <td style="padding:10px 12px;font-size:12px;text-align:right;font-family:monospace">—</td>
+                  <td style="padding:10px 12px;font-size:12px;text-align:right;font-family:monospace">${fmt(totals.pensionable)}</td>
+                  <td style="padding:10px 12px;font-size:12px;text-align:right;font-family:monospace;color:#d97706">${fmt(totals.pensionEE)}</td>
+                  <td style="padding:10px 12px;font-size:12px;text-align:right;font-family:monospace;color:#4f46e5">${fmt(totals.pensionER)}</td>
+                  <td style="padding:10px 12px;font-size:12px;text-align:right;font-family:monospace">${fmt(totals.total)}</td>
+                </tr>`;
+                const html = `<!DOCTYPE html><html><head><title>Pension Schedule — ${selectedRun?.runNumber||''}</title><style>
+                  *{margin:0;padding:0;box-sizing:border-box}
+                  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:40px;color:#1e293b}
+                  .org-header{display:flex;align-items:center;gap:16px;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid #0f172a}
+                  .org-info{flex:1}
+                  .org-name{font-size:16px;font-weight:800;color:#0f172a}
+                  .org-details{font-size:10px;color:#64748b;margin-top:4px;line-height:1.6}
+                  .org-details span{margin-right:12px}
+                  .title-section{text-align:right}
+                  .report-title{font-size:18px;font-weight:700;color:#0f172a}
+                  .period-info{font-size:11px;color:#64748b;margin-top:4px}
+                  table{width:100%;border-collapse:collapse;margin-top:16px}
+                  th{background:#0f172a;color:#fff;padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.05em}
+                  th.r{text-align:right}
+                  .footer{margin-top:40px;text-align:center;font-size:10px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:16px}
+                  @media print{body{padding:20px}}
+                </style></head><body>
+                  <div class="org-header">
+                    ${logoHtml ? `<div>${logoHtml}</div>` : ''}
+                    <div class="org-info">
+                      <div class="org-name">${org?.name || 'SkyBooks'}</div>
+                      <div class="org-details">
+                        ${org?.address ? `<span>${org.address}</span>` : ''}
+                        ${org?.phone ? `<span>${org.phone}</span>` : ''}
+                        ${org?.email ? `<span>${org.email}</span>` : ''}
+                        ${org?.website ? `<span style="color:#4f46e5">${org.website}</span>` : ''}
+                      </div>
+                    </div>
+                    <div class="title-section">
+                      <div class="report-title">Pension Schedule</div>
+                      <div class="period-info">${selectedRun?.runNumber||''} — ${fmtDate(selectedRun?.periodStart)} to ${fmtDate(selectedRun?.periodEnd)}</div>
+                    </div>
+                  </div>
+                  <table>
+                    <thead><tr>
+                      <th>Staff ID</th><th>Employee</th><th class="r">Gross Pay</th><th class="r">Pensionable</th><th class="r">Employee 8%</th><th class="r">Employer 10%</th><th class="r">Total</th>
+                    </tr></thead>
+                    <tbody>${rowsHtml}${totalRow}</tbody>
+                  </table>
+                  <div class="footer">${org?.name || 'SkyBooks'} &bull; Pension Schedule &bull; Generated: ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}</div>
+                </body></html>`;
+                const w = window.open('', '_blank');
+                if (w) { w.document.write(html); w.document.close(); setTimeout(() => w.print(), 500); }
+                else { alert('Popup blocked. Please allow popups for this site and try again.'); }
               } catch (err) {
                 alert('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'));
                 console.error('Print error:', err);
