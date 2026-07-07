@@ -90,10 +90,9 @@ router.get('/', async (req: AuthenticatedRequest, res: Response, next: NextFunct
     // 4. Unreconciled bank transactions (last 7 days)
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const unreconciledTxns = await db
-      .select({ id: bankTransactions.id, count: sql<number>`count(*)` })
+      .select({ count: sql<number>`count(*)` })
       .from(bankTransactions)
-      .where(and(eq(bankTransactions.orgId, orgId), eq(bankTransactions.status, 'unreconciled'), gt(bankTransactions.date, sevenDaysAgo)))
-      .limit(1);
+      .where(and(eq(bankTransactions.orgId, orgId), eq(bankTransactions.status, 'unreconciled'), gt(bankTransactions.date, sevenDaysAgo)));
     const unreconciledCount = Number(unreconciledTxns[0]?.count || 0);
     if (unreconciledCount > 0) {
       notifications.push({
