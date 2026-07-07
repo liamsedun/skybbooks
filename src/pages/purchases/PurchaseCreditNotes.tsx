@@ -663,7 +663,7 @@ function CreateVendorCreditModal({ onClose, onError, editNote, updateMutation }:
   });
 
   const vendorBills: Bill[] = useMemo(() => {
-    const list = vendorBillsData?.invoices || vendorBillsData?.data || vendorBillsData || [];
+    const list = vendorBillsData?.bills || vendorBillsData?.invoices || vendorBillsData?.data || vendorBillsData || [];
     return (Array.isArray(list) ? list : []).filter((inv: Bill) => inv.status !== 'draft' && inv.status !== 'void');
   }, [vendorBillsData]);
 
