@@ -398,8 +398,24 @@ router.get('/valuation-statement', async (req: AuthenticatedRequest, res: Respon
       const lotConditions: any[] = [eq(inventoryLots.itemId, item.id), eq(inventoryLots.orgId, orgId)];
       if (endDate) lotConditions.push(lte(inventoryLots.receivedDate, new Date(endDate + 'T23:59:59.999Z')));
       const lots = await db
-        .select()
+        .select({
+          id: inventoryLots.id,
+          itemId: inventoryLots.itemId,
+          orgId: inventoryLots.orgId,
+          quantity: inventoryLots.quantity,
+          costPerUnit: inventoryLots.costPerUnit,
+          receivedDate: inventoryLots.receivedDate,
+          expiryDate: inventoryLots.expiryDate,
+          reference: inventoryLots.reference,
+          createdAt: inventoryLots.createdAt,
+          billId: inventoryTransactions.referenceId,
+        })
         .from(inventoryLots)
+        .leftJoin(inventoryTransactions, and(
+          eq(inventoryTransactions.lotId, inventoryLots.id),
+          eq(inventoryTransactions.referenceType, 'bill'),
+          eq(inventoryTransactions.type, 'purchase'),
+        ))
         .where(and(...lotConditions))
         .orderBy(inventoryLots.receivedDate);
 
@@ -446,7 +462,7 @@ router.get('/valuation-statement', async (req: AuthenticatedRequest, res: Respon
           date: lot.receivedDate,
           type: 'purchase',
           reference: lot.reference || 'Bill Purchase',
-          referenceId: lot.id,
+          referenceId: lot.billId || null,
           inQty: qty,
           outQty: 0,
           unitCost: cost,
