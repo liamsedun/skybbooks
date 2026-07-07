@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, payrollApi, printWindow } from '../../lib/api';
+import { api, payrollApi, printWindow, orgApi } from '../../lib/api';
 import {
   Plus, X, Loader2, AlertCircle, Search, FileText,
   CheckCircle2, Ban, ChevronDown, ChevronUp, Play, DollarSign,
@@ -51,6 +51,8 @@ export function PayrollRunsPage() {
     queryKey: ['chart-accounts'],
     queryFn: () => api.get('/accountant/accounts').then(r => r.data),
   });
+
+  const { data: org } = useQuery({ queryKey: ['org'], queryFn: orgApi.getOrg, staleTime: 60000 });
 
   const runs: any[] = useMemo(() => Array.isArray(runsData) ? runsData : [], [runsData]);
   const employees: any[] = useMemo(() => Array.isArray(employeesData) ? employeesData : [], [employeesData]);
@@ -108,6 +110,81 @@ export function PayrollRunsPage() {
     const headers = ['Run #', 'Period Start', 'Period End', 'Pay Date', 'Status', 'Gross', 'PAYE', 'Pension', 'Net'];
     const rows = runs.map((r: any) => [r.runNumber||'', r.periodStart ? new Date(r.periodStart).toLocaleDateString('en-GB') : '', r.periodEnd ? new Date(r.periodEnd).toLocaleDateString('en-GB') : '', r.payDate ? new Date(r.payDate).toLocaleDateString('en-GB') : '', r.status||'', (r.grossTotal/100).toFixed(2), (r.payeTotal/100).toFixed(2), (r.pensionTotal/100).toFixed(2), (r.netTotal/100).toFixed(2)]);
     exportToCsv(`payroll_runs_${today}.csv`, headers, rows);
+  }
+
+  function printPayrollRunDetail(run: any, lines: any[]) {
+    const logoHtml = org?.logoUrl
+      ? `<img src="${org.logoUrl}" alt="" style="width:56px;height:56px;border-radius:10px;object-fit:contain;border:1px solid #e2e8f0;background:white;padding:4px"/>`
+      : '';
+    const rowsHtml = lines.map((line: any) =>
+      `<tr>
+        <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;font-size:12px">${line.employee?.firstName || ''} ${line.employee?.lastName || ''} <span style="color:#94a3b8">(${line.employee?.staffId || ''})</span></td>
+        <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;font-size:12px;text-align:right;font-family:monospace">${formatNaira(line.grossPay)}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;font-size:12px;text-align:right;font-family:monospace;color:#dc2626">${formatNaira(line.paye)}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;font-size:12px;text-align:right;font-family:monospace;color:#d97706">${formatNaira(line.pensionEmployee)}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;font-size:12px;text-align:right;font-family:monospace">${formatNaira(line.nhf)}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;font-size:12px;text-align:right;font-family:monospace;font-weight:700;color:#059669">${formatNaira(line.netPay)}</td>
+      </tr>`
+    ).join('');
+    const grossTotal = lines.reduce((s: number, l: any) => s + (l.grossPay || 0), 0);
+    const payeTotal = lines.reduce((s: number, l: any) => s + (l.paye || 0), 0);
+    const pensionTotal = lines.reduce((s: number, l: any) => s + (l.pensionEmployee || 0), 0);
+    const nhfTotal = lines.reduce((s: number, l: any) => s + (l.nhf || 0), 0);
+    const netTotal = lines.reduce((s: number, l: any) => s + (l.netPay || 0), 0);
+    const totalRow = `<tr style="background:#f8fafc;font-weight:700">
+      <td style="padding:10px 12px;font-size:12px">TOTAL (${lines.length} employees)</td>
+      <td style="padding:10px 12px;font-size:12px;text-align:right;font-family:monospace">${formatNaira(grossTotal)}</td>
+      <td style="padding:10px 12px;font-size:12px;text-align:right;font-family:monospace;color:#dc2626">${formatNaira(payeTotal)}</td>
+      <td style="padding:10px 12px;font-size:12px;text-align:right;font-family:monospace;color:#d97706">${formatNaira(pensionTotal)}</td>
+      <td style="padding:10px 12px;font-size:12px;text-align:right;font-family:monospace">${formatNaira(nhfTotal)}</td>
+      <td style="padding:10px 12px;font-size:12px;text-align:right;font-family:monospace;color:#059669">${formatNaira(netTotal)}</td>
+    </tr>`;
+
+    const html = `<!DOCTYPE html><html><head><title>${run.runNumber} — Payroll Detail</title><style>
+      *{margin:0;padding:0;box-sizing:border-box}
+      body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:40px;color:#1e293b}
+      .org-header{display:flex;align-items:center;gap:16px;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid #0f172a}
+      .org-info{flex:1}
+      .org-name{font-size:16px;font-weight:800;color:#0f172a}
+      .org-details{font-size:10px;color:#64748b;margin-top:4px;line-height:1.6}
+      .org-details span{margin-right:12px}
+      .title-section{text-align:right}
+      .report-title{font-size:18px;font-weight:700;color:#0f172a}
+      .period-info{font-size:11px;color:#64748b;margin-top:4px}
+      table{width:100%;border-collapse:collapse;margin-top:16px}
+      th{background:#0f172a;color:#fff;padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.05em}
+      th.r{text-align:right}
+      .total-row{background:#f8fafc;font-weight:700}
+      .footer{margin-top:40px;text-align:center;font-size:10px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:16px}
+      @media print{body{padding:20px}}
+    </style></head><body>
+      <div class="org-header">
+        ${logoHtml ? `<div>${logoHtml}</div>` : ''}
+        <div class="org-info">
+          <div class="org-name">${org?.name || 'SkyBooks'}</div>
+          <div class="org-details">
+            ${org?.address ? `<span>${org.address}</span>` : ''}
+            ${org?.phone ? `<span>${org.phone}</span>` : ''}
+            ${org?.email ? `<span>${org.email}</span>` : ''}
+            ${org?.website ? `<span style="color:#4f46e5">${org.website}</span>` : ''}
+          </div>
+        </div>
+        <div class="title-section">
+          <div class="report-title">${run.runNumber} — Payroll Detail</div>
+          <div class="period-info">${fmtDate(run.periodStart)} – ${fmtDate(run.periodEnd)} &bull; Pay Date: ${fmtDate(run.payDate)}</div>
+        </div>
+      </div>
+      <table>
+        <thead><tr>
+          <th>Employee</th><th class="r">Gross</th><th class="r">PAYE</th><th class="r">Pension</th><th class="r">NHF</th><th class="r">Net</th>
+        </tr></thead>
+        <tbody>${rowsHtml}${totalRow}</tbody>
+      </table>
+      <div class="footer">${org?.name || 'SkyBooks'} &bull; Payroll Summary &bull; Generated: ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}</div>
+    </body></html>`;
+    const w = window.open('', '_blank');
+    if (w) { w.document.write(html); w.document.close(); setTimeout(() => w.print(), 500); }
+    else { alert('Popup blocked. Please allow popups for this site and try again.'); }
   }
 
   function handleCreate() {
@@ -282,7 +359,13 @@ export function PayrollRunsPage() {
           <div className="fixed top-0 right-0 h-full w-full max-w-2xl bg-white shadow-2xl z-50 flex flex-col">
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
               <h2 className="text-base font-semibold text-slate-900">{detailRun.runNumber} — Details</h2>
-              <button onClick={() => { setDetailRun(null); setDetailLines([]); }} className="p-1 rounded-lg text-slate-400 hover:text-slate-600 transition-all duration-200"><X size={18} /></button>
+              <div className="flex items-center gap-2">
+                <button onClick={() => printPayrollRunDetail(detailRun, detailLines)} disabled={loadingDetail || detailLines.length === 0}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl transition-all duration-200 hover:from-blue-700 hover:to-blue-800 shadow-sm disabled:opacity-50">
+                  <FileText size={13} /> Payroll PDF
+                </button>
+                <button onClick={() => { setDetailRun(null); setDetailLines([]); }} className="p-1 rounded-lg text-slate-400 hover:text-slate-600 transition-all duration-200"><X size={18} /></button>
+              </div>
             </div>
             <div className="flex-1 overflow-y-auto px-5 py-5">
               {loadingDetail ? (
