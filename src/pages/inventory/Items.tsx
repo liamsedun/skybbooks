@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
@@ -807,6 +808,7 @@ function ValuationStatementModal({
   onSelectItem: (id: string) => void;
   onClose: () => void;
 }) {
+  const navigate = useNavigate();
   const [asOfDate, setAsOfDate] = useState(new Date().toISOString().split('T')[0]);
   const { data: raw, isLoading } = useQuery({
     queryKey: ['inventory', 'valuation', selectedItemId, asOfDate],
@@ -822,6 +824,17 @@ function ValuationStatementModal({
   const filtered = selectedItemId
     ? (raw || []).filter((v) => v.item.id === selectedItemId)
     : raw || [];
+
+  const totals = useMemo(() => {
+    let openingQty = 0, openingValue = 0, closingQty = 0, closingValue = 0;
+    for (const vi of filtered) {
+      openingQty += vi.openingQty;
+      openingValue += vi.openingValue;
+      closingQty += vi.closingQty;
+      closingValue += vi.closingValue;
+    }
+    return { openingQty, openingValue, closingQty, closingValue };
+  }, [filtered]);
 
   function formatNaira(kobo: number) {
     return `\u20a6${(kobo / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
@@ -847,6 +860,10 @@ function ValuationStatementModal({
           String(line.balanceQty), formatNaira(line.balanceValue)
         ]);
       }
+    }
+    if (filtered.length > 1) {
+      rows.push(['','','','','','GRAND TOTAL','','','','','','']);
+      rows.push(['','','','','','','','','','Opening: ' + formatNaira(totals.openingValue) + ' (' + totals.openingQty + ' units)','Closing: ' + formatNaira(totals.closingValue) + ' (' + totals.closingQty + ' units)']);
     }
     const csv = [headers,...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
     const blob = new Blob([csv],{type:'text/csv'});
@@ -887,6 +904,15 @@ function ValuationStatementModal({
         </table>
       </div>`;
     }).join('');
+    const totalBlock = filtered.length > 1 ? `
+    <div style="margin-top:24px;padding:16px 20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;display:flex;align-items:center;justify-content:space-between">
+      <div><strong style="font-size:15px">Grand Total</strong> <span style="color:#94a3b8;font-size:12px">(${filtered.length} items)</span></div>
+      <div style="text-align:right;font-size:13px">
+        <span style="color:#64748b">Opening:</span> <strong>${formatNaira(totals.openingValue)}</strong> (${totals.openingQty} units)
+        &nbsp;&nbsp;&nbsp;
+        <span style="color:#64748b">Closing:</span> <strong>${formatNaira(totals.closingValue)}</strong> (${totals.closingQty} units)
+      </div>
+    </div>` : '';
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Valuation Statement</title>
     <style>
       *{margin:0;padding:0;box-sizing:border-box}
@@ -908,6 +934,7 @@ function ValuationStatementModal({
       <div style="text-align:right"><div class="title">Inventory Valuation Statement</div><div class="date">As of: ${new Date(asOfDate).toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}</div><div class="date">${filtered.length} item(s)</div></div>
     </div>
     ${blocks}
+    ${totalBlock}
     <div class="footer">SkyBooks By Skyhouse Accountants &amp; Technologies (Olalekan Williams Edun) &bull; Confidential</div>
     </body></html>`;
     const w = window.open('','_blank');
@@ -1010,7 +1037,18 @@ function ValuationStatementModal({
                                 {line.type.replace('_', ' ')}
                               </span>
                             </td>
-                            <td className="px-3 py-2 text-slate-500">{line.reference}</td>
+                            <td className="px-3 py-2">
+                              {line.referenceId ? (
+                                <button
+                                  onClick={() => navigate(`/purchases/bills/${line.referenceId}`)}
+                                  className="text-blue-600 hover:text-blue-800 font-medium hover:underline transition-colors"
+                                >
+                                  {line.reference}
+                                </button>
+                              ) : (
+                                <span className="text-slate-500">{line.reference}</span>
+                              )}
+                            </td>
                             <td className="px-3 py-2 text-right text-slate-700">{line.inQty > 0 ? line.inQty : '—'}</td>
                             <td className="px-3 py-2 text-right text-slate-700">{line.outQty > 0 ? line.outQty : '—'}</td>
                             <td className="px-3 py-2 text-right text-slate-700">
@@ -1029,6 +1067,27 @@ function ValuationStatementModal({
                 </div>
               </div>
             ))
+          )}
+          {filtered.length > 1 && (
+            <div className="bg-gradient-to-r from-slate-50 to-white border border-slate-200 rounded-xl p-4 flex items-center justify-between">
+              <div>
+                <span className="text-sm font-bold text-slate-800">Grand Total</span>
+                <span className="text-xs text-slate-400 ml-2">({filtered.length} items)</span>
+              </div>
+              <div className="flex items-center gap-6 text-sm">
+                <div>
+                  <span className="text-xs text-slate-400">Opening</span>
+                  <p className="font-bold text-slate-800 tabular-nums">{formatNaira(totals.openingValue)}</p>
+                  <p className="text-xs text-slate-400">{totals.openingQty} units</p>
+                </div>
+                <div className="text-2xl text-slate-300">→</div>
+                <div>
+                  <span className="text-xs text-slate-400">Closing</span>
+                  <p className="font-bold text-slate-900 tabular-nums">{formatNaira(totals.closingValue)}</p>
+                  <p className="text-xs text-slate-400">{totals.closingQty} units</p>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </div>
