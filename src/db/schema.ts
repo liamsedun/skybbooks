@@ -468,6 +468,7 @@ export const paymentsReceived = pgTable('payments_received', {
   reference: text('reference'),
   accountId: uuid('account_id').references(() => accounts.id).notNull(),
   incomeAccountId: uuid('income_account_id').references(() => accounts.id),
+  journalEntryId: uuid('journal_entry_id').references(() => journalEntries.id),
   notes: text('notes'),
   createdBy: uuid('created_by').references(() => users.id).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull()

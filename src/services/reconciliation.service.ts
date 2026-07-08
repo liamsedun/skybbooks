@@ -509,6 +509,12 @@ export async function createTransactionFromBankFeed(
 
       const entry = await createJournalEntry(journalParams, tx);
 
+      // Back-reference Payment Received table with generated ledger entry ID
+      await tx
+        .update(paymentsReceived)
+        .set({ journalEntryId: entry.id })
+        .where(eq(paymentsReceived.id, newPayRec.id));
+
       // Handle invoice allocations if provided
       if (input.allocations && input.allocations.length > 0) {
         for (const alloc of input.allocations) {
@@ -611,6 +617,12 @@ export async function createTransactionFromBankFeed(
       };
 
       const entry = await createJournalEntry(journalParams, tx);
+
+      // Back-reference Payment Made table with generated ledger entry ID
+      await tx
+        .update(paymentsMade)
+        .set({ journalEntryId: entry.id })
+        .where(eq(paymentsMade.id, newPayMade.id));
 
       // Handle bill allocations if provided
       if (input.allocations && input.allocations.length > 0) {
