@@ -149,6 +149,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     'set_organisation': '/settings/organisation',
     'set_invites': '/settings/invites',
     'set_roles': '/settings/roles',
+    'user_preferences': '/settings/user-preferences',
     'set_integrations': '/settings/integrations',
   }), []);
 
@@ -555,7 +556,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
                     My Account
                   </div>
                   <button 
-                    onClick={() => handleLinkClick('set_roles')} 
+                    onClick={() => handleLinkClick('user_preferences')} 
                     className="w-full px-3 py-1.5 hover:bg-slate-50 rounded-lg flex items-center text-left"
                   >
                     <User className="w-4 h-4 mr-2.5 text-ink-400" />
