@@ -718,6 +718,22 @@ export function LocationsPage() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const locations = form.locations || [];
 
+  const [newLocSeriesModule, setNewLocSeriesModule] = useState('');
+  const [newLocSeriesPrefix, setNewLocSeriesPrefix] = useState('');
+  const [newLocSeriesStart, setNewLocSeriesStart] = useState('00001');
+
+  function addLocSeries() {
+    if (!newLocSeriesModule) return;
+    setLocForm((p: any) => ({
+      ...p,
+      txnSeries: [...(p.txnSeries || []), { module: newLocSeriesModule, prefix: newLocSeriesPrefix, start: newLocSeriesStart }],
+      defaultTxnSeries: p.defaultTxnSeries || newLocSeriesModule,
+    }));
+    setNewLocSeriesModule('');
+    setNewLocSeriesPrefix('');
+    setNewLocSeriesStart('00001');
+  }
+
   function f(name: string) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
       setLocForm((p: Record<string, any>) => ({ ...p, [name]: e.target.value }));
@@ -952,13 +968,61 @@ export function LocationsPage() {
               {/* Transaction Number Series */}
               <div className="border border-slate-200 rounded-xl p-4 space-y-3">
                 <p className="text-xs font-medium text-slate-600">Transaction Number Series</p>
-                <button disabled={viewOnly} className={`inline-flex items-center gap-1.5 text-xs font-medium transition ${viewOnly ? 'text-slate-300 cursor-not-allowed' : 'text-indigo-600 hover:text-indigo-700'}`}>
-                  <Plus size={14} /> Add Transaction Series
-                </button>
+                {Array.isArray(locForm.txnSeries) && locForm.txnSeries.length > 0 && (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-slate-50 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wide">
+                          <th className="px-2 py-1.5">Module</th>
+                          <th className="px-2 py-1.5">Prefix</th>
+                          <th className="px-2 py-1.5">Start No.</th>
+                          <th className="px-2 py-1.5" />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {locForm.txnSeries.map((s: any, i: number) => (
+                          <tr key={i} className="border-t border-slate-100">
+                            <td className="px-2 py-1 text-slate-700 font-medium">{s.module}</td>
+                            <td className="px-2 py-1 font-mono text-slate-600">{s.prefix || ''}</td>
+                            <td className="px-2 py-1 font-mono text-slate-600">{s.start || ''}</td>
+                            <td className="px-2 py-1 text-right">
+                              {!viewOnly && (
+                                <button onClick={() => setLocForm((p: any) => ({ ...p, txnSeries: (p.txnSeries || []).filter((_: any, j: number) => j !== i) }))}
+                                  className="text-slate-400 hover:text-red-500 transition"><Trash2 size={12} /></button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                {!viewOnly && (
+                  <div className="flex items-center gap-2">
+                    <select value={newLocSeriesModule} onChange={e => setNewLocSeriesModule(e.target.value)}
+                      className="flex-1 px-2 py-1.5 text-xs border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+                      <option value="">Select module...</option>
+                      {DEFAULT_SERIES.filter((ds: any) => !(locForm.txnSeries || []).find((s: any) => s.module === ds.module)).map((ds: any) => (
+                        <option key={ds.module} value={ds.module}>{ds.module}</option>
+                      ))}
+                    </select>
+                    <input type="text" value={newLocSeriesPrefix} onChange={e => setNewLocSeriesPrefix(e.target.value)} placeholder="Prefix"
+                      className="w-16 px-2 py-1.5 text-xs border border-slate-200 rounded-lg font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-white" />
+                    <input type="text" value={newLocSeriesStart} onChange={e => setNewLocSeriesStart(e.target.value)} placeholder="Start"
+                      className="w-16 px-2 py-1.5 text-xs border border-slate-200 rounded-lg font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-white" />
+                    <button onClick={addLocSeries}
+                      disabled={!newLocSeriesModule}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition disabled:opacity-40"><Plus size={12} /> Add</button>
+                  </div>
+                )}
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Default Transaction Number Series</label>
-                  <select disabled={viewOnly} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 disabled:bg-slate-50 disabled:text-slate-500">
-                    <option value="">None</option>
+                  <select value={locForm.defaultTxnSeries || ''} onChange={e => setLocForm((p: any) => ({ ...p, defaultTxnSeries: e.target.value }))} disabled={viewOnly}
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white text-slate-800 disabled:bg-slate-50 disabled:text-slate-500">
+                    <option value="">None (use global series)</option>
+                    {(locForm.txnSeries || []).map((s: any) => (
+                      <option key={s.module} value={s.module}>{s.module}</option>
+                    ))}
                   </select>
                 </div>
               </div>
