@@ -47,6 +47,7 @@ export function JournalsPage() {
   const [search, setSearch] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'balanced' | 'unbalanced'>('all');
 
   const { data: journals, isLoading } = useQuery({
     queryKey: ['journals', dateFrom, dateTo],
@@ -55,15 +56,24 @@ export function JournalsPage() {
 
   const filteredJournals = React.useMemo(() => {
     const list = Array.isArray(journals) ? journals : [];
-    if (!search) return list;
-    const q = search.toLowerCase();
     return list.filter((e: any) => {
-      const entryNum = (e.entryNumber || '').toLowerCase();
-      const desc = (e.description || '').toLowerCase();
-      const source = (e.source || '').toLowerCase();
-      return entryNum.includes(q) || desc.includes(q) || source.includes(q);
+      if (search) {
+        const q = search.toLowerCase();
+        const entryNum = (e.entryNumber || '').toLowerCase();
+        const desc = (e.description || '').toLowerCase();
+        const source = (e.source || '').toLowerCase();
+        if (!entryNum.includes(q) && !desc.includes(q) && !source.includes(q)) return false;
+      }
+      if (statusFilter !== 'all') {
+        const tDebits = Number(e.totalDebits || 0);
+        const tCredits = Number(e.totalCredits || 0);
+        const balanced = tDebits === tCredits;
+        if (statusFilter === 'balanced' && !balanced) return false;
+        if (statusFilter === 'unbalanced' && balanced) return false;
+      }
+      return true;
     });
-  }, [journals, search]);
+  }, [journals, search, statusFilter]);
 
   useEffect(() => {
     if (entryParam && Array.isArray(journals)) {
@@ -190,8 +200,17 @@ export function JournalsPage() {
               <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} placeholder="dd/mm/yyyy"
               className="w-40 px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
             </div>
-            {(search || dateFrom || dateTo) && (
-              <button onClick={() => { setSearch(''); setDateFrom(''); setDateTo(''); }} className="text-xs text-slate-500 hover:text-slate-700 px-2 py-1">Clear</button>
+            <div className="flex items-center gap-1">
+              <label className="text-xs font-semibold text-slate-500">Status:</label>
+              <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as any)}
+                className="px-2 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow bg-white">
+                <option value="all">All</option>
+                <option value="balanced">Balanced</option>
+                <option value="unbalanced">Unbalanced</option>
+              </select>
+            </div>
+            {(search || dateFrom || dateTo || statusFilter !== 'all') && (
+              <button onClick={() => { setSearch(''); setDateFrom(''); setDateTo(''); setStatusFilter('all'); }} className="text-xs text-slate-500 hover:text-slate-700 px-2 py-1">Clear</button>
             )}
             <span className="text-xs text-slate-400 font-medium whitespace-nowrap">{filteredJournals.length} entr{filteredJournals.length !== 1 ? 'ies' : 'y'}</span>
           </div>
@@ -455,7 +474,7 @@ function JournalDetailView({ journalId, onBack }: { journalId: string; onBack: (
                         <AlertCircle className="w-4 h-4 text-red-500" />
                         <span className="font-semibold text-red-600">OUT OF BALANCE</span>
                         <span className="text-slate-400">·</span>
-                        <span className="text-red-500">Difference: {fmtNairaRaw(diff)}</span>
+                        <span className="text-red-500">Difference: {fmtNaira(diff)}</span>
                       </>
                     )}
                   </div>
