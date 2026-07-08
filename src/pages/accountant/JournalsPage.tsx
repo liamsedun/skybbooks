@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { journalsApi, accountantApi, printWindow } from '../../lib/api';
+import { journalsApi, accountantApi, printWindow, orgApi } from '../../lib/api';
 import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
 import { PageLoader } from '../../components/ui/PageLoader';
 import { Plus, X, Loader2, AlertCircle, CheckCircle2, Eye, Download, Upload, Printer, ExternalLink, ArrowLeft, RotateCcw } from 'lucide-react';
@@ -199,7 +199,7 @@ export function JournalsPage() {
             {(search || dateFrom || dateTo) && (
               <button onClick={() => { setSearch(''); setDateFrom(''); setDateTo(''); }} className="text-xs text-slate-500 hover:text-slate-700 px-2 py-1">Clear</button>
             )}
-            <span className="text-xs text-slate-400 font-medium whitespace-nowrap">{filteredJournals.length} entry{filteredJournals.length !== 1 ? 'ies' : 'y'}</span>
+            <span className="text-xs text-slate-400 font-medium whitespace-nowrap">{filteredJournals.length} entr{filteredJournals.length !== 1 ? 'ies' : 'y'}</span>
           </div>
           <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
           <table className="w-full text-sm">
@@ -207,35 +207,38 @@ export function JournalsPage() {
               <tr>
                 <th className="px-3 py-3 text-left">Entry #</th>
                 <th className="px-3 py-3 text-left">Date</th>
-                <th className="px-3 py-3 text-left">Description</th>
-                <th className="px-3 py-3 text-right">Source</th>
+                <th className="px-3 py-3 text-left">Narration</th>
+                <th className="px-3 py-3 text-right">Debit</th>
+                <th className="px-3 py-3 text-right">Credit</th>
+                <th className="px-3 py-3 text-center">Status</th>
                 <th className="px-3 py-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filteredJournals.map((entry: any) => (
+              {filteredJournals.map((entry: any) => {
+                const lines = entry.lines || [];
+                const tDebits = lines.reduce((s: number, l: any) => s + Number(l.debitAmount || 0), 0);
+                const tCredits = lines.reduce((s: number, l: any) => s + Number(l.creditAmount || 0), 0);
+                const balanced = tDebits === tCredits;
+                return (
                 <tr key={entry.id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-50">
                   <td className="px-4 py-3 font-mono font-medium text-slate-800">{entry.entryNumber}</td>
                   <td className="px-4 py-3 text-slate-600">{fmtDate(entry.date)}</td>
                   <td className="px-4 py-3 text-slate-600 max-w-xs truncate">{entry.description || '—'}</td>
-                  <td className="px-4 py-3 text-right">
-                    {entry.source !== 'manual' && entry.sourceId ? (
-                      <a
-                        href={sourceDocLink(entry.source, entry.sourceId) || '#'}
-                        onClick={(e) => { e.preventDefault(); const p = sourceDocLink(entry.source, entry.sourceId); if (p) navigate(p); }}
-                        className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border border-indigo-200/50 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-all duration-200"
-                      ><ExternalLink className="w-3 h-3" /> {entry.source.replace(/_/g, ' ')}</a>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border border-slate-200/50 bg-slate-100 text-slate-600 capitalize">{entry.source}</span>
-                    )}
+                  <td className="px-4 py-3 text-right font-mono font-medium tabular-nums text-slate-800">{tDebits > 0 ? fmtNaira(tDebits) : '—'}</td>
+                  <td className="px-4 py-3 text-right font-mono font-medium tabular-nums text-slate-800">{tCredits > 0 ? fmtNaira(tCredits) : '—'}</td>
+                  <td className="px-4 py-3 text-center">
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${balanced ? 'border border-emerald-200/50 bg-emerald-50 text-emerald-700' : 'border border-red-200/50 bg-red-50 text-red-700'}`}>
+                      {balanced ? 'Balanced' : 'Unbalanced'}
+                    </span>
                   </td>
                   <td className="px-4 py-3 text-right">
                     <button onClick={() => setViewId(entry.id)} className="text-blue-600 hover:text-blue-800"><Eye className="w-4 h-4" /></button>
                   </td>
                 </tr>
-              ))}
+              );})}
               {filteredJournals.length === 0 && (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-400">No journal entries yet.</td></tr>
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-400">No journal entries yet.</td></tr>
               )}
             </tbody>
           </table>
@@ -256,6 +259,10 @@ function JournalDetailView({ journalId, onBack }: { journalId: string; onBack: (
   const { data: accountsData } = useQuery({
     queryKey: ['accounts'],
     queryFn: () => accountantApi.getAccounts(),
+  });
+  const { data: orgData } = useQuery({
+    queryKey: ['org'],
+    queryFn: () => orgApi.getOrg(),
   });
 
   const reverseMutation = useMutation({
@@ -283,6 +290,15 @@ function JournalDetailView({ journalId, onBack }: { journalId: string; onBack: (
   };
 
   const handlePrintPdf = () => {
+    const org = orgData || {};
+    const orgName = org.name || '';
+    const orgAddr = org.address ? `<p style="margin:0;font-size:11px;color:#475569">${org.address}</p>` : '';
+    const orgPhone = org.phone || '';
+    const orgEmail = org.email || '';
+    const orgWebsite = org.website || '';
+    const orgLogo = org.logoUrl ? `<img src="${org.logoUrl}" style="max-height:60px;max-width:200px;object-fit:contain" />` : '';
+    const contactInfo = [orgPhone, orgEmail, orgWebsite].filter(Boolean).join(' | ');
+
     const rows = lines.map((l: any) => {
       const acc = accMap.get(l.accountId);
       const code = acc?.code || '';
@@ -300,7 +316,13 @@ function JournalDetailView({ journalId, onBack }: { journalId: string; onBack: (
       : `<span style="color:#dc2626;font-weight:700">✗ OUT OF BALANCE by ${fmtNaira(diff)}</span>`;
     printWindow(
       `Journal Entry ${entry.entryNumber}`,
-      `<table>
+      `<div style="text-align:center;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #e2e8f0">
+        ${orgLogo}
+        <h1 style="margin:4px 0;font-size:18px;color:#0f172a">${orgName}</h1>
+        ${orgAddr}
+        <p style="margin:2px 0;font-size:11px;color:#64748b">${contactInfo}</p>
+      </div>
+      <table>
         <thead>
           <tr>
             <th>Account Code</th>
