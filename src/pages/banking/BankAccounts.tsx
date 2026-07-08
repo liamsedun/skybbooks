@@ -956,7 +956,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                 </div>
                 <div className="text-right">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Current Balance</p>
-                  <p className="text-base font-black text-slate-900 font-mono">{formatNaira(accountPayments.transactions?.length > 0 ? accountPayments.transactions[accountPayments.transactions.length - 1].balance : (detailAccount.currentBalance || 0))}</p>
+                  <p className="text-base font-black text-slate-900 font-mono">{formatNaira(accountPayments.transactions?.length > 0 ? accountPayments.transactions[0].balance : accountPayments.openingBalance || 0)}</p>
                 </div>
               </div>
             </div>
