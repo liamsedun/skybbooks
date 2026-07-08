@@ -433,6 +433,33 @@ export async function runMigration() {
     `);
     console.log('[Migration] Added project_id columns to all transaction tables and journal_entries.');
 
+    // Backfill project_id on journal entries from source transactions
+    await db.execute(sql`
+      UPDATE journal_entries je
+      SET project_id = src.project_id
+      FROM (
+        SELECT id AS source_id, project_id FROM invoices WHERE project_id IS NOT NULL
+        UNION ALL
+        SELECT id, project_id FROM bills WHERE project_id IS NOT NULL
+        UNION ALL
+        SELECT id, project_id FROM expenses WHERE project_id IS NOT NULL
+        UNION ALL
+        SELECT id, project_id FROM payments_received WHERE project_id IS NOT NULL
+        UNION ALL
+        SELECT id, project_id FROM payments_made WHERE project_id IS NOT NULL
+        UNION ALL
+        SELECT id, project_id FROM credit_notes WHERE project_id IS NOT NULL
+        UNION ALL
+        SELECT id, project_id FROM vendor_credits WHERE project_id IS NOT NULL
+        UNION ALL
+        SELECT id, project_id FROM purchase_orders WHERE project_id IS NOT NULL
+      ) src
+      WHERE je.source_id = src.source_id
+        AND je.project_id IS NULL
+        AND src.project_id IS NOT NULL
+    `);
+    console.log('[Migration] Backfilled project_id on journal entries from source transactions.');
+
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema push:', err);
