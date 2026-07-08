@@ -306,6 +306,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
   // Build current display company avatar letter
   const orgInitials = organisation?.name?.charAt(0).toUpperCase() || 'F';
   const userInitials = user?.fullName?.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase() || 'U';
+  const userAvatarUrl = (user as any)?.avatarUrl;
 
   const formatRole = (roleStr: string) => {
     if (!roleStr) return 'Employee';
@@ -412,8 +413,8 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
         {/* STICKY BOTTOM USER PROFILE SECTION */}
         <div className="p-4 border-t border-slate-100 bg-slate-50/50" id="sidebar-sticky-footer">
           <div className="flex items-center space-x-3 bg-white p-2.5 rounded-xl border border-slate-100">
-            <div className="w-8.5 h-8.5 rounded-lg bg-primary-light text-primary font-extrabold flex items-center justify-center text-xs shadow-sm select-none uppercase">
-              {userInitials}
+            <div className="w-8.5 h-8.5 rounded-lg bg-primary-light text-primary font-extrabold flex items-center justify-center text-xs shadow-sm select-none uppercase overflow-hidden">
+              {userAvatarUrl ? <img src={userAvatarUrl} alt="" className="w-full h-full object-cover" /> : userInitials}
             </div>
             <div className="flex-1 min-w-0 select-none">
               <h4 className="text-xs font-bold text-ink-900 truncate">{user?.fullName || 'Active Controller'}</h4>
@@ -542,8 +543,8 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
                 onClick={() => setShowUserMenu(!showUserMenu)}
                 className="flex items-center space-x-1.5 md:space-x-2 p-0.5 md:p-1 border border-slate-150 hover:bg-slate-50 rounded-xl transition cursor-pointer select-none outline-none"
               >
-                <div className="h-6 w-6 md:h-7 md:w-7 rounded-lg bg-primary text-white font-extrabold text-[10px] md:text-xs flex items-center justify-center shadow-3xs uppercase">
-                  {userInitials}
+                <div className="h-6 w-6 md:h-7 md:w-7 rounded-lg bg-primary text-white font-extrabold text-[10px] md:text-xs flex items-center justify-center shadow-3xs uppercase overflow-hidden">
+                  {userAvatarUrl ? <img src={userAvatarUrl} alt="" className="w-full h-full object-cover" /> : userInitials}
                 </div>
                 <ChevronDown className="w-3 h-3 md:w-3.5 md:h-3.5 text-slate-400" />
               </button>
