@@ -29,32 +29,26 @@ router.get('/', async (req: AuthenticatedRequest, res: Response, next: NextFunct
   try {
     const orgId = req.user!.orgId!;
     const { from, to } = req.query;
-    const whereConditions: any[] = [eq(journalEntries.orgId, orgId)];
-    if (from) whereConditions.push(sql`${journalEntries.date} >= ${from}::date`);
-    if (to) whereConditions.push(sql`${journalEntries.date} <= ${to}::date`);
 
-    const list = await db
-      .select({
-        id: journalEntries.id,
-        orgId: journalEntries.orgId,
-        entryNumber: journalEntries.entryNumber,
-        description: journalEntries.description,
-        source: journalEntries.source,
-        sourceId: journalEntries.sourceId,
-        reference: journalEntries.reference,
-        date: journalEntries.date,
-        isReversed: journalEntries.isReversed,
-        createdBy: journalEntries.createdBy,
-        createdAt: journalEntries.createdAt,
-        totalDebits: sql<number>`coalesce(sum(case when jl.debit_amount > 0 then jl.debit_amount else 0 end), 0)`,
-        totalCredits: sql<number>`coalesce(sum(case when jl.credit_amount > 0 then jl.credit_amount else 0 end), 0)`,
-      })
-      .from(journalEntries)
-      .leftJoin(journalLines, eq(journalEntries.id, journalLines.entryId))
-      .where(and(...whereConditions))
-      .groupBy(journalEntries.id)
-      .orderBy(desc(journalEntries.date));
-    return res.status(200).json(list);
+    let query = sql`SELECT je.*, COALESCE(t.td, 0) AS total_debits, COALESCE(t.tc, 0) AS total_credits
+      FROM journal_entries je
+      LEFT JOIN (
+        SELECT jl.entry_id,
+          SUM(CASE WHEN jl.debit_amount > 0 THEN jl.debit_amount ELSE 0 END) AS td,
+          SUM(CASE WHEN jl.credit_amount > 0 THEN jl.credit_amount ELSE 0 END) AS tc
+        FROM journal_lines jl GROUP BY jl.entry_id
+      ) t ON je.id = t.entry_id
+      WHERE je.org_id = ${orgId}::uuid`;
+    if (from && typeof from === 'string' && from.trim()) {
+      query = sql`${query} AND je.date >= ${from}::date`;
+    }
+    if (to && typeof to === 'string' && to.trim()) {
+      query = sql`${query} AND je.date <= ${to}::date`;
+    }
+    query = sql`${query} ORDER BY je.date DESC`;
+
+    const result = await db.execute(query);
+    return res.status(200).json(result.rows || result);
   } catch (err) { return next(err); }
 });
 
