@@ -49,29 +49,21 @@ export function JournalsPage() {
   const [dateTo, setDateTo] = useState('');
 
   const { data: journals, isLoading } = useQuery({
-    queryKey: ['journals'],
-    queryFn: () => journalsApi.getJournals(),
+    queryKey: ['journals', dateFrom, dateTo],
+    queryFn: () => journalsApi.getJournals({ from: dateFrom || undefined, to: dateTo || undefined }),
   });
 
   const filteredJournals = React.useMemo(() => {
     const list = Array.isArray(journals) ? journals : [];
+    if (!search) return list;
+    const q = search.toLowerCase();
     return list.filter((e: any) => {
-      if (search) {
-        const q = search.toLowerCase();
-        const entryNum = (e.entryNumber || '').toLowerCase();
-        const desc = (e.description || '').toLowerCase();
-        const source = (e.source || '').toLowerCase();
-        if (!entryNum.includes(q) && !desc.includes(q) && !source.includes(q)) return false;
-      }
-      if (dateFrom && e.date && new Date(e.date) < new Date(dateFrom)) return false;
-      if (dateTo) {
-        const end = new Date(dateTo);
-        end.setHours(23, 59, 59, 999);
-        if (e.date && new Date(e.date) > end) return false;
-      }
-      return true;
+      const entryNum = (e.entryNumber || '').toLowerCase();
+      const desc = (e.description || '').toLowerCase();
+      const source = (e.source || '').toLowerCase();
+      return entryNum.includes(q) || desc.includes(q) || source.includes(q);
     });
-  }, [journals, search, dateFrom, dateTo]);
+  }, [journals, search]);
 
   useEffect(() => {
     if (entryParam && Array.isArray(journals)) {
@@ -216,9 +208,8 @@ export function JournalsPage() {
             </thead>
             <tbody>
               {filteredJournals.map((entry: any) => {
-                const lines = entry.lines || [];
-                const tDebits = lines.reduce((s: number, l: any) => s + Number(l.debitAmount || 0), 0);
-                const tCredits = lines.reduce((s: number, l: any) => s + Number(l.creditAmount || 0), 0);
+                const tDebits = Number(entry.totalDebits || 0);
+                const tCredits = Number(entry.totalCredits || 0);
                 const balanced = tDebits === tCredits;
                 return (
                 <tr key={entry.id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-50">
@@ -238,9 +229,19 @@ export function JournalsPage() {
                 </tr>
               );})}
               {filteredJournals.length === 0 && (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-400">No journal entries yet.</td></tr>
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-400">No journal entries found.</td></tr>
               )}
             </tbody>
+            {filteredJournals.length > 0 && (
+            <tfoot className="bg-slate-50 border-t-2 border-slate-200">
+              <tr className="font-bold text-sm">
+                <td colSpan={3} className="px-5 py-3.5 text-right text-slate-700 uppercase tracking-wide">TOTAL</td>
+                <td className="px-5 py-3.5 text-right font-mono tabular-nums text-slate-900">{fmtNaira(filteredJournals.reduce((s: number, e: any) => s + Number(e.totalDebits || 0), 0))}</td>
+                <td className="px-5 py-3.5 text-right font-mono tabular-nums text-slate-900">{fmtNaira(filteredJournals.reduce((s: number, e: any) => s + Number(e.totalCredits || 0), 0))}</td>
+                <td colSpan={2}></td>
+              </tr>
+            </tfoot>
+            )}
           </table>
         </div>
         </>
