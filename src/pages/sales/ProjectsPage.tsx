@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { projectsApi, api } from '../../lib/api';
 import { PageLoader } from '../../components/ui/PageLoader';
+import { useOrgSettings } from '../../hooks/useOrgSettings';
 import {
   Plus, X, Loader2, AlertCircle, CheckCircle2, Briefcase, Search, Trash2, Edit3, Eye
 } from 'lucide-react';
@@ -30,6 +31,9 @@ export function ProjectsPage() {
     queryFn: projectsApi.list,
   });
 
+  const { settings } = useOrgSettings();
+  const customFieldDefs: { name: string; dataType: string }[] = settings?.projects?.fields || [];
+
   const filteredProjects = useMemo(() => {
     const list = Array.isArray(projects) ? projects : [];
     if (!search) return list;
@@ -37,9 +41,12 @@ export function ProjectsPage() {
     return list.filter((p: any) =>
       (p.name || '').toLowerCase().includes(q) ||
       (p.code || '').toLowerCase().includes(q) ||
-      (p.description || '').toLowerCase().includes(q)
+      (p.description || '').toLowerCase().includes(q) ||
+      customFieldDefs.some((cf: any) =>
+        (p.customFields?.[cf.name] || '').toString().toLowerCase().includes(q)
+      )
     );
-  }, [projects, search]);
+  }, [projects, search, customFieldDefs]);
 
   const createMutation = useMutation({
     mutationFn: (data: any) => projectsApi.create(data),
@@ -163,6 +170,9 @@ export function ProjectsPage() {
                 <th className="px-3 py-3 text-left">Start Date</th>
                 <th className="px-3 py-3 text-left">End Date</th>
                 <th className="px-3 py-3 text-right">Budget</th>
+                {customFieldDefs.map((cf, i) => (
+                  <th key={i} className="px-3 py-3 text-left">{cf.name}</th>
+                ))}
                 <th className="px-3 py-3 text-right">Actions</th>
               </tr>
             </thead>
@@ -182,6 +192,9 @@ export function ProjectsPage() {
                   <td className="px-4 py-3 text-slate-600">{fmtDate(p.startDate)}</td>
                   <td className="px-4 py-3 text-slate-600">{fmtDate(p.endDate)}</td>
                   <td className="px-4 py-3 text-right font-mono font-semibold tabular-nums text-slate-900">{fmtNaira(p.budget)}</td>
+                  {customFieldDefs.map((cf, i) => (
+                    <td key={i} className="px-4 py-3 text-slate-600">{p.customFields?.[cf.name] ?? '—'}</td>
+                  ))}
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <button onClick={() => setViewTarget(p)}
@@ -201,7 +214,7 @@ export function ProjectsPage() {
                 </tr>
               ))}
               {filteredProjects.length === 0 && (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-400">No projects found.</td></tr>
+                <tr><td colSpan={7 + customFieldDefs.length} className="px-4 py-8 text-center text-slate-400">No projects found.</td></tr>
               )}
             </tbody>
           </table>
@@ -212,6 +225,10 @@ export function ProjectsPage() {
 }
 
 function ProjectDetailView({ project, onClose }: { project: any; onClose: () => void }) {
+  const { settings } = useOrgSettings();
+  const customFieldDefs: { name: string; dataType: string }[] = settings?.projects?.fields || [];
+  const customFields = project.customFields || {};
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 space-y-4 border border-slate-200/80" onClick={e => e.stopPropagation()}>
@@ -246,6 +263,14 @@ function ProjectDetailView({ project, onClose }: { project: any; onClose: () => 
               <span className="text-slate-900 col-span-2">{project.description}</span>
             </div>
           )}
+          {customFieldDefs.filter(cf => customFields[cf.name] !== undefined && customFields[cf.name] !== '').map((cf, i) => (
+            <div key={i} className="grid grid-cols-3 gap-4 py-2.5 border-b border-slate-100">
+              <span className="text-slate-500 font-medium col-span-1">{cf.name}</span>
+              <span className="text-slate-900 col-span-2">
+                {cf.dataType === 'boolean' ? (customFields[cf.name] === 'true' ? 'Yes' : 'No') : customFields[cf.name]}
+              </span>
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -261,6 +286,9 @@ function ProjectForm({
   onSave: (data: any) => void;
   onClose: () => void;
 }) {
+  const { settings } = useOrgSettings();
+  const customFieldDefs: { name: string; dataType: string }[] = settings?.projects?.fields || [];
+
   const [name, setName] = useState(editTarget?.name || '');
   const [code, setCode] = useState(editTarget?.code || '');
   const [description, setDescription] = useState(editTarget?.description || '');
@@ -268,6 +296,9 @@ function ProjectForm({
   const [startDate, setStartDate] = useState(editTarget?.startDate ? new Date(editTarget.startDate).toISOString().split('T')[0] : '');
   const [endDate, setEndDate] = useState(editTarget?.endDate ? new Date(editTarget.endDate).toISOString().split('T')[0] : '');
   const [budget, setBudget] = useState(editTarget ? (editTarget.budget / 100).toString() : '');
+  const [customFields, setCustomFields] = useState<Record<string, string>>(
+    editTarget?.customFields || {}
+  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -280,6 +311,7 @@ function ProjectForm({
       startDate: startDate || undefined,
       endDate: endDate || undefined,
       budget: budget ? parseFloat(budget) : 0,
+      customFields: Object.keys(customFields).length > 0 ? customFields : undefined,
     });
   };
 
@@ -345,6 +377,41 @@ function ProjectForm({
             <input type="number" step="0.01" min="0" value={budget} onChange={e => setBudget(e.target.value)}
               className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow mt-1" />
           </div>
+
+          {customFieldDefs.length > 0 && (
+            <div className="border-t border-slate-100 pt-4 space-y-3">
+              <p className="text-xs font-semibold text-slate-500 uppercase">Custom Fields</p>
+              {customFieldDefs.map((cf, i) => (
+                <div key={i}>
+                  {cf.dataType === 'boolean' ? (
+                    <label className="flex items-center gap-2 text-sm text-slate-700">
+                      <input type="checkbox" checked={customFields[cf.name] === 'true'}
+                        onChange={e => setCustomFields((p: any) => ({ ...p, [cf.name]: e.target.checked ? 'true' : 'false' }))}
+                        className="rounded border-slate-300 text-indigo-600" />
+                      {cf.name}
+                    </label>
+                  ) : (
+                    <>
+                      <label className="text-xs font-semibold text-slate-500 uppercase">{cf.name}</label>
+                      {cf.dataType === 'date' ? (
+                        <input type="date" value={customFields[cf.name] || ''}
+                          onChange={e => setCustomFields((p: any) => ({ ...p, [cf.name]: e.target.value }))}
+                          className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow mt-1" />
+                      ) : cf.dataType === 'number' ? (
+                        <input type="number" value={customFields[cf.name] || ''}
+                          onChange={e => setCustomFields((p: any) => ({ ...p, [cf.name]: e.target.value }))}
+                          className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow mt-1" />
+                      ) : (
+                        <input type="text" value={customFields[cf.name] || ''}
+                          onChange={e => setCustomFields((p: any) => ({ ...p, [cf.name]: e.target.value }))}
+                          className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow mt-1" />
+                      )}
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="flex justify-end gap-3 pt-2 shrink-0">
             <button type="button" onClick={onClose}
