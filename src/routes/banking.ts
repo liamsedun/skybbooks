@@ -165,19 +165,24 @@ router.post('/accounts', async (req: AuthenticatedRequest, res: Response, next: 
       throw new AppError('The target bank cash ledger account was not found in Chart of Accounts.', 404);
     }
 
+    const insertData: Record<string, any> = {
+      orgId,
+      name: body.name,
+      accountNumber: body.accountNumber,
+      bankName: body.bankName,
+      bankCode: body.bankCode || null,
+      accountId: body.accountId,
+      currency: body.currency,
+      currentBalance: body.currentBalance,
+      isActive: true
+    };
+    if (body.openingBalanceDate) {
+      insertData.openingBalanceDate = new Date(body.openingBalanceDate);
+    }
+
     const [newBa] = await db
       .insert(bankAccounts)
-      .values({
-        orgId,
-        name: body.name,
-        accountNumber: body.accountNumber,
-        bankName: body.bankName,
-        bankCode: body.bankCode || null,
-        accountId: body.accountId,
-        currency: body.currency,
-        currentBalance: body.currentBalance,
-        isActive: true
-      })
+      .values(insertData)
       .returning();
 
     return res.status(201).json(newBa);
@@ -203,9 +208,17 @@ router.patch('/accounts/:id', async (req: AuthenticatedRequest, res: Response, n
       throw new AppError('Bank account details not found.', 404);
     }
 
+    // Convert openingBalanceDate string to Date for timestamp column
+    const setData: Record<string, any> = { ...body };
+    if (setData.openingBalanceDate) {
+      setData.openingBalanceDate = new Date(setData.openingBalanceDate);
+    }
+    // Strip type — column does not exist on bank_accounts
+    delete setData.type;
+
     const [updated] = await db
       .update(bankAccounts)
-      .set(body)
+      .set(setData)
       .where(eq(bankAccounts.id, id))
       .returning();
 
