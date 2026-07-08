@@ -1,9 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { bankingApi } from '../../lib/api';
+import { bankingApi, orgApi, printWindow } from '../../lib/api';
 import { PageLoader } from '../../components/ui/PageLoader';
 import {
-  Plus, X, Loader2, AlertCircle, CheckCircle2, ArrowRightLeft, Trash2, Edit3, Search
+  Plus, X, Loader2, AlertCircle, CheckCircle2, ArrowRightLeft, Trash2, Edit3, Search, Eye, Printer
 } from 'lucide-react';
 
 function fmtNaira(v: number): string {
@@ -21,6 +21,7 @@ export function TransfersPage() {
   const [dateTo, setDateTo] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editTarget, setEditTarget] = useState<any | null>(null);
+  const [viewTarget, setViewTarget] = useState<any | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -203,6 +204,10 @@ export function TransfersPage() {
                   <td className="px-4 py-3 text-right font-mono font-semibold tabular-nums text-slate-900">{fmtNaira(t.amount)}</td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-2">
+                      <button onClick={() => setViewTarget(t)}
+                        className="text-indigo-600 hover:text-indigo-800 p-1" title="View details">
+                        <Eye className="w-4 h-4" />
+                      </button>
                       <button onClick={() => { setEditTarget(t); setFormError(null); }}
                         className="text-blue-600 hover:text-blue-800 p-1" title="Edit">
                         <Edit3 className="w-4 h-4" />
@@ -222,6 +227,100 @@ export function TransfersPage() {
           </table>
         </div>
       )}
+
+      {viewTarget && (
+        <TransferDetailView transfer={viewTarget} onClose={() => setViewTarget(null)} />
+      )}
+    </div>
+  );
+}
+
+function TransferDetailView({ transfer, onClose }: { transfer: any; onClose: () => void }) {
+  const { data: org } = useQuery({ queryKey: ['org'], queryFn: orgApi.getOrg });
+
+  const handlePrintPdf = () => {
+    const o = org || {};
+    const orgName = o.name || '';
+    const orgAddr = o.address ? `<p style="margin:0;font-size:11px;color:#475569">${o.address}</p>` : '';
+    const orgPhone = o.phone || '';
+    const orgEmail = o.email || '';
+    const orgWebsite = o.website || '';
+    const orgLogo = o.logoUrl ? `<img src="${o.logoUrl}" style="max-height:60px;max-width:200px;object-fit:contain" />` : '';
+    const contactInfo = [orgPhone, orgEmail, orgWebsite].filter(Boolean).join(' | ');
+
+    printWindow(
+      `Transfer ${transfer.transferNumber}`,
+      `<div style="text-align:center;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #e2e8f0">
+        ${orgLogo}
+        <h1 style="margin:4px 0;font-size:18px;color:#0f172a">${orgName}</h1>
+        ${orgAddr}
+        <p style="margin:2px 0;font-size:11px;color:#64748b">${contactInfo}</p>
+      </div>
+      <table>
+        <tr><td style="font-weight:600;padding:6px 12px;width:160px">Transfer #</td><td style="padding:6px 12px">${transfer.transferNumber}</td></tr>
+        <tr><td style="font-weight:600;padding:6px 12px">Date</td><td style="padding:6px 12px">${fmtDate(transfer.date)}</td></tr>
+        <tr><td style="font-weight:600;padding:6px 12px">Paid from</td><td style="padding:6px 12px">${transfer.fromAccountName || transfer.fromBankName || '—'}</td></tr>
+        <tr><td style="font-weight:600;padding:6px 12px">Received in</td><td style="padding:6px 12px">${transfer.toAccountName || transfer.toBankName || '—'}</td></tr>
+        <tr><td style="font-weight:600;padding:6px 12px">Amount</td><td style="padding:6px 12px;font-weight:700">${fmtNaira(transfer.amount)}</td></tr>
+        <tr><td style="font-weight:600;padding:6px 12px">Description</td><td style="padding:6px 12px">${transfer.description || '—'}</td></tr>
+        <tr><td style="font-weight:600;padding:6px 12px">Reference</td><td style="padding:6px 12px">${transfer.reference || '—'}</td></tr>
+        <tr><td style="font-weight:600;padding:6px 12px">Created</td><td style="padding:6px 12px">${fmtDate(transfer.createdAt)}</td></tr>
+      </table>`,
+      `Transfer ${transfer.transferNumber}`
+    );
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 space-y-4 border border-slate-200/80" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-bold text-slate-900">Transfer Details</h2>
+          <div className="flex items-center gap-2">
+            <button onClick={handlePrintPdf}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 rounded-xl hover:bg-slate-200 transition-all">
+              <Printer className="w-3.5 h-3.5" /> Print / PDF
+            </button>
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1 rounded-xl hover:bg-slate-100"><X className="w-5 h-5" /></button>
+          </div>
+        </div>
+
+        <div className="space-y-1.5 text-sm">
+          <div className="grid grid-cols-3 gap-4 py-2.5 border-b border-slate-100">
+            <span className="text-slate-500 font-medium col-span-1">Transfer #</span>
+            <span className="text-slate-900 font-semibold font-mono col-span-2">{transfer.transferNumber}</span>
+          </div>
+          <div className="grid grid-cols-3 gap-4 py-2.5 border-b border-slate-100">
+            <span className="text-slate-500 font-medium col-span-1">Date</span>
+            <span className="text-slate-900 col-span-2">{fmtDate(transfer.date)}</span>
+          </div>
+          <div className="grid grid-cols-3 gap-4 py-2.5 border-b border-slate-100">
+            <span className="text-slate-500 font-medium col-span-1">Paid from</span>
+            <span className="text-slate-900 col-span-2">{transfer.fromAccountName || transfer.fromBankName || '—'}</span>
+          </div>
+          <div className="grid grid-cols-3 gap-4 py-2.5 border-b border-slate-100">
+            <span className="text-slate-500 font-medium col-span-1">Received in</span>
+            <span className="text-slate-900 col-span-2">{transfer.toAccountName || transfer.toBankName || '—'}</span>
+          </div>
+          <div className="grid grid-cols-3 gap-4 py-2.5 border-b border-slate-100">
+            <span className="text-slate-500 font-medium col-span-1">Amount</span>
+            <span className="text-slate-900 font-semibold col-span-2">{fmtNaira(transfer.amount)}</span>
+          </div>
+          <div className="grid grid-cols-3 gap-4 py-2.5 border-b border-slate-100">
+            <span className="text-slate-500 font-medium col-span-1">Description</span>
+            <span className="text-slate-900 col-span-2">{transfer.description || '—'}</span>
+          </div>
+          {(transfer.reference) && (
+            <div className="grid grid-cols-3 gap-4 py-2.5 border-b border-slate-100">
+              <span className="text-slate-500 font-medium col-span-1">Reference</span>
+              <span className="text-slate-900 col-span-2">{transfer.reference}</span>
+            </div>
+          )}
+          <div className="grid grid-cols-3 gap-4 py-2.5">
+            <span className="text-slate-500 font-medium col-span-1">Created</span>
+            <span className="text-slate-900 col-span-2">{fmtDate(transfer.createdAt)}</span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
