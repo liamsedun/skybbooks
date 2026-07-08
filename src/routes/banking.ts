@@ -95,7 +95,11 @@ const createRecordFromFeedSchema = z.object({
   type: z.enum(['expense', 'payment_received', 'payment_made', 'transfer']),
   accountId: z.string().uuid('A valid category general ledger account target is required.'),
   contactId: z.string().uuid().optional(),
-  description: z.string().min(1, 'A visual journal narration description is required.')
+  description: z.string().min(1, 'A visual journal narration description is required.'),
+  allocations: z.array(z.object({
+    id: z.string().uuid(),
+    amount: z.number().int().nonnegative()
+  })).optional().default([])
 });
 
 const bankRuleSchema = z.object({

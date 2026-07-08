@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { bankingApi, salesApi } from '../../lib/api';
+import { bankingApi, salesApi, purchasesApi } from '../../lib/api';
 import { useCurrency } from '../../hooks/useCurrency';
 import { useAuth } from '../../hooks/useAuth';
 import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
@@ -68,6 +68,37 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
     contactId: ''
   });
 
+  // Open bills/invoices for allocation (quick payment drawer)
+  const [openBills, setOpenBills] = useState<any[]>([]);
+  const [openInvoices, setOpenInvoices] = useState<any[]>([]);
+  const [selectedAllocations, setSelectedAllocations] = useState<string[]>([]);
+
+  // Fetch open bills when vendor selected for payment_made
+  useEffect(() => {
+    if (quickCreateForm.type === 'payment_made' && quickCreateForm.contactId) {
+      purchasesApi.getBills({ vendorId: quickCreateForm.contactId, limit: 100 }).then((res: any) => {
+        const billsData = res?.bills || [];
+        setOpenBills(billsData.filter((b: any) => (b.balanceDue || 0) > 0));
+      }).catch(() => setOpenBills([]));
+    } else {
+      setOpenBills([]);
+    }
+    setSelectedAllocations([]);
+  }, [quickCreateForm.type, quickCreateForm.contactId]);
+
+  // Fetch open invoices when customer selected for payment_received
+  useEffect(() => {
+    if (quickCreateForm.type === 'payment_received' && quickCreateForm.contactId) {
+      salesApi.getInvoices({ customerId: quickCreateForm.contactId, limit: 200 }).then((res: any) => {
+        const invData = res?.invoices || [];
+        setOpenInvoices(invData.filter((inv: any) => (inv.balanceDue || 0) > 0));
+      }).catch(() => setOpenInvoices([]));
+    } else {
+      setOpenInvoices([]);
+    }
+    setSelectedAllocations([]);
+  }, [quickCreateForm.type, quickCreateForm.contactId]);
+
   // Recent match logs this session to print at bottom
   const [sessionMatches, setSessionMatches] = useState<Array<{
     txn: any;
@@ -125,6 +156,13 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
   const { data: customers = [] } = useQuery({
     queryKey: ['customers'],
     queryFn: salesApi.getCustomers,
+    enabled: !!token,
+  });
+
+  // Fetch vendors for payment_made contact association
+  const { data: vendors = [] } = useQuery({
+    queryKey: ['vendors'],
+    queryFn: purchasesApi.getVendors,
     enabled: !!token,
   });
 
@@ -329,11 +367,41 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
       return;
     }
 
+    // Build allocations from selected bills/invoices
+    const totalAmount = quickCreateTxns.reduce((sum: number, t: any) => sum + Math.abs(t.amount), 0);
+    let allocations: { id: string; amount: number }[] = [];
+    if (quickCreateForm.type === 'payment_made' && selectedAllocations.length > 0 && openBills.length > 0) {
+      const selectedBills = openBills.filter((b: any) => selectedAllocations.includes(b.id));
+      const totalSelectedBal = selectedBills.reduce((s: number, b: any) => s + (b.balanceDue || 0), 0);
+      if (totalSelectedBal > 0) {
+        let remaining = totalAmount;
+        allocations = selectedBills.map((b: any, i: number) => {
+          const isLast = i === selectedBills.length - 1;
+          const amt = isLast ? remaining : Math.round((b.balanceDue / totalSelectedBal) * totalAmount);
+          remaining -= amt;
+          return { id: b.id, amount: Math.min(amt, b.balanceDue) };
+        });
+      }
+    } else if (quickCreateForm.type === 'payment_received' && selectedAllocations.length > 0 && openInvoices.length > 0) {
+      const selectedInvs = openInvoices.filter((inv: any) => selectedAllocations.includes(inv.id));
+      const totalSelectedBal = selectedInvs.reduce((s: number, inv: any) => s + (inv.balanceDue || 0), 0);
+      if (totalSelectedBal > 0) {
+        let remaining = totalAmount;
+        allocations = selectedInvs.map((inv: any, i: number) => {
+          const isLast = i === selectedInvs.length - 1;
+          const amt = isLast ? remaining : Math.round((inv.balanceDue / totalSelectedBal) * totalAmount);
+          remaining -= amt;
+          return { id: inv.id, amount: Math.min(amt, inv.balanceDue) };
+        });
+      }
+    }
+
     const data = {
       type: quickCreateForm.type,
       accountId: quickCreateForm.accountId,
       description: quickCreateForm.description,
-      contactId: quickCreateForm.contactId || undefined
+      contactId: quickCreateForm.contactId || undefined,
+      allocations: allocations.length > 0 ? allocations : undefined
     };
 
     if (quickCreateTxns.length === 1) {
@@ -980,6 +1048,27 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
                     </p>
                   </div>
 
+                  {/* Vendor for payment_made */}
+                  {quickCreateForm.type === 'payment_made' && (
+                    <div>
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1 font-sans">
+                        Vendor (Optional)
+                      </label>
+                      <select
+                        value={quickCreateForm.contactId}
+                        onChange={(e) => setQuickCreateForm({ ...quickCreateForm, contactId: e.target.value })}
+                        className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow bg-white text-slate-800"
+                      >
+                        <option value="">-- No linked vendor --</option>
+                        {vendors.map((c: any) => (
+                          <option key={c.id} value={c.id}>
+                            {c.fullName || c.name || 'Anonymous Vendor'}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
                   {/* Association with client/customer */}
                   {quickCreateForm.type === 'payment_received' && (
                     <div>
@@ -998,6 +1087,64 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
                           </option>
                         ))}
                       </select>
+                    </div>
+                  )}
+
+                  {/* Open bills selection for payment_made */}
+                  {quickCreateForm.type === 'payment_made' && quickCreateForm.contactId && openBills.length > 0 && (
+                    <div>
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                        Allocate Payment to Bills
+                      </label>
+                      <div className="border border-slate-200 rounded-xl p-2 max-h-[160px] overflow-y-auto space-y-1">
+                        {openBills.map((bill: any) => (
+                          <label key={bill.id} className="flex items-center gap-2 p-1.5 hover:bg-slate-50 rounded-lg cursor-pointer text-xs">
+                            <input
+                              type="checkbox"
+                              checked={selectedAllocations.includes(bill.id)}
+                              onChange={() => {
+                                setSelectedAllocations((prev) =>
+                                  prev.includes(bill.id)
+                                    ? prev.filter((id) => id !== bill.id)
+                                    : [...prev, bill.id]
+                                );
+                              }}
+                              className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                            />
+                            <span className="flex-1 truncate">{bill.billNumber || 'Bill'}</span>
+                            <span className="font-mono text-indigo-600 font-semibold">{formatNaira(bill.balanceDue)}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Open invoices selection for payment_received */}
+                  {quickCreateForm.type === 'payment_received' && quickCreateForm.contactId && openInvoices.length > 0 && (
+                    <div>
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                        Allocate Payment to Invoices
+                      </label>
+                      <div className="border border-slate-200 rounded-xl p-2 max-h-[160px] overflow-y-auto space-y-1">
+                        {openInvoices.map((inv: any) => (
+                          <label key={inv.id} className="flex items-center gap-2 p-1.5 hover:bg-slate-50 rounded-lg cursor-pointer text-xs">
+                            <input
+                              type="checkbox"
+                              checked={selectedAllocations.includes(inv.id)}
+                              onChange={() => {
+                                setSelectedAllocations((prev) =>
+                                  prev.includes(inv.id)
+                                    ? prev.filter((id) => id !== inv.id)
+                                    : [...prev, inv.id]
+                                );
+                              }}
+                              className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                            />
+                            <span className="flex-1 truncate">{inv.invoiceNumber || 'Invoice'}</span>
+                            <span className="font-mono text-indigo-600 font-semibold">{formatNaira(inv.balanceDue)}</span>
+                          </label>
+                        ))}
+                      </div>
                     </div>
                   )}
 

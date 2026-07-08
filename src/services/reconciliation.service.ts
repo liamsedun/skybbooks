@@ -15,7 +15,11 @@ import {
   expenses,
   paymentsReceived,
   paymentsMade,
-  contacts
+  contacts,
+  bills,
+  invoices,
+  paymentMadeAllocations,
+  paymentAllocations
 } from '../db/schema';
 import { AppError } from '../lib/errors';
 import { createJournalEntry, getAccountBalance } from './ledger.service';
@@ -326,6 +330,7 @@ export async function createTransactionFromBankFeed(
     accountId: string; // Opposing balancing category/contra ledger account ID
     contactId?: string;
     description: string;
+    allocations?: { id: string; amount: number }[];
   },
   userId?: string
 ): Promise<any> {
@@ -504,6 +509,38 @@ export async function createTransactionFromBankFeed(
 
       const entry = await createJournalEntry(journalParams, tx);
 
+      // Handle invoice allocations if provided
+      if (input.allocations && input.allocations.length > 0) {
+        for (const alloc of input.allocations) {
+          const [inv] = await tx
+            .select()
+            .from(invoices)
+            .where(eq(invoices.id, alloc.id))
+            .limit(1);
+          if (!inv) {
+            throw new AppError(`Invoice ${alloc.id} not found.`, 404);
+          }
+          const nextAmountPaid = inv.amountPaid + alloc.amount;
+          const nextBalanceDue = inv.total - nextAmountPaid;
+          const nextStatus = nextBalanceDue <= 0 ? 'paid' : 'partial';
+          await tx
+            .update(invoices)
+            .set({
+              amountPaid: nextAmountPaid,
+              balanceDue: nextBalanceDue,
+              status: nextStatus
+            })
+            .where(eq(invoices.id, inv.id));
+          await tx
+            .insert(paymentAllocations)
+            .values({
+              paymentId: newPayRec.id,
+              invoiceId: inv.id,
+              amount: alloc.amount
+            });
+        }
+      }
+
       const reconciledLine = entry.lines.find((l: any) => l.accountId === ba.accountId && l.debitAmount === bt.amount);
       if (!reconciledLine) {
         throw new AppError('Accounting engine mismatch: unable to capture cash debit reconciliation target.', 500);
@@ -574,6 +611,38 @@ export async function createTransactionFromBankFeed(
       };
 
       const entry = await createJournalEntry(journalParams, tx);
+
+      // Handle bill allocations if provided
+      if (input.allocations && input.allocations.length > 0) {
+        for (const alloc of input.allocations) {
+          const [bl] = await tx
+            .select()
+            .from(bills)
+            .where(eq(bills.id, alloc.id))
+            .limit(1);
+          if (!bl) {
+            throw new AppError(`Bill ${alloc.id} not found.`, 404);
+          }
+          const nextAmountPaid = bl.amountPaid + alloc.amount;
+          const nextBalanceDue = bl.total - nextAmountPaid;
+          const nextStatus = nextBalanceDue <= 0 ? 'paid' : 'partial';
+          await tx
+            .update(bills)
+            .set({
+              amountPaid: nextAmountPaid,
+              balanceDue: nextBalanceDue,
+              status: nextStatus
+            })
+            .where(eq(bills.id, bl.id));
+          await tx
+            .insert(paymentMadeAllocations)
+            .values({
+              paymentId: newPayMade.id,
+              billId: bl.id,
+              amount: alloc.amount
+            });
+        }
+      }
 
       const reconciledLine = entry.lines.find((l: any) => l.accountId === ba.accountId && l.creditAmount === bt.amount);
       if (!reconciledLine) {
