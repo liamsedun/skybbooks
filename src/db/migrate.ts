@@ -399,6 +399,40 @@ export async function runMigration() {
     `);
     console.log('[Migration] Backfilled bank_transfers from existing transfer journal entries.');
 
+    // Create projects table
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS projects (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        name text NOT NULL,
+        code text,
+        description text,
+        status text DEFAULT 'active' NOT NULL,
+        start_date timestamp,
+        end_date timestamp,
+        budget bigint DEFAULT 0 NOT NULL,
+        custom_fields jsonb DEFAULT '{}',
+        created_by uuid,
+        created_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    console.log('[Migration] Created projects table.');
+
+    // Add project_id FK columns to transaction tables
+    await db.execute(sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS project_id uuid REFERENCES projects(id)`);
+    await db.execute(sql`ALTER TABLE credit_notes ADD COLUMN IF NOT EXISTS project_id uuid REFERENCES projects(id)`);
+    await db.execute(sql`ALTER TABLE payments_received ADD COLUMN IF NOT EXISTS project_id uuid REFERENCES projects(id)`);
+    await db.execute(sql`ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS project_id uuid REFERENCES projects(id)`);
+    await db.execute(sql`ALTER TABLE bills ADD COLUMN IF NOT EXISTS project_id uuid REFERENCES projects(id)`);
+    await db.execute(sql`ALTER TABLE payments_made ADD COLUMN IF NOT EXISTS project_id uuid REFERENCES projects(id)`);
+    await db.execute(sql`ALTER TABLE vendor_credits ADD COLUMN IF NOT EXISTS project_id uuid REFERENCES projects(id)`);
+    await db.execute(sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS project_id uuid REFERENCES projects(id)`);
+    // Add to journal_entries separately (different column structure)
+    await db.execute(sql`
+      ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS project_id uuid REFERENCES projects(id)
+    `);
+    console.log('[Migration] Added project_id columns to all transaction tables and journal_entries.');
+
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema push:', err);
