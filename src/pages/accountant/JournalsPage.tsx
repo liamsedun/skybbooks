@@ -192,12 +192,12 @@ export function JournalsPage() {
             </div>
             <div className="flex items-center gap-2">
               <label className="text-xs font-semibold text-slate-500">From:</label>
-              <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} placeholder="dd/mm/yyyy"
+              <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
               className="w-40 px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
             </div>
             <div className="flex items-center gap-2">
               <label className="text-xs font-semibold text-slate-500">To:</label>
-              <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} placeholder="dd/mm/yyyy"
+              <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
               className="w-40 px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
             </div>
             <div className="flex items-center gap-1">
