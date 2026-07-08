@@ -969,6 +969,15 @@ export const reportsApi = {
   },
 };
 
+// 9. Projects Endpoints
+export const projectsApi = {
+  list: async () => { const res = await api.get('/projects'); return res.data; },
+  get: async (id: string) => { const res = await api.get(`/projects/${id}`); return res.data; },
+  create: async (data: any) => { const res = await api.post('/projects', data); return res.data; },
+  update: async (id: string, data: any) => { const res = await api.patch(`/projects/${id}`, data); return res.data; },
+  delete: async (id: string) => { const res = await api.delete(`/projects/${id}`); return res.data; },
+};
+
 export function downloadBlob(blob: Blob, filename: string) {
   try {
     const url = URL.createObjectURL(blob);
