@@ -30,7 +30,12 @@ router.get('/', async (req: AuthenticatedRequest, res: Response, next: NextFunct
     const orgId = req.user!.orgId!;
     const { from, to } = req.query;
 
-    let query = sql`SELECT je.*, COALESCE(t.td, 0) AS total_debits, COALESCE(t.tc, 0) AS total_credits
+    let query = sql`SELECT
+        je.id, je.org_id AS "orgId", je.entry_number AS "entryNumber",
+        je.description, je.source, je.source_id AS "sourceId",
+        je.reference, je.date, je.is_reversed AS "isReversed",
+        je.created_by AS "createdBy", je.created_at AS "createdAt",
+        COALESCE(t.td, 0) AS "totalDebits", COALESCE(t.tc, 0) AS "totalCredits"
       FROM journal_entries je
       LEFT JOIN (
         SELECT jl.entry_id,
