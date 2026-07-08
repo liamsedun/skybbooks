@@ -4,7 +4,7 @@ import { db, fixedAssets, accounts, depreciationEntries, journalEntries, journal
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
 import { eq, and, desc, asc, sql } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
-import { createJournalEntry } from '../services/ledger.service';
+import { createJournalEntry, updateJournalEntry } from '../services/ledger.service';
 
 const router = Router();
 router.use(authenticate);
@@ -395,6 +395,135 @@ router.post('/run-depreciation', async (req: AuthenticatedRequest, res: Response
       journalEntryNumber: journalEntry.entryNumber,
     });
   } catch (err) { return next(err); }
+});
+
+// GET /depreciation-entries - List all depreciation runs with journal lines
+router.get('/depreciation-entries', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+
+    // Get all journal entries that are depreciation runs (grouped by their journal entry)
+    const entries = await db
+      .select({
+        id: depreciationEntries.id,
+        entryId: journalEntries.id,
+        entryNumber: journalEntries.entryNumber,
+        date: journalEntries.date,
+        description: journalEntries.description,
+        reference: journalEntries.reference,
+        periodDate: depreciationEntries.periodDate,
+        amount: depreciationEntries.amount,
+        assetId: depreciationEntries.assetId,
+        assetName: fixedAssets.name,
+        assetNumber: fixedAssets.assetNumber,
+        journalEntryId: depreciationEntries.journalEntryId,
+        createdAt: depreciationEntries.createdAt,
+        lineId: journalLines.id,
+        lineAccountId: journalLines.accountId,
+        lineDebit: journalLines.debitAmount,
+        lineCredit: journalLines.creditAmount,
+        lineDescription: journalLines.description,
+        accountCode: accounts.code,
+        accountName: accounts.name,
+      })
+      .from(depreciationEntries)
+      .innerJoin(journalEntries, eq(depreciationEntries.journalEntryId, journalEntries.id))
+      .innerJoin(fixedAssets, eq(depreciationEntries.assetId, fixedAssets.id))
+      .innerJoin(journalLines, eq(journalLines.entryId, journalEntries.id))
+      .innerJoin(accounts, eq(journalLines.accountId, accounts.id))
+      .where(eq(journalEntries.orgId, orgId))
+      .orderBy(desc(journalEntries.date), desc(journalEntries.createdAt));
+
+    // Aggregate into depreciation runs grouped by journal entry
+    const grouped = new Map<string, {
+      id: string;
+      entryNumber: string;
+      date: string;
+      description: string;
+      reference: string | null;
+      source: string;
+      journalEntryId: string;
+      createdAt: string;
+      lines: { accountCode: string; accountName: string; description: string; debit: number; credit: number }[];
+      totalDebit: number;
+      totalCredit: number;
+    }>();
+
+    for (const row of entries) {
+      const key = row.journalEntryId;
+      if (!grouped.has(key)) {
+        grouped.set(key, {
+          id: row.id,
+          entryNumber: row.entryNumber,
+          date: row.date.toISOString(),
+          description: row.description || '',
+          reference: row.reference || null,
+          source: 'manual',
+          journalEntryId: row.journalEntryId,
+          createdAt: row.createdAt.toISOString(),
+          lines: [],
+          totalDebit: 0,
+          totalCredit: 0,
+        });
+      }
+      const grp = grouped.get(key)!;
+      grp.lines.push({
+        accountCode: row.accountCode,
+        accountName: row.accountName,
+        description: row.lineDescription || '',
+        debit: row.lineDebit,
+        credit: row.lineCredit,
+      });
+      grp.totalDebit += row.lineDebit;
+      grp.totalCredit += row.lineCredit;
+    }
+
+    return res.status(200).json(Array.from(grouped.values()));
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// PATCH /depreciation-entries/:entryId - Edit a depreciation journal entry's lines
+router.patch('/depreciation-entries/:entryId', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const userId = req.user!.userId!;
+    const { entryId } = req.params;
+    const body = z.object({
+      lines: z.array(z.object({
+        id: z.string().optional(),
+        accountId: z.string(),
+        debitAmount: z.number(),
+        creditAmount: z.number(),
+        description: z.string().optional(),
+      })),
+    }).parse(req.body);
+
+    // Verify the journal entry belongs to this org
+    const [entry] = await db
+      .select()
+      .from(journalEntries)
+      .where(and(eq(journalEntries.id, entryId), eq(journalEntries.orgId, orgId)))
+      .limit(1);
+    if (!entry) throw new AppError('Journal entry not found.', 404);
+
+    const updated = await updateJournalEntry(entryId, {
+      date: entry.date,
+      description: entry.description || '',
+      lines: body.lines.map(l => ({
+        id: l.id,
+        accountId: l.accountId,
+        debitAmount: l.debitAmount,
+        creditAmount: l.creditAmount,
+        description: l.description || '',
+      })),
+    });
+
+    return res.status(200).json(updated);
+  } catch (err) {
+    return next(err);
+  }
 });
 
 // GET /pdf - Export fixed assets as PDF

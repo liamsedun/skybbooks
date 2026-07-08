@@ -43,6 +43,7 @@ import {
   JournalsPage,
   BudgetsPage,
   FixedAssetsPage,
+  DepreciationPage,
   TrialBalancePage,
   IncomeStatementPage,
   BalanceSheetPage,
@@ -275,6 +276,7 @@ function AppRoutes() {
           <Route path="/accountant/journals/new" element={<JournalsPage />} />
           <Route path="/accountant/budgets" element={<BudgetsPage />} />
           <Route path="/accountant/fixed-assets" element={<FixedAssetsPage />} />
+          <Route path="/accountant/depreciation" element={<DepreciationPage />} />
 
           {/* Financial statements & analytics reports */}
           <Route path="/reports/trial-balance" element={<TrialBalancePage />} />

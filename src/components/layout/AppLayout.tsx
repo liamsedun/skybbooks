@@ -31,7 +31,8 @@ import {
   BookOpen,
   Sparkles,
   Package,
-  ArrowRightLeft
+  ArrowRightLeft,
+  TrendingDown
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -139,6 +140,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     'manual_journals': '/accountant/journals',
     'budgets': '/accountant/budgets',
     'fixed_assets': '/accountant/fixed-assets',
+    'depreciation': '/accountant/depreciation',
     'rep_trial_balance': '/reports/trial-balance',
     'rep_income_statement': '/reports/income-statement',
     'rep_balance_sheet': '/reports/balance-sheet',
@@ -240,6 +242,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
         { name: 'Manual Journals', id: 'manual_journals', icon: FileCode },
         { name: 'Budgets', id: 'budgets', icon: TrendingUp },
         { name: 'Fixed Assets', id: 'fixed_assets', icon: Building },
+        { name: 'Depreciation', id: 'depreciation', icon: TrendingDown },
       ],
     },
     {

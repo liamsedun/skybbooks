@@ -1312,3 +1312,46 @@ export async function getAccountLedger(
 
   return { lines, total, page, limit, account, openingBalance };
 }
+
+export async function updateJournalEntry(
+  entryId: string,
+  input: { date: Date; description: string; lines: { id?: string; accountId: string; debitAmount: number; creditAmount: number; description: string }[] }
+): Promise<any> {
+  const [entry] = await db
+    .select()
+    .from(journalEntries)
+    .where(eq(journalEntries.id, entryId))
+    .limit(1);
+  if (!entry) throw new AppError('Journal entry not found.', 404);
+
+  let totalDebits = 0;
+  let totalCredits = 0;
+  for (const line of input.lines) {
+    totalDebits += line.debitAmount;
+    totalCredits += line.creditAmount;
+  }
+  if (totalDebits !== totalCredits) throw new AppError('Journal entry is out of balance.', 400);
+
+  // Delete existing lines and re-insert
+  await db.delete(journalLines).where(eq(journalLines.entryId, entryId));
+
+  for (const line of input.lines) {
+    await db.insert(journalLines).values({
+      entryId,
+      accountId: line.accountId,
+      debitAmount: line.debitAmount,
+      creditAmount: line.creditAmount,
+      description: line.description || null,
+    });
+  }
+
+  const [updated] = await db
+    .update(journalEntries)
+    .set({
+      date: input.date,
+      description: input.description,
+    })
+    .where(eq(journalEntries.id, entryId))
+    .returning();
+  return updated;
+}
