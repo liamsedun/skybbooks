@@ -356,6 +356,10 @@ export const bankingApi = {
     const res = await api.post(`/banking/transactions/${transactionId}/create-record`, data);
     return res.data;
   },
+  batchCreateRecordFromFeed: async (ids: string[], data: any) => {
+    const res = await api.post('/banking/transactions/batch-create-record', { ids, data });
+    return res.data;
+  },
   autoMatchTransactions: async (accountId: string) => {
     const res = await api.post(`/banking/accounts/${accountId}/auto-match`);
     return res.data;

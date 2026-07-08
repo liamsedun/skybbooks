@@ -818,6 +818,29 @@ router.post('/transactions/:id/create-record', async (req: AuthenticatedRequest,
   }
 });
 
+// POST batch create records from multiple bank feed items (e.g. select all bank charges)
+router.post('/transactions/batch-create-record', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const body = z.object({ ids: z.array(z.string()).min(1), data: createRecordFromFeedSchema }).parse(req.body);
+    const userId = req.user!.userId;
+    const results: any[] = [];
+    const errors: { id: string; error: string }[] = [];
+
+    for (const id of body.ids) {
+      try {
+        const result = await createTransactionFromBankFeed(id, body.data, userId);
+        results.push(result);
+      } catch (err: any) {
+        errors.push({ id, error: err.message || 'Unknown error' });
+      }
+    }
+
+    return res.status(201).json({ success: results.length, errors });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // POST run automated transactions match bot for bank account
 router.post('/accounts/:id/auto-match', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {

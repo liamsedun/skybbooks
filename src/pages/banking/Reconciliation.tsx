@@ -55,9 +55,12 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
   const [glSearchKey, setGlSearchKey] = useState('');
   const [glTypeFilter, setGlTypeFilter] = useState<'all' | 'debit' | 'credit'>('all');
 
+  // Multi-select feed items for batch operations
+  const [selectedFeedIds, setSelectedFeedIds] = useState<string[]>([]);
+
   // Quick Create Drawer state
   const [showQuickCreate, setShowQuickCreate] = useState(false);
-  const [quickCreateTxn, setQuickCreateTxn] = useState<any | null>(null);
+  const [quickCreateTxns, setQuickCreateTxns] = useState<any[]>([]);
   const [quickCreateForm, setQuickCreateForm] = useState({
     type: 'expense' as 'expense' | 'payment_received' | 'transfer' | 'payment_made',
     accountId: '', // GL category account
@@ -169,6 +172,26 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
     },
     onError: (err: any) => {
       alert(`Quick-Create failed: ${err.response?.data?.message || err.message}`);
+    }
+  });
+
+  // Batch create records from multiple selected feed items
+  const batchCreateRecordMutation = useMutation({
+    mutationFn: ({ ids, data }: { ids: string[]; data: any }) =>
+      bankingApi.batchCreateRecordFromFeed(ids, data),
+    onSuccess: (result: any) => {
+      setShowQuickCreate(false);
+      setSelectedFeedIds([]);
+      setSelectedFeedTxnId(null);
+      queryClient.invalidateQueries({ queryKey: ['bankAccounts'] });
+      queryClient.invalidateQueries({ queryKey: ['bankingTransactions', selectedBankAccountId] });
+      queryClient.invalidateQueries({ queryKey: ['unmatchedJournalLines', selectedBankAccountId] });
+      if (result.errors?.length > 0) {
+        alert(`Created ${result.success} record(s). ${result.errors.length} item(s) failed: ${result.errors.map((e: any) => e.error).join('; ')}`);
+      }
+    },
+    onError: (err: any) => {
+      alert(`Batch Quick-Create failed: ${err.response?.data?.message || err.message}`);
     }
   });
 
@@ -284,13 +307,16 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
     }
   };
 
-  // Open Quick create modal setup
-  const openQuickCreate = (txn: any) => {
-    setQuickCreateTxn(txn);
+  // Open Quick create modal setup (single or batch)
+  const openQuickCreate = (txn?: any) => {
+    const items = txn ? [txn] : selectedFeedIds.map(id => feedTxns.find((t: any) => t.id === id)).filter(Boolean);
+    if (items.length === 0) return;
+    const firstDebit = items.some((t: any) => t.type === 'debit');
+    setQuickCreateTxns(items);
     setQuickCreateForm({
-      type: txn.type === 'debit' ? 'expense' : 'payment_received',
+      type: firstDebit ? 'expense' : 'payment_received',
       accountId: '',
-      description: txn.description || '',
+      description: items.length === 1 ? (items[0].description || '') : 'Bank charges',
       contactId: ''
     });
     setShowQuickCreate(true);
@@ -303,15 +329,18 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
       return;
     }
 
-    createRecordMutation.mutate({
-      txnId: quickCreateTxn.id,
-      data: {
-        type: quickCreateForm.type,
-        accountId: quickCreateForm.accountId,
-        description: quickCreateForm.description,
-        contactId: quickCreateForm.contactId || undefined
-      }
-    });
+    const data = {
+      type: quickCreateForm.type,
+      accountId: quickCreateForm.accountId,
+      description: quickCreateForm.description,
+      contactId: quickCreateForm.contactId || undefined
+    };
+
+    if (quickCreateTxns.length === 1) {
+      createRecordMutation.mutate({ txnId: quickCreateTxns[0].id, data });
+    } else {
+      batchCreateRecordMutation.mutate({ ids: quickCreateTxns.map((t: any) => t.id), data });
+    }
   };
 
   // Automated bot run
@@ -444,21 +473,44 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
       <div className="grid grid-cols-1 lg:grid-cols-10 gap-5 items-start">
         {/* LEFT COLUMN: Bank Feeds Statement (40%) */}
         <div className="lg:col-span-4 space-y-3.5">
-          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 flex items-center justify-between">
-            <div>
-              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block font-sans">Bank Stream Feed</span>
-              <span className="text-xs font-bold text-slate-800 font-sans">{unreconciledFeed.length} Unreconciled Records</span>
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block font-sans">Bank Stream Feed</span>
+                <span className="text-xs font-bold text-slate-800 font-sans">{unreconciledFeed.length} Unreconciled Records</span>
+              </div>
+              {unreconciledFeed.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleClearImport}
+                  disabled={clearImportMutation.isPending}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-bold uppercase rounded-xl border border-rose-200/80 text-rose-600 hover:bg-rose-50 disabled:opacity-50 transition-all duration-200 cursor-pointer"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  <span>Clear Import</span>
+                </button>
+              )}
             </div>
-            {unreconciledFeed.length > 0 && (
-              <button
-                type="button"
-                onClick={handleClearImport}
-                disabled={clearImportMutation.isPending}
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-bold uppercase rounded-xl border border-rose-200/80 text-rose-600 hover:bg-rose-50 disabled:opacity-50 transition-all duration-200 cursor-pointer"
-              >
-                <Trash2 className="w-3 h-3" />
-                <span>Clear Import</span>
-              </button>
+            {selectedFeedIds.length > 0 && (
+              <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+                <span className="text-[11px] font-bold text-slate-600">{selectedFeedIds.length} selected</span>
+                <button
+                  type="button"
+                  onClick={() => openQuickCreate()}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold uppercase rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 text-white hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200 cursor-pointer shadow-sm"
+                >
+                  <PlusCircle className="w-3 h-3" />
+                  <span>Record as Quick Payment</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedFeedIds([])}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-bold uppercase rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 transition-all duration-200 cursor-pointer"
+                >
+                  <X className="w-3 h-3" />
+                  <span>Clear</span>
+                </button>
+              </div>
             )}
           </div>
 
@@ -499,8 +551,22 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
                         : 'bg-white border-slate-200/80 hover:border-slate-300 hover:shadow-sm'
                     }`}
                   >
+                    {/* Multi-select checkbox */}
+                    <div className="absolute top-2 left-2 z-10" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedFeedIds.includes(txn.id)}
+                        onChange={(e) => {
+                          setSelectedFeedIds(prev =>
+                            e.target.checked ? [...prev, txn.id] : prev.filter(id => id !== txn.id)
+                          );
+                        }}
+                        className="w-3.5 h-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                    </div>
+
                     {/* Upper date/amount info */}
-                    <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start justify-between gap-2 pl-5">
                       <div className="min-w-0">
                         <p className={`font-sans font-semibold text-xs tracking-tight leading-snug truncate ${isSelected ? 'text-white' : 'text-slate-800'}`}>
                           {txn.description}
@@ -577,21 +643,21 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
                               }}
                               className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-[10px] font-bold uppercase rounded-xl border border-slate-700/80 text-orange-400 inline-flex items-center gap-1 cursor-pointer transition-all duration-200 shrink-0"
                             >
-                              <PlusCircle className="w-3.5 h-3.5" />
-                              <span>{isDebit ? 'Record Expense' : 'Record Revenue'}</span>
-                            </button>
+                                <PlusCircle className="w-3.5 h-3.5" />
+                                <span>{isDebit ? 'Record Expense' : 'Record Revenue'}</span>
+                              </button>
 
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setQuickCreateTxn(txn);
                                 setQuickCreateForm({
                                   type: 'transfer',
                                   accountId: '',
                                   description: `Transfer funds: ${txn.description}`,
                                   contactId: ''
                                 });
+                                setQuickCreateTxns([txn]);
                                 setShowQuickCreate(true);
                               }}
                               className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-[10px] font-bold uppercase rounded-xl border border-slate-700/80 text-white inline-flex items-center gap-1 cursor-pointer transition-all duration-200 shrink-0"
@@ -841,14 +907,32 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
               <div className="space-y-4">
                 {/* Visual feed details banner */}
                 <div className="bg-indigo-50/50 border border-indigo-200/50 rounded-2xl p-3.5 text-xs text-indigo-950 space-y-1">
-                  <span className="font-bold block tracking-tight">Statement Line Item Details:</span>
-                  <div className="font-semibold">{quickCreateTxn.description}</div>
-                  <div className="font-mono font-bold mt-1.5 text-indigo-700">
-                    {quickCreateTxn.type === 'debit' ? '-' : '+'}{formatNaira(quickCreateTxn.amount)}
-                  </div>
-                  <div className="text-[10px] text-slate-400">
-                    Bank Date: {new Date(quickCreateTxn.date).toLocaleDateString('en-GB')}
-                  </div>
+                  <span className="font-bold block tracking-tight">
+                    {quickCreateTxns.length > 1 ? `${quickCreateTxns.length} Selected Items:` : 'Statement Line Item Details:'}
+                  </span>
+                  {quickCreateTxns.length === 1 ? (
+                    <>
+                      <div className="font-semibold">{quickCreateTxns[0].description}</div>
+                      <div className="font-mono font-bold mt-1.5 text-indigo-700">
+                        {quickCreateTxns[0].type === 'debit' ? '-' : '+'}{formatNaira(quickCreateTxns[0].amount)}
+                      </div>
+                      <div className="text-[10px] text-slate-400">
+                        Bank Date: {new Date(quickCreateTxns[0].date).toLocaleDateString('en-GB')}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="space-y-1 max-h-[120px] overflow-y-auto">
+                      {quickCreateTxns.slice(0, 10).map((t: any) => (
+                        <div key={t.id} className="flex items-center justify-between text-[10px]">
+                          <span className="truncate mr-2">{t.description}</span>
+                          <span className="font-mono font-semibold shrink-0">{t.type === 'debit' ? '-' : '+'}{formatNaira(t.amount)}</span>
+                        </div>
+                      ))}
+                      {quickCreateTxns.length > 10 && (
+                        <div className="text-[10px] text-slate-400">...and {quickCreateTxns.length - 10} more</div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Form fields layout */}
@@ -862,7 +946,7 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
                       onChange={(e) => setQuickCreateForm({ ...quickCreateForm, type: e.target.value as any })}
                       className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow bg-white text-slate-800"
                     >
-                      {quickCreateTxn.type === 'debit' ? (
+                      {quickCreateTxns.some((t: any) => t.type === 'debit') ? (
                         <>
                           <option value="expense">Direct Corporate Expense / Outflow</option>
                           <option value="payment_made">Account Payable Settlement</option>
