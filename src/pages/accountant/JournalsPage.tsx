@@ -47,6 +47,8 @@ export function JournalsPage() {
   const [search, setSearch] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [dateFromInput, setDateFromInput] = useState('');
+  const [dateToInput, setDateToInput] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'balanced' | 'unbalanced'>('all');
 
   const { data: journals, isLoading } = useQuery({
@@ -192,12 +194,12 @@ export function JournalsPage() {
             </div>
             <div className="flex items-center gap-2">
               <label className="text-xs font-semibold text-slate-500">From:</label>
-              <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+              <input type="date" value={dateFromInput || dateFrom} onChange={e => setDateFromInput(e.target.value)} onBlur={() => { if (/^\d{4}-\d{2}-\d{2}$/.test(dateFromInput)) setDateFrom(dateFromInput); else setDateFromInput(dateFrom); }}
               className="w-40 px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
             </div>
             <div className="flex items-center gap-2">
               <label className="text-xs font-semibold text-slate-500">To:</label>
-              <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+              <input type="date" value={dateToInput || dateTo} onChange={e => setDateToInput(e.target.value)} onBlur={() => { if (/^\d{4}-\d{2}-\d{2}$/.test(dateToInput)) setDateTo(dateToInput); else setDateToInput(dateTo); }}
               className="w-40 px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
             </div>
             <div className="flex items-center gap-1">
