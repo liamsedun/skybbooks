@@ -1140,10 +1140,12 @@ router.get('/accounts/:id/payments', async (req: AuthenticatedRequest, res: Resp
       });
     }
 
-    // Compute running balance starting from opening balance
+    // Compute running balance starting from opening balance.
+    // row.amount already carries the correct sign:
+    //   positive for debits (inflow), negative for credits (outflow)
     let running = openingBalance;
     for (const row of enriched) {
-      running += row.isDebit ? row.amount : -row.amount;
+      running += row.amount;
       row.balance = running;
     }
 
