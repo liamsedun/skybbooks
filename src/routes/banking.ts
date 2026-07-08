@@ -1417,7 +1417,7 @@ router.get('/transfers', async (req: AuthenticatedRequest, res: Response, next: 
         fromBankName: bankAccounts.bankName,
       })
       .from(bankTransfers)
-      .innerJoin(bankAccounts, eq(bankTransfers.fromBankAccountId, bankAccounts.id))
+      .leftJoin(bankAccounts, eq(bankTransfers.fromBankAccountId, bankAccounts.id))
       .where(and(...whereConditions))
       .orderBy(desc(bankTransfers.date));
 
