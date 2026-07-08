@@ -28,7 +28,8 @@ import {
   Calculator,
   ArrowRight,
   Trash2,
-  ArrowLeft
+  ArrowLeft,
+  ExternalLink
 } from 'lucide-react';
 
 interface ReconciliationProps {
@@ -358,6 +359,32 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
       contactId: ''
     });
     setShowQuickCreate(true);
+  };
+
+  // Navigate to the originating transaction for a journal line
+  const handleDrillDown = (line: any) => {
+    if (!line.source || !line.sourceId) return;
+    switch (line.source) {
+      case 'invoice':
+        navigate(`/sales/invoices/${line.sourceId}`);
+        break;
+      case 'bill':
+        navigate(`/purchases/bills/${line.sourceId}`);
+        break;
+      case 'payment':
+        if (line.debitAmount > 0) {
+          navigate(`/sales/payments/${line.sourceId}`);
+        } else {
+          navigate(`/purchases/payments/${line.sourceId}`);
+        }
+        break;
+      case 'payroll':
+        navigate(`/payroll/runs/${line.sourceId}`);
+        break;
+      case 'manual':
+        navigate(`/expenses/${line.sourceId}`);
+        break;
+    }
   };
 
   const submitQuickCreate = (e: React.FormEvent) => {
@@ -874,7 +901,19 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
                     {/* Bottom balance status */}
                     <div className="flex items-center justify-between border-t border-slate-100 pt-2.5 shrink-0">
                       <span className="text-[10px] font-bold text-slate-400 font-sans">Ledger value:</span>
-                      <span className="font-mono font-bold text-xs text-slate-900">{formatNaira(valueLine)}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono font-bold text-xs text-slate-900">{formatNaira(valueLine)}</span>
+                        {line.source && line.sourceId && (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); handleDrillDown(line); }}
+                            className="p-1 rounded-lg text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200"
+                            title={`View originating ${line.source}`}
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     {/* Hover pairing recommendation banner */}

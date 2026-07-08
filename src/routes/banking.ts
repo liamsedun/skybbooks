@@ -934,7 +934,9 @@ router.get('/accounts/:id/unmatched-journal-lines', async (req: AuthenticatedReq
         creditAmount: journalLines.creditAmount,
         description: journalLines.description,
         entryDate: journalEntries.date,
-        entryNum: journalEntries.entryNumber
+        entryNum: journalEntries.entryNumber,
+        source: journalEntries.source,
+        sourceId: journalEntries.sourceId
       })
       .from(journalLines)
       .innerJoin(journalEntries, eq(journalLines.entryId, journalEntries.id))
