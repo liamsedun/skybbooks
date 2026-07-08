@@ -365,6 +365,40 @@ export async function runMigration() {
     `);
     console.log('[Migration] Created bank_transfers table.');
 
+    // Backfill bank_transfers from existing transfer journal entries
+    await db.execute(sql`
+      INSERT INTO bank_transfers (org_id, transfer_number, from_bank_account_id, to_bank_account_id, date, amount, currency, description, journal_entry_id, created_by)
+      SELECT
+        je.org_id,
+        je.entry_number,
+        from_ba.id AS from_bank_account_id,
+        to_ba.id AS to_bank_account_id,
+        je.date,
+        jl_credit.credit_amount AS amount,
+        'NGN' AS currency,
+        je.description,
+        je.id AS journal_entry_id,
+        je.created_by
+      FROM journal_entries je
+      INNER JOIN journal_lines jl_credit
+        ON jl_credit.entry_id = je.id
+       AND jl_credit.debit_amount = 0
+       AND jl_credit.credit_amount > 0
+      INNER JOIN journal_lines jl_debit
+        ON jl_debit.entry_id = je.id
+       AND jl_debit.debit_amount > 0
+       AND jl_debit.credit_amount = 0
+      INNER JOIN bank_accounts from_ba
+        ON from_ba.account_id = jl_credit.account_id
+      INNER JOIN bank_accounts to_ba
+        ON to_ba.account_id = jl_debit.account_id
+      WHERE je.source = 'transfer'
+        AND NOT EXISTS (
+          SELECT 1 FROM bank_transfers bt WHERE bt.journal_entry_id = je.id
+        )
+    `);
+    console.log('[Migration] Backfilled bank_transfers from existing transfer journal entries.');
+
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema push:', err);
