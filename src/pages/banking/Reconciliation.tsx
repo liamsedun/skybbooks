@@ -682,7 +682,7 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
           <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 space-y-3">
             <div className="flex items-center justify-between">
               <div>
-                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block font-sans">FinanceOS Accounting Ledger</span>
+                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block font-sans">SkyBooks</span>
                 <span className="text-xs font-bold text-slate-800 font-sans">{filteredJournalEntries.length} Unmatched Journal Lines</span>
               </div>
 
