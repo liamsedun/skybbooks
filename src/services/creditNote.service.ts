@@ -13,6 +13,8 @@ import {
 } from '../db/schema';
 import { AppError } from '../lib/errors';
 import { createJournalEntry, reverseJournalEntry } from './ledger.service';
+import { populateFxRate } from './currency.service';
+import { getOrgSettings } from './settings.service';
 
 // ==========================================
 // HELPER FUNCTIONS
@@ -77,6 +79,8 @@ async function resolveRevenueAccount(orgId: string, tx: any): Promise<string> {
 export async function createCreditNote(input: any, createdBy: string): Promise<any> {
   return await db.transaction(async (tx) => {
     const orgId = input.orgId;
+    const settings = await getOrgSettings(orgId);
+    const defaultCurrency = settings.general?.defaultCurrency || 'NGN';
     const subtotal = Number(input.subtotal || 0);
     const tax = Number(input.tax || 0);
     const total = subtotal + tax;
@@ -94,6 +98,13 @@ export async function createCreditNote(input: any, createdBy: string): Promise<a
     const cnCount = Number(countResult?.count || 0) + 1;
     const cnNumber = `CN-${String(cnCount).padStart(6, '0')}`;
 
+    const cnCurrency = input.currency || defaultCurrency;
+    const cnFxRate = input.fxRate
+      ? String(input.fxRate)
+      : cnCurrency !== defaultCurrency
+        ? await populateFxRate(orgId, cnCurrency, input.date)
+        : null;
+
     // 2. Insert Credit Note in database
     const [creditNote] = await tx
       .insert(creditNotes)
@@ -104,6 +115,8 @@ export async function createCreditNote(input: any, createdBy: string): Promise<a
         invoiceId: input.invoiceId || null,
         date: new Date(input.date || new Date()),
         status: 'issued', // defaults directly to issued for bookkeeping
+        currency: cnCurrency,
+        fxRate: cnFxRate,
         subtotal,
         tax,
         total,

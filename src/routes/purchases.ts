@@ -101,6 +101,7 @@ const recordPaymentMadeSchema = z.object({
   amount: z.number().int().positive('Payment amount must be greater than zero (In Kobo).'),
   whtAmount: z.number().int().min(0).optional().default(0),
   currency: z.string().optional(),
+  fxRate: z.number().optional(),
   paymentMethod: z.enum(['cash', 'bank_transfer', 'card', 'cheque', 'pos', 'ussd']),
   reference: z.string().optional().nullable(),
   accountId: z.string().uuid('Invalid bank reference. Asset general ledger account required.'),
@@ -120,6 +121,7 @@ const createExpenseSchema = z.object({
   amount: z.number().int().positive('Amount must be positive (In Kobo).'),
   taxAmount: z.number().int().nonnegative('Tax amount must be non-negative (In Kobo).').optional().default(0),
   currency: z.string().optional().default('NGN'),
+  fxRate: z.number().optional(),
   paymentMethod: z.enum(['cash', 'bank_transfer', 'card', 'cheque', 'pos', 'ussd']).optional().default('cash'),
   reference: z.string().optional().nullable(),
   description: z.string().optional().nullable(),
@@ -137,6 +139,7 @@ const createPOSchema = z.object({
   date: z.string().optional(),
   expectedDate: z.string().optional().nullable(),
   currency: z.string().optional(),
+  fxRate: z.number().optional(),
   notes: z.string().optional().nullable(),
   lines: z.array(
     z.object({
@@ -176,6 +179,8 @@ const createVendorCreditSchema = z.object({
   vendorId: z.string().uuid('Invalid vendor id.'),
   billId: z.string().uuid().optional().nullable(),
   date: z.string().optional(),
+  currency: z.string().optional(),
+  fxRate: z.number().optional(),
   subtotal: z.number().int().nonnegative().default(0),
   tax: z.number().int().nonnegative().default(0),
   notes: z.string().optional().nullable(),

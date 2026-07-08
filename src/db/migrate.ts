@@ -309,6 +309,28 @@ export async function runMigration() {
     await db.execute(`ALTER TABLE bank_accounts ADD COLUMN IF NOT EXISTS opening_balance_date timestamp`);
     console.log('[Migration] Added opening_balance_date column to bank_accounts.');
 
+    // Add fx_rate columns to tables that were missing them
+    const fxTables = ['payments_made', 'expenses', 'purchase_orders', 'credit_notes', 'vendor_credits'];
+    for (const table of fxTables) {
+      const colExists = await db.execute(`
+        SELECT column_name FROM information_schema.columns WHERE table_name = '${table}' AND column_name = 'fx_rate'
+      `);
+      if ((colExists.rows || []).length === 0) {
+        await db.execute(`ALTER TABLE ${table} ADD COLUMN fx_rate numeric(18, 8)`);
+        console.log(`[Migration] Added fx_rate column to ${table}.`);
+      }
+    }
+    // Also add currency to credit_notes and vendor_credits if missing
+    for (const table of ['credit_notes', 'vendor_credits']) {
+      const colExists = await db.execute(`
+        SELECT column_name FROM information_schema.columns WHERE table_name = '${table}' AND column_name = 'currency'
+      `);
+      if ((colExists.rows || []).length === 0) {
+        await db.execute(`ALTER TABLE ${table} ADD COLUMN currency text DEFAULT 'NGN' NOT NULL`);
+        console.log(`[Migration] Added currency column to ${table}.`);
+      }
+    }
+
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema push:', err);

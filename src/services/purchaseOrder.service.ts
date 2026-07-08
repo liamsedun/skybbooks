@@ -16,6 +16,7 @@ import { AppError } from '../lib/errors';
 import { createBill } from './bill.service';
 import { createExpense } from './expense.service';
 import { getOrgSettings } from './settings.service';
+import { populateFxRate } from './currency.service';
 
 // ==========================================
 // UTILITIES FOR STORAGE OF VIRTUAL PO LINES
@@ -120,6 +121,11 @@ export async function createPO(input: any, createdBy: string): Promise<any> {
         expectedDate: input.expectedDate ? new Date(input.expectedDate) : null,
         status: 'draft', // defaults directly to draft
         currency: input.currency || defaultCurrency,
+        fxRate: input.fxRate
+          ? String(input.fxRate)
+          : (input.currency && input.currency !== defaultCurrency)
+            ? await populateFxRate(orgId, input.currency, input.date)
+            : null,
         subtotal,
         tax: totalTax,
         total,

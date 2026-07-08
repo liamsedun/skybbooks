@@ -15,6 +15,7 @@ import {
 import { AppError } from '../lib/errors';
 import { createJournalEntry, reverseJournalEntry, isDateInClosedPeriod } from './ledger.service';
 import { getOrgSettings } from './settings.service';
+import { populateFxRate } from './currency.service';
 import Tesseract from 'tesseract.js';
 
 // ==========================================
@@ -124,6 +125,13 @@ export async function createExpense(input: any, createdBy: string): Promise<any>
 
     const vatAccountId = await resolveVatInput(orgId, tx);
 
+    const expCurrency = input.currency || defaultCurrency;
+    const expFxRate = input.fxRate
+      ? String(input.fxRate)
+      : expCurrency !== defaultCurrency
+        ? await populateFxRate(orgId, expCurrency, input.date)
+        : null;
+
     // Create primary expense record
     const [expense] = await tx
       .insert(expenses)
@@ -135,7 +143,8 @@ export async function createExpense(input: any, createdBy: string): Promise<any>
         accountId: expenseAccountId,
         amount,
         taxAmount,
-        currency: input.currency || defaultCurrency,
+        currency: expCurrency,
+        fxRate: expFxRate,
         paymentMethod: input.paymentMethod || 'cash',
         reference: input.reference || null,
         description: input.description || null,

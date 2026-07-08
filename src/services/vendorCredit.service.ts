@@ -9,6 +9,8 @@ import {
 } from '../db/schema';
 import { AppError } from '../lib/errors';
 import { createJournalEntry, reverseJournalEntry } from './ledger.service';
+import { populateFxRate } from './currency.service';
+import { getOrgSettings } from './settings.service';
 
 async function resolveAccountsPayable(orgId: string, tx: any): Promise<string> {
   const [apAccount] = await tx
@@ -81,6 +83,15 @@ export async function createVendorCredit(input: any, createdBy: string): Promise
     const vcCount = Number(countResult?.count || 0) + 1;
     const vcNumber = `VC-${String(vcCount).padStart(6, '0')}`;
 
+    const settings = await getOrgSettings(orgId);
+    const defaultCurrency = settings.general?.defaultCurrency || 'NGN';
+    const vcCurrency = input.currency || defaultCurrency;
+    const vcFxRate = input.fxRate
+      ? String(input.fxRate)
+      : vcCurrency !== defaultCurrency
+        ? await populateFxRate(orgId, vcCurrency, input.date)
+        : null;
+
     const [credit] = await tx
       .insert(vendorCredits)
       .values({
@@ -90,6 +101,8 @@ export async function createVendorCredit(input: any, createdBy: string): Promise
         billId: input.billId || null,
         date: new Date(input.date || new Date()),
         status: 'issued',
+        currency: vcCurrency,
+        fxRate: vcFxRate,
         subtotal,
         tax,
         total,

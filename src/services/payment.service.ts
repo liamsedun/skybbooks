@@ -693,6 +693,13 @@ export async function recordPaymentMade(input: any, createdBy: string): Promise<
     const pmtCount = Number(countResult?.count || 0);
     const paymentNumber = `${numPrefix}${String(startNum + pmtCount).padStart(padLen, '0')}`;
 
+    const pmtCurrency = input.currency || defaultCurrency;
+    const pmtFxRate = input.fxRate
+      ? String(input.fxRate)
+      : pmtCurrency !== defaultCurrency
+        ? await populateFxRate(orgId, pmtCurrency, input.date)
+        : null;
+
     // Record Payment Made
     const [payment] = await tx
       .insert(paymentsMade)
@@ -702,7 +709,8 @@ export async function recordPaymentMade(input: any, createdBy: string): Promise<
         vendorId: input.vendorId,
         date: new Date(input.date || new Date()),
         amount,
-        currency: input.currency || defaultCurrency,
+        currency: pmtCurrency,
+        fxRate: pmtFxRate,
         paymentMethod: input.paymentMethod || 'bank_transfer',
         reference: input.reference || null,
         accountId: input.accountId, // outbound bank account ledger

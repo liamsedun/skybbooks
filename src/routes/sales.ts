@@ -183,6 +183,8 @@ const createCreditNoteSchema = z.object({
   customerId: z.string().uuid('Invalid customer id.'),
   invoiceId: z.string().uuid().optional().nullable(),
   date: z.string().optional(),
+  currency: z.string().optional(),
+  fxRate: z.number().optional(),
   subtotal: z.number().int().nonnegative('Subtotal must be non-negative (In Kobo).'),
   tax: z.number().int().nonnegative('Tax must be non-negative (In Kobo).'),
   notes: z.string().optional().nullable()
