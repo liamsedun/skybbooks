@@ -313,6 +313,11 @@ export async function runMigration() {
     await db.execute(`ALTER TABLE bank_accounts ADD COLUMN IF NOT EXISTS opening_balance_date timestamp`);
     console.log('[Migration] Added opening_balance_date column to bank_accounts.');
 
+    // Add opening_balance to bank_accounts with copy from current_balance
+    await db.execute(`ALTER TABLE bank_accounts ADD COLUMN IF NOT EXISTS opening_balance bigint DEFAULT 0 NOT NULL`);
+    await db.execute(`UPDATE bank_accounts SET opening_balance = current_balance WHERE opening_balance = 0`);
+    console.log('[Migration] Added opening_balance column to bank_accounts (seeded from current_balance).');
+
     // Add fx_rate columns to tables that were missing them
     const fxTables = ['payments_made', 'expenses', 'purchase_orders', 'credit_notes', 'vendor_credits'];
     for (const table of fxTables) {

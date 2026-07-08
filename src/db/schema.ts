@@ -646,6 +646,7 @@ export const bankAccounts = pgTable('bank_accounts', {
   accountId: uuid('account_id').references(() => accounts.id).notNull(),
   currency: text('currency').default('NGN').notNull(),
   currentBalance: bigint('current_balance', { mode: 'number' }).default(0).notNull(),
+  openingBalance: bigint('opening_balance', { mode: 'number' }).default(0).notNull(),
   openingBalanceDate: timestamp('opening_balance_date'),
   monoAccountId: text('mono_account_id'),
   lastSyncedAt: timestamp('last_synced_at'),

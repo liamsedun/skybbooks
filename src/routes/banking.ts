@@ -121,12 +121,67 @@ router.get('/accounts', async (req: AuthenticatedRequest, res: Response, next: N
   try {
     const orgId = req.user!.orgId!;
     const list = await db
-      .select()
+      .select({
+        id: bankAccounts.id,
+        orgId: bankAccounts.orgId,
+        name: bankAccounts.name,
+        accountNumber: bankAccounts.accountNumber,
+        bankName: bankAccounts.bankName,
+        bankCode: bankAccounts.bankCode,
+        accountId: bankAccounts.accountId,
+        currency: bankAccounts.currency,
+        currentBalance: bankAccounts.currentBalance,
+        openingBalance: bankAccounts.openingBalance,
+        openingBalanceDate: bankAccounts.openingBalanceDate,
+        monoAccountId: bankAccounts.monoAccountId,
+        lastSyncedAt: bankAccounts.lastSyncedAt,
+        isActive: bankAccounts.isActive,
+        createdAt: bankAccounts.createdAt
+      })
       .from(bankAccounts)
       .where(eq(bankAccounts.orgId, orgId))
       .orderBy(desc(bankAccounts.createdAt));
 
-    return res.status(200).json(list);
+    const today = new Date();
+    const result = await Promise.all(list.map(async (ba) => {
+      // Compute live balance: openingBalance + all journal entry activity since openingBalanceDate
+      let liveBalance = Number(ba.openingBalance || 0);
+      if (ba.openingBalanceDate) {
+        const ledgerResult = await db.execute(sql`
+          SELECT COALESCE(SUM(
+            CASE WHEN jl.debit_amount > 0 THEN jl.debit_amount ELSE -jl.credit_amount END
+          ), 0) AS balance
+          FROM journal_lines jl
+          INNER JOIN journal_entries je ON jl.entry_id = je.id
+          WHERE jl.account_id = ${ba.accountId}::uuid
+            AND je.org_id = ${orgId}::uuid
+            AND je.is_reversed = false
+            AND je.date >= ${ba.openingBalanceDate}::date
+            AND je.date <= ${today}::date
+        `);
+        const row = ledgerResult.rows ? ledgerResult.rows[0] : ledgerResult[0];
+        liveBalance += Number(row?.balance || 0);
+      } else {
+        // No openingBalanceDate — sum all ledger activity
+        const ledgerResult = await db.execute(sql`
+          SELECT COALESCE(SUM(
+            CASE WHEN jl.debit_amount > 0 THEN jl.debit_amount ELSE -jl.credit_amount END
+          ), 0) AS balance
+          FROM journal_lines jl
+          INNER JOIN journal_entries je ON jl.entry_id = je.id
+          WHERE jl.account_id = ${ba.accountId}::uuid
+            AND je.org_id = ${orgId}::uuid
+            AND je.is_reversed = false
+            AND je.date <= ${today}::date
+        `);
+        const row = ledgerResult.rows ? ledgerResult.rows[0] : ledgerResult[0];
+        liveBalance = Number(row?.balance || 0);
+      }
+
+      return { ...ba, liveBalance };
+    }));
+
+    return res.status(200).json(result);
   } catch (err) {
     next(err);
   }
@@ -174,6 +229,7 @@ router.post('/accounts', async (req: AuthenticatedRequest, res: Response, next: 
       accountId: body.accountId,
       currency: body.currency,
       currentBalance: body.currentBalance,
+      openingBalance: body.currentBalance,
       isActive: true
     };
     if (body.openingBalanceDate) {
@@ -289,7 +345,7 @@ router.patch('/accounts/:id/balance', async (req: AuthenticatedRequest, res: Res
 
     const [updated] = await db
       .update(bankAccounts)
-      .set({ currentBalance })
+      .set({ currentBalance, openingBalance: currentBalance })
       .where(eq(bankAccounts.id, id))
       .returning();
 
@@ -329,7 +385,7 @@ router.post('/accounts/import-opening-balances', async (req: AuthenticatedReques
 
     const [updated] = await db
       .update(bankAccounts)
-      .set({ currentBalance: balanceKobo })
+      .set({ currentBalance: balanceKobo, openingBalance: balanceKobo })
       .where(eq(bankAccounts.id, account.id))
       .returning();
 
@@ -371,7 +427,7 @@ router.delete('/accounts/:id/clear-imported-statements', async (req: Authenticat
     // Reset balance to 0 so user can set a fresh opening balance
     await db
       .update(bankAccounts)
-      .set({ currentBalance: 0 })
+      .set({ currentBalance: 0, openingBalance: 0 })
       .where(eq(bankAccounts.id, id));
 
     return res.status(200).json({
