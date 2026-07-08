@@ -25,6 +25,7 @@ import { BankAccounts } from './pages/banking/BankAccounts';
 import { Reconciliation } from './pages/banking/Reconciliation';
 import { BankRules } from './pages/banking/BankRules';
 import { TransfersPage } from './pages/banking/TransfersPage';
+import { ProjectsPage } from './pages/sales/ProjectsPage';
 
 // Public & Protected Route Component Placeholders
 import { LoginPage, RegisterPage, ForgotPasswordPage, AcceptInvitePage } from './pages/AuthPages';
@@ -244,6 +245,9 @@ function AppRoutes() {
           <Route path="/purchases/recurring-expenses" element={<RecurringExpensesPage />} />
           <Route path="/purchases/purchase-orders" element={<PurchaseOrdersPage />} />
           <Route path="/purchases/credit-notes" element={<PurchaseCreditNotesPage />} />
+
+          {/* Projects module routing */}
+          <Route path="/projects" element={<ProjectsPage />} />
 
           {/* Inventory module routing */}
           <Route path="/inventory/items" element={<InventoryPage />} />

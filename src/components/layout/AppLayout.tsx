@@ -134,6 +134,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     'banking_rules': '/banking/rules',
     'currency_rates': '/banking/currency-rates',
     'bank_transfers': '/banking/transfers',
+    'projects': '/projects',
     'chart_accounts': '/accountant/chart-of-accounts',
     'manual_journals': '/accountant/journals',
     'budgets': '/accountant/budgets',
@@ -185,6 +186,12 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
         { name: 'Recurring Invoices', id: 'recurring_invoices', icon: History },
         { name: 'Payments Received', id: 'payments_received', icon: DollarSign },
         { name: 'Credit Notes', id: 'credit_notes', icon: FileText },
+      ],
+    },
+    {
+      title: 'PROJECTS',
+      items: [
+        { name: 'All Projects', id: 'projects', icon: Briefcase },
       ],
     },
     {
