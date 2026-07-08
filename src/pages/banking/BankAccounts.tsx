@@ -117,7 +117,8 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
     accountNumber: '',
     currentBalance: '',
     accountId: '', // GL cash ledger account ID
-    type: 'Checking' as 'Checking' | 'Savings' | 'Credit Card'
+    type: 'Checking' as 'Checking' | 'Savings' | 'Credit Card',
+    openingBalanceDate: ''
   });
 
   // 1. Fetch connected bank accounts from DB
@@ -209,12 +210,9 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
 
   const resetManualForm = () => {
     setManualForm({
-      name: '',
-      bankName: '',
-      accountNumber: '',
-      currentBalance: '',
-      accountId: '',
-      type: 'Checking'
+      name: '', bankName: '', accountNumber: '',
+      currentBalance: '', accountId: '', type: 'Checking',
+      openingBalanceDate: ''
     });
     setErrorMessage(null);
   };
@@ -251,6 +249,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
           accountNumber: manualForm.accountNumber,
           currentBalance: balanceKobo,
           accountId: manualForm.accountId,
+          openingBalanceDate: manualForm.openingBalanceDate || undefined
         }
       });
     } else {
@@ -260,7 +259,8 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
         accountNumber: manualForm.accountNumber,
         currentBalance: balanceKobo,
         accountId: manualForm.accountId,
-        currency: 'NGN'
+        currency: 'NGN',
+        openingBalanceDate: manualForm.openingBalanceDate || undefined
       });
     }
   };
@@ -430,7 +430,8 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                             accountNumber: account.accountNumber || '',
                             currentBalance: account.currentBalance ? String(account.currentBalance / 100) : '',
                             accountId: account.accountId || '',
-                            type: account.type || 'Checking'
+                            type: account.type || 'Checking',
+                            openingBalanceDate: account.openingBalanceDate ? account.openingBalanceDate.split('T')[0] : ''
                           });
                           setErrorMessage(null);
                           setShowConnectModal(true);
@@ -691,6 +692,17 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                       value={manualForm.currentBalance}
                       onChange={(e) => setManualForm({ ...manualForm, currentBalance: e.target.value })}
                       className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow text-slate-800 placeholder-slate-400"
+                    />
+                  </div>
+                  <div className="col-span-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                      As of Date
+                    </label>
+                    <input
+                      type="date"
+                      value={manualForm.openingBalanceDate}
+                      onChange={(e) => setManualForm({ ...manualForm, openingBalanceDate: e.target.value })}
+                      className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow text-slate-800"
                     />
                   </div>
 

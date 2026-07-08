@@ -305,6 +305,10 @@ export async function runMigration() {
     await db.execute(`ALTER TABLE payments_made ADD COLUMN IF NOT EXISTS journal_entry_id uuid REFERENCES journal_entries(id)`);
     console.log('[Migration] Added journal_entry_id column to payments_made.');
 
+    // Add opening_balance_date to bank_accounts
+    await db.execute(`ALTER TABLE bank_accounts ADD COLUMN IF NOT EXISTS opening_balance_date timestamp`);
+    console.log('[Migration] Added opening_balance_date column to bank_accounts.');
+
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema push:', err);

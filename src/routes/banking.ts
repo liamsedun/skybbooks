@@ -57,7 +57,8 @@ const addBankAccountSchema = z.object({
   bankCode: z.string().optional(),
   accountId: z.string().uuid('A valid general ledger Cash Account ID is required.'),
   currency: z.string().default('NGN'),
-  currentBalance: z.number().default(0) // in kobo
+  currentBalance: z.number().default(0), // in kobo
+  openingBalanceDate: z.string().optional()
 });
 
 const patchBankAccountSchema = z.object({
@@ -69,6 +70,7 @@ const patchBankAccountSchema = z.object({
   accountId: z.string().uuid().optional(),
   currentBalance: z.number().optional(),
   type: z.string().optional(),
+  openingBalanceDate: z.string().optional(),
 });
 
 const flutterwaveCallbackSchema = z.object({
@@ -966,7 +968,13 @@ router.get('/accounts/:id/payments', async (req: AuthenticatedRequest, res: Resp
     const { from, to } = req.query;
 
     const [ba] = await db
-      .select({ accountId: bankAccounts.accountId, accountCode: accounts.code, accountName: accounts.name })
+      .select({
+        accountId: bankAccounts.accountId,
+        accountCode: accounts.code,
+        accountName: accounts.name,
+        currentBalance: bankAccounts.currentBalance,
+        openingBalanceDate: bankAccounts.openingBalanceDate
+      })
       .from(bankAccounts)
       .leftJoin(accounts, eq(bankAccounts.accountId, accounts.id))
       .where(and(eq(bankAccounts.id, id), eq(bankAccounts.orgId, orgId)))
@@ -974,9 +982,28 @@ router.get('/accounts/:id/payments', async (req: AuthenticatedRequest, res: Resp
 
     if (!ba) throw new AppError('Bank account not found.', 404);
 
-    // Calculate opening balance as cumulative balance BEFORE the from date
-    let openingBalance = 0;
-    if (from) {
+    // Calculate opening balance:
+    // Use the user-stored currentBalance as the seed, then add ledger activity
+    // between the openingBalanceDate and the from date (if any).
+    // If no from date, the stored balance is the opening balance directly.
+    let openingBalance = Number(ba.currentBalance || 0);
+    if (from && ba.openingBalanceDate) {
+      const preResult = await db.execute(sql`
+        SELECT COALESCE(SUM(
+          CASE WHEN jl.debit_amount > 0 THEN jl.debit_amount ELSE -jl.credit_amount END
+        ), 0) AS balance
+        FROM journal_lines jl
+        INNER JOIN journal_entries je ON jl.entry_id = je.id
+        WHERE jl.account_id = ${ba.accountId}::uuid
+          AND je.org_id = ${orgId}::uuid
+          AND je.is_reversed = false
+          AND je.date >= ${ba.openingBalanceDate}::date
+          AND je.date < ${from}::date
+      `);
+      const preRow = preResult.rows ? preResult.rows[0] : preResult[0];
+      openingBalance += Number(preRow?.balance || 0);
+    } else if (from && !ba.openingBalanceDate) {
+      // No opening balance date — use full ledger history before from
       const preResult = await db.execute(sql`
         SELECT COALESCE(SUM(
           CASE WHEN jl.debit_amount > 0 THEN jl.debit_amount ELSE -jl.credit_amount END
@@ -1153,6 +1180,7 @@ router.get('/accounts/:id/payments', async (req: AuthenticatedRequest, res: Resp
       accountCode: ba.accountCode,
       accountName: ba.accountName,
       openingBalance,
+      openingBalanceDate: ba.openingBalanceDate,
       transactions: enriched.reverse()
     });
   } catch (err) {
