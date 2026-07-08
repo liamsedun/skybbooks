@@ -76,6 +76,7 @@ export function InvoiceForm({ invoiceId, onNavigate }: InvoiceFormProps) {
   // Multi-currency state
   const [invoiceCurrency, setInvoiceCurrency] = useState('NGN');
   const [invoiceFxRate, setInvoiceFxRate] = useState<string | null>('1.00000000');
+  const [invoiceProjectId, setInvoiceProjectId] = useState('');
 
   // Draft banner recovery helper
   const [draftBannerVisible, setDraftBannerVisible] = useState(false);
@@ -101,6 +102,13 @@ export function InvoiceForm({ invoiceId, onNavigate }: InvoiceFormProps) {
       const res = await api.get('/inventory/items');
       return res.data;
     },
+    enabled: !!token,
+  });
+
+  const { data: projects = [] } = useQuery({
+    queryKey: ['projects'],
+    queryFn: () => api.get('/projects').then(r => r.data),
+    staleTime: 60000,
     enabled: !!token,
   });
   // 3. Edit mode load data query
@@ -309,6 +317,7 @@ export function InvoiceForm({ invoiceId, onNavigate }: InvoiceFormProps) {
         currency: invoiceCurrency,
         fxRate: invoiceFxRate ? parseFloat(invoiceFxRate) : 1.0,
         status: data.saveAndSend ? 'sent' : (invoiceId ? editingInvoice?.status : 'draft'),
+        projectId: invoiceProjectId || undefined,
         lines: linesPayload,
       };
 
@@ -791,6 +800,17 @@ export function InvoiceForm({ invoiceId, onNavigate }: InvoiceFormProps) {
               onFxRateChange={setInvoiceFxRate}
               date={watch('date')}
             />
+
+            <div>
+              <label className="text-xs font-semibold text-slate-500 uppercase">Project</label>
+              <select value={invoiceProjectId} onChange={e => setInvoiceProjectId(e.target.value)}
+                className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow mt-1 bg-white">
+                <option value="">None (no project)</option>
+                {projects.map((p: any) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
 
             <div className="border-b border-slate-50 pb-4">
               <h3 className="text-xs font-black text-slate-450 uppercase tracking-widest font-mono">Invoice Summary</h3>

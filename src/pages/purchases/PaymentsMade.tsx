@@ -92,7 +92,7 @@ export function PaymentsMadePage() {
     vendorId: '', date: new Date().toISOString().split('T')[0],
     amount: '', whtAmount: '', paymentMethod: 'bank_transfer',
     reference: '', notes: '', accountId: '',
-    currency: 'NGN', fxRate: '1.00000000' as string | null,
+    currency: 'NGN', fxRate: '1.00000000' as string | null, projectId: '',
     allocations: [] as { billId: string; amount: string }[],
   });
 
@@ -117,7 +117,7 @@ export function PaymentsMadePage() {
   const [editForm, setEditForm] = useState({
     date: '', amount: '', paymentMethod: '', reference: '', notes: '', accountId: '',
     vendorId: '',
-    currency: 'NGN', fxRate: '1.00000000' as string | null,
+    currency: 'NGN', fxRate: '1.00000000' as string | null, projectId: '',
     selectedBillIds: [] as string[],
   });
   const [editFormError, setEditFormError] = useState('');
@@ -155,6 +155,12 @@ export function PaymentsMadePage() {
   const { data: org } = useQuery<any>({
     queryKey: ['org'],
     queryFn: async () => { const r = await api.get('/org'); return r.data; },
+    staleTime: 60000,
+  });
+
+  const { data: projects = [] } = useQuery({
+    queryKey: ['projects'],
+    queryFn: () => api.get('/projects').then(r => r.data),
     staleTime: 60000,
   });
 
@@ -251,7 +257,7 @@ export function PaymentsMadePage() {
 
   function closeModal() {
     setModalOpen(false);
-    setForm({ vendorId: '', date: new Date().toISOString().split('T')[0], amount: '', whtAmount: '', paymentMethod: 'bank_transfer', reference: '', notes: '', accountId: '', currency: 'NGN', fxRate: '1.00000000', allocations: [] });
+    setForm({ vendorId: '', date: new Date().toISOString().split('T')[0], amount: '', whtAmount: '', paymentMethod: 'bank_transfer', reference: '', notes: '', accountId: '', currency: 'NGN', fxRate: '1.00000000', projectId: '', allocations: [] });
     setFormError(null);
   }
 
@@ -289,6 +295,7 @@ export function PaymentsMadePage() {
       whtAmount: Math.round((parseFloat(form.whtAmount) || 0) * 100),
       currency: form.currency,
       fxRate: form.fxRate ? parseFloat(form.fxRate) : undefined,
+      projectId: form.projectId || undefined,
       paymentMethod: form.paymentMethod,
       reference: form.reference || null,
       notes: form.notes || null,
@@ -316,6 +323,7 @@ export function PaymentsMadePage() {
         vendorId: p.vendorId || '',
         currency: p.currency || 'NGN',
         fxRate: p.fxRate ? String(p.fxRate) : (p.currency && p.currency !== 'NGN' ? null : '1.00000000'),
+        projectId: (p as any).projectId || '',
         selectedBillIds: (detail.allocations || []).map((a: any) => a.billId),
       });
     }).catch(() => {
@@ -329,6 +337,7 @@ export function PaymentsMadePage() {
         vendorId: p.vendorId || '',
         currency: p.currency || 'NGN',
         fxRate: p.fxRate ? String(p.fxRate) : (p.currency && p.currency !== 'NGN' ? null : '1.00000000'),
+        projectId: (p as any).projectId || '',
         selectedBillIds: [],
       });
     });
@@ -351,6 +360,7 @@ export function PaymentsMadePage() {
       notes: editForm.notes || null,
       currency: editForm.currency,
       fxRate: editForm.fxRate ? parseFloat(editForm.fxRate) : undefined,
+      projectId: editForm.projectId || undefined,
     };
     if (editForm.accountId) payload.accountId = editForm.accountId;
     if (editForm.vendorId) payload.vendorId = editForm.vendorId;
@@ -819,6 +829,17 @@ export function PaymentsMadePage() {
                 date={form.date}
               />
 
+              <div>
+                <label className="text-xs font-semibold text-slate-500 uppercase">Project</label>
+                <select value={form.projectId} onChange={e => setForm({ ...form, projectId: e.target.value })}
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow mt-1 bg-white">
+                  <option value="">None (no project)</option>
+                  {projects.map((p: any) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1">Payment Date</label>
@@ -923,6 +944,17 @@ export function PaymentsMadePage() {
                 onFxRateChange={r => setEditForm({ ...editForm, fxRate: r })}
                 date={editForm.date}
               />
+
+              <div>
+                <label className="text-xs font-semibold text-slate-500 uppercase">Project</label>
+                <select value={editForm.projectId} onChange={e => setEditForm({ ...editForm, projectId: e.target.value })}
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow mt-1 bg-white">
+                  <option value="">None (no project)</option>
+                  {projects.map((p: any) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>

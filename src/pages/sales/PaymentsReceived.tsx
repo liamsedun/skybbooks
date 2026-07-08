@@ -147,6 +147,7 @@ type AddFormState = {
   allocations: AllocationItem[];
   currency: string;
   fxRate: string | null;
+  projectId: string;
 };
 
 const EMPTY_ADD_FORM: AddFormState = {
@@ -164,6 +165,7 @@ const EMPTY_ADD_FORM: AddFormState = {
   allocations: [],
   currency: 'NGN',
   fxRate: '1.00000000',
+  projectId: '',
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -303,6 +305,12 @@ export function PaymentsReceivedPage() {
   const { data: bankAccounts } = useQuery<any[]>({
     queryKey: ['bankAccounts'],
     queryFn: async () => { const r = await api.get('/banking/accounts'); return r.data; },
+  });
+
+  const { data: projects = [] } = useQuery({
+    queryKey: ['projects'],
+    queryFn: () => api.get('/projects').then(r => r.data),
+    staleTime: 60000,
   });
 
   const { data: allInvoicesResult } = useQuery<any>({
@@ -521,6 +529,7 @@ export function PaymentsReceivedPage() {
       allocations: activeAllocations,
       currency: addForm.currency,
       fxRate: addForm.fxRate ? parseFloat(addForm.fxRate) : undefined,
+      projectId: addForm.projectId || undefined,
     };
     createMutation.mutate(payload);
   }
@@ -977,6 +986,17 @@ export function PaymentsReceivedPage() {
                 onFxRateChange={r => setAddForm(f => ({ ...f, fxRate: r }))}
                 date={addForm.date}
               />
+
+              <div>
+                <label className="text-xs font-semibold text-slate-500 uppercase">Project</label>
+                <select value={addForm.projectId} onChange={e => setAddForm(f => ({ ...f, projectId: e.target.value }))}
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow mt-1 bg-white">
+                  <option value="">None (no project)</option>
+                  {projects.map((p: any) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>

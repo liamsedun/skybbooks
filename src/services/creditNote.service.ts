@@ -117,6 +117,7 @@ export async function createCreditNote(input: any, createdBy: string): Promise<a
         status: 'issued', // defaults directly to issued for bookkeeping
         currency: cnCurrency,
         fxRate: cnFxRate,
+        projectId: input.projectId || null,
         subtotal,
         tax,
         total,

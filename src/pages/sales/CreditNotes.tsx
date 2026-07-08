@@ -630,10 +630,17 @@ function CreateCreditNoteModal({ onClose, onError }: { onClose: () => void; onEr
   const [reason, setReason] = useState('');
   const [currency, setCurrency] = useState('NGN');
   const [fxRate, setFxRate] = useState<string | null>('1.00000000');
+  const [projectId, setProjectId] = useState('');
 
   const { data: customers } = useQuery<Customer[]>({
     queryKey: ['sales', 'customers'],
     queryFn: async () => { const r = await api.get('/sales/customers'); return r.data; },
+  });
+
+  const { data: projects = [] } = useQuery({
+    queryKey: ['projects'],
+    queryFn: () => api.get('/projects').then(r => r.data),
+    staleTime: 60000,
   });
 
   const { data: customerInvoicesData } = useQuery<any>({
@@ -676,6 +683,7 @@ function CreateCreditNoteModal({ onClose, onError }: { onClose: () => void; onEr
       notes: reason || null,
       currency,
       fxRate: fxRate ? parseFloat(fxRate) : undefined,
+      projectId: projectId || undefined,
     });
   };
 
@@ -727,6 +735,17 @@ function CreateCreditNoteModal({ onClose, onError }: { onClose: () => void; onEr
             onFxRateChange={setFxRate}
             date={date}
           />
+
+          <div>
+            <label className="text-xs font-semibold text-slate-500 uppercase">Project</label>
+            <select value={projectId} onChange={e => setProjectId(e.target.value)}
+              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow mt-1 bg-white">
+              <option value="">None (no project)</option>
+              {projects.map((p: any) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>

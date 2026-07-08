@@ -181,6 +181,7 @@ export async function recordPaymentReceived(input: any, createdBy: string): Prom
         amount,
         currency: input.currency || defaultCurrency,
         fxRate: input.fxRate ? String(input.fxRate) : await populateFxRate(orgId, input.currency || defaultCurrency, input.date),
+        projectId: input.projectId || null,
         paymentMethod: input.paymentMethod || 'bank_transfer',
         reference: input.reference || null,
         accountId: input.accountId, // Selected asset bank account
@@ -711,6 +712,7 @@ export async function recordPaymentMade(input: any, createdBy: string): Promise<
         amount,
         currency: pmtCurrency,
         fxRate: pmtFxRate,
+        projectId: input.projectId || null,
         paymentMethod: input.paymentMethod || 'bank_transfer',
         reference: input.reference || null,
         accountId: input.accountId, // outbound bank account ledger

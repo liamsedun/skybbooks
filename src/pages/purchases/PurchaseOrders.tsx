@@ -74,7 +74,7 @@ export function PurchaseOrdersPage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
-  const [form, setForm] = useState({ vendorId: '', date: today, expectedDate: '', notes: '', currency: 'NGN', fxRate: '1.00000000' as string | null, lines: [{ ...EMPTY_LINE }] });
+  const [form, setForm] = useState({ vendorId: '', date: today, expectedDate: '', notes: '', currency: 'NGN', fxRate: '1.00000000' as string | null, projectId: '', lines: [{ ...EMPTY_LINE }] });
   const [formError, setFormError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -103,6 +103,12 @@ export function PurchaseOrdersPage() {
   });
 
   const { data: org } = useQuery({ queryKey: ['org'], queryFn: orgApi.getOrg, staleTime: 60000 });
+
+  const { data: projects = [] } = useQuery({
+    queryKey: ['projects'],
+    queryFn: () => api.get('/projects').then(r => r.data),
+    staleTime: 60000,
+  });
 
   const vendorMap = useMemo(() => new Map(vendors.map(v => [v.id, v.name])), [vendors]);
   const pos: PO[] = posData?.orders || posData?.purchaseOrders || [];
@@ -180,6 +186,7 @@ export function PurchaseOrdersPage() {
       notes: po.notes || '',
       currency: po.currency || 'NGN',
       fxRate: po.fxRate ? String(po.fxRate) : (po.currency && po.currency !== 'NGN' ? null : '1.00000000'),
+      projectId: (po as any).projectId || '',
       lines: po.lines?.length ? po.lines.map((l: any) => ({
         itemId: l.itemId || '',
         description: l.description || '',
@@ -194,7 +201,7 @@ export function PurchaseOrdersPage() {
   }
 
   function showSuccess(msg: string) { setSuccessMsg(msg); setTimeout(() => setSuccessMsg(null), 4000); }
-  function closeModal() { setModalOpen(false); setEditingPo(null); setForm({ vendorId: '', date: today, expectedDate: '', notes: '', currency: 'NGN', fxRate: '1.00000000', lines: [{ ...EMPTY_LINE }] }); setFormError(null); }
+  function closeModal() { setModalOpen(false); setEditingPo(null); setForm({ vendorId: '', date: today, expectedDate: '', notes: '', currency: 'NGN', fxRate: '1.00000000', projectId: '', lines: [{ ...EMPTY_LINE }] }); setFormError(null); }
 
   function updateLine(idx: number, field: keyof POLine, value: any) {
     const nl = [...form.lines];
@@ -226,6 +233,7 @@ export function PurchaseOrdersPage() {
       notes: form.notes || null,
       currency: form.currency,
       fxRate: form.fxRate ? parseFloat(form.fxRate) : 1,
+      projectId: form.projectId || undefined,
       lines: form.lines.map(l => ({ ...l, unitPrice: Math.round(l.unitPrice * 100) })),
     };
     if (editingPo) {
@@ -662,6 +670,16 @@ export function PurchaseOrdersPage() {
                     onFxRateChange={(r) => setForm({ ...form, fxRate: r })}
                     date={form.date}
                   />
+                </div>
+                <div className="col-span-2">
+                  <label className="text-xs font-semibold text-slate-500 uppercase">Project</label>
+                  <select value={form.projectId} onChange={e => setForm({ ...form, projectId: e.target.value })}
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow mt-1 bg-white">
+                    <option value="">None (no project)</option>
+                    {projects.map((p: any) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 

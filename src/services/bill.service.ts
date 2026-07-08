@@ -251,6 +251,7 @@ export async function createBill(input: any, createdBy: string): Promise<any> {
         date: input.date ? new Date(input.date) : new Date(),
         dueDate: input.dueDate ? new Date(input.dueDate) : new Date(),
         status: 'draft', // always starts as draft
+        projectId: input.projectId || null,
         currency: input.currency || defaultCurrency,
         fxRate: input.fxRate ? String(input.fxRate) : await populateFxRate(orgId, input.currency || defaultCurrency, input.date),
         subtotal,
@@ -365,6 +366,7 @@ export async function updateBill(billId: string, input: any, userId: string): Pr
     if (input.date) updatePayload.date = new Date(input.date);
     if (input.dueDate) updatePayload.dueDate = new Date(input.dueDate);
     if (input.currency) updatePayload.currency = input.currency;
+    if (input.projectId !== undefined) updatePayload.projectId = input.projectId;
     if (input.fxRate) updatePayload.fxRate = String(input.fxRate);
     if (input.subtotal !== undefined) updatePayload.subtotal = input.subtotal;
     if (input.taxAmount !== undefined) updatePayload.taxAmount = input.taxAmount;

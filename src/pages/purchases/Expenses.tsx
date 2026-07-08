@@ -42,6 +42,7 @@ type FormState = {
   customerId: string;
   paymentAccountId: string; onAccount: boolean;
   currency: string; fxRate: string | null;
+  projectId: string;
 };
 
 
@@ -52,7 +53,7 @@ const EMPTY_FORM: FormState = {
   amount: '', taxAmount: '0', paymentMethod: 'cash',
   reference: '', description: '', isBillable: false,
   customerId: '', paymentAccountId: '', onAccount: false,
-  currency: 'NGN', fxRate: '1.00000000',
+  currency: 'NGN', fxRate: '1.00000000', projectId: '',
 };
 
 function exportCSV(expenses: Expense[], vendorMap: Map<string,string>, accountMap: Map<string,string>) {
@@ -154,6 +155,12 @@ export function ExpensesPage() {
 
   const { data: org } = useQuery({ queryKey: ['org'], queryFn: orgApi.getOrg, staleTime: 60000 });
 
+  const { data: projects = [] } = useQuery({
+    queryKey: ['projects'],
+    queryFn: () => api.get('/projects').then(r => r.data),
+    staleTime: 60000,
+  });
+
   const vendorMap = useMemo(() => new Map(vendors.map(v => [v.id, v.name])), [vendors]);
   const customersMap = useMemo(() => new Map(customers.map(c => [c.id, c.name])), [customers]);
   const accountMap = useMemo(() => new Map(accounts.map(a => [a.id, a.name])), [accounts]);
@@ -248,6 +255,7 @@ export function ExpensesPage() {
       paymentAccountId: form.paymentAccountId || null,
       currency: form.currency,
       fxRate: form.fxRate ? parseFloat(form.fxRate) : undefined,
+      projectId: form.projectId || undefined,
     };
     if (editingId) updateMutation.mutate({ id: editingId, p: payload });
     else createMutation.mutate(payload);
@@ -720,6 +728,16 @@ export function ExpensesPage() {
                     onFxRateChange={r => setForm({ ...form, fxRate: r })}
                     date={form.date}
                   />
+                </div>
+                <div className="col-span-2">
+                  <label className="text-xs font-semibold text-slate-500 uppercase">Project</label>
+                  <select value={form.projectId} onChange={e => setForm({ ...form, projectId: e.target.value })}
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow mt-1 bg-white">
+                    <option value="">None (no project)</option>
+                    {projects.map((p: any) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Vendor (optional)</label>

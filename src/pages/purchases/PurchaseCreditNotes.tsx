@@ -650,10 +650,17 @@ function CreateVendorCreditModal({ onClose, onError, editNote, updateMutation }:
   const [reason, setReason] = useState(editNote?.notes || '');
   const [currency, setCurrency] = useState('NGN');
   const [fxRate, setFxRate] = useState<string | null>('1.00000000');
+  const [projectId, setProjectId] = useState('');
 
   const { data: vendors } = useQuery<Vendor[]>({
     queryKey: ['vendors'],
     queryFn: async () => { const r = await api.get('/purchases/vendors'); return r.data; },
+  });
+
+  const { data: projects = [] } = useQuery({
+    queryKey: ['projects'],
+    queryFn: () => api.get('/projects').then(r => r.data),
+    staleTime: 60000,
   });
 
   const { data: vendorBillsData } = useQuery<any>({
@@ -709,6 +716,7 @@ function CreateVendorCreditModal({ onClose, onError, editNote, updateMutation }:
       notes: reason || null,
       currency,
       fxRate: fxRate ? parseFloat(fxRate) : undefined,
+      projectId: projectId || undefined,
     };
     if (editNote && updateMutation) {
       updateMutation.mutate({ id: editNote.id, data: payload });
@@ -769,6 +777,16 @@ function CreateVendorCreditModal({ onClose, onError, editNote, updateMutation }:
               onFxRateChange={setFxRate}
               date={date}
             />
+          </div>
+          <div className="col-span-2">
+            <label className="text-xs font-semibold text-slate-500 uppercase">Project</label>
+            <select value={projectId} onChange={e => setProjectId(e.target.value)}
+              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow mt-1 bg-white">
+              <option value="">None (no project)</option>
+              {projects.map((p: any) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

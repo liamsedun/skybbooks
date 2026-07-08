@@ -103,6 +103,7 @@ export async function createVendorCredit(input: any, createdBy: string): Promise
         status: 'issued',
         currency: vcCurrency,
         fxRate: vcFxRate,
+        projectId: input.projectId || null,
         subtotal,
         tax,
         total,
@@ -171,6 +172,7 @@ export async function updateVendorCredit(id: string, input: any, userId: string)
 
   const updates: any = {};
   if (input.date !== undefined) updates.date = new Date(input.date);
+  if (input.projectId !== undefined) updates.projectId = input.projectId;
   if (input.notes !== undefined) updates.notes = input.notes;
   if (input.subtotal !== undefined) {
     updates.subtotal = Number(input.subtotal);

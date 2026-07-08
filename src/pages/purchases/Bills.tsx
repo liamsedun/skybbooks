@@ -98,11 +98,12 @@ interface FormState {
   notes: string;
   currency: string;
   fxRate: string | null;
+  projectId: string;
   lines: BillLine[];
 }
 
 const EMPTY_FORM: FormState = {
-  vendorId: '', date: today, dueDate: thirtyDaysOut, notes: '', currency: 'NGN', fxRate: '1.00000000',
+  vendorId: '', date: today, dueDate: thirtyDaysOut, notes: '', currency: 'NGN', fxRate: '1.00000000', projectId: '',
   lines: [{ ...EMPTY_LINE }],
 };
 
@@ -143,6 +144,12 @@ function BillList() {
   const { data: items = [] } = useQuery<Item[]>({
     queryKey: ['items'],
     queryFn: async () => { const r = await api.get('/inventory/items'); return r.data; },
+  });
+
+  const { data: projects = [] } = useQuery({
+    queryKey: ['projects'],
+    queryFn: () => api.get('/projects').then(r => r.data),
+    staleTime: 60000,
   });
 
   // New item inline creation
@@ -245,6 +252,7 @@ function BillList() {
         notes: bill.notes || '',
         currency: bill.currency || 'NGN',
         fxRate: bill.fxRate ? String(bill.fxRate) : (bill.currency && bill.currency !== 'NGN' ? null : '1.00000000'),
+        projectId: (bill as any).projectId || '',
         lines: lines.length > 0 ? lines : [{ ...EMPTY_LINE }],
       });
       setModalMode('edit');
@@ -286,6 +294,7 @@ function BillList() {
       dueDate: toISO(form.dueDate),
       currency: form.currency,
       fxRate: form.fxRate ? parseFloat(form.fxRate) : undefined,
+      projectId: form.projectId || undefined,
       notes: form.notes || null,
       lines: validLines.map(l => ({
         itemId: l.itemId || null,
@@ -600,6 +609,16 @@ function BillList() {
                     onFxRateChange={r => setForm(f => ({ ...f, fxRate: r }))}
                     date={form.date}
                   />
+                </div>
+                <div className="col-span-2">
+                  <label className="text-xs font-semibold text-slate-500 uppercase">Project</label>
+                  <select value={form.projectId} onChange={e => setForm(f => ({ ...f, projectId: e.target.value }))}
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow mt-1 bg-white">
+                    <option value="">None (no project)</option>
+                    {projects.map((p: any) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1">Bill Date *</label>

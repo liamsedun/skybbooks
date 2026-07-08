@@ -126,6 +126,7 @@ export async function createPO(input: any, createdBy: string): Promise<any> {
           : (input.currency && input.currency !== defaultCurrency)
             ? await populateFxRate(orgId, input.currency, input.date)
             : null,
+        projectId: input.projectId || null,
         subtotal,
         tax: totalTax,
         total,
@@ -220,6 +221,7 @@ export async function updatePO(poId: string, input: any, userId: string): Promis
       updatePayload.expectedDate = input.expectedDate ? new Date(input.expectedDate) : null;
     }
     if (input.currency) updatePayload.currency = input.currency;
+    if (input.projectId !== undefined) updatePayload.projectId = input.projectId;
 
     const [updatedPo] = await tx
       .update(purchaseOrders)
