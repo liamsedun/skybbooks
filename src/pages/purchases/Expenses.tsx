@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
 import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
+import { CurrencySelector } from '../../components/ui/CurrencySelector';
 
 interface Vendor { id: string; name: string; }
 interface Customer { id: string; name: string; }
@@ -19,7 +20,8 @@ interface Account { id: string; name: string; type: string; code: string | null;
 interface Expense {
   id: string; expenseNumber: string; vendorId: string | null;
   date: string; accountId: string; amount: number; taxAmount: number;
-  currency: string; paymentMethod: string; reference: string | null;
+  currency: string; fxRate?: string | number | null;
+  paymentMethod: string; reference: string | null;
   description: string | null; isBillable: boolean;
   customerId?: string | null;
   journalEntryId?: string | null;
@@ -39,6 +41,7 @@ type FormState = {
   reference: string; description: string; isBillable: boolean;
   customerId: string;
   paymentAccountId: string; onAccount: boolean;
+  currency: string; fxRate: string | null;
 };
 
 
@@ -48,8 +51,8 @@ const EMPTY_FORM: FormState = {
   accountId: '', vendorId: '', date: new Date().toISOString().split('T')[0],
   amount: '', taxAmount: '0', paymentMethod: 'cash',
   reference: '', description: '', isBillable: false,
-  customerId: '',
-  paymentAccountId: '', onAccount: false,
+  customerId: '', paymentAccountId: '', onAccount: false,
+  currency: 'NGN', fxRate: '1.00000000',
 };
 
 function exportCSV(expenses: Expense[], vendorMap: Map<string,string>, accountMap: Map<string,string>) {
@@ -211,6 +214,8 @@ export function ExpensesPage() {
       customerId: exp.customerId || '',
       paymentAccountId: '',
       onAccount: false,
+      currency: exp.currency || 'NGN',
+      fxRate: exp.fxRate ? String(exp.fxRate) : (exp.currency && exp.currency !== 'NGN' ? null : '1.00000000'),
     });
     setFormError(null);
     setModalOpen(true);
@@ -241,7 +246,8 @@ export function ExpensesPage() {
       customerId: form.isBillable ? (form.customerId || null) : null,
       onAccount: form.onAccount,
       paymentAccountId: form.paymentAccountId || null,
-      currency: 'NGN',
+      currency: form.currency,
+      fxRate: form.fxRate ? parseFloat(form.fxRate) : undefined,
     };
     if (editingId) updateMutation.mutate({ id: editingId, p: payload });
     else createMutation.mutate(payload);
@@ -705,6 +711,15 @@ export function ExpensesPage() {
                   <select value={form.paymentMethod} onChange={e => setForm({ ...form, paymentMethod: e.target.value })} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow bg-white">
                     {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}</option>)}
                   </select>
+                </div>
+                <div className="col-span-2">
+                  <CurrencySelector
+                    currency={form.currency}
+                    onCurrencyChange={c => setForm({ ...form, currency: c })}
+                    fxRate={form.fxRate}
+                    onFxRateChange={r => setForm({ ...form, fxRate: r })}
+                    date={form.date}
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Vendor (optional)</label>

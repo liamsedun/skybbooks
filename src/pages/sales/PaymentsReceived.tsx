@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
+import { CurrencySelector } from '../../components/ui/CurrencySelector';
 
 // ── Interfaces ──────────────────────────────────────────────────────────────
 
@@ -144,6 +145,8 @@ type AddFormState = {
   incomeAccountId: string;
   notes: string;
   allocations: AllocationItem[];
+  currency: string;
+  fxRate: string | null;
 };
 
 const EMPTY_ADD_FORM: AddFormState = {
@@ -159,6 +162,8 @@ const EMPTY_ADD_FORM: AddFormState = {
   incomeAccountId: '',
   notes: '',
   allocations: [],
+  currency: 'NGN',
+  fxRate: '1.00000000',
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -511,6 +516,8 @@ export function PaymentsReceivedPage() {
       incomeAccountId: addForm.incomeAccountId || null,
       notes: addForm.notes.trim() || null,
       allocations: activeAllocations,
+      currency: addForm.currency,
+      fxRate: addForm.fxRate ? parseFloat(addForm.fxRate) : undefined,
     };
     createMutation.mutate(payload);
   }
@@ -960,6 +967,14 @@ export function PaymentsReceivedPage() {
                 </div>
               )}
 
+              <CurrencySelector
+                currency={addForm.currency}
+                onCurrencyChange={c => setAddForm(f => ({ ...f, currency: c }))}
+                fxRate={addForm.fxRate}
+                onFxRateChange={r => setAddForm(f => ({ ...f, fxRate: r }))}
+                date={addForm.date}
+              />
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Date</label>
@@ -967,7 +982,7 @@ export function PaymentsReceivedPage() {
                     className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Net Amount Received (₦)</label>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Net Amount Received ({addForm.currency})</label>
                   <input type="number" step="0.01" value={addForm.amount} onChange={e => setAddForm(f => ({ ...f, amount: e.target.value }))}
                     placeholder="0.00"
                     className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />

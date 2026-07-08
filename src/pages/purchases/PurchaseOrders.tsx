@@ -11,6 +11,7 @@ import {
   Eye, Edit2, Trash2
 } from 'lucide-react';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
+import { CurrencySelector } from '../../components/ui/CurrencySelector';
 
 interface Vendor { id: string; name: string; }
 interface Item { id: string; name: string; purchasePrice: number | null; }
@@ -21,7 +22,7 @@ interface POLine {
 interface PO {
   id: string; poNumber: string; vendorId: string;
   date: string; expectedDate: string | null; status: string;
-  subtotal: number; tax: number; total: number; currency: string; notes: string | null;
+  subtotal: number; tax: number; total: number; currency: string; fxRate?: string | number | null; notes: string | null;
   lines?: POLine[];
 }
 
@@ -73,7 +74,7 @@ export function PurchaseOrdersPage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
-  const [form, setForm] = useState({ vendorId: '', date: today, expectedDate: '', notes: '', lines: [{ ...EMPTY_LINE }] });
+  const [form, setForm] = useState({ vendorId: '', date: today, expectedDate: '', notes: '', currency: 'NGN', fxRate: '1.00000000' as string | null, lines: [{ ...EMPTY_LINE }] });
   const [formError, setFormError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -177,6 +178,8 @@ export function PurchaseOrdersPage() {
       date: po.date?.split('T')[0] || '',
       expectedDate: po.expectedDate?.split('T')[0] || '',
       notes: po.notes || '',
+      currency: po.currency || 'NGN',
+      fxRate: po.fxRate ? String(po.fxRate) : (po.currency && po.currency !== 'NGN' ? null : '1.00000000'),
       lines: po.lines?.length ? po.lines.map((l: any) => ({
         itemId: l.itemId || '',
         description: l.description || '',
@@ -191,7 +194,7 @@ export function PurchaseOrdersPage() {
   }
 
   function showSuccess(msg: string) { setSuccessMsg(msg); setTimeout(() => setSuccessMsg(null), 4000); }
-  function closeModal() { setModalOpen(false); setEditingPo(null); setForm({ vendorId: '', date: today, expectedDate: '', notes: '', lines: [{ ...EMPTY_LINE }] }); setFormError(null); }
+  function closeModal() { setModalOpen(false); setEditingPo(null); setForm({ vendorId: '', date: today, expectedDate: '', notes: '', currency: 'NGN', fxRate: '1.00000000', lines: [{ ...EMPTY_LINE }] }); setFormError(null); }
 
   function updateLine(idx: number, field: keyof POLine, value: any) {
     const nl = [...form.lines];
@@ -221,6 +224,8 @@ export function PurchaseOrdersPage() {
       date: form.date,
       expectedDate: form.expectedDate || null,
       notes: form.notes || null,
+      currency: form.currency,
+      fxRate: form.fxRate ? parseFloat(form.fxRate) : 1,
       lines: form.lines.map(l => ({ ...l, unitPrice: Math.round(l.unitPrice * 100) })),
     };
     if (editingPo) {
@@ -648,6 +653,15 @@ export function PurchaseOrdersPage() {
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Expected Delivery</label>
                   <input type="date" value={form.expectedDate} onChange={e => setForm({ ...form, expectedDate: e.target.value })} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+                </div>
+                <div className="col-span-2">
+                  <CurrencySelector
+                    currency={form.currency}
+                    onCurrencyChange={(c) => setForm({ ...form, currency: c })}
+                    fxRate={form.fxRate}
+                    onFxRateChange={(r) => setForm({ ...form, fxRate: r })}
+                    date={form.date}
+                  />
                 </div>
               </div>
 

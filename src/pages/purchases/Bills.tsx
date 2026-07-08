@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
 import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
+import { CurrencySelector } from '../../components/ui/CurrencySelector';
 
 interface Vendor { id: string; name: string; }
 interface Account { id: string; code: string; name: string; type: string; }
@@ -38,6 +39,7 @@ interface Bill {
   amountPaid: number;
   balanceDue: number;
   currency: string;
+  fxRate?: string | number | null;
   notes: string | null;
   vendorName?: string;
   journalEntryId?: string | null;
@@ -95,11 +97,12 @@ interface FormState {
   dueDate: string;
   notes: string;
   currency: string;
+  fxRate: string | null;
   lines: BillLine[];
 }
 
 const EMPTY_FORM: FormState = {
-  vendorId: '', date: today, dueDate: thirtyDaysOut, notes: '', currency: 'NGN',
+  vendorId: '', date: today, dueDate: thirtyDaysOut, notes: '', currency: 'NGN', fxRate: '1.00000000',
   lines: [{ ...EMPTY_LINE }],
 };
 
@@ -239,6 +242,7 @@ function BillList() {
         dueDate: bill.dueDate ? bill.dueDate.split('T')[0] : thirtyDaysOut,
         notes: bill.notes || '',
         currency: bill.currency || 'NGN',
+        fxRate: bill.fxRate ? String(bill.fxRate) : (bill.currency && bill.currency !== 'NGN' ? null : '1.00000000'),
         lines: lines.length > 0 ? lines : [{ ...EMPTY_LINE }],
       });
       setModalMode('edit');
@@ -279,6 +283,7 @@ function BillList() {
       date: toISO(form.date),
       dueDate: toISO(form.dueDate),
       currency: form.currency,
+      fxRate: form.fxRate ? parseFloat(form.fxRate) : undefined,
       notes: form.notes || null,
       lines: validLines.map(l => ({
         itemId: l.itemId || null,
@@ -585,15 +590,14 @@ function BillList() {
                     {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
                   </select>
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Currency</label>
-                  <select value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))}
-                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow">
-                    <option value="NGN">NGN</option>
-                    <option value="USD">USD</option>
-                    <option value="GBP">GBP</option>
-                    <option value="EUR">EUR</option>
-                  </select>
+                <div className="col-span-2">
+                  <CurrencySelector
+                    currency={form.currency}
+                    onCurrencyChange={c => setForm(f => ({ ...f, currency: c }))}
+                    fxRate={form.fxRate}
+                    onFxRateChange={r => setForm(f => ({ ...f, fxRate: r }))}
+                    date={form.date}
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1">Bill Date *</label>

@@ -28,6 +28,9 @@ Maintain and enhance accounting features: fix kobo/naira display, parent-child a
 - **Prevent duplicate customers on CSV re-import**: `POST /customers` now checks for existing customer by name+org. If found, updates the record (adds opening balance to existing balance, merges contact fields) instead of creating a duplicate (`src/routes/sales.ts:651-698`)
 - **Duplicate customer merge migration**: Startup migration detects duplicate customer names, reassigns invoices/payments/creditnotes/quotes to the kept record, merges balances, and deletes the duplicate (`src/db/migrate.ts:233-262`)
 - **Tax → VAT rename**: Renamed all "Tax" display labels to "VAT" across Sales and Purchases modules: column headers (`Tax %` → `VAT %`, `Tax (₦)` → `VAT (₦)`), CSV export headers, detail view labels, and PDF labels in 8 files
+- **Multi-currency backend**: Added `fxRate` column + `populateFxRate()` calls to expenses, credit notes, vendor credits, purchase orders, and payments made services; fixed `populateFxRate` calls that incorrectly passed `tx` as baseCurrency
+- **CurrencySelector component**: Reusable `src/components/ui/CurrencySelector.tsx` with currency dropdown + auto-filled fxRate from rates API; shows editable FX Rate input for non-NGN currencies
+- **CurrencySelector integration**: Added to all 9 transaction forms — InvoiceForm, Bills, Expenses, PaymentsReceived, RecordPaymentDrawer, PaymentsMade (create+edit), CreditNotes, PurchaseCreditNotes, PurchaseOrders — replacing hardcoded `currency: 'NGN'` with dynamic selector
 
 ### In Progress
 - (none)
@@ -44,11 +47,13 @@ Maintain and enhance accounting features: fix kobo/naira display, parent-child a
 - Customer code uses count+1 of existing customer records per org (not a dedicated sequence table)
 - PO approval flow: draft → confirmed → accepted → approved → bill/expense; only draft can be deleted, draft+confirmed can be edited
 - PO status enum extended with `confirmed`, `accepted`, `approved` for the approval workflow
+- CurrencySelector fetches rates via `bankingApi.getCurrencyRates()` and auto-fills fxRate on currency change; rate field editable for manual override
+- `fxRate` sent as `number | undefined` in payloads; `populateFxRate()` on backend handles null/undefined by looking up latest rate
 
 ## Next Steps
 1. Push to origin/main and verify Render auto-deploy completes
-2. Test period close flow end-to-end
-3. Test bank reconciliation statement print
+2. Update detail views (InvoiceDetail, BillDetail, etc.) to display currency + both original and base (NGN) amounts
+3. Test multi-currency transaction flow end-to-end
 4. Investigate Purchase Order unit price bug: AMC Tier 2 item shows extra zero (2,500,000 instead of 250,000) — likely a data issue with the item's stored `purchasePrice` value rather than a code bug
 
 ## Critical Context
@@ -57,6 +62,8 @@ Maintain and enhance accounting features: fix kobo/naira display, parent-child a
 - `contacts.balance` is in kobo; form inputs in Naira are multiplied by 100 before sending
 - `parentChildren.has(accountId)` guards prevent double-counting in Trial Balance totals; frontend uses `parentIds` set derived from `effectiveAccounts`
 - Pre-existing TS errors (module resolution, `opening_stock` enum) still present in `ledger.service.ts:273` and `ReportsPage.tsx:1177,1179`
+- CurrencySelector component at `src/components/ui/CurrencySelector.tsx`; relied upon by all 9 transaction form files
+- `populateFxRate(orgId, currency, date)` takes 3 args (no `tx` parameter)
 
 ## Relevant Files
 - `src/pages/accountant/ChartOfAccounts.tsx`: `fmtNaira()` kobo→naira fix, `computeAggregateBalances()` parent rollup, `toDebitCredit()` helper, debit/credit columns, parent-excluded totals, client-side CSV export

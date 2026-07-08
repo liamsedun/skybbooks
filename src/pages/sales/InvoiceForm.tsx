@@ -29,6 +29,7 @@ import {
 import { salesApi, bankingApi, api } from '../../lib/api';
 import { useCurrency } from '../../hooks/useCurrency';
 import { AmountDisplay } from '../../components/ui/AmountDisplay';
+import { CurrencySelector } from '../../components/ui/CurrencySelector';
 import { useAuth } from '../../hooks/useAuth';
 
 interface InvoiceFormProps {
@@ -71,6 +72,10 @@ export function InvoiceForm({ invoiceId, onNavigate }: InvoiceFormProps) {
   const [newCustomerEmail, setNewCustomerEmail] = useState('');
   const [isAddingCustomer, setIsAddingCustomer] = useState(false);
   const [addCustomerError, setAddCustomerError] = useState('');
+
+  // Multi-currency state
+  const [invoiceCurrency, setInvoiceCurrency] = useState('NGN');
+  const [invoiceFxRate, setInvoiceFxRate] = useState<string | null>('1.00000000');
 
   // Draft banner recovery helper
   const [draftBannerVisible, setDraftBannerVisible] = useState(false);
@@ -301,8 +306,8 @@ export function InvoiceForm({ invoiceId, onNavigate }: InvoiceFormProps) {
         paymentTerms: isNaN(parseInt(data.formValues.paymentTerms)) ? 30 : parseInt(data.formValues.paymentTerms),
         notes: data.formValues.notes || '',
         terms: data.formValues.terms || '',
-        currency: 'NGN',
-        fxRate: 1.0,
+        currency: invoiceCurrency,
+        fxRate: invoiceFxRate ? parseFloat(invoiceFxRate) : 1.0,
         status: data.saveAndSend ? 'sent' : (invoiceId ? editingInvoice?.status : 'draft'),
         lines: linesPayload,
       };
@@ -779,6 +784,14 @@ export function InvoiceForm({ invoiceId, onNavigate }: InvoiceFormProps) {
           
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-6 lg:sticky lg:top-20" id="invoice-form-summary-sidebar">
             
+            <CurrencySelector
+              currency={invoiceCurrency}
+              onCurrencyChange={setInvoiceCurrency}
+              fxRate={invoiceFxRate}
+              onFxRateChange={setInvoiceFxRate}
+              date={watch('date')}
+            />
+
             <div className="border-b border-slate-50 pb-4">
               <h3 className="text-xs font-black text-slate-450 uppercase tracking-widest font-mono">Invoice Summary</h3>
               <span className="text-[10px] text-slate-400 font-bold mt-1 block">

@@ -11,6 +11,7 @@ import {
   Search, Upload, Loader2, AlertCircle, X, Plus, FileMinus, ChevronRight,
   Ban, CheckCircle2, ReceiptText, Download, FileText,
 } from 'lucide-react';
+import { CurrencySelector } from '../../components/ui/CurrencySelector';
 
 interface Customer { id: string; name: string; email: string | null; customerCode?: string; }
 
@@ -627,6 +628,8 @@ function CreateCreditNoteModal({ onClose, onError }: { onClose: () => void; onEr
   const [subtotal, setSubtotal] = useState('');
   const [taxRate, setTaxRate] = useState('7.5');
   const [reason, setReason] = useState('');
+  const [currency, setCurrency] = useState('NGN');
+  const [fxRate, setFxRate] = useState<string | null>('1.00000000');
 
   const { data: customers } = useQuery<Customer[]>({
     queryKey: ['sales', 'customers'],
@@ -671,6 +674,8 @@ function CreateCreditNoteModal({ onClose, onError }: { onClose: () => void; onEr
       subtotal: subtotalKobo,
       tax: taxKobo,
       notes: reason || null,
+      currency,
+      fxRate: fxRate ? parseFloat(fxRate) : undefined,
     });
   };
 
@@ -714,6 +719,14 @@ function CreateCreditNoteModal({ onClose, onError }: { onClose: () => void; onEr
               Linking an invoice is for reference only — apply this credit note to any open invoice once it's issued.
             </p>
           </div>
+
+          <CurrencySelector
+            currency={currency}
+            onCurrencyChange={setCurrency}
+            fxRate={fxRate}
+            onFxRateChange={setFxRate}
+            date={date}
+          />
 
           <div className="grid grid-cols-2 gap-4">
             <div>

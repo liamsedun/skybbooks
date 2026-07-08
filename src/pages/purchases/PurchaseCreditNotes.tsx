@@ -6,6 +6,7 @@ import {
   Search, Upload, Loader2, AlertCircle, X, Plus, FileMinus, ChevronRight,
   Ban, CheckCircle2, ReceiptText, Edit2, Download, FileText,
 } from 'lucide-react';
+import { CurrencySelector } from '../../components/ui/CurrencySelector';
 
 interface Vendor { id: string; name: string; email: string | null; }
 
@@ -647,6 +648,8 @@ function CreateVendorCreditModal({ onClose, onError, editNote, updateMutation }:
   const [subtotal, setSubtotal] = useState(editNote ? (editNote.subtotal / 100).toFixed(2) : '');
   const [taxRate, setTaxRate] = useState(editNote ? (editNote.subtotal > 0 ? ((editNote.tax / editNote.subtotal) * 100).toFixed(1) : '7.5') : '7.5');
   const [reason, setReason] = useState(editNote?.notes || '');
+  const [currency, setCurrency] = useState('NGN');
+  const [fxRate, setFxRate] = useState<string | null>('1.00000000');
 
   const { data: vendors } = useQuery<Vendor[]>({
     queryKey: ['vendors'],
@@ -704,6 +707,8 @@ function CreateVendorCreditModal({ onClose, onError, editNote, updateMutation }:
       subtotal: subtotalKobo,
       tax: taxKobo,
       notes: reason || null,
+      currency,
+      fxRate: fxRate ? parseFloat(fxRate) : undefined,
     };
     if (editNote && updateMutation) {
       updateMutation.mutate({ id: editNote.id, data: payload });
@@ -754,6 +759,16 @@ function CreateVendorCreditModal({ onClose, onError, editNote, updateMutation }:
             <p className="text-xs text-slate-400 mt-1">
               Linking a bill is for reference only — apply this credit to any open bill once it is issued.
             </p>
+          </div>
+
+          <div className="col-span-2">
+            <CurrencySelector
+              currency={currency}
+              onCurrencyChange={setCurrency}
+              fxRate={fxRate}
+              onFxRateChange={setFxRate}
+              date={date}
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">

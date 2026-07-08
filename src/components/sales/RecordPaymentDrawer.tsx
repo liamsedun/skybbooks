@@ -9,6 +9,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { X, Loader2, Check, Banknote, HelpCircle, Info } from 'lucide-react';
 import { salesApi, bankingApi } from '../../lib/api';
 import { AmountDisplay } from '../ui/AmountDisplay';
+import { CurrencySelector } from '../ui/CurrencySelector';
 import { useCurrency } from '../../hooks/useCurrency';
 import { AnimatePresence, motion } from 'motion/react';
 import { useAuth } from '../../hooks/useAuth';
@@ -52,6 +53,8 @@ export function RecordPaymentDrawer({
   const queryClient = useQueryClient();
   const { formatNaira, parseToKobo } = useCurrency();
   const { token } = useAuth();
+  const [drawerCurrency, setDrawerCurrency] = React.useState('NGN');
+  const [drawerFxRate, setDrawerFxRate] = React.useState<string | null>('1.00000000');
 
   // Queries for dynamic selects
   const { data: customers = [], isLoading: isLoadingCustomers } = useQuery({
@@ -235,6 +238,8 @@ export function RecordPaymentDrawer({
         accountId: data.accountId,
         notes: data.notes,
         allocations: activeAllocations,
+        currency: drawerCurrency,
+        fxRate: drawerFxRate ? parseFloat(drawerFxRate) : undefined,
       };
 
       return salesApi.createPaymentReceived(payload);
@@ -412,10 +417,18 @@ export function RecordPaymentDrawer({
                 </div>
               </div>
 
+              <CurrencySelector
+                currency={drawerCurrency}
+                onCurrencyChange={setDrawerCurrency}
+                fxRate={drawerFxRate}
+                onFxRateChange={setDrawerFxRate}
+                date={watch('date')}
+              />
+
               {/* 3. Total Received Box */}
               <div className="bg-purple-50/50 p-4 rounded-2xl border border-purple-100">
                 <label className="block text-[10px] font-extrabold text-purple-700 uppercase tracking-widest mb-1.5">
-                  Amount Received (NGN)
+                  Amount Received ({drawerCurrency})
                 </label>
                 <div className="relative">
                   <span className="font-sans font-bold text-slate-500 absolute left-3.5 top-2 ml-0.5">₦</span>
@@ -453,7 +466,7 @@ export function RecordPaymentDrawer({
               {/* WHT Deducted at Source */}
               <div className="bg-amber-50/50 p-4 rounded-2xl border border-amber-100">
                 <label className="block text-[10px] font-extrabold text-amber-700 uppercase tracking-widest mb-1.5">
-                  WHT Deducted at Source (NGN)
+                  WHT Deducted at Source ({drawerCurrency})
                 </label>
                 <div className="relative">
                   <span className="font-sans font-bold text-slate-500 absolute left-3.5 top-2 ml-0.5">₦</span>

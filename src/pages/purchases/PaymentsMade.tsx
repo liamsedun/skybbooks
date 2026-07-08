@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
 import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
+import { CurrencySelector } from '../../components/ui/CurrencySelector';
 import {
   Upload, Plus, X, Loader2, AlertCircle, Search, CreditCard,
   CheckCircle2, Download, FileText, Eye, Pencil, Save, Trash2,
@@ -15,7 +16,7 @@ interface Account { id: string; name: string; type: string; }
 interface Bill { id: string; billNumber: string; vendorId: string; balanceDue: number; total: number; }
 interface Payment {
   id: string; paymentNumber: string; vendorId: string;
-  date: string; amount: number; currency: string;
+  date: string; amount: number; currency: string; fxRate?: string | number | null;
   paymentMethod: string; reference: string | null; notes: string | null;
   accountId?: string;
   journalEntryId?: string | null;
@@ -91,6 +92,7 @@ export function PaymentsMadePage() {
     vendorId: '', date: new Date().toISOString().split('T')[0],
     amount: '', whtAmount: '', paymentMethod: 'bank_transfer',
     reference: '', notes: '', accountId: '',
+    currency: 'NGN', fxRate: '1.00000000' as string | null,
     allocations: [] as { billId: string; amount: string }[],
   });
 
@@ -115,6 +117,7 @@ export function PaymentsMadePage() {
   const [editForm, setEditForm] = useState({
     date: '', amount: '', paymentMethod: '', reference: '', notes: '', accountId: '',
     vendorId: '',
+    currency: 'NGN', fxRate: '1.00000000' as string | null,
     selectedBillIds: [] as string[],
   });
   const [editFormError, setEditFormError] = useState('');
@@ -245,7 +248,7 @@ export function PaymentsMadePage() {
 
   function closeModal() {
     setModalOpen(false);
-    setForm({ vendorId: '', date: new Date().toISOString().split('T')[0], amount: '', whtAmount: '', paymentMethod: 'bank_transfer', reference: '', notes: '', accountId: '', allocations: [] });
+    setForm({ vendorId: '', date: new Date().toISOString().split('T')[0], amount: '', whtAmount: '', paymentMethod: 'bank_transfer', reference: '', notes: '', accountId: '', currency: 'NGN', fxRate: '1.00000000', allocations: [] });
     setFormError(null);
   }
 
@@ -281,7 +284,8 @@ export function PaymentsMadePage() {
       date: form.date,
       amount: Math.round(parseFloat(form.amount) * 100),
       whtAmount: Math.round((parseFloat(form.whtAmount) || 0) * 100),
-      currency: 'NGN',
+      currency: form.currency,
+      fxRate: form.fxRate ? parseFloat(form.fxRate) : undefined,
       paymentMethod: form.paymentMethod,
       reference: form.reference || null,
       notes: form.notes || null,
@@ -307,6 +311,8 @@ export function PaymentsMadePage() {
         notes: p.notes || '',
         accountId: p.accountId || '',
         vendorId: p.vendorId || '',
+        currency: p.currency || 'NGN',
+        fxRate: p.fxRate ? String(p.fxRate) : (p.currency && p.currency !== 'NGN' ? null : '1.00000000'),
         selectedBillIds: (detail.allocations || []).map((a: any) => a.billId),
       });
     }).catch(() => {
@@ -318,6 +324,8 @@ export function PaymentsMadePage() {
         notes: p.notes || '',
         accountId: p.accountId || '',
         vendorId: p.vendorId || '',
+        currency: p.currency || 'NGN',
+        fxRate: p.fxRate ? String(p.fxRate) : (p.currency && p.currency !== 'NGN' ? null : '1.00000000'),
         selectedBillIds: [],
       });
     });
@@ -338,6 +346,8 @@ export function PaymentsMadePage() {
       paymentMethod: editForm.paymentMethod,
       reference: editForm.reference || null,
       notes: editForm.notes || null,
+      currency: editForm.currency,
+      fxRate: editForm.fxRate ? parseFloat(editForm.fxRate) : undefined,
     };
     if (editForm.accountId) payload.accountId = editForm.accountId;
     if (editForm.vendorId) payload.vendorId = editForm.vendorId;
@@ -785,18 +795,26 @@ export function PaymentsMadePage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Net Amount to Vendor (₦) *</label>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Net Amount to Vendor ({form.currency}) *</label>
                   <input type="number" min="0" step="0.01" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} placeholder="0.00"
                     className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
                   <p className="text-[10px] text-slate-400 mt-0.5">Bill total minus WHT deducted</p>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">WHT Deducted (₦)</label>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">WHT Deducted ({form.currency})</label>
                   <input type="number" min="0" step="0.01" value={form.whtAmount} onChange={e => setForm({ ...form, whtAmount: e.target.value })} placeholder="0.00"
                     className="w-full px-3 py-2.5 text-sm border border-amber-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-900/10 focus:border-amber-300 transition-shadow" />
                   <p className="text-[10px] text-amber-600 font-medium mt-1">Withholding Tax — credited to WHT Payable GL, owed to FIRS.</p>
                 </div>
               </div>
+
+              <CurrencySelector
+                currency={form.currency}
+                onCurrencyChange={c => setForm({ ...form, currency: c })}
+                fxRate={form.fxRate}
+                onFxRateChange={r => setForm({ ...form, fxRate: r })}
+                date={form.date}
+              />
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -895,6 +913,14 @@ export function PaymentsMadePage() {
             </div>
             <form onSubmit={handleUpdatePayment} className="px-5 py-4 space-y-3">
               {editFormError && <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2">{editFormError}</div>}
+              <CurrencySelector
+                currency={editForm.currency}
+                onCurrencyChange={c => setEditForm({ ...editForm, currency: c })}
+                fxRate={editForm.fxRate}
+                onFxRateChange={r => setEditForm({ ...editForm, fxRate: r })}
+                date={editForm.date}
+              />
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1">Date</label>
@@ -902,7 +928,7 @@ export function PaymentsMadePage() {
                     className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Amount (₦)</label>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Amount ({editForm.currency})</label>
                   <input type="number" min="0" step="0.01" value={editForm.amount} onChange={e => setEditForm({ ...editForm, amount: e.target.value })}
                     className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
                 </div>
