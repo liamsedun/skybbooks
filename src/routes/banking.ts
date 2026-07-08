@@ -1393,11 +1393,27 @@ router.get('/transfers', async (req: AuthenticatedRequest, res: Response, next: 
     const { from, to } = req.query;
 
     const result = await db.execute(sql`
-      SELECT bt.id, bt.org_id, bt.transfer_number, bt.from_bank_account_id, bt.to_bank_account_id,
-             bt.date, bt.amount, bt.currency, bt.fx_rate, bt.description, bt.reference,
-             bt.journal_entry_id, bt.created_by, bt.created_at,
-             fa.name AS from_account_name, fa.account_number AS from_account_number, fa.bank_name AS from_bank_name,
-             ta.name AS to_account_name, ta.account_number AS to_account_number, ta.bank_name AS to_bank_name
+      SELECT
+        bt.id,
+        bt.org_id AS "orgId",
+        bt.transfer_number AS "transferNumber",
+        bt.from_bank_account_id AS "fromBankAccountId",
+        bt.to_bank_account_id AS "toBankAccountId",
+        bt.date,
+        bt.amount,
+        bt.currency,
+        bt.fx_rate AS "fxRate",
+        bt.description,
+        bt.reference,
+        bt.journal_entry_id AS "journalEntryId",
+        bt.created_by AS "createdBy",
+        bt.created_at AS "createdAt",
+        fa.name AS "fromAccountName",
+        fa.account_number AS "fromAccountNumber",
+        fa.bank_name AS "fromBankName",
+        ta.name AS "toAccountName",
+        ta.account_number AS "toAccountNumber",
+        ta.bank_name AS "toBankName"
       FROM bank_transfers bt
       LEFT JOIN bank_accounts fa ON fa.id = bt.from_bank_account_id
       LEFT JOIN bank_accounts ta ON ta.id = bt.to_bank_account_id
