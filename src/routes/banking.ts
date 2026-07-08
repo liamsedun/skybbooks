@@ -1393,8 +1393,8 @@ router.get('/transfers', async (req: AuthenticatedRequest, res: Response, next: 
     const { from, to } = req.query;
 
     const whereConditions: any[] = [eq(bankTransfers.orgId, orgId)];
-    if (from) whereConditions.push(sql`${bankTransfers.date} >= ${from}::date`);
-    if (to) whereConditions.push(sql`${bankTransfers.date} <= ${to}::date`);
+    if (from && typeof from === 'string' && from.trim()) whereConditions.push(sql`${bankTransfers.date} >= ${from}::date`);
+    if (to && typeof to === 'string' && to.trim()) whereConditions.push(sql`${bankTransfers.date} <= ${to}::date`);
 
     const list = await db
       .select({
@@ -1421,28 +1421,33 @@ router.get('/transfers', async (req: AuthenticatedRequest, res: Response, next: 
       .where(and(...whereConditions))
       .orderBy(desc(bankTransfers.date));
 
-    // Fetch destination account names
-    const toIds = [...new Set(list.map(t => t.toBankAccountId))];
-    const destAccounts = toIds.length > 0
-      ? await db
-          .select({
-            id: bankAccounts.id,
-            name: bankAccounts.name,
-            accountNumber: bankAccounts.accountNumber,
-            bankName: bankAccounts.bankName,
-          })
-          .from(bankAccounts)
-          .where(sql`${bankAccounts.id} = ANY(${toIds}::uuid[])`)
-      : [];
-
-    const destMap = new Map(destAccounts.map(a => [a.id, a]));
-
+    // Build result with destination account names
     const result = list.map(t => ({
       ...t,
-      toAccountName: destMap.get(t.toBankAccountId)?.name || '',
-      toAccountNumber: destMap.get(t.toBankAccountId)?.accountNumber || '',
-      toBankName: destMap.get(t.toBankAccountId)?.bankName || '',
+      toAccountName: '',
+      toAccountNumber: '',
+      toBankName: '',
     }));
+
+    // Fetch destination account names if we have results
+    if (result.length > 0) {
+      const toIds = [...new Set(result.map(r => r.toBankAccountId))];
+      const destAccounts = await db
+        .select({
+          id: bankAccounts.id,
+          name: bankAccounts.name,
+          accountNumber: bankAccounts.accountNumber,
+          bankName: bankAccounts.bankName,
+        })
+        .from(bankAccounts)
+        .where(sql`${bankAccounts.id} = ANY(${toIds}::uuid[])`);
+
+      const destMap = new Map(destAccounts.map(a => [a.id, a]));
+      for (const r of result) {
+        const d = destMap.get(r.toBankAccountId);
+        if (d) { r.toAccountName = d.name; r.toAccountNumber = d.accountNumber; r.toBankName = d.bankName; }
+      }
+    }
 
     return res.status(200).json(result);
   } catch (err) {
