@@ -556,7 +556,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
                     My Account
                   </div>
                   <button 
-                    onClick={() => handleLinkClick('user_preferences')} 
+                    onClick={() => { setShowUserMenu(false); navigate('/settings/user-preferences'); }} 
                     className="w-full px-3 py-1.5 hover:bg-slate-50 rounded-lg flex items-center text-left"
                   >
                     <User className="w-4 h-4 mr-2.5 text-ink-400" />
