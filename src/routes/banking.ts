@@ -1392,7 +1392,7 @@ router.get('/transfers', async (req: AuthenticatedRequest, res: Response, next: 
     const orgId = req.user!.orgId!;
     const { from, to } = req.query;
 
-    let sqlQuery = `
+    const result = await db.execute(sql`
       SELECT bt.id, bt.org_id, bt.transfer_number, bt.from_bank_account_id, bt.to_bank_account_id,
              bt.date, bt.amount, bt.currency, bt.fx_rate, bt.description, bt.reference,
              bt.journal_entry_id, bt.created_by, bt.created_at,
@@ -1401,23 +1401,11 @@ router.get('/transfers', async (req: AuthenticatedRequest, res: Response, next: 
       FROM bank_transfers bt
       LEFT JOIN bank_accounts fa ON fa.id = bt.from_bank_account_id
       LEFT JOIN bank_accounts ta ON ta.id = bt.to_bank_account_id
-      WHERE bt.org_id = $1
-    `;
-    const params: any[] = [orgId];
-    let paramIndex = 2;
-    if (from && typeof from === 'string' && from.trim()) {
-      sqlQuery += ` AND bt.date >= $${paramIndex}::date`;
-      params.push(from);
-      paramIndex++;
-    }
-    if (to && typeof to === 'string' && to.trim()) {
-      sqlQuery += ` AND bt.date <= $${paramIndex}::date`;
-      params.push(to);
-      paramIndex++;
-    }
-    sqlQuery += ' ORDER BY bt.date DESC';
-
-    const result = await db.execute(sqlQuery, params);
+      WHERE bt.org_id = ${orgId}
+      ${from && typeof from === 'string' && from.trim() ? sql`AND bt.date >= ${from}::date` : sql``}
+      ${to && typeof to === 'string' && to.trim() ? sql`AND bt.date <= ${to}::date` : sql``}
+      ORDER BY bt.date DESC
+    `);
     return res.status(200).json(result.rows || []);
   } catch (err) {
     next(err);
