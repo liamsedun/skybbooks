@@ -44,11 +44,34 @@ export function JournalsPage() {
   const [importMsg, setImportMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [importing, setImporting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [search, setSearch] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   const { data: journals, isLoading } = useQuery({
     queryKey: ['journals'],
     queryFn: () => journalsApi.getJournals(),
   });
+
+  const filteredJournals = React.useMemo(() => {
+    const list = Array.isArray(journals) ? journals : [];
+    return list.filter((e: any) => {
+      if (search) {
+        const q = search.toLowerCase();
+        const entryNum = (e.entryNumber || '').toLowerCase();
+        const desc = (e.description || '').toLowerCase();
+        const source = (e.source || '').toLowerCase();
+        if (!entryNum.includes(q) && !desc.includes(q) && !source.includes(q)) return false;
+      }
+      if (dateFrom && e.date && new Date(e.date) < new Date(dateFrom)) return false;
+      if (dateTo) {
+        const end = new Date(dateTo);
+        end.setHours(23, 59, 59, 999);
+        if (e.date && new Date(e.date) > end) return false;
+      }
+      return true;
+    });
+  }, [journals, search, dateFrom, dateTo]);
 
   useEffect(() => {
     if (entryParam && Array.isArray(journals)) {
@@ -153,7 +176,32 @@ export function JournalsPage() {
       ) : isLoading ? (
         <PageLoader message="Loading journals..." />
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+        <>
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 flex items-center gap-3">
+            <div className="relative flex-1">
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+              <input
+                type="text"
+                placeholder="Search by entry #, description, source..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-semibold text-slate-500">From:</label>
+              <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-semibold text-slate-500">To:</label>
+              <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+            </div>
+            {(search || dateFrom || dateTo) && (
+              <button onClick={() => { setSearch(''); setDateFrom(''); setDateTo(''); }} className="text-xs text-slate-500 hover:text-slate-700 px-2 py-1">Clear</button>
+            )}
+            <span className="text-xs text-slate-400 font-medium whitespace-nowrap">{filteredJournals.length} entry{filteredJournals.length !== 1 ? 'ies' : 'y'}</span>
+          </div>
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
               <tr>
@@ -165,7 +213,7 @@ export function JournalsPage() {
               </tr>
             </thead>
             <tbody>
-              {(Array.isArray(journals) ? journals : []).map((entry: any) => (
+              {filteredJournals.map((entry: any) => (
                 <tr key={entry.id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-50">
                   <td className="px-4 py-3 font-mono font-medium text-slate-800">{entry.entryNumber}</td>
                   <td className="px-4 py-3 text-slate-600">{fmtDate(entry.date)}</td>
@@ -186,12 +234,13 @@ export function JournalsPage() {
                   </td>
                 </tr>
               ))}
-              {(!journals || journals.length === 0) && (
+              {filteredJournals.length === 0 && (
                 <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-400">No journal entries yet.</td></tr>
               )}
             </tbody>
           </table>
         </div>
+        </>
       )}
     </div>
   );
