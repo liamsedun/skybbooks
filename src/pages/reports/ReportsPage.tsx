@@ -1,8 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { reportsApi, accountantApi, apiDownload, printWindow } from '../../lib/api';
-import { Loader2, AlertCircle, CheckCircle2, Download, Search, Upload, FileText, X, RefreshCw, ExternalLink, Pencil, ChevronRight } from 'lucide-react';
+import { reportsApi, accountantApi, apiDownload, printWindow, api } from '../../lib/api';
+import { Loader2, AlertCircle, CheckCircle2, Download, Search, Upload, FileText, X, RefreshCw, ExternalLink, Pencil, ChevronRight, Briefcase } from 'lucide-react';
 import { downloadCsv, exportToCsv, CSV_TEMPLATES } from '../../lib/csvTemplates';
 
 const MODULE_LINKS: { prefix: string; path: string; label: string }[] = [
@@ -399,6 +399,182 @@ export function AgedReceivablesPage() {
 }
 export function AgedPayablesPage() {
   return <ReportShell reportType="aged-payables" title="Aged Payables" />;
+}
+export function ProjectsReportPage() {
+  return <ProjectsReport />;
+}
+
+function ProjectsReport() {
+  const { startDate, endDate: defaultEnd } = getDefaultDateRange();
+  const [sDate, setSDate] = useState(startDate);
+  const [eDate, setEDate] = useState(defaultEnd);
+  const [selectedProjectId, setSelectedProjectId] = useState('');
+
+  const { data: projects } = useQuery({
+    queryKey: ['projects'],
+    queryFn: () => api.get('/projects').then(r => r.data),
+    staleTime: 60000,
+  });
+
+  const { data: summaryData, isLoading, isError, error } = useQuery({
+    queryKey: ['project-summary', sDate, eDate],
+    queryFn: async () => {
+      const res = await api.get('/reports/project-summary', { params: { startDate: sDate, endDate: eDate } });
+      return res.data;
+    },
+  });
+
+  const { data: detailData } = useQuery({
+    queryKey: ['project-income-expense', selectedProjectId, sDate, eDate],
+    queryFn: async () => {
+      if (!selectedProjectId) return null;
+      const res = await api.get('/reports/project-income-expense', { params: { projectId: selectedProjectId, startDate: sDate, endDate: eDate } });
+      return res.data;
+    },
+    enabled: !!selectedProjectId,
+  });
+
+  const summaryList = Array.isArray(summaryData) ? summaryData : [];
+  const selectedProject = (Array.isArray(projects) ? projects : []).find((p: any) => p.id === selectedProjectId);
+
+  return (
+    <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+          <Briefcase className="w-6 h-6 text-indigo-600" /> Project Report
+        </h1>
+      </div>
+
+      {/* Date filter */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-semibold text-slate-500">From:</label>
+          <input type="date" value={sDate} onChange={e => setSDate(e.target.value)}
+            className="px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-semibold text-slate-500">To:</label>
+          <input type="date" value={eDate} onChange={e => setEDate(e.target.value)}
+            className="px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-semibold text-slate-500">Project:</label>
+          <select value={selectedProjectId} onChange={e => setSelectedProjectId(e.target.value)}
+            className="px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow bg-white">
+            <option value="">All projects (summary)</option>
+            {Array.isArray(projects) && projects.map((p: any) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+        </div>
+        <span className="text-xs text-slate-400 font-medium whitespace-nowrap">{summaryList.length} project{summaryList.length !== 1 ? 's' : ''}</span>
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-indigo-600" /></div>
+      ) : selectedProjectId && detailData ? (
+        /* Detail view for a single project */
+        <div className="space-y-6">
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6">
+            <h2 className="text-lg font-bold text-slate-900 mb-1">{selectedProject?.name || 'Project'}</h2>
+            <p className="text-xs text-slate-400 mb-4">{selectedProject?.code ? `Code: ${selectedProject.code}` : ''} {selectedProjectId ? `· ID: ${selectedProjectId}` : ''}</p>
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-200/50">
+                <p className="text-[11px] font-semibold text-emerald-600 uppercase tracking-wider">Income</p>
+                <p className="text-xl font-bold text-emerald-700 mt-1">{fmtNaira(detailData.totalIncome)}</p>
+              </div>
+              <div className="bg-red-50 rounded-xl p-4 border border-red-200/50">
+                <p className="text-[11px] font-semibold text-red-600 uppercase tracking-wider">Expenses</p>
+                <p className="text-xl font-bold text-red-700 mt-1">{fmtNaira(detailData.totalExpenses)}</p>
+              </div>
+              <div className="bg-indigo-50 rounded-xl p-4 border border-indigo-200/50">
+                <p className="text-[11px] font-semibold text-indigo-600 uppercase tracking-wider">Profit / Loss</p>
+                <p className={`text-xl font-bold mt-1 ${detailData.profit >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{fmtNaira(detailData.profit)}</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <h3 className="text-sm font-semibold text-slate-700 mb-2">Income Breakdown</h3>
+                <table className="w-full text-sm">
+                  <thead><tr className="bg-slate-50 text-[10px] font-semibold text-slate-500 uppercase tracking-wider"><th className="px-3 py-2 text-left">Account</th><th className="px-3 py-2 text-right">Amount</th></tr></thead>
+                  <tbody>
+                    {detailData.income?.length ? detailData.income.map((a: any, i: number) => (
+                      <tr key={i} className="border-t border-slate-100"><td className="px-3 py-2 text-slate-700">{a.code} - {a.name}</td><td className="px-3 py-2 text-right font-mono text-slate-900">{fmtNaira(a.amount)}</td></tr>
+                    )) : <tr><td colSpan={2} className="px-3 py-4 text-center text-slate-400">No income recorded</td></tr>}
+                    {detailData.income?.length > 0 && (
+                      <tr className="border-t-2 border-slate-200 font-bold bg-slate-50"><td className="px-3 py-2 text-slate-800">Total Income</td><td className="px-3 py-2 text-right font-mono text-slate-900">{fmtNaira(detailData.totalIncome)}</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-slate-700 mb-3">Expense Breakdown</h3>
+                <table className="w-full text-sm">
+                  <thead><tr className="bg-slate-50 text-[10px] font-semibold text-slate-500 uppercase tracking-wider"><th className="px-3 py-2 text-left">Account</th><th className="px-3 py-2 text-right">Amount</th></tr></thead>
+                  <tbody>
+                    {detailData.expenses?.length ? detailData.expenses.map((a: any, i: number) => (
+                      <tr key={i} className="border-t border-slate-100"><td className="px-3 py-2 text-slate-700">{a.code} - {a.name}</td><td className="px-3 py-2 text-right font-mono text-slate-900">{fmtNaira(a.amount)}</td></tr>
+                    )) : <tr><td colSpan={2} className="px-3 py-4 text-center text-slate-400">No expenses recorded</td></tr>}
+                    {detailData.expenses?.length > 0 && (
+                      <tr className="border-t-2 border-slate-200 font-bold bg-slate-50"><td className="px-3 py-2 text-slate-800">Total Expenses</td><td className="px-3 py-2 text-right font-mono text-slate-900">{fmtNaira(detailData.totalExpenses)}</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          <button onClick={() => setSelectedProjectId('')}
+            className="text-sm text-indigo-600 hover:text-indigo-800 font-medium">← Back to project summary</button>
+        </div>
+      ) : (
+        /* Summary view — all projects */
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+              <tr>
+                <th className="px-3 py-3 text-left">Project</th>
+                <th className="px-3 py-3 text-left">Code</th>
+                <th className="px-3 py-3 text-left">Status</th>
+                <th className="px-3 py-3 text-right">Income</th>
+                <th className="px-3 py-3 text-right">Expenses</th>
+                <th className="px-3 py-3 text-right">Profit / Loss</th>
+                <th className="px-3 py-3 text-center">Drill-down</th>
+              </tr>
+            </thead>
+            <tbody>
+              {summaryList.map((p: any, i: number) => (
+                <tr key={p.id} className="hover:bg-slate-50/50 border-t border-slate-100 cursor-pointer" onClick={() => setSelectedProjectId(p.id)}>
+                  <td className="px-4 py-3 font-medium text-slate-800">{p.name}</td>
+                  <td className="px-4 py-3 font-mono text-slate-600">{p.code || '—'}</td>
+                  <td className="px-4 py-3"><span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${p.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-50 text-slate-500'}`}>{p.status || 'active'}</span></td>
+                  <td className="px-4 py-3 text-right font-mono text-emerald-700">{fmtNaira(p.totalIncome)}</td>
+                  <td className="px-4 py-3 text-right font-mono text-red-600">{fmtNaira(p.totalExpenses)}</td>
+                  <td className={`px-4 py-3 text-right font-mono font-semibold ${p.profit >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{fmtNaira(p.profit)}</td>
+                  <td className="px-4 py-3 text-center">
+                    <button onClick={(e) => { e.stopPropagation(); setSelectedProjectId(p.id); }} className="text-indigo-600 hover:text-indigo-800 p-1"><ChevronRight className="w-4 h-4" /></button>
+                  </td>
+                </tr>
+              ))}
+              {summaryList.length === 0 && (
+                <tr><td colSpan={7} className="px-3 py-8 text-center text-slate-400">No data for this period.</td></tr>
+              )}
+            </tbody>
+            {summaryList.length > 0 && (
+              <tfoot>
+                <tr className="bg-slate-50 font-semibold">
+                  <td colSpan={3} className="px-4 py-3 text-slate-800">TOTAL</td>
+                  <td className="px-4 py-3 text-right font-mono text-emerald-600">{fmtNaira(summaryList.reduce((s: number, p: any) => s + p.totalIncome, 0))}</td>
+                  <td className="px-4 py-3 text-right font-mono text-red-600">{fmtNaira(summaryList.reduce((s: number, p: any) => s + p.totalExpenses, 0))}</td>
+                  <td className="px-4 py-3 text-right font-mono text-slate-800">{fmtNaira(summaryList.reduce((s: number, p: any) => s + p.profit, 0))}</td>
+                  <td />
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function ReportShell({ reportType, title }: ReportPageProps) {

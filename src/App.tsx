@@ -57,6 +57,7 @@ import {
   PurchaseCreditNotesPage,
   CurrencyRatesPage,
   AuditLogsPage,
+  ProjectsReportPage,
   CustomReportsPage,
   InvitesSettingsPage,
   IntegrationsSettingsPage
@@ -283,6 +284,7 @@ function AppRoutes() {
           <Route path="/reports/aged-receivables" element={<AgedReceivablesPage />} />
           <Route path="/reports/aged-payables" element={<AgedPayablesPage />} />
           <Route path="/reports/audit-logs" element={<AuditLogsPage />} />
+          <Route path="/reports/projects" element={<ProjectsReportPage />} />
           <Route path="/reports/custom" element={<CustomReportsPage />} />
 
           {/* System metadata & account preferences */}

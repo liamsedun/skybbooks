@@ -7,7 +7,7 @@ import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
 import { AppError } from '../lib/errors';
-import { db, accounts, journalEntries, journalLines, fixedAssets, bankAccounts, contacts, invoices, bills } from '../db/schema';
+import { db, accounts, journalEntries, journalLines, fixedAssets, bankAccounts, contacts, invoices, bills, projects } from '../db/schema';
 import { eq, and, asc, sql, lte, gte } from 'drizzle-orm';
 import {
   getTrialBalance,
@@ -833,6 +833,113 @@ router.get('/dashboard-summary', async (req: AuthenticatedRequest, res: Response
     });
   } catch (err) {
     return next(err);
+  }
+});
+
+// GET /reports/project-income-expense — project P&L
+router.get('/project-income-expense', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { projectId, startDate, endDate } = req.query;
+
+    const whereClauses: any[] = [eq(journalEntries.orgId, orgId)];
+    if (projectId && typeof projectId === 'string') whereClauses.push(eq(journalEntries.projectId, projectId));
+    if (startDate && typeof startDate === 'string') whereClauses.push(gte(journalEntries.date, new Date(startDate)));
+    if (endDate && typeof endDate === 'string') whereClauses.push(lte(journalEntries.date, new Date(endDate)));
+
+    const rows = await db
+      .select({
+        accountId: journalLines.accountId,
+        accountCode: accounts.code,
+        accountName: accounts.name,
+        accountType: accounts.type,
+        debit: journalLines.debit,
+        credit: journalLines.credit,
+      })
+      .from(journalLines)
+      .innerJoin(journalEntries, eq(journalLines.entryId, journalEntries.id))
+      .innerJoin(accounts, eq(journalLines.accountId, accounts.id))
+      .where(and(...whereClauses));
+
+    const incomeMap: Record<string, { code: string; name: string; amount: number }> = {};
+    const expenseMap: Record<string, { code: string; name: string; amount: number }> = {};
+    let totalIncome = 0;
+    let totalExpenses = 0;
+
+    for (const r of rows) {
+      const net = Number(r.credit || 0) - Number(r.debit || 0);
+      if (r.accountType === 'income' || r.accountType === 'revenue') {
+        if (!incomeMap[r.accountId]) incomeMap[r.accountId] = { code: r.accountCode, name: r.accountName, amount: 0 };
+        incomeMap[r.accountId].amount += net;
+        totalIncome += net;
+      } else if (r.accountType === 'expense' || r.accountType === 'cost_of_sales') {
+        if (!expenseMap[r.accountId]) expenseMap[r.accountId] = { code: r.accountCode, name: r.accountName, amount: 0 };
+        expenseMap[r.accountId].amount += Math.abs(net);
+        totalExpenses += Math.abs(net);
+      }
+    }
+
+    return res.status(200).json({
+      income: Object.values(incomeMap).filter(a => a.amount !== 0),
+      expenses: Object.values(expenseMap).filter(a => a.amount !== 0),
+      totalIncome,
+      totalExpenses,
+      profit: totalIncome - totalExpenses,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /reports/project-summary — summary of all projects with income/expense/profit
+router.get('/project-summary', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { startDate, endDate } = req.query;
+
+    const allProjects = await db
+      .select()
+      .from(projects)
+      .where(eq(projects.orgId, orgId));
+
+    const dateWhere: any[] = [eq(journalEntries.orgId, orgId)];
+    if (startDate && typeof startDate === 'string') dateWhere.push(gte(journalEntries.date, new Date(startDate)));
+    if (endDate && typeof endDate === 'string') dateWhere.push(lte(journalEntries.date, new Date(endDate)));
+
+    const summary: any[] = [];
+    for (const p of allProjects) {
+      const lines = await db
+        .select({
+          accountType: accounts.type,
+          debit: journalLines.debit,
+          credit: journalLines.credit,
+        })
+        .from(journalLines)
+        .innerJoin(journalEntries, eq(journalLines.entryId, journalEntries.id))
+        .innerJoin(accounts, eq(journalLines.accountId, accounts.id))
+        .where(and(...dateWhere, eq(journalEntries.projectId, p.id)));
+
+      let totalIncome = 0;
+      let totalExpenses = 0;
+      for (const l of lines) {
+        const net = Number(l.credit || 0) - Number(l.debit || 0);
+        if (l.accountType === 'income' || l.accountType === 'revenue') totalIncome += net;
+        else if (l.accountType === 'expense' || l.accountType === 'cost_of_sales') totalExpenses += Math.abs(net);
+      }
+      summary.push({
+        id: p.id,
+        name: p.name,
+        code: p.code,
+        status: p.status,
+        totalIncome,
+        totalExpenses,
+        profit: totalIncome - totalExpenses,
+      });
+    }
+
+    return res.status(200).json(summary);
+  } catch (err) {
+    next(err);
   }
 });
 
