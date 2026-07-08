@@ -30,7 +30,8 @@ import {
   FileInput,
   BookOpen,
   Sparkles,
-  Package
+  Package,
+  ArrowRightLeft
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -132,6 +133,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     'bank_feed': '/banking/reconciliation/demo',
     'banking_rules': '/banking/rules',
     'currency_rates': '/banking/currency-rates',
+    'bank_transfers': '/banking/transfers',
     'chart_accounts': '/accountant/chart-of-accounts',
     'manual_journals': '/accountant/journals',
     'budgets': '/accountant/budgets',
@@ -219,6 +221,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
         { name: 'Bank Feed Reconciler', id: 'bank_feed', icon: History },
         { name: 'Rules', id: 'banking_rules', icon: Shield },
         { name: 'Currency Rates', id: 'currency_rates', icon: TrendingUp },
+        { name: 'Transfers', id: 'bank_transfers', icon: ArrowRightLeft },
       ],
     },
     {

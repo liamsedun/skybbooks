@@ -11,6 +11,7 @@ import {
   db,
   bankAccounts,
   bankTransactions,
+  bankTransfers,
   bankRules,
   currencyRates,
   accounts,
@@ -24,7 +25,8 @@ import {
   invoices,
   bills,
   expenses,
-  payrollRuns
+  payrollRuns,
+  users
 } from '../db/schema';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
 import { AppError } from '../lib/errors';
@@ -1351,6 +1353,255 @@ router.delete('/rules/:id', async (req: AuthenticatedRequest, res: Response, nex
       .where(eq(bankRules.id, id));
 
     return res.status(200).json({ success: true, message: 'Bank rule successfully removed.' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// =========================================================================
+// 4. INTER ACCOUNT TRANSFERS ENDPOINTS
+// =========================================================================
+
+const createTransferSchema = z.object({
+  fromBankAccountId: z.string().uuid(),
+  toBankAccountId: z.string().uuid(),
+  date: z.string(),
+  amount: z.number().positive('Amount must be positive.'),
+  currency: z.string().default('NGN'),
+  fxRate: z.number().positive().optional(),
+  description: z.string().optional(),
+  reference: z.string().optional(),
+});
+
+const updateTransferSchema = z.object({
+  date: z.string().optional(),
+  amount: z.number().positive().optional(),
+  currency: z.string().optional(),
+  fxRate: z.number().positive().optional(),
+  description: z.string().optional(),
+  reference: z.string().optional(),
+});
+
+function generateTransferNumber(): string {
+  return `TF-${Date.now().toString(36).toUpperCase()}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`;
+}
+
+// GET all transfers
+router.get('/transfers', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { from, to } = req.query;
+
+    const whereConditions: any[] = [eq(bankTransfers.orgId, orgId)];
+    if (from) whereConditions.push(sql`${bankTransfers.date} >= ${from}::date`);
+    if (to) whereConditions.push(sql`${bankTransfers.date} <= ${to}::date`);
+
+    const list = await db
+      .select({
+        id: bankTransfers.id,
+        orgId: bankTransfers.orgId,
+        transferNumber: bankTransfers.transferNumber,
+        fromBankAccountId: bankTransfers.fromBankAccountId,
+        toBankAccountId: bankTransfers.toBankAccountId,
+        date: bankTransfers.date,
+        amount: bankTransfers.amount,
+        currency: bankTransfers.currency,
+        fxRate: bankTransfers.fxRate,
+        description: bankTransfers.description,
+        reference: bankTransfers.reference,
+        journalEntryId: bankTransfers.journalEntryId,
+        createdBy: bankTransfers.createdBy,
+        createdAt: bankTransfers.createdAt,
+        fromAccountName: bankAccounts.name,
+        fromAccountNumber: bankAccounts.accountNumber,
+        fromBankName: bankAccounts.bankName,
+      })
+      .from(bankTransfers)
+      .innerJoin(bankAccounts, eq(bankTransfers.fromBankAccountId, bankAccounts.id))
+      .where(and(...whereConditions))
+      .orderBy(desc(bankTransfers.date));
+
+    // Fetch destination account names
+    const toIds = [...new Set(list.map(t => t.toBankAccountId))];
+    const destAccounts = toIds.length > 0
+      ? await db
+          .select({
+            id: bankAccounts.id,
+            name: bankAccounts.name,
+            accountNumber: bankAccounts.accountNumber,
+            bankName: bankAccounts.bankName,
+          })
+          .from(bankAccounts)
+          .where(sql`${bankAccounts.id} = ANY(${toIds}::uuid[])`)
+      : [];
+
+    const destMap = new Map(destAccounts.map(a => [a.id, a]));
+
+    const result = list.map(t => ({
+      ...t,
+      toAccountName: destMap.get(t.toBankAccountId)?.name || '',
+      toAccountNumber: destMap.get(t.toBankAccountId)?.accountNumber || '',
+      toBankName: destMap.get(t.toBankAccountId)?.bankName || '',
+    }));
+
+    return res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST create a new transfer
+router.post('/transfers', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const userId = req.user!.userId!;
+    const body = createTransferSchema.parse(req.body);
+
+    if (body.fromBankAccountId === body.toBankAccountId) {
+      throw new AppError('Source and destination accounts must be different.', 400);
+    }
+
+    // Verify both bank accounts exist
+    const [fromAcc] = await db
+      .select()
+      .from(bankAccounts)
+      .where(and(eq(bankAccounts.id, body.fromBankAccountId), eq(bankAccounts.orgId, orgId)))
+      .limit(1);
+    if (!fromAcc) throw new AppError('Source bank account not found.', 404);
+
+    const [toAcc] = await db
+      .select()
+      .from(bankAccounts)
+      .where(and(eq(bankAccounts.id, body.toBankAccountId), eq(bankAccounts.orgId, orgId)))
+      .limit(1);
+    if (!toAcc) throw new AppError('Destination bank account not found.', 404);
+
+    const amountKobo = Math.round(body.amount * 100);
+
+    // Create journal entry + transfer record in a transaction
+    const result = await db.transaction(async (tx) => {
+      // Create journal entry
+      const { createJournalEntry } = await import('../services/ledger.service');
+      const je = await createJournalEntry(
+        {
+          orgId,
+          date: new Date(body.date),
+          description: body.description || `Transfer from ${fromAcc.name} to ${toAcc.name}`,
+          source: 'transfer',
+          reference: body.reference || undefined,
+          createdBy: userId,
+          lines: [
+            {
+              accountId: fromAcc.accountId,
+              debit: 0,
+              credit: amountKobo,
+              description: `Transfer to ${toAcc.name}`,
+              currency: body.currency || 'NGN',
+              fxRate: body.fxRate,
+            },
+            {
+              accountId: toAcc.accountId,
+              debit: amountKobo,
+              credit: 0,
+              description: `Transfer from ${fromAcc.name}`,
+              currency: body.currency || 'NGN',
+              fxRate: body.fxRate,
+            },
+          ],
+        },
+        tx
+      );
+
+      // Insert transfer record
+      const [transfer] = await tx
+        .insert(bankTransfers)
+        .values({
+          orgId,
+          transferNumber: je.entryNumber,
+          fromBankAccountId: body.fromBankAccountId,
+          toBankAccountId: body.toBankAccountId,
+          date: new Date(body.date),
+          amount: amountKobo,
+          currency: body.currency || 'NGN',
+          fxRate: body.fxRate ? String(body.fxRate) : null,
+          description: body.description || null,
+          reference: body.reference || null,
+          journalEntryId: je.id,
+          createdBy: userId,
+        })
+        .returning();
+
+      return transfer;
+    });
+
+    return res.status(201).json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PATCH update a transfer (only date, description, reference — amount changes require reversal)
+router.patch('/transfers/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { id } = req.params;
+    const body = updateTransferSchema.parse(req.body);
+
+    const [existing] = await db
+      .select()
+      .from(bankTransfers)
+      .where(and(eq(bankTransfers.id, id), eq(bankTransfers.orgId, orgId)))
+      .limit(1);
+
+    if (!existing) throw new AppError('Transfer not found.', 404);
+
+    const updateData: Record<string, any> = {};
+    if (body.date) updateData.date = new Date(body.date);
+    if (body.description !== undefined) updateData.description = body.description;
+    if (body.reference !== undefined) updateData.reference = body.reference;
+
+    // If amount changed, require reversal instead (too complex to edit journal entries)
+    if (body.amount && body.amount * 100 !== existing.amount) {
+      throw new AppError('Changing transfer amount is not supported. Please reverse and create a new transfer.', 400);
+    }
+
+    const [updated] = await db
+      .update(bankTransfers)
+      .set(updateData)
+      .where(eq(bankTransfers.id, id))
+      .returning();
+
+    return res.status(200).json(updated);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE reverse a transfer
+router.delete('/transfers/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const userId = req.user!.userId!;
+    const { id } = req.params;
+
+    const [existing] = await db
+      .select()
+      .from(bankTransfers)
+      .where(and(eq(bankTransfers.id, id), eq(bankTransfers.orgId, orgId)))
+      .limit(1);
+
+    if (!existing) throw new AppError('Transfer not found.', 404);
+
+    // Reverse the journal entry
+    if (existing.journalEntryId) {
+      const { reverseJournalEntry } = await import('../services/ledger.service');
+      await reverseJournalEntry(existing.journalEntryId, new Date(), userId);
+    }
+
+    // Delete the transfer record
+    await db.delete(bankTransfers).where(eq(bankTransfers.id, id));
+
+    return res.status(200).json({ success: true, message: 'Transfer reversed and deleted.' });
   } catch (err) {
     next(err);
   }

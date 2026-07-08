@@ -392,6 +392,25 @@ export const bankingApi = {
     const res = await api.post('/banking/currency-rates/refresh');
     return res.data;
   },
+  getTransfers: async (params?: { from?: string; to?: string }) => {
+    const query = params?.from || params?.to
+      ? `?${params?.from ? `from=${params.from}` : ''}${params?.from && params?.to ? '&' : ''}${params?.to ? `to=${params.to}` : ''}`
+      : '';
+    const res = await api.get(`/banking/transfers${query}`);
+    return res.data;
+  },
+  createTransfer: async (data: any) => {
+    const res = await api.post('/banking/transfers', data);
+    return res.data;
+  },
+  updateTransfer: async (id: string, data: any) => {
+    const res = await api.patch(`/banking/transfers/${id}`, data);
+    return res.data;
+  },
+  deleteTransfer: async (id: string) => {
+    const res = await api.delete(`/banking/transfers/${id}`);
+    return res.data;
+  },
 };
 
 export const periodsApi = {

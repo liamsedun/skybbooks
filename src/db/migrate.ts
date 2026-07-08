@@ -340,6 +340,31 @@ export async function runMigration() {
       }
     }
 
+    // Add transfer to journal_source enum
+    await db.execute(sql`ALTER TYPE journal_source ADD VALUE IF NOT EXISTS 'transfer'`);
+    console.log('[Migration] Added transfer to journal_source enum.');
+
+    // Create bank_transfers table
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS bank_transfers (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        transfer_number text NOT NULL,
+        from_bank_account_id uuid REFERENCES bank_accounts(id) NOT NULL,
+        to_bank_account_id uuid REFERENCES bank_accounts(id) NOT NULL,
+        date timestamp NOT NULL,
+        amount bigint NOT NULL,
+        currency text DEFAULT 'NGN' NOT NULL,
+        fx_rate numeric(18,8),
+        description text,
+        reference text,
+        journal_entry_id uuid REFERENCES journal_entries(id),
+        created_by uuid REFERENCES users(id) NOT NULL,
+        created_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    console.log('[Migration] Created bank_transfers table.');
+
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema push:', err);

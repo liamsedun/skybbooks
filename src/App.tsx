@@ -24,6 +24,7 @@ import { CreditNotesPage } from './pages/sales/CreditNotes';
 import { BankAccounts } from './pages/banking/BankAccounts';
 import { Reconciliation } from './pages/banking/Reconciliation';
 import { BankRules } from './pages/banking/BankRules';
+import { TransfersPage } from './pages/banking/TransfersPage';
 
 // Public & Protected Route Component Placeholders
 import { LoginPage, RegisterPage, ForgotPasswordPage, AcceptInvitePage } from './pages/AuthPages';
@@ -253,6 +254,7 @@ function AppRoutes() {
           <Route path="/banking/reconciliation/:accountId" element={<ReconciliationWrapper />} />
           <Route path="/banking/rules" element={<BankRules />} />
           <Route path="/banking/currency-rates" element={<CurrencyRatesPage />} />
+          <Route path="/banking/transfers" element={<TransfersPage />} />
 
           {/* Payroll module routing */}
           <Route path="/payroll/employees" element={<EmployeesPageReal />} />

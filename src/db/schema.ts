@@ -43,7 +43,8 @@ export const journalSourceEnum = pgEnum('journal_source', [
   'payroll',
   'bank_feed',
   'opening_balance',
-  'opening_stock'
+  'opening_stock',
+  'transfer'
 ]);
 
 export const contactTypeEnum = pgEnum('contact_type', ['customer', 'vendor', 'both']);
@@ -667,6 +668,23 @@ export const bankTransactions = pgTable('bank_transactions', {
   monoTransactionId: text('mono_transaction_id'),
   status: bankTxnStatusEnum('status').default('unreconciled').notNull(),
   journalLineId: uuid('journal_line_id').references(() => journalLines.id),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+export const bankTransfers = pgTable('bank_transfers', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  transferNumber: text('transfer_number').notNull(),
+  fromBankAccountId: uuid('from_bank_account_id').references(() => bankAccounts.id).notNull(),
+  toBankAccountId: uuid('to_bank_account_id').references(() => bankAccounts.id).notNull(),
+  date: timestamp('date').notNull(),
+  amount: bigint('amount', { mode: 'number' }).notNull(),
+  currency: text('currency').default('NGN').notNull(),
+  fxRate: numeric('fx_rate', { precision: 18, scale: 8 }),
+  description: text('description'),
+  reference: text('reference'),
+  journalEntryId: uuid('journal_entry_id').references(() => journalEntries.id),
+  createdBy: uuid('created_by').references(() => users.id).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
