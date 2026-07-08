@@ -1392,64 +1392,33 @@ router.get('/transfers', async (req: AuthenticatedRequest, res: Response, next: 
     const orgId = req.user!.orgId!;
     const { from, to } = req.query;
 
-    const whereConditions: any[] = [eq(bankTransfers.orgId, orgId)];
-    if (from && typeof from === 'string' && from.trim()) whereConditions.push(sql`${bankTransfers.date} >= ${from}::date`);
-    if (to && typeof to === 'string' && to.trim()) whereConditions.push(sql`${bankTransfers.date} <= ${to}::date`);
-
-    const list = await db
-      .select({
-        id: bankTransfers.id,
-        orgId: bankTransfers.orgId,
-        transferNumber: bankTransfers.transferNumber,
-        fromBankAccountId: bankTransfers.fromBankAccountId,
-        toBankAccountId: bankTransfers.toBankAccountId,
-        date: bankTransfers.date,
-        amount: bankTransfers.amount,
-        currency: bankTransfers.currency,
-        fxRate: bankTransfers.fxRate,
-        description: bankTransfers.description,
-        reference: bankTransfers.reference,
-        journalEntryId: bankTransfers.journalEntryId,
-        createdBy: bankTransfers.createdBy,
-        createdAt: bankTransfers.createdAt,
-        fromAccountName: bankAccounts.name,
-        fromAccountNumber: bankAccounts.accountNumber,
-        fromBankName: bankAccounts.bankName,
-      })
-      .from(bankTransfers)
-      .leftJoin(bankAccounts, eq(bankTransfers.fromBankAccountId, bankAccounts.id))
-      .where(and(...whereConditions))
-      .orderBy(desc(bankTransfers.date));
-
-    // Build result with destination account names
-    const result = list.map(t => ({
-      ...t,
-      toAccountName: '',
-      toAccountNumber: '',
-      toBankName: '',
-    }));
-
-    // Fetch destination account names if we have results
-    if (result.length > 0) {
-      const toIds = [...new Set(result.map(r => r.toBankAccountId))];
-      const destAccounts = await db
-        .select({
-          id: bankAccounts.id,
-          name: bankAccounts.name,
-          accountNumber: bankAccounts.accountNumber,
-          bankName: bankAccounts.bankName,
-        })
-        .from(bankAccounts)
-        .where(sql`${bankAccounts.id} = ANY(${toIds}::uuid[])`);
-
-      const destMap = new Map(destAccounts.map(a => [a.id, a]));
-      for (const r of result) {
-        const d = destMap.get(r.toBankAccountId);
-        if (d) { r.toAccountName = d.name; r.toAccountNumber = d.accountNumber; r.toBankName = d.bankName; }
-      }
+    let sqlQuery = `
+      SELECT bt.id, bt.org_id, bt.transfer_number, bt.from_bank_account_id, bt.to_bank_account_id,
+             bt.date, bt.amount, bt.currency, bt.fx_rate, bt.description, bt.reference,
+             bt.journal_entry_id, bt.created_by, bt.created_at,
+             fa.name AS from_account_name, fa.account_number AS from_account_number, fa.bank_name AS from_bank_name,
+             ta.name AS to_account_name, ta.account_number AS to_account_number, ta.bank_name AS to_bank_name
+      FROM bank_transfers bt
+      LEFT JOIN bank_accounts fa ON fa.id = bt.from_bank_account_id
+      LEFT JOIN bank_accounts ta ON ta.id = bt.to_bank_account_id
+      WHERE bt.org_id = $1
+    `;
+    const params: any[] = [orgId];
+    let paramIndex = 2;
+    if (from && typeof from === 'string' && from.trim()) {
+      sqlQuery += ` AND bt.date >= $${paramIndex}::date`;
+      params.push(from);
+      paramIndex++;
     }
+    if (to && typeof to === 'string' && to.trim()) {
+      sqlQuery += ` AND bt.date <= $${paramIndex}::date`;
+      params.push(to);
+      paramIndex++;
+    }
+    sqlQuery += ' ORDER BY bt.date DESC';
 
-    return res.status(200).json(result);
+    const result = await db.execute(sqlQuery, params);
+    return res.status(200).json(result.rows || []);
   } catch (err) {
     next(err);
   }
