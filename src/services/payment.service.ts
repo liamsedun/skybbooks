@@ -823,29 +823,102 @@ export async function recordPaymentMade(input: any, createdBy: string): Promise<
 }
 
 export async function updatePaymentMade(id: string, input: any, userId: string): Promise<any> {
-  const [pmt] = await db
-    .select()
-    .from(paymentsMade)
-    .where(eq(paymentsMade.id, id))
-    .limit(1);
+  return await db.transaction(async (tx) => {
+    const [pmt] = await tx
+      .select()
+      .from(paymentsMade)
+      .where(eq(paymentsMade.id, id))
+      .limit(1);
 
-  if (!pmt) throw new AppError('Payment not found.', 404);
+    if (!pmt) throw new AppError('Payment not found.', 404);
 
-  const updatePayload: any = {};
-  if (input.date) updatePayload.date = new Date(input.date);
-  if (input.amount) updatePayload.amount = input.amount;
-  if (input.paymentMethod) updatePayload.paymentMethod = input.paymentMethod;
-  if (input.reference !== undefined) updatePayload.reference = input.reference;
-  if (input.notes !== undefined) updatePayload.notes = input.notes;
-  if (input.accountId) updatePayload.accountId = input.accountId;
+    const updatePayload: any = {};
+    if (input.date) updatePayload.date = new Date(input.date);
+    if (input.amount) updatePayload.amount = input.amount;
+    if (input.paymentMethod) updatePayload.paymentMethod = input.paymentMethod;
+    if (input.reference !== undefined) updatePayload.reference = input.reference;
+    if (input.notes !== undefined) updatePayload.notes = input.notes;
+    if (input.accountId) updatePayload.accountId = input.accountId;
+    if (input.vendorId) updatePayload.vendorId = input.vendorId;
 
-  const [updated] = await db
-    .update(paymentsMade)
-    .set(updatePayload)
-    .where(eq(paymentsMade.id, id))
-    .returning();
+    // Handle allocation changes: remove old, create new
+    if (input.allocations && Array.isArray(input.allocations)) {
+      // 1. Fetch existing allocations and reverse bill updates
+      const existingAllocs = await tx
+        .select()
+        .from(paymentMadeAllocations)
+        .where(eq(paymentMadeAllocations.paymentId, id));
 
-  return updated;
+      for (const oldAlloc of existingAllocs) {
+        const [bill] = await tx
+          .select()
+          .from(bills)
+          .where(eq(bills.id, oldAlloc.billId))
+          .limit(1);
+
+        if (bill) {
+          const nextAmountPaid = Math.max(0, bill.amountPaid - oldAlloc.amount);
+          const nextBalanceDue = bill.total - nextAmountPaid;
+          const nextStatus = nextAmountPaid === 0 ? 'open' : 'partial';
+
+          await tx
+            .update(bills)
+            .set({
+              amountPaid: nextAmountPaid,
+              balanceDue: nextBalanceDue,
+              status: nextStatus
+            })
+            .where(eq(bills.id, bill.id));
+        }
+
+        await tx
+          .delete(paymentMadeAllocations)
+          .where(eq(paymentMadeAllocations.id, oldAlloc.id));
+      }
+
+      // 2. Insert new allocations and update bill balances
+      for (const alloc of input.allocations) {
+        const [bill] = await tx
+          .select()
+          .from(bills)
+          .where(eq(bills.id, alloc.billId))
+          .limit(1);
+
+        if (!bill) {
+          throw new AppError(`Bill ${alloc.billId} not found.`, 404);
+        }
+
+        const nextAmountPaid = bill.amountPaid + alloc.amount;
+        const nextBalanceDue = bill.total - nextAmountPaid;
+        const nextStatus = nextBalanceDue <= 0 ? 'paid' : 'partial';
+
+        await tx
+          .update(bills)
+          .set({
+            amountPaid: nextAmountPaid,
+            balanceDue: nextBalanceDue,
+            status: nextStatus
+          })
+          .where(eq(bills.id, bill.id));
+
+        await tx
+          .insert(paymentMadeAllocations)
+          .values({
+            paymentId: id,
+            billId: alloc.billId,
+            amount: alloc.amount
+          });
+      }
+    }
+
+    const [updated] = await tx
+      .update(paymentsMade)
+      .set(updatePayload)
+      .where(eq(paymentsMade.id, id))
+      .returning();
+
+    return updated;
+  });
 }
 
 export async function deletePaymentMade(paymentId: string, userId: string): Promise<any> {

@@ -113,7 +113,9 @@ export function PaymentsMadePage() {
   // Edit modal state
   const [editTarget, setEditTarget] = useState<Payment | null>(null);
   const [editForm, setEditForm] = useState({
-    date: '', amount: '', paymentMethod: '', reference: '', notes: '', accountId: ''
+    date: '', amount: '', paymentMethod: '', reference: '', notes: '', accountId: '',
+    vendorId: '',
+    selectedBillIds: [] as string[],
   });
   const [editFormError, setEditFormError] = useState('');
 
@@ -177,6 +179,11 @@ export function PaymentsMadePage() {
     [allBills, form.vendorId]
   );
 
+  const editVendorBills = useMemo(() =>
+    allBills.filter(b => b.vendorId === editForm.vendorId && b.balanceDue > 0),
+    [allBills, editForm.vendorId]
+  );
+
   const methods = useMemo(() => Array.from(new Set(payments.map(p => p.paymentMethod))), [payments]);
 
   const filtered = useMemo(() => {
@@ -213,6 +220,8 @@ export function PaymentsMadePage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['payments-made'] });
       queryClient.invalidateQueries({ queryKey: ['payment-detail'] });
+      queryClient.invalidateQueries({ queryKey: ['bills'] });
+      queryClient.invalidateQueries({ queryKey: ['bills-open'] });
       setEditTarget(null);
       showSuccess('Payment updated successfully.');
     },
@@ -287,13 +296,30 @@ export function PaymentsMadePage() {
   // Edit handlers
   function openEditModal(p: Payment) {
     setEditTarget(p);
-    setEditForm({
-      date: p.date ? p.date.split('T')[0] : '',
-      amount: (p.amount / 100).toFixed(2),
-      paymentMethod: p.paymentMethod,
-      reference: p.reference || '',
-      notes: p.notes || '',
-      accountId: p.accountId || '',
+    // Fetch payment detail to get existing allocations
+    api.get(`/purchases/payments/${p.id}`).then((res: any) => {
+      const detail = res.data;
+      setEditForm({
+        date: p.date ? p.date.split('T')[0] : '',
+        amount: (p.amount / 100).toFixed(2),
+        paymentMethod: p.paymentMethod,
+        reference: p.reference || '',
+        notes: p.notes || '',
+        accountId: p.accountId || '',
+        vendorId: p.vendorId || '',
+        selectedBillIds: (detail.allocations || []).map((a: any) => a.billId),
+      });
+    }).catch(() => {
+      setEditForm({
+        date: p.date ? p.date.split('T')[0] : '',
+        amount: (p.amount / 100).toFixed(2),
+        paymentMethod: p.paymentMethod,
+        reference: p.reference || '',
+        notes: p.notes || '',
+        accountId: p.accountId || '',
+        vendorId: p.vendorId || '',
+        selectedBillIds: [],
+      });
     });
     setEditFormError('');
   }
@@ -314,6 +340,25 @@ export function PaymentsMadePage() {
       notes: editForm.notes || null,
     };
     if (editForm.accountId) payload.accountId = editForm.accountId;
+    if (editForm.vendorId) payload.vendorId = editForm.vendorId;
+
+    // Build allocations from selected bills
+    if (editForm.selectedBillIds.length > 0) {
+      const totalAmount = Math.round(amt * 100);
+      const selectedBills = editVendorBills.filter(b => editForm.selectedBillIds.includes(b.id));
+      const totalSelectedBal = selectedBills.reduce((s, b) => s + (b.balanceDue || 0), 0);
+      if (totalSelectedBal > 0) {
+        let remaining = totalAmount;
+        payload.allocations = selectedBills.map((b, i) => {
+          const isLast = i === selectedBills.length - 1;
+          const allocAmt = isLast ? remaining : Math.round((b.balanceDue / totalSelectedBal) * totalAmount);
+          remaining -= allocAmt;
+          return { billId: b.id, amount: Math.min(allocAmt, b.balanceDue) };
+        });
+      }
+    } else {
+      payload.allocations = [];
+    }
 
     updateMutation.mutate({ id: editTarget.id, data: payload });
   }
@@ -886,11 +931,49 @@ export function PaymentsMadePage() {
                 />
               </div>
               <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Vendor</label>
+                <select value={editForm.vendorId}
+                  onChange={e => setEditForm({ ...editForm, vendorId: e.target.value, selectedBillIds: [] })}
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow bg-white">
+                  <option value="">-- Select Vendor --</option>
+                  {vendors.map((v: any) => (
+                    <option key={v.id} value={v.id}>{v.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {editForm.vendorId && editVendorBills.length > 0 && (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Link to Outstanding Bills</label>
+                  <div className="border border-slate-200 rounded-xl p-2 max-h-[140px] overflow-y-auto space-y-1">
+                    {editVendorBills.map((bill: any) => (
+                      <label key={bill.id} className="flex items-center gap-2 p-1.5 hover:bg-slate-50 rounded-lg cursor-pointer text-xs">
+                        <input
+                          type="checkbox"
+                          checked={editForm.selectedBillIds.includes(bill.id)}
+                          onChange={() => {
+                            setEditForm(prev => ({
+                              ...prev,
+                              selectedBillIds: prev.selectedBillIds.includes(bill.id)
+                                ? prev.selectedBillIds.filter(id => id !== bill.id)
+                                : [...prev.selectedBillIds, bill.id]
+                            }));
+                          }}
+                          className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                        <span className="flex-1 truncate font-mono">{bill.billNumber || 'Bill'}</span>
+                        <span className="font-mono text-indigo-600 font-semibold">{formatNaira(bill.balanceDue)}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Notes</label>
                 <textarea value={editForm.notes} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} rows={2}
                   className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow resize-none" />
               </div>
-              <p className="text-xs text-slate-400">Note: Amount and allocation cannot be edited after recording. Reverse and re-record if needed.</p>
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-200/80">
                 <button type="button" onClick={() => setEditTarget(null)}
                   className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-xl transition-all duration-200">Cancel</button>
