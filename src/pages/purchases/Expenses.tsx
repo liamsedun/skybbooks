@@ -179,19 +179,19 @@ export function ExpensesPage() {
 
   const createMutation = useMutation({
     mutationFn: (p: any) => api.post('/purchases/expenses', p),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['expenses'] }); closeModal(); showSuccess('Expense recorded.'); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['expenses'] }); queryClient.invalidateQueries({ queryKey: ['bankAccounts'] }); closeModal(); showSuccess('Expense recorded.'); },
     onError: (e: any) => setFormError(e?.response?.data?.error || 'Failed to save expense.'),
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, p }: { id: string; p: any }) => api.patch(`/purchases/expenses/${id}`, p),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['expenses'] }); closeModal(); showSuccess('Expense updated.'); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['expenses'] }); queryClient.invalidateQueries({ queryKey: ['bankAccounts'] }); closeModal(); showSuccess('Expense updated.'); },
     onError: (e: any) => setFormError(e?.response?.data?.error || 'Failed to update expense.'),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.delete(`/purchases/expenses/${id}`),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['expenses'] }); showSuccess('Expense deleted and journal reversed.'); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['expenses'] }); queryClient.invalidateQueries({ queryKey: ['bankAccounts'] }); showSuccess('Expense deleted and journal reversed.'); },
     onError: (e: any) => alert(e?.response?.data?.error || 'Failed to delete expense.'),
   });
 
@@ -647,7 +647,7 @@ export function ExpensesPage() {
           entity="expenses"
           endpoint="/purchases/expenses"
           onClose={() => setImportOpen(false)}
-          onSuccess={() => queryClient.invalidateQueries({ queryKey: ['expenses'] })}
+          onSuccess={() => { queryClient.invalidateQueries({ queryKey: ['expenses'] }); queryClient.invalidateQueries({ queryKey: ['bankAccounts'] }); }}
           transformRow={(row, headers) => {
             const vendorName = row[headers.indexOf('vendorId (or name)')]?.trim();
             const vendor = (vendors || []).find(v => v.id === vendorName || v.name === vendorName);

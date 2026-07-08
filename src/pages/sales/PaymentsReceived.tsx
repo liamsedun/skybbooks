@@ -452,6 +452,7 @@ export function PaymentsReceivedPage() {
     mutationFn: (payload: any) => api.post('/sales/payments', payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sales', 'payments'] });
+      queryClient.invalidateQueries({ queryKey: ['bankAccounts'] });
       setAddOpen(false);
       setAddForm(EMPTY_ADD_FORM);
       setAddError(null);
@@ -463,6 +464,7 @@ export function PaymentsReceivedPage() {
     mutationFn: ({ id, payload }: { id: string; payload: any }) => api.patch(`/sales/payments/${id}`, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sales', 'payments'] });
+      queryClient.invalidateQueries({ queryKey: ['bankAccounts'] });
       setEditTarget(null);
       setEditError(null);
     },
@@ -474,6 +476,7 @@ export function PaymentsReceivedPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sales', 'payments'] });
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['bankAccounts'] });
       setDeleteTarget(null);
       setDeleteError(null);
       if (selectedPaymentId === deleteTarget?.id) setSelectedPaymentId(null);

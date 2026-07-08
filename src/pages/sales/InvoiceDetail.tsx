@@ -74,6 +74,7 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoice', invoiceId] });
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['bankAccounts'] });
       refetch();
     },
   });
@@ -83,6 +84,7 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoice', invoiceId] });
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['bankAccounts'] });
       refetch();
     },
   });

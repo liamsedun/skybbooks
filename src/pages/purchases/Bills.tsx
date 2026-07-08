@@ -177,29 +177,31 @@ function BillList() {
   }), [filtered]);
 
   // ── Mutations ─────────────────────────────────────────────────────────────
+  const invalidateBank = () => qc.invalidateQueries({ queryKey: ['bankAccounts'] });
+
   const createMutation = useMutation({
     mutationFn: (data: any) => api.post('/purchases/bills', data).then(r => r.data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['bills'] }); closeModal(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['bills'] }); invalidateBank(); closeModal(); },
     onError: (e: any) => setFormError(e?.response?.data?.message || 'Failed to create bill'),
   });
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => api.patch(`/purchases/bills/${id}`, data).then(r => r.data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['bills'] }); closeModal(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['bills'] }); invalidateBank(); closeModal(); },
     onError: (e: any) => setFormError(e?.response?.data?.message || 'Failed to update bill'),
   });
   const approveMutation = useMutation({
     mutationFn: (id: string) => api.post(`/purchases/bills/${id}/approve`).then(r => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['bills'] }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['bills'] }); invalidateBank(); },
     onError: (e: any) => alert(e?.response?.data?.message || 'Failed to approve bill'),
   });
   const unapproveMutation = useMutation({
     mutationFn: (id: string) => api.post(`/purchases/bills/${id}/unapprove`).then(r => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['bills'] }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['bills'] }); invalidateBank(); },
     onError: (e: any) => alert(e?.response?.data?.message || 'Failed to unapprove bill'),
   });
   const voidMutation = useMutation({
     mutationFn: (id: string) => api.post(`/purchases/bills/${id}/void`).then(r => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['bills'] }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['bills'] }); invalidateBank(); },
     onError: (e: any) => alert(e?.response?.data?.message || 'Failed to void bill'),
   });
   const duplicateMutation = useMutation({
@@ -209,7 +211,7 @@ function BillList() {
   });
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.delete(`/purchases/bills/${id}`).then(r => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['bills'] }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['bills'] }); invalidateBank(); },
     onError: (e: any) => alert(e?.response?.data?.message || 'Failed to delete bill'),
   });
 
@@ -824,19 +826,21 @@ function BillDetail({ id, onBack }: { id: string; onBack: () => void }) {
     queryFn: async () => { const r = await api.get('/inventory/items'); return r.data; },
   });
 
+  const invalidateBank = () => qc.invalidateQueries({ queryKey: ['bankAccounts'] });
+
   const voidMutation = useMutation({
     mutationFn: (bid: string) => api.post(`/purchases/bills/${bid}/void`).then(r => r.data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['bill', id] }); qc.invalidateQueries({ queryKey: ['bills'] }); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['bill', id] }); qc.invalidateQueries({ queryKey: ['bills'] }); invalidateBank(); },
     onError: (e: any) => alert(e?.response?.data?.message || 'Failed to void bill'),
   });
   const approveMutation = useMutation({
     mutationFn: (bid: string) => api.post(`/purchases/bills/${bid}/approve`).then(r => r.data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['bill', id] }); qc.invalidateQueries({ queryKey: ['bills'] }); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['bill', id] }); qc.invalidateQueries({ queryKey: ['bills'] }); invalidateBank(); },
     onError: (e: any) => alert(e?.response?.data?.message || 'Failed to approve bill'),
   });
   const unapproveMutation = useMutation({
     mutationFn: (bid: string) => api.post(`/purchases/bills/${bid}/unapprove`).then(r => r.data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['bill', id] }); qc.invalidateQueries({ queryKey: ['bills'] }); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['bill', id] }); qc.invalidateQueries({ queryKey: ['bills'] }); invalidateBank(); },
     onError: (e: any) => alert(e?.response?.data?.message || 'Failed to unapprove bill'),
   });
   const duplicateMutation = useMutation({
@@ -846,7 +850,7 @@ function BillDetail({ id, onBack }: { id: string; onBack: () => void }) {
   });
   const deleteMutation = useMutation({
     mutationFn: (bid: string) => api.delete(`/purchases/bills/${bid}`).then(r => r.data),
-    onSuccess: () => navigate('/purchases/bills'),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['bills'] }); invalidateBank(); navigate('/purchases/bills'); },
     onError: (e: any) => alert(e?.response?.data?.message || 'Failed to delete bill'),
   });
 

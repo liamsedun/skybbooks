@@ -226,10 +226,13 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
   };
 
   // Actions handler mutations
+  const invalidateBank = () => queryClient.invalidateQueries({ queryKey: ['bankAccounts'] });
+
   const sendInvoiceMutation = useMutation({
     mutationFn: (id: string) => salesApi.sendInvoice(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      invalidateBank();
       refetch();
     },
   });
@@ -238,6 +241,7 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
     mutationFn: (id: string) => salesApi.voidInvoice(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      invalidateBank();
       refetch();
     },
   });
@@ -260,6 +264,7 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
       await salesApi.bulkSendInvoices(selectedInvoices);
       setSelectedInvoices([]);
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['bankAccounts'] });
       refetch();
     } catch (e) {
       console.error('Bulk send failed', e);
@@ -824,6 +829,7 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
           onClose={() => setImportOpen(false)}
           onSuccess={() => {
             queryClient.invalidateQueries({ queryKey: ['invoices'] });
+            queryClient.invalidateQueries({ queryKey: ['bankAccounts'] });
           }}
           transformRow={async (row, headers) => {
             const data: Record<string, string> = {};

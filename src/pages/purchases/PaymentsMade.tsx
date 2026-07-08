@@ -212,6 +212,7 @@ export function PaymentsMadePage() {
       queryClient.invalidateQueries({ queryKey: ['payments-made'] });
       queryClient.invalidateQueries({ queryKey: ['bills'] });
       queryClient.invalidateQueries({ queryKey: ['bills-open'] });
+      queryClient.invalidateQueries({ queryKey: ['bankAccounts'] });
       closeModal();
       showSuccess('Payment recorded successfully.');
     },
@@ -225,6 +226,7 @@ export function PaymentsMadePage() {
       queryClient.invalidateQueries({ queryKey: ['payment-detail'] });
       queryClient.invalidateQueries({ queryKey: ['bills'] });
       queryClient.invalidateQueries({ queryKey: ['bills-open'] });
+      queryClient.invalidateQueries({ queryKey: ['bankAccounts'] });
       setEditTarget(null);
       showSuccess('Payment updated successfully.');
     },
@@ -237,6 +239,7 @@ export function PaymentsMadePage() {
       queryClient.invalidateQueries({ queryKey: ['payments-made'] });
       queryClient.invalidateQueries({ queryKey: ['bills'] });
       queryClient.invalidateQueries({ queryKey: ['bills-open'] });
+      queryClient.invalidateQueries({ queryKey: ['bankAccounts'] });
       setDetailPaymentId(null);
       setDeleteTarget(null);
       setDeleteError(null);
@@ -1138,6 +1141,7 @@ export function PaymentsMadePage() {
             queryClient.invalidateQueries({ queryKey: ['payments-made'] });
             queryClient.invalidateQueries({ queryKey: ['bills'] });
             queryClient.invalidateQueries({ queryKey: ['bills-open'] });
+            queryClient.invalidateQueries({ queryKey: ['bankAccounts'] });
           }}
           transformRow={(row, headers) => {
             const get = (key: string) => {
