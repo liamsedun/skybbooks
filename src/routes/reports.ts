@@ -843,7 +843,17 @@ router.get('/project-income-expense', async (req: AuthenticatedRequest, res: Res
     const { projectId, startDate, endDate } = req.query;
 
     const whereClauses: any[] = [eq(journalEntries.orgId, orgId)];
-    if (projectId && typeof projectId === 'string') whereClauses.push(eq(journalEntries.projectId, projectId));
+    if (projectId && typeof projectId === 'string') {
+      whereClauses.push(sql`
+        (${journalEntries.projectId} = ${projectId}::uuid
+         OR (${journalEntries.source} = 'manual' AND ${journalEntries.sourceId} IN (SELECT id FROM expenses WHERE project_id = ${projectId}::uuid))
+         OR (${journalEntries.source} = 'bill' AND ${journalEntries.sourceId} IN (SELECT id FROM bills WHERE project_id = ${projectId}::uuid))
+         OR (${journalEntries.source} = 'payment' AND ${journalEntries.sourceId} IN (SELECT id FROM payments_received WHERE project_id = ${projectId}::uuid))
+         OR (${journalEntries.source} = 'payment' AND ${journalEntries.sourceId} IN (SELECT id FROM payments_made WHERE project_id = ${projectId}::uuid))
+         OR (${journalEntries.source} = 'invoice' AND ${journalEntries.sourceId} IN (SELECT id FROM invoices WHERE project_id = ${projectId}::uuid))
+        )
+      `);
+    }
     if (startDate && typeof startDate === 'string') whereClauses.push(gte(journalEntries.date, new Date(startDate)));
     if (endDate && typeof endDate === 'string') whereClauses.push(lte(journalEntries.date, new Date(endDate)));
 
@@ -918,8 +928,14 @@ router.get('/project-income-expense', async (req: AuthenticatedRequest, res: Res
           .innerJoin(journalEntries, eq(journalLines.entryId, journalEntries.id))
           .where(and(
             eq(journalLines.accountId, whtAccount.id),
-            eq(journalEntries.projectId, projectId),
             eq(journalEntries.orgId, orgId),
+            sql`(${journalEntries.projectId} = ${projectId}::uuid
+              OR (${journalEntries.source} = 'manual' AND ${journalEntries.sourceId} IN (SELECT id FROM expenses WHERE project_id = ${projectId}::uuid))
+              OR (${journalEntries.source} = 'bill' AND ${journalEntries.sourceId} IN (SELECT id FROM bills WHERE project_id = ${projectId}::uuid))
+              OR (${journalEntries.source} = 'payment' AND ${journalEntries.sourceId} IN (SELECT id FROM payments_received WHERE project_id = ${projectId}::uuid))
+              OR (${journalEntries.source} = 'payment' AND ${journalEntries.sourceId} IN (SELECT id FROM payments_made WHERE project_id = ${projectId}::uuid))
+              OR (${journalEntries.source} = 'invoice' AND ${journalEntries.sourceId} IN (SELECT id FROM invoices WHERE project_id = ${projectId}::uuid))
+            )`,
           ));
         whtDeducted = Number(whtResult?.totalWht || 0);
       }
@@ -965,7 +981,15 @@ router.get('/project-summary', async (req: AuthenticatedRequest, res: Response, 
         .from(journalLines)
         .innerJoin(journalEntries, eq(journalLines.entryId, journalEntries.id))
         .innerJoin(accounts, eq(journalLines.accountId, accounts.id))
-        .where(and(...dateWhere, eq(journalEntries.projectId, p.id)));
+        .where(and(...dateWhere, sql`
+          (${journalEntries.projectId} = ${p.id}::uuid
+           OR (${journalEntries.source} = 'manual' AND ${journalEntries.sourceId} IN (SELECT id FROM expenses WHERE project_id = ${p.id}::uuid))
+           OR (${journalEntries.source} = 'bill' AND ${journalEntries.sourceId} IN (SELECT id FROM bills WHERE project_id = ${p.id}::uuid))
+           OR (${journalEntries.source} = 'payment' AND ${journalEntries.sourceId} IN (SELECT id FROM payments_received WHERE project_id = ${p.id}::uuid))
+           OR (${journalEntries.source} = 'payment' AND ${journalEntries.sourceId} IN (SELECT id FROM payments_made WHERE project_id = ${p.id}::uuid))
+           OR (${journalEntries.source} = 'invoice' AND ${journalEntries.sourceId} IN (SELECT id FROM invoices WHERE project_id = ${p.id}::uuid))
+          )
+        `));
 
       let totalIncome = 0;
       let totalExpenses = 0;
@@ -996,8 +1020,14 @@ router.get('/project-summary', async (req: AuthenticatedRequest, res: Response, 
           .innerJoin(journalEntries, eq(journalLines.entryId, journalEntries.id))
           .where(and(
             eq(journalLines.accountId, whtAccount.id),
-            eq(journalEntries.projectId, p.id),
             eq(journalEntries.orgId, orgId),
+            sql`(${journalEntries.projectId} = ${p.id}::uuid
+              OR (${journalEntries.source} = 'manual' AND ${journalEntries.sourceId} IN (SELECT id FROM expenses WHERE project_id = ${p.id}::uuid))
+              OR (${journalEntries.source} = 'bill' AND ${journalEntries.sourceId} IN (SELECT id FROM bills WHERE project_id = ${p.id}::uuid))
+              OR (${journalEntries.source} = 'payment' AND ${journalEntries.sourceId} IN (SELECT id FROM payments_received WHERE project_id = ${p.id}::uuid))
+              OR (${journalEntries.source} = 'payment' AND ${journalEntries.sourceId} IN (SELECT id FROM payments_made WHERE project_id = ${p.id}::uuid))
+              OR (${journalEntries.source} = 'invoice' AND ${journalEntries.sourceId} IN (SELECT id FROM invoices WHERE project_id = ${p.id}::uuid))
+            )`,
           ));
         whtDeducted = Number(whtRow?.total || 0);
       }
