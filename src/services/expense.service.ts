@@ -189,8 +189,9 @@ export async function createExpense(input: any, createdBy: string): Promise<any>
       date: expense.date,
       description: `Bookkeeping entry for expense ${expenseNumber}`,
       reference: expenseNumber,
-      source: 'manual', // standard journal classification
+      source: 'manual',
       sourceId: expense.id,
+      projectId: expense.projectId || undefined,
       createdBy,
       lines: journalLinesPayload
     }, tx);
@@ -310,6 +311,7 @@ export async function updateExpense(expenseId: string, input: any, userId: strin
       reference: expense.expenseNumber,
       source: 'manual',
       sourceId: updatedExpense.id,
+      projectId: expense.projectId || undefined,
       createdBy: userId,
       lines: journalLinesPayload
     }, tx);

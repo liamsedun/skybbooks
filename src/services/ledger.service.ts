@@ -4,7 +4,7 @@
  */
 
 import { eq, and, lte, gte, sql, asc } from 'drizzle-orm';
-import { db, accounts, journalEntries, journalLines, bankAccounts, fixedAssets, contacts, inventoryLots, closedPeriods } from '../db/schema';
+import { db, accounts, journalEntries, journalLines, bankAccounts, fixedAssets, contacts, inventoryLots, closedPeriods, invoices, paymentsReceived, bills } from '../db/schema';
 import { AppError } from '../lib/errors';
 import { toNgn, getRateForDate } from './currency.service';
 
@@ -127,6 +127,24 @@ export async function createJournalEntry(
       `Journal entry is out of balance. Total debits (${totalDebits} kobo) must exactly match total credits (${totalCredits} kobo).`,
       400
     );
+  }
+
+  // Auto-resolve projectId from unambiguous source records
+  if (!input.projectId && input.source && input.sourceId) {
+    try {
+      let srcProjectId: string | null | undefined;
+      if (input.source === 'invoice') {
+        const [r] = await (tx || db).select({ pid: invoices.projectId }).from(invoices).where(eq(invoices.id, input.sourceId)).limit(1);
+        srcProjectId = r?.pid;
+      } else if (input.source === 'payment') {
+        const [r] = await (tx || db).select({ pid: paymentsReceived.projectId }).from(paymentsReceived).where(eq(paymentsReceived.id, input.sourceId)).limit(1);
+        srcProjectId = r?.pid;
+      } else if (input.source === 'bill') {
+        const [r] = await (tx || db).select({ pid: bills.projectId }).from(bills).where(eq(bills.id, input.sourceId)).limit(1);
+        srcProjectId = r?.pid;
+      }
+      if (srcProjectId) input.projectId = srcProjectId;
+    } catch { /* source table may not exist or sourceId not found */ }
   }
 
   // 2. Perform DB operations inside transaction boundaries (if not already inside one)
