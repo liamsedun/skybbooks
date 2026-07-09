@@ -216,6 +216,7 @@ export function InvoiceForm({ invoiceId, onNavigate }: InvoiceFormProps) {
   // Populate form if in edit mode and details loaded
   useEffect(() => {
     if (editingInvoice && invoiceId) {
+      setInvoiceProjectId(editingInvoice.projectId || '');
       // Map line items from database back to form structures
       const lines = (editingInvoice.lines || editingInvoice.items || []).map((l: any) => ({
         itemId: l.itemId || '',

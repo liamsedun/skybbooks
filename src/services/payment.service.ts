@@ -293,6 +293,7 @@ export async function recordPaymentReceived(input: any, createdBy: string): Prom
       reference: payment.paymentNumber,
       source: 'payment',
       sourceId: payment.id,
+      projectId: payment.projectId || undefined,
       createdBy,
       lines: jeLines
     }, tx);

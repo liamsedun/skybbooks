@@ -7,7 +7,7 @@ import React, { useEffect, useMemo } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { X, Loader2, Check, Banknote, HelpCircle, Info } from 'lucide-react';
-import { salesApi, bankingApi } from '../../lib/api';
+import { salesApi, bankingApi, api } from '../../lib/api';
 import { AmountDisplay } from '../ui/AmountDisplay';
 import { CurrencySelector } from '../ui/CurrencySelector';
 import { useCurrency } from '../../hooks/useCurrency';
@@ -55,6 +55,7 @@ export function RecordPaymentDrawer({
   const { token } = useAuth();
   const [drawerCurrency, setDrawerCurrency] = React.useState('NGN');
   const [drawerFxRate, setDrawerFxRate] = React.useState<string | null>('1.00000000');
+  const [drawerProjectId, setDrawerProjectId] = React.useState('');
 
   // Queries for dynamic selects
   const { data: customers = [], isLoading: isLoadingCustomers } = useQuery({
@@ -66,6 +67,13 @@ export function RecordPaymentDrawer({
   const { data: bankAccounts = [], isLoading: isLoadingBankAccounts } = useQuery({
     queryKey: ['bankAccounts'],
     queryFn: bankingApi.getAccounts,
+    enabled: !!token,
+  });
+
+  const { data: projects = [] } = useQuery({
+    queryKey: ['projects'],
+    queryFn: () => api.get('/projects').then(r => r.data),
+    staleTime: 60000,
     enabled: !!token,
   });
 
@@ -240,6 +248,7 @@ export function RecordPaymentDrawer({
         allocations: activeAllocations,
         currency: drawerCurrency,
         fxRate: drawerFxRate ? parseFloat(drawerFxRate) : undefined,
+        projectId: drawerProjectId || undefined,
       };
 
       return salesApi.createPaymentReceived(payload);
@@ -424,6 +433,17 @@ export function RecordPaymentDrawer({
                 onFxRateChange={setDrawerFxRate}
                 date={watch('date')}
               />
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Project</label>
+                <select value={drawerProjectId} onChange={e => setDrawerProjectId(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-700 focus:bg-white focus:border-purple-600 outline-none transition">
+                  <option value="">None (no project)</option>
+                  {projects.map((p: any) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
 
               {/* 3. Total Received Box */}
               <div className="bg-purple-50/50 p-4 rounded-2xl border border-purple-100">

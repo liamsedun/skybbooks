@@ -28,6 +28,7 @@ export type CreateJournalEntryInput = {
   reference?: string;
   source: 'manual' | 'invoice' | 'bill' | 'payment' | 'payroll' | 'bank_feed' | 'opening_balance' | 'opening_stock' | 'transfer';
   sourceId?: string;
+  projectId?: string;
   createdBy: string;
   lines: JournalLineInput[];
 };
@@ -150,6 +151,7 @@ export async function createJournalEntry(
         reference: input.reference || null,
         source: input.source,
         sourceId: input.sourceId || null,
+        projectId: input.projectId || null,
         createdBy: input.createdBy,
         isReversed: false
       })

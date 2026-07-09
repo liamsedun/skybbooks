@@ -291,6 +291,7 @@ async function createInvoiceJournalEntry(invoiceId: string, orgId: string, userI
     reference: invoice.invoiceNumber,
     source: 'invoice',
     sourceId: invoice.id,
+    projectId: invoice.projectId || undefined,
     createdBy: userId,
     lines: journalLinesPayload
   }, tx);
