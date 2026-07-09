@@ -402,58 +402,38 @@ router.get('/depreciation-entries', async (req: AuthenticatedRequest, res: Respo
   try {
     const orgId = req.user!.orgId!;
 
-    // Try using depreciation_entries table first (inner join through it), fallback to ILIKE
-    let rows: any[];
-    try {
-      rows = await db
-        .select({
-          journalEntryId: journalEntries.id,
-          entryNumber: journalEntries.entryNumber,
-          date: journalEntries.date,
-          description: journalEntries.description,
-          reference: journalEntries.reference,
-          createdAt: journalEntries.createdAt,
-          lineId: journalLines.id,
-          lineAccountId: journalLines.accountId,
-          lineDebit: journalLines.debitAmount,
-          lineCredit: journalLines.creditAmount,
-          lineDescription: journalLines.description,
-          accountCode: accounts.code,
-          accountName: accounts.name,
-        })
-        .from(journalEntries)
-        .innerJoin(depreciationEntries, eq(depreciationEntries.journalEntryId, journalEntries.id))
-        .leftJoin(journalLines, eq(journalLines.entryId, journalEntries.id))
-        .leftJoin(accounts, eq(journalLines.accountId, accounts.id))
-        .where(eq(journalEntries.orgId, orgId))
-        .orderBy(desc(journalEntries.createdAt));
-    } catch {
-      // Fallback: depreciation_entries table doesn't exist, use description match
-      rows = await db
-        .select({
-          journalEntryId: journalEntries.id,
-          entryNumber: journalEntries.entryNumber,
-          date: journalEntries.date,
-          description: journalEntries.description,
-          reference: journalEntries.reference,
-          createdAt: journalEntries.createdAt,
-          lineId: journalLines.id,
-          lineAccountId: journalLines.accountId,
-          lineDebit: journalLines.debitAmount,
-          lineCredit: journalLines.creditAmount,
-          lineDescription: journalLines.description,
-          accountCode: accounts.code,
-          accountName: accounts.name,
-        })
-        .from(journalEntries)
-        .leftJoin(journalLines, eq(journalLines.entryId, journalEntries.id))
-        .leftJoin(accounts, eq(journalLines.accountId, accounts.id))
-        .where(and(
-          eq(journalEntries.orgId, orgId),
-          sql`${journalEntries.description} ILIKE '%depreciation%'`
-        ))
-        .orderBy(desc(journalEntries.createdAt));
-    }
+    // Query journal entries whose lines reference depreciation/accum-depr accounts or description matches
+    const rows = await db
+      .select({
+        journalEntryId: journalEntries.id,
+        entryNumber: journalEntries.entryNumber,
+        date: journalEntries.date,
+        description: journalEntries.description,
+        reference: journalEntries.source,
+        createdAt: journalEntries.createdAt,
+        lineId: journalLines.id,
+        lineDebit: journalLines.debitAmount,
+        lineCredit: journalLines.creditAmount,
+        lineDescription: journalLines.description,
+        accountCode: accounts.code,
+        accountName: accounts.name,
+      })
+      .from(journalEntries)
+      .innerJoin(journalLines, eq(journalLines.entryId, journalEntries.id))
+      .leftJoin(accounts, eq(journalLines.accountId, accounts.id))
+      .where(and(
+        eq(journalEntries.orgId, orgId),
+        sql`(
+          ${journalEntries.description} ILIKE '%depreciation%'
+          OR EXISTS (
+            SELECT 1 FROM journal_lines jl2
+            JOIN accounts a2 ON a2.id = jl2.account_id
+            WHERE jl2.entry_id = ${journalEntries.id}
+            AND (a2.code LIKE '8107%' OR a2.code LIKE '2003%' OR a2.code LIKE '2005%' OR a2.code LIKE '2006%' OR a2.code LIKE '2004%')
+          )
+        )`
+      ))
+      .orderBy(desc(journalEntries.createdAt));
 
     const grouped = new Map<string, {
       journalEntryId: string;
