@@ -402,38 +402,28 @@ router.get('/depreciation-entries', async (req: AuthenticatedRequest, res: Respo
   try {
     const orgId = req.user!.orgId!;
 
-    // Query journal entries whose lines reference depreciation/accum-depr accounts or description matches
-    const rows = await db
-      .select({
-        journalEntryId: journalEntries.id,
-        entryNumber: journalEntries.entryNumber,
-        date: journalEntries.date,
-        description: journalEntries.description,
-        reference: journalEntries.source,
-        createdAt: journalEntries.createdAt,
-        lineId: journalLines.id,
-        lineDebit: journalLines.debitAmount,
-        lineCredit: journalLines.creditAmount,
-        lineDescription: journalLines.description,
-        accountCode: accounts.code,
-        accountName: accounts.name,
-      })
-      .from(journalEntries)
-      .innerJoin(journalLines, eq(journalLines.entryId, journalEntries.id))
-      .leftJoin(accounts, eq(journalLines.accountId, accounts.id))
-      .where(and(
-        eq(journalEntries.orgId, orgId),
-        sql`(
-          ${journalEntries.description} ILIKE '%depreciation%'
-          OR EXISTS (
-            SELECT 1 FROM journal_lines jl2
-            JOIN accounts a2 ON a2.id = jl2.account_id
-            WHERE jl2.entry_id = ${journalEntries.id}
-            AND (a2.code LIKE '8107%' OR a2.code LIKE '2003%' OR a2.code LIKE '2005%' OR a2.code LIKE '2006%' OR a2.code LIKE '2004%')
-          )
-        )`
-      ))
-      .orderBy(desc(journalEntries.createdAt));
+    const result = await db.execute(sql`
+      SELECT
+        je.id AS "journalEntryId",
+        je.entry_number AS "entryNumber",
+        je.date,
+        je.description,
+        je.source AS "source",
+        je.created_at AS "createdAt",
+        jl.id AS "lineId",
+        jl.debit_amount AS "lineDebit",
+        jl.credit_amount AS "lineCredit",
+        jl.description AS "lineDescription",
+        a.code AS "accountCode",
+        a.name AS "accountName"
+      FROM journal_entries je
+      INNER JOIN journal_lines jl ON jl.entry_id = je.id
+      LEFT JOIN accounts a ON a.id = jl.account_id
+      WHERE je.org_id = ${orgId}
+        AND je.description ILIKE '%depreciation%'
+      ORDER BY je.created_at DESC
+    `);
+    const raw: any[] = result.rows || [];
 
     const grouped = new Map<string, {
       journalEntryId: string;
@@ -448,17 +438,17 @@ router.get('/depreciation-entries', async (req: AuthenticatedRequest, res: Respo
       totalCredit: number;
     }>();
 
-    for (const row of rows) {
+    for (const row of raw) {
       const key = row.journalEntryId;
       if (!grouped.has(key)) {
         grouped.set(key, {
           journalEntryId: row.journalEntryId,
           entryNumber: row.entryNumber || '',
-          date: row.date ? row.date.toISOString() : new Date().toISOString(),
+          date: row.date ? new Date(row.date).toISOString() : new Date().toISOString(),
           description: row.description || '',
-          reference: row.reference || null,
+          reference: row.source || null,
           source: 'manual',
-          createdAt: row.createdAt ? row.createdAt.toISOString() : new Date().toISOString(),
+          createdAt: row.createdAt ? new Date(row.createdAt).toISOString() : new Date().toISOString(),
           lines: [],
           totalDebit: 0,
           totalCredit: 0,
@@ -470,16 +460,17 @@ router.get('/depreciation-entries', async (req: AuthenticatedRequest, res: Respo
           accountCode: row.accountCode,
           accountName: row.accountName || '',
           description: row.lineDescription || '',
-          debit: row.lineDebit || 0,
-          credit: row.lineCredit || 0,
+          debit: Number(row.lineDebit) || 0,
+          credit: Number(row.lineCredit) || 0,
         });
-        grp.totalDebit += (row.lineDebit || 0);
-        grp.totalCredit += (row.lineCredit || 0);
+        grp.totalDebit += Number(row.lineDebit) || 0;
+        grp.totalCredit += Number(row.lineCredit) || 0;
       }
     }
 
     return res.status(200).json(Array.from(grouped.values()));
   } catch (err) {
+    console.error('[Depreciation Entries] Query failed:', err);
     return next(err);
   }
 });
