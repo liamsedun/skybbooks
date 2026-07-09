@@ -427,12 +427,12 @@ router.get('/depreciation-entries', async (req: AuthenticatedRequest, res: Respo
         accountName: accounts.name,
       })
       .from(depreciationEntries)
-      .innerJoin(journalEntries, eq(depreciationEntries.journalEntryId, journalEntries.id))
       .innerJoin(fixedAssets, eq(depreciationEntries.assetId, fixedAssets.id))
-      .innerJoin(journalLines, eq(journalLines.entryId, journalEntries.id))
-      .innerJoin(accounts, eq(journalLines.accountId, accounts.id))
-      .where(eq(journalEntries.orgId, orgId))
-      .orderBy(desc(journalEntries.date), desc(journalEntries.createdAt));
+      .leftJoin(journalEntries, eq(depreciationEntries.journalEntryId, journalEntries.id))
+      .leftJoin(journalLines, eq(journalLines.entryId, journalEntries.id))
+      .leftJoin(accounts, eq(journalLines.accountId, accounts.id))
+      .where(eq(fixedAssets.orgId, orgId))
+      .orderBy(desc(journalEntries.createdAt));
 
     // Aggregate into depreciation runs grouped by journal entry
     const grouped = new Map<string, {
@@ -450,32 +450,34 @@ router.get('/depreciation-entries', async (req: AuthenticatedRequest, res: Respo
     }>();
 
     for (const row of entries) {
-      const key = row.journalEntryId;
+      const key = row.journalEntryId || row.id;
       if (!grouped.has(key)) {
         grouped.set(key, {
           id: row.id,
-          entryNumber: row.entryNumber,
-          date: row.date.toISOString(),
-          description: row.description || '',
+          entryNumber: row.entryNumber || `DEP-${String(row.amount || 0)}`,
+          date: row.date ? row.date.toISOString() : new Date().toISOString(),
+          description: row.description || `Depreciation - ${row.assetName || ''}`,
           reference: row.reference || null,
           source: 'manual',
-          journalEntryId: row.journalEntryId,
-          createdAt: row.createdAt.toISOString(),
+          journalEntryId: row.journalEntryId || '',
+          createdAt: row.createdAt ? row.createdAt.toISOString() : new Date().toISOString(),
           lines: [],
           totalDebit: 0,
           totalCredit: 0,
         });
       }
       const grp = grouped.get(key)!;
-      grp.lines.push({
-        accountCode: row.accountCode,
-        accountName: row.accountName,
-        description: row.lineDescription || '',
-        debit: row.lineDebit,
-        credit: row.lineCredit,
-      });
-      grp.totalDebit += row.lineDebit;
-      grp.totalCredit += row.lineCredit;
+      if (row.accountCode) {
+        grp.lines.push({
+          accountCode: row.accountCode,
+          accountName: row.accountName || '',
+          description: row.lineDescription || '',
+          debit: row.lineDebit || 0,
+          credit: row.lineCredit || 0,
+        });
+        grp.totalDebit += (row.lineDebit || 0);
+        grp.totalCredit += (row.lineCredit || 0);
+      }
     }
 
     return res.status(200).json(Array.from(grouped.values()));

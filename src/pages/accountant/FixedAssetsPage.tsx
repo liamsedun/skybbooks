@@ -30,6 +30,8 @@ export function FixedAssetsPage() {
   const [lastImportIds, setLastImportIds] = useState<string[]>([]);
   const [clearing, setClearing] = useState(false);
   const [deprMsg, setDeprMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [showDeprModal, setShowDeprModal] = useState(false);
+  const [deprPeriodDate, setDeprPeriodDate] = useState(new Date().toISOString().split('T')[0]);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const { data: assets, isLoading } = useQuery({
@@ -43,8 +45,8 @@ export function FixedAssetsPage() {
   });
 
   const deprMutation = useMutation({
-    mutationFn: () => fixedAssetsApi.runDepreciation(),
-    onSuccess: (res) => { setDeprMsg({ type: 'success', text: res.message || 'Depreciation run complete.' }); queryClient.invalidateQueries({ queryKey: ['fixed-assets'] }); setTimeout(() => setDeprMsg(null), 5000); },
+    mutationFn: (periodDate?: string) => fixedAssetsApi.runDepreciation(periodDate),
+    onSuccess: (res) => { setDeprMsg({ type: 'success', text: res.message || 'Depreciation run complete.' }); queryClient.invalidateQueries({ queryKey: ['fixed-assets'] }); queryClient.invalidateQueries({ queryKey: ['depreciation-entries'] }); setShowDeprModal(false); setTimeout(() => setDeprMsg(null), 5000); },
     onError: (err: any) => { setDeprMsg({ type: 'error', text: err?.response?.data?.error || err.message || 'Depreciation run failed.' }); setTimeout(() => setDeprMsg(null), 5000); },
   });
 
@@ -111,7 +113,7 @@ export function FixedAssetsPage() {
           {lastImportIds.length > 0 && (
             <button onClick={handleClearLastImport} disabled={clearing} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-rose-600 rounded-xl hover:bg-rose-700 disabled:opacity-50 transition-all duration-200"><X className="w-3.5 h-3.5" /> {clearing ? 'Clearing...' : 'Clear Last Import'}</button>
           )}
-          <button onClick={() => { if (confirm('Run depreciation for all active assets? This will post a journal entry.')) deprMutation.mutate(); }} disabled={deprMutation.isPending}
+          <button onClick={() => setShowDeprModal(true)} disabled={deprMutation.isPending}
             className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-amber-600 rounded-xl hover:bg-amber-700 disabled:opacity-50 transition-all duration-200">
             <Calculator className="w-3.5 h-3.5" /> {deprMutation.isPending ? 'Running...' : 'Run Depreciation'}
           </button>
@@ -125,6 +127,32 @@ export function FixedAssetsPage() {
         <div className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-semibold border ${deprMsg.type === 'success' ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80' : 'bg-red-50 text-red-700 border-red-100/80'}`}>
           {deprMsg.type === 'success' ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
           {deprMsg.text}
+        </div>
+      )}
+
+      {/* Run Depreciation - Period Modal */}
+      {showDeprModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setShowDeprModal(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4 border border-slate-200/80" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-slate-900">Run Depreciation</h2>
+              <button onClick={() => setShowDeprModal(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-xl hover:bg-slate-100"><X className="w-5 h-5" /></button>
+            </div>
+            <p className="text-sm text-slate-600">Select the period (month) for the depreciation run.</p>
+            <div>
+              <label className="text-xs font-semibold text-slate-500 uppercase">Period Date</label>
+              <input type="date" value={deprPeriodDate} onChange={e => setDeprPeriodDate(e.target.value)}
+                className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow mt-1" />
+            </div>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setShowDeprModal(false)}
+                className="px-4 py-2 text-sm font-semibold text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200">Cancel</button>
+              <button onClick={() => deprMutation.mutate(deprPeriodDate)} disabled={deprMutation.isPending || !deprPeriodDate}
+                className="px-4 py-2 text-sm font-semibold text-white bg-amber-600 rounded-xl hover:bg-amber-700 disabled:opacity-50">
+                {deprMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin inline" /> : null} Run Depreciation
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
