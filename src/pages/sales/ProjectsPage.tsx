@@ -63,11 +63,13 @@ export function ProjectsPage() {
     onError: (err: any) => alert(err?.response?.data?.error || err?.message || 'Failed to update status.'),
   });
 
+  const closeForm = () => { setShowForm(false); setEditTarget(null); setFormError(null); };
+
   const createMutation = useMutation({
     mutationFn: (data: any) => projectsApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
-      setShowForm(false);
+      closeForm();
       setSuccess('Project created successfully.');
       setTimeout(() => setSuccess(null), 3000);
     },
@@ -78,7 +80,7 @@ export function ProjectsPage() {
     mutationFn: ({ id, data }: { id: string; data: any }) => projectsApi.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
-      setEditTarget(null);
+      closeForm();
       setSuccess('Project updated successfully.');
       setTimeout(() => setSuccess(null), 3000);
     },
@@ -181,7 +183,7 @@ export function ProjectsPage() {
               createMutation.mutate(data);
             }
           }}
-          onClose={() => { setShowForm(false); setEditTarget(null); setFormError(null); }}
+          onClose={closeForm}
           error={formError}
           isPending={createMutation.isPending || updateMutation.isPending}
         />
