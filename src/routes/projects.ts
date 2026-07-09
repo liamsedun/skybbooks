@@ -9,6 +9,8 @@ const router = Router();
 router.use(authenticate);
 router.use(requireOrg);
 
+const BILLING_METHODS = ['Fixed Price', 'Hourly Rate Per Task', 'Hourly Rate Per User', 'Milestone Based', 'Cost Plus', 'Retainer'] as const;
+
 const createProjectSchema = z.object({
   name: z.string().min(1),
   code: z.string().optional(),
@@ -17,7 +19,10 @@ const createProjectSchema = z.object({
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   budget: z.number().optional(),
-  customFields: z.record(z.any()).optional(),
+  customerId: z.string().optional(),
+  customerName: z.string().optional(),
+  billingMethod: z.enum(['Fixed Price', 'Hourly Rate Per Task', 'Hourly Rate Per User', 'Milestone Based', 'Cost Plus', 'Retainer']).optional(),
+  customFields: z.record(z.string(), z.any()).optional(),
 });
 
 const updateProjectSchema = z.object({
@@ -28,7 +33,10 @@ const updateProjectSchema = z.object({
   startDate: z.string().nullable().optional(),
   endDate: z.string().nullable().optional(),
   budget: z.number().optional(),
-  customFields: z.record(z.any()).optional(),
+  customerId: z.string().nullable().optional(),
+  customerName: z.string().optional(),
+  billingMethod: z.enum(['Fixed Price', 'Hourly Rate Per Task', 'Hourly Rate Per User', 'Milestone Based', 'Cost Plus', 'Retainer']).optional(),
+  customFields: z.record(z.string(), z.any()).optional(),
 });
 
 router.get('/', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
@@ -77,6 +85,9 @@ router.post('/', async (req: AuthenticatedRequest, res: Response, next: NextFunc
         startDate: body.startDate ? new Date(body.startDate) : null,
         endDate: body.endDate ? new Date(body.endDate) : null,
         budget: body.budget ? Math.round(body.budget * 100) : 0,
+        customerId: body.customerId || null,
+        customerName: body.customerName || null,
+        billingMethod: body.billingMethod || 'Fixed Price',
         customFields: body.customFields || {},
         createdBy: userId,
       })
@@ -106,6 +117,9 @@ router.patch('/:id', async (req: AuthenticatedRequest, res: Response, next: Next
     if (body.startDate !== undefined) updateData.startDate = body.startDate ? new Date(body.startDate) : null;
     if (body.endDate !== undefined) updateData.endDate = body.endDate ? new Date(body.endDate) : null;
     if (body.budget !== undefined) updateData.budget = Math.round(body.budget * 100);
+    if (body.customerId !== undefined) updateData.customerId = body.customerId;
+    if (body.customerName !== undefined) updateData.customerName = body.customerName;
+    if (body.billingMethod !== undefined) updateData.billingMethod = body.billingMethod;
     if (body.customFields !== undefined) updateData.customFields = body.customFields;
     const [updated] = await db
       .update(projects)

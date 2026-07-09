@@ -707,6 +707,9 @@ export const projects = pgTable('projects', {
   startDate: timestamp('start_date'),
   endDate: timestamp('end_date'),
   budget: bigint('budget', { mode: 'number' }).default(0).notNull(),
+  customerId: uuid('customer_id').references(() => contacts.id),
+  customerName: text('customer_name'),
+  billingMethod: text('billing_method').default('Fixed Price').notNull(),
   customFields: jsonb('custom_fields').default({}),
   createdBy: uuid('created_by'),
   createdAt: timestamp('created_at').defaultNow().notNull()

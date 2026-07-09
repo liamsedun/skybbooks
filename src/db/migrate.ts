@@ -460,6 +460,12 @@ export async function runMigration() {
     `);
     console.log('[Migration] Backfilled project_id on journal entries from source transactions.');
 
+    // Add customer_id, customer_name, billing_method columns to projects table
+    await db.execute(sql`ALTER TABLE projects ADD COLUMN IF NOT EXISTS customer_id uuid REFERENCES contacts(id)`);
+    await db.execute(sql`ALTER TABLE projects ADD COLUMN IF NOT EXISTS customer_name text DEFAULT ''`);
+    await db.execute(sql`ALTER TABLE projects ADD COLUMN IF NOT EXISTS billing_method text DEFAULT 'Fixed Price' NOT NULL`);
+    console.log('[Migration] Added customer_id, customer_name, billing_method to projects table.');
+
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema push:', err);
