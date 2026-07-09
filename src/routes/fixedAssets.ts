@@ -402,41 +402,50 @@ router.get('/depreciation-entries', async (req: AuthenticatedRequest, res: Respo
   try {
     const orgId = req.user!.orgId!;
 
-    const entries = await db
-      .select()
-      .from(journalEntries)
-      .where(and(
-        eq(journalEntries.orgId, orgId),
-        or(
-          ilike(journalEntries.description, '%depreciation%'),
-          ilike(journalEntries.description, '%Depreciation%'),
-          ilike(journalEntries.description, '%DEPRECIATION%'),
+    // Use raw SQL to avoid any Drizzle ORM query issues with ilike on text columns
+    const result: any = await db.execute(sql`
+      SELECT
+        je.id AS "jeid",
+        je.entry_number AS "entrynumber",
+        je.date::text AS "dt",
+        je.description AS "descrip",
+        je.source AS "src",
+        je.created_at::text AS "cat"
+      FROM journal_entries je
+      WHERE je.org_id = ${orgId}
+        AND (
+          je.description ILIKE '%depreciation%'
         )
-      ))
-      .orderBy(desc(journalEntries.createdAt));
+      ORDER BY je.created_at DESC
+      LIMIT 50
+    `);
+
+    const rows = result.rows || [];
 
     const grouped: any[] = [];
-    for (const entry of entries) {
-      const dbLines = await db
-        .select({
-          lineId: journalLines.id,
-          lineDebit: journalLines.debitAmount,
-          lineCredit: journalLines.creditAmount,
-          lineDescription: journalLines.description,
-          accountCode: accounts.code,
-          accountName: accounts.name,
-        })
-        .from(journalLines)
-        .leftJoin(accounts, eq(journalLines.accountId, accounts.id))
-        .where(eq(journalLines.entryId, entry.id))
-        .orderBy(journalLines.createdAt);
+    for (const row of rows as any[]) {
+      const entryId = row.jeid;
 
-      const lines = dbLines.map((l: any) => ({
-        accountCode: l.accountCode,
-        accountName: l.accountName || '',
-        description: l.lineDescription || '',
-        debit: Number(l.lineDebit) || 0,
-        credit: Number(l.lineCredit) || 0,
+      const linesRes: any = await db.execute(sql`
+        SELECT
+          jl.id AS "lid",
+          jl.debit_amount AS "db",
+          jl.credit_amount AS "cr",
+          jl.description AS "ldesc",
+          a.code AS "acode",
+          a.name AS "aname"
+        FROM journal_lines jl
+        LEFT JOIN accounts a ON a.id = jl.account_id
+        WHERE jl.entry_id = ${entryId}
+        ORDER BY jl.created_at
+      `);
+
+      const lines = (linesRes.rows || []).map((l: any) => ({
+        accountCode: l.acode,
+        accountName: l.aname || '',
+        description: l.ldesc || '',
+        debit: Number(l.db) || 0,
+        credit: Number(l.cr) || 0,
       }));
 
       let totalDebit = 0;
@@ -444,13 +453,13 @@ router.get('/depreciation-entries', async (req: AuthenticatedRequest, res: Respo
       for (const l of lines) { totalDebit += l.debit; totalCredit += l.credit; }
 
       grouped.push({
-        journalEntryId: entry.id,
-        entryNumber: entry.entryNumber || '',
-        date: entry.date ? entry.date.toISOString() : new Date().toISOString(),
-        description: entry.description || '',
-        reference: entry.source || null,
+        journalEntryId: entryId,
+        entryNumber: row.entrynumber || '',
+        date: row.dt ? new Date(row.dt).toISOString() : new Date().toISOString(),
+        description: row.desc || '',
+        reference: row.src || null,
         source: 'manual',
-        createdAt: entry.createdAt ? entry.createdAt.toISOString() : new Date().toISOString(),
+        createdAt: row.cat ? new Date(row.cat).toISOString() : new Date().toISOString(),
         lines,
         totalDebit,
         totalCredit,

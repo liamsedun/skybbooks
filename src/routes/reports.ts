@@ -853,8 +853,8 @@ router.get('/project-income-expense', async (req: AuthenticatedRequest, res: Res
         accountCode: accounts.code,
         accountName: accounts.name,
         accountType: accounts.type,
-        debit: journalLines.debit,
-        credit: journalLines.credit,
+        debitAmount: journalLines.debitAmount,
+        creditAmount: journalLines.creditAmount,
       })
       .from(journalLines)
       .innerJoin(journalEntries, eq(journalLines.entryId, journalEntries.id))
@@ -867,12 +867,12 @@ router.get('/project-income-expense', async (req: AuthenticatedRequest, res: Res
     let totalExpenses = 0;
 
     for (const r of rows) {
-      const net = Number(r.credit || 0) - Number(r.debit || 0);
-      if (r.accountType === 'income' || r.accountType === 'revenue') {
+      const net = Number(r.creditAmount || 0) - Number(r.debitAmount || 0);
+      if (r.accountType === 'revenue') {
         if (!incomeMap[r.accountId]) incomeMap[r.accountId] = { code: r.accountCode, name: r.accountName, amount: 0 };
         incomeMap[r.accountId].amount += net;
         totalIncome += net;
-      } else if (r.accountType === 'expense' || r.accountType === 'cost_of_sales') {
+      } else if (r.accountType === 'expense') {
         if (!expenseMap[r.accountId]) expenseMap[r.accountId] = { code: r.accountCode, name: r.accountName, amount: 0 };
         expenseMap[r.accountId].amount += Math.abs(net);
         totalExpenses += Math.abs(net);
@@ -911,8 +911,8 @@ router.get('/project-summary', async (req: AuthenticatedRequest, res: Response, 
       const lines = await db
         .select({
           accountType: accounts.type,
-          debit: journalLines.debit,
-          credit: journalLines.credit,
+          debitAmount: journalLines.debitAmount,
+          creditAmount: journalLines.creditAmount,
         })
         .from(journalLines)
         .innerJoin(journalEntries, eq(journalLines.entryId, journalEntries.id))
@@ -922,9 +922,9 @@ router.get('/project-summary', async (req: AuthenticatedRequest, res: Response, 
       let totalIncome = 0;
       let totalExpenses = 0;
       for (const l of lines) {
-        const net = Number(l.credit || 0) - Number(l.debit || 0);
-        if (l.accountType === 'income' || l.accountType === 'revenue') totalIncome += net;
-        else if (l.accountType === 'expense' || l.accountType === 'cost_of_sales') totalExpenses += Math.abs(net);
+        const net = Number(l.creditAmount || 0) - Number(l.debitAmount || 0);
+        if (l.accountType === 'revenue') totalIncome += net;
+        else if (l.accountType === 'expense') totalExpenses += Math.abs(net);
       }
       summary.push({
         id: p.id,
