@@ -479,6 +479,35 @@ export async function runMigration() {
     `);
     console.log('[Migration] Created depreciation_entries table.');
 
+    // Backfill project_id on existing journal entries from source tables
+    await db.execute(sql`
+      UPDATE journal_entries je SET project_id = e.project_id
+      FROM expenses e
+      WHERE je.source = 'manual' AND je.source_id = e.id AND e.project_id IS NOT NULL AND je.project_id IS NULL
+    `);
+    await db.execute(sql`
+      UPDATE journal_entries je SET project_id = b.project_id
+      FROM bills b
+      WHERE je.source = 'bill' AND je.source_id = b.id AND b.project_id IS NOT NULL AND je.project_id IS NULL
+    `);
+    await db.execute(sql`
+      UPDATE journal_entries je SET project_id = pr.project_id
+      FROM payments_received pr
+      WHERE je.source = 'payment' AND je.source_id = pr.id AND pr.project_id IS NOT NULL AND je.project_id IS NULL
+    `);
+    await db.execute(sql`
+      UPDATE journal_entries je SET project_id = pm.project_id
+      FROM payments_made pm
+      WHERE je.source = 'payment' AND je.source_id = pm.id AND pm.project_id IS NOT NULL AND je.project_id IS NULL
+    `);
+    // Also backfill from invoices (for completeness)
+    await db.execute(sql`
+      UPDATE journal_entries je SET project_id = i.project_id
+      FROM invoices i
+      WHERE je.source = 'invoice' AND je.source_id = i.id AND i.project_id IS NOT NULL AND je.project_id IS NULL
+    `);
+    console.log('[Migration] Backfilled project_id on journal entries from source tables.');
+
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema push:', err);
