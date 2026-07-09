@@ -868,11 +868,20 @@ router.get('/project-income-expense', async (req: AuthenticatedRequest, res: Res
 
     for (const r of rows) {
       const net = Number(r.creditAmount || 0) - Number(r.debitAmount || 0);
+      // Income: revenue account credits (actual revenue)
       if (r.accountType === 'revenue') {
         if (!incomeMap[r.accountId]) incomeMap[r.accountId] = { code: r.accountCode, name: r.accountName, amount: 0 };
         incomeMap[r.accountId].amount += net;
         totalIncome += net;
-      } else if (r.accountType === 'expense') {
+      }
+      // Also count liability credits as income (VAT payable on invoices)
+      if (r.accountType === 'liability' && net > 0) {
+        if (!incomeMap[r.accountId]) incomeMap[r.accountId] = { code: r.accountCode, name: r.accountName, amount: 0 };
+        incomeMap[r.accountId].amount += net;
+        totalIncome += net;
+      }
+      // Expenses: expense account debits
+      if (r.accountType === 'expense' && net < 0) {
         if (!expenseMap[r.accountId]) expenseMap[r.accountId] = { code: r.accountCode, name: r.accountName, amount: 0 };
         expenseMap[r.accountId].amount += Math.abs(net);
         totalExpenses += Math.abs(net);
@@ -924,7 +933,8 @@ router.get('/project-summary', async (req: AuthenticatedRequest, res: Response, 
       for (const l of lines) {
         const net = Number(l.creditAmount || 0) - Number(l.debitAmount || 0);
         if (l.accountType === 'revenue') totalIncome += net;
-        else if (l.accountType === 'expense') totalExpenses += Math.abs(net);
+        else if (l.accountType === 'liability' && net > 0) totalIncome += net;
+        else if (l.accountType === 'expense' && net < 0) totalExpenses += Math.abs(net);
       }
       summary.push({
         id: p.id,
