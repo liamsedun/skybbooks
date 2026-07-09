@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { projectsApi, api, printWindow } from '../../lib/api';
 import { PageLoader } from '../../components/ui/PageLoader';
 import { useOrgSettings } from '../../hooks/useOrgSettings';
@@ -239,7 +240,7 @@ export function ProjectsPage() {
             <tbody>
               {filteredProjects.map((p: any) => (
                 <tr key={p.id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-50">
-                  <td className="px-4 py-3 font-medium text-slate-800">{p.name}</td>
+                  <td className="px-4 py-3 font-medium"><Link to={`/projects/${p.id}`} className="text-indigo-600 hover:text-indigo-800 hover:underline">{p.name}</Link></td>
                   <td className="px-4 py-3 text-slate-600">{p.customerName || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{p.billingMethod || 'Fixed Price'}</td>
                   <td className="px-4 py-3 text-slate-600">{fmtDate(p.startDate)}</td>
