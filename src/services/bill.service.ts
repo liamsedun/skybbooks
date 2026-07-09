@@ -165,6 +165,7 @@ async function createBillJournalEntry(billId: string, orgId: string, userId: str
     reference: bill.billNumber,
     source: 'bill',
     sourceId: bill.id,
+    projectId: (bill as any).projectId || undefined,
     createdBy: userId,
     lines: journalLinesPayload
   }, tx);

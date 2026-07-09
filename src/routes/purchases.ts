@@ -81,6 +81,7 @@ const createBillSchema = z.object({
   dueDate: z.string().optional(),
   currency: z.string().optional(),
   fxRate: z.number().optional(),
+  projectId: z.string().uuid().optional().nullable(),
   lines: z.array(
     z.object({
       itemId: z.string().uuid().optional().nullable(),
@@ -102,6 +103,7 @@ const recordPaymentMadeSchema = z.object({
   whtAmount: z.number().int().min(0).optional().default(0),
   currency: z.string().optional(),
   fxRate: z.number().optional(),
+  projectId: z.string().uuid().optional().nullable(),
   paymentMethod: z.enum(['cash', 'bank_transfer', 'card', 'cheque', 'pos', 'ussd']),
   reference: z.string().optional().nullable(),
   accountId: z.string().uuid('Invalid bank reference. Asset general ledger account required.'),
@@ -122,6 +124,7 @@ const createExpenseSchema = z.object({
   taxAmount: z.number().int().nonnegative('Tax amount must be non-negative (In Kobo).').optional().default(0),
   currency: z.string().optional().default('NGN'),
   fxRate: z.number().optional(),
+  projectId: z.string().uuid().optional().nullable(),
   paymentMethod: z.enum(['cash', 'bank_transfer', 'card', 'cheque', 'pos', 'ussd']).optional().default('cash'),
   reference: z.string().optional().nullable(),
   description: z.string().optional().nullable(),

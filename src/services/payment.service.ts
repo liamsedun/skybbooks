@@ -521,6 +521,7 @@ export async function updatePaymentReceived(paymentId: string, orgId: string, in
       reference: updated.paymentNumber,
       source: 'payment',
       sourceId: updated.id,
+      projectId: (updated as any).projectId || undefined,
       createdBy: userId,
       lines: jeLines
     }, tx);
@@ -817,6 +818,7 @@ export async function recordPaymentMade(input: any, createdBy: string): Promise<
       reference: payment.paymentNumber,
       source: 'payment',
       sourceId: payment.id,
+      projectId: (payment as any).projectId || undefined,
       createdBy,
       lines: jeLines
     }, tx);
@@ -851,6 +853,7 @@ export async function updatePaymentMade(id: string, input: any, userId: string):
     if (input.notes !== undefined) updatePayload.notes = input.notes;
     if (input.accountId) updatePayload.accountId = input.accountId;
     if (input.vendorId) updatePayload.vendorId = input.vendorId;
+    if (input.projectId !== undefined) updatePayload.projectId = input.projectId;
 
     // Handle allocation changes: remove old, create new
     if (input.allocations && Array.isArray(input.allocations)) {
