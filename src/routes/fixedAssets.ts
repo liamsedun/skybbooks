@@ -409,66 +409,58 @@ router.get('/depreciation-entries', async (req: AuthenticatedRequest, res: Respo
         je.date,
         je.description,
         je.source AS "source",
-        je.created_at AS "createdAt",
-        jl.id AS "lineId",
-        jl.debit_amount AS "lineDebit",
-        jl.credit_amount AS "lineCredit",
-        jl.description AS "lineDescription",
-        a.code AS "accountCode",
-        a.name AS "accountName"
+        je.created_at AS "createdAt"
       FROM journal_entries je
-      INNER JOIN journal_lines jl ON jl.entry_id = je.id
-      LEFT JOIN accounts a ON a.id = jl.account_id
       WHERE je.org_id = ${orgId}
         AND je.description ILIKE '%depreciation%'
       ORDER BY je.created_at DESC
     `);
-    const raw: any[] = result.rows || [];
 
-    const grouped = new Map<string, {
-      journalEntryId: string;
-      entryNumber: string;
-      date: string;
-      description: string;
-      reference: string | null;
-      source: string;
-      createdAt: string;
-      lines: { accountCode: string; accountName: string; description: string; debit: number; credit: number }[];
-      totalDebit: number;
-      totalCredit: number;
-    }>();
+    const grouped: any[] = [];
+    for (const row of (result.rows || []) as any[]) {
+      const entryId = row.journalEntryId;
 
-    for (const row of raw) {
-      const key = row.journalEntryId;
-      if (!grouped.has(key)) {
-        grouped.set(key, {
-          journalEntryId: row.journalEntryId,
-          entryNumber: row.entryNumber || '',
-          date: row.date ? new Date(row.date).toISOString() : new Date().toISOString(),
-          description: row.description || '',
-          reference: row.source || null,
-          source: 'manual',
-          createdAt: row.createdAt ? new Date(row.createdAt).toISOString() : new Date().toISOString(),
-          lines: [],
-          totalDebit: 0,
-          totalCredit: 0,
-        });
-      }
-      const grp = grouped.get(key)!;
-      if (row.accountCode) {
-        grp.lines.push({
-          accountCode: row.accountCode,
-          accountName: row.accountName || '',
-          description: row.lineDescription || '',
-          debit: Number(row.lineDebit) || 0,
-          credit: Number(row.lineCredit) || 0,
-        });
-        grp.totalDebit += Number(row.lineDebit) || 0;
-        grp.totalCredit += Number(row.lineCredit) || 0;
-      }
+      const linesResult = await db.execute(sql`
+        SELECT
+          jl.id AS "lineId",
+          jl.debit_amount AS "lineDebit",
+          jl.credit_amount AS "lineCredit",
+          jl.description AS "lineDescription",
+          a.code AS "accountCode",
+          a.name AS "accountName"
+        FROM journal_lines jl
+        LEFT JOIN accounts a ON a.id = jl.account_id
+        WHERE jl.entry_id = ${entryId}
+        ORDER BY jl.created_at
+      `);
+
+      const lines = ((linesResult.rows || []) as any[]).map((l: any) => ({
+        accountCode: l.accountCode,
+        accountName: l.accountName || '',
+        description: l.lineDescription || '',
+        debit: Number(l.lineDebit) || 0,
+        credit: Number(l.lineCredit) || 0,
+      }));
+
+      let totalDebit = 0;
+      let totalCredit = 0;
+      for (const l of lines) { totalDebit += l.debit; totalCredit += l.credit; }
+
+      grouped.push({
+        journalEntryId: row.journalEntryId,
+        entryNumber: row.entryNumber || '',
+        date: row.date ? new Date(row.date).toISOString() : new Date().toISOString(),
+        description: row.description || '',
+        reference: row.source || null,
+        source: 'manual',
+        createdAt: row.createdAt ? new Date(row.createdAt).toISOString() : new Date().toISOString(),
+        lines,
+        totalDebit,
+        totalCredit,
+      });
     }
 
-    return res.status(200).json(Array.from(grouped.values()));
+    return res.status(200).json(grouped);
   } catch (err) {
     console.error('[Depreciation Entries] Query failed:', err);
     return next(err);
