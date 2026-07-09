@@ -2,7 +2,7 @@ import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { db, fixedAssets, accounts, depreciationEntries, journalEntries, journalLines } from '../db/schema';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
-import { eq, and, desc, asc, sql, ilike } from 'drizzle-orm';
+import { eq, and, desc, asc, sql, ilike, or } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
 import { createJournalEntry, updateJournalEntry } from '../services/ledger.service';
 
@@ -407,7 +407,11 @@ router.get('/depreciation-entries', async (req: AuthenticatedRequest, res: Respo
       .from(journalEntries)
       .where(and(
         eq(journalEntries.orgId, orgId),
-        ilike(journalEntries.description, '%depreciation%')
+        or(
+          ilike(journalEntries.description, '%depreciation%'),
+          ilike(journalEntries.description, '%Depreciation%'),
+          ilike(journalEntries.description, '%DEPRECIATION%'),
+        )
       ))
       .orderBy(desc(journalEntries.createdAt));
 
