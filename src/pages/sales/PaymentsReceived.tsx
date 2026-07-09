@@ -178,6 +178,151 @@ function fmtDate(d: string): string {
   return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+function statusStyle(status: string): string {
+  switch (status) {
+    case 'paid': return 'background:#d1fae5;color:#065f46';
+    case 'partial': return 'background:#fef3c7;color:#92400e';
+    case 'sent': return 'background:#dbeafe;color:#1e40af';
+    case 'overdue': return 'background:#ffe4e6;color:#e11d48';
+    case 'draft': return 'background:#f1f5f9;color:#475569';
+    case 'void': return 'background:#f1f5f9;color:#94a3b8';
+    default: return 'background:#f1f5f9;color:#475569';
+  }
+}
+
+function printReceipt(payment: PaymentDetail, org: any, cust: any, invoices: (InvoiceDetail | undefined)[]) {
+  const meta = METHOD_META[payment.paymentMethod] || { label: payment.paymentMethod };
+  const methodLabel = meta.label;
+  const logoHtml = org?.logoUrl
+    ? `<img src="${org.logoUrl}" style="height:48px;width:48px;object-fit:contain;border-radius:8px;" />`
+    : `<div style="width:48px;height:48px;border-radius:12px;background:#4f46e5;display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;font-weight:700;">${org?.name?.[0]?.toUpperCase() ?? 'S'}</div>`;
+
+  const allocationsHtml = (payment.allocations || []).map(alloc => {
+    const inv = invoices.find(i => i?.id === alloc.invoiceId);
+    const st = inv ? inv.status : '';
+    return `
+      <tr>
+        <td style="padding:12px;border-bottom:1px solid #e2e8f0;">
+          <div style="font-weight:600;font-size:13px;font-family:monospace;color:#1e293b;">${inv?.invoiceNumber || alloc.invoiceId.substring(0,8)}</div>
+          ${inv ? `<div style="font-size:11px;color:#64748b;margin-top:2px;">Total ${formatNaira(inv.total)} · Due ${formatNaira(inv.balanceDue)}</div>` : ''}
+          <div style="font-size:11px;font-weight:600;color:#059669;margin-top:2px;">Applied: ${formatNaira(alloc.amount)}</div>
+        </td>
+        <td style="padding:12px;border-bottom:1px solid #e2e8f0;text-align:right;vertical-align:middle;">
+          ${st ? `<span style="display:inline-block;padding:2px 10px;border-radius:999px;font-size:10px;font-weight:700;text-transform:capitalize;${statusStyle(st)}">${STATUS_META[st]?.label || st}</span>` : ''}
+        </td>
+      </tr>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html><html><head><title>Payment Receipt - ${payment.paymentNumber}</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:48px;color:#1e293b}
+  @media print{body{padding:24px}}
+</style></head><body>
+<div style="max-width:640px;margin:0 auto;background:#fff;">
+  <div style="height:6px;background:linear-gradient(90deg,#4f46e5,#8b5cf6,#818cf8);border-radius:3px;margin-bottom:32px;"></div>
+
+  <!-- Header -->
+  <table style="width:100%;border-collapse:collapse;">
+    <tr>
+      <td style="vertical-align:top;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          ${logoHtml}
+          <div>
+            <div style="font-size:14px;font-weight:700;color:#0f172a;">${org?.name || 'Your Company'}</div>
+            ${org?.address ? `<div style="font-size:11px;color:#64748b;margin-top:2px;">${org.address}</div>` : ''}
+            <div style="font-size:11px;color:#64748b;margin-top:4px;">
+              ${org?.phone ? `<span>${org.phone}</span>` : ''}${org?.phone && org?.email ? ' · ' : ''}
+              ${org?.email ? `<span>${org.email}</span>` : ''}
+            </div>
+            ${org?.website ? `<div style="font-size:11px;color:#4f46e5;margin-top:0px;">${org.website}</div>` : ''}
+            ${(org?.rcNumber || org?.vatNumber) ? `<div style="font-size:10px;color:#94a3b8;margin-top:2px;">${org?.rcNumber ? 'RC: '+org.rcNumber : ''}${org?.rcNumber && org?.vatNumber ? ' · ' : ''}${org?.vatNumber ? 'VAT: '+org.vatNumber : ''}</div>` : ''}
+          </div>
+        </div>
+      </td>
+      <td style="vertical-align:top;text-align:right;">
+        <div style="font-size:11px;font-weight:700;color:#4f46e5;text-transform:uppercase;letter-spacing:2px;">Payment Receipt</div>
+        <div style="font-size:24px;font-weight:900;color:#0f172a;letter-spacing:-0.5px;margin-top:4px;">${payment.paymentNumber}</div>
+        <div style="display:inline-block;margin-top:6px;padding:3px 12px;border-radius:999px;font-size:11px;font-weight:600;background:#d1fae5;color:#065f46;border:1px solid #a7f3d0;">Received</div>
+      </td>
+    </tr>
+  </table>
+
+  <!-- From / Details -->
+  <table style="width:100%;border-collapse:collapse;margin-top:32px;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;">
+    <tr>
+      <td style="vertical-align:top;padding:24px 16px 24px 0;width:60%;">
+        <div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Received From</div>
+        <div style="font-size:14px;font-weight:700;color:#0f172a;">${cust?.name || payment.payerName || '—'}</div>
+        ${cust?.address ? `<div style="font-size:11px;color:#64748b;margin-top:3px;">${cust.address}</div>` : ''}
+        ${cust?.city ? `<div style="font-size:11px;color:#64748b;">${cust.city}${cust?.state ? ', '+cust.state : ''}</div>` : ''}
+        ${cust?.country ? `<div style="font-size:11px;color:#64748b;">${cust.country}</div>` : ''}
+        <div style="margin-top:6px;">
+          ${cust?.phone ? `<span style="font-size:11px;color:#64748b;">${cust.phone}</span>` : ''}
+          ${cust?.phone && cust?.email ? ' · ' : ''}
+          ${cust?.email ? `<span style="font-size:11px;color:#64748b;">${cust.email}</span>` : ''}
+        </div>
+      </td>
+      <td style="vertical-align:top;padding:24px 0 24px 16px;text-align:right;">
+        <div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Receipt Details</div>
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <tr><td style="padding:3px 0;color:#94a3b8;text-align:left;">Date</td><td style="padding:3px 0;font-weight:500;color:#334155;text-align:right;">${fmtDate(payment.date)}</td></tr>
+          <tr><td style="padding:3px 0;color:#94a3b8;text-align:left;">Method</td><td style="padding:3px 0;font-weight:500;color:#334155;text-align:right;">${methodLabel}</td></tr>
+          ${payment.reference ? `<tr><td style="padding:3px 0;color:#94a3b8;text-align:left;">Reference</td><td style="padding:3px 0;font-weight:500;color:#334155;text-align:right;font-family:monospace;">${payment.reference}</td></tr>` : ''}
+        </table>
+      </td>
+    </tr>
+  </table>
+
+  <!-- Amount -->
+  <div style="margin-top:24px;padding:20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;">
+    ${(payment.whtAmount || 0) > 0 ? `
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <tr><td style="padding:4px 0;color:#64748b;">Invoice Amount</td><td style="padding:4px 0;text-align:right;font-weight:600;font-family:monospace;color:#334155;">${formatNaira(payment.totalAllocated || payment.amount)}</td></tr>
+      <tr><td style="padding:4px 0;color:#d97706;">Less: WHT Withheld by Customer</td><td style="padding:4px 0;text-align:right;font-weight:500;font-family:monospace;color:#d97706;">− ${formatNaira(payment.whtAmount!)}</td></tr>
+      <tr><td style="padding:8px 0 0 0;border-top:1px solid #cbd5e1;"></td><td style="padding:8px 0 0 0;border-top:1px solid #cbd5e1;"></td></tr>
+      <tr><td style="padding:4px 0;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;">Net Amount Received</td><td style="padding:4px 0;text-align:right;font-size:20px;font-weight:900;color:#059669;font-family:monospace;">${formatNaira(payment.amount)}</td></tr>
+    </table>
+    ` : `
+    <div style="text-align:center;">
+      <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Net Amount Received</div>
+      <div style="font-size:28px;font-weight:900;color:#059669;font-family:monospace;">${formatNaira(payment.amount)}</div>
+    </div>
+    `}
+    <div style="font-size:11px;color:#94a3b8;text-align:center;margin-top:6px;">${payment.currency}</div>
+  </div>
+
+  <!-- Allocated To -->
+  ${(payment.allocations || []).length > 0 ? `
+  <div style="margin-top:24px;">
+    <div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Allocated To</div>
+    <table style="width:100%;border-collapse:collapse;">
+      <thead><tr style="background:#f1f5f9;"><th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;">Invoice</th><th style="padding:8px 12px;text-align:right;font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;">Status</th></tr></thead>
+      <tbody>${allocationsHtml}</tbody>
+    </table>
+  </div>
+  ` : ''}
+
+  <!-- Notes -->
+  ${payment.notes ? `
+  <div style="margin-top:24px;padding-top:16px;border-top:1px solid #e2e8f0;">
+    <div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Notes</div>
+    <div style="font-size:12px;color:#64748b;line-height:1.6;">${payment.notes}</div>
+  </div>
+  ` : ''}
+
+  <!-- Footer -->
+  <div style="margin-top:32px;padding-top:16px;border-top:1px solid #e2e8f0;text-align:center;font-size:10px;color:#94a3b8;">
+    ${org?.name || 'Your Company'} · This receipt was generated electronically and confirms the payment recorded above.
+  </div>
+</div>
+</body></html>`;
+
+  const w = window.open('', '_blank');
+  if (w) { w.document.write(html); w.document.close(); setTimeout(() => w.print(), 500); }
+  else { alert('Popup blocked. Please allow popups for this site and try again.'); }
+}
+
 // ── Export Helpers ──────────────────────────────────────────────────────────
 
 function exportPaymentsCSV(payments: Payment[]) {
@@ -567,14 +712,6 @@ export function PaymentsReceivedPage() {
 
   return (
     <>
-      {/* Print CSS */}
-      <style>{`
-        @media print {
-          body > * { display: none !important; }
-          .print-receipt { display: block !important; position: fixed; inset: 0; background: white; z-index: 9999; }
-        }
-      `}</style>
-
       <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
         {/* Page header */}
         <div className="flex items-start justify-between">
@@ -1250,7 +1387,13 @@ function ReceiptModal({ paymentId, onClose, customerMap, org }: {
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 print:hidden">
           <h2 className="text-base font-semibold text-slate-900">Payment Receipt</h2>
           <div className="flex items-center gap-2">
-            <button onClick={() => window.print()} disabled={isLoading}
+            <button onClick={() => {
+              if (payment) {
+                const cust = payment.customerId ? customerMap.get(payment.customerId) : undefined;
+                const invs = invoiceQueries.map(q => q.data).filter(Boolean) as InvoiceDetail[];
+                printReceipt(payment, org, cust, invs);
+              }
+            }} disabled={isLoading}
               className="flex items-center gap-1.5 px-3.5 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-slate-900 transition disabled:opacity-50">
               <Download size={14} />Download PDF
             </button>
