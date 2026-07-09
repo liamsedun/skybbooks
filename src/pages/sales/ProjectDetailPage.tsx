@@ -82,6 +82,10 @@ export function ProjectDetailPage() {
       <div style="flex:1;background:#ecfdf5;padding:12px;border-radius:8px;border:1px solid #a7f3d0"><div style="font-size:10px;font-weight:600;color:#047857;text-transform:uppercase">Income</div><div style="font-size:18px;font-weight:700;color:#047857">${fmtNaira(detailData.totalIncome)}</div></div>
       <div style="flex:1;background:#fef2f2;padding:12px;border-radius:8px;border:1px solid #fecaca"><div style="font-size:10px;font-weight:600;color:#b91c1c;text-transform:uppercase">Expenses</div><div style="font-size:18px;font-weight:700;color:#b91c1c">${fmtNaira(detailData.totalExpenses)}</div></div>
       <div style="flex:1;background:#eef2ff;padding:12px;border-radius:8px;border:1px solid #c7d2fe"><div style="font-size:10px;font-weight:600;color:#4338ca;text-transform:uppercase">Profit/Loss</div><div style="font-size:18px;font-weight:700;color:${detailData.profit >= 0 ? '#047857' : '#b91c1c'}">${fmtNaira(detailData.profit)}</div></div>
+    </div>
+    <div style="display:flex;gap:16px;margin-bottom:16px">
+      <div style="flex:1;background:#ecfeff;padding:12px;border-radius:8px;border:1px solid #a5f3fc"><div style="font-size:10px;font-weight:600;color:#0891b2;text-transform:uppercase">Cash Received</div><div style="font-size:18px;font-weight:700;color:#0891b2">${fmtNaira(detailData.cashReceived)}</div></div>
+      <div style="flex:1;background:#fff7ed;padding:12px;border-radius:8px;border:1px solid #fed7aa"><div style="font-size:10px;font-weight:600;color:#c2410c;text-transform:uppercase">WHT Deducted (Recoverable)</div><div style="font-size:18px;font-weight:700;color:#c2410c">${fmtNaira(detailData.whtDeducted)}</div></div>
     </div>`;
     const incomeRows = (detailData.income || []).map((a: any) => `<tr><td>${a.code} - ${a.name}</td><td class="r">${fmtNaira(a.amount)}</td></tr>`).join('');
     const expenseRows = (detailData.expenses || []).map((a: any) => `<tr><td>${a.code} - ${a.name}</td><td class="r">${fmtNaira(a.amount)}</td></tr>`).join('');
@@ -158,6 +162,16 @@ export function ProjectDetailPage() {
             <div className="bg-indigo-50 rounded-xl p-4 border border-indigo-200/50">
               <p className="text-[11px] font-semibold text-indigo-600 uppercase tracking-wider">Profit / Loss</p>
               <p className={`text-xl font-bold mt-1 ${detailData.profit >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{fmtNaira(detailData.profit)}</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-cyan-50 rounded-xl p-4 border border-cyan-200/50">
+              <p className="text-[11px] font-semibold text-cyan-600 uppercase tracking-wider">Cash Received</p>
+              <p className="text-xl font-bold text-cyan-700 mt-1">{fmtNaira(detailData.cashReceived)}</p>
+            </div>
+            <div className="bg-amber-50 rounded-xl p-4 border border-amber-200/50">
+              <p className="text-[11px] font-semibold text-amber-600 uppercase tracking-wider">WHT Deducted (Recoverable)</p>
+              <p className="text-xl font-bold text-amber-700 mt-1">{fmtNaira(detailData.whtDeducted)}</p>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-6">

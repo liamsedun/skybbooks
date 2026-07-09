@@ -7,7 +7,7 @@ import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
 import { AppError } from '../lib/errors';
-import { db, accounts, journalEntries, journalLines, fixedAssets, bankAccounts, contacts, invoices, bills, projects } from '../db/schema';
+import { db, accounts, journalEntries, journalLines, fixedAssets, bankAccounts, contacts, invoices, bills, projects, paymentsReceived } from '../db/schema';
 import { eq, and, asc, sql, lte, gte } from 'drizzle-orm';
 import {
   getTrialBalance,
@@ -888,12 +888,51 @@ router.get('/project-income-expense', async (req: AuthenticatedRequest, res: Res
       }
     }
 
+    // Query cash received for the project
+    let cashReceived = 0;
+    let whtDeducted = 0;
+    if (projectId && typeof projectId === 'string') {
+      const pmtWhere = [eq(paymentsReceived.orgId, orgId), eq(paymentsReceived.projectId, projectId)];
+      if (startDate && typeof startDate === 'string') pmtWhere.push(gte(paymentsReceived.date, new Date(startDate)));
+      if (endDate && typeof endDate === 'string') pmtWhere.push(lte(paymentsReceived.date, new Date(endDate)));
+      const [pmtTotals] = await db
+        .select({
+          totalCash: sql<number>`COALESCE(SUM(${paymentsReceived.amount}), 0)`,
+        })
+        .from(paymentsReceived)
+        .where(and(...pmtWhere));
+      cashReceived = Number(pmtTotals?.totalCash || 0);
+
+      // Find WHT Receivable account for this org
+      const [whtAccount] = await db
+        .select({ id: accounts.id })
+        .from(accounts)
+        .where(and(eq(accounts.orgId, orgId), eq(accounts.systemAccountRole, 'wht_receivable')))
+        .limit(1);
+      if (whtAccount) {
+        const [whtResult] = await db
+          .select({
+            totalWht: sql<number>`COALESCE(SUM(${journalLines.debitAmount}), 0)`,
+          })
+          .from(journalLines)
+          .innerJoin(journalEntries, eq(journalLines.entryId, journalEntries.id))
+          .where(and(
+            eq(journalLines.accountId, whtAccount.id),
+            eq(journalEntries.projectId, projectId),
+            eq(journalEntries.orgId, orgId),
+          ));
+        whtDeducted = Number(whtResult?.totalWht || 0);
+      }
+    }
+
     return res.status(200).json({
       income: Object.values(incomeMap).filter(a => a.amount !== 0),
       expenses: Object.values(expenseMap).filter(a => a.amount !== 0),
       totalIncome,
       totalExpenses,
       profit: totalIncome - totalExpenses,
+      cashReceived,
+      whtDeducted,
     });
   } catch (err) {
     next(err);
@@ -936,6 +975,33 @@ router.get('/project-summary', async (req: AuthenticatedRequest, res: Response, 
         else if (l.accountType === 'liability' && net > 0) totalIncome += net;
         else if (l.accountType === 'expense' && net < 0) totalExpenses += Math.abs(net);
       }
+      // Cash received for this project
+      const [cashRow] = await db
+        .select({ total: sql<number>`COALESCE(SUM(${paymentsReceived.amount}), 0)` })
+        .from(paymentsReceived)
+        .where(and(eq(paymentsReceived.orgId, orgId), eq(paymentsReceived.projectId, p.id)));
+      const cashReceived = Number(cashRow?.total || 0);
+
+      // WHT deducted for this project
+      let whtDeducted = 0;
+      const [whtAccount] = await db
+        .select({ id: accounts.id })
+        .from(accounts)
+        .where(and(eq(accounts.orgId, orgId), eq(accounts.systemAccountRole, 'wht_receivable')))
+        .limit(1);
+      if (whtAccount) {
+        const [whtRow] = await db
+          .select({ total: sql<number>`COALESCE(SUM(${journalLines.debitAmount}), 0)` })
+          .from(journalLines)
+          .innerJoin(journalEntries, eq(journalLines.entryId, journalEntries.id))
+          .where(and(
+            eq(journalLines.accountId, whtAccount.id),
+            eq(journalEntries.projectId, p.id),
+            eq(journalEntries.orgId, orgId),
+          ));
+        whtDeducted = Number(whtRow?.total || 0);
+      }
+
       summary.push({
         id: p.id,
         name: p.name,
@@ -944,6 +1010,8 @@ router.get('/project-summary', async (req: AuthenticatedRequest, res: Response, 
         totalIncome,
         totalExpenses,
         profit: totalIncome - totalExpenses,
+        cashReceived,
+        whtDeducted,
       });
     }
 
