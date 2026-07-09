@@ -466,6 +466,19 @@ export async function runMigration() {
     await db.execute(sql`ALTER TABLE projects ADD COLUMN IF NOT EXISTS billing_method text DEFAULT 'Fixed Price' NOT NULL`);
     console.log('[Migration] Added customer_id, customer_name, billing_method to projects table.');
 
+    // Create depreciation_entries table
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS depreciation_entries (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        asset_id uuid REFERENCES fixed_assets(id) NOT NULL,
+        period_date timestamp NOT NULL,
+        amount bigint NOT NULL,
+        journal_entry_id uuid REFERENCES journal_entries(id) NOT NULL,
+        created_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    console.log('[Migration] Created depreciation_entries table.');
+
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema push:', err);

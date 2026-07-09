@@ -401,23 +401,14 @@ router.post('/run-depreciation', async (req: AuthenticatedRequest, res: Response
 router.get('/depreciation-entries', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const orgId = req.user!.orgId!;
-
-    // Get all journal entries that are depreciation runs (grouped by their journal entry)
-    const entries = await db
+    const rows = await db
       .select({
-        id: depreciationEntries.id,
-        entryId: journalEntries.id,
+        journalEntryId: journalEntries.id,
         entryNumber: journalEntries.entryNumber,
         date: journalEntries.date,
         description: journalEntries.description,
         reference: journalEntries.reference,
-        periodDate: depreciationEntries.periodDate,
-        amount: depreciationEntries.amount,
-        assetId: depreciationEntries.assetId,
-        assetName: fixedAssets.name,
-        assetNumber: fixedAssets.assetNumber,
-        journalEntryId: depreciationEntries.journalEntryId,
-        createdAt: depreciationEntries.createdAt,
+        createdAt: journalEntries.createdAt,
         lineId: journalLines.id,
         lineAccountId: journalLines.accountId,
         lineDebit: journalLines.debitAmount,
@@ -426,40 +417,38 @@ router.get('/depreciation-entries', async (req: AuthenticatedRequest, res: Respo
         accountCode: accounts.code,
         accountName: accounts.name,
       })
-      .from(depreciationEntries)
-      .innerJoin(fixedAssets, eq(depreciationEntries.assetId, fixedAssets.id))
-      .leftJoin(journalEntries, eq(depreciationEntries.journalEntryId, journalEntries.id))
+      .from(journalEntries)
       .leftJoin(journalLines, eq(journalLines.entryId, journalEntries.id))
       .leftJoin(accounts, eq(journalLines.accountId, accounts.id))
-      .where(eq(fixedAssets.orgId, orgId))
+      .where(and(
+        eq(journalEntries.orgId, orgId),
+        sql`${journalEntries.description} ILIKE '%depreciation%'`
+      ))
       .orderBy(desc(journalEntries.createdAt));
 
-    // Aggregate into depreciation runs grouped by journal entry
     const grouped = new Map<string, {
-      id: string;
+      journalEntryId: string;
       entryNumber: string;
       date: string;
       description: string;
       reference: string | null;
       source: string;
-      journalEntryId: string;
       createdAt: string;
       lines: { accountCode: string; accountName: string; description: string; debit: number; credit: number }[];
       totalDebit: number;
       totalCredit: number;
     }>();
 
-    for (const row of entries) {
-      const key = row.journalEntryId || row.id;
+    for (const row of rows) {
+      const key = row.journalEntryId;
       if (!grouped.has(key)) {
         grouped.set(key, {
-          id: row.id,
-          entryNumber: row.entryNumber || `DEP-${String(row.amount || 0)}`,
+          journalEntryId: row.journalEntryId,
+          entryNumber: row.entryNumber || '',
           date: row.date ? row.date.toISOString() : new Date().toISOString(),
-          description: row.description || `Depreciation - ${row.assetName || ''}`,
+          description: row.description || '',
           reference: row.reference || null,
           source: 'manual',
-          journalEntryId: row.journalEntryId || '',
           createdAt: row.createdAt ? row.createdAt.toISOString() : new Date().toISOString(),
           lines: [],
           totalDebit: 0,
