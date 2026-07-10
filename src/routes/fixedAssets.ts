@@ -2,7 +2,7 @@ import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { db, fixedAssets, accounts, depreciationEntries, journalEntries, journalLines } from '../db/schema';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
-import { eq, and, asc, desc, sql, ilike } from 'drizzle-orm';
+import { eq, and, asc, desc, sql, ilike, or } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
 import { createJournalEntry, updateJournalEntry } from '../services/ledger.service';
 
@@ -428,56 +428,71 @@ router.get('/depreciation-entries', async (req: AuthenticatedRequest, res: Respo
   try {
     const orgId = req.user!.orgId!;
 
-    // Find JEs that have depreciation-related account codes OR description match
-    const result = await db.execute(sql`
-      SELECT DISTINCT ON (je.id)
-        je.id, je.entry_number, je.date, je.description, je.source, je.created_at
-      FROM journal_entries je
-      LEFT JOIN journal_lines jl ON jl.entry_id = je.id
-      LEFT JOIN accounts a ON a.id = jl.account_id
-      WHERE je.org_id = ${orgId}
-        AND (
-          a.code LIKE '8107%' OR a.code LIKE '8109%'
-          OR a.code LIKE '2002%' OR a.code LIKE '2003%' OR a.code LIKE '2004%'
-          OR a.code LIKE '2005%' OR a.code LIKE '2006%' OR a.code LIKE '2007%'
-          OR a.code LIKE '2011%' OR a.code LIKE '2012%'
-          OR je.description ILIKE '%depreciation%'
+    // Simple: query all JEs that have lines with depreciation-related accounts
+    const jeRows = await db
+      .selectDistinctOn([journalEntries.id], {
+        id: journalEntries.id,
+        entryNumber: journalEntries.entryNumber,
+        date: journalEntries.date,
+        description: journalEntries.description,
+        source: journalEntries.source,
+        createdAt: journalEntries.createdAt,
+      })
+      .from(journalEntries)
+      .innerJoin(journalLines, eq(journalLines.entryId, journalEntries.id))
+      .innerJoin(accounts, eq(journalLines.accountId, accounts.id))
+      .where(and(
+        eq(journalEntries.orgId, orgId),
+        or(
+          sql`${accounts.code} LIKE '8107%'`,
+          sql`${accounts.code} LIKE '8109%'`,
+          sql`${accounts.code} LIKE '2002%'`,
+          sql`${accounts.code} LIKE '2003%'`,
+          sql`${accounts.code} LIKE '2004%'`,
+          sql`${accounts.code} LIKE '2005%'`,
+          sql`${accounts.code} LIKE '2006%'`,
+          sql`${accounts.code} LIKE '2007%'`,
+          sql`${accounts.code} LIKE '2011%'`,
+          sql`${accounts.code} LIKE '2012%'`,
+          ilike(journalEntries.description, '%depreciation%'),
         )
-      ORDER BY je.id, je.created_at DESC
-      LIMIT 50
-    `);
-    const entries: any[] = result?.rows || [];
-    const grouped: any[] = [];
+      ))
+      .orderBy(desc(journalEntries.createdAt))
+      .limit(50);
 
-    for (const entry of entries) {
-      const linesRes = await db.execute(sql`
-        SELECT a.code, a.name, jl.description, jl.debit_amount, jl.credit_amount
-        FROM journal_lines jl
-        LEFT JOIN accounts a ON a.id = jl.account_id
-        WHERE jl.entry_id = ${entry.id}
-        ORDER BY jl.created_at
-      `);
-      const dbLines: any[] = linesRes?.rows || [];
+    const grouped: any[] = [];
+    for (const entry of jeRows) {
+      const dbLines = await db
+        .select({
+          accountCode: accounts.code,
+          accountName: accounts.name,
+          description: journalLines.description,
+          debit: journalLines.debitAmount,
+          credit: journalLines.creditAmount,
+        })
+        .from(journalLines)
+        .leftJoin(accounts, eq(journalLines.accountId, accounts.id))
+        .where(eq(journalLines.entryId, entry.id))
+        .orderBy(journalLines.createdAt);
+
       let totalDebit = 0;
       let totalCredit = 0;
-      for (const l of dbLines) {
-        totalDebit += Number(l.debit_amount) || 0;
-        totalCredit += Number(l.credit_amount) || 0;
-      }
+      for (const l of dbLines) { totalDebit += l.debit; totalCredit += l.credit; }
+
       grouped.push({
         journalEntryId: entry.id,
-        entryNumber: entry.entry_number || '',
-        date: entry.date ? new Date(entry.date).toISOString() : new Date().toISOString(),
+        entryNumber: entry.entryNumber || '',
+        date: entry.date ? entry.date.toISOString() : new Date().toISOString(),
         description: entry.description || '',
         reference: entry.source || null,
         source: 'manual',
-        createdAt: entry.created_at ? new Date(entry.created_at).toISOString() : new Date().toISOString(),
+        createdAt: entry.createdAt ? entry.createdAt.toISOString() : new Date().toISOString(),
         lines: dbLines.map(l => ({
-          accountCode: l.code,
-          accountName: l.name || '',
+          accountCode: l.accountCode,
+          accountName: l.accountName || '',
           description: l.description || '',
-          debit: Number(l.debit_amount) || 0,
-          credit: Number(l.credit_amount) || 0,
+          debit: Number(l.debit) || 0,
+          credit: Number(l.credit) || 0,
         })),
         totalDebit,
         totalCredit,
@@ -488,7 +503,8 @@ router.get('/depreciation-entries', async (req: AuthenticatedRequest, res: Respo
   } catch (err) {
     console.error('[Depreciation Entries] Error:', err);
     const msg = err instanceof Error ? err.message : String(err);
-    return res.status(500).json({ error: msg });
+    const stack = err instanceof Error ? err.stack : '';
+    return res.status(500).json({ error: msg, stack: stack?.split('\n').slice(0,5).join(' | ') });
   }
 });
 
