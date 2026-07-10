@@ -1,9 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { depreciationHistoryApi, fixedAssetsApi } from '../../lib/api';
+import { depreciationHistoryApi, fixedAssetsApi, orgApi, printWindow } from '../../lib/api';
 import { PageLoader } from '../../components/ui/PageLoader';
-import { Play, Loader2, X, ExternalLink, Search, ChevronDown, ChevronRight } from 'lucide-react';
+import { Play, Loader2, X, ExternalLink, Search, ChevronDown, ChevronRight, Printer } from 'lucide-react';
 
 function fmtNaira(v: number | string): string {
   const n = Number(v);
@@ -34,6 +34,8 @@ export function DepreciationPage() {
     queryKey: ['depreciation-history'],
     queryFn: depreciationHistoryApi.list,
   });
+
+  const { data: orgData } = useQuery({ queryKey: ['org'], queryFn: orgApi.getOrg });
 
   const runMutation = useMutation({
     mutationFn: (d: string) => fixedAssetsApi.runDepreciation(d),
@@ -77,14 +79,100 @@ export function DepreciationPage() {
     });
   };
 
+  function handlePrintPdf() {
+    const org = (orgData as any)?.data || orgData || {};
+    const orgName = org.name || '';
+    const orgAddr = org.address ? `<p style="margin:0;font-size:11px;color:#475569">${org.address}</p>` : '';
+    const orgPhone = org.phone || '';
+    const orgEmail = org.email || '';
+    const orgWebsite = org.website || '';
+    const orgLogo = org.logoUrl ? `<img src="${org.logoUrl}" style="max-height:60px;max-width:200px;object-fit:contain" />` : '';
+    const contactInfo = [orgPhone, orgEmail, orgWebsite].filter(Boolean).join(' | ');
+
+    const periodRows = grouped.map(([key, rows]) => {
+      const periodLabel = formatPeriod(rows[0].periodDate);
+      const totalAmount = rows.reduce((s: number, r: any) => s + Number(r.amount), 0);
+      const totalAccum = rows.reduce((s: number, r: any) => s + Number(r.accumulatedDepreciation), 0);
+      const totalBook = rows.reduce((s: number, r: any) => s + Number(r.bookValue), 0);
+      const jeNumber = rows[0]?.jeNumber || '';
+
+      const detailRows = rows.map((r: any) => `
+        <tr>
+          <td style="padding:4px 12px;font-size:11px;color:#94a3b8;border-bottom:1px solid #f1f5f9">${formatPeriod(r.periodDate)}</td>
+          <td style="padding:4px 12px;font-size:11px;font-family:monospace;color:#6366f1;border-bottom:1px solid #f1f5f9">${r.entryNumber || r.assetNumber}</td>
+          <td style="padding:4px 12px;font-size:11px;border-bottom:1px solid #f1f5f9">${r.assetName}</td>
+          <td style="padding:4px 12px;font-size:11px;font-family:monospace;text-align:right;border-bottom:1px solid #f1f5f9">${fmtNaira(r.amount)}</td>
+          <td style="padding:4px 12px;font-size:11px;font-family:monospace;text-align:right;border-bottom:1px solid #f1f5f9">${fmtNaira(r.accumulatedDepreciation)}</td>
+          <td style="padding:4px 12px;font-size:11px;font-family:monospace;text-align:right;border-bottom:1px solid #f1f5f9">${fmtNaira(r.bookValue)}</td>
+          <td style="padding:4px 12px;font-size:11px;color:#94a3b8;border-bottom:1px solid #f1f5f9">${r.jeNumber}</td>
+        </tr>`).join('');
+
+      return `
+        <tr style="background:#f1f5f9;font-weight:600">
+          <td colspan="2" style="padding:8px 12px;font-size:13px;color:#0f172a">${periodLabel}</td>
+          <td style="padding:8px 12px;font-size:11px;color:#64748b">${rows.length} asset${rows.length !== 1 ? 's' : ''}</td>
+          <td style="padding:8px 12px;font-size:13px;font-family:monospace;text-align:right;color:#0f172a">${fmtNaira(totalAmount)}</td>
+          <td style="padding:8px 12px;font-size:13px;font-family:monospace;text-align:right;color:#0f172a">${fmtNaira(totalAccum)}</td>
+          <td style="padding:8px 12px;font-size:13px;font-family:monospace;text-align:right;color:#0f172a">${fmtNaira(totalBook)}</td>
+          <td style="padding:8px 12px;font-size:12px;color:#6366f1">${jeNumber}</td>
+        </tr>
+        ${detailRows}`;
+    }).join('');
+
+    const grandAmount = grouped.reduce((s, [, rows]) => s + rows.reduce((ss, r) => ss + Number(r.amount), 0), 0);
+    const grandAccum = grouped.reduce((s, [, rows]) => s + rows.reduce((ss, r) => ss + Number(r.accumulatedDepreciation), 0), 0);
+    const grandBook = grouped.reduce((s, [, rows]) => s + rows.reduce((ss, r) => ss + Number(r.bookValue), 0), 0);
+
+    printWindow('Depreciation History',
+      `<div style="text-align:center;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #e2e8f0">
+        ${orgLogo}
+        <h1 style="margin:4px 0;font-size:18px;color:#0f172a">${orgName}</h1>
+        ${orgAddr}
+        <p style="margin:2px 0;font-size:11px;color:#64748b">${contactInfo}</p>
+      </div>
+      <h2 style="font-size:16px;color:#0f172a;margin:0 0 8px">Depreciation History</h2>
+      <p style="font-size:11px;color:#64748b;margin:0 0 12px">Generated: ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="background:#f8fafc">
+            <th style="padding:8px 12px;font-size:10px;font-weight:600;color:#64748b;text-align:left;text-transform:uppercase">Period</th>
+            <th style="padding:8px 12px;font-size:10px;font-weight:600;color:#64748b;text-align:left;text-transform:uppercase">Depr #</th>
+            <th style="padding:8px 12px;font-size:10px;font-weight:600;color:#64748b;text-align:left;text-transform:uppercase">Asset Name</th>
+            <th style="padding:8px 12px;font-size:10px;font-weight:600;color:#64748b;text-align:right;text-transform:uppercase">Amount</th>
+            <th style="padding:8px 12px;font-size:10px;font-weight:600;color:#64748b;text-align:right;text-transform:uppercase">Accum. Depr.</th>
+            <th style="padding:8px 12px;font-size:10px;font-weight:600;color:#64748b;text-align:right;text-transform:uppercase">Book Value</th>
+            <th style="padding:8px 12px;font-size:10px;font-weight:600;color:#64748b;text-align:left;text-transform:uppercase">JE</th>
+          </tr>
+        </thead>
+        <tbody>${periodRows || '<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:20px">No entries</td></tr>'}</tbody>
+        <tfoot>
+          <tr style="border-top:2px solid #0f172a;font-weight:700">
+            <td colspan="3" style="padding:10px 12px;font-size:13px;text-align:right">GRAND TOTAL</td>
+            <td style="padding:10px 12px;font-size:13px;font-family:monospace;text-align:right">${fmtNaira(grandAmount)}</td>
+            <td style="padding:10px 12px;font-size:13px;font-family:monospace;text-align:right">${fmtNaira(grandAccum)}</td>
+            <td style="padding:10px 12px;font-size:13px;font-family:monospace;text-align:right">${fmtNaira(grandBook)}</td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>`,
+      'Depreciation History'
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-slate-900">Depreciation History</h1>
-        <button onClick={() => setShowRunModal(true)} disabled={runMutation.isPending}
-          className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold text-white bg-amber-600 rounded-xl hover:bg-amber-700 disabled:opacity-50 transition-all duration-200">
-          <Play className="w-4 h-4" /> {runMutation.isPending ? 'Running...' : 'Run Depreciation'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={handlePrintPdf} disabled={grouped.length === 0}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium border border-slate-200/80 text-slate-600 rounded-xl hover:bg-slate-50 transition-all duration-200 disabled:opacity-50">
+            <Printer size={14} /> PDF
+          </button>
+          <button onClick={() => setShowRunModal(true)} disabled={runMutation.isPending}
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold text-white bg-amber-600 rounded-xl hover:bg-amber-700 disabled:opacity-50 transition-all duration-200">
+            <Play className="w-4 h-4" /> {runMutation.isPending ? 'Running...' : 'Run Depreciation'}
+          </button>
+        </div>
       </div>
 
       {runMutation.isPending && (

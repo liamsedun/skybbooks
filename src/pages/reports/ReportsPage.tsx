@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { reportsApi, accountantApi, apiDownload, printWindow, api } from '../../lib/api';
+import { reportsApi, accountantApi, apiDownload, printWindow, api, orgApi } from '../../lib/api';
 import { Loader2, AlertCircle, CheckCircle2, Download, Search, Upload, FileText, X, RefreshCw, ExternalLink, Pencil, ChevronRight, Briefcase } from 'lucide-react';
 import { downloadCsv, exportToCsv, CSV_TEMPLATES } from '../../lib/csvTemplates';
 
@@ -610,6 +610,8 @@ function ReportShell({ reportType, title }: ReportPageProps) {
     }
   }, [sDate, eDate, asOfDate]);
 
+  const { data: orgData } = useQuery({ queryKey: ['org'], queryFn: orgApi.getOrg });
+
   const { data, isLoading, error } = useQuery({
     queryKey: ['report', reportType, sDate, eDate, asOfDate, compareEnabled, compareSDate, compareEDate, compareAsOf],
     queryFn: async () => {
@@ -689,10 +691,57 @@ function ReportShell({ reportType, title }: ReportPageProps) {
     if (format === 'pdf') {
       try {
         if (reportType === 'income-statement') {
-          const rows = (Array.isArray(data) ? data : []).map((r: any) =>
-            `<tr><td>${r.accountName||''}</td><td class="r">₦${((r.balance||0)/100).toLocaleString()}</td></tr>`
-          ).join('');
-          printWindow('Income Statement', `<table><thead><tr><th>Account</th><th class="r">Balance</th></tr></thead><tbody>${rows||'<tr><td colspan="2" style="text-align:center;color:#94a3b8">No data</td></tr>'}</tbody></table>`, `Period: ${sDate} - ${eDate}`);
+          const current = (data as any)?.current || data || {};
+          const revenue = current.revenue || {};
+          const cogs = current.costOfGoodsSold || {};
+          const expense = current.expense || {};
+          const revTotal = revenue.total || 0;
+          const cogsTotal = cogs.total || 0;
+          const expTotal = expense.total || 0;
+          const grossProfit = revTotal - cogsTotal;
+          const netProfit = current.netProfit ?? grossProfit - expTotal;
+          const org = (orgData as any)?.data || orgData || {};
+          const orgName = org.name || '';
+          const orgAddr = org.address ? `<p style="margin:0;font-size:11px;color:#475569">${org.address}</p>` : '';
+          const orgPhone = org.phone || '';
+          const orgEmail = org.email || '';
+          const orgWebsite = org.website || '';
+          const orgLogo = org.logoUrl ? `<img src="${org.logoUrl}" style="max-height:60px;max-width:200px;object-fit:contain" />` : '';
+          const contactInfo = [orgPhone, orgEmail, orgWebsite].filter(Boolean).join(' | ');
+
+          function secRows(label: string, accounts: any[], total: number) {
+            const accRows = (accounts || []).map((a: any) =>
+              `<tr><td style="padding:4px 12px;padding-left:24px;font-size:11px;border-bottom:1px solid #f1f5f9">${a.name}</td><td style="padding:4px 12px;font-size:11px;text-align:right;font-family:monospace;border-bottom:1px solid #f1f5f9">₦${((a.balance||0)/100).toLocaleString()}</td></tr>`
+            ).join('');
+            return `<tr style="background:#f1f5f9"><td colspan="2" style="padding:6px 12px;font-size:11px;font-weight:700;color:#475569;text-transform:uppercase">${label}</td></tr>${accRows}<tr style="border-top:1px solid #cbd5e1;background:#f8fafc;font-weight:600"><td style="padding:6px 12px;padding-left:24px;font-size:12px;color:#0f172a">Total ${label}</td><td style="padding:6px 12px;font-size:12px;text-align:right;font-family:monospace">₦${(total/100).toLocaleString()}</td></tr>`;
+          }
+
+          const pdfRows = secRows('Revenue', revenue.accounts, revTotal) +
+            `<tr style="border-top:2px solid #059669;background:#ecfdf5;font-weight:700"><td style="padding:6px 12px;padding-left:24px;font-size:12px;color:#0f172a">Gross Profit</td><td style="padding:6px 12px;font-size:12px;text-align:right;font-family:monospace">₦${(grossProfit/100).toLocaleString()}</td></tr>` +
+            secRows('Cost of Goods Sold', cogs.accounts, cogsTotal) +
+            secRows('Operating Expenses', expense.accounts, expTotal) +
+            `<tr style="border-top:2px solid #0f172a;background:#f1f5f9;font-weight:700"><td style="padding:8px 12px;padding-left:24px;font-size:13px;color:#0f172a">Net Profit</td><td style="padding:8px 12px;font-size:13px;text-align:right;font-family:monospace">₦${(netProfit/100).toLocaleString()}</td></tr>`;
+
+          printWindow('Income Statement',
+            `<div style="text-align:center;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #e2e8f0">
+              ${orgLogo}
+              <h1 style="margin:4px 0;font-size:18px;color:#0f172a">${orgName}</h1>
+              ${orgAddr}
+              <p style="margin:2px 0;font-size:11px;color:#64748b">${contactInfo}</p>
+            </div>
+            <h2 style="font-size:16px;color:#0f172a;margin:0 0 8px">Income Statement</h2>
+            <p style="font-size:11px;color:#64748b;margin:0 0 12px">Period: ${sDate} - ${eDate} &bull; Generated: ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+            <table style="width:100%;border-collapse:collapse">
+              <thead>
+                <tr style="background:#f8fafc">
+                  <th style="padding:8px 12px;font-size:10px;font-weight:600;color:#64748b;text-align:left;text-transform:uppercase">Account</th>
+                  <th style="padding:8px 12px;font-size:10px;font-weight:600;color:#64748b;text-align:right;text-transform:uppercase">Amount</th>
+                </tr>
+              </thead>
+              <tbody>${pdfRows || '<tr><td colspan="2" style="text-align:center;color:#94a3b8;padding:20px">No data</td></tr>'}</tbody>
+            </table>`,
+            `Period: ${sDate} - ${eDate}`
+          );
         } else if (reportType === 'balance-sheet') {
           const bsData = (data as any)?.data || data || {};
           const assets = bsData?.assets?.accounts || [];

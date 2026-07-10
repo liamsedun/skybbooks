@@ -317,6 +317,15 @@ export function PayslipsPage() {
     exportToCsv(`payslips_${today}.csv`, headers, rows);
   }
 
+  function exportPayslipsPDF() {
+    const org = (orgData as any)?.data || orgData || {};
+    const htmls = filtered.map((l: any) => {
+      return buildPayslipHtml(l, selectedRun, l.employee, null, org);
+    });
+    const combined = htmls.join('<div style="page-break-after:always"></div>');
+    openPayslipPrint(combined, `Payslips - ${selectedRun?.runNumber || ''}`);
+  }
+
   function printPayslip() {
     if (!viewingPayslip) return;
     const { line, run, employee, calculation } = viewingPayslip;
@@ -344,6 +353,10 @@ export function PayslipsPage() {
           <button onClick={exportPayslipsCSV} disabled={!selectedRunId || filtered.length === 0}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-slate-200 text-slate-600 rounded-xl transition-all duration-200 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-50">
             <Download size={14} /> CSV
+          </button>
+          <button onClick={exportPayslipsPDF} disabled={!selectedRunId || filtered.length === 0}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-slate-200 text-slate-600 rounded-xl transition-all duration-200 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-50">
+            <FileText size={14} /> PDF
           </button>
         {runsLoading ? (
           <select disabled className="px-3 py-2.5 text-sm border border-slate-200 rounded-xl bg-slate-50 text-slate-400">

@@ -31,6 +31,8 @@ export function TransfersPage() {
     queryFn: bankingApi.getAccounts,
   });
 
+  const { data: orgData } = useQuery({ queryKey: ['org'], queryFn: orgApi.getOrg });
+
   const { data: transfers = [], isLoading } = useQuery({
     queryKey: ['bankTransfers', dateFrom, dateTo],
     queryFn: () => bankingApi.getTransfers({ from: dateFrom || undefined, to: dateTo || undefined }),
@@ -92,16 +94,76 @@ export function TransfersPage() {
     label: `${a.name} — ${a.bankName} ****${(a.accountNumber || '').slice(-4)}`,
   }));
 
+  function printTransfersPDF() {
+    const org = (orgData as any)?.data || orgData || {};
+    const orgName = org.name || '';
+    const orgAddr = org.address ? `<p style="margin:0;font-size:11px;color:#475569">${org.address}</p>` : '';
+    const orgPhone = org.phone || '';
+    const orgEmail = org.email || '';
+    const orgWebsite = org.website || '';
+    const orgLogo = org.logoUrl ? `<img src="${org.logoUrl}" style="max-height:60px;max-width:200px;object-fit:contain" />` : '';
+    const contactInfo = [orgPhone, orgEmail, orgWebsite].filter(Boolean).join(' | ');
+
+    const rows = filteredTransfers.map((t: any) => `
+      <tr>
+        <td style="padding:8px 12px;font-family:monospace;font-size:12px;border-bottom:1px solid #e2e8f0">${t.transferNumber}</td>
+        <td style="padding:8px 12px;font-size:12px;border-bottom:1px solid #e2e8f0">${fmtDate(t.date)}</td>
+        <td style="padding:8px 12px;font-size:12px;border-bottom:1px solid #e2e8f0">${t.fromAccountName || t.fromBankName || '—'}</td>
+        <td style="padding:8px 12px;font-size:12px;border-bottom:1px solid #e2e8f0">${t.toAccountName || t.toBankName || '—'}</td>
+        <td style="padding:8px 12px;font-size:12px;border-bottom:1px solid #e2e8f0">${t.description || '—'}</td>
+        <td style="padding:8px 12px;font-size:12px;font-weight:600;text-align:right;border-bottom:1px solid #e2e8f0">${fmtNaira(t.amount)}</td>
+      </tr>`).join('');
+
+    const total = filteredTransfers.reduce((s: number, t: any) => s + t.amount, 0);
+
+    printWindow(
+      'Inter Account Transfers',
+      `<div style="text-align:center;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #e2e8f0">
+        ${orgLogo}
+        <h1 style="margin:4px 0;font-size:18px;color:#0f172a">${orgName}</h1>
+        ${orgAddr}
+        <p style="margin:2px 0;font-size:11px;color:#64748b">${contactInfo}</p>
+      </div>
+      <h2 style="font-size:16px;color:#0f172a;margin:0 0 8px">Inter Account Transfers</h2>
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="background:#f8fafc">
+            <th style="padding:10px 12px;font-size:11px;font-weight:600;color:#64748b;text-align:left;text-transform:uppercase">Transfer #</th>
+            <th style="padding:10px 12px;font-size:11px;font-weight:600;color:#64748b;text-align:left;text-transform:uppercase">Date</th>
+            <th style="padding:10px 12px;font-size:11px;font-weight:600;color:#64748b;text-align:left;text-transform:uppercase">Paid from</th>
+            <th style="padding:10px 12px;font-size:11px;font-weight:600;color:#64748b;text-align:left;text-transform:uppercase">Received in</th>
+            <th style="padding:10px 12px;font-size:11px;font-weight:600;color:#64748b;text-align:left;text-transform:uppercase">Description</th>
+            <th style="padding:10px 12px;font-size:11px;font-weight:600;color:#64748b;text-align:right;text-transform:uppercase">Amount</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+        <tfoot>
+          <tr style="border-top:2px solid #0f172a">
+            <td colspan="5" style="padding:10px 12px;font-size:13px;font-weight:700;text-align:right">Total</td>
+            <td style="padding:10px 12px;font-size:13px;font-weight:700;text-align:right">${fmtNaira(total)}</td>
+          </tr>
+        </tfoot>
+      </table>`,
+      'Inter Account Transfers'
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
           <ArrowRightLeft className="w-6 h-6 text-indigo-600" /> Inter Account Transfers
         </h1>
-        <button onClick={() => { setShowForm(true); setEditTarget(null); setFormError(null); }}
-          className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200">
-          <Plus className="w-4 h-4" /> New Transfer
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={printTransfersPDF} disabled={filteredTransfers.length === 0}
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-slate-700 bg-slate-100 rounded-xl hover:bg-slate-200 transition-all duration-200 disabled:opacity-50">
+            <Printer className="w-4 h-4" /> PDF
+          </button>
+          <button onClick={() => { setShowForm(true); setEditTarget(null); setFormError(null); }}
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200">
+            <Plus className="w-4 h-4" /> New Transfer
+          </button>
+        </div>
       </div>
 
       {success && (

@@ -91,13 +91,71 @@ export function JournalsPage() {
     exportToCsv(`manual_journals_${today}.csv`, headers, rows);
   }
 
+  const { data: orgData } = useQuery({ queryKey: ['org'], queryFn: orgApi.getOrg });
+
   const handlePrintPdf = () => {
     try {
       const list = Array.isArray(journals) ? journals : [];
-      const rows = list.map((e: any) =>
-        `<tr><td>${e.entryNumber||''}</td><td>${e.date ? new Date(e.date).toLocaleDateString('en-GB') : ''}</td><td>${e.description||''}</td><td>${e.source||''}</td></tr>`
-      ).join('');
-      printWindow('Manual Journals', `<table><thead><tr><th>Entry #</th><th>Date</th><th>Description</th><th>Source</th></tr></thead><tbody>${rows||'<tr><td colspan="4" style="text-align:center;color:#94a3b8">No entries</td></tr>'}</tbody></table>`, `${list.length} entries`);
+      const org = (orgData as any)?.data || orgData || {};
+      const orgName = org.name || '';
+      const orgAddr = org.address ? `<p style="margin:0;font-size:11px;color:#475569">${org.address}</p>` : '';
+      const orgPhone = org.phone || '';
+      const orgEmail = org.email || '';
+      const orgWebsite = org.website || '';
+      const orgLogo = org.logoUrl ? `<img src="${org.logoUrl}" style="max-height:60px;max-width:200px;object-fit:contain" />` : '';
+      const contactInfo = [orgPhone, orgEmail, orgWebsite].filter(Boolean).join(' | ');
+
+      const rows = list.map((e: any) => {
+        const tDebits = Number(e.totalDebits || 0);
+        const tCredits = Number(e.totalCredits || 0);
+        const balanced = tDebits === tCredits;
+        return `<tr>
+          <td style="padding:8px 12px;font-family:monospace;font-size:12px;border-bottom:1px solid #e2e8f0">${e.entryNumber||''}</td>
+          <td style="padding:8px 12px;font-size:12px;border-bottom:1px solid #e2e8f0">${e.date ? new Date(e.date).toLocaleDateString('en-GB') : ''}</td>
+          <td style="padding:8px 12px;font-size:12px;border-bottom:1px solid #e2e8f0">${e.description||''}</td>
+          <td style="padding:8px 12px;font-size:12px;border-bottom:1px solid #e2e8f0">${e.source||''}</td>
+          <td style="padding:8px 12px;font-size:12px;font-family:monospace;text-align:right;border-bottom:1px solid #e2e8f0">${tDebits > 0 ? fmtNaira(tDebits) : '—'}</td>
+          <td style="padding:8px 12px;font-size:12px;font-family:monospace;text-align:right;border-bottom:1px solid #e2e8f0">${tCredits > 0 ? fmtNaira(tCredits) : '—'}</td>
+          <td style="padding:8px 12px;font-size:12px;text-align:center;border-bottom:1px solid #e2e8f0;color:${balanced ? '#059669' : '#dc2626'};font-weight:600">${balanced ? 'Balanced' : 'Unbalanced'}</td>
+        </tr>`;
+      }).join('');
+
+      const totalDebs = list.reduce((s: number, e: any) => s + Number(e.totalDebits || 0), 0);
+      const totalCres = list.reduce((s: number, e: any) => s + Number(e.totalCredits || 0), 0);
+
+      printWindow('Manual Journals',
+        `<div style="text-align:center;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #e2e8f0">
+          ${orgLogo}
+          <h1 style="margin:4px 0;font-size:18px;color:#0f172a">${orgName}</h1>
+          ${orgAddr}
+          <p style="margin:2px 0;font-size:11px;color:#64748b">${contactInfo}</p>
+        </div>
+        <h2 style="font-size:16px;color:#0f172a;margin:0 0 8px">Manual Journals</h2>
+        <p style="font-size:11px;color:#64748b;margin:0 0 12px">${list.length} entries — Generated: ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+        <table style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr style="background:#f8fafc">
+              <th style="padding:10px 12px;font-size:11px;font-weight:600;color:#64748b;text-align:left;text-transform:uppercase">Entry #</th>
+              <th style="padding:10px 12px;font-size:11px;font-weight:600;color:#64748b;text-align:left;text-transform:uppercase">Date</th>
+              <th style="padding:10px 12px;font-size:11px;font-weight:600;color:#64748b;text-align:left;text-transform:uppercase">Description</th>
+              <th style="padding:10px 12px;font-size:11px;font-weight:600;color:#64748b;text-align:left;text-transform:uppercase">Source</th>
+              <th style="padding:10px 12px;font-size:11px;font-weight:600;color:#64748b;text-align:right;text-transform:uppercase">Debit</th>
+              <th style="padding:10px 12px;font-size:11px;font-weight:600;color:#64748b;text-align:right;text-transform:uppercase">Credit</th>
+              <th style="padding:10px 12px;font-size:11px;font-weight:600;color:#64748b;text-align:center;text-transform:uppercase">Status</th>
+            </tr>
+          </thead>
+          <tbody>${rows || '<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:20px">No entries</td></tr>'}</tbody>
+          <tfoot>
+            <tr style="font-weight:700;border-top:2px solid #0f172a">
+              <td colspan="4" style="padding:10px 12px;font-size:13px;text-align:right">TOTAL</td>
+              <td style="padding:10px 12px;font-size:13px;font-family:monospace;text-align:right">${fmtNaira(totalDebs)}</td>
+              <td style="padding:10px 12px;font-size:13px;font-family:monospace;text-align:right">${fmtNaira(totalCres)}</td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>`,
+        `${list.length} entries`
+      );
     } catch (err) {
       alert('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'));
       console.error('Print error:', err);
