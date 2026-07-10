@@ -2,7 +2,7 @@ import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { db, fixedAssets, accounts, depreciationEntries, journalEntries, journalLines } from '../db/schema';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
-import { eq, and, desc, asc, sql } from 'drizzle-orm';
+import { eq, and, desc, sql } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
 import { createJournalEntry, updateJournalEntry } from '../services/ledger.service';
 
@@ -402,42 +402,27 @@ router.get('/depreciation-entries', async (req: AuthenticatedRequest, res: Respo
   try {
     const orgId = req.user!.orgId!;
 
-    // Get entries from depreciation_entries table (new runs) OR matching description (legacy)
-    const entries = await db.execute(sql`
-      SELECT DISTINCT ON (je.id)
-        je.id AS id,
-        je.entry_number AS "entryNumber",
-        je.date,
-        je.description,
-        je.source,
-        je.created_at AS "createdAt"
-      FROM journal_entries je
-      LEFT JOIN depreciation_entries de ON de.journal_entry_id = je.id
-      WHERE je.org_id = ${orgId}
-        AND (de.journal_entry_id IS NOT NULL OR je.description ILIKE '%depreciation%')
-      ORDER BY je.id, je.created_at DESC
-      LIMIT 50
-    `);
-
-    const rawEntries: any[] = entries.rows || [];
-    console.log(`[Depreciation] orgId=${orgId}, found ${rawEntries.length} raw entries`);
-
-    // If no entries, check if there are depreciation_entries at all
-    if (rawEntries.length === 0) {
-      const [deCount] = await db.execute(sql`SELECT count(*)::int AS cnt FROM depreciation_entries`);
-      console.log(`[Depreciation] depreciation_entries count:`, deCount?.rows?.[0]?.cnt);
-      const [jeCount] = await db.execute(sql`SELECT count(*)::int AS cnt FROM journal_entries WHERE org_id = ${orgId}`);
-      console.log(`[Depreciation] org journal_entries count:`, jeCount?.rows?.[0]?.cnt);
-      const [deprJeCount] = await db.execute(sql`
-        SELECT count(*)::int AS cnt FROM journal_entries
-        WHERE org_id = ${orgId} AND description ILIKE '%depreciation%'
-      `);
-      console.log(`[Depreciation] org JEs with 'depreciation' in desc:`, deprJeCount?.rows?.[0]?.cnt);
-    }
+    // Simple ILIKE query matching the description pattern set by run-depreciation
+    const entries = await db
+      .select({
+        id: journalEntries.id,
+        entryNumber: journalEntries.entryNumber,
+        date: journalEntries.date,
+        description: journalEntries.description,
+        source: journalEntries.source,
+        createdAt: journalEntries.createdAt,
+      })
+      .from(journalEntries)
+      .where(and(
+        eq(journalEntries.orgId, orgId),
+        sql`${journalEntries.description} ILIKE '%depreciation%'`
+      ))
+      .orderBy(desc(journalEntries.createdAt))
+      .limit(50);
 
     const grouped: any[] = [];
 
-    for (const entry of rawEntries) {
+    for (const entry of entries) {
       const dbLines = await db
         .select({
           accountCode: accounts.code,
