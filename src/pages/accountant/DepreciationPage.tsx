@@ -116,6 +116,10 @@ export function DepreciationPage() {
                 const isOpen = expanded.has(key);
                 const periodLabel = formatPeriod(rows[0].periodDate);
                 const totalAmount = rows.reduce((s: number, r: any) => s + r.amount, 0);
+                const totalAccumDepr = rows.reduce((s: number, r: any) => s + r.accumulatedDepreciation, 0);
+                const totalBookValue = rows.reduce((s: number, r: any) => s + r.bookValue, 0);
+                const jeNumber = rows[0]?.jeNumber || '';
+                const jeId = rows[0]?.journalEntryId || '';
                 return (
                   <React.Fragment key={key}>
                     <tr className="bg-slate-100/80 hover:bg-slate-100 cursor-pointer border-b border-slate-200"
@@ -124,9 +128,14 @@ export function DepreciationPage() {
                       <td className="px-4 py-2.5 font-semibold text-slate-800" colSpan={2}>{periodLabel}</td>
                       <td className="px-4 py-2.5 text-xs text-slate-500">{rows.length} asset{rows.length !== 1 ? 's' : ''}</td>
                       <td className="px-4 py-2.5 text-right font-semibold font-mono tabular-nums text-slate-800">{fmtNaira(totalAmount)}</td>
-                      <td className="px-4 py-2.5"></td>
-                      <td className="px-4 py-2.5"></td>
-                      <td className="px-4 py-2.5"></td>
+                      <td className="px-4 py-2.5 text-right font-semibold font-mono tabular-nums text-slate-800">{fmtNaira(totalAccumDepr)}</td>
+                      <td className="px-4 py-2.5 text-right font-semibold font-mono tabular-nums text-slate-800">{fmtNaira(totalBookValue)}</td>
+                      <td className="px-4 py-2.5">
+                        <span className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-medium cursor-pointer"
+                          onClick={(e) => { e.stopPropagation(); navigate(`/accountant/journals`); }}>
+                          {jeNumber} <ExternalLink className="w-3 h-3" />
+                        </span>
+                      </td>
                     </tr>
                     {isOpen && rows.map((r: any) => (
                       <tr key={r.id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-50 cursor-pointer"
@@ -138,11 +147,7 @@ export function DepreciationPage() {
                         <td className="px-4 py-3 text-right font-mono tabular-nums text-slate-900">{fmtNaira(r.amount)}</td>
                         <td className="px-4 py-3 text-right font-mono tabular-nums text-slate-600">{fmtNaira(r.accumulatedDepreciation)}</td>
                         <td className="px-4 py-3 text-right font-mono tabular-nums text-slate-600">{fmtNaira(r.bookValue)}</td>
-                        <td className="px-4 py-3">
-                          <span className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-medium">
-                            {r.jeNumber} <ExternalLink className="w-3 h-3" />
-                          </span>
-                        </td>
+                        <td className="px-4 py-3 text-slate-400 text-xs">{r.jeNumber}</td>
                       </tr>
                     ))}
                   </React.Fragment>
