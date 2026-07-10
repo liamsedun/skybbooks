@@ -424,91 +424,64 @@ router.get('/depreciation-debug', async (req: AuthenticatedRequest, res: Respons
 });
 
 // GET /depreciation-entries - Returns account-level balances for depreciation accounts
-// Supports ?debug=true to return all accounts (for troubleshooting)
+// Uses raw SQL query matching Trial Balance approach
 router.get('/depreciation-entries', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const orgId = req.user!.orgId!;
-    const isDebug = req.query.debug === 'true';
 
-    // Get all accounts for this org
-    const allAccounts = await db
-      .select()
-      .from(accounts)
-      .where(eq(accounts.orgId, orgId));
+    const { rows } = await db.execute(sql`
+      WITH dep_accounts AS (
+        SELECT DISTINCT a.id, a.code, a.name, a.type
+        FROM accounts a
+        LEFT JOIN journal_lines jl ON jl.account_id = a.id
+        LEFT JOIN journal_entries je ON je.id = jl.entry_id AND je.org_id = a.org_id
+        WHERE a.org_id = ${orgId} AND (
+          LOWER(a.name) LIKE '%depreciation%'
+          OR LOWER(a.name) LIKE '%amortisation%'
+          OR LOWER(a.name) LIKE '%amortization%'
+          OR a.code LIKE '2002%'
+          OR a.code LIKE '2003%'
+          OR a.code LIKE '2004%'
+          OR a.code LIKE '2005%'
+          OR a.code LIKE '2006%'
+          OR a.code LIKE '2007%'
+          OR a.code LIKE '2011%'
+          OR a.code LIKE '2012%'
+          OR a.code LIKE '8107%'
+          OR a.code LIKE '8109%'
+          OR LOWER(je.description) LIKE '%depreciation%'
+        )
+      ),
+      balances AS (
+        SELECT
+          jl.account_id,
+          COALESCE(SUM(jl.debit_amount), 0) AS total_debit,
+          COALESCE(SUM(jl.credit_amount), 0) AS total_credit
+        FROM journal_lines jl
+        WHERE jl.account_id IN (SELECT id FROM dep_accounts)
+        GROUP BY jl.account_id
+      )
+      SELECT
+        da.id AS "accountId",
+        da.code AS "accountCode",
+        da.name AS "accountName",
+        da.type,
+        CASE
+          WHEN da.type = 'expense' OR (da.type = 'asset' AND LOWER(da.name) NOT LIKE 'accumulated%')
+          THEN GREATEST(COALESCE(b.total_debit, 0) - COALESCE(b.total_credit, 0), 0)
+          ELSE GREATEST(COALESCE(b.total_credit, 0) - COALESCE(b.total_debit, 0), 0)
+        END AS debit,
+        CASE
+          WHEN da.type = 'expense' OR (da.type = 'asset' AND LOWER(da.name) NOT LIKE 'accumulated%')
+          THEN GREATEST(COALESCE(b.total_credit, 0) - COALESCE(b.total_debit, 0), 0)
+          ELSE GREATEST(COALESCE(b.total_debit, 0) - COALESCE(b.total_credit, 0), 0)
+        END AS credit
+      FROM dep_accounts da
+      LEFT JOIN balances b ON b.account_id = da.id
+      ORDER BY da.code
+    `);
 
-    // Get accounts used by active fixed assets (asset accounts linked to fixed assets)
-    const faAccounts = await db
-      .select({ accountId: fixedAssets.accountId })
-      .from(fixedAssets)
-      .where(and(eq(fixedAssets.orgId, orgId), eq(fixedAssets.status, 'active')));
-    const faAccountIds = new Set(faAccounts.map(fa => fa.accountId));
-
-    // Find accounts referenced in manual journal entries with "depreciation" in description
-    const depJEs = await db
-      .select({ id: journalEntries.id })
-      .from(journalEntries)
-      .where(and(eq(journalEntries.orgId, orgId), ilike(journalEntries.description, '%depreciation%')));
-    const depEntryAccountIds = new Set<string>();
-    if (depJEs.length > 0) {
-      const depLines = await db
-        .select({ accountId: journalLines.accountId })
-        .from(journalLines)
-        .where(inArray(journalLines.entryId, depJEs.map(je => je.id)));
-      depLines.forEach(l => depEntryAccountIds.add(l.accountId));
-    }
-
-    // Filter to depreciation-related accounts: by name, code pattern, linked to fixed assets,
-    // or referenced in depreciation journal entries
-    const depCodePatterns = ['2002', '2003', '2004', '2005', '2006', '2007', '2011', '2012', '8107', '8109'];
-    const depAccounts = isDebug ? allAccounts : allAccounts.filter(a => {
-      if (a.name.toLowerCase().includes('depreciation')) return true;
-      if (a.name.toLowerCase().includes('amortisation') || a.name.toLowerCase().includes('amortization')) return true;
-      if (faAccountIds.has(a.id)) return true;
-      if (depEntryAccountIds.has(a.id)) return true;
-      for (const p of depCodePatterns) {
-        if (a.code.startsWith(p)) return true;
-      }
-      return false;
-    });
-
-    const acctIds = depAccounts.map(a => a.id);
-    if (acctIds.length === 0) return res.status(200).json([]);
-
-    // Get all journal lines for these accounts
-    const lines = await db
-      .select({
-        accountId: journalLines.accountId,
-        debit: journalLines.debitAmount,
-        credit: journalLines.creditAmount,
-      })
-      .from(journalLines)
-      .where(inArray(journalLines.accountId, acctIds));
-
-    // Compute total debit/credit per account
-    const balanceMap = new Map<string, { debit: number; credit: number }>();
-    for (const acct of depAccounts) {
-      balanceMap.set(acct.id, { debit: 0, credit: 0 });
-    }
-    for (const l of lines) {
-      const b = balanceMap.get(l.accountId);
-      if (b) { b.debit += Number(l.debit) || 0; b.credit += Number(l.credit) || 0; }
-    }
-
-    const result = depAccounts.map(a => {
-      const b = balanceMap.get(a.id) || { debit: 0, credit: 0 };
-      const isContra = a.type === 'asset' && (a.name.toLowerCase().includes('accumulated') || a.name.toLowerCase().includes('amortisation'));
-      const net = (a.type === 'expense' || (a.type === 'asset' && !isContra)) ? b.debit - b.credit : b.credit - b.debit;
-      return {
-        accountId: a.id,
-        accountCode: a.code,
-        accountName: a.name,
-        type: a.type,
-        debit: net > 0 ? net : 0,
-        credit: net < 0 ? Math.abs(net) : 0,
-      };
-    });
-
-    return res.status(200).json(result);
+    return res.status(200).json(rows || []);
   } catch (err) {
     console.error('[Depreciation Entries] Error:', err);
     return res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
