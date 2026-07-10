@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { reportsApi, accountantApi, apiDownload, printWindow, api, orgApi } from '../../lib/api';
-import { Loader2, AlertCircle, CheckCircle2, Download, Search, Upload, FileText, X, RefreshCw, ExternalLink, Pencil, ChevronRight, Briefcase } from 'lucide-react';
+import { Loader2, AlertCircle, CheckCircle2, Download, Search, Upload, FileText, X, RefreshCw, ExternalLink, Pencil, ChevronRight, ChevronDown, Briefcase } from 'lucide-react';
 import { downloadCsv, exportToCsv, CSV_TEMPLATES } from '../../lib/csvTemplates';
 
 const MODULE_LINKS: { prefix: string; path: string; label: string }[] = [
@@ -84,6 +84,15 @@ export function TrialBalancePage() {
   const [editObLoading, setEditObLoading] = useState(false);
   const [editObSaving, setEditObSaving] = useState(false);
   const [editObMsg, setEditObMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
+
+  const toggleExpand = (id: string) => {
+    setExpandedParents(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
 
   const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ['report', 'trial-balance', sDate, eDate],
@@ -95,14 +104,88 @@ export function TrialBalancePage() {
     refetchOnMount: true,
     refetchOnWindowFocus: true,
   });
-
   const rawRows: any[] = Array.isArray(data) ? data : [];
-  const rows = searchQuery
-    ? rawRows.filter(r =>
-        (r.accountCode || r.code || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (r.accountName || r.name || '').toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : rawRows;
+
+  // Build parent→children map for tree rendering
+  const childrenByParent: Record<string, any[]> = {};
+  rawRows.forEach((r: any) => {
+    if (r.parentId) {
+      if (!childrenByParent[r.parentId]) childrenByParent[r.parentId] = [];
+      childrenByParent[r.parentId].push(r);
+    }
+  });
+
+  // Determine visible rows with tree expansion
+  const isSearching = searchQuery.length > 0;
+  const searchLower = searchQuery.toLowerCase();
+
+  // Auto-expand parents that have matching children during search
+  const autoExpandParents = new Set<string>();
+  if (isSearching) {
+    rawRows.forEach((r: any) => {
+      if (r.parentId) {
+        const matches = (r.accountCode || '').toLowerCase().includes(searchLower) ||
+                        (r.accountName || '').toLowerCase().includes(searchLower);
+        if (matches) autoExpandParents.add(r.parentId);
+      }
+    });
+  }
+
+  function rowMatches(r: any): boolean {
+    if (!isSearching) return true;
+    return (r.accountCode || '').toLowerCase().includes(searchLower) ||
+           (r.accountName || '').toLowerCase().includes(searchLower);
+  }
+
+  // Compute display rows respecting tree hierarchy
+  const displayRows: any[] = [];
+  const expandedActive = new Set(expandedParents);
+  // Also auto-expand parents with matching children
+  autoExpandParents.forEach(id => expandedActive.add(id));
+
+  for (const r of rawRows) {
+    const id = r.accountId || r.id;
+    const hasChildren = !!childrenByParent[id];
+    const isChild = !!r.parentId;
+    const isRoot = !isChild;
+
+    // Skip if doesn't match search (unless it's a parent of a matching child)
+    const matches = rowMatches(r);
+    const childMatches = isRoot && autoExpandParents.has(id);
+    if (!matches && !childMatches) continue;
+
+    // Skip children whose parent isn't expanded
+    if (isChild && !expandedActive.has(r.parentId)) continue;
+
+    // For roots that are parents: if childMatches but root itself doesn't match,
+    // still show the root (it's the parent of a matching child)
+    if (isRoot && !matches && childMatches) {
+      // Show the parent row even though it doesn't match - for context
+    }
+
+    // Determine depth for indentation
+    let depth = 0;
+    if (isChild) {
+      // Walk up the parent chain to compute depth
+      let pid = r.parentId;
+      while (pid) {
+        depth++;
+        const parent = rawRows.find((x: any) => (x.accountId || x.id) === pid);
+        pid = parent?.parentId || null;
+      }
+    }
+
+    const isExpanded = expandedActive.has(id);
+
+    displayRows.push({ ...r, _depth: depth, _hasChildren: hasChildren, _isExpanded: isExpanded });
+
+    // If this parent is expanded, children will show in subsequent iterations
+    if (hasChildren && isExpanded) {
+      expandedActive.add(id);
+    }
+  }
+
+  const rows = displayRows;
 
   const handleExport = (format: 'pdf' | 'csv') => {
     if (format === 'csv') {
@@ -249,11 +332,24 @@ export function TrialBalancePage() {
             <tbody>
               {rows.map((row: any, i: number) => {
                 const link = getAccountModuleLink(row.accountCode || row.code || '');
+                const padLeft = row._depth * 20;
                 return (
-                <tr key={i} className="border-t border-slate-100 hover:bg-slate-50/50 even:bg-slate-50/50 transition-colors cursor-pointer" onClick={() => setDrillDown(row)}>
-                  <td className="px-3 py-3 text-slate-600 font-mono">{row.accountCode || row.code || '—'}</td>
+                <tr key={i} className={`border-t border-slate-100 hover:bg-slate-50/50 even:bg-slate-50/50 transition-colors cursor-pointer ${row._depth > 0 ? 'bg-slate-50/30' : ''}`} onClick={() => setDrillDown(row)}>
+                  <td className="px-3 py-3 text-slate-600 font-mono" style={{ paddingLeft: `${12 + padLeft}px` }}>
+                    {row._hasChildren ? (
+                      <button
+                        onClick={e => { e.stopPropagation(); toggleExpand(row.accountId || row.id); }}
+                        className="inline-flex items-center gap-1 text-slate-500 hover:text-slate-800 mr-1"
+                      >
+                        {row._isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                      </button>
+                    ) : (
+                      <span className="inline-block w-5 mr-1" />
+                    )}
+                    <span className={row._hasChildren ? 'font-semibold text-slate-800' : ''}>{row.accountCode || row.code || '—'}</span>
+                  </td>
                   <td className="px-3 py-3">
-                    <span className="font-medium text-slate-800">{row.accountName || row.name || `Account ${i + 1}`}</span>
+                    <span className={`${row._hasChildren ? 'font-semibold text-slate-800' : 'font-medium text-slate-700'} ${row._depth > 0 ? 'text-sm' : ''}`}>{row.accountName || row.name || `Account ${i + 1}`}</span>
                     {link && (
                       <button
                         onClick={e => { e.stopPropagation(); navigate(link.path); }}
@@ -276,8 +372,8 @@ export function TrialBalancePage() {
               <tfoot>
                 <tr className="border-t-2 border-slate-300 bg-slate-50 font-semibold text-slate-900">
                   <td className="px-3 py-3 text-sm" colSpan={3}>Total</td>
-                  <td className="px-3 py-3 text-right text-sm font-mono">{fmtNaira(rows.reduce((s: number, r: any) => s + (r.closingDebit || r.debit || 0), 0))}</td>
-                  <td className="px-3 py-3 text-right text-sm font-mono">{fmtNaira(rows.reduce((s: number, r: any) => s + (r.closingCredit || r.credit || 0), 0))}</td>
+                  <td className="px-3 py-3 text-right text-sm font-mono">{fmtNaira(rows.reduce((s: number, r: any) => s + (r._depth === 0 ? (r.closingDebit || r.debit || 0) : 0), 0))}</td>
+                  <td className="px-3 py-3 text-right text-sm font-mono">{fmtNaira(rows.reduce((s: number, r: any) => s + (r._depth === 0 ? (r.closingCredit || r.credit || 0) : 0), 0))}</td>
                 </tr>
               </tfoot>
             )}

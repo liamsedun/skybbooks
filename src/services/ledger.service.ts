@@ -38,6 +38,7 @@ export type TrialBalanceRow = {
   accountCode: string;
   accountName: string;
   accountType: string;
+  parentId: string | null;
   openingDebit: number;
   openingCredit: number;
   periodDebit: number;
@@ -547,6 +548,11 @@ export async function getTrialBalance(
       parentChildren.get(acct.parentId)!.push(acct.id);
     }
   }
+  // Add parentId to each row for frontend tree rendering
+  for (const row of resultList) {
+    const acct = accById.get(row.accountId);
+    row.parentId = acct ? acct.parentId || null : null;
+  }
   const resultMap = new Map(resultList.map(r => [r.accountId, r]));
   function aggregateParent(accountId: string): { debit: number; credit: number } {
     const row = resultMap.get(accountId);
@@ -576,6 +582,7 @@ export async function getTrialBalance(
       accountCode: 'SYS-SUSPENSE',
       accountName: 'System (Unreconciled sub-ledger differences)',
       accountType: 'equity',
+      parentId: null,
       openingDebit: 0,
       openingCredit: 0,
       periodDebit: 0,
