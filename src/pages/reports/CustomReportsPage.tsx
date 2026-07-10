@@ -524,17 +524,42 @@ export function CustomReportsPage() {
                 <div className="px-5 pb-4 space-y-1">
                   {reports.map(r => {
                     const RIcon = r.icon;
+                    const secIdx = SECTIONS.findIndex(s => s.id === section.id);
+                    const activeColors = [
+                      'bg-blue-50 text-blue-700 border-blue-200',
+                      'bg-amber-50 text-amber-700 border-amber-200',
+                      'bg-emerald-50 text-emerald-700 border-emerald-200',
+                      'bg-purple-50 text-purple-700 border-purple-200',
+                      'bg-rose-50 text-rose-700 border-rose-200',
+                      'bg-cyan-50 text-cyan-700 border-cyan-200',
+                      'bg-violet-50 text-violet-700 border-violet-200',
+                      'bg-indigo-50 text-indigo-700 border-indigo-200',
+                    ];
+                    const hoverColors = [
+                      'hover:bg-blue-50 hover:text-blue-700 hover:border-blue-100',
+                      'hover:bg-amber-50 hover:text-amber-700 hover:border-amber-100',
+                      'hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-100',
+                      'hover:bg-purple-50 hover:text-purple-700 hover:border-purple-100',
+                      'hover:bg-rose-50 hover:text-rose-700 hover:border-rose-100',
+                      'hover:bg-cyan-50 hover:text-cyan-700 hover:border-cyan-100',
+                      'hover:bg-violet-50 hover:text-violet-700 hover:border-violet-100',
+                      'hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-100',
+                    ];
+                    const ac = activeColors[secIdx] || activeColors[7];
+                    const hc = hoverColors[secIdx] || hoverColors[7];
                     return (
                       <button key={r.id} onClick={() => fetchReport(r.id)}
-                        className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm transition-all duration-200 ${
-                          activeReport === r.id ? 'bg-indigo-50 text-indigo-700 font-semibold shadow-sm' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                        className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm transition-all duration-200 border border-transparent ${
+                          activeReport === r.id ? `${ac} font-semibold shadow-sm border` : `text-slate-600 ${hc}`
                         }`}>
-                        <RIcon className={`w-4 h-4 ${activeReport === r.id ? 'text-indigo-500' : 'text-slate-400'}`} />
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${activeReport === r.id ? section.bg : 'bg-slate-100'}`}>
+                          <RIcon className={`w-3.5 h-3.5 ${activeReport === r.id ? section.text : 'text-slate-400'}`} />
+                        </div>
                         <div className="flex items-center justify-between flex-1">
                           <span>{r.label}</span>
                           <div className="flex items-center gap-2">
                             {r.needsDates && <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider bg-slate-100 px-1.5 py-0.5 rounded">Date Range</span>}
-                            {activeReport === r.id && <ChevronRight className="w-3.5 h-3.5 text-indigo-400" />}
+                            {activeReport === r.id && <ChevronRight className={`w-3.5 h-3.5 ${section.text}`} />}
                           </div>
                         </div>
                       </button>
