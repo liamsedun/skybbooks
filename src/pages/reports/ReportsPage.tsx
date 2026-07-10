@@ -468,19 +468,23 @@ export function TrialBalancePage() {
 function getDefaultCompareDates(sDate: string, eDate: string): { compareStart: string; compareEnd: string } {
   const start = new Date(sDate);
   const end = new Date(eDate);
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+    return { compareStart: '', compareEnd: '' };
+  }
   const durationMs = end.getTime() - start.getTime();
   const priorEnd = new Date(start.getTime() - 86400000);
   const priorStart = new Date(priorEnd.getTime() - durationMs);
   return {
-    compareStart: priorStart.toISOString().split('T')[0],
-    compareEnd: priorEnd.toISOString().split('T')[0],
+    compareStart: isNaN(priorStart.getTime()) ? '' : priorStart.toISOString().split('T')[0],
+    compareEnd: isNaN(priorEnd.getTime()) ? '' : priorEnd.toISOString().split('T')[0],
   };
 }
 
 function getDefaultCompareAsOf(asOfDate: string): string {
   const d = new Date(asOfDate);
+  if (isNaN(d.getTime())) return '';
   const prior = new Date(d.getFullYear() - 1, d.getMonth(), d.getDate());
-  return prior.toISOString().split('T')[0];
+  return isNaN(prior.getTime()) ? '' : prior.toISOString().split('T')[0];
 }
 
 export function IncomeStatementPage() {
@@ -767,10 +771,13 @@ function ReportShell({ reportType, title }: ReportPageProps) {
   // Recompute default compare dates when main dates change (only if compare not manually toggled)
   React.useEffect(() => {
     if (!compareEnabled) {
-      const d = getDefaultCompareDates(sDate, eDate);
-      setCompareSDate(d.compareStart);
-      setCompareEDate(d.compareEnd);
-      setCompareAsOf(getDefaultCompareAsOf(asOfDate));
+      try {
+        const d = getDefaultCompareDates(sDate, eDate);
+        if (d.compareStart) setCompareSDate(d.compareStart);
+        if (d.compareEnd) setCompareEDate(d.compareEnd);
+        const a = getDefaultCompareAsOf(asOfDate);
+        if (a) setCompareAsOf(a);
+      } catch { /* ignore invalid dates while typing */ }
     }
   }, [sDate, eDate, asOfDate]);
 
