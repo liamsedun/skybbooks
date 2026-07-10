@@ -969,12 +969,6 @@ export const reportsApi = {
   },
 };
 
-// 9a. Depreciation Endpoints
-export const depreciationApi = {
-  list: async () => { const res = await api.get('/fixed-assets/depreciation-entries'); return res.data; },
-  update: async (entryId: string, data: any) => { const res = await api.patch(`/fixed-assets/depreciation-entries/${entryId}`, data); return res.data; },
-};
-
 // 9. Projects Endpoints
 export const projectsApi = {
   list: async () => { const res = await api.get('/projects'); return res.data; },

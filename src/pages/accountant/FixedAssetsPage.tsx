@@ -46,7 +46,7 @@ export function FixedAssetsPage() {
 
   const deprMutation = useMutation({
     mutationFn: (periodDate?: string) => fixedAssetsApi.runDepreciation(periodDate),
-    onSuccess: (res) => { setDeprMsg({ type: 'success', text: res.message || 'Depreciation run complete.' }); queryClient.invalidateQueries({ queryKey: ['fixed-assets'] }); queryClient.invalidateQueries({ queryKey: ['depreciation-entries'] }); setShowDeprModal(false); setTimeout(() => setDeprMsg(null), 5000); },
+    onSuccess: (res) => { setDeprMsg({ type: 'success', text: res.message || 'Depreciation run complete.' }); queryClient.invalidateQueries({ queryKey: ['fixed-assets'] }); setShowDeprModal(false); setTimeout(() => setDeprMsg(null), 5000); },
     onError: (err: any) => { setDeprMsg({ type: 'error', text: err?.response?.data?.error || err.message || 'Depreciation run failed.' }); setTimeout(() => setDeprMsg(null), 5000); },
   });
 
