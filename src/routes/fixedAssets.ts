@@ -424,9 +424,11 @@ router.get('/depreciation-debug', async (req: AuthenticatedRequest, res: Respons
 });
 
 // GET /depreciation-entries - Returns account-level balances for depreciation accounts
+// Supports ?debug=true to return all accounts (for troubleshooting)
 router.get('/depreciation-entries', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const orgId = req.user!.orgId!;
+    const isDebug = req.query.debug === 'true';
 
     // Get all accounts for this org
     const allAccounts = await db
@@ -434,11 +436,19 @@ router.get('/depreciation-entries', async (req: AuthenticatedRequest, res: Respo
       .from(accounts)
       .where(eq(accounts.orgId, orgId));
 
-    // Filter to depreciation-related accounts: by code pattern or name
+    // Get accounts used by active fixed assets (asset accounts linked to fixed assets)
+    const faAccounts = await db
+      .select({ accountId: fixedAssets.accountId })
+      .from(fixedAssets)
+      .where(and(eq(fixedAssets.orgId, orgId), eq(fixedAssets.status, 'active')));
+    const faAccountIds = new Set(faAccounts.map(fa => fa.accountId));
+
+    // Filter to depreciation-related accounts: by code pattern, name, or linked to fixed assets
     const depCodePatterns = ['2002', '2003', '2004', '2005', '2006', '2007', '2011', '2012', '8107', '8109'];
-    const depAccounts = allAccounts.filter(a => {
+    const depAccounts = isDebug ? allAccounts : allAccounts.filter(a => {
       if (a.name.toLowerCase().includes('depreciation')) return true;
       if (a.name.toLowerCase().includes('amortisation') || a.name.toLowerCase().includes('amortization')) return true;
+      if (faAccountIds.has(a.id)) return true;
       for (const p of depCodePatterns) {
         if (a.code.startsWith(p)) return true;
       }
