@@ -39,8 +39,13 @@ router.get('/', async (req: AuthenticatedRequest, res: Response, next: NextFunct
         ipAddress: auditLog.ipAddress,
         createdAt: auditLog.createdAt,
         userId: auditLog.userId,
+        user: {
+          name: users.name,
+          email: users.email,
+        },
       })
       .from(auditLog)
+      .leftJoin(users, eq(auditLog.userId, users.id))
       .where(and(...conditions))
       .orderBy(desc(auditLog.createdAt))
       .limit(filters.limit)

@@ -1,98 +1,344 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { auditLogApi, printWindow } from '../../lib/api';
-import { Loader2, AlertCircle, Search, Download } from 'lucide-react';
+import { auditLogApi, api, orgApi, printWindow } from '../../lib/api';
+import { Loader2, AlertCircle, Search, Download, RefreshCw, Shield, ShieldAlert, AlertTriangle, Info, History } from 'lucide-react';
 import { exportToCsv } from '../../lib/csvTemplates';
 
 function fmtDate(d: string): string {
   return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
+function fmtDateShort(d: string): string {
+  return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+function fmtNaira(kobo: number): string {
+  return `₦${(kobo / 100).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+interface Anomaly {
+  transactionId: string;
+  reason: string;
+  severity: 'low' | 'medium' | 'high';
+  date?: string;
+  description?: string;
+  amountKobo?: number;
+}
+
+const THREAT_META: Record<string, { icon: any; color: string; bg: string; border: string; badge: string }> = {
+  low: { icon: Info, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200', badge: 'bg-blue-100 text-blue-700 border-blue-200' },
+  medium: { icon: AlertTriangle, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200', badge: 'bg-amber-100 text-amber-700 border-amber-200' },
+  high: { icon: ShieldAlert, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', badge: 'bg-red-100 text-red-700 border-red-200' },
+};
 
 export function AuditLogsPage() {
+  const [tab, setTab] = useState<'logs' | 'shield'>('logs');
   const [actionFilter, setActionFilter] = useState('');
   const [entityFilter, setEntityFilter] = useState('');
   const [limit] = useState(200);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [threatFilter, setThreatFilter] = useState<string>('all');
+  const [anomalies, setAnomalies] = useState<Anomaly[]>([]);
+  const [loadingAnomalies, setLoadingAnomalies] = useState(false);
+  const [anomaliesError, setAnomaliesError] = useState<string | null>(null);
+  const [rescanning, setRescanning] = useState(false);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['audit-logs', actionFilter, entityFilter, limit],
     queryFn: () => auditLogApi.getLogs({ action: actionFilter || undefined, entityType: entityFilter || undefined, limit }),
   });
 
+  const { data: orgData } = useQuery({ queryKey: ['org'], queryFn: orgApi.getOrg });
+
   const logs = data?.data || [];
+  const total = data?.total || 0;
+
+  const filteredAlerts = anomalies.filter(a => {
+    if (threatFilter !== 'all' && a.severity !== threatFilter) return false;
+    if (!searchTerm) return true;
+    const t = searchTerm.toLowerCase();
+    return (a.description || '').toLowerCase().includes(t) || a.reason.toLowerCase().includes(t);
+  });
+
+  const counts = {
+    all: anomalies.length,
+    high: anomalies.filter(a => a.severity === 'high').length,
+    medium: anomalies.filter(a => a.severity === 'medium').length,
+    low: anomalies.filter(a => a.severity === 'low').length,
+  };
+
+  const runAnomalyScan = async () => {
+    setLoadingAnomalies(true);
+    setAnomaliesError(null);
+    try {
+      let combinedTxns: any[] = [];
+      const accountsRes = await api.get('/banking/accounts');
+      if (accountsRes.data && accountsRes.data.length > 0) {
+        const txnsRes = await api.get(`/banking/accounts/${accountsRes.data[0].id}/transactions`, { params: { limit: 200 } });
+        if (txnsRes.data?.transactions?.length) {
+          combinedTxns = txnsRes.data.transactions.map((t: any) => ({ id: t.id, description: t.description || t.reference || '', amount: t.amount || 0, date: t.date?.split('T')[0] }));
+        }
+      }
+      if (combinedTxns.length === 0) {
+        const pmtRes = await api.get('/sales/payments', { params: { limit: 200 } });
+        if (pmtRes.data?.length) {
+          combinedTxns = pmtRes.data.map((p: any) => ({ id: p.id, description: p.description || p.reference || 'Payment received', amount: p.amount || 0, date: p.date?.split('T')[0] }));
+        }
+      }
+      if (combinedTxns.length === 0) {
+        const pmtRes = await api.get('/purchases/payments', { params: { limit: 200 } });
+        if (pmtRes.data?.length) {
+          combinedTxns = pmtRes.data.map((p: any) => ({ id: p.id, description: p.description || p.reference || 'Payment made', amount: p.amount || 0, date: p.date?.split('T')[0] }));
+        }
+      }
+      if (combinedTxns.length === 0) {
+        const invRes = await api.get('/invoices', { params: { limit: 200 } });
+        if (Array.isArray(invRes.data) && invRes.data.length > 0) {
+          combinedTxns = invRes.data.map((i: any) => ({ id: i.id, description: i.description || `Invoice ${i.invoiceNumber}`, amount: i.total || 0, date: i.date?.split('T')[0] }));
+        }
+      }
+      if (combinedTxns.length === 0) {
+        setAnomalies([]);
+        setLoadingAnomalies(false);
+        return;
+      }
+      const scanRes = await api.post('/ai/detect-anomalies', { transactions: combinedTxns });
+      if (scanRes.data?.success) {
+        const enriched = scanRes.data.data.map((anom: Anomaly) => {
+          const match = combinedTxns.find((t) => t.id === anom.transactionId);
+          return { ...anom, date: match?.date, description: match?.description, amountKobo: match?.amount || match?.amountKobo };
+        });
+        setAnomalies(enriched);
+      }
+    } catch (err: any) {
+      setAnomaliesError(err.response?.data?.error || 'Unable to execute transaction scan.');
+    } finally {
+      setLoadingAnomalies(false);
+    }
+  };
+
+  React.useEffect(() => {
+    if (tab === 'shield' && anomalies.length === 0 && !loadingAnomalies) {
+      runAnomalyScan();
+    }
+  }, [tab]);
 
   function exportAuditLogsCSV() {
     const today = new Date().toISOString().split('T')[0];
-    const headers = ['Timestamp', 'Action', 'Entity Type', 'Entity ID', 'User', 'Details'];
-    const rows = logs.map((l: any) => [l.createdAt ? new Date(l.createdAt).toLocaleString('en-GB') : '', l.action||'', l.entityType||'', l.entityId||'', l.user?.name||l.user?.email||'', typeof l.details === 'object' ? JSON.stringify(l.details) : (l.details||'')]);
+    const headers = ['Timestamp', 'Action', 'Entity Type', 'Entity ID', 'User', 'IP Address'];
+    const rows = logs.map((l: any) => [l.createdAt ? new Date(l.createdAt).toLocaleString('en-GB') : '', l.action||'', l.entityType||'', l.entityId||'', l.user?.name||l.user?.email||'', l.ipAddress||'']);
     exportToCsv(`audit_logs_${today}.csv`, headers, rows);
+  }
+
+  function exportShieldCSV() {
+    const today = new Date().toISOString().split('T')[0];
+    const headers = ['ID', 'Title', 'Description', 'Category', 'Threat', 'Date', 'Amount'];
+    const rows = filteredAlerts.map(a => [a.transactionId, a.description || '', a.reason, a.severity === 'high' ? 'Critical' : a.severity === 'medium' ? 'Suspicious' : 'Info', a.severity, a.date ? fmtDateShort(a.date) : '', a.amountKobo ? fmtNaira(a.amountKobo) : '']);
+    exportToCsv(`audit_shield_${today}.csv`, headers, rows);
   }
 
   const handleDownloadPdf = () => {
     try {
+      const org = (orgData as any)?.data || orgData || {};
+      const orgName = org.name || '';
+      const orgAddr = org.address ? `<p style="margin:0;font-size:11px;color:#475569">${org.address}</p>` : '';
+      const orgPhone = org.phone || '';
+      const orgEmail = org.email || '';
+      const orgWebsite = org.website || '';
+      const orgLogo = org.logoUrl ? `<img src="${org.logoUrl}" style="max-height:60px;max-width:200px;object-fit:contain" />` : '';
+      const contactInfo = [orgPhone, orgEmail, orgWebsite].filter(Boolean).join(' | ');
+
       const list = data?.data || [];
       const rows = list.map((l: any) =>
-        `<tr><td>${new Date(l.createdAt).toLocaleDateString('en-GB')}</td><td>${l.action||''}</td><td>${l.entityType||''}</td><td>${l.entityId||''}</td><td>${l.performedBy||''}</td></tr>`
+        `<tr><td style="padding:6px 10px;font-size:11px;border-bottom:1px solid #f1f5f9">${new Date(l.createdAt).toLocaleDateString('en-GB')}</td><td style="padding:6px 10px;font-size:11px;border-bottom:1px solid #f1f5f9"><span style="background:#f1f5f9;padding:2px 8px;border-radius:999px;font-size:10px">${l.action}</span></td><td style="padding:6px 10px;font-size:11px;border-bottom:1px solid #f1f5f9">${l.entityType}</td><td style="padding:6px 10px;font-size:11px;font-family:monospace;border-bottom:1px solid #f1f5f9">${l.entityId||'—'}</td><td style="padding:6px 10px;font-size:11px;border-bottom:1px solid #f1f5f9">${l.user?.name||l.user?.email||'—'}</td><td style="padding:6px 10px;font-size:11px;border-bottom:1px solid #f1f5f9">${l.ipAddress||'—'}</td></tr>`
       ).join('');
-      printWindow('Audit Logs', `<table><thead><tr><th>Date</th><th>Action</th><th>Entity</th><th>ID</th><th>User</th></tr></thead><tbody>${rows||'<tr><td colspan="5" style="text-align:center;color:#94a3b8">No records</td></tr>'}</tbody></table>`, `${list.length} entries`);
+      printWindow('Audit Logs',
+        `<div style="text-align:center;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #e2e8f0">
+          ${orgLogo}
+          <h1 style="margin:4px 0;font-size:18px;color:#0f172a">${orgName}</h1>
+          ${orgAddr}
+          <p style="margin:2px 0;font-size:11px;color:#64748b">${contactInfo}</p>
+        </div>
+        <h2 style="font-size:16px;color:#0f172a;margin:0 0 8px">Audit Logs</h2>
+        <p style="font-size:11px;color:#64748b;margin:0 0 12px">${list.length} entries</p>
+        <table style="width:100%;border-collapse:collapse">
+          <thead><tr style="background:#f8fafc">
+            <th style="padding:8px 10px;font-size:10px;font-weight:600;color:#64748b;text-align:left;text-transform:uppercase">Date</th>
+            <th style="padding:8px 10px;font-size:10px;font-weight:600;color:#64748b;text-align:left;text-transform:uppercase">Action</th>
+            <th style="padding:8px 10px;font-size:10px;font-weight:600;color:#64748b;text-align:left;text-transform:uppercase">Entity</th>
+            <th style="padding:8px 10px;font-size:10px;font-weight:600;color:#64748b;text-align:left;text-transform:uppercase">Entity ID</th>
+            <th style="padding:8px 10px;font-size:10px;font-weight:600;color:#64748b;text-align:left;text-transform:uppercase">User</th>
+            <th style="padding:8px 10px;font-size:10px;font-weight:600;color:#64748b;text-align:left;text-transform:uppercase">IP Address</th>
+          </tr></thead>
+          <tbody>${rows||'<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:20px">No records</td></tr>'}</tbody>
+        </table>`,
+        `${list.length} entries`
+      );
     } catch (err) {
       alert('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'));
-      console.error('Print error:', err);
     }
   };
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">Audit Logs</h1>
-        <div className="flex items-center gap-3">
-          {data?.total !== undefined && (
-            <span className="text-xs text-slate-400">{data.total} total entries</span>
+      {/* Tabs */}
+      <div className="flex items-center gap-1 bg-white rounded-2xl border border-slate-200/80 shadow-sm p-1 w-fit">
+        <button onClick={() => setTab('logs')}
+          className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl transition-all duration-200 ${tab === 'logs' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}>
+          <History className="w-4 h-4" /> Audit Logs
+        </button>
+        <button onClick={() => setTab('shield')}
+          className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl transition-all duration-200 ${tab === 'shield' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}>
+          <Shield className="w-4 h-4" /> Audit-Shield
+        </button>
+      </div>
+
+      {tab === 'logs' && (
+        <>
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold text-slate-900">Audit Logs</h1>
+            <div className="flex items-center gap-3">
+              {total > 0 && <span className="text-xs text-slate-400">{total} total entries</span>}
+              <button onClick={exportAuditLogsCSV} className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-all duration-200"><Download className="w-3.5 h-3.5" /> CSV</button>
+              <button onClick={handleDownloadPdf} className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200"><Download className="w-3.5 h-3.5" /> PDF</button>
+            </div>
+          </div>
+
+          <div className="flex gap-4 items-center bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5">
+            <div className="flex items-center gap-2">
+              <Search className="w-4 h-4 text-slate-400" />
+              <input placeholder="Filter by action..." value={actionFilter} onChange={e => setActionFilter(e.target.value)} className="border border-slate-200 rounded-xl px-3 py-2.5 text-sm w-48 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+            </div>
+            <input placeholder="Filter by entity..." value={entityFilter} onChange={e => setEntityFilter(e.target.value)} className="border border-slate-200 rounded-xl px-3 py-2.5 text-sm w-48 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+          </div>
+
+          {isLoading ? (
+            <div className="flex items-center justify-center py-20"><div className="bg-gradient-to-r from-slate-200 to-slate-100 animate-pulse rounded-xl h-8 w-48"></div></div>
+          ) : error ? (
+            <div className="flex items-center gap-2 p-4 bg-red-50 text-red-700 rounded-xl text-sm"><AlertCircle className="w-4 h-4" /> Failed to load audit logs.</div>
+          ) : (
+            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                  <tr>
+                    <th className="text-left px-3 py-3">Timestamp</th>
+                    <th className="text-left px-3 py-3">Action</th>
+                    <th className="text-left px-3 py-3">Entity Type</th>
+                    <th className="text-left px-3 py-3">Entity ID</th>
+                    <th className="text-left px-3 py-3">User</th>
+                    <th className="text-left px-3 py-3">IP Address</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {logs.map((log: any) => (
+                    <tr key={log.id} className="border-t border-slate-100 hover:bg-slate-50/50 even:bg-slate-50/50 transition-colors">
+                      <td className="px-3 py-3 text-slate-600 whitespace-nowrap">{fmtDate(log.createdAt)}</td>
+                      <td className="px-3 py-3"><span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border border-slate-200 bg-slate-100 text-slate-600">{log.action}</span></td>
+                      <td className="px-3 py-3 text-slate-600">{log.entityType}</td>
+                      <td className="px-3 py-3 font-mono text-xs text-slate-500 max-w-[120px] truncate">{log.entityId || '—'}</td>
+                      <td className="px-3 py-3 text-slate-600">{log.user?.name || log.user?.email || '—'}</td>
+                      <td className="px-3 py-3 text-slate-500">{log.ipAddress || '—'}</td>
+                    </tr>
+                  ))}
+                  {logs.length === 0 && (
+                    <tr><td colSpan={6} className="px-3 py-8 text-center text-slate-400">No audit log entries found.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           )}
-          <button onClick={exportAuditLogsCSV} className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-all duration-200"><Download className="w-3.5 h-3.5" /> CSV</button>
-          <button onClick={handleDownloadPdf} className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200"><Download className="w-3.5 h-3.5" /> PDF</button>
-        </div>
-      </div>
+        </>
+      )}
 
-      <div className="flex gap-4 items-center bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5">
-        <div className="flex items-center gap-2">
-          <Search className="w-4 h-4 text-slate-400" />
-          <input placeholder="Filter by action..." value={actionFilter} onChange={e => setActionFilter(e.target.value)} className="border border-slate-200 rounded-xl px-3 py-2.5 text-sm w-48 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
-        </div>
-        <input placeholder="Filter by entity..." value={entityFilter} onChange={e => setEntityFilter(e.target.value)} className="border border-slate-200 rounded-xl px-3 py-2.5 text-sm w-48 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
-      </div>
+      {tab === 'shield' && (
+        <>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
+                <Shield className="w-5 h-5 text-indigo-600" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-slate-900">Audit-Shield</h1>
+                <p className="text-sm text-slate-500">AI-powered transaction monitoring & threat detection</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={exportShieldCSV} disabled={filteredAlerts.length === 0}
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all duration-200 disabled:opacity-50"><Download className="w-4 h-4" /> CSV</button>
+              <button onClick={async () => { setRescanning(true); await runAnomalyScan(); setRescanning(false); }} disabled={rescanning || loadingAnomalies}
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all duration-200 disabled:opacity-50">
+                <RefreshCw className={`w-4 h-4 ${rescanning ? 'animate-spin' : ''}`} /> {rescanning ? 'Scanning...' : 'Rescan'}
+              </button>
+            </div>
+          </div>
 
-      {isLoading ? (
-        <div className="flex items-center justify-center py-20"><div className="bg-gradient-to-r from-slate-200 to-slate-100 animate-pulse rounded-xl h-8 w-48"></div></div>
-      ) : error ? (
-        <div className="flex items-center gap-2 p-4 bg-red-50 text-red-700 rounded-xl text-sm"><AlertCircle className="w-4 h-4" /> Failed to load audit logs.</div>
-      ) : (
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-              <tr>
-                <th className="text-left px-3 py-3">Timestamp</th>
-                <th className="text-left px-3 py-3">Action</th>
-                <th className="text-left px-3 py-3">Entity Type</th>
-                <th className="text-left px-3 py-3">Entity ID</th>
-                <th className="text-left px-3 py-3">IP Address</th>
-              </tr>
-            </thead>
-            <tbody>
-              {logs.map((log: any) => (
-                <tr key={log.id} className="border-t border-slate-100 hover:bg-slate-50/50 even:bg-slate-50/50 transition-colors">
-                  <td className="px-3 py-3 text-slate-600 whitespace-nowrap">{fmtDate(log.createdAt)}</td>
-                  <td className="px-3 py-3"><span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border border-slate-200 bg-slate-100 text-slate-600">{log.action}</span></td>
-                  <td className="px-3 py-3 text-slate-600">{log.entityType}</td>
-                  <td className="px-3 py-3 font-mono text-xs text-slate-500 max-w-[120px] truncate">{log.entityId || '—'}</td>
-                  <td className="px-3 py-3 text-slate-500">{log.ipAddress || '—'}</td>
-                </tr>
-              ))}
-              {logs.length === 0 && (
-                <tr><td colSpan={5} className="px-3 py-8 text-center text-slate-400">No audit log entries found.</td></tr>
+          <div className="grid grid-cols-4 gap-4">
+            {(['all', 'high', 'medium', 'low'] as const).map(t => {
+              const meta = t === 'all' ? { badge: 'bg-slate-100 text-slate-700' } : THREAT_META[t];
+              return (
+                <button key={t} onClick={() => setThreatFilter(t)}
+                  className={`text-left p-5 rounded-2xl border transition-all duration-200 bg-white shadow-sm ${
+                    threatFilter === t ? 'ring-2 ring-indigo-500 border-indigo-500 bg-white' : 'border-slate-200/80 hover:border-slate-300'
+                  }`}>
+                  <p className="text-2xl font-bold text-slate-900">{counts[t]}</p>
+                  <p className="text-xs font-semibold mt-0.5 capitalize"><span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${meta.badge}`}>{t === 'all' ? 'Total' : t}</span></p>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search alerts..." className="w-full pl-9 pr-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+          </div>
+
+          {loadingAnomalies ? (
+            <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-indigo-600" /></div>
+          ) : anomaliesError ? (
+            <div className="flex items-center gap-2 p-4 bg-red-50 text-red-700 rounded-xl text-sm"><AlertCircle className="w-4 h-4" /> {anomaliesError}</div>
+          ) : (
+            <div className="space-y-3">
+              {filteredAlerts.map((alert, i) => {
+                const meta = THREAT_META[alert.severity];
+                const Icon = meta.icon;
+                return (
+                  <div key={alert.transactionId || i} className={`bg-white rounded-2xl border ${meta.border} p-5 hover:shadow-md transition-shadow shadow-sm`}>
+                    <div className="flex items-start gap-4">
+                      <div className={`w-10 h-10 rounded-2xl ${meta.bg} flex items-center justify-center flex-shrink-0`}>
+                        <Icon className={`w-5 h-5 ${meta.color}`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <h3 className="text-sm font-semibold text-slate-900">{alert.description || 'Transaction Alert'}</h3>
+                            <p className="text-xs text-slate-500 mt-1">{alert.reason}</p>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${meta.badge}`}>{alert.severity} Threat</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4 mt-3 text-xs text-slate-500">
+                          {alert.date && <span>{fmtDateShort(alert.date)}</span>}
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border border-slate-200 bg-slate-100 text-slate-600`}>{alert.severity === 'high' ? 'Critical' : alert.severity === 'medium' ? 'Suspicious' : 'Informational'}</span>
+                        </div>
+                        {alert.amountKobo && (
+                          <div className="mt-2">
+                            <span className="text-xs font-semibold text-slate-500 uppercase">Indexed sum:</span>
+                            <p className="text-lg font-bold text-slate-900 font-mono">{fmtNaira(alert.amountKobo)}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              {filteredAlerts.length === 0 && !loadingAnomalies && (
+                <div className="text-center py-16 text-slate-400 bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5">
+                  <Shield className="w-10 h-10 mx-auto mb-3 text-slate-300" />
+                  <p className="text-sm font-medium">{anomalies.length === 0 ? 'No threats detected. Run a scan to check transactions.' : 'No threats match your filter.'}</p>
+                </div>
               )}
-            </tbody>
-          </table>
-        </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
