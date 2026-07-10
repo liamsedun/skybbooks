@@ -918,6 +918,87 @@ export const auditLogApi = {
 };
 
 // 8. Reports Endpoints
+export const customReportsApi = {
+  getCustomerSummary: async (params?: { startDate?: string; endDate?: string }) => {
+    const res = await api.get('/custom-reports/customer-summary', { params }); return res.data;
+  },
+  getSupplierSummary: async (params?: { startDate?: string; endDate?: string }) => {
+    const res = await api.get('/custom-reports/supplier-summary', { params }); return res.data;
+  },
+  getInventorySummary: async () => {
+    const res = await api.get('/custom-reports/inventory-summary'); return res.data;
+  },
+  getCustomerStatements: async (params?: { customerId?: string; startDate?: string; endDate?: string }) => {
+    const res = await api.get('/custom-reports/customer-statements', { params }); return res.data;
+  },
+  getSupplierStatements: async (params?: { vendorId?: string; startDate?: string; endDate?: string }) => {
+    const res = await api.get('/custom-reports/supplier-statements', { params }); return res.data;
+  },
+  getSalesByCustomer: async (params?: { startDate?: string; endDate?: string }) => {
+    const res = await api.get('/custom-reports/sales-by-customer', { params }); return res.data;
+  },
+  getSalesByItem: async (params?: { startDate?: string; endDate?: string }) => {
+    const res = await api.get('/custom-reports/sales-by-item', { params }); return res.data;
+  },
+  getFixedAssetSummary: async () => {
+    const res = await api.get('/custom-reports/fixed-asset-summary'); return res.data;
+  },
+  getExpenseClaimsSummary: async (params?: { startDate?: string; endDate?: string }) => {
+    const res = await api.get('/custom-reports/expense-claims-summary', { params }); return res.data;
+  },
+  getEmployeeSummary: async () => {
+    const res = await api.get('/custom-reports/employee-summary'); return res.data;
+  },
+  getTaxSummary: async (params?: { startDate?: string; endDate?: string }) => {
+    const res = await api.get('/custom-reports/tax-summary', { params }); return res.data;
+  },
+  getReceiptsPaymentsSummary: async (params?: { startDate?: string; endDate?: string }) => {
+    const res = await api.get('/custom-reports/receipts-payments-summary', { params }); return res.data;
+  },
+  getBankAccountSummary: async () => {
+    const res = await api.get('/custom-reports/bank-account-summary'); return res.data;
+  },
+  getCashEquivalents: async (params?: { asOfDate?: string }) => {
+    const res = await api.get('/custom-reports/cash-equivalents', { params }); return res.data;
+  },
+  getCapitalAccountsSummary: async () => {
+    const res = await api.get('/custom-reports/capital-accounts-summary'); return res.data;
+  },
+  getPayslipSummary: async (params?: { startDate?: string; endDate?: string }) => {
+    const res = await api.get('/custom-reports/payslip-summary', { params }); return res.data;
+  },
+  getPayslipByItem: async (params?: { startDate?: string; endDate?: string }) => {
+    const res = await api.get('/custom-reports/payslip-by-item', { params }); return res.data;
+  },
+  getActualVsBudget: async (params?: { startDate?: string; endDate?: string }) => {
+    const res = await api.get('/custom-reports/actual-vs-budget', { params }); return res.data;
+  },
+  getGlSummary: async (params?: { startDate?: string; endDate?: string }) => {
+    const res = await api.get('/custom-reports/gl-summary', { params }); return res.data;
+  },
+  getGlTransactions: async (params?: { startDate?: string; endDate?: string; accountId?: string }) => {
+    const res = await api.get('/custom-reports/gl-transactions', { params }); return res.data;
+  },
+  getTaxTransactions: async (params?: { startDate?: string; endDate?: string }) => {
+    const res = await api.get('/custom-reports/tax-transactions', { params }); return res.data;
+  },
+  getTaxableSalesPerCustomer: async (params?: { startDate?: string; endDate?: string }) => {
+    const res = await api.get('/custom-reports/taxable-sales-per-customer', { params }); return res.data;
+  },
+  getTaxablePurchasesPerSupplier: async (params?: { startDate?: string; endDate?: string }) => {
+    const res = await api.get('/custom-reports/taxable-purchases-per-supplier', { params }); return res.data;
+  },
+  getFixedAssetDepreciation: async () => {
+    const res = await api.get('/custom-reports/fixed-asset-depreciation'); return res.data;
+  },
+  getIntangibleAssetsSummary: async () => {
+    const res = await api.get('/custom-reports/intangible-assets-summary'); return res.data;
+  },
+  getIntangibleAssetAmortization: async () => {
+    const res = await api.get('/custom-reports/intangible-asset-amortization'); return res.data;
+  },
+};
+
 export const reportsApi = {
   getTrialBalance: async (params: { startDate: string; endDate: string; format?: 'json' | 'pdf' | 'excel' | 'csv' }) => {
     const res = await api.get('/reports/trial-balance', { params, responseType: params.format === 'csv' || params.format === 'pdf' ? 'blob' : undefined });

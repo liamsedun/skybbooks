@@ -26,6 +26,7 @@ import journalsRouter from '../routes/journals';
 import budgetsRouter from '../routes/budgets';
 import fixedAssetsRouter from '../routes/fixedAssets';
 import auditLogRouter from '../routes/auditLog';
+import customReportsRouter from '../routes/customReports';
 import periodsRouter from '../routes/periods';
 import platformRouter from '../routes/platform';
 import notificationsRouter from '../routes/notifications';
@@ -137,6 +138,7 @@ async function startServer() {
   app.use('/api/platform', platformRouter);
   app.use('/api/notifications', notificationsRouter);
   app.use('/api/projects', projectsRouter);
+  app.use('/api/custom-reports', customReportsRouter);
 
   app.get('/api/health', (req, res) => {
     res.json({ status: 'healthy', timestamp: new Date().toISOString() });
