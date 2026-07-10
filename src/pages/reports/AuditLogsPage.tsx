@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { auditLogApi, api, orgApi, printWindow } from '../../lib/api';
-import { Loader2, AlertCircle, Search, Download, RefreshCw, Shield, ShieldAlert, AlertTriangle, Info, History } from 'lucide-react';
+import { Loader2, AlertCircle, Search, Download, RefreshCw, Shield, ShieldAlert, AlertTriangle, Info, History, ExternalLink } from 'lucide-react';
 import { exportToCsv } from '../../lib/csvTemplates';
 
 function fmtDate(d: string): string {
@@ -32,7 +33,26 @@ const THREAT_META: Record<string, { icon: any; color: string; bg: string; border
   high: { icon: ShieldAlert, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', badge: 'bg-red-100 text-red-700 border-red-200' },
 };
 
+function getSourceLinkForAlert(alert: Anomaly): { path: string; label: string } | null {
+  const desc = (alert.description || '').toLowerCase();
+  const ref = alert.description || '';
+  if (desc.includes('payment received') || desc.includes('ref-') || desc.includes('txn-')) {
+    return { path: '/sales/payments', label: 'View Payments' };
+  }
+  if (desc.includes('payment made') || desc.includes('bill')) {
+    return { path: '/purchases/payments', label: 'View Payments' };
+  }
+  if (desc.includes('invoice') || desc.includes('inv-')) {
+    return { path: '/sales/invoices', label: 'View Invoices' };
+  }
+  if (desc.includes('expense')) {
+    return { path: '/purchases/expenses', label: 'View Expenses' };
+  }
+  return null;
+}
+
 export function AuditLogsPage() {
+  const navigate = useNavigate();
   const [tab, setTab] = useState<'logs' | 'shield'>('logs');
   const [actionFilter, setActionFilter] = useState('');
   const [entityFilter, setEntityFilter] = useState('');
@@ -44,15 +64,24 @@ export function AuditLogsPage() {
   const [anomaliesError, setAnomaliesError] = useState<string | null>(null);
   const [rescanning, setRescanning] = useState(false);
 
+  const queryParams = (() => {
+    const p: Record<string, any> = { limit };
+    if (actionFilter) p.action = actionFilter;
+    if (entityFilter) p.entityType = entityFilter;
+    return p;
+  })();
+
   const { data, isLoading, error } = useQuery({
-    queryKey: ['audit-logs', actionFilter, entityFilter, limit],
-    queryFn: () => auditLogApi.getLogs({ action: actionFilter || undefined, entityType: entityFilter || undefined, limit }),
+    queryKey: ['audit-logs', queryParams],
+    queryFn: () => auditLogApi.getLogs(queryParams),
+    retry: 1,
   });
 
   const { data: orgData } = useQuery({ queryKey: ['org'], queryFn: orgApi.getOrg });
 
   const logs = data?.data || [];
   const total = data?.total || 0;
+  const queryError = error ? (error as any)?.response?.data?.error || (error as any)?.message || 'Failed to load audit logs.' : null;
 
   const filteredAlerts = anomalies.filter(a => {
     if (threatFilter !== 'all' && a.severity !== threatFilter) return false;
@@ -225,9 +254,15 @@ export function AuditLogsPage() {
           </div>
 
           {isLoading ? (
-            <div className="flex items-center justify-center py-20"><div className="bg-gradient-to-r from-slate-200 to-slate-100 animate-pulse rounded-xl h-8 w-48"></div></div>
+            <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-indigo-600" /></div>
           ) : error ? (
-            <div className="flex items-center gap-2 p-4 bg-red-50 text-red-700 rounded-xl text-sm"><AlertCircle className="w-4 h-4" /> Failed to load audit logs.</div>
+            <div className="flex items-start gap-3 p-5 bg-red-50 text-red-700 rounded-2xl border border-red-200 text-sm">
+              <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold">Failed to load audit logs</p>
+                <p className="text-xs mt-1 text-red-500/80">{queryError}</p>
+              </div>
+            </div>
           ) : (
             <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden overflow-x-auto">
               <table className="w-full text-sm">
@@ -313,8 +348,11 @@ export function AuditLogsPage() {
               {filteredAlerts.map((alert, i) => {
                 const meta = THREAT_META[alert.severity];
                 const Icon = meta.icon;
+                const navLink = getSourceLinkForAlert(alert);
                 return (
-                  <div key={alert.transactionId || i} className={`bg-white rounded-2xl border ${meta.border} p-5 hover:shadow-md transition-shadow shadow-sm`}>
+                  <div key={alert.transactionId || i}
+                    className={`bg-white rounded-2xl border ${meta.border} p-5 hover:shadow-md transition-all shadow-sm ${navLink ? 'cursor-pointer hover:border-indigo-300 hover:ring-1 hover:ring-indigo-200' : ''}`}
+                    onClick={() => { if (navLink) navigate(navLink.path); }}>
                     <div className="flex items-start gap-4">
                       <div className={`w-10 h-10 rounded-2xl ${meta.bg} flex items-center justify-center flex-shrink-0`}>
                         <Icon className={`w-5 h-5 ${meta.color}`} />
@@ -322,7 +360,10 @@ export function AuditLogsPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-4">
                           <div>
-                            <h3 className="text-sm font-semibold text-slate-900">{alert.description || 'Transaction Alert'}</h3>
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-sm font-semibold text-slate-900">{alert.description || 'Transaction Alert'}</h3>
+                              {navLink && <ExternalLink className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" />}
+                            </div>
                             <p className="text-xs text-slate-500 mt-1">{alert.reason}</p>
                             {alert._count && alert._count > 1 && (
                               <p className="text-xs font-semibold text-amber-600 mt-1.5">{alert._count} occurrences • {alert._txIds?.length || alert._count} transactions on this date</p>
@@ -344,6 +385,11 @@ export function AuditLogsPage() {
                         )}
                       </div>
                     </div>
+                    {navLink && (
+                      <div className="mt-3 pt-3 border-t border-slate-100">
+                        <span className="text-xs font-semibold text-indigo-600 inline-flex items-center gap-1">Click to view source <ExternalLink className="w-3 h-3" /></span>
+                      </div>
+                    )}
                   </div>
                 );
               })}
