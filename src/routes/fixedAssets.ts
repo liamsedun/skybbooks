@@ -428,7 +428,7 @@ router.get('/depreciation-entries', async (req: AuthenticatedRequest, res: Respo
   try {
     const orgId = req.user!.orgId!;
 
-    // Find JEs that reference depreciation accounts (8107=PP&E, 8109=ROU)
+    // Find JEs that have depreciation-related account codes OR description match
     const result = await db.execute(sql`
       SELECT DISTINCT ON (je.id)
         je.id, je.entry_number, je.date, je.description, je.source, je.created_at
@@ -436,7 +436,13 @@ router.get('/depreciation-entries', async (req: AuthenticatedRequest, res: Respo
       LEFT JOIN journal_lines jl ON jl.entry_id = je.id
       LEFT JOIN accounts a ON a.id = jl.account_id
       WHERE je.org_id = ${orgId}
-        AND (a.code LIKE '8107%' OR a.code LIKE '8109%')
+        AND (
+          a.code LIKE '8107%' OR a.code LIKE '8109%'
+          OR a.code LIKE '2002%' OR a.code LIKE '2003%' OR a.code LIKE '2004%'
+          OR a.code LIKE '2005%' OR a.code LIKE '2006%' OR a.code LIKE '2007%'
+          OR a.code LIKE '2011%' OR a.code LIKE '2012%'
+          OR je.description ILIKE '%depreciation%'
+        )
       ORDER BY je.id, je.created_at DESC
       LIMIT 50
     `);
