@@ -428,7 +428,7 @@ router.get('/depreciation-entries', async (req: AuthenticatedRequest, res: Respo
   try {
     const orgId = req.user!.orgId!;
 
-    // Find entries via depreciation_entries table OR description match
+    // Simple raw SQL query with DISTINCT ON to handle LEFT JOIN dedup
     const result = await db.execute(sql`
       SELECT DISTINCT ON (je.id)
         je.id, je.entry_number, je.date, je.description, je.source, je.created_at
@@ -480,7 +480,9 @@ router.get('/depreciation-entries', async (req: AuthenticatedRequest, res: Respo
     return res.status(200).json(grouped);
   } catch (err) {
     console.error('[Depreciation Entries] Query failed:', err);
-    return next(err);
+    const msg = err instanceof Error ? err.message : String(err);
+    const detail = (err as any)?.detail || (err as any)?.message || '';
+    return res.status(500).json({ error: `Depreciation query error: ${msg}${detail ? ' - ' + detail : ''}` });
   }
 });
 
