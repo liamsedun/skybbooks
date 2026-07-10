@@ -404,15 +404,40 @@ export function CustomReportsPage() {
       </div>
 
       {/* Quick filter pills */}
-      <div className="flex gap-2 flex-wrap">
-        {allReports.map(r => (
-          <button key={r.id} onClick={() => fetchReport(r.id)}
-            className={`text-xs font-semibold px-3.5 py-2 rounded-xl border transition-all duration-200 ${
-              activeReport === r.id ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-200' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:shadow-sm'
-            }`}>
-            {r.label}
-          </button>
-        ))}
+      <div className="flex gap-1.5 flex-wrap">
+        {allReports.map(r => {
+          const sectionId2 = SECTION_IDS.find(sid => (REPORTS[sid] || []).some(x => x.id === r.id));
+          const section2 = SECTIONS.find(s => s.id === sectionId2);
+          const isActive = activeReport === r.id;
+          const RIcon2 = r.icon;
+          let btnClasses = 'inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl border transition-all duration-200 ';
+          if (isActive) {
+            if (section2?.id === 'customers') btnClasses += 'bg-gradient-to-r from-blue-500 to-blue-600 text-white border-transparent shadow-md shadow-blue-200 scale-105';
+            else if (section2?.id === 'suppliers') btnClasses += 'bg-gradient-to-r from-amber-500 to-amber-600 text-white border-transparent shadow-md shadow-amber-200 scale-105';
+            else if (section2?.id === 'tax') btnClasses += 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white border-transparent shadow-md shadow-emerald-200 scale-105';
+            else if (section2?.id === 'inventory') btnClasses += 'bg-gradient-to-r from-purple-500 to-purple-600 text-white border-transparent shadow-md shadow-purple-200 scale-105';
+            else if (section2?.id === 'fixed-assets') btnClasses += 'bg-gradient-to-r from-rose-500 to-rose-600 text-white border-transparent shadow-md shadow-rose-200 scale-105';
+            else if (section2?.id === 'payroll') btnClasses += 'bg-gradient-to-r from-cyan-500 to-cyan-600 text-white border-transparent shadow-md shadow-cyan-200 scale-105';
+            else if (section2?.id === 'banking') btnClasses += 'bg-gradient-to-r from-violet-500 to-violet-600 text-white border-transparent shadow-md shadow-violet-200 scale-105';
+            else btnClasses += 'bg-gradient-to-r from-indigo-500 to-indigo-600 text-white border-transparent shadow-md shadow-indigo-200 scale-105';
+          } else {
+            btnClasses += 'bg-white text-slate-600 border-slate-200 hover:-translate-y-0.5 hover:shadow-md';
+            if (section2?.id === 'customers') btnClasses += ' hover:border-blue-300 hover:text-blue-600 hover:shadow-blue-100';
+            else if (section2?.id === 'suppliers') btnClasses += ' hover:border-amber-300 hover:text-amber-600 hover:shadow-amber-100';
+            else if (section2?.id === 'tax') btnClasses += ' hover:border-emerald-300 hover:text-emerald-600 hover:shadow-emerald-100';
+            else if (section2?.id === 'inventory') btnClasses += ' hover:border-purple-300 hover:text-purple-600 hover:shadow-purple-100';
+            else if (section2?.id === 'fixed-assets') btnClasses += ' hover:border-rose-300 hover:text-rose-600 hover:shadow-rose-100';
+            else if (section2?.id === 'payroll') btnClasses += ' hover:border-cyan-300 hover:text-cyan-600 hover:shadow-cyan-100';
+            else if (section2?.id === 'banking') btnClasses += ' hover:border-violet-300 hover:text-violet-600 hover:shadow-violet-100';
+            else btnClasses += ' hover:border-indigo-300 hover:text-indigo-600 hover:shadow-indigo-100';
+          }
+          return (
+            <button key={r.id} onClick={() => fetchReport(r.id)} className={btnClasses}>
+              <RIcon2 className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+              {r.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* Date range + export */}
