@@ -445,6 +445,7 @@ router.get('/depreciation-entries', async (req: AuthenticatedRequest, res: Respo
           sql`${accounts.code} LIKE '2012%'`,
           sql`${accounts.code} LIKE '8107%'`,
           sql`${accounts.code} LIKE '8109%'`,
+          ilike(accounts.name, '%depreciation%'),
         )
       ))
       .orderBy(accounts.code);
