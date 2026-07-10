@@ -440,18 +440,26 @@ export function PaymentsMadePage() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5">
+        <button onClick={() => { setDateFrom(''); setDateTo(''); setMethodFilter('all'); setSearch(''); }} className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 text-left cursor-pointer hover:border-blue-300 hover:shadow-md transition-all duration-200">
           <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total Disbursed</p>
           <p className="text-xl font-bold text-slate-900 mt-1">{formatNaira(totalPaid)}</p>
-        </div>
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5">
+        </button>
+        <button onClick={() => {
+          const now = new Date();
+          const first = new Date(now.getFullYear(), now.getMonth(), 1);
+          const last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+          setDateFrom(first.toISOString().split('T')[0]);
+          setDateTo(last.toISOString().split('T')[0]);
+          setMethodFilter('all');
+          setSearch('');
+        }} className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 text-left cursor-pointer hover:border-blue-300 hover:shadow-md transition-all duration-200">
           <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">This Month</p>
           <p className="text-xl font-bold text-slate-900 mt-1">{formatNaira(thisMonthPaid)}</p>
-        </div>
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5">
+        </button>
+        <button onClick={() => { setDateFrom(''); setDateTo(''); setMethodFilter('all'); setSearch(''); }} className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 text-left cursor-pointer hover:border-blue-300 hover:shadow-md transition-all duration-200">
           <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total Count</p>
           <p className="text-xl font-bold text-slate-900 mt-1">{payments.length} payments</p>
-        </div>
+        </button>
       </div>
 
       <div className="flex gap-6">
