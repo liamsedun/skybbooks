@@ -371,18 +371,26 @@ function BillList() {
 
       {/* ── KPI Cards ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {[
-          { label: 'Total Bills',    value: formatNaira(totals.total),       sub: `${totals.count} bills` },
-          { label: 'Amount Paid',    value: formatNaira(totals.paid),        sub: 'settled',      color: 'text-green-600' },
-          { label: 'Outstanding',    value: formatNaira(totals.outstanding), sub: 'balance due',  color: 'text-blue-600' },
-          { label: 'Overdue',        value: formatNaira(totals.overdue),     sub: 'past due',     color: 'text-red-600' },
-        ].map(card => (
-          <div key={card.label} className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{card.label}</p>
-            <p className={`text-lg font-bold mt-1 ${card.color || 'text-slate-900'}`}>{card.value}</p>
-            <p className="text-xs text-slate-400 mt-0.5">{card.sub}</p>
-          </div>
-        ))}
+        <button onClick={() => { setDateFrom(''); setDateTo(''); setStatusFilter('all'); setSearch(''); }} className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 text-left cursor-pointer hover:border-blue-300 hover:shadow-md transition-all duration-200">
+          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Total Bills</p>
+          <p className="text-lg font-bold mt-1 text-slate-900">{formatNaira(totals.total)}</p>
+          <p className="text-xs text-slate-400 mt-0.5">{totals.count} bills</p>
+        </button>
+        <button onClick={() => { setDateFrom(''); setDateTo(''); setStatusFilter('paid'); setSearch(''); }} className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 text-left cursor-pointer hover:border-blue-300 hover:shadow-md transition-all duration-200">
+          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Amount Paid</p>
+          <p className="text-lg font-bold mt-1 text-green-600">{formatNaira(totals.paid)}</p>
+          <p className="text-xs text-slate-400 mt-0.5">settled</p>
+        </button>
+        <button onClick={() => { setDateFrom(''); setDateTo(''); setStatusFilter('open'); setSearch(''); }} className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 text-left cursor-pointer hover:border-blue-300 hover:shadow-md transition-all duration-200">
+          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Outstanding</p>
+          <p className="text-lg font-bold mt-1 text-blue-600">{formatNaira(totals.outstanding)}</p>
+          <p className="text-xs text-slate-400 mt-0.5">balance due</p>
+        </button>
+        <button onClick={() => { setDateFrom(''); setDateTo(''); setStatusFilter('overdue'); setSearch(''); }} className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 text-left cursor-pointer hover:border-red-300 hover:shadow-md transition-all duration-200">
+          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Overdue</p>
+          <p className="text-lg font-bold mt-1 text-red-600">{formatNaira(totals.overdue)}</p>
+          <p className="text-xs text-slate-400 mt-0.5">past due</p>
+        </button>
       </div>
 
       {/* ── Filters ── */}
