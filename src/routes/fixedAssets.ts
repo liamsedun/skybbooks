@@ -457,7 +457,7 @@ router.get('/depreciation-entries', async (req: AuthenticatedRequest, res: Respo
           ilike(journalEntries.description, '%depreciation%'),
         )
       ))
-      .orderBy(desc(journalEntries.createdAt))
+      .orderBy(journalEntries.id, desc(journalEntries.createdAt))
       .limit(50);
 
     const grouped: any[] = [];
