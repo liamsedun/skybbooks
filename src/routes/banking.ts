@@ -44,6 +44,7 @@ import {
   getBankReconciliationStatement
 } from '../services/reconciliation.service';
 import { fetchLatestRates } from '../services/cbn.service';
+import { createJournalEntry, reverseJournalEntry } from '../services/ledger.service';
 
 const router = Router();
 
@@ -1458,8 +1459,6 @@ router.post('/transfers', async (req: AuthenticatedRequest, res: Response, next:
 
     // Create journal entry + transfer record in a transaction
     const result = await db.transaction(async (tx) => {
-      // Create journal entry
-      const { createJournalEntry } = await import('../services/ledger.service');
       const je = await createJournalEntry(
         {
           orgId,
@@ -1572,7 +1571,6 @@ router.delete('/transfers/:id', async (req: AuthenticatedRequest, res: Response,
 
     // Reverse the journal entry
     if (existing.journalEntryId) {
-      const { reverseJournalEntry } = await import('../services/ledger.service');
       await reverseJournalEntry(existing.journalEntryId, new Date(), userId);
     }
 
