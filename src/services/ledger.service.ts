@@ -770,12 +770,22 @@ async function computePnL(
     );
 
   const revenues: any[] = [];
-  const cogs: any[] = [];
-  const operatingExpenses: any[] = [];
+  const costOfSales: any[] = [];
+  const sellingDistribution: any[] = [];
+  const administrative: any[] = [];
+  const staffCosts: any[] = [];
+  const otherOperating: any[] = [];
+  const financeCosts: any[] = [];
+  const taxExpense: any[] = [];
 
   let totalRevenue = 0;
-  let totalCogs = 0;
-  let totalOperatingExpenses = 0;
+  let totalCostOfSales = 0;
+  let totalSellingDistribution = 0;
+  let totalAdministrative = 0;
+  let totalStaffCosts = 0;
+  let totalOtherOperating = 0;
+  let totalFinanceCosts = 0;
+  let totalTaxExpense = 0;
 
   for (const acct of orgAccounts) {
     const matchedLines = records.filter((r) => r.accountId === acct.id);
@@ -795,50 +805,85 @@ async function computePnL(
       }
     } else if (acct.type === 'expense') {
       const balance = drSum - crSum;
-      if (balance !== 0) {
-        const isCOGS = acct.subType?.toLowerCase().includes('cogs') ||
-                       acct.subType?.toLowerCase().includes('cost') ||
-                       acct.name.toLowerCase().includes('cost of goods') ||
-                       acct.name.toLowerCase().includes('cogs') ||
-                       acct.name.toLowerCase().includes('cost of sales');
+      if (balance === 0) continue;
 
-        const item = {
-          accountId: acct.id,
-          code: acct.code,
-          name: acct.name,
-          balance
-        };
+      const item = {
+        accountId: acct.id,
+        code: acct.code,
+        name: acct.name,
+        balance
+      };
 
-        if (isCOGS) {
-          cogs.push(item);
-          totalCogs += balance;
-        } else {
-          operatingExpenses.push(item);
-          totalOperatingExpenses += balance;
-        }
+      const st = (acct.subType || '').toLowerCase().replace(/\s+/g, '_');
+
+      if (st === 'cost_of_sales' || st === 'cost of sales') {
+        costOfSales.push(item);
+        totalCostOfSales += balance;
+      } else if (st === 'selling_distribution' || st === 'selling & distribution') {
+        sellingDistribution.push(item);
+        totalSellingDistribution += balance;
+      } else if (st === 'administrative' || st === 'administrative expenses') {
+        administrative.push(item);
+        totalAdministrative += balance;
+      } else if (st === 'staff_costs' || st === 'staff costs') {
+        staffCosts.push(item);
+        totalStaffCosts += balance;
+      } else if (st === 'finance_costs' || st === 'finance costs') {
+        financeCosts.push(item);
+        totalFinanceCosts += balance;
+      } else if (st === 'tax_expense' || st === 'tax expense') {
+        taxExpense.push(item);
+        totalTaxExpense += balance;
+      } else {
+        otherOperating.push(item);
+        totalOtherOperating += balance;
       }
     }
   }
 
-  const grossProfit = totalRevenue - totalCogs;
+  const grossProfit = totalRevenue - totalCostOfSales;
+  const totalOperatingExpenses = totalSellingDistribution + totalAdministrative + totalStaffCosts + totalOtherOperating;
   const operatingProfit = grossProfit - totalOperatingExpenses;
-  const netProfit = operatingProfit;
+  const netProfit = operatingProfit - totalFinanceCosts - totalTaxExpense;
 
   return {
     revenue: {
       accounts: revenues,
       total: totalRevenue
     },
-    costOfGoodsSold: {
-      accounts: cogs,
-      total: totalCogs
-    },
-    expense: {
-      accounts: operatingExpenses,
-      total: totalOperatingExpenses
+    costOfSales: {
+      accounts: costOfSales,
+      total: totalCostOfSales
     },
     grossProfit,
+    operatingExpenses: {
+      sellingDistribution: {
+        accounts: sellingDistribution,
+        total: totalSellingDistribution
+      },
+      administrative: {
+        accounts: administrative,
+        total: totalAdministrative
+      },
+      staffCosts: {
+        accounts: staffCosts,
+        total: totalStaffCosts
+      },
+      other: {
+        accounts: otherOperating,
+        total: totalOtherOperating
+      },
+      total: totalOperatingExpenses
+    },
     operatingProfit,
+    financeCosts: {
+      accounts: financeCosts,
+      total: totalFinanceCosts
+    },
+    taxExpense: {
+      accounts: taxExpense,
+      total: totalTaxExpense
+    },
     netProfit
   };
 }

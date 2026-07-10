@@ -419,9 +419,9 @@ export class AIService {
     const gp = currentMonthData.grossProfit;
     const priorGp = priorMonthData.grossProfit;
     const gpMargin = revenue > 0 ? (gp / revenue) * 100 : 0;
-    const cogs = currentMonthData.costOfGoodsSold.total;
+    const cogs = currentMonthData.costOfSales.total;
     if (gp < 0) {
-      const cogsItems = currentMonthData.costOfGoodsSold.accounts || [];
+      const cogsItems = currentMonthData.costOfSales.accounts || [];
       const bigCogs = cogsItems.sort((a: any, b: any) => b.balance - a.balance).slice(0, 2);
       let cogsDetail = `Cost of Goods Sold (${formatKobo(cogs)}) exceeded revenue, producing negative gross profit of ${formatKobo(gp)}.`;
       if (bigCogs.length > 0) {

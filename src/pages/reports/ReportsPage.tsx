@@ -829,23 +829,40 @@ function ReportShell({ reportType, title }: ReportPageProps) {
         csvRows = [];
         const isData = (data as any)?.current || data || {};
         const rev = isData.revenue || {};
-        const cogs = isData.costOfGoodsSold || {};
-        const exp = isData.expense || {};
+        const cos = isData.costOfSales || {};
+        const oe = isData.operatingExpenses || {};
+        const fc = isData.financeCosts || {};
+        const tx = isData.taxExpense || {};
         const revTotal = rev.total || 0;
-        const cogsTotal = cogs.total || 0;
-        const expTotal = exp.total || 0;
-        const gp = revTotal - cogsTotal;
-        const np = isData.netProfit ?? gp - expTotal;
+        const cosTotal = cos.total || 0;
+        const gp = revTotal - cosTotal;
+        const opExTotal = oe.total || 0;
+        const operatingProfit = isData.operatingProfit ?? gp - opExTotal;
+        const netProfit = isData.netProfit ?? operatingProfit - (fc.total || 0) - (tx.total || 0);
         const addSec = (label: string, accounts: any[], total: number) => {
           csvRows.push([label, '']);
           (accounts || []).forEach((a: any) => csvRows.push([a.name, ((a.balance||0)/100).toFixed(2)]));
           csvRows.push([`Total ${label}`, (total/100).toFixed(2)]);
         };
+        const addSubSec = (label: string, data: any) => {
+          if (!data || !data.accounts || !data.accounts.length) return;
+          csvRows.push([label, '']);
+          data.accounts.forEach((a: any) => csvRows.push([a.name, ((a.balance||0)/100).toFixed(2)]));
+          csvRows.push([`Total ${label}`, (data.total/100).toFixed(2)]);
+        };
         addSec('Revenue', rev.accounts, revTotal);
+        addSec('Cost of Sales', cos.accounts, cosTotal);
         csvRows.push(['Gross Profit', (gp/100).toFixed(2)]);
-        addSec('Cost of Goods Sold', cogs.accounts, cogsTotal);
-        addSec('Operating Expenses', exp.accounts, expTotal);
-        csvRows.push(['Net Profit', (np/100).toFixed(2)]);
+        csvRows.push(['Operating Expenses', '']);
+        addSubSec('Selling & Distribution Expenses', oe.sellingDistribution);
+        addSubSec('Administrative Expenses', oe.administrative);
+        addSubSec('Staff Costs', oe.staffCosts);
+        addSubSec('Other Operating Expenses', oe.other);
+        csvRows.push(['Total Operating Expenses', (opExTotal/100).toFixed(2)]);
+        csvRows.push(['Operating Profit (EBIT)', (operatingProfit/100).toFixed(2)]);
+        if (fc.accounts?.length) addSec('Finance Costs', fc.accounts, fc.total || 0);
+        if (tx.accounts?.length) addSec('Tax Expense', tx.accounts, tx.total || 0);
+        csvRows.push(['Net Profit', (netProfit/100).toFixed(2)]);
       } else {
         const rows = Array.isArray(data) ? data : [];
         if (!rows.length) return;
@@ -892,13 +909,16 @@ function ReportShell({ reportType, title }: ReportPageProps) {
         if (reportType === 'income-statement') {
           const current = (data as any)?.current || data || {};
           const revenue = current.revenue || {};
-          const cogs = current.costOfGoodsSold || {};
-          const expense = current.expense || {};
+          const cos = current.costOfSales || {};
+          const oe = current.operatingExpenses || {};
+          const fc = current.financeCosts || {};
+          const tx = current.taxExpense || {};
           const revTotal = revenue.total || 0;
-          const cogsTotal = cogs.total || 0;
-          const expTotal = expense.total || 0;
-          const grossProfit = revTotal - cogsTotal;
-          const netProfit = current.netProfit ?? grossProfit - expTotal;
+          const cosTotal = cos.total || 0;
+          const grossProfit = revTotal - cosTotal;
+          const opExTotal = oe.total || 0;
+          const operatingProfit = current.operatingProfit ?? grossProfit - opExTotal;
+          const netProfit = current.netProfit ?? operatingProfit - (fc.total || 0) - (tx.total || 0);
           const org = (orgData as any)?.data || orgData || {};
           const orgName = org.name || '';
           const orgAddr = org.address ? `<p style="margin:0;font-size:11px;color:#475569">${org.address}</p>` : '';
@@ -914,12 +934,27 @@ function ReportShell({ reportType, title }: ReportPageProps) {
             ).join('');
             return `<tr style="background:#f1f5f9"><td colspan="2" style="padding:6px 12px;font-size:11px;font-weight:700;color:#475569;text-transform:uppercase">${label}</td></tr>${accRows}<tr style="border-top:1px solid #cbd5e1;background:#f8fafc;font-weight:600"><td style="padding:6px 12px;padding-left:24px;font-size:12px;color:#0f172a">Total ${label}</td><td style="padding:6px 12px;font-size:12px;text-align:right;font-family:monospace">₦${(total/100).toLocaleString()}</td></tr>`;
           }
+          function subSecRows(label: string, data: any) {
+            if (!data || !data.accounts || data.accounts.length === 0) return '';
+            const accRows = data.accounts.map((a: any) =>
+              `<tr><td style="padding:3px 12px;padding-left:36px;font-size:10px;border-bottom:1px solid #f1f5f9">${a.name}</td><td style="padding:3px 12px;font-size:10px;text-align:right;font-family:monospace;border-bottom:1px solid #f1f5f9">₦${((a.balance||0)/100).toLocaleString()}</td></tr>`
+            ).join('');
+            return `<tr style="background:#f8fafc"><td colspan="2" style="padding:4px 12px;padding-left:28px;font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">${label}</td></tr>${accRows}<tr style="border-top:1px solid #e2e8f0;background:#f8fafc;font-weight:600"><td style="padding:4px 12px;padding-left:28px;font-size:10px;color:#64748b">Total ${label}</td><td style="padding:4px 12px;font-size:10px;text-align:right;font-family:monospace">₦${(data.total/100).toLocaleString()}</td></tr>`;
+          }
 
           const pdfRows = secRows('Revenue', revenue.accounts, revTotal) +
-            `<tr style="border-top:2px solid #059669;background:#ecfdf5;font-weight:700"><td style="padding:6px 12px;padding-left:24px;font-size:12px;color:#0f172a">Gross Profit</td><td style="padding:6px 12px;font-size:12px;text-align:right;font-family:monospace">₦${(grossProfit/100).toLocaleString()}</td></tr>` +
-            secRows('Cost of Goods Sold', cogs.accounts, cogsTotal) +
-            secRows('Operating Expenses', expense.accounts, expTotal) +
-            `<tr style="border-top:2px solid #0f172a;background:#f1f5f9;font-weight:700"><td style="padding:8px 12px;padding-left:24px;font-size:13px;color:#0f172a">Net Profit</td><td style="padding:8px 12px;font-size:13px;text-align:right;font-family:monospace">₦${(netProfit/100).toLocaleString()}</td></tr>`;
+            secRows('Cost of Sales', cos.accounts, cosTotal) +
+            `<tr style="border-top:2px solid #059669;background:#ecfdf5;font-weight:700"><td style="padding:6px 12px;padding-left:24px;font-size:12px;color:#059669">Gross Profit</td><td style="padding:6px 12px;font-size:12px;text-align:right;font-family:monospace">₦${(grossProfit/100).toLocaleString()}</td></tr>` +
+            `<tr style="background:#f1f5f9"><td colspan="2" style="padding:6px 12px;font-size:11px;font-weight:700;color:#475569;text-transform:uppercase">Operating Expenses</td></tr>` +
+            subSecRows('Selling & Distribution Expenses', oe.sellingDistribution) +
+            subSecRows('Administrative Expenses', oe.administrative) +
+            subSecRows('Staff Costs', oe.staffCosts) +
+            subSecRows('Other Operating Expenses', oe.other) +
+            `<tr style="border-top:1px solid #cbd5e1;background:#f1f5f9;font-weight:600"><td style="padding:6px 12px;padding-left:24px;font-size:12px;color:#0f172a">Total Operating Expenses</td><td style="padding:6px 12px;font-size:12px;text-align:right;font-family:monospace">₦${(opExTotal/100).toLocaleString()}</td></tr>` +
+            `<tr style="border-top:1px solid #94a3b8;background:#eef2f3;font-weight:700"><td style="padding:6px 12px;padding-left:24px;font-size:12px;color:#1e293b">Operating Profit (EBIT)</td><td style="padding:6px 12px;font-size:12px;text-align:right;font-family:monospace">₦${(operatingProfit/100).toLocaleString()}</td></tr>` +
+            (fc.accounts?.length ? secRows('Finance Costs', fc.accounts, fc.total || 0) : '') +
+            (tx.accounts?.length ? secRows('Tax Expense', tx.accounts, tx.total || 0) : '') +
+            `<tr style="border-top:2px solid #1e3a8a;background:#1e3a8a;font-weight:700"><td style="padding:8px 12px;padding-left:24px;font-size:13px;color:#ffffff">Net Profit</td><td style="padding:8px 12px;font-size:13px;text-align:right;font-family:monospace;color:#ffffff">₦${(netProfit/100).toLocaleString()}</td></tr>`;
 
           printWindow('Income Statement',
             `<div style="text-align:center;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #e2e8f0">
@@ -1658,15 +1693,9 @@ function formatVarianceClass(variance: number, isRevenue: boolean): string {
 }
 
 function buildPnLRows(current: any, prior: any | null): any[] {
-  const rows: any[] = [];
-  const sections = [
-    { key: 'revenue', label: 'Revenue', isRevenue: true },
-    { key: 'costOfGoodsSold', label: 'Cost of Goods Sold', isRevenue: false },
-    { key: 'expense', label: 'Operating Expenses', isRevenue: false },
-  ];
-  for (const sec of sections) {
-    const currAccounts = current?.[sec.key]?.accounts || [];
-    const priorAccounts = prior?.[sec.key]?.accounts || [];
+  function buildSec(key: string, label: string, isRevenue: boolean): any {
+    const currAccounts = current?.[key]?.accounts || [];
+    const priorAccounts = prior?.[key]?.accounts || [];
     const priorMap = new Map(priorAccounts.map((a: any) => [a.code || a.accountId, a.balance]));
     let secCurrTotal = 0;
     let secPriorTotal = 0;
@@ -1674,30 +1703,71 @@ function buildPnLRows(current: any, prior: any | null): any[] {
     for (const a of currAccounts) {
       const code = a.code || a.accountId;
       const priorBal = priorMap.get(code) || 0;
-      const variance = a.balance - priorBal;
       secCurrTotal += a.balance;
       secPriorTotal += priorBal;
-      secRows.push({ accountId: a.accountId, name: a.name, currentBalance: a.balance, priorBalance: priorBal, variance, isRevenue: sec.isRevenue });
+      secRows.push({ accountId: a.accountId, name: a.name, currentBalance: a.balance, priorBalance: priorBal, variance: a.balance - priorBal, isRevenue });
     }
-    // Add prior-only accounts (no current balance)
     for (const a of priorAccounts) {
       const code = a.code || a.accountId;
       if (!currAccounts.some((ca: any) => (ca.code || ca.accountId) === code)) {
-        const variance = 0 - a.balance;
         secCurrTotal += 0;
         secPriorTotal += a.balance;
-        secRows.push({ accountId: a.accountId, name: a.name, currentBalance: 0, priorBalance: a.balance, variance, isRevenue: sec.isRevenue });
+        secRows.push({ accountId: a.accountId, name: a.name, currentBalance: 0, priorBalance: a.balance, variance: 0 - a.balance, isRevenue });
       }
     }
-    rows.push({ section: sec.label, children: secRows, totalCurrent: secCurrTotal, totalPrior: secPriorTotal, isRevenue: sec.isRevenue });
+    return { section: label, children: secRows, totalCurrent: secCurrTotal, totalPrior: secPriorTotal, isRevenue };
   }
-  // Gross Profit
-  const gpCurr = (current?.revenue?.total || 0) - (current?.costOfGoodsSold?.total || 0);
-  const gpPrior = (prior?.revenue?.total || 0) - (prior?.costOfGoodsSold?.total || 0);
+  const rows: any[] = [];
+  // 1. Revenue
+  rows.push(buildSec('revenue', 'Revenue', true));
+  // 2. Cost of Sales
+  rows.push(buildSec('costOfSales', 'Cost of Sales', false));
+  // 3. Gross Profit
+  const gpCurr = (current?.revenue?.total || 0) - (current?.costOfSales?.total || 0);
+  const gpPrior = (prior?.revenue?.total || 0) - (prior?.costOfSales?.total || 0);
   rows.push({ section: 'Gross Profit', isSummary: true, summaryCurrent: gpCurr, summaryPrior: gpPrior, isRevenue: true });
-  // Net Profit
-  const npCurr = gpCurr - (current?.expense?.total || 0);
-  const npPrior = gpPrior - (prior?.expense?.total || 0);
+  // 4. Operating Expenses sub-sections
+  const oe = current?.operatingExpenses || {};
+  const oePrior = prior?.operatingExpenses || {};
+  const subSections = [
+    { key: 'sellingDistribution', label: 'Selling & Distribution Expenses', isRevenue: false },
+    { key: 'administrative', label: 'Administrative Expenses', isRevenue: false },
+    { key: 'staffCosts', label: 'Staff Costs', isRevenue: false },
+  ];
+  for (const sub of subSections) {
+    const ssData: any = { [sub.key]: oe[sub.key], ...{} };
+    const priorSsData: any = { [sub.key]: oePrior[sub.key], ...{} };
+    const subRows = buildSec(sub.key, sub.label, false);
+    subRows.section = sub.label;
+    rows.push(subRows);
+  }
+  // Other Operating Expenses (if any)
+  if ((oe.other?.accounts || []).length > 0 || (oePrior?.other?.accounts || []).length > 0) {
+    rows.push(buildSec('other', 'Other Operating Expenses', false));
+  }
+  // Operating Expenses total
+  const opExCurr = oe?.total || 0;
+  const opExPrior = oePrior?.total || 0;
+  rows.push({ section: 'Total Operating Expenses', isSummary: true, summaryCurrent: opExCurr, summaryPrior: opExPrior, isRevenue: false });
+  // 5. Operating Profit (EBIT)
+  const opCurr = current?.operatingProfit ?? (gpCurr - opExCurr);
+  const opPrior = prior?.operatingProfit ?? (gpPrior - opExPrior);
+  rows.push({ section: 'Operating Profit (EBIT)', isSummary: true, summaryCurrent: opCurr, summaryPrior: opPrior, isRevenue: true });
+  // 6. Finance Costs (if any)
+  const fcCurr = current?.financeCosts?.accounts || [];
+  const fcPrior = prior?.financeCosts?.accounts || [];
+  if (fcCurr.length > 0 || fcPrior.length > 0) {
+    rows.push(buildSec('financeCosts', 'Finance Costs', false));
+  }
+  // 7. Tax Expense (if any)
+  const txCurr = current?.taxExpense?.accounts || [];
+  const txPrior = prior?.taxExpense?.accounts || [];
+  if (txCurr.length > 0 || txPrior.length > 0) {
+    rows.push(buildSec('taxExpense', 'Tax Expense', false));
+  }
+  // 8. Net Profit
+  const npCurr = current?.netProfit ?? (opCurr - (current?.financeCosts?.total || 0) - (current?.taxExpense?.total || 0));
+  const npPrior = prior?.netProfit ?? (opPrior - (prior?.financeCosts?.total || 0) - (prior?.taxExpense?.total || 0));
   rows.push({ section: 'Net Profit', isSummary: true, summaryCurrent: npCurr, summaryPrior: npPrior, isRevenue: true });
   return rows;
 }
@@ -1722,15 +1792,38 @@ function SinglePeriodPnLTable({ current, onAccountClick }: { current: any; onAcc
       </>
     );
   }
+  function renderSubSection(label: string, data: any) {
+    return (
+      <>
+        <tr className="bg-slate-50/30">
+          <td colSpan={2} className="px-3 py-1.5 pl-10 text-xs font-semibold text-slate-500 uppercase tracking-wider">{label}</td>
+        </tr>
+        {(data?.accounts || []).map((a: any, i: number) => (
+          <tr key={i} className={`border-t border-slate-100 hover:bg-slate-50/50 even:bg-slate-50/50 transition-colors ${a.accountId ? 'cursor-pointer' : ''}`} onClick={() => a.accountId && onAccountClick?.(a)}>
+            <td className="px-3 py-2 pl-14 text-slate-700">{a.name}</td>
+            <td className="px-3 py-2 text-right font-semibold text-slate-700">{fmtNaira(a.balance)}</td>
+          </tr>
+        ))}
+        <tr className="border-t border-slate-200 bg-slate-50/30 font-medium">
+          <td className="px-3 py-1.5 pl-10 text-xs text-slate-500">Total {label}</td>
+          <td className="px-3 py-1.5 text-right text-slate-600">{fmtNaira(data?.total || 0)}</td>
+        </tr>
+      </>
+    );
+  }
 
   const revenue = current?.revenue || {};
-  const cogs = current?.costOfGoodsSold || {};
-  const expense = current?.expense || {};
+  const cos = current?.costOfSales || {};
+  const oe = current?.operatingExpenses || {};
+  const fc = current?.financeCosts || {};
+  const tx = current?.taxExpense || {};
+
   const revenueTotal = revenue.total || 0;
-  const cogsTotal = cogs.total || 0;
-  const expenseTotal = expense.total || 0;
-  const grossProfit = revenueTotal - cogsTotal;
-  const netProfit = current?.netProfit ?? grossProfit - expenseTotal;
+  const cosTotal = cos.total || 0;
+  const grossProfit = revenueTotal - cosTotal;
+  const opExTotal = oe?.total || 0;
+  const operatingProfit = current?.operatingProfit ?? (grossProfit - opExTotal);
+  const netProfit = current?.netProfit ?? (operatingProfit - (fc.total || 0) - (tx.total || 0));
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
@@ -1743,15 +1836,31 @@ function SinglePeriodPnLTable({ current, onAccountClick }: { current: any; onAcc
         </thead>
         <tbody>
           {renderSection('Revenue', revenue.accounts, revenueTotal)}
+          {renderSection('Cost of Sales', cos.accounts, cosTotal)}
           <tr className="border-t-2 border-emerald-200 bg-emerald-50/50 font-bold">
             <td className="px-3 py-2 pl-8 text-sm text-slate-800">Gross Profit</td>
             <td className="px-3 py-2 text-right text-slate-800">{fmtNaira(grossProfit)}</td>
           </tr>
-          {renderSection('Cost of Goods Sold', cogs.accounts, cogsTotal)}
-          {renderSection('Operating Expenses', expense.accounts, expenseTotal)}
+          <tr className="bg-slate-100/50">
+            <td colSpan={2} className="px-3 py-2 text-xs font-bold text-slate-700 uppercase tracking-wider">Operating Expenses</td>
+          </tr>
+          {renderSubSection('Selling & Distribution Expenses', oe.sellingDistribution)}
+          {renderSubSection('Administrative Expenses', oe.administrative)}
+          {renderSubSection('Staff Costs', oe.staffCosts)}
+          {(oe.other?.accounts || []).length > 0 && renderSubSection('Other Operating Expenses', oe.other)}
+          <tr className="border-t border-slate-200 bg-slate-100/70 font-medium">
+            <td className="px-3 py-2 pl-8 text-sm text-slate-800">Total Operating Expenses</td>
+            <td className="px-3 py-2 text-right text-slate-800">{fmtNaira(opExTotal)}</td>
+          </tr>
           <tr className="border-t-2 border-slate-300 bg-slate-100 font-bold">
-            <td className="px-3 py-3 text-sm text-slate-900">Net Profit</td>
-            <td className="px-3 py-3 text-right text-slate-900">{fmtNaira(netProfit)}</td>
+            <td className="px-3 py-2.5 pl-8 text-sm text-slate-900">Operating Profit (EBIT)</td>
+            <td className="px-3 py-2.5 text-right text-slate-900">{fmtNaira(operatingProfit)}</td>
+          </tr>
+          {(fc.accounts || []).length > 0 && renderSection('Finance Costs', fc.accounts, fc.total || 0)}
+          {(tx.accounts || []).length > 0 && renderSection('Tax Expense', tx.accounts, tx.total || 0)}
+          <tr className="border-t-2 border-blue-900 bg-blue-900 font-bold">
+            <td className="px-3 py-3 text-sm text-white">Net Profit</td>
+            <td className="px-3 py-3 text-right text-white">{fmtNaira(netProfit)}</td>
           </tr>
         </tbody>
       </table>

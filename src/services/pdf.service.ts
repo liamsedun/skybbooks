@@ -1450,45 +1450,102 @@ export async function generateIncomeStatementPDF(orgId: string, startDate: Date,
   const orgSettings = typeof org?.settings === 'string' ? JSON.parse(org.settings) : (org?.settings || {});
   const brandColor = orgSettings.branding?.primaryColor || '#10b981';
 
+  function writeSection(label: string, data: any, y: number) {
+    doc.fontSize(9).font('Helvetica-Bold').fillColor('#111827').text(label, 40, y);
+    y += 12;
+    doc.moveTo(40, y).lineTo(555, y).strokeColor('#e5e7eb').stroke();
+    y += 6;
+    doc.fontSize(8).font('Helvetica').fillColor('#374151');
+    if (data.accounts.length === 0) {
+      doc.text('No active accounts in period', 55, y);
+      y += 12;
+    } else {
+      data.accounts.forEach((acc: any) => {
+        doc.text(`[${acc.code}] ${acc.name}`, 55, y);
+        doc.text(formatNaira(acc.balance), 400, y, { align: 'right', width: 140 });
+        y += 12;
+      });
+    }
+    y += 4;
+    doc.font('Helvetica-Bold').fillColor('#111827').text(`Total ${label}:`, 40, y);
+    doc.text(formatNaira(data.total), 400, y, { align: 'right', width: 140 });
+    y += 18;
+    return y;
+  }
+  function writeSubSection(label: string, data: any, y: number) {
+    doc.fontSize(8).font('Helvetica-Bold').fillColor('#475569').text(label, 50, y);
+    y += 10;
+    doc.fontSize(8).font('Helvetica').fillColor('#374151');
+    data.accounts.forEach((acc: any) => {
+      doc.text(`  ${acc.name}`, 60, y);
+      doc.text(formatNaira(acc.balance), 400, y, { align: 'right', width: 140 });
+      y += 11;
+    });
+    y += 2;
+    doc.font('Helvetica-Bold').fillColor('#475569').text(`Total ${label}`, 50, y);
+    doc.text(formatNaira(data.total), 400, y, { align: 'right', width: 140 });
+    y += 16;
+    return y;
+  }
+
   return generatePDFBuffer((doc) => {
     drawReportHeader(doc, 'INCOME STATEMENT', `Period: ${formatShortDate(startDate)} - ${formatShortDate(endDate)}`, org?.name || 'FinanceOS Unit', org, brandColor);
-    
     let y = 110;
     doc.fontSize(10).font('Helvetica-Bold').fillColor('#111827');
 
-    const sections = [
-      { label: 'REVENUE', data: pnl.revenue },
-      { label: 'COST OF GOODS SOLD', data: pnl.costOfGoodsSold },
-      { label: 'OPERATING EXPENSES', data: pnl.expense }
-    ];
+    // REVENUE
+    y = writeSection('REVENUE', pnl.revenue, y);
 
-    sections.forEach(sec => {
-      doc.fontSize(9).font('Helvetica-Bold').text(sec.label, 40, y);
-      y += 12;
-      doc.moveTo(40, y).lineTo(555, y).strokeColor('#e5e7eb').stroke();
-      y += 6;
+    // COST OF SALES
+    y = writeSection('COST OF SALES', pnl.costOfSales, y);
 
-      doc.fontSize(8).font('Helvetica').fillColor('#374151');
-      if (sec.data.accounts.length === 0) {
-        doc.text('No active accounts in period', 55, y);
-        y += 12;
-      } else {
-        sec.data.accounts.forEach((acc: any) => {
-          doc.text(`[${acc.code}] ${acc.name}`, 55, y);
-          doc.text(formatNaira(acc.balance), 400, y, { align: 'right', width: 140 });
-          y += 12;
-        });
-      }
+    // GROSS PROFIT
+    doc.rect(40, y, 515, 22).fill('#ecfdf5');
+    doc.fillColor('#059669').fontSize(10).font('Helvetica-Bold');
+    doc.text('GROSS PROFIT', 50, y + 6);
+    doc.text(formatNaira(pnl.grossProfit), 400, y + 6, { align: 'right', width: 140 });
+    y += 28;
 
-      y += 4;
-      doc.font('Helvetica-Bold').text(`Total ${sec.label}:`, 40, y);
-      doc.text(formatNaira(sec.data.total), 400, y, { align: 'right', width: 140 });
-      y += 18;
-    });
+    // OPERATING EXPENSES
+    doc.fontSize(9).font('Helvetica-Bold').fillColor('#111827').text('OPERATING EXPENSES', 40, y);
+    y += 12;
+    doc.moveTo(40, y).lineTo(555, y).strokeColor('#e5e7eb').stroke();
+    y += 8;
 
-    doc.rect(40, y, 515, 24).fill('#eef2f3');
+    y = writeSubSection('Selling & Distribution Expenses', pnl.operatingExpenses.sellingDistribution, y);
+    y = writeSubSection('Administrative Expenses', pnl.operatingExpenses.administrative, y);
+    y = writeSubSection('Staff Costs', pnl.operatingExpenses.staffCosts, y);
+
+    if (pnl.operatingExpenses.other.accounts.length > 0) {
+      y = writeSubSection('Other Operating Expenses', pnl.operatingExpenses.other, y);
+    }
+
+    doc.font('Helvetica-Bold').fillColor('#111827');
+    doc.text('Total Operating Expenses', 40, y);
+    doc.text(formatNaira(pnl.operatingExpenses.total), 400, y, { align: 'right', width: 140 });
+    y += 18;
+
+    // OPERATING PROFIT (EBIT)
+    doc.rect(40, y, 515, 22).fill('#eef2f3');
     doc.fillColor('#1e293b').fontSize(10).font('Helvetica-Bold');
-    doc.text('NET OPERATING PROFIT / (LOSS)', 50, y + 7);
+    doc.text('OPERATING PROFIT (EBIT)', 50, y + 6);
+    doc.text(formatNaira(pnl.operatingProfit), 400, y + 6, { align: 'right', width: 140 });
+    y += 28;
+
+    // FINANCE COSTS
+    if (pnl.financeCosts.accounts.length > 0) {
+      y = writeSection('FINANCE COSTS', pnl.financeCosts, y);
+    }
+
+    // TAX EXPENSE
+    if (pnl.taxExpense.accounts.length > 0) {
+      y = writeSection('TAX EXPENSE', pnl.taxExpense, y);
+    }
+
+    // NET PROFIT
+    doc.rect(40, y, 515, 24).fill('#1e3a8a');
+    doc.fillColor('#ffffff').fontSize(11).font('Helvetica-Bold');
+    doc.text('NET PROFIT / (LOSS)', 50, y + 7);
     doc.text(formatNaira(pnl.netProfit), 400, y + 7, { align: 'right', width: 140 });
   });
 }

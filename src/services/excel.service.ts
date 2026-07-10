@@ -310,128 +310,95 @@ export async function exportIncomeStatement(
     ws.addRow([]); // Separation spacer
   }
 
+  function writeTotalRow(label: string, curTotal: number, priTotal: number, opts?: { style?: any; fill?: any }) {
+    const cur = curTotal / 100;
+    const pri = priTotal / 100;
+    const varNum = cur - pri;
+    const varPct = pri !== 0 ? varNum / pri : 0;
+    const row = ws.addRow([label, cur, pri, varNum, varPct]);
+    row.eachCell((cell: any, colNum: number) => {
+      cell.font = opts?.style?.font || { name: 'Arial', bold: true, size: 10 };
+      cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' } };
+      if (opts?.fill) cell.fill = opts.fill;
+      if (colNum >= 2) {
+        cell.alignment = { horizontal: 'right' };
+        cell.numFmt = colNum === 5 ? percentFormat : numberFormat;
+      }
+    });
+    ws.addRow([]);
+    return row;
+  }
+
+  function writeSubSectionExcel(title: string, currentData: any, priorData: any) {
+    const sectionHeader = ws.addRow([title.toUpperCase()]);
+    sectionHeader.getCell(1).font = { name: 'Arial', bold: true, size: 10, color: { argb: '64748b' } };
+    // Account rows
+    const accountRegistry = new Map<string, { name: string; current: number; prior: number }>();
+    (currentData.accounts || []).forEach((c: any) => { accountRegistry.set(c.code, { name: c.name, current: c.balance, prior: 0 }); });
+    (priorData.accounts || []).forEach((p: any) => {
+      const existing = accountRegistry.get(p.code);
+      if (existing) { existing.prior = p.balance; } else { accountRegistry.set(p.code, { name: p.name, current: 0, prior: p.balance }); }
+    });
+    Array.from(accountRegistry.keys()).sort().forEach((code: string) => {
+      const entry = accountRegistry.get(code)!;
+      const row = ws.addRow([`  ${entry.name}`, entry.current/100, entry.prior/100, (entry.current - entry.prior)/100, entry.prior !== 0 ? (entry.current - entry.prior)/entry.prior : 0]);
+      for (let i = 2; i <= 5; i++) { row.getCell(i).numFmt = i === 5 ? percentFormat : numberFormat; row.getCell(i).alignment = { horizontal: 'right' }; }
+    });
+    ws.addRow([]);
+    writeTotalRow(`Total ${title}`, currentData.total, priorData.total);
+  }
+
   // REVENUE
   writeCategorySection('Revenue Accounts', currentPnl.revenue.accounts, priorPnl.revenue.accounts);
-  // Total Revenue Summary Statement
-  const curTotalRev = currentPnl.revenue.total / 100;
-  const priTotalRev = priorPnl.revenue.total / 100;
-  const totRevVarNum = curTotalRev - priTotalRev;
-  const totRevVarPct = priTotalRev !== 0 ? totRevVarNum / priTotalRev : 0;
-  const trRow = ws.addRow([
-    'TOTAL REVENUE',
-    curTotalRev,
-    priTotalRev,
-    totRevVarNum,
-    totRevVarPct
-  ]);
-  trRow.eachCell((cell, colNum) => {
-    cell.font = { name: 'Arial', bold: true, size: 10 };
-    cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' } };
-    if (colNum >= 2) {
-      cell.alignment = { horizontal: 'right' };
-      cell.numFmt = colNum === 5 ? percentFormat : numberFormat;
-    }
+  writeTotalRow('TOTAL REVENUE', currentPnl.revenue.total, priorPnl.revenue.total);
+
+  // COST OF SALES
+  writeCategorySection('Cost of Sales', currentPnl.costOfSales.accounts, priorPnl.costOfSales.accounts);
+  writeTotalRow('TOTAL COST OF SALES', currentPnl.costOfSales.total, priorPnl.costOfSales.total);
+
+  // GROSS PROFIT
+  writeTotalRow('GROSS PROFIT', currentPnl.grossProfit, priorPnl.grossProfit, {
+    style: { font: { name: 'Arial', bold: true, size: 10, color: { argb: PRIMARY_HEX } } },
+    fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: SECONDARY_HEX } },
   });
-
-  ws.addRow([]);
-
-  // COST OF GOODS SOLD
-  writeCategorySection('Cost of Goods Sold', currentPnl.costOfGoodsSold.accounts, priorPnl.costOfGoodsSold.accounts);
-  const curTotalCogs = currentPnl.costOfGoodsSold.total / 100;
-  const priTotalCogs = priorPnl.costOfGoodsSold.total / 100;
-  const totCVarNum = curTotalCogs - priTotalCogs;
-  const totCVarPct = priTotalCogs !== 0 ? totCVarNum / priTotalCogs : 0;
-  const tcRow = ws.addRow([
-    'TOTAL COST OF GOODS SOLD',
-    curTotalCogs,
-    priTotalCogs,
-    totCVarNum,
-    totCVarPct
-  ]);
-  tcRow.eachCell((cell, colNum) => {
-    cell.font = { name: 'Arial', bold: true, size: 10 };
-    cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' } };
-    if (colNum >= 2) {
-      cell.alignment = { horizontal: 'right' };
-      cell.numFmt = colNum === 5 ? percentFormat : numberFormat;
-    }
-  });
-
-  ws.addRow([]);
-
-  // GROSS PERFORMANCE SUMMATION
-  const curGP = currentPnl.grossProfit / 100;
-  const priGP = priorPnl.grossProfit / 100;
-  const gpVarNum = curGP - priGP;
-  const gpVarPct = priGP !== 0 ? gpVarNum / priGP : 0;
-  const gpRow = ws.addRow([
-    'GROSS PROFIT',
-    curGP,
-    priGP,
-    gpVarNum,
-    gpVarPct
-  ]);
-  gpRow.eachCell((cell, colNum) => {
-    cell.font = { name: 'Arial', bold: true, size: 10, color: { argb: PRIMARY_HEX } };
-    cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' } };
-    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: SECONDARY_HEX } };
-    if (colNum >= 2) {
-      cell.alignment = { horizontal: 'right' };
-      cell.numFmt = colNum === 5 ? percentFormat : numberFormat;
-    }
-  });
-
-  ws.addRow([]);
 
   // OPERATING EXPENSES
-  writeCategorySection('Operating Expenses', currentPnl.expense.accounts, priorPnl.expense.accounts);
-  const curTotalExp = currentPnl.expense.total / 100;
-  const priTotalExp = priorPnl.expense.total / 100;
-  const totEVarNum = curTotalExp - priTotalExp;
-  const totEVarPct = priTotalExp !== 0 ? totEVarNum / priTotalExp : 0;
-  const teRow = ws.addRow([
-    'TOTAL OPERATING EXPENSES',
-    curTotalExp,
-    priTotalExp,
-    totEVarNum,
-    totEVarPct
-  ]);
-  teRow.eachCell((cell, colNum) => {
-    cell.font = { name: 'Arial', bold: true, size: 10 };
-    cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' } };
-    if (colNum >= 2) {
-      cell.alignment = { horizontal: 'right' };
-      cell.numFmt = colNum === 5 ? percentFormat : numberFormat;
-    }
+  ws.addRow(['OPERATING EXPENSES'.toUpperCase()]).getCell(1).font = { name: 'Arial', bold: true, size: 11, color: { argb: PRIMARY_HEX } };
+  writeSubSectionExcel('Selling & Distribution Expenses', currentPnl.operatingExpenses.sellingDistribution, priorPnl.operatingExpenses.sellingDistribution);
+  writeSubSectionExcel('Administrative Expenses', currentPnl.operatingExpenses.administrative, priorPnl.operatingExpenses.administrative);
+  writeSubSectionExcel('Staff Costs', currentPnl.operatingExpenses.staffCosts, priorPnl.operatingExpenses.staffCosts);
+  if (currentPnl.operatingExpenses.other.accounts.length > 0 || priorPnl.operatingExpenses.other.accounts.length > 0) {
+    writeSubSectionExcel('Other Operating Expenses', currentPnl.operatingExpenses.other, priorPnl.operatingExpenses.other);
+  }
+  writeTotalRow('TOTAL OPERATING EXPENSES', currentPnl.operatingExpenses.total, priorPnl.operatingExpenses.total);
+
+  // OPERATING PROFIT (EBIT)
+  writeTotalRow('OPERATING PROFIT (EBIT)', currentPnl.operatingProfit, priorPnl.operatingProfit, {
+    style: { font: { name: 'Arial', bold: true, size: 10, color: { argb: '1E3A8A' } } },
+    fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'EEF2F3' } },
   });
 
-  ws.addRow([]);
+  // FINANCE COSTS
+  if (currentPnl.financeCosts.accounts.length > 0 || priorPnl.financeCosts.accounts.length > 0) {
+    writeCategorySection('Finance Costs', currentPnl.financeCosts.accounts, priorPnl.financeCosts.accounts);
+    writeTotalRow('TOTAL FINANCE COSTS', currentPnl.financeCosts.total, priorPnl.financeCosts.total);
+  }
 
-  // FINAL NET MARGINS
-  const curNet = currentPnl.netProfit / 100;
-  const priNet = priorPnl.netProfit / 100;
-  const netVarNum = curNet - priNet;
-  const netVarPct = priNet !== 0 ? netVarNum / priNet : 0;
-  const netRow = ws.addRow([
-    'NET PROFIT',
-    curNet,
-    priNet,
-    netVarNum,
-    netVarPct
-  ]);
-  netRow.eachCell((cell, colNum) => {
-    cell.font = { name: 'Arial', bold: true, size: 12, color: { argb: 'FFFFFF' } };
-    cell.border = { top: { style: 'thin' }, bottom: { style: 'double' } };
-    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1E3A8A' } };
-    if (colNum >= 2) {
-      cell.alignment = { horizontal: 'right' };
-      cell.numFmt = colNum === 5 ? percentFormat : numberFormat;
-    }
+  // TAX EXPENSE
+  if (currentPnl.taxExpense.accounts.length > 0 || priorPnl.taxExpense.accounts.length > 0) {
+    writeCategorySection('Tax Expense', currentPnl.taxExpense.accounts, priorPnl.taxExpense.accounts);
+    writeTotalRow('TOTAL TAX EXPENSE', currentPnl.taxExpense.total, priorPnl.taxExpense.total);
+  }
+
+  // NET PROFIT
+  writeTotalRow('NET PROFIT', currentPnl.netProfit, priorPnl.netProfit, {
+    style: { font: { name: 'Arial', bold: true, size: 12, color: { argb: 'FFFFFF' } } },
+    fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: '1E3A8A' } },
   });
 
   // Cell padding
   ws.columns = [
-    { width: 45 },
+    { width: 48 },
     { width: 18 },
     { width: 18 },
     { width: 18 },

@@ -551,6 +551,26 @@ export async function runMigration() {
     `);
     console.log('[Migration] Inventory adjustments tables created.');
 
+    // Normalise expense account subType values for IFRS income statement grouping
+    const subTypeFix = await db.execute(sql`
+      UPDATE accounts SET sub_type = 
+        CASE sub_type
+          WHEN 'Cost of Sales' THEN 'cost_of_sales'
+          WHEN 'Administrative Expenses' THEN 'administrative'
+          WHEN 'Selling & Distribution' THEN 'selling_distribution'
+          WHEN 'Staff Costs' THEN 'staff_costs'
+          WHEN 'Finance Costs' THEN 'finance_costs'
+          WHEN 'Tax Expense' THEN 'tax_expense'
+          WHEN 'Other Operating Expenses' THEN 'other_operating'
+          ELSE sub_type
+        END
+      WHERE "type"::text = 'expense' AND sub_type IS NOT NULL
+        AND sub_type IN ('Cost of Sales','Administrative Expenses','Selling & Distribution','Staff Costs','Finance Costs','Tax Expense','Other Operating Expenses')
+    `);
+    if (subTypeFix.rowCount && subTypeFix.rowCount > 0) {
+      console.log(`[Migration] Normalised ${subTypeFix.rowCount} expense account subType values for IFRS income statement.`);
+    }
+
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema push:', err);
