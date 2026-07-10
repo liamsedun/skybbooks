@@ -1,7 +1,7 @@
 import { Router, Response, NextFunction } from 'express';
 import { db, auditLog, users } from '../db/schema';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
-import { eq, and, desc, like, sql } from 'drizzle-orm';
+import { eq, and, desc, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
 const router = Router();
@@ -40,7 +40,7 @@ router.get('/', async (req: AuthenticatedRequest, res: Response, next: NextFunct
         createdAt: auditLog.createdAt,
         userId: auditLog.userId,
         user: {
-          name: users.name,
+          name: users.fullName,
           email: users.email,
         },
       })

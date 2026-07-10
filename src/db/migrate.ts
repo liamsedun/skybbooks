@@ -512,6 +512,10 @@ export async function runMigration() {
     await db.execute(sql`ALTER TABLE depreciation_entries ADD COLUMN IF NOT EXISTS entry_number text`);
     console.log('[Migration] Added entry_number to depreciation_entries.');
 
+    // Backfill payroll_lines.basic where it was stored as 0 (bug: item.calc.basic was undefined; fixed now)
+    const fb = await db.execute(sql`UPDATE payroll_lines SET basic = ROUND(gross_pay * 0.5) WHERE basic = 0 AND gross_pay > 0`);
+    if (fb.rowCount && fb.rowCount > 0) console.log(`[Migration] Backfilled ${fb.rowCount} payroll_line(s) basic = 50% of gross_pay.`);
+
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema push:', err);

@@ -519,7 +519,7 @@ export async function runPayroll(
           runId: run.id,
           employeeId: item.employee.id,
           grossPay: item.calc.grossPay,
-          basic: item.calc.basic,
+          basic: item.calc.basicSalary,
           housing: item.calc.housing,
           transport: item.calc.transport,
           otherAllowances: item.calc.otherAllowances,
