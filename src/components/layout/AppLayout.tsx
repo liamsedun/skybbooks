@@ -176,7 +176,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
       title: 'OVERVIEW',
       items: [
         { name: 'Dashboard', id: 'dashboard', icon: LayoutDashboard },
-        { name: 'AI CFO Insights', id: 'ai_insights', icon: Sparkles },
+        { name: 'SMART CFO Insights', id: 'ai_insights', icon: Sparkles },
       ],
     },
     {

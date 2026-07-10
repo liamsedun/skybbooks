@@ -135,7 +135,7 @@ export default function InsightsDashboard() {
   const [suggestResult, setSuggestResult] = useState<string[]>([]);
   const [suggestLoading, setSuggestLoading] = useState(false);
 
-  // Load Monthly CFO Insights
+  // Load Monthly SMART CFO Insights
   const fetchMonthlyInsights = async (forceInit = false) => {
     setLoadingInsights(true);
     setInsightsError(null);
@@ -148,7 +148,7 @@ export default function InsightsDashboard() {
       }
     } catch (err: any) {
       setInsightsError(
-        err.response?.data?.error || 'CFO insights engine was unable to pull insights for this date range.'
+        err.response?.data?.error || 'SMART CFO insights engine was unable to pull insights for this date range.'
       );
     } finally {
       setLoadingInsights(false);
@@ -346,10 +346,10 @@ export default function InsightsDashboard() {
         <div>
           <div className="flex items-center space-x-2">
             <Sparkles className="h-6 w-6 text-indigo-600 animate-pulse" />
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">AI Financial Assistant</h1>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Smart Financial Analyst</h1>
           </div>
           <p className="text-sm text-slate-500 mt-1">
-            Real-time CFO intelligence. Automated audit scans, financial ratio alerts, and business performance monitoring.
+            Monthly financial management analysis reports comparing current vs prior periods with variance analysis and recommendations.
           </p>
         </div>
 
@@ -388,7 +388,7 @@ export default function InsightsDashboard() {
             transition={{ duration: 0.2 }}
             className="grid grid-cols-1 lg:grid-cols-3 gap-8"
           >
-            {/* Left Column: Config controller & CFO Insights */}
+            {/* Left Column: Config controller & SMART CFO Insights */}
             <div className="lg:col-span-2 space-y-6">
               <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 flex flex-col sm:flex-row items-center sm:justify-between gap-4">
                 <div className="flex items-center space-x-3 self-start sm:self-center">
@@ -414,7 +414,7 @@ export default function InsightsDashboard() {
                     className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-4 py-2.5 rounded-lg transition-all"
                   >
                     <RefreshCw className={`h-3.5 w-3.5 ${loadingInsights || loadingAnomalies ? 'animate-spin' : ''}`} />
-                    <span>Refresh CFO Audit</span>
+                    <span>Refresh SMART Audit</span>
                   </button>
                 </div>
               </div>
@@ -424,7 +424,7 @@ export default function InsightsDashboard() {
                 <div className="flex items-center justify-between">
                   <h2 className="text-md font-bold text-slate-800 tracking-tight flex items-center space-x-2">
                     <span className="h-2 w-2 rounded-full bg-indigo-500 animate-ping" />
-                    <span>SME CFO Monthly Insights</span>
+                    <span>SMART CFO Monthly Insights</span>
                   </h2>
                   <span className="text-[10px] text-slate-400 font-bold font-mono">Month: {selectedMonth}</span>
                 </div>
@@ -433,7 +433,7 @@ export default function InsightsDashboard() {
                   <div className="bg-white rounded-xl border border-slate-200 p-12 flex flex-col items-center justify-center space-y-4 min-h-[300px]">
                     <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
                     <div className="text-center">
-                      <p className="text-xs font-bold text-slate-600 animate-pulse">Analysing all module data for CFO insights...</p>
+                      <p className="text-xs font-bold text-slate-600 animate-pulse">Analysing all module data for SMART CFO insights...</p>
                       <p className="text-[10px] text-slate-400 mt-1 font-mono">Computing revenue, costs, cash flow, and key metrics</p>
                     </div>
                   </div>
@@ -441,7 +441,7 @@ export default function InsightsDashboard() {
                   <div className="bg-amber-50 rounded-xl border border-amber-200 p-6 flex items-start space-x-3 text-amber-800">
                     <AlertTriangle className="h-5 w-5 shrink-0 text-amber-600 mt-0.5" />
                     <div>
-                      <h4 className="font-bold text-xs">CFO Advice Offline</h4>
+                      <h4 className="font-bold text-xs">SMART CFO Advice Offline</h4>
                       <p className="text-xs mt-1 text-slate-600 leading-relaxed">{insightsError}</p>
                       <button
                         onClick={() => fetchMonthlyInsights()}
@@ -456,7 +456,7 @@ export default function InsightsDashboard() {
                     <CheckCircle className="h-8 w-8 text-emerald-500 mb-2" />
                     <h4 className="font-bold text-xs text-slate-700">Perfect Month Clean Ledger</h4>
                     <p className="text-xs text-slate-400 mt-1 max-w-sm">
-                      No significant variance or threats found. Let's trigger a CFO ledger audit to compile new forecasts.
+                      No significant variance or threats found. Let's trigger a SMART ledger audit to compile new forecasts.
                     </p>
                   </div>
                 ) : (
@@ -519,7 +519,7 @@ export default function InsightsDashboard() {
                                 className="border-t border-slate-100 bg-slate-50 p-4"
                                 onClick={(e) => e.stopPropagation()}
                               >
-                                <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">CFO Analysis Detail</h4>
+                                <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">SMART Analysis Detail</h4>
                                 <p className="text-xs leading-relaxed text-slate-600">
                                   {insight.detail} This was flagged under your corporate risk profiling system to maintain optimum cash reserve standards. Nigerian tax compliances and interest-bearing operations should be adjusted accordingly.
                                 </p>
