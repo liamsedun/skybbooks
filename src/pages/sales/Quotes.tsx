@@ -150,6 +150,8 @@ export function QuotesPage() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm]     = useState('');
   const [statusFilter, setStatusFilter] = useState<'all'|QuoteStatus>('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [selectedId, setSelectedId]     = useState<string|null>(null);
   const [modalOpen, setModalOpen]       = useState(false);
   const [editingId, setEditingId]       = useState<string|null>(null);
@@ -234,11 +236,13 @@ export function QuotesPage() {
     const term = searchTerm.toLowerCase();
     return (quotesData||[]).filter(q => {
       if (statusFilter!=='all' && q.status!==statusFilter) return false;
+      if (dateFrom && q.date < dateFrom) return false;
+      if (dateTo && q.date > dateTo) return false;
       if (!term) return true;
       const cust = customerMap.get(q.customerId);
       return q.quoteNumber.toLowerCase().includes(term)||(cust?.name||'').toLowerCase().includes(term);
     });
-  }, [quotesData, searchTerm, statusFilter, customerMap]);
+  }, [quotesData, searchTerm, statusFilter, dateFrom, dateTo, customerMap]);
 
   const counts = useMemo(() => {
     const all=quotesData?.length||0; const byStatus:Record<string,number>={};
@@ -310,10 +314,17 @@ export function QuotesPage() {
               </button>
             ))}
           </div>
-          <div className="relative">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input type="text" value={searchTerm} onChange={e=>setSearchTerm(e.target.value)} placeholder="Search quotes..."
-              className="w-full px-9 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+          <div className="flex gap-2 items-center">
+            <div className="relative flex-1">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input type="text" value={searchTerm} onChange={e=>setSearchTerm(e.target.value)} placeholder="Search quotes..."
+                className="w-full px-9 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+            </div>
+            <input type="date" value={dateFrom} onChange={e=>setDateFrom(e.target.value)}
+              className="px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+            <span className="text-xs text-slate-400 font-medium">to</span>
+            <input type="date" value={dateTo} onChange={e=>setDateTo(e.target.value)}
+              className="px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
           </div>
           <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
             {isLoading ? <div className="flex items-center justify-center py-16 text-slate-400"><Loader2 size={20} className="animate-spin mr-2"/>Loading...</div>

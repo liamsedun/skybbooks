@@ -174,6 +174,8 @@ export function SalesOrdersPage() {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | SOStatus>('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<SOFormState>(EMPTY_FORM);
@@ -249,11 +251,13 @@ export function SalesOrdersPage() {
     const term = searchTerm.toLowerCase();
     return (ordersData || []).filter(so => {
       if (statusFilter !== 'all' && so.status !== statusFilter) return false;
+      if (dateFrom && so.date < dateFrom) return false;
+      if (dateTo && so.date > dateTo) return false;
       if (!term) return true;
       const cust = customerMap.get(so.customerId);
       return so.soNumber.toLowerCase().includes(term) || (cust?.name || '').toLowerCase().includes(term);
     });
-  }, [ordersData, searchTerm, statusFilter, customerMap]);
+  }, [ordersData, searchTerm, statusFilter, dateFrom, dateTo, customerMap]);
 
   const counts = useMemo(() => {
     const all = ordersData?.length || 0;
@@ -341,6 +345,11 @@ export function SalesOrdersPage() {
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search orders..." className="w-full px-9 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
         </div>
+        <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+          className="px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+        <span className="text-xs text-slate-400 font-medium self-center">to</span>
+        <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+          className="px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as any)} className="px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow bg-white">
           <option value="all">All Statuses</option>
           {(Object.keys(STATUS_META) as SOStatus[]).map(s => (

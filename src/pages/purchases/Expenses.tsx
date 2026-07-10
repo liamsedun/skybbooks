@@ -125,6 +125,8 @@ export function ExpensesPage() {
   const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
@@ -177,12 +179,14 @@ export function ExpensesPage() {
 
   const filtered = useMemo(() => {
     const t = search.toLowerCase();
-    return expenses.filter(e =>
-      !t || (e.description || '').toLowerCase().includes(t) ||
-      e.expenseNumber.toLowerCase().includes(t) ||
-      (vendorMap.get(e.vendorId || '') || '').toLowerCase().includes(t)
-    );
-  }, [expenses, search, vendorMap]);
+    return expenses.filter(e => {
+      if (dateFrom && e.date < dateFrom) return false;
+      if (dateTo && e.date > dateTo) return false;
+      return !t || (e.description || '').toLowerCase().includes(t) ||
+        e.expenseNumber.toLowerCase().includes(t) ||
+        (vendorMap.get(e.vendorId || '') || '').toLowerCase().includes(t);
+    });
+  }, [expenses, search, vendorMap, dateFrom, dateTo]);
 
   const createMutation = useMutation({
     mutationFn: (p: any) => api.post('/purchases/expenses', p),
@@ -293,9 +297,16 @@ export function ExpensesPage() {
         </div>
       )}
 
-      <div className="relative max-w-sm">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search expenses..." className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+      <div className="flex gap-2 items-center">
+        <div className="relative max-w-sm">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search expenses..." className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+        </div>
+        <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+          className="px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+        <span className="text-xs text-slate-400 font-medium">to</span>
+        <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+          className="px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
       </div>
 
       {isLoading ? (

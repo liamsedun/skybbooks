@@ -33,6 +33,8 @@ export function PayrollRunsPage() {
   const [formError, setFormError] = useState('');
   const [actionMsg, setActionMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [selectedRunIds, setSelectedRunIds] = useState<string[]>([]);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   const { data: runsData, isLoading } = useQuery({
     queryKey: ['payroll-runs'],
@@ -58,6 +60,12 @@ export function PayrollRunsPage() {
 
   const runs: any[] = useMemo(() => Array.isArray(runsData) ? runsData : [], [runsData]);
   const employees: any[] = useMemo(() => Array.isArray(employeesData) ? employeesData : [], [employeesData]);
+  const filteredRuns = useMemo(() => runs.filter((r: any) => {
+    const payDate = r.payDate || r.periodStart || '';
+    if (dateFrom && payDate < dateFrom) return false;
+    if (dateTo && payDate > dateTo) return false;
+    return true;
+  }), [runs, dateFrom, dateTo]);
 
   const createMutation = useMutation({
     mutationFn: (data: any) => api.post('/payroll/runs', data).then(r => r.data),
@@ -118,7 +126,7 @@ export function PayrollRunsPage() {
   function exportPayrollRunsCSV() {
     const today = new Date().toISOString().split('T')[0];
     const headers = ['Run #', 'Period Start', 'Period End', 'Pay Date', 'Status', 'Gross', 'PAYE', 'Pension', 'Net'];
-    const rows = runs.map((r: any) => [r.runNumber||'', r.periodStart ? new Date(r.periodStart).toLocaleDateString('en-GB') : '', r.periodEnd ? new Date(r.periodEnd).toLocaleDateString('en-GB') : '', r.payDate ? new Date(r.payDate).toLocaleDateString('en-GB') : '', r.status||'', (r.grossTotal/100).toFixed(2), (r.payeTotal/100).toFixed(2), (r.pensionTotal/100).toFixed(2), (r.netTotal/100).toFixed(2)]);
+    const rows = filteredRuns.map((r: any) => [r.runNumber||'', r.periodStart ? new Date(r.periodStart).toLocaleDateString('en-GB') : '', r.periodEnd ? new Date(r.periodEnd).toLocaleDateString('en-GB') : '', r.payDate ? new Date(r.payDate).toLocaleDateString('en-GB') : '', r.status||'', (r.grossTotal/100).toFixed(2), (r.payeTotal/100).toFixed(2), (r.pensionTotal/100).toFixed(2), (r.netTotal/100).toFixed(2)]);
     exportToCsv(`payroll_runs_${today}.csv`, headers, rows);
   }
 
@@ -231,10 +239,10 @@ export function PayrollRunsPage() {
           </button>
           <button onClick={() => {
               try {
-                const rows = (runs||[]).map((r: any) =>
+                const rows = filteredRuns.map((r: any) =>
                   `<tr><td>${r.runNumber||''}</td><td>${new Date(r.periodStart).toLocaleDateString('en-GB')}</td><td>${new Date(r.periodEnd).toLocaleDateString('en-GB')}</td><td class="r">₦${(r.totalGross/100).toLocaleString()}</td><td class="r">₦${(r.totalNet/100).toLocaleString()}</td><td class="c">${r.employeeCount||0}</td><td class="c">${r.status||''}</td></tr>`
                 ).join('');
-                printWindow('Payroll Runs', `<table><thead><tr><th>Run #</th><th>Period Start</th><th>Period End</th><th class="r">Gross</th><th class="r">Net</th><th class="c">Employees</th><th class="c">Status</th></tr></thead><tbody>${rows}</tbody></table>`, `${(runs||[]).length} runs`);
+                printWindow('Payroll Runs', `<table><thead><tr><th>Run #</th><th>Period Start</th><th>Period End</th><th class="r">Gross</th><th class="r">Net</th><th class="c">Employees</th><th class="c">Status</th></tr></thead><tbody>${rows}</tbody></table>`, `${filteredRuns.length} runs`);
               } catch (err) {
                 alert('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'));
                 console.error('Print error:', err);
@@ -257,14 +265,23 @@ export function PayrollRunsPage() {
         </div>
       )}
 
+      <div className="flex gap-2 items-center">
+        <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+          className="px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow bg-white" />
+        <span className="text-xs text-slate-400 font-medium">to</span>
+        <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+          className="px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow bg-white" />
+        <span className="text-xs text-slate-400 font-medium">{filteredRuns.length} run{filteredRuns.length !== 1 ? 's' : ''}</span>
+      </div>
+
       {isLoading ? (
         <div className="flex items-center justify-center py-16 text-slate-400 bg-white rounded-2xl border border-slate-200/80 shadow-sm">
           <Loader2 size={20} className="animate-spin mr-2" /> Loading runs...
         </div>
-      ) : runs.length === 0 ? (
+      ) : filteredRuns.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-2xl border border-slate-200/80 shadow-sm">
           <Play size={32} className="mx-auto mb-3 text-slate-300" />
-          <p className="text-sm font-medium text-slate-600">No payroll runs yet</p>
+          <p className="text-sm font-medium text-slate-600">{dateFrom || dateTo ? 'No runs match the date range' : 'No payroll runs yet'}</p>
           <p className="text-xs text-slate-400 mt-1">Create your first payroll run to process salaries</p>
         </div>
       ) : (
@@ -273,8 +290,8 @@ export function PayrollRunsPage() {
             <thead>
               <tr className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
                 <th className="px-3 py-3 text-left w-10">
-                  <input type="checkbox" checked={selectedRunIds.length === runs.length && runs.length > 0}
-                    onChange={e => { if (e.target.checked) { setSelectedRunIds(runs.map((r: any) => r.id)); } else { setSelectedRunIds([]); } }}
+                  <input type="checkbox" checked={selectedRunIds.length === filteredRuns.length && filteredRuns.length > 0}
+                    onChange={e => { if (e.target.checked) { setSelectedRunIds(filteredRuns.map((r: any) => r.id)); } else { setSelectedRunIds([]); } }}
                     className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
                 </th>
                 <th className="px-3 py-3 text-left">Run #</th>
@@ -289,7 +306,7 @@ export function PayrollRunsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-                  {runs.map(run => (
+                  {filteredRuns.map(run => (
                 <React.Fragment key={run.id}>
                   <tr className="hover:bg-slate-50/50 transition-colors">
                     <td className="py-3 pl-3 pr-1">

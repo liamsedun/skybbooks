@@ -73,6 +73,8 @@ const STATUS_STYLES: Record<string, string> = {
 export function PurchaseOrdersPage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState({ vendorId: '', date: today, expectedDate: '', notes: '', currency: 'NGN', fxRate: '1.00000000' as string | null, projectId: '', lines: [{ ...EMPTY_LINE }] });
   const [formError, setFormError] = useState<string | null>(null);
@@ -112,6 +114,11 @@ export function PurchaseOrdersPage() {
 
   const vendorMap = useMemo(() => new Map(vendors.map(v => [v.id, v.name])), [vendors]);
   const pos: PO[] = posData?.orders || posData?.purchaseOrders || [];
+  const filtered = useMemo(() => pos.filter(po => {
+    if (dateFrom && po.date < dateFrom) return false;
+    if (dateTo && po.date > dateTo) return false;
+    return true;
+  }), [pos, dateFrom, dateTo]);
 
   const createMutation = useMutation({
     mutationFn: (p: any) => api.post('/purchases/orders', p),
@@ -251,7 +258,7 @@ export function PurchaseOrdersPage() {
           <p className="text-sm text-slate-500 mt-0.5">Manage procurement requests to vendors</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => exportPOsCSV(pos, vendorMap)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl hover:bg-slate-50 transition-all duration-200">
+          <button onClick={() => exportPOsCSV(filtered, vendorMap)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl hover:bg-slate-50 transition-all duration-200">
             <Download size={14} /> CSV
           </button>
           <button onClick={() => exportPOsPDF(pos, vendorMap)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl hover:bg-slate-50 transition-all duration-200">
@@ -272,9 +279,16 @@ export function PurchaseOrdersPage() {
         </div>
       )}
 
-      <div className="relative max-w-sm">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search orders..." className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+      <div className="flex gap-2 items-center">
+        <div className="relative max-w-sm">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search orders..." className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+        </div>
+        <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+          className="px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+        <span className="text-xs text-slate-400 font-medium">to</span>
+        <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+          className="px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
       </div>
 
       {isLoading ? (
@@ -285,10 +299,10 @@ export function PurchaseOrdersPage() {
         <div className="flex items-center justify-center py-16 text-rose-500 gap-2 bg-white rounded-2xl border border-slate-200/80 shadow-sm">
           <AlertCircle size={18} /> Failed to load purchase orders.
         </div>
-      ) : pos.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-slate-200/80 shadow-sm">
           <ShoppingCart size={32} className="mx-auto mb-3 text-slate-300" />
-          <p className="text-sm font-medium text-slate-600">No purchase orders yet</p>
+          <p className="text-sm font-medium text-slate-600">{dateFrom || dateTo ? 'No orders match the date range' : 'No purchase orders yet'}</p>
           <p className="text-xs text-slate-400 mt-1">Create your first PO to begin procurement tracking</p>
         </div>
       ) : (
@@ -306,7 +320,7 @@ export function PurchaseOrdersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {pos.map(po => (
+              {filtered.map(po => (
                 <tr key={po.id} className="hover:bg-slate-50/50 transition-colors">
                   <td className="py-3 pl-4 pr-2 font-mono text-xs font-medium text-slate-700">{po.poNumber}</td>
                   <td className="py-3 px-2 font-medium text-slate-900">{vendorMap.get(po.vendorId) || '—'}</td>

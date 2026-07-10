@@ -82,6 +82,8 @@ export function PaymentsMadePage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [methodFilter, setMethodFilter] = useState('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -199,11 +201,13 @@ export function PaymentsMadePage() {
     const t = search.toLowerCase();
     return payments.filter(p => {
       if (methodFilter !== 'all' && p.paymentMethod !== methodFilter) return false;
+      if (dateFrom && p.date < dateFrom) return false;
+      if (dateTo && p.date > dateTo) return false;
       return !t || p.paymentNumber.toLowerCase().includes(t) ||
         (vendorMap.get(p.vendorId) || '').toLowerCase().includes(t) ||
         (p.reference || '').toLowerCase().includes(t);
     });
-  }, [payments, search, vendorMap, methodFilter]);
+  }, [payments, search, vendorMap, methodFilter, dateFrom, dateTo]);
 
   const totals = useMemo(() => ({
     count: filtered.length,
@@ -467,9 +471,16 @@ export function PaymentsMadePage() {
             ))}
           </div>
 
-          <div className="relative mb-4">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by payment number, vendor, or reference..." className="w-full pl-9 pr-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+          <div className="flex gap-2 items-center mb-4">
+            <div className="relative flex-1">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by payment number, vendor, or reference..." className="w-full pl-9 pr-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+            </div>
+            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+              className="px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+            <span className="text-xs text-slate-400 font-medium">to</span>
+            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+              className="px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
           </div>
 
           <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">

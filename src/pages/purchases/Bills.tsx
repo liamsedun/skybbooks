@@ -121,6 +121,8 @@ function BillList() {
   const accountCode = searchParams.get('account') || '';
   const [search, setSearch]           = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [expandedId, setExpandedId]   = useState<string | null>(null);
   const [modalMode, setModalMode]     = useState<ModalMode | null>(null);
   const [editingBill, setEditingBill] = useState<Bill | null>(null);
@@ -172,8 +174,11 @@ function BillList() {
     const vendorName = vendorMap.get(b.vendorId) || '';
     const matchSearch = !search || b.billNumber.toLowerCase().includes(search.toLowerCase()) || vendorName.toLowerCase().includes(search.toLowerCase());
     const matchStatus = statusFilter === 'all' || b.status === statusFilter;
-    return matchSearch && matchStatus;
-  }), [bills, search, statusFilter, vendorMap]);
+    if (!matchSearch || !matchStatus) return false;
+    if (dateFrom && b.date < dateFrom) return false;
+    if (dateTo && b.date > dateTo) return false;
+    return true;
+  }), [bills, search, statusFilter, dateFrom, dateTo, vendorMap]);
 
   const totals = useMemo(() => ({
     count: filtered.length,
@@ -398,6 +403,11 @@ function BillList() {
           <option value="overdue">Overdue</option>
           <option value="void">Void</option>
         </select>
+        <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+          className="px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow bg-white" />
+        <span className="text-xs text-slate-400 font-medium self-center">to</span>
+        <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+          className="px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow bg-white" />
       </div>
 
       {/* ── Table ── */}

@@ -16,6 +16,8 @@ const STATUS_COLORS: Record<string, string> = { draft: 'bg-slate-100 text-slate-
 export function BudgetsPage() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [showImport, setShowImport] = useState(false);
   const [csvText, setCsvText] = useState('');
   const [importMsg, setImportMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -35,13 +37,13 @@ export function BudgetsPage() {
   function exportBudgetsCSV() {
     const today = new Date().toISOString().split('T')[0];
     const headers = ['Name', 'Fiscal Year', 'Period', 'Status'];
-    const rows = (Array.isArray(budgets) ? budgets : []).map((b: any) => [b.name||'', b.fiscalYear||'', b.period||'', b.status||'']);
+    const rows = budgetList.map((b: any) => [b.name||'', b.fiscalYear||'', b.period||'', b.status||'']);
     exportToCsv(`budgets_${today}.csv`, headers, rows);
   }
 
   const handlePrintPdf = () => {
     try {
-      const list = Array.isArray(budgets) ? budgets : [];
+      const list = budgetList;
       const rows = list.map((b: any) =>
         `<tr><td>${b.name||''}</td><td>${b.fiscalYear||''}</td><td>${b.period||''}</td><td class="c">${b.status||''}</td></tr>`
       ).join('');
@@ -51,6 +53,17 @@ export function BudgetsPage() {
       console.error('Print error:', err);
     }
   };
+
+  const budgetList = useMemo(() => {
+    const list = Array.isArray(budgets) ? budgets : [];
+    if (!dateFrom && !dateTo) return list;
+    return list.filter((b: any) => {
+      const d = b.createdAt ? b.createdAt.split('T')[0] : '';
+      if (dateFrom && d < dateFrom) return false;
+      if (dateTo && d > dateTo) return false;
+      return true;
+    });
+  }, [budgets, dateFrom, dateTo]);
 
   const handleImport = async () => {
     if (!csvText.trim()) return;
@@ -126,35 +139,45 @@ export function BudgetsPage() {
       ) : isLoading ? (
         <PageLoader message="Loading budgets..." />
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-              <tr>
-                <th className="px-3 py-3 text-left">Name</th>
-                <th className="px-3 py-3 text-left">Fiscal Year</th>
-                <th className="px-3 py-3 text-left">Period</th>
-                <th className="px-3 py-3 text-left">Status</th>
-                <th className="px-3 py-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(Array.isArray(budgets) ? budgets : []).map((budget: any) => (
-                <tr key={budget.id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-50">
-                  <td className="px-4 py-3 font-medium text-slate-800">{budget.name}</td>
-                  <td className="px-4 py-3 text-slate-600">{budget.fiscalYear}</td>
-                  <td className="px-4 py-3 text-slate-600">{PERIOD_LABELS[budget.period] || budget.period}</td>
-                  <td className="px-3 py-3"><span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${STATUS_COLORS[budget.status] === 'bg-slate-100 text-slate-600' ? 'border-slate-200/50 bg-slate-100 text-slate-600' : STATUS_COLORS[budget.status] === 'bg-emerald-100 text-emerald-700' ? 'border-emerald-100/50 bg-emerald-100 text-emerald-700' : 'border-amber-100/50 bg-amber-100 text-amber-700'}`}>{budget.status}</span></td>
-                  <td className="px-4 py-3 text-right">
-                    <button onClick={() => deleteMutation.mutate(budget.id)} className="text-red-500 hover:text-red-700"><Trash2 className="w-4 h-4" /></button>
-                  </td>
+        <>
+          <div className="flex gap-2 items-center">
+            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+              className="px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow bg-white" />
+            <span className="text-xs text-slate-400 font-medium">to</span>
+            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+              className="px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow bg-white" />
+            <span className="text-xs text-slate-400 font-medium">{budgetList.length} budget{budgetList.length !== 1 ? 's' : ''}</span>
+          </div>
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                <tr>
+                  <th className="px-3 py-3 text-left">Name</th>
+                  <th className="px-3 py-3 text-left">Fiscal Year</th>
+                  <th className="px-3 py-3 text-left">Period</th>
+                  <th className="px-3 py-3 text-left">Status</th>
+                  <th className="px-3 py-3 text-right">Actions</th>
                 </tr>
-              ))}
-              {(!budgets || budgets.length === 0) && (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-400">No budgets created yet.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {budgetList.map((budget: any) => (
+                  <tr key={budget.id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-50">
+                    <td className="px-4 py-3 font-medium text-slate-800">{budget.name}</td>
+                    <td className="px-4 py-3 text-slate-600">{budget.fiscalYear}</td>
+                    <td className="px-4 py-3 text-slate-600">{PERIOD_LABELS[budget.period] || budget.period}</td>
+                    <td className="px-3 py-3"><span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${STATUS_COLORS[budget.status] === 'bg-slate-100 text-slate-600' ? 'border-slate-200/50 bg-slate-100 text-slate-600' : STATUS_COLORS[budget.status] === 'bg-emerald-100 text-emerald-700' ? 'border-emerald-100/50 bg-emerald-100 text-emerald-700' : 'border-amber-100/50 bg-amber-100 text-amber-700'}`}>{budget.status}</span></td>
+                    <td className="px-4 py-3 text-right">
+                      <button onClick={() => deleteMutation.mutate(budget.id)} className="text-red-500 hover:text-red-700"><Trash2 className="w-4 h-4" /></button>
+                    </td>
+                  </tr>
+                ))}
+                {budgetList.length === 0 && (
+                  <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-400">No budgets created yet.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   );

@@ -387,6 +387,8 @@ export function PaymentsReceivedPage() {
   const [searchParams] = useSearchParams();
   const [searchTerm, setSearchTerm]           = useState('');
   const [methodFilter, setMethodFilter]       = useState('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null);
   const [receiptPaymentId, setReceiptPaymentId]   = useState<string | null>(null);
 
@@ -579,6 +581,8 @@ export function PaymentsReceivedPage() {
     const term = searchTerm.toLowerCase();
     return (payments || []).filter(p => {
       if (methodFilter !== 'all' && p.paymentMethod !== methodFilter) return false;
+      if (dateFrom && p.date < dateFrom) return false;
+      if (dateTo && p.date > dateTo) return false;
       if (!term) return true;
       const cust = p.customerId ? customerMap.get(p.customerId) : null;
       return (
@@ -588,7 +592,7 @@ export function PaymentsReceivedPage() {
         (p.reference || '').toLowerCase().includes(term)
       );
     });
-  }, [payments, searchTerm, methodFilter, customerMap]);
+  }, [payments, searchTerm, methodFilter, dateFrom, dateTo, customerMap]);
 
   const totals = useMemo(() => ({
     count: filtered.length,
@@ -778,11 +782,18 @@ export function PaymentsReceivedPage() {
               ))}
             </div>
 
-            <div className="relative">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
-                placeholder="Search by payment number, customer, or reference..."
-                className="w-full px-9 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+            <div className="flex gap-2 items-center">
+              <div className="relative flex-1">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+                  placeholder="Search by payment number, customer, or reference..."
+                  className="w-full px-9 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+              </div>
+              <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+                className="px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+              <span className="text-xs text-slate-400 font-medium">to</span>
+              <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+                className="px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
             </div>
 
             <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">

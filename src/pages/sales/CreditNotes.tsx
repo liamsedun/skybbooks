@@ -118,6 +118,8 @@ export function CreditNotesPage() {
   const [searchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
@@ -152,6 +154,8 @@ export function CreditNotesPage() {
     const term = searchTerm.toLowerCase();
     return (notes || []).filter(n => {
       if (statusFilter !== 'all' && n.status !== statusFilter) return false;
+      if (dateFrom && n.date < dateFrom) return false;
+      if (dateTo && n.date > dateTo) return false;
       if (!term) return true;
       return (
         n.cnNumber.toLowerCase().includes(term) ||
@@ -159,7 +163,7 @@ export function CreditNotesPage() {
         (n.invoiceNumber || '').toLowerCase().includes(term)
       );
     });
-  }, [notes, searchTerm, statusFilter]);
+  }, [notes, searchTerm, statusFilter, dateFrom, dateTo]);
 
   const totals = useMemo(() => {
     const totalIssued = (notes || []).reduce((s, n) => s + n.total, 0);
@@ -244,11 +248,18 @@ export function CreditNotesPage() {
         ))}
       </div>
 
-      <div className="relative">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-        <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
-          placeholder="Search by credit note number, customer, or invoice..."
-          className="w-full px-9 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+      <div className="flex gap-2 items-center">
+        <div className="relative flex-1">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+            placeholder="Search by credit note number, customer, or invoice..."
+            className="w-full px-9 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+        </div>
+        <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+          className="px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+        <span className="text-xs text-slate-400 font-medium">to</span>
+        <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+          className="px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">

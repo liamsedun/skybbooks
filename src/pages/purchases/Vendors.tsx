@@ -128,6 +128,8 @@ function VendorsList() {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all'|'active'|'inactive'>('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
@@ -173,9 +175,11 @@ function VendorsList() {
       const matchSearch = !t || v.name.toLowerCase().includes(t) ||
         (v.email||'').toLowerCase().includes(t) || (v.city||'').toLowerCase().includes(t);
       const matchStatus = statusFilter === 'all' || (statusFilter === 'active' ? v.isActive : !v.isActive);
+      if (dateFrom && v.createdAt && v.createdAt < dateFrom) return false;
+      if (dateTo && v.createdAt && v.createdAt > dateTo) return false;
       return matchSearch && matchStatus;
     });
-  }, [vendors, search, statusFilter]);
+  }, [vendors, search, statusFilter, dateFrom, dateTo]);
 
   function showSuccess(msg: string) { setSuccessMsg(msg); setTimeout(()=>setSuccessMsg(null),4000); }
   function openCreate() { setEditingId(null); setForm(EMPTY_FORM); setFormError(null); setModalOpen(true); }
@@ -261,7 +265,7 @@ function VendorsList() {
         </div>
       )}
 
-      <div className="flex gap-3">
+      <div className="flex gap-3 flex-wrap items-center">
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search vendors..." className="pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow w-56" />
@@ -274,6 +278,11 @@ function VendorsList() {
             </button>
           ))}
         </div>
+        <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+          className="px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+        <span className="text-xs text-slate-400 font-medium">to</span>
+        <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+          className="px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
       </div>
 
       {isLoading ? (
