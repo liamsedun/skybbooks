@@ -828,11 +828,19 @@ export function PaymentsReceivedPage() {
 
         {/* Summary cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
+          <button onClick={() => { setDateFrom(''); setDateTo(''); setMethodFilter('all'); setSearchTerm(''); }} className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 text-left cursor-pointer hover:border-blue-300 hover:shadow-md transition-all duration-200">
             <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Total Receipts</p>
             <p className="text-xl font-bold text-slate-900 mt-1">{formatNaira((payments || []).reduce((s, p) => s + p.amount, 0))}</p>
-          </div>
-          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
+          </button>
+          <button onClick={() => {
+            const now = new Date();
+            const first = new Date(now.getFullYear(), now.getMonth(), 1);
+            const last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            setDateFrom(first.toISOString().split('T')[0]);
+            setDateTo(last.toISOString().split('T')[0]);
+            setMethodFilter('all');
+            setSearchTerm('');
+          }} className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 text-left cursor-pointer hover:border-blue-300 hover:shadow-md transition-all duration-200">
             <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">This Month</p>
             <p className="text-xl font-bold text-slate-900 mt-1">
               {formatNaira((payments || []).filter(p => {
@@ -840,11 +848,11 @@ export function PaymentsReceivedPage() {
                 return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
               }).reduce((s, p) => s + p.amount, 0))}
             </p>
-          </div>
-          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
+          </button>
+          <button onClick={() => { setDateFrom(''); setDateTo(''); setMethodFilter('all'); setSearchTerm(''); }} className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 text-left cursor-pointer hover:border-blue-300 hover:shadow-md transition-all duration-200">
             <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Total Count</p>
             <p className="text-xl font-bold text-slate-900 mt-1">{(payments || []).length} payments</p>
-          </div>
+          </button>
         </div>
 
         <div className="flex gap-6">
