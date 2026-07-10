@@ -428,32 +428,27 @@ router.get('/depreciation-entries', async (req: AuthenticatedRequest, res: Respo
   try {
     const orgId = req.user!.orgId!;
 
-    // Get accounts with depreciation-related codes
-    const depAccounts = await db
+    // Get all accounts for this org
+    const allAccounts = await db
       .select()
       .from(accounts)
-      .where(and(
-        eq(accounts.orgId, orgId),
-        or(
-          sql`${accounts.code} LIKE '2002%'`,
-          sql`${accounts.code} LIKE '2003%'`,
-          sql`${accounts.code} LIKE '2004%'`,
-          sql`${accounts.code} LIKE '2005%'`,
-          sql`${accounts.code} LIKE '2006%'`,
-          sql`${accounts.code} LIKE '2007%'`,
-          sql`${accounts.code} LIKE '2011%'`,
-          sql`${accounts.code} LIKE '2012%'`,
-          sql`${accounts.code} LIKE '8107%'`,
-          sql`${accounts.code} LIKE '8109%'`,
-          ilike(accounts.name, '%depreciation%'),
-        )
-      ))
-      .orderBy(accounts.code);
+      .where(eq(accounts.orgId, orgId));
 
-    // Get all journal lines for these accounts
+    // Filter to depreciation-related accounts: by code pattern or name
+    const depCodePatterns = ['2002', '2003', '2004', '2005', '2006', '2007', '2011', '2012', '8107', '8109'];
+    const depAccounts = allAccounts.filter(a => {
+      if (a.name.toLowerCase().includes('depreciation')) return true;
+      if (a.name.toLowerCase().includes('amortisation') || a.name.toLowerCase().includes('amortization')) return true;
+      for (const p of depCodePatterns) {
+        if (a.code.startsWith(p)) return true;
+      }
+      return false;
+    });
+
     const acctIds = depAccounts.map(a => a.id);
     if (acctIds.length === 0) return res.status(200).json([]);
 
+    // Get all journal lines for these accounts
     const lines = await db
       .select({
         accountId: journalLines.accountId,
@@ -475,7 +470,7 @@ router.get('/depreciation-entries', async (req: AuthenticatedRequest, res: Respo
 
     const result = depAccounts.map(a => {
       const b = balanceMap.get(a.id) || { debit: 0, credit: 0 };
-      const isContra = a.type === 'asset' && a.name.toLowerCase().includes('accumulated');
+      const isContra = a.type === 'asset' && (a.name.toLowerCase().includes('accumulated') || a.name.toLowerCase().includes('amortisation'));
       const net = (a.type === 'expense' || (a.type === 'asset' && !isContra)) ? b.debit - b.credit : b.credit - b.debit;
       return {
         accountId: a.id,
