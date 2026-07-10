@@ -200,10 +200,12 @@ export function TrialBalancePage() {
       exportToCsv(`trial_balance_${sDate}_to_${eDate}.csv`, headers, csvRows);
     } else {
       try {
+        const totalDr = rawRows.reduce((s: number, r: any) => s + (r.parentId ? 0 : (r.closingDebit || 0)), 0);
+        const totalCr = rawRows.reduce((s: number, r: any) => s + (r.parentId ? 0 : (r.closingCredit || 0)), 0);
         const rows = rawRows.map((r: any) =>
           `<tr><td>${r.accountCode||''}</td><td>${r.accountName||''}</td><td class="c">${r.accountType||''}</td><td class="r">₦${((r.closingDebit||0)/100).toLocaleString()}</td><td class="r">₦${((r.closingCredit||0)/100).toLocaleString()}</td></tr>`
         ).join('');
-        printWindow('Trial Balance', `<table><thead><tr><th>Code</th><th>Account</th><th class="c">Type</th><th class="r">Debit</th><th class="r">Credit</th></tr></thead><tbody>${rows}</tbody></table>`, `Period: ${sDate} - ${eDate}`);
+        printWindow('Trial Balance', `<table><thead><tr><th>Code</th><th>Account</th><th class="c">Type</th><th class="r">Debit</th><th class="r">Credit</th></tr></thead><tbody>${rows}</tbody><tfoot><tr style="font-weight:700;border-top:2px solid #cbd5e1;background:#f1f5f9"><td colspan="3" style="padding:7px 12px">Total</td><td class="r">₦${(totalDr/100).toLocaleString()}</td><td class="r">₦${(totalCr/100).toLocaleString()}</td></tr></tfoot></table>`, `Period: ${sDate} - ${eDate}`);
       } catch (err) {
         alert('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'));
         console.error('Print error:', err);
@@ -1064,10 +1066,13 @@ function ReportShell({ reportType, title }: ReportPageProps) {
             `${list.length} entries`
           );
         } else {
-          const rows = (Array.isArray(data) ? data : []).map((r: any) =>
+          const list = (Array.isArray(data) ? data : []);
+          const rows = list.map((r: any) =>
             `<tr><td>${(r.code||r.accountCode||'')}</td><td>${(r.name||r.accountName||'')}</td><td class="c">${r.type||r.accountType||''}</td><td class="r">₦${((r.debit||r.debitAmount||0)/100).toLocaleString()}</td><td class="r">₦${((r.credit||r.creditAmount||0)/100).toLocaleString()}</td></tr>`
           ).join('');
-          printWindow('Report', `<table><thead><tr><th>Code</th><th>Account</th><th class="c">Type</th><th class="r">Debit</th><th class="r">Credit</th></tr></thead><tbody>${rows||'<tr><td colspan="5" style="text-align:center;color:#94a3b8">No data</td></tr>'}</tbody></table>`);
+          const pdfTotalDr = list.reduce((s: number, r: any) => s + (r.debit||r.debitAmount||0), 0);
+          const pdfTotalCr = list.reduce((s: number, r: any) => s + (r.credit||r.creditAmount||0), 0);
+          printWindow('Report', `<table><thead><tr><th>Code</th><th>Account</th><th class="c">Type</th><th class="r">Debit</th><th class="r">Credit</th></tr></thead><tbody>${rows||'<tr><td colspan="5" style="text-align:center;color:#94a3b8">No data</td></tr>'}</tbody><tfoot><tr style="font-weight:700;border-top:2px solid #cbd5e1;background:#f1f5f9"><td colspan="3" style="padding:7px 12px">Total</td><td class="r">₦${(pdfTotalDr/100).toLocaleString()}</td><td class="r">₦${(pdfTotalCr/100).toLocaleString()}</td></tr></tfoot></table>`);
         }
       } catch (err) {
         alert('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'));
