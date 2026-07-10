@@ -350,18 +350,18 @@ export function EmployeesPage() {
 
       {/* KPI row */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
+        <button onClick={() => { setSearch(''); setFilterDept('all'); setFilterStatus('all'); }} className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 text-left cursor-pointer hover:border-blue-300 hover:shadow-md transition-all duration-200">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Total Employees</p>
           <p className="text-2xl font-bold text-slate-900 mt-1">{allEmployees.length}</p>
-        </div>
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
+        </button>
+        <button onClick={() => { setSearch(''); setFilterDept('all'); setFilterStatus('active'); }} className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 text-left cursor-pointer hover:border-blue-300 hover:shadow-md transition-all duration-200">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Active Staff</p>
           <p className="text-2xl font-bold text-green-600 mt-1">{activeCount}</p>
-        </div>
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 col-span-2 md:col-span-1">
+        </button>
+        <button onClick={() => { setSearch(''); setFilterDept('all'); setFilterStatus('all'); }} className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 text-left cursor-pointer hover:border-blue-300 hover:shadow-md transition-all duration-200 col-span-2 md:col-span-1">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Monthly Payroll</p>
           <p className="text-2xl font-bold text-slate-900 mt-1">{formatNaira(totalPayroll)}</p>
-        </div>
+        </button>
       </div>
 
       {/* Clear message */}
