@@ -64,24 +64,25 @@ export function AuditLogsPage() {
   const [anomaliesError, setAnomaliesError] = useState<string | null>(null);
   const [rescanning, setRescanning] = useState(false);
 
-  const queryParams = (() => {
-    const p: Record<string, any> = { limit };
-    if (actionFilter) p.action = actionFilter;
-    if (entityFilter) p.entityType = entityFilter;
-    return p;
-  })();
-
   const { data, isLoading, error } = useQuery({
-    queryKey: ['audit-logs', queryParams],
-    queryFn: () => auditLogApi.getLogs(queryParams),
+    queryKey: ['audit-logs', actionFilter || '', entityFilter || '', limit],
+    queryFn: () => {
+      const p: Record<string, any> = { limit };
+      if (actionFilter) p.action = actionFilter;
+      if (entityFilter) p.entityType = entityFilter;
+      return auditLogApi.getLogs(p);
+    },
     retry: 1,
   });
 
   const { data: orgData } = useQuery({ queryKey: ['org'], queryFn: orgApi.getOrg });
 
-  const logs = data?.data || [];
+  const logs = Array.isArray(data?.data) ? data.data : [];
   const total = data?.total || 0;
-  const queryError = error ? (error as any)?.response?.data?.error || (error as any)?.message || 'Failed to load audit logs.' : null;
+  let queryError: string | null = null;
+  try {
+    queryError = error ? String((error as any)?.response?.data?.error || (error as any)?.message || 'Failed to load audit logs.') : null;
+  } catch { queryError = 'Failed to load audit logs.'; }
 
   const filteredAlerts = anomalies.filter(a => {
     if (threatFilter !== 'all' && a.severity !== threatFilter) return false;
