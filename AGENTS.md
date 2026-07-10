@@ -38,6 +38,14 @@ Maintain and enhance accounting features: fix kobo/naira display, parent-child a
 ### Blocked
 - (none)
 
+### This Session (Custom Reports & Audit-Shield)
+- **26-endpoint custom reports backend**: Created `src/routes/customReports.ts` with endpoints for Customer/Supplier summaries & statements, Sales by Customer/Item, Tax summary & transactions, GL summary & transactions, Inventory summary, Fixed asset summary & depreciation schedule, Expense claims, Employee summary, Payslip summary & by-item breakdown, Receipts & payments summary, Bank account summary, Cash equivalents, Capital accounts summary, Actual vs budget, Taxable sales/purchases per customer/supplier, Intangible assets (stub)
+- **Custom reports API client**: Added `customReportsApi` with 26 methods in `src/lib/api.ts`
+- **Custom reports route**: Registered `/api/custom-reports` in `src/server/index.ts`
+- **CustomReportsPage redesign**: Complete rewrite with categorized accordion sections (Customer→Supplier→Tax→Inventory→Fixed Assets→Payroll→Banking→GL & Accounting), quick-filter pill buttons, gradient table headers, color-coded summary cards, clickable rows that navigate to invoice/bill detail pages via `getSourceLink()`, CSV/PDF export, date range pickers, search bar
+- **Audit-Shield deduplication**: Grouped duplicate anomaly alerts by `description|amount|reason` composite key in `AuditLogsPage.tsx` — shows "N occurrences" badge instead of N identical cards; 64 duplicate alerts collapsed to ~4 grouped cards
+- **Audit-Shield CSV export**: Updated to include `Occurrences` column, uses grouped data
+
 ## Key Decisions
 - Parent-child rollup done post-hoc after individual account balances are computed (backend for Trial Balance, `useMemo` for Chart of Accounts frontend)
 - Parents identified by which account IDs are referenced as `parentId` by other accounts
