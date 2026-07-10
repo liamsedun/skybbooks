@@ -26,6 +26,8 @@ export function DepreciationPage() {
   const [showRunModal, setShowRunModal] = useState(false);
   const [periodDate, setPeriodDate] = useState(new Date().toISOString().split('T')[0]);
   const [search, setSearch] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const { data: entries = [], isLoading } = useQuery({
@@ -44,14 +46,18 @@ export function DepreciationPage() {
 
   const filtered = useMemo(() => {
     const list = Array.isArray(entries) ? entries : [];
-    if (!search) return list;
-    const q = search.toLowerCase();
-    return list.filter((r: any) =>
-      (r.assetNumber || '').toLowerCase().includes(q) ||
-      (r.assetName || '').toLowerCase().includes(q) ||
-      (r.jeNumber || '').toLowerCase().includes(q)
-    );
-  }, [entries, search]);
+    return list.filter((r: any) => {
+      if (dateFrom && new Date(r.periodDate) < new Date(dateFrom)) return false;
+      if (dateTo && new Date(r.periodDate) > new Date(dateTo + 'T23:59:59')) return false;
+      if (search) {
+        const q = search.toLowerCase();
+        if (!(r.assetNumber || '').toLowerCase().includes(q) &&
+            !(r.assetName || '').toLowerCase().includes(q) &&
+            !(r.jeNumber || '').toLowerCase().includes(q)) return false;
+      }
+      return true;
+    });
+  }, [entries, dateFrom, dateTo, search]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, any[]>();
@@ -88,6 +94,16 @@ export function DepreciationPage() {
       )}
 
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-semibold text-slate-500 uppercase whitespace-nowrap">From:</label>
+          <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+            className="px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300" />
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-semibold text-slate-500 uppercase whitespace-nowrap">To:</label>
+          <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+            className="px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300" />
+        </div>
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input type="text" placeholder="Search by asset number, name, or journal entry..." value={search}
