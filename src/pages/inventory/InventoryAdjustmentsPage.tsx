@@ -257,20 +257,6 @@ export default function InventoryAdjustmentsPage() {
     return adjustments.find((a: any) => a.id === viewingId);
   }, [viewingId, adjustments]);
 
-  // Save default adjustment account
-  const [savingDefaultAccount, setSavingDefaultAccount] = useState(false);
-  const [defaultAccountSaved, setDefaultAccountSaved] = useState(false);
-  const handleSaveDefaultAccount = async () => {
-    if (!accountId) return;
-    setSavingDefaultAccount(true);
-    try {
-      await api.patch('/org/settings', { settings: { accountant: { defaultAdjustmentAccountId: accountId } } });
-      setDefaultAccountSaved(true);
-      setTimeout(() => setDefaultAccountSaved(false), 3000);
-    } catch { /* ignore */ }
-    setSavingDefaultAccount(false);
-  };
-
   return (
     <div className="p-4 md:p-6 space-y-6">
       {/* Header */}

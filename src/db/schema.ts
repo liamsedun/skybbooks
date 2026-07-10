@@ -1639,8 +1639,6 @@ export const db = drizzle(pool, {
     documents,
     budgets,
     budgetLines,
-  inventoryAdjustmentItems,
-  inventoryAdjustments,
   auditLog,
     currencyRates,
     closedPeriods,

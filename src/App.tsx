@@ -76,7 +76,7 @@ import {
   WorkflowRulesPage, WorkflowActionsPage, WorkflowLogsPage, SchedulesPage,
   ContactsSettingsPage, ItemsSettingsPage, RevenueRecognitionPage, AccountantSettingsPage,
   TasksSettingsPage, ProjectsSettingsPage, TimesheetSettingsPage,
-  InventoryAdjustmentsPage, PaymentGatewaysPage,
+  InventoryAdjustmentsPage as SettingsInventoryAdjustmentsPage, PaymentGatewaysPage as SettingsPaymentGatewaysPage,
   QuotesSettingsPage, SalesOrdersSettingsPage, InvoicesSettingsPage,
   RecurringInvoicesSettingsPage, SalesReceiptsSettingsPage, PaymentsReceivedSettingsPage,
   CreditNotesSettingsPage, DeliveryNotesSettingsPage, PackingSlipsSettingsPage,
@@ -328,8 +328,8 @@ function AppRoutes() {
             <Route path="tasks" element={<TasksSettingsPage />} />
             <Route path="projects" element={<ProjectsSettingsPage />} />
             <Route path="timesheet" element={<TimesheetSettingsPage />} />
-            <Route path="inventory-adjustments" element={<InventoryAdjustmentsPage />} />
-            <Route path="payment-gateways" element={<PaymentGatewaysPage />} />
+            <Route path="inventory-adjustments" element={<SettingsInventoryAdjustmentsPage />} />
+            <Route path="payment-gateways" element={<SettingsPaymentGatewaysPage />} />
             <Route path="quotes" element={<QuotesSettingsPage />} />
             <Route path="sales-orders" element={<SalesOrdersSettingsPage />} />
             <Route path="invoices" element={<InvoicesSettingsPage />} />
