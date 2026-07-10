@@ -2,7 +2,7 @@ import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { db, fixedAssets, accounts, depreciationEntries, journalEntries, journalLines } from '../db/schema';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
-import { eq, and, desc, asc, sql, ilike, or } from 'drizzle-orm';
+import { eq, and, desc, asc, sql } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
 import { createJournalEntry, updateJournalEntry } from '../services/ledger.service';
 
@@ -403,34 +403,26 @@ router.get('/depreciation-entries', async (req: AuthenticatedRequest, res: Respo
     const orgId = req.user!.orgId!;
 
     // Get entries from depreciation_entries table (new runs) OR matching description (legacy)
-    const entries = await db
-      .select({
-        id: journalEntries.id,
-        entryNumber: journalEntries.entryNumber,
-        date: journalEntries.date,
-        description: journalEntries.description,
-        source: journalEntries.source,
-        createdAt: journalEntries.createdAt,
-      })
-      .from(journalEntries)
-      .leftJoin(depreciationEntries, eq(depreciationEntries.journalEntryId, journalEntries.id))
-      .where(and(
-        eq(journalEntries.orgId, orgId),
-        or(
-          sql`${depreciationEntries.journalEntryId} IS NOT NULL`,
-          sql`${journalEntries.description} ILIKE '%depreciation%'`
-        )
-      ))
-      .orderBy(desc(journalEntries.createdAt))
-      .limit(50);
+    const entries = await db.execute(sql`
+      SELECT DISTINCT ON (je.id)
+        je.id AS id,
+        je.entry_number AS "entryNumber",
+        je.date,
+        je.description,
+        je.source,
+        je.created_at AS "createdAt"
+      FROM journal_entries je
+      LEFT JOIN depreciation_entries de ON de.journal_entry_id = je.id
+      WHERE je.org_id = ${orgId}
+        AND (de.journal_entry_id IS NOT NULL OR je.description ILIKE '%depreciation%')
+      ORDER BY je.id, je.created_at DESC
+      LIMIT 50
+    `);
 
-    // Deduplicate by journal entry (one JE can have multiple asset lines)
-    const seen = new Set<string>();
+    const rawEntries: any[] = entries.rows || [];
     const grouped: any[] = [];
-    for (const entry of entries) {
-      if (seen.has(entry.id)) continue;
-      seen.add(entry.id);
 
+    for (const entry of rawEntries) {
       const dbLines = await db
         .select({
           accountCode: accounts.code,
@@ -451,11 +443,11 @@ router.get('/depreciation-entries', async (req: AuthenticatedRequest, res: Respo
       grouped.push({
         journalEntryId: entry.id,
         entryNumber: entry.entryNumber || '',
-        date: entry.date ? entry.date.toISOString() : new Date().toISOString(),
+        date: entry.date ? new Date(entry.date).toISOString() : new Date().toISOString(),
         description: entry.description || '',
         reference: entry.source || null,
         source: 'manual',
-        createdAt: entry.createdAt ? entry.createdAt.toISOString() : new Date().toISOString(),
+        createdAt: entry.createdAt ? new Date(entry.createdAt).toISOString() : new Date().toISOString(),
         lines: dbLines.map(l => ({
           accountCode: l.accountCode,
           accountName: l.accountName || '',
