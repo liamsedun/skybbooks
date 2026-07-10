@@ -420,6 +420,21 @@ router.get('/depreciation-entries', async (req: AuthenticatedRequest, res: Respo
     `);
 
     const rawEntries: any[] = entries.rows || [];
+    console.log(`[Depreciation] orgId=${orgId}, found ${rawEntries.length} raw entries`);
+
+    // If no entries, check if there are depreciation_entries at all
+    if (rawEntries.length === 0) {
+      const [deCount] = await db.execute(sql`SELECT count(*)::int AS cnt FROM depreciation_entries`);
+      console.log(`[Depreciation] depreciation_entries count:`, deCount?.rows?.[0]?.cnt);
+      const [jeCount] = await db.execute(sql`SELECT count(*)::int AS cnt FROM journal_entries WHERE org_id = ${orgId}`);
+      console.log(`[Depreciation] org journal_entries count:`, jeCount?.rows?.[0]?.cnt);
+      const [deprJeCount] = await db.execute(sql`
+        SELECT count(*)::int AS cnt FROM journal_entries
+        WHERE org_id = ${orgId} AND description ILIKE '%depreciation%'
+      `);
+      console.log(`[Depreciation] org JEs with 'depreciation' in desc:`, deprJeCount?.rows?.[0]?.cnt);
+    }
+
     const grouped: any[] = [];
 
     for (const entry of rawEntries) {
