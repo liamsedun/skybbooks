@@ -40,6 +40,7 @@ import {
   BillsPage,
   PaymentsMadePage,
   InventoryPage,
+  InventoryAdjustmentsPage,
   ChartOfAccountsPage,
   JournalsPage,
   BudgetsPage,
@@ -257,6 +258,7 @@ function AppRoutes() {
           {/* Inventory module routing */}
           <Route path="/inventory/items" element={<InventoryPage />} />
           <Route path="/inventory/items/new" element={<InventoryPage />} />
+          <Route path="/inventory/adjustments" element={<InventoryAdjustmentsPage />} />
 
           {/* Banking module routing */}
           <Route path="/banking" element={<BankAccountsWrapper />} />

@@ -4,9 +4,11 @@
  */
 import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { db, items, inventoryLots, inventoryTransactions, accounts } from '../db/schema';
+import multer from 'multer';
+import { v2 as cloudinary } from 'cloudinary';
+import { db, items, inventoryLots, inventoryTransactions, inventoryAdjustments, inventoryAdjustmentItems, accounts, documents, users } from '../db/schema';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
-import { eq, and, lte, sql } from 'drizzle-orm';
+import { eq, and, lte, sql, inArray, desc } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
 import { createJournalEntry } from '../services/ledger.service';
 
@@ -509,6 +511,509 @@ router.get('/valuation-statement', async (req: AuthenticatedRequest, res: Respon
   } catch (err) {
     return next(err);
   }
+});
+
+// =========================================================================
+// INVENTORY ADJUSTMENTS
+// =========================================================================
+
+const adjustSchema = z.object({
+  date: z.string().optional(),
+  mode: z.enum(['quantity', 'value']),
+  accountId: z.string().uuid().optional().nullable(),
+  reason: z.string().optional().nullable(),
+  location: z.string().optional().nullable(),
+  description: z.string().max(500).optional().nullable(),
+  items: z.array(z.object({
+    itemId: z.string().uuid(),
+    quantityAvailable: z.number(),
+    newQuantity: z.number(),
+    currentUnitCost: z.number().optional().nullable(),
+    newUnitCost: z.number().optional().nullable(),
+  })),
+});
+
+// GET /api/inventory/adjustments
+router.get('/adjustments', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const mode = req.query.mode as string | undefined;
+    const status = req.query.status as string | undefined;
+
+    const conditions = [eq(inventoryAdjustments.orgId, orgId)];
+    if (mode) conditions.push(eq(inventoryAdjustments.mode, mode as any));
+    if (status) conditions.push(eq(inventoryAdjustments.status, status as any));
+
+    const list = await db
+      .select()
+      .from(inventoryAdjustments)
+      .where(and(...conditions))
+      .orderBy(desc(inventoryAdjustments.createdAt));
+
+    // Fetch items for each adjustment
+    const ids = list.map(a => a.id);
+    const allItems = ids.length > 0
+      ? await db
+          .select()
+          .from(inventoryAdjustmentItems)
+          .where(inArray(inventoryAdjustmentItems.adjustmentId, ids))
+      : [];
+
+    const itemsMap = new Map<string, typeof allItems>();
+    for (const it of allItems) {
+      if (!itemsMap.has(it.adjustmentId)) itemsMap.set(it.adjustmentId, []);
+      itemsMap.get(it.adjustmentId)!.push(it);
+    }
+
+    const result = list.map(a => ({
+      ...a,
+      lineItems: itemsMap.get(a.id) || [],
+    }));
+
+    return res.status(200).json(result);
+  } catch (err) { return next(err); }
+});
+
+// GET /api/inventory/adjustments/:id
+router.get('/adjustments/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { id } = req.params;
+
+    const [adj] = await db
+      .select()
+      .from(inventoryAdjustments)
+      .where(and(eq(inventoryAdjustments.id, id), eq(inventoryAdjustments.orgId, orgId)))
+      .limit(1);
+    if (!adj) throw new AppError('Adjustment not found.', 404);
+
+    const lineItems = await db
+      .select()
+      .from(inventoryAdjustmentItems)
+      .where(eq(inventoryAdjustmentItems.adjustmentId, id));
+
+    const files = await db
+      .select()
+      .from(documents)
+      .where(and(eq(documents.referenceType, 'inventory_adjustment'), eq(documents.referenceId, id)));
+
+    return res.status(200).json({ ...adj, lineItems, files });
+  } catch (err) { return next(err); }
+});
+
+// POST /api/inventory/adjustments
+router.post('/adjustments', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const userId = req.user!.userId!;
+    const body = adjustSchema.parse(req.body);
+
+    // Generate reference number
+    const count = await db
+      .select({ c: sql<number>`count(*)` })
+      .from(inventoryAdjustments)
+      .where(eq(inventoryAdjustments.orgId, orgId));
+    const ref = `ADJ-${String(Number(count[0]?.c || 0) + 1).padStart(4, '0')}`;
+
+    // Calculate adjusted quantities
+    const itemsWithAdj = body.items.map(it => ({
+      ...it,
+      quantityAdjusted: it.newQuantity - it.quantityAvailable,
+    }));
+
+    const [adj] = await db
+      .insert(inventoryAdjustments)
+      .values({
+        orgId,
+        reference: ref,
+        date: body.date ? new Date(body.date) : new Date(),
+        mode: body.mode,
+        accountId: body.accountId || null,
+        reason: body.reason || null,
+        location: body.location || null,
+        description: body.description || null,
+        status: 'draft',
+        createdBy: userId,
+      })
+      .returning();
+
+    for (const it of itemsWithAdj) {
+      await db.insert(inventoryAdjustmentItems).values({
+        adjustmentId: adj.id,
+        itemId: it.itemId,
+        quantityAvailable: String(it.quantityAvailable),
+        newQuantity: String(it.newQuantity),
+        quantityAdjusted: String(it.quantityAdjusted),
+        currentUnitCost: it.currentUnitCost ?? null,
+        newUnitCost: it.newUnitCost ?? null,
+      });
+    }
+
+    const lineItems = await db
+      .select()
+      .from(inventoryAdjustmentItems)
+      .where(eq(inventoryAdjustmentItems.adjustmentId, adj.id));
+
+    return res.status(201).json({ ...adj, lineItems });
+  } catch (err) {
+    if (err instanceof z.ZodError) return next(new AppError(err.issues[0]?.message || 'Validation failed', 400));
+    return next(err);
+  }
+});
+
+// Helper: apply quantity adjustment to inventory
+async function applyQuantityAdjustment(adj: any, items: any[], orgId: string, userId: string) {
+  for (const it of items) {
+    const qtyAdj = Number(it.quantityAdjusted);
+    if (qtyAdj === 0) continue;
+
+    const [item] = await db
+      .select()
+      .from(items)
+      .where(eq(items.id, it.itemId))
+      .limit(1);
+    if (!item || !item.trackInventory || !item.inventoryAccountId) continue;
+
+    if (qtyAdj > 0) {
+      // Increase: add to most recent lot or create new
+      const [recentLot] = await db
+        .select()
+        .from(inventoryLots)
+        .where(and(eq(inventoryLots.itemId, it.itemId), eq(inventoryLots.orgId, orgId)))
+        .orderBy(desc(inventoryLots.receivedDate))
+        .limit(1);
+
+      if (recentLot) {
+        await db
+          .update(inventoryLots)
+          .set({ quantity: sql`${inventoryLots.quantity}::numeric + ${qtyAdj}` })
+          .where(eq(inventoryLots.id, recentLot.id));
+      } else {
+        await db.insert(inventoryLots).values({
+          itemId: it.itemId,
+          orgId,
+          quantity: String(qtyAdj),
+          costPerUnit: it.currentUnitCost || 0,
+          receivedDate: adj.date,
+          reference: `Adjustment ${adj.reference}`,
+        });
+      }
+    } else {
+      // Decrease: consume from lots FIFO
+      const lots = await db
+        .select()
+        .from(inventoryLots)
+        .where(and(eq(inventoryLots.itemId, it.itemId), eq(inventoryLots.orgId, orgId)))
+        .orderBy(inventoryLots.receivedDate);
+
+      let remaining = Math.abs(qtyAdj);
+      for (const lot of lots) {
+        if (remaining <= 0) break;
+        const lotQty = Number(lot.quantity);
+        if (lotQty <= 0) continue;
+        const toRemove = Math.min(lotQty, remaining);
+        remaining -= toRemove;
+        const newQty = lotQty - toRemove;
+        if (newQty <= 0) {
+          await db.delete(inventoryLots).where(eq(inventoryLots.id, lot.id));
+        } else {
+          await db
+            .update(inventoryLots)
+            .set({ quantity: String(newQty) })
+            .where(eq(inventoryLots.id, lot.id));
+        }
+      }
+    }
+
+    // Record transaction
+    const cost = it.currentUnitCost || 0;
+    await db.insert(inventoryTransactions).values({
+      itemId: it.itemId,
+      orgId,
+      type: 'adjustment',
+      quantity: String(qtyAdj),
+      unitCost: cost,
+      referenceType: 'inventory_adjustment',
+      referenceId: adj.id,
+      date: adj.date,
+    });
+
+    // Journal entry
+    const valueChange = Math.round(qtyAdj * cost);
+    if (valueChange !== 0 && adj.accountId) {
+      if (valueChange > 0) {
+        await createJournalEntry({
+          orgId,
+          date: adj.date,
+          description: `Inventory adjustment (qty) — ${item.name} (${qtyAdj > 0 ? '+' : ''}${qtyAdj})`,
+          reference: adj.reference,
+          source: 'inventory_adjustment',
+          sourceId: adj.id,
+          createdBy: userId,
+          lines: [
+            { accountId: item.inventoryAccountId, debit: valueChange, description: `Inventory adj — ${item.name}` },
+            { accountId: adj.accountId, credit: valueChange, description: `Inventory adj offset — ${item.name}` },
+          ],
+        });
+      } else {
+        const absVal = Math.abs(valueChange);
+        await createJournalEntry({
+          orgId,
+          date: adj.date,
+          description: `Inventory adjustment (qty) — ${item.name} (${qtyAdj})`,
+          reference: adj.reference,
+          source: 'inventory_adjustment',
+          sourceId: adj.id,
+          createdBy: userId,
+          lines: [
+            { accountId: adj.accountId, debit: absVal, description: `Inventory adj loss — ${item.name}` },
+            { accountId: item.inventoryAccountId, credit: absVal, description: `Inventory adj — ${item.name}` },
+          ],
+        });
+      }
+    }
+  }
+}
+
+// Helper: apply value adjustment to inventory
+async function applyValueAdjustment(adj: any, items: any[], orgId: string, userId: string) {
+  for (const it of items) {
+    const oldCost = it.currentUnitCost || 0;
+    const newCost = it.newUnitCost ?? oldCost;
+    if (newCost === oldCost) continue;
+
+    const [item] = await db
+      .select()
+      .from(items)
+      .where(eq(items.id, it.itemId))
+      .limit(1);
+    if (!item || !item.trackInventory || !item.inventoryAccountId) continue;
+
+    // Update cost per unit on all active lots for this item
+    await db
+      .update(inventoryLots)
+      .set({ costPerUnit: newCost })
+      .where(and(eq(inventoryLots.itemId, it.itemId), eq(inventoryLots.orgId, orgId)));
+
+    const qty = Number(it.newQuantity || it.quantityAvailable || 0);
+    const valueDiff = qty * (newCost - oldCost);
+
+    // Record transaction with value change
+    await db.insert(inventoryTransactions).values({
+      itemId: it.itemId,
+      orgId,
+      type: 'adjustment',
+      quantity: '0',
+      unitCost: valueDiff,
+      referenceType: 'inventory_adjustment',
+      referenceId: adj.id,
+      date: adj.date,
+    });
+
+    // Journal entry for value change
+    if (valueDiff !== 0 && adj.accountId) {
+      if (valueDiff > 0) {
+        await createJournalEntry({
+          orgId,
+          date: adj.date,
+          description: `Inventory value adjustment — ${item.name} (${(oldCost / 100).toLocaleString()} → ${(newCost / 100).toLocaleString()})`,
+          reference: adj.reference,
+          source: 'inventory_adjustment',
+          sourceId: adj.id,
+          createdBy: userId,
+          lines: [
+            { accountId: item.inventoryAccountId, debit: valueDiff, description: `Value adj — ${item.name}` },
+            { accountId: adj.accountId, credit: valueDiff, description: `Value adj offset — ${item.name}` },
+          ],
+        });
+      } else {
+        const absVal = Math.abs(valueDiff);
+        await createJournalEntry({
+          orgId,
+          date: adj.date,
+          description: `Inventory value adjustment — ${item.name} (${(oldCost / 100).toLocaleString()} → ${(newCost / 100).toLocaleString()})`,
+          reference: adj.reference,
+          source: 'inventory_adjustment',
+          sourceId: adj.id,
+          createdBy: userId,
+          lines: [
+            { accountId: adj.accountId, debit: absVal, description: `Value adj loss — ${item.name}` },
+            { accountId: item.inventoryAccountId, credit: absVal, description: `Value adj — ${item.name}` },
+          ],
+        });
+      }
+    }
+  }
+}
+
+// PATCH /api/inventory/adjustments/:id — update draft
+router.patch('/adjustments/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { id } = req.params;
+    const body = req.body;
+
+    const [existing] = await db
+      .select()
+      .from(inventoryAdjustments)
+      .where(and(eq(inventoryAdjustments.id, id), eq(inventoryAdjustments.orgId, orgId)))
+      .limit(1);
+    if (!existing) throw new AppError('Adjustment not found.', 404);
+    if (existing.status !== 'draft') throw new AppError('Only draft adjustments can be edited.', 400);
+
+    await db
+      .update(inventoryAdjustments)
+      .set({
+        date: body.date ? new Date(body.date) : undefined,
+        mode: body.mode,
+        accountId: body.accountId ?? undefined,
+        reason: body.reason ?? undefined,
+        location: body.location ?? undefined,
+        description: body.description ?? undefined,
+        updatedAt: new Date(),
+      })
+      .where(eq(inventoryAdjustments.id, id));
+
+    // Replace line items
+    if (body.items) {
+      await db.delete(inventoryAdjustmentItems).where(eq(inventoryAdjustmentItems.adjustmentId, id));
+      for (const it of body.items) {
+        await db.insert(inventoryAdjustmentItems).values({
+          adjustmentId: id,
+          itemId: it.itemId,
+          quantityAvailable: String(it.quantityAvailable),
+          newQuantity: String(it.newQuantity),
+          quantityAdjusted: String(it.newQuantity - it.quantityAvailable),
+          currentUnitCost: it.currentUnitCost ?? null,
+          newUnitCost: it.newUnitCost ?? null,
+        });
+      }
+    }
+
+    const [updated] = await db
+      .select()
+      .from(inventoryAdjustments)
+      .where(eq(inventoryAdjustments.id, id))
+      .limit(1);
+
+    const lineItems = await db
+      .select()
+      .from(inventoryAdjustmentItems)
+      .where(eq(inventoryAdjustmentItems.adjustmentId, id));
+
+    return res.status(200).json({ ...updated, lineItems });
+  } catch (err) { return next(err); }
+});
+
+// POST /api/inventory/adjustments/:id/adjust — convert draft to adjusted
+router.post('/adjustments/:id/adjust', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const userId = req.user!.userId!;
+    const { id } = req.params;
+
+    const [adj] = await db
+      .select()
+      .from(inventoryAdjustments)
+      .where(and(eq(inventoryAdjustments.id, id), eq(inventoryAdjustments.orgId, orgId)))
+      .limit(1);
+    if (!adj) throw new AppError('Adjustment not found.', 404);
+    if (adj.status !== 'draft') throw new AppError('Adjustment has already been applied.', 400);
+
+    const lineItems = await db
+      .select()
+      .from(inventoryAdjustmentItems)
+      .where(eq(inventoryAdjustmentItems.adjustmentId, id));
+
+    if (adj.mode === 'quantity') {
+      await applyQuantityAdjustment(adj, lineItems, orgId, userId);
+    } else {
+      await applyValueAdjustment(adj, lineItems, orgId, userId);
+    }
+
+    await db
+      .update(inventoryAdjustments)
+      .set({ status: 'adjusted', updatedAt: new Date() })
+      .where(eq(inventoryAdjustments.id, id));
+
+    const [updated] = await db
+      .select()
+      .from(inventoryAdjustments)
+      .where(eq(inventoryAdjustments.id, id))
+      .limit(1);
+
+    return res.status(200).json({ ...updated, lineItems });
+  } catch (err) { return next(err); }
+});
+
+// DELETE /api/inventory/adjustments/:id
+router.delete('/adjustments/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { id } = req.params;
+
+    const [existing] = await db
+      .select()
+      .from(inventoryAdjustments)
+      .where(and(eq(inventoryAdjustments.id, id), eq(inventoryAdjustments.orgId, orgId)))
+      .limit(1);
+    if (!existing) throw new AppError('Adjustment not found.', 404);
+    if (existing.status !== 'draft') throw new AppError('Only draft adjustments can be deleted.', 400);
+
+    await db.delete(inventoryAdjustmentItems).where(eq(inventoryAdjustmentItems.adjustmentId, id));
+    await db.delete(inventoryAdjustments).where(eq(inventoryAdjustments.id, id));
+
+    return res.status(200).json({ message: 'Adjustment deleted.' });
+  } catch (err) { return next(err); }
+});
+
+// POST /api/inventory/adjustments/:id/upload — file upload for adjustment
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024, files: 5 } });
+router.post('/adjustments/:id/upload', upload.array('files', 5), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const userId = req.user!.userId!;
+    const { id } = req.params;
+
+    const [adj] = await db
+      .select()
+      .from(inventoryAdjustments)
+      .where(and(eq(inventoryAdjustments.id, id), eq(inventoryAdjustments.orgId, orgId)))
+      .limit(1);
+    if (!adj) throw new AppError('Adjustment not found.', 404);
+
+    const files = req.files as Express.Multer.File[] | undefined;
+    if (!files || files.length === 0) throw new AppError('No files uploaded.', 400);
+
+    const results: any[] = [];
+    for (const file of files) {
+      const uploadResult = await new Promise<any>((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          { resource_type: 'auto', folder: `inventory_adjustments/${orgId}` },
+          (err, result) => { if (err) reject(err); else resolve(result); }
+        );
+        stream.end(file.buffer);
+      });
+
+      const [doc] = await db
+        .insert(documents)
+        .values({
+          orgId,
+          name: file.originalname,
+          fileUrl: uploadResult.secure_url,
+          fileType: file.mimetype,
+          fileSize: file.size,
+          referenceType: 'inventory_adjustment',
+          referenceId: id,
+          uploadedBy: userId,
+        })
+        .returning();
+
+      results.push(doc);
+    }
+
+    return res.status(201).json({ files: results });
+  } catch (err) { return next(err); }
 });
 
 export default router;

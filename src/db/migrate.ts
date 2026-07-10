@@ -516,6 +516,41 @@ export async function runMigration() {
     const fb = await db.execute(sql`UPDATE payroll_lines SET basic = ROUND(gross_pay * 0.5) WHERE basic = 0 AND gross_pay > 0`);
     if (fb.rowCount && fb.rowCount > 0) console.log(`[Migration] Backfilled ${fb.rowCount} payroll_line(s) basic = 50% of gross_pay.`);
 
+    // Create inventory_adjustments tables and enums
+    await db.execute(sql`DO $$ BEGIN CREATE TYPE adjustment_mode AS ENUM ('quantity', 'value'); EXCEPTION WHEN duplicate_object THEN NULL; END $$`);
+    await db.execute(sql`DO $$ BEGIN CREATE TYPE adjustment_status AS ENUM ('draft', 'adjusted'); EXCEPTION WHEN duplicate_object THEN NULL; END $$`);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS inventory_adjustments (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        reference text NOT NULL,
+        date timestamp NOT NULL,
+        mode adjustment_mode NOT NULL,
+        account_id uuid REFERENCES accounts(id),
+        reason text,
+        location text,
+        description text,
+        status adjustment_status DEFAULT 'draft' NOT NULL,
+        created_by uuid REFERENCES users(id) NOT NULL,
+        created_at timestamp DEFAULT now() NOT NULL,
+        updated_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS inventory_adjustment_items (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        adjustment_id uuid REFERENCES inventory_adjustments(id) NOT NULL,
+        item_id uuid REFERENCES items(id) NOT NULL,
+        quantity_available numeric NOT NULL,
+        new_quantity numeric NOT NULL,
+        quantity_adjusted numeric NOT NULL,
+        current_unit_cost bigint,
+        new_unit_cost bigint,
+        created_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    console.log('[Migration] Inventory adjustments tables created.');
+
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema push:', err);

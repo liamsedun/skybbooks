@@ -125,6 +125,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     'payments_made': '/purchases/payments-made',
     'purchase_credit_notes': '/purchases/credit-notes',
     'items': '/inventory/items',
+    'inventory_adjustments': '/inventory/adjustments',
     'employees': '/payroll/employees',
     'payroll_runs': '/payroll/runs',
     'paye_schedules': '/payroll/paye-schedules',
@@ -213,6 +214,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
       title: 'INVENTORY',
       items: [
         { name: 'Items & Services', id: 'items', icon: Package },
+        { name: 'Inventory Adjustments', id: 'inventory_adjustments', icon: ArrowRightLeft },
       ],
     },
     {

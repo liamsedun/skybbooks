@@ -75,6 +75,9 @@ export const inventoryTxnTypeEnum = pgEnum('inventory_txn_type', [
   'transfer'
 ]);
 
+export const adjustmentModeEnum = pgEnum('adjustment_mode', ['quantity', 'value']);
+export const adjustmentStatusEnum = pgEnum('adjustment_status', ['draft', 'adjusted']);
+
 export const quoteStatusEnum = pgEnum('quote_status', [
   'draft',
   'sent',
@@ -352,6 +355,34 @@ export const inventoryTransactions = pgTable('inventory_transactions', {
   referenceType: text('reference_type'),
   referenceId: uuid('reference_id'),
   date: timestamp('date').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+export const inventoryAdjustments = pgTable('inventory_adjustments', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  reference: text('reference').notNull(),
+  date: timestamp('date').notNull(),
+  mode: adjustmentModeEnum('mode').notNull(),
+  accountId: uuid('account_id').references(() => accounts.id),
+  reason: text('reason'),
+  location: text('location'),
+  description: text('description'),
+  status: adjustmentStatusEnum('status').default('draft').notNull(),
+  createdBy: uuid('created_by').references(() => users.id).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+});
+
+export const inventoryAdjustmentItems = pgTable('inventory_adjustment_items', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  adjustmentId: uuid('adjustment_id').references(() => inventoryAdjustments.id).notNull(),
+  itemId: uuid('item_id').references(() => items.id).notNull(),
+  quantityAvailable: numeric('quantity_available').notNull(),
+  newQuantity: numeric('new_quantity').notNull(),
+  quantityAdjusted: numeric('quantity_adjusted').notNull(),
+  currentUnitCost: bigint('current_unit_cost', { mode: 'number' }),
+  newUnitCost: bigint('new_unit_cost', { mode: 'number' }),
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
@@ -1578,7 +1609,9 @@ export const db = drizzle(pool, {
     contacts,
     items,
     inventoryLots,
-    inventoryTransactions,
+  inventoryTransactions,
+  inventoryAdjustmentItems,
+  inventoryAdjustments,
     quotes,
     salesOrders,
     recurringInvoices,
@@ -1606,7 +1639,9 @@ export const db = drizzle(pool, {
     documents,
     budgets,
     budgetLines,
-    auditLog,
+  inventoryAdjustmentItems,
+  inventoryAdjustments,
+  auditLog,
     currencyRates,
     closedPeriods,
 

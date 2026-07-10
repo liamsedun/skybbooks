@@ -657,6 +657,7 @@ export { ExpensesPage } from './purchases/Expenses';
 export { BillsPage } from './purchases/Bills';
 export { PaymentsMadePage } from './purchases/PaymentsMade';
 export { ItemsPage as InventoryPage } from './inventory/Items';
+export { default as InventoryAdjustmentsPage } from './inventory/InventoryAdjustmentsPage';
 export { ChartOfAccountsPage } from './accountant/ChartOfAccounts';
 export { SalesOrdersPage } from './sales/SalesOrders';
 export { PaymentsReceivedPage as ReceiptsPage } from './sales/PaymentsReceived';
