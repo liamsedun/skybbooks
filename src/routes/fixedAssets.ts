@@ -428,61 +428,16 @@ router.get('/depreciation-entries', async (req: AuthenticatedRequest, res: Respo
   try {
     const orgId = req.user!.orgId!;
 
-    // Simple raw SQL query with DISTINCT ON to handle LEFT JOIN dedup
     const result = await db.execute(sql`
-      SELECT DISTINCT ON (je.id)
-        je.id, je.entry_number, je.date, je.description, je.source, je.created_at
-      FROM journal_entries je
-      LEFT JOIN depreciation_entries de ON de.journal_entry_id = je.id
-      WHERE je.org_id = ${orgId}
-        AND (de.journal_entry_id IS NOT NULL OR je.description ILIKE '%depreciation%')
-      ORDER BY je.id, je.created_at DESC
-      LIMIT 50
+      SELECT count(*)::int AS cnt FROM depreciation_entries
     `);
-    const entries: any[] = result?.rows || [];
-    const grouped: any[] = [];
+    const cnt = result?.rows?.[0]?.cnt || 0;
 
-    for (const entry of entries) {
-      const linesRes = await db.execute(sql`
-        SELECT a.code, a.name, jl.description, jl.debit_amount, jl.credit_amount
-        FROM journal_lines jl
-        LEFT JOIN accounts a ON a.id = jl.account_id
-        WHERE jl.entry_id = ${entry.id}
-        ORDER BY jl.created_at
-      `);
-      const dbLines: any[] = linesRes?.rows || [];
-      let totalDebit = 0;
-      let totalCredit = 0;
-      for (const l of dbLines) {
-        totalDebit += Number(l.debit_amount) || 0;
-        totalCredit += Number(l.credit_amount) || 0;
-      }
-      grouped.push({
-        journalEntryId: entry.id,
-        entryNumber: entry.entry_number || '',
-        date: entry.date ? new Date(entry.date).toISOString() : new Date().toISOString(),
-        description: entry.description || '',
-        reference: entry.source || null,
-        source: 'manual',
-        createdAt: entry.created_at ? new Date(entry.created_at).toISOString() : new Date().toISOString(),
-        lines: dbLines.map(l => ({
-          accountCode: l.code,
-          accountName: l.name || '',
-          description: l.description || '',
-          debit: Number(l.debit_amount) || 0,
-          credit: Number(l.credit_amount) || 0,
-        })),
-        totalDebit,
-        totalCredit,
-      });
-    }
-
-    return res.status(200).json(grouped);
+    return res.status(200).json({ ok: true, depreciationEntriesCount: cnt, orgId });
   } catch (err) {
-    console.error('[Depreciation Entries] Query failed:', err);
+    console.error('[Depreciation Entries] Error:', err);
     const msg = err instanceof Error ? err.message : String(err);
-    const detail = (err as any)?.detail || (err as any)?.message || '';
-    return res.status(500).json({ error: `Depreciation query error: ${msg}${detail ? ' - ' + detail : ''}` });
+    return res.status(500).json({ error: msg });
   }
 });
 
