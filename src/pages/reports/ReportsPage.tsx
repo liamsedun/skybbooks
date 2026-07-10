@@ -437,12 +437,78 @@ function ProjectsReport() {
   const summaryList = Array.isArray(summaryData) ? summaryData : [];
   const selectedProject = (Array.isArray(projects) ? projects : []).find((p: any) => p.id === selectedProjectId);
 
+  function handlePrintPdf() {
+    const rows = summaryList.map((p: any) =>
+      `<tr><td style="padding:8px 12px;font-size:12px;border-bottom:1px solid #e2e8f0">${p.name}</td><td style="padding:8px 12px;font-size:12px;font-family:monospace;border-bottom:1px solid #e2e8f0">${p.code || '—'}</td><td style="padding:8px 12px;font-size:12px;border-bottom:1px solid #e2e8f0">${p.status || 'active'}</td><td style="padding:8px 12px;font-size:12px;text-align:right;font-family:monospace;border-bottom:1px solid #e2e8f0">${fmtNaira(p.totalIncome)}</td><td style="padding:8px 12px;font-size:12px;text-align:right;font-family:monospace;border-bottom:1px solid #e2e8f0">${fmtNaira(p.totalExpenses)}</td><td style="padding:8px 12px;font-size:12px;text-align:right;font-family:monospace;font-weight:600;border-bottom:1px solid #e2e8f0">${fmtNaira(p.profit)}</td></tr>`
+    ).join('');
+    const totalIncome = summaryList.reduce((s: number, p: any) => s + p.totalIncome, 0);
+    const totalExpenses = summaryList.reduce((s: number, p: any) => s + p.totalExpenses, 0);
+    const totalProfit = summaryList.reduce((s: number, p: any) => s + p.profit, 0);
+    const summaryTable = summaryList.length > 0 ? `
+      <h3 style="font-size:14px;font-weight:600;color:#0f172a;margin:0 0 8px">${selectedProjectId ? selectedProject?.name || 'Project Detail' : 'Project Summary'}</h3>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:16px">
+        <thead><tr style="background:#f1f5f9">
+          <th style="padding:8px 12px;font-size:10px;font-weight:600;color:#475569;text-align:left;text-transform:uppercase">Project</th>
+          <th style="padding:8px 12px;font-size:10px;font-weight:600;color:#475569;text-align:left;text-transform:uppercase">Code</th>
+          <th style="padding:8px 12px;font-size:10px;font-weight:600;color:#475569;text-align:left;text-transform:uppercase">Status</th>
+          <th style="padding:8px 12px;font-size:10px;font-weight:600;color:#475569;text-align:right;text-transform:uppercase">Income</th>
+          <th style="padding:8px 12px;font-size:10px;font-weight:600;color:#475569;text-align:right;text-transform:uppercase">Expenses</th>
+          <th style="padding:8px 12px;font-size:10px;font-weight:600;color:#475569;text-align:right;text-transform:uppercase">Profit / Loss</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr style="background:#f8fafc;font-weight:700">
+          <td colspan="3" style="padding:8px 12px;font-size:12px;border-top:2px solid #cbd5e1">TOTAL</td>
+          <td style="padding:8px 12px;font-size:12px;text-align:right;font-family:monospace;border-top:2px solid #cbd5e1">${fmtNaira(totalIncome)}</td>
+          <td style="padding:8px 12px;font-size:12px;text-align:right;font-family:monospace;border-top:2px solid #cbd5e1">${fmtNaira(totalExpenses)}</td>
+          <td style="padding:8px 12px;font-size:12px;text-align:right;font-family:monospace;border-top:2px solid #cbd5e1">${fmtNaira(totalProfit)}</td>
+        </tr></tfoot>
+      </table>` : '';
+
+    let detailHtml = '';
+    if (detailData) {
+      const incRows = (detailData.income || []).map((a: any) =>
+        `<tr><td style="padding:6px 10px;font-size:11px;border-bottom:1px solid #f1f5f9">${a.code} - ${a.name}</td><td style="padding:6px 10px;font-size:11px;text-align:right;font-family:monospace;border-bottom:1px solid #f1f5f9">${fmtNaira(a.amount)}</td></tr>`
+      ).join('');
+      const expRows = (detailData.expenses || []).map((a: any) =>
+        `<tr><td style="padding:6px 10px;font-size:11px;border-bottom:1px solid #f1f5f9">${a.code} - ${a.name}</td><td style="padding:6px 10px;font-size:11px;text-align:right;font-family:monospace;border-bottom:1px solid #f1f5f9">${fmtNaira(a.amount)}</td></tr>`
+      ).join('');
+      detailHtml = `
+        <h3 style="font-size:14px;font-weight:600;color:#0f172a;margin:16px 0 8px">${selectedProject?.name || 'Project'} Detail</h3>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:16px">
+          <tr><td style="padding:8px 12px;font-size:12px;font-weight:600">Income</td><td style="padding:8px 12px;font-size:12px;text-align:right;font-family:monospace">${fmtNaira(detailData.totalIncome)}</td></tr>
+          <tr><td style="padding:8px 12px;font-size:12px;font-weight:600">Expenses</td><td style="padding:8px 12px;font-size:12px;text-align:right;font-family:monospace">${fmtNaira(detailData.totalExpenses)}</td></tr>
+          <tr><td style="padding:8px 12px;font-size:12px;font-weight:600">Profit / Loss</td><td style="padding:8px 12px;font-size:12px;text-align:right;font-family:monospace">${fmtNaira(detailData.profit)}</td></tr>
+        </table>
+        <div style="display:flex;gap:24px">
+          <div style="flex:1">
+            <h4 style="font-size:12px;font-weight:600;color:#475569;margin:0 0 6px">Income Breakdown</h4>
+            <table style="width:100%;border-collapse:collapse">${incRows || '<tr><td style="padding:6px 10px;font-size:11px;color:#94a3b8">No income</td></tr>'}</table>
+          </div>
+          <div style="flex:1">
+            <h4 style="font-size:12px;font-weight:600;color:#475569;margin:0 0 6px">Expense Breakdown</h4>
+            <table style="width:100%;border-collapse:collapse">${expRows || '<tr><td style="padding:6px 10px;font-size:11px;color:#94a3b8">No expenses</td></tr>'}</table>
+          </div>
+        </div>`;
+    }
+
+    printWindow('Project Report',
+      `<p style="font-size:11px;color:#64748b;margin:0 0 16px">Period: ${new Date(sDate).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})} – ${new Date(eDate).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})} &middot; ${summaryList.length} project${summaryList.length !== 1 ? 's' : ''}</p>
+      ${summaryTable}
+      ${detailHtml}`,
+      `${new Date(sDate).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})} – ${new Date(eDate).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}`
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
           <Briefcase className="w-6 h-6 text-indigo-600" /> Project Report
         </h1>
+        <button onClick={handlePrintPdf} disabled={summaryList.length === 0 && !detailData}
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200 shadow-sm shadow-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed">
+          <Download className="w-3.5 h-3.5" /> PDF
+        </button>
       </div>
 
       {/* Date filter */}
