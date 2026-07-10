@@ -21,6 +21,9 @@ interface Anomaly {
   date?: string;
   description?: string;
   amountKobo?: number;
+  _count?: number;
+  _groupKey?: string;
+  _txIds?: string[];
 }
 
 const THREAT_META: Record<string, { icon: any; color: string; bg: string; border: string; badge: string }> = {
@@ -106,7 +109,18 @@ export function AuditLogsPage() {
           const match = combinedTxns.find((t) => t.id === anom.transactionId);
           return { ...anom, date: match?.date, description: match?.description, amountKobo: match?.amount || match?.amountKobo };
         });
-        setAnomalies(enriched);
+        const groups = new Map<string, Anomaly & { _txIds: string[] }>();
+        for (const a of enriched) {
+          const key = `${a.description}|${a.amountKobo}|${a.reason}`;
+          if (groups.has(key)) {
+            const g = groups.get(key)!;
+            g._txIds.push(a.transactionId);
+          } else {
+            groups.set(key, { ...a, _txIds: [a.transactionId] });
+          }
+        }
+        const grouped = Array.from(groups.values()).map(g => ({ ...g, _count: g._txIds.length, _groupKey: g._txIds.length > 1 ? 'grouped' : 'single' }));
+        setAnomalies(grouped);
       }
     } catch (err: any) {
       setAnomaliesError(err.response?.data?.error || 'Unable to execute transaction scan.');
@@ -130,8 +144,8 @@ export function AuditLogsPage() {
 
   function exportShieldCSV() {
     const today = new Date().toISOString().split('T')[0];
-    const headers = ['ID', 'Title', 'Description', 'Category', 'Threat', 'Date', 'Amount'];
-    const rows = filteredAlerts.map(a => [a.transactionId, a.description || '', a.reason, a.severity === 'high' ? 'Critical' : a.severity === 'medium' ? 'Suspicious' : 'Info', a.severity, a.date ? fmtDateShort(a.date) : '', a.amountKobo ? fmtNaira(a.amountKobo) : '']);
+    const headers = ['Description', 'Reason', 'Label', 'Threat', 'Date', 'Amount', 'Occurrences'];
+    const rows = filteredAlerts.map(a => [a.description || '', a.reason, a.severity === 'high' ? 'Critical' : a.severity === 'medium' ? 'Suspicious' : 'Info', a.severity, a.date ? fmtDateShort(a.date) : '', a.amountKobo ? fmtNaira(a.amountKobo) : '', a._count && a._count > 1 ? String(a._count) : '1']);
     exportToCsv(`audit_shield_${today}.csv`, headers, rows);
   }
 
@@ -310,6 +324,9 @@ export function AuditLogsPage() {
                           <div>
                             <h3 className="text-sm font-semibold text-slate-900">{alert.description || 'Transaction Alert'}</h3>
                             <p className="text-xs text-slate-500 mt-1">{alert.reason}</p>
+                            {alert._count && alert._count > 1 && (
+                              <p className="text-xs font-semibold text-amber-600 mt-1.5">{alert._count} occurrences • {alert._txIds?.length || alert._count} transactions on this date</p>
+                            )}
                           </div>
                           <div className="flex items-center gap-2 flex-shrink-0">
                             <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${meta.badge}`}>{alert.severity} Threat</span>
