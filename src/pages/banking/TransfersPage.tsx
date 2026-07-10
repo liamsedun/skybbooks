@@ -243,28 +243,28 @@ export function TransfersPage() {
         <PageLoader message="Loading transfers..." />
       ) : (
         <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
+          <table className="w-full text-[13px]">
             <thead className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
               <tr>
-                <th className="px-3 py-3 text-left">Transfer #</th>
-                <th className="px-3 py-3 text-left">Date</th>
-                <th className="px-3 py-3 text-left">Paid from</th>
-                <th className="px-3 py-3 text-left">Received in</th>
-                <th className="px-3 py-3 text-left">Description</th>
-                <th className="px-3 py-3 text-right">Amount</th>
-                <th className="px-3 py-3 text-right">Actions</th>
+                <th className="px-3 py-2.5 text-left">Transfer #</th>
+                <th className="px-3 py-2.5 text-left">Date</th>
+                <th className="px-3 py-2.5 text-left">Paid from</th>
+                <th className="px-3 py-2.5 text-left">Received in</th>
+                <th className="px-3 py-2.5 text-left">Description</th>
+                <th className="px-3 py-2.5 text-right">Amount</th>
+                <th className="px-3 py-2.5 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredTransfers.map((t: any) => (
                 <tr key={t.id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-50">
-                  <td className="px-4 py-3 font-mono font-medium text-slate-800">{t.transferNumber}</td>
-                  <td className="px-4 py-3 text-slate-600">{fmtDate(t.date)}</td>
-                  <td className="px-4 py-3 text-slate-700 max-w-[200px] truncate">{t.fromAccountName || t.fromBankName}</td>
-                  <td className="px-4 py-3 text-slate-700 max-w-[200px] truncate">{t.toAccountName || t.toBankName}</td>
-                  <td className="px-4 py-3 text-slate-600 max-w-xs truncate">{t.description || '—'}</td>
-                  <td className="px-4 py-3 text-right font-mono font-semibold tabular-nums text-slate-900">{fmtNaira(t.amount)}</td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-3 py-2.5 font-mono font-medium text-slate-800">{t.transferNumber}</td>
+                  <td className="px-3 py-2.5 text-slate-600">{fmtDate(t.date)}</td>
+                  <td className="px-3 py-2.5 text-slate-700 max-w-[180px] truncate">{t.fromAccountName || t.fromBankName}</td>
+                  <td className="px-3 py-2.5 text-slate-700 max-w-[180px] truncate">{t.toAccountName || t.toBankName}</td>
+                  <td className="px-3 py-2.5 text-slate-600 max-w-xs truncate">{t.description || '—'}</td>
+                  <td className="px-3 py-2.5 text-right font-mono font-semibold tabular-nums text-slate-900">{fmtNaira(t.amount)}</td>
+                  <td className="px-3 py-2.5 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <button onClick={() => setViewTarget(t)}
                         className="text-indigo-600 hover:text-indigo-800 p-1" title="View details">
@@ -283,7 +283,7 @@ export function TransfersPage() {
                 </tr>
               ))}
               {filteredTransfers.length === 0 && (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-400">No transfers found.</td></tr>
+                <tr><td colSpan={7} className="px-3 py-6 text-center text-slate-400">No transfers found.</td></tr>
               )}
             </tbody>
           </table>
