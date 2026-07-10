@@ -295,6 +295,8 @@ export async function recordPaymentReceived(input: any, createdBy: string): Prom
       sourceId: payment.id,
       projectId: payment.projectId || undefined,
       createdBy,
+      currency: input.currency || defaultCurrency,
+      fxRate: input.fxRate ? Number(input.fxRate) : undefined,
       lines: jeLines
     }, tx);
 
@@ -523,6 +525,8 @@ export async function updatePaymentReceived(paymentId: string, orgId: string, in
       sourceId: updated.id,
       projectId: (updated as any).projectId || undefined,
       createdBy: userId,
+      currency: input.currency || existing.currency,
+      fxRate: input.fxRate ? Number(input.fxRate) : existing.fxRate ? Number(existing.fxRate) : undefined,
       lines: jeLines
     }, tx);
 
@@ -820,6 +824,8 @@ export async function recordPaymentMade(input: any, createdBy: string): Promise<
       sourceId: payment.id,
       projectId: (payment as any).projectId || undefined,
       createdBy,
+      currency: payment.currency,
+      fxRate: payment.fxRate ? Number(payment.fxRate) : undefined,
       lines: jeLines
     }, tx);
 

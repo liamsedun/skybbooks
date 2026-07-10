@@ -167,6 +167,8 @@ async function createBillJournalEntry(billId: string, orgId: string, userId: str
     sourceId: bill.id,
     projectId: (bill as any).projectId || undefined,
     createdBy: userId,
+    currency: bill.currency,
+    fxRate: bill.fxRate ? Number(bill.fxRate) : undefined,
     lines: journalLinesPayload
   }, tx);
 

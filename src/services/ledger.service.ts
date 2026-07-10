@@ -31,6 +31,8 @@ export type CreateJournalEntryInput = {
   projectId?: string;
   createdBy: string;
   lines: JournalLineInput[];
+  currency?: string;
+  fxRate?: number;
 };
 
 export type TrialBalanceRow = {
@@ -183,6 +185,8 @@ export async function createJournalEntry(
     // Insert lines under the Entry node
     const createdLines: any[] = [];
     for (const line of input.lines) {
+      const currency = line.currency || input.currency || 'NGN';
+      const fxRate = line.fxRate || input.fxRate || null;
       const [newLine] = await dbClient
         .insert(journalLines)
         .values({
@@ -191,8 +195,8 @@ export async function createJournalEntry(
           debitAmount: line.debit || 0,
           creditAmount: line.credit || 0,
           description: line.description || null,
-          currency: line.currency || 'NGN',
-          fxRate: line.fxRate ? String(line.fxRate) : null
+          currency,
+          fxRate: fxRate ? String(fxRate) : null,
         })
         .returning();
 
@@ -413,7 +417,7 @@ export async function getTrialBalance(
     .where(eq(journalEntries.orgId, orgId));
 
   // 3. Load module balances
-  const [faByAccount, bankAccountRows, customerBal, vendorBal, invBalance] = await Promise.all([
+  const [faByAccount, bankByAccount, customerBal, vendorBal, invBalance] = await Promise.all([
     db.select({
       accountId: fixedAssets.accountId,
       totalCost: sql<number>`coalesce(sum(${fixedAssets.purchaseCost}), 0)`,
@@ -421,8 +425,8 @@ export async function getTrialBalance(
     }).from(fixedAssets).where(and(eq(fixedAssets.orgId, orgId), eq(fixedAssets.status, 'active'))).groupBy(fixedAssets.accountId),
     db.select({
       accountId: bankAccounts.accountId,
-      openingBalance: bankAccounts.openingBalance,
-    }).from(bankAccounts).where(eq(bankAccounts.orgId, orgId)),
+      totalBalance: sql<number>`coalesce(sum(${bankAccounts.currentBalance}), 0)`
+    }).from(bankAccounts).where(eq(bankAccounts.orgId, orgId)).groupBy(bankAccounts.accountId),
     db.select({ totalBalance: sql<number>`coalesce(sum(${contacts.balance}), 0)` })
       .from(contacts).where(and(eq(contacts.orgId, orgId), eq(contacts.type, 'customer'))),
     db.select({ totalBalance: sql<number>`coalesce(sum(${contacts.balance}), 0)` })
@@ -436,21 +440,8 @@ export async function getTrialBalance(
   const faMap = new Map<string, { totalCost: number; totalDepr: number }>();
   for (const r of faByAccount) faMap.set(r.accountId, r);
 
-  // Compute live balance per GL account: openingBalance + net ledger activity (same as Banking module)
   const bankMap = new Map<string, number>();
-  for (const ba of bankAccountRows) {
-    const ob = Number(ba.openingBalance || 0);
-    let netActivity = 0;
-    for (const line of txLines) {
-      if (line.accountId === ba.accountId) {
-        const deb = line.currency && line.currency !== 'NGN' ? toNgn(line.debitAmount, line.fxRate) : line.debitAmount;
-        const cred = line.currency && line.currency !== 'NGN' ? toNgn(line.creditAmount, line.fxRate) : line.creditAmount;
-        netActivity += deb - cred;
-      }
-    }
-    const liveBalance = ob + netActivity;
-    bankMap.set(ba.accountId, (bankMap.get(ba.accountId) || 0) + liveBalance);
-  }
+  for (const r of bankByAccount) bankMap.set(r.accountId, r.totalBalance);
 
   const customerOB = Number(customerBal[0]?.totalBalance || 0);
   const vendorOB = Number(vendorBal[0]?.totalBalance || 0);

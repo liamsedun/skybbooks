@@ -147,6 +147,8 @@ export async function createVendorCredit(input: any, createdBy: string): Promise
       source: 'manual',
       sourceId: credit.id,
       createdBy,
+      currency: vcCurrency,
+      fxRate: vcFxRate ? Number(vcFxRate) : undefined,
       lines: journalLines,
     }, tx);
 

@@ -193,6 +193,8 @@ export async function createExpense(input: any, createdBy: string): Promise<any>
       sourceId: expense.id,
       projectId: expense.projectId || undefined,
       createdBy,
+      currency: expCurrency,
+      fxRate: expFxRate ? Number(expFxRate) : undefined,
       lines: journalLinesPayload
     }, tx);
 
@@ -313,6 +315,8 @@ export async function updateExpense(expenseId: string, input: any, userId: strin
       sourceId: updatedExpense.id,
       projectId: expense.projectId || undefined,
       createdBy: userId,
+      currency: input.currency || expense.currency,
+      fxRate: input.fxRate ? Number(input.fxRate) : expense.fxRate ? Number(expense.fxRate) : undefined,
       lines: journalLinesPayload
     }, tx);
 

@@ -60,7 +60,7 @@ router.get('/accounts', async (req: AuthenticatedRequest, res: Response, next: N
     }
 
     // Sub-ledger overrides (same logic as Trial Balance)
-    const [faByAccount, bankAccountRows, invBalance] = await Promise.all([
+    const [faByAccount, bankByAccount, invBalance] = await Promise.all([
       db.select({
         accountId: fixedAssets.accountId,
         totalCost: sql<number>`coalesce(sum(${fixedAssets.purchaseCost}), 0)`,
@@ -68,8 +68,8 @@ router.get('/accounts', async (req: AuthenticatedRequest, res: Response, next: N
       }).from(fixedAssets).where(and(eq(fixedAssets.orgId, orgId), eq(fixedAssets.status, 'active'))).groupBy(fixedAssets.accountId),
       db.select({
         accountId: bankAccounts.accountId,
-        openingBalance: bankAccounts.openingBalance,
-      }).from(bankAccounts).where(eq(bankAccounts.orgId, orgId)),
+        totalBalance: sql<number>`coalesce(sum(${bankAccounts.currentBalance}), 0)`
+      }).from(bankAccounts).where(eq(bankAccounts.orgId, orgId)).groupBy(bankAccounts.accountId),
       db.select({
         totalValue: sql<number>`coalesce(sum(${inventoryLots.quantity}::numeric * ${inventoryLots.costPerUnit}), 0)`
       }).from(inventoryLots).where(eq(inventoryLots.orgId, orgId))
@@ -77,16 +77,8 @@ router.get('/accounts', async (req: AuthenticatedRequest, res: Response, next: N
 
     const faMap = new Map<string, { totalCost: number; totalDepr: number }>();
     for (const r of faByAccount) faMap.set(r.accountId, r);
-    // Compute live balance per GL account: openingBalance + net ledger activity (same as Banking module)
     const bankMap = new Map<string, number>();
-    for (const ba of bankAccountRows) {
-      const ob = Number(ba.openingBalance || 0);
-      let netActivity = 0;
-      const b = balanceMap.get(ba.accountId);
-      if (b) netActivity = b.debits - b.credits;
-      const liveBalance = ob + netActivity;
-      bankMap.set(ba.accountId, (bankMap.get(ba.accountId) || 0) + liveBalance);
-    }
+    for (const r of bankByAccount) bankMap.set(r.accountId, r.totalBalance);
     const inventoryValue = Number(invBalance[0]?.totalValue || 0);
     const invAccount = list.find(a => a.code.startsWith('102') && !a.name.toLowerCase().includes('contra'));
 

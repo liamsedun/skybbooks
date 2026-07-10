@@ -293,6 +293,8 @@ async function createInvoiceJournalEntry(invoiceId: string, orgId: string, userI
     sourceId: invoice.id,
     projectId: invoice.projectId || undefined,
     createdBy: userId,
+    currency: invoice.currency,
+    fxRate: invoice.fxRate ? Number(invoice.fxRate) : undefined,
     lines: journalLinesPayload
   }, tx);
 

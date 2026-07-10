@@ -145,46 +145,7 @@ router.get('/accounts', async (req: AuthenticatedRequest, res: Response, next: N
       .where(eq(bankAccounts.orgId, orgId))
       .orderBy(desc(bankAccounts.createdAt));
 
-    const today = new Date();
-    const result = await Promise.all(list.map(async (ba) => {
-      // Compute live balance: openingBalance + all journal entry activity since openingBalanceDate
-      let liveBalance = Number(ba.openingBalance || 0);
-      if (ba.openingBalanceDate) {
-        const ledgerResult = await db.execute(sql`
-          SELECT COALESCE(SUM(
-            CASE WHEN jl.debit_amount > 0 THEN jl.debit_amount ELSE -jl.credit_amount END
-          ), 0) AS balance
-          FROM journal_lines jl
-          INNER JOIN journal_entries je ON jl.entry_id = je.id
-          WHERE jl.account_id = ${ba.accountId}::uuid
-            AND je.org_id = ${orgId}::uuid
-            AND je.is_reversed = false
-            AND je.date >= ${ba.openingBalanceDate}::date
-            AND je.date <= ${today}::date
-        `);
-        const row = ledgerResult.rows ? ledgerResult.rows[0] : ledgerResult[0];
-        liveBalance += Number(row?.balance || 0);
-      } else {
-        // No openingBalanceDate — sum all ledger activity
-        const ledgerResult = await db.execute(sql`
-          SELECT COALESCE(SUM(
-            CASE WHEN jl.debit_amount > 0 THEN jl.debit_amount ELSE -jl.credit_amount END
-          ), 0) AS balance
-          FROM journal_lines jl
-          INNER JOIN journal_entries je ON jl.entry_id = je.id
-          WHERE jl.account_id = ${ba.accountId}::uuid
-            AND je.org_id = ${orgId}::uuid
-            AND je.is_reversed = false
-            AND je.date <= ${today}::date
-        `);
-        const row = ledgerResult.rows ? ledgerResult.rows[0] : ledgerResult[0];
-        liveBalance = Number(row?.balance || 0);
-      }
-
-      return { ...ba, liveBalance };
-    }));
-
-    return res.status(200).json(result);
+    return res.status(200).json(list);
   } catch (err) {
     next(err);
   }
@@ -348,7 +309,7 @@ router.patch('/accounts/:id/balance', async (req: AuthenticatedRequest, res: Res
 
     const [updated] = await db
       .update(bankAccounts)
-      .set({ currentBalance, openingBalance: currentBalance })
+      .set({ currentBalance, openingBalance: currentBalance, openingBalanceDate: new Date() })
       .where(eq(bankAccounts.id, id))
       .returning();
 
@@ -687,7 +648,6 @@ Return ONLY valid JSON matching this schema:
 
       // 3. Write parsed lines to database
       let insertedCount = 0;
-      let calculatedTotalBalance = ba.currentBalance || 0;
 
       for (const tx of parsedTxns) {
         // Double check matching duplicate preventing key values
@@ -702,35 +662,19 @@ Return ONLY valid JSON matching this schema:
           description: tx.description,
           amount: tx.amountKobo,
           type: tx.type,
-          balanceAfter: tx.balanceKobo || calculatedTotalBalance,
+          balanceAfter: tx.balanceKobo || (ba.currentBalance || 0) + (tx.type === 'credit' ? tx.amountKobo : -tx.amountKobo),
           reference: `STMT-${Math.floor(100000 + Math.random() * 900000)}`,
           status: 'unreconciled',
           monoTransactionId: monoTxId
         });
 
-        if (tx.type === 'credit') {
-          calculatedTotalBalance += tx.amountKobo;
-        } else {
-          calculatedTotalBalance -= tx.amountKobo;
-        }
-
         insertedCount++;
       }
-
-      // Update current accounting balance
-      await db
-        .update(bankAccounts)
-        .set({
-          currentBalance: calculatedTotalBalance,
-          lastSyncedAt: new Date()
-        })
-        .where(eq(bankAccounts.id, id));
 
       return res.status(200).json({
         success: true,
         message: `Successfully processed statement! Extracted and wrote ${insertedCount} transactions to SkyBooks ledger.`,
         transactionsParsed: insertedCount,
-        newBalanceKobo: calculatedTotalBalance
       });
 
     } catch (err) {

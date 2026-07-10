@@ -458,7 +458,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                       Current Bank balance
                     </label>
                     <div className="font-sans font-bold text-slate-900 text-lg lg:text-xl">
-                      {formatNaira(account.liveBalance ?? account.currentBalance ?? 0)}
+                      {formatNaira(account.currentBalance ?? 0)}
                     </div>
                   </div>
 

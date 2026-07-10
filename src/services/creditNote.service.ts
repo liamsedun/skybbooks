@@ -165,9 +165,11 @@ export async function createCreditNote(input: any, createdBy: string): Promise<a
       date: creditNote.date,
       description: `Journal posting of Credit Note ${cnNumber}`,
       reference: cnNumber,
-      source: 'manual', // standard general ledger
+      source: 'manual',
       sourceId: creditNote.id,
       createdBy,
+      currency: cnCurrency,
+      fxRate: cnFxRate ? Number(cnFxRate) : undefined,
       lines: journalLines
     }, tx);
 
