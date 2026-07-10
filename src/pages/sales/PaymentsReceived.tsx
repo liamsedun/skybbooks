@@ -323,6 +323,88 @@ function printReceipt(payment: PaymentDetail, org: any, cust: any, invoices: (In
   else { alert('Popup blocked. Please allow popups for this site and try again.'); }
 }
 
+function printPaymentDetail(payment: PaymentDetail, org: any) {
+  const meta = METHOD_META[payment.paymentMethod] || { label: payment.paymentMethod };
+  const logoHtml = org?.logoUrl
+    ? `<img src="${org.logoUrl}" style="height:48px;width:48px;object-fit:contain;border-radius:8px;" />`
+    : `<div style="width:48px;height:48px;border-radius:12px;background:#4f46e5;display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;font-weight:700;">${org?.name?.[0]?.toUpperCase() ?? 'S'}</div>`;
+
+  const html = `<!DOCTYPE html><html><head><title>Payment Detail - ${payment.paymentNumber}</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:48px;color:#1e293b}
+  @media print{body{padding:24px}}
+</style></head><body>
+<div style="max-width:640px;margin:0 auto;background:#fff;">
+  <div style="height:6px;background:linear-gradient(90deg,#4f46e5,#8b5cf6,#818cf8);border-radius:3px;margin-bottom:32px;"></div>
+
+  <table style="width:100%;border-collapse:collapse;">
+    <tr>
+      <td style="vertical-align:top;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          ${logoHtml}
+          <div>
+            <div style="font-size:14px;font-weight:700;color:#0f172a;">${org?.name || 'Your Company'}</div>
+            ${org?.address ? `<div style="font-size:11px;color:#64748b;margin-top:2px;">${org.address}</div>` : ''}
+            <div style="font-size:11px;color:#64748b;margin-top:4px;">
+              ${org?.phone ? `<span>${org.phone}</span>` : ''}${org?.phone && org?.email ? ' · ' : ''}
+              ${org?.email ? `<span>${org.email}</span>` : ''}
+            </div>
+            ${org?.website ? `<div style="font-size:11px;color:#4f46e5;margin-top:0px;">${org.website}</div>` : ''}
+          </div>
+        </div>
+      </td>
+      <td style="vertical-align:top;text-align:right;">
+        <div style="font-size:11px;font-weight:700;color:#4f46e5;text-transform:uppercase;letter-spacing:2px;">Payment Detail</div>
+        <div style="font-size:24px;font-weight:900;color:#0f172a;letter-spacing:-0.5px;margin-top:4px;">${payment.paymentNumber}</div>
+        <div style="display:inline-block;margin-top:6px;padding:3px 12px;border-radius:999px;font-size:11px;font-weight:600;background:#fef3c7;color:#92400e;border:1px solid #fde68a;">Other Income</div>
+      </td>
+    </tr>
+  </table>
+
+  <table style="width:100%;border-collapse:collapse;margin-top:32px;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;">
+    <tr>
+      <td style="vertical-align:top;padding:24px 16px 24px 0;width:60%;">
+        <div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">From</div>
+        <div style="font-size:14px;font-weight:700;color:#0f172a;">${payment.payerName || '—'}</div>
+      </td>
+      <td style="vertical-align:top;padding:24px 0 24px 16px;text-align:right;">
+        <div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Details</div>
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <tr><td style="padding:3px 0;color:#94a3b8;text-align:left;">Date</td><td style="padding:3px 0;font-weight:500;color:#334155;text-align:right;">${fmtDate(payment.date)}</td></tr>
+          <tr><td style="padding:3px 0;color:#94a3b8;text-align:left;">Method</td><td style="padding:3px 0;font-weight:500;color:#334155;text-align:right;">${meta.label}</td></tr>
+          ${payment.reference ? `<tr><td style="padding:3px 0;color:#94a3b8;text-align:left;">Reference</td><td style="padding:3px 0;font-weight:500;color:#334155;text-align:right;font-family:monospace;">${payment.reference}</td></tr>` : ''}
+        </table>
+      </td>
+    </tr>
+  </table>
+
+  <div style="margin-top:24px;padding:20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;">
+    <div style="text-align:center;">
+      <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Total Received</div>
+      <div style="font-size:28px;font-weight:900;color:#059669;font-family:monospace;">${formatNaira(payment.amount)}</div>
+    </div>
+    <div style="font-size:11px;color:#94a3b8;text-align:center;margin-top:6px;">${payment.currency}</div>
+  </div>
+
+  ${payment.notes ? `
+  <div style="margin-top:24px;padding-top:16px;border-top:1px solid #e2e8f0;">
+    <div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Notes</div>
+    <div style="font-size:12px;color:#64748b;line-height:1.6;">${payment.notes}</div>
+  </div>
+  ` : ''}
+
+  <div style="margin-top:32px;padding-top:16px;border-top:1px solid #e2e8f0;text-align:center;font-size:10px;color:#94a3b8;">
+    ${org?.name || 'Your Company'} · This document was generated electronically.
+  </div>
+</div>
+</body></html>`;
+
+  const w = window.open('', '_blank');
+  if (w) { w.document.write(html); w.document.close(); setTimeout(() => w.print(), 500); }
+  else { alert('Popup blocked. Please allow popups for this site and try again.'); }
+}
+
 // ── Export Helpers ──────────────────────────────────────────────────────────
 
 function exportPaymentsCSV(payments: Payment[]) {
@@ -867,9 +949,14 @@ export function PaymentsReceivedPage() {
                           </td>
                           <td className="px-3 py-3">
                             <div className="opacity-0 group-hover:opacity-100 flex items-center justify-end gap-1 transition-opacity" onClick={e => e.stopPropagation()}>
-                              {p.category === 'sales_invoice' && (
+                              {p.category === 'sales_invoice' ? (
                                 <button onClick={() => setReceiptPaymentId(p.id)}
                                   className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200" title="Download receipt">
+                                  <Download size={14} />
+                                </button>
+                              ) : (
+                                <button onClick={() => { if (org) printPaymentDetail(p, org); }}
+                                  className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200" title="Print payment detail">
                                   <Download size={14} />
                                 </button>
                               )}
@@ -911,9 +998,14 @@ export function PaymentsReceivedPage() {
                     <p className="text-base font-bold text-slate-900 mt-0.5">{selectedPayment?.paymentNumber}</p>
                   </div>
                   <div className="flex items-center gap-1">
-                    {selectedPayment?.category === 'sales_invoice' && (
+                    {selectedPayment?.category === 'sales_invoice' ? (
                       <button onClick={() => setReceiptPaymentId(selectedPaymentId)}
                         className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50" title="Download receipt">
+                        <Download size={16} />
+                      </button>
+                    ) : (
+                      <button onClick={() => { if (selectedPayment && org) printPaymentDetail(selectedPayment, org); }}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50" title="Print payment detail">
                         <Download size={16} />
                       </button>
                     )}
