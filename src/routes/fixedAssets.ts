@@ -46,6 +46,7 @@ router.get('/depreciation-history', async (req: AuthenticatedRequest, res: Respo
         de.period_date AS "periodDate",
         de.amount,
         de.journal_entry_id AS "journalEntryId",
+        de.entry_number AS "entryNumber",
         de.created_at AS "createdAt",
         fa.asset_number AS "assetNumber",
         fa.name AS "assetName",
@@ -350,8 +351,17 @@ router.post('/run-depreciation', async (req: AuthenticatedRequest, res: Response
     const deprExpenseAccount = orgAccounts.find(a => a.code === '810700');
     if (!deprExpenseAccount) throw new AppError('Depreciation expense account (810700) not found.', 400);
 
+    // Get next entry number
+    const countResult = await db.execute(sql`
+      SELECT count(*)::int AS cnt
+      FROM depreciation_entries de
+      JOIN fixed_assets fa ON fa.id = de.asset_id
+      WHERE fa.org_id = ${orgId}
+    `);
+    let nextNum = Number(countResult.rows[0]?.cnt || 0);
+
     const lines: { accountId: string; debit: number; credit: number; description: string }[] = [];
-    const entryRows: { assetId: string; periodDate: Date; amount: number }[] = [];
+    const entryRows: { assetId: string; periodDate: Date; amount: number; entryNumber: string }[] = [];
     const assetUpdates: { id: string; accumulatedDepreciation: number; bookValue: number; status: string }[] = [];
 
     for (const asset of assetList) {
@@ -392,7 +402,8 @@ router.post('/run-depreciation', async (req: AuthenticatedRequest, res: Response
         { accountId: accDeprAccount.id, debit: 0, credit: actualDepr, description: `Accumulated depreciation - ${asset.name}` }
       );
 
-      entryRows.push({ assetId: asset.id, periodDate, amount: actualDepr });
+      nextNum++;
+      entryRows.push({ assetId: asset.id, periodDate, amount: actualDepr, entryNumber: `DE-${String(nextNum).padStart(6, '0')}` });
 
       const newAccumulated = asset.accumulatedDepreciation + actualDepr;
       const newBookValue = asset.purchaseCost - newAccumulated;
@@ -421,6 +432,7 @@ router.post('/run-depreciation', async (req: AuthenticatedRequest, res: Response
         periodDate: row.periodDate,
         amount: row.amount,
         journalEntryId: journalEntry.id,
+        entryNumber: row.entryNumber,
       });
     }
 

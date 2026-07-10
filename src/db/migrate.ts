@@ -508,6 +508,10 @@ export async function runMigration() {
     `);
     console.log('[Migration] Backfilled project_id on journal entries from source tables.');
 
+    // Add entry_number to depreciation_entries
+    await db.execute(sql`ALTER TABLE depreciation_entries ADD COLUMN IF NOT EXISTS entry_number text`);
+    console.log('[Migration] Added entry_number to depreciation_entries.');
+
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema push:', err);

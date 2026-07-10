@@ -858,6 +858,7 @@ export const depreciationEntries = pgTable('depreciation_entries', {
   periodDate: timestamp('period_date').notNull(),
   amount: bigint('amount', { mode: 'number' }).notNull(),
   journalEntryId: uuid('journal_entry_id').references(() => journalEntries.id).notNull(),
+  entryNumber: text('entry_number'),
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 

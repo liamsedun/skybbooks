@@ -121,7 +121,7 @@ export function DepreciationPage() {
               <tr>
                 <th className="px-4 py-3 text-left w-8"></th>
                 <th className="px-4 py-3 text-left">Period</th>
-                <th className="px-4 py-3 text-left">Asset #</th>
+                <th className="px-4 py-3 text-left">Depr #</th>
                 <th className="px-4 py-3 text-left">Asset Name</th>
                 <th className="px-4 py-3 text-right">Amount (₦)</th>
                 <th className="px-4 py-3 text-right">Accum. Depr.</th>
@@ -160,7 +160,7 @@ export function DepreciationPage() {
                         onClick={() => navigate(`/accountant/journals`)}>
                         <td className="px-4 py-3"></td>
                         <td className="px-4 py-3 text-slate-400 text-xs">{formatPeriod(r.periodDate)}</td>
-                        <td className="px-4 py-3 font-mono text-indigo-600 font-medium">{r.assetNumber}</td>
+                        <td className="px-4 py-3 font-mono text-indigo-600 font-medium">{r.entryNumber || r.assetNumber}</td>
                         <td className="px-4 py-3 text-slate-800">{r.assetName}</td>
                         <td className="px-4 py-3 text-right font-mono tabular-nums text-slate-900">{fmtNaira(r.amount)}</td>
                         <td className="px-4 py-3 text-right font-mono tabular-nums text-slate-600">{fmtNaira(r.accumulatedDepreciation)}</td>
