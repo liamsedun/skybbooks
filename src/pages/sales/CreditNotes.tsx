@@ -4,7 +4,7 @@
  */
 import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '../../lib/api';
+import { api, orgApi } from '../../lib/api';
 import { useSearchParams } from 'react-router-dom';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
 import {
@@ -111,6 +111,114 @@ function exportCreditNotesPDF(notes: CreditNote[]) {
   </body></html>`;
   const w = window.open('','_blank');
   if (w) { w.document.write(html); w.document.close(); setTimeout(()=>w.print(),500); }
+}
+
+function printCreditNote(note: CreditNote, org: any) {
+  const logoHtml = org?.logoUrl
+    ? `<img src="${org.logoUrl}" style="height:48px;width:48px;object-fit:contain;border-radius:8px;" />`
+    : `<div style="width:48px;height:48px;border-radius:12px;background:#4f46e5;display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;font-weight:700;">${org?.name?.[0]?.toUpperCase() ?? 'S'}</div>`;
+
+  const statusLabel = STATUS_META[note.status]?.label || note.status;
+  const statusBadgeBg = note.status === 'applied' ? '#d1fae5' : note.status === 'issued' ? '#fef3c7' : '#f1f5f9';
+  const statusBadgeColor = note.status === 'applied' ? '#065f46' : note.status === 'issued' ? '#92400e' : '#475569';
+  const statusBadgeBorder = note.status === 'applied' ? '#a7f3d0' : note.status === 'issued' ? '#fde68a' : '#e2e8f0';
+
+  const html = `<!DOCTYPE html><html><head><title>Credit Note - ${note.cnNumber}</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:48px;color:#1e293b}
+  @media print{body{padding:24px}}
+</style></head><body>
+<div style="max-width:640px;margin:0 auto;background:#fff;">
+  <div style="height:6px;background:linear-gradient(90deg,#4f46e5,#8b5cf6,#818cf8);border-radius:3px;margin-bottom:32px;"></div>
+
+  <table style="width:100%;border-collapse:collapse;">
+    <tr>
+      <td style="vertical-align:top;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          ${logoHtml}
+          <div>
+            <div style="font-size:14px;font-weight:700;color:#0f172a;">${org?.name || 'Your Company'}</div>
+            ${org?.address ? `<div style="font-size:11px;color:#64748b;margin-top:2px;">${org.address}</div>` : ''}
+            <div style="font-size:11px;color:#64748b;margin-top:4px;">
+              ${org?.phone ? `<span>${org.phone}</span>` : ''}${org?.phone && org?.email ? ' · ' : ''}
+              ${org?.email ? `<span>${org.email}</span>` : ''}
+            </div>
+            ${org?.website ? `<div style="font-size:11px;color:#4f46e5;margin-top:0px;">${org.website}</div>` : ''}
+          </div>
+        </div>
+      </td>
+      <td style="vertical-align:top;text-align:right;">
+        <div style="font-size:11px;font-weight:700;color:#4f46e5;text-transform:uppercase;letter-spacing:2px;">Credit Note</div>
+        <div style="font-size:24px;font-weight:900;color:#0f172a;letter-spacing:-0.5px;margin-top:4px;">${note.cnNumber}</div>
+        <div style="margin-top:8px;">${fmtDate(note.date)}</div>
+        <div style="display:inline-block;margin-top:6px;padding:3px 12px;border-radius:999px;font-size:11px;font-weight:600;background:${statusBadgeBg};color:${statusBadgeColor};border:1px solid ${statusBadgeBorder};">${statusLabel}</div>
+      </td>
+    </tr>
+  </table>
+
+  <table style="width:100%;border-collapse:collapse;margin-top:32px;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;">
+    <tr>
+      <td style="vertical-align:top;padding:24px 16px 24px 0;width:60%;">
+        <div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Customer</div>
+        <div style="font-size:14px;font-weight:700;color:#0f172a;">${note.customer?.name || '—'}</div>
+        ${note.customer?.email ? `<div style="font-size:12px;color:#64748b;margin-top:2px;">${note.customer.email}</div>` : ''}
+      </td>
+      <td style="vertical-align:top;padding:24px 0 24px 16px;text-align:right;">
+        <div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Originating Invoice</div>
+        <div style="font-size:14px;font-weight:700;color:#0f172a;font-family:monospace;">${note.invoice?.invoiceNumber || '—'}</div>
+      </td>
+    </tr>
+  </table>
+
+  <div style="margin-top:24px;display:flex;gap:16px;">
+    <div style="flex:1;padding:16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;text-align:center;">
+      <div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Subtotal</div>
+      <div style="font-size:18px;font-weight:900;color:#0f172a;font-family:monospace;">${formatNaira(note.subtotal)}</div>
+    </div>
+    <div style="flex:1;padding:16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;text-align:center;">
+      <div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">VAT</div>
+      <div style="font-size:18px;font-weight:900;color:#0f172a;font-family:monospace;">${formatNaira(note.tax)}</div>
+    </div>
+    <div style="flex:1;padding:16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;text-align:center;">
+      <div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Total</div>
+      <div style="font-size:18px;font-weight:900;color:#059669;font-family:monospace;">${formatNaira(note.total)}</div>
+    </div>
+  </div>
+
+  <div style="margin-top:16px;padding:16px;background:#fffbeb;border:1px solid #fde68a;border-radius:12px;text-align:center;">
+    <div style="font-size:10px;font-weight:700;color:#d97706;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Remaining Credit</div>
+    <div style="font-size:20px;font-weight:900;color:#d97706;font-family:monospace;">${formatNaira(note.remainingCredit)}</div>
+  </div>
+
+  ${note.notes ? `
+  <div style="margin-top:24px;padding-top:16px;border-top:1px solid #e2e8f0;">
+    <div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Reason / Notes</div>
+    <div style="font-size:12px;color:#64748b;line-height:1.6;">${note.notes}</div>
+  </div>
+  ` : ''}
+
+  ${note.status === 'applied' ? `
+  <div style="margin-top:24px;padding:12px 16px;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:12px;font-size:12px;font-weight:600;color:#065f46;text-align:center;">
+    This credit note has been fully applied.
+  </div>
+  ` : ''}
+
+  ${note.status === 'void' ? `
+  <div style="margin-top:24px;padding:12px 16px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:12px;font-size:12px;font-weight:600;color:#64748b;text-align:center;">
+    This credit note has been voided and can no longer be applied.
+  </div>
+  ` : ''}
+
+  <div style="margin-top:32px;padding-top:16px;border-top:1px solid #e2e8f0;text-align:center;font-size:10px;color:#94a3b8;">
+    ${org?.name || 'Your Company'} · This document was generated electronically.
+  </div>
+</div>
+</body></html>`;
+
+  const w = window.open('', '_blank');
+  if (w) { w.document.write(html); w.document.close(); setTimeout(() => w.print(), 500); }
+  else { alert('Popup blocked. Please allow popups for this site and try again.'); }
 }
 
 export function CreditNotesPage() {
@@ -421,6 +529,12 @@ function DetailPanel({
   const [applyInvoiceId, setApplyInvoiceId] = useState('');
   const [applyAmount, setApplyAmount] = useState('');
 
+  const { data: org } = useQuery({
+    queryKey: ['org'],
+    queryFn: orgApi.getOrg,
+    staleTime: 60000,
+  });
+
   const { data: note, isLoading } = useQuery<CreditNote>({
     queryKey: ['sales', 'credit-notes', creditNoteId],
     queryFn: async () => { const r = await api.get(`/sales/credit-notes/${creditNoteId}`); return r.data; },
@@ -478,9 +592,17 @@ function DetailPanel({
       <div className="fixed top-0 right-0 h-full w-full max-w-lg bg-white shadow-2xl z-50 flex flex-col">
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
           <h2 className="text-base font-bold text-slate-900">Credit Note</h2>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-1">
+            {note && org && (
+              <button onClick={() => printCreditNote(note, org)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors" title="Print credit note">
+                <Download size={16} />
+              </button>
+            )}
+            <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-5">
