@@ -1000,7 +1000,8 @@ function ReportTable({ data, reportType, compareEnabled, onAccountClick }: { dat
   }
 
   if (reportType === 'income-statement') {
-    return <SummaryTable data={data} columns={[{ key: 'accountName', label: 'Account' }, { key: 'balance', label: 'Amount', fmt: fmtNaira }]} onAccountClick={onAccountClick} />;
+    const current = data?.current || data;
+    return <SinglePeriodPnLTable current={current} onAccountClick={onAccountClick} />;
   }
 
   if (reportType === 'cash-flow') {
@@ -1322,6 +1323,63 @@ function buildPnLRows(current: any, prior: any | null): any[] {
   const npPrior = gpPrior - (prior?.expense?.total || 0);
   rows.push({ section: 'Net Profit', isSummary: true, summaryCurrent: npCurr, summaryPrior: npPrior, isRevenue: true });
   return rows;
+}
+
+function SinglePeriodPnLTable({ current, onAccountClick }: { current: any; onAccountClick?: (acct: any) => void }) {
+  function renderSection(label: string, accounts: any[], total: number) {
+    return (
+      <>
+        <tr className="bg-slate-100/50">
+          <td colSpan={2} className="px-3 py-2 text-xs font-bold text-slate-700 uppercase tracking-wider">{label}</td>
+        </tr>
+        {(accounts || []).map((a: any, i: number) => (
+          <tr key={i} className={`border-t border-slate-100 hover:bg-slate-50/50 even:bg-slate-50/50 transition-colors ${a.accountId ? 'cursor-pointer' : ''}`} onClick={() => a.accountId && onAccountClick?.(a)}>
+            <td className="px-3 py-2.5 pl-8 text-slate-800">{a.name}</td>
+            <td className="px-3 py-2.5 text-right font-semibold text-slate-800">{fmtNaira(a.balance)}</td>
+          </tr>
+        ))}
+        <tr className="border-t border-slate-200 bg-slate-50/50 font-medium">
+          <td className="px-3 py-2 pl-8 text-sm text-slate-700">Total {label}</td>
+          <td className="px-3 py-2 text-right text-slate-800">{fmtNaira(total)}</td>
+        </tr>
+      </>
+    );
+  }
+
+  const revenue = current?.revenue || {};
+  const cogs = current?.costOfGoodsSold || {};
+  const expense = current?.expense || {};
+  const revenueTotal = revenue.total || 0;
+  const cogsTotal = cogs.total || 0;
+  const expenseTotal = expense.total || 0;
+  const grossProfit = revenueTotal - cogsTotal;
+  const netProfit = current?.netProfit ?? grossProfit - expenseTotal;
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+      <table className="w-full text-sm">
+        <thead className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+          <tr>
+            <th className="text-left px-3 py-3">Account</th>
+            <th className="text-right px-3 py-3">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {renderSection('Revenue', revenue.accounts, revenueTotal)}
+          <tr className="border-t-2 border-emerald-200 bg-emerald-50/50 font-bold">
+            <td className="px-3 py-2 pl-8 text-sm text-slate-800">Gross Profit</td>
+            <td className="px-3 py-2 text-right text-slate-800">{fmtNaira(grossProfit)}</td>
+          </tr>
+          {renderSection('Cost of Goods Sold', cogs.accounts, cogsTotal)}
+          {renderSection('Operating Expenses', expense.accounts, expenseTotal)}
+          <tr className="border-t-2 border-slate-300 bg-slate-100 font-bold">
+            <td className="px-3 py-3 text-sm text-slate-900">Net Profit</td>
+            <td className="px-3 py-3 text-right text-slate-900">{fmtNaira(netProfit)}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 function ComparativePnLTable({ current, prior, onAccountClick }: { current: any; prior: any | null; onAccountClick?: (acct: any) => void }) {
