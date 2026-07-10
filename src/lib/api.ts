@@ -1018,7 +1018,7 @@ export const reportsApi = {
   },
 
   getIncomeStatement: async (params: { startDate: string; endDate: string; format?: 'json' | 'pdf' | 'excel'; compareStart?: string; compareEnd?: string }) => {
-    const res = await api.get('/reports/income-statement', { params, responseType: params.format === 'pdf' ? 'blob' : undefined });
+    const res = await api.get('/reports/income-statement', { params, responseType: params.format === 'pdf' || params.format === 'excel' ? 'blob' : undefined });
     return res.data;
   },
   getBalanceSheet: async (params: { asOfDate?: string; compareAsOf?: string; format?: 'json' | 'pdf' | 'excel' }) => {

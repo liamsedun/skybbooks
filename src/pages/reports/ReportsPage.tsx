@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { reportsApi, accountantApi, apiDownload, printWindow, api, orgApi } from '../../lib/api';
+import { reportsApi, accountantApi, apiDownload, printWindow, api, orgApi, downloadBlob } from '../../lib/api';
 import { Loader2, AlertCircle, CheckCircle2, Download, Search, Upload, FileText, X, RefreshCw, ExternalLink, Pencil, ChevronRight, ChevronDown, Briefcase } from 'lucide-react';
 import { downloadCsv, exportToCsv, CSV_TEMPLATES } from '../../lib/csvTemplates';
 
@@ -821,44 +821,68 @@ function ReportShell({ reportType, title }: ReportPageProps) {
 
   const handleExport = (format: 'pdf' | 'excel' | 'csv') => {
     if (format === 'csv') {
-      const rows = Array.isArray(data) ? data : [];
-      if (!rows.length) return;
       const today = new Date().toISOString().split('T')[0];
       let headers: string[];
       let csvRows: string[][];
-      if (reportType === 'aged-receivables' || reportType === 'aged-payables') {
-        headers = ['Name', 'Current', '1-30 Days', '31-60 Days', '61-90 Days', '90+ Days', 'Total'];
-        csvRows = rows.map((r: any) => [r.name || r.customerName || r.vendorName || '', (r.current/100).toFixed(2), (r.days1to30/100).toFixed(2), (r.days31to60/100).toFixed(2), (r.days61to90/100).toFixed(2), (r.days90Plus/100).toFixed(2), (r.total/100).toFixed(2)]);
-      } else if (reportType === 'balance-sheet' || reportType === 'income-statement') {
+      if (reportType === 'income-statement') {
         headers = ['Account', 'Amount'];
-        csvRows = rows.map((r: any) => [r.accountName||'', ((r.balance||0)/100).toFixed(2)]);
-      } else if (reportType === 'cash-flow') {
-        const cf = data?.data || data || {};
-        headers = ['Line Item', 'Amount'];
-        const flatRows: string[][] = [];
-        const addRow = (label: string, amt: number) => flatRows.push([label, (amt/100).toFixed(2)]);
-        const netIncome = cf.netIncome || 0;
-        const operating = cf.operatingActivities || {};
-        const investing = cf.investingActivities || {};
-        const financing = cf.financingActivities || {};
-        addRow('A. OPERATING ACTIVITIES', 0);
-        addRow('Net Profit', netIncome);
-        (operating.adjustments || []).forEach((a: any) => addRow(a.name, a.amount));
-        (operating.workingCapitalChanges || []).forEach((w: any) => addRow(w.name, w.amount));
-        addRow('Net Cash from Operating Activities', operating.total || 0);
-        addRow('B. INVESTING ACTIVITIES', 0);
-        (investing.items || []).forEach((iv: any) => addRow(iv.name, iv.amount));
-        addRow('Net Cash from Investing Activities', investing.total || 0);
-        addRow('C. FINANCING ACTIVITIES', 0);
-        (financing.items || []).forEach((fn: any) => addRow(fn.name, fn.amount));
-        addRow('Net Cash from Financing Activities', financing.total || 0);
-        addRow('Net Change in Cash', cf.netChangeInCash || 0);
-        addRow('Opening Cash Balance', cf.openingCash || 0);
-        addRow('Closing Cash Balance', cf.closingCash || 0);
-        csvRows = flatRows;
+        csvRows = [];
+        const isData = (data as any)?.current || data || {};
+        const rev = isData.revenue || {};
+        const cogs = isData.costOfGoodsSold || {};
+        const exp = isData.expense || {};
+        const revTotal = rev.total || 0;
+        const cogsTotal = cogs.total || 0;
+        const expTotal = exp.total || 0;
+        const gp = revTotal - cogsTotal;
+        const np = isData.netProfit ?? gp - expTotal;
+        const addSec = (label: string, accounts: any[], total: number) => {
+          csvRows.push([label, '']);
+          (accounts || []).forEach((a: any) => csvRows.push([a.name, ((a.balance||0)/100).toFixed(2)]));
+          csvRows.push([`Total ${label}`, (total/100).toFixed(2)]);
+        };
+        addSec('Revenue', rev.accounts, revTotal);
+        csvRows.push(['Gross Profit', (gp/100).toFixed(2)]);
+        addSec('Cost of Goods Sold', cogs.accounts, cogsTotal);
+        addSec('Operating Expenses', exp.accounts, expTotal);
+        csvRows.push(['Net Profit', (np/100).toFixed(2)]);
       } else {
-        headers = ['Account Code', 'Account Name', 'Type', 'Debit', 'Credit'];
-        csvRows = rows.map((r: any) => [r.code||r.accountCode||'', r.name||r.accountName||'', r.type||r.accountType||'', ((r.debit||r.debitAmount||0)/100).toFixed(2), ((r.credit||r.creditAmount||0)/100).toFixed(2)]);
+        const rows = Array.isArray(data) ? data : [];
+        if (!rows.length) return;
+        if (reportType === 'aged-receivables' || reportType === 'aged-payables') {
+          headers = ['Name', 'Current', '1-30 Days', '31-60 Days', '61-90 Days', '90+ Days', 'Total'];
+          csvRows = rows.map((r: any) => [r.name || r.customerName || r.vendorName || '', (r.current/100).toFixed(2), (r.days1to30/100).toFixed(2), (r.days31to60/100).toFixed(2), (r.days61to90/100).toFixed(2), (r.days90Plus/100).toFixed(2), (r.total/100).toFixed(2)]);
+        } else if (reportType === 'balance-sheet') {
+          headers = ['Account', 'Amount'];
+          csvRows = rows.map((r: any) => [r.accountName||'', ((r.balance||0)/100).toFixed(2)]);
+        } else if (reportType === 'cash-flow') {
+          const cf = data?.data || data || {};
+          headers = ['Line Item', 'Amount'];
+          const flatRows: string[][] = [];
+          const addRow = (label: string, amt: number) => flatRows.push([label, (amt/100).toFixed(2)]);
+          const netIncome = cf.netIncome || 0;
+          const operating = cf.operatingActivities || {};
+          const investing = cf.investingActivities || {};
+          const financing = cf.financingActivities || {};
+          addRow('A. OPERATING ACTIVITIES', 0);
+          addRow('Net Profit', netIncome);
+          (operating.adjustments || []).forEach((a: any) => addRow(a.name, a.amount));
+          (operating.workingCapitalChanges || []).forEach((w: any) => addRow(w.name, w.amount));
+          addRow('Net Cash from Operating Activities', operating.total || 0);
+          addRow('B. INVESTING ACTIVITIES', 0);
+          (investing.items || []).forEach((iv: any) => addRow(iv.name, iv.amount));
+          addRow('Net Cash from Investing Activities', investing.total || 0);
+          addRow('C. FINANCING ACTIVITIES', 0);
+          (financing.items || []).forEach((fn: any) => addRow(fn.name, fn.amount));
+          addRow('Net Cash from Financing Activities', financing.total || 0);
+          addRow('Net Change in Cash', cf.netChangeInCash || 0);
+          addRow('Opening Cash Balance', cf.openingCash || 0);
+          addRow('Closing Cash Balance', cf.closingCash || 0);
+          csvRows = flatRows;
+        } else {
+          headers = ['Account Code', 'Account Name', 'Type', 'Debit', 'Credit'];
+          csvRows = rows.map((r: any) => [r.code||r.accountCode||'', r.name||r.accountName||'', r.type||r.accountType||'', ((r.debit||r.debitAmount||0)/100).toFixed(2), ((r.credit||r.creditAmount||0)/100).toFixed(2)]);
+        }
       }
       exportToCsv(`${reportType}_${today}.csv`, headers, csvRows);
       return;
@@ -1087,7 +1111,16 @@ function ReportShell({ reportType, title }: ReportPageProps) {
       }
       return;
     }
-    apiDownload(`/reports/${reportType}?format=${format}&startDate=${sDate}&endDate=${eDate}`, `${reportType}_${new Date().toISOString().split('T')[0]}.${format}`);
+    if (reportType === 'income-statement') {
+      reportsApi.getIncomeStatement({ startDate: sDate, endDate: eDate, format: 'excel' }).then((blob: any) => {
+        downloadBlob(blob, `income_statement_${new Date().toISOString().split('T')[0]}.xlsx`);
+      }).catch((err: any) => {
+        console.error('Excel export failed:', err);
+        alert('Failed to export Excel. Please try again.');
+      });
+    } else {
+      apiDownload(`/reports/${reportType}?format=${format}&startDate=${sDate}&endDate=${eDate}`, `${reportType}_${new Date().toISOString().split('T')[0]}.${format}`);
+    }
   };
 
   const handleImportOB = async () => {
