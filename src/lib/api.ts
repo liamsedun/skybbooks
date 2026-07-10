@@ -900,7 +900,12 @@ export const fixedAssetsApi = {
   },
 };
 
-// 7e. Audit Log Endpoints
+// 7e. Depreciation History Endpoint
+export const depreciationHistoryApi = {
+  list: async () => { const res = await api.get('/fixed-assets/depreciation-history'); return res.data; },
+};
+
+// 7g. Audit Log Endpoints
 export const auditLogApi = {
   getLogs: async (params?: any) => {
     const res = await api.get('/audit-log', { params });

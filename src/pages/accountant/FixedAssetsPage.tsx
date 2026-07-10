@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fixedAssetsApi, accountantApi, printWindow, apiDownload } from '../../lib/api';
 import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
 import { PageLoader } from '../../components/ui/PageLoader';
-import { Plus, X, Loader2, AlertCircle, CheckCircle2, Trash2, Eye, Download, Upload, FileText, Printer, Calculator } from 'lucide-react';
+import { Plus, X, Loader2, Trash2, Eye, Download, Upload, FileText, Printer } from 'lucide-react';
 import { downloadCsv } from '../../lib/csvTemplates';
 
 function fmtNaira(v: number): string {
@@ -29,9 +29,6 @@ export function FixedAssetsPage() {
   const [importing, setImporting] = useState(false);
   const [lastImportIds, setLastImportIds] = useState<string[]>([]);
   const [clearing, setClearing] = useState(false);
-  const [deprMsg, setDeprMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [showDeprModal, setShowDeprModal] = useState(false);
-  const [deprPeriodDate, setDeprPeriodDate] = useState(new Date().toISOString().split('T')[0]);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const { data: assets, isLoading } = useQuery({
@@ -42,12 +39,6 @@ export function FixedAssetsPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => fixedAssetsApi.deleteAsset(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['fixed-assets'] }),
-  });
-
-  const deprMutation = useMutation({
-    mutationFn: (periodDate?: string) => fixedAssetsApi.runDepreciation(periodDate),
-    onSuccess: (res) => { setDeprMsg({ type: 'success', text: res.message || 'Depreciation run complete.' }); queryClient.invalidateQueries({ queryKey: ['fixed-assets'] }); setShowDeprModal(false); setTimeout(() => setDeprMsg(null), 5000); },
-    onError: (err: any) => { setDeprMsg({ type: 'error', text: err?.response?.data?.error || err.message || 'Depreciation run failed.' }); setTimeout(() => setDeprMsg(null), 5000); },
   });
 
   const handleExportCsv = () => {
@@ -113,48 +104,11 @@ export function FixedAssetsPage() {
           {lastImportIds.length > 0 && (
             <button onClick={handleClearLastImport} disabled={clearing} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-rose-600 rounded-xl hover:bg-rose-700 disabled:opacity-50 transition-all duration-200"><X className="w-3.5 h-3.5" /> {clearing ? 'Clearing...' : 'Clear Last Import'}</button>
           )}
-          <button onClick={() => setShowDeprModal(true)} disabled={deprMutation.isPending}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-amber-600 rounded-xl hover:bg-amber-700 disabled:opacity-50 transition-all duration-200">
-            <Calculator className="w-3.5 h-3.5" /> {deprMutation.isPending ? 'Running...' : 'Run Depreciation'}
-          </button>
           <button onClick={handleExportCsv} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 transition-all duration-200"><Download className="w-3.5 h-3.5" /> CSV</button>
           <button onClick={handlePrintPdf} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-red-600 rounded-xl hover:bg-red-700 transition-all duration-200"><Printer className="w-3.5 h-3.5" /> PDF</button>
           <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200"><Plus className="w-3.5 h-3.5" /> New Asset</button>
         </div>
       </div>
-
-      {deprMsg && (
-        <div className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-semibold border ${deprMsg.type === 'success' ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80' : 'bg-red-50 text-red-700 border-red-100/80'}`}>
-          {deprMsg.type === 'success' ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
-          {deprMsg.text}
-        </div>
-      )}
-
-      {/* Run Depreciation - Period Modal */}
-      {showDeprModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setShowDeprModal(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4 border border-slate-200/80" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-slate-900">Run Depreciation</h2>
-              <button onClick={() => setShowDeprModal(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-xl hover:bg-slate-100"><X className="w-5 h-5" /></button>
-            </div>
-            <p className="text-sm text-slate-600">Select the period (month) for the depreciation run.</p>
-            <div>
-              <label className="text-xs font-semibold text-slate-500 uppercase">Period Date</label>
-              <input type="date" value={deprPeriodDate} onChange={e => setDeprPeriodDate(e.target.value)}
-                className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow mt-1" />
-            </div>
-            <div className="flex justify-end gap-3">
-              <button onClick={() => setShowDeprModal(false)}
-                className="px-4 py-2 text-sm font-semibold text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200">Cancel</button>
-              <button onClick={() => deprMutation.mutate(deprPeriodDate)} disabled={deprMutation.isPending || !deprPeriodDate}
-                className="px-4 py-2 text-sm font-semibold text-white bg-amber-600 rounded-xl hover:bg-amber-700 disabled:opacity-50">
-                {deprMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin inline" /> : null} Run Depreciation
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {showForm ? (
         <AssetForm onDone={() => { setShowForm(false); queryClient.invalidateQueries({ queryKey: ['fixed-assets'] }); }} />

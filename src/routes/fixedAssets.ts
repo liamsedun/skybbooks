@@ -440,6 +440,38 @@ router.patch('/depreciation-entries/:entryId', async (req: AuthenticatedRequest,
   }
 });
 
+// GET /depreciation-history - Returns all depreciation runs with asset details
+router.get('/depreciation-history', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { rows } = await db.execute(sql`
+      SELECT
+        de.id,
+        de.asset_id AS "assetId",
+        de.period_date AS "periodDate",
+        de.amount,
+        de.journal_entry_id AS "journalEntryId",
+        de.created_at AS "createdAt",
+        fa.asset_number AS "assetNumber",
+        fa.name AS "assetName",
+        fa.purchase_cost AS "purchaseCost",
+        fa.accumulated_depreciation AS "accumulatedDepreciation",
+        fa.book_value AS "bookValue",
+        je.entry_number AS "jeNumber",
+        je.date AS "jeDate"
+      FROM depreciation_entries de
+      JOIN fixed_assets fa ON fa.id = de.asset_id
+      JOIN journal_entries je ON je.id = de.journal_entry_id
+      WHERE fa.org_id = ${orgId}
+      ORDER BY de.period_date DESC, fa.name ASC
+    `);
+    return res.json(rows || []);
+  } catch (err) {
+    console.error('[Depreciation History] Error:', err);
+    return next(err);
+  }
+});
+
 // GET /pdf - Export fixed assets as PDF
 router.get('/pdf', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
