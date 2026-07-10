@@ -1119,30 +1119,34 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                                   ? `/sales/invoices/${txn.sourceDocId}`
                                   : txn.sourceDocType === 'payroll'
                                     ? `/payroll/runs/${txn.sourceDocId}`
-                                    : null;
+                                    : txn.sourceDocType === 'transfer'
+                                      ? `/banking/transfers`
+                                      : null;
                           if (path) navigate(path);
                         }}>
                           <td className="py-1.5 pr-1 whitespace-nowrap">
                             <div className="flex items-center gap-0.5">
-                              {(txn.sourceDocType === 'receipt' || txn.sourceDocType === 'payment' || txn.sourceDocType === 'expense' || txn.sourceDocType === 'invoice' || txn.sourceDocType === 'payroll') && (
+                              {(txn.sourceDocType === 'receipt' || txn.sourceDocType === 'payment' || txn.sourceDocType === 'expense' || txn.sourceDocType === 'invoice' || txn.sourceDocType === 'payroll' || txn.sourceDocType === 'transfer') && (
                                 <>
-                                  <button
-                                    className="p-0.5 text-slate-300 hover:text-blue-600 transition"
-                                    title="View"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      const path = txn.sourceDocType === 'payment'
-                                        ? `/purchases/payments-made?selected=${txn.sourceDocId}`
-                                        : txn.sourceDocType === 'expense'
-                                          ? `/purchases/expenses?selected=${txn.sourceDocId}`
-                                          : txn.sourceDocType === 'invoice'
-                                            ? `/sales/invoices/${txn.sourceDocId}`
-                                            : txn.sourceDocType === 'payroll'
-                                              ? `/payroll/runs/${txn.sourceDocId}`
-                                              : `/sales/payments?selected=${txn.sourceDocId}`;
-                                      navigate(path);
-                                    }}
-                                  >
+                                    <button
+                                      className="p-0.5 text-slate-300 hover:text-blue-600 transition"
+                                      title="View"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const path = txn.sourceDocType === 'payment'
+                                          ? `/purchases/payments-made?selected=${txn.sourceDocId}`
+                                          : txn.sourceDocType === 'expense'
+                                            ? `/purchases/expenses?selected=${txn.sourceDocId}`
+                                            : txn.sourceDocType === 'invoice'
+                                              ? `/sales/invoices/${txn.sourceDocId}`
+                                              : txn.sourceDocType === 'payroll'
+                                                ? `/payroll/runs/${txn.sourceDocId}`
+                                                : txn.sourceDocType === 'transfer'
+                                                  ? `/banking/transfers`
+                                                  : `/sales/payments?selected=${txn.sourceDocId}`;
+                                        navigate(path);
+                                      }}
+                                    >
                                     <Eye className="w-3 h-3" />
                                   </button>
                                 </>

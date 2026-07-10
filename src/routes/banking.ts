@@ -1220,6 +1220,15 @@ router.get('/accounts/:id/payments', async (req: AuthenticatedRequest, res: Resp
           if (pr) { txnType = 'Payroll'; txnNumber = pr.runNumber; sourceDocType = 'payroll'; }
           break;
         }
+        case 'transfer': {
+          const [tf] = await db
+            .select({ transferNumber: bankTransfers.transferNumber })
+            .from(bankTransfers)
+            .where(eq(bankTransfers.id, row.source_id))
+            .limit(1);
+          if (tf) { txnType = 'Transfer'; txnNumber = tf.transferNumber; sourceDocType = 'transfer'; }
+          break;
+        }
       }
 
       const amount = Number(row.debit_amount || 0) - Number(row.credit_amount || 0);
