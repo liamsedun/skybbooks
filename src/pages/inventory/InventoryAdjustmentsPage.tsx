@@ -32,6 +32,13 @@ interface ItemEntry {
   newUnitCost: number;
 }
 
+const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+const fmtDateDisplay = (d: string) => {
+  const dt = new Date(d);
+  return `${dt.getDate()} ${monthNames[dt.getMonth()]} ${dt.getFullYear()}`;
+};
+
 export default function InventoryAdjustmentsPage() {
   const queryClient = useQueryClient();
   const [filterMode, setFilterMode] = useState<string>('all');
@@ -219,8 +226,8 @@ export default function InventoryAdjustmentsPage() {
           <h1 className="text-xl font-bold text-slate-900">Inventory Adjustments</h1>
           <p className="text-sm text-slate-500 mt-1">Keep Your Inventory Accurate — adjust quantities and values to ensure accurate stock and valuation.</p>
         </div>
-        <button onClick={() => { resetForm(); setShowNewModal(true); }} className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all text-sm font-medium shadow-sm">
-          <Plus size={16} /> New Adjustment
+        <button onClick={() => { resetForm(); setShowNewModal(true); }} className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all text-sm font-semibold shadow-md hover:shadow-lg">
+          <Plus size={18} /> +New
         </button>
       </div>
 
@@ -320,20 +327,23 @@ export default function InventoryAdjustmentsPage() {
 
       {/* New Adjustment Modal */}
       {showNewModal && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center pt-10 pb-10 bg-black/40 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-4 border border-slate-200">
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-8 pb-8 bg-black/40 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl mx-4 border border-slate-200">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
               <h2 className="text-lg font-bold text-slate-900">New Adjustment</h2>
               <button onClick={() => setShowNewModal(false)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><X size={18} /></button>
             </div>
-            <div className="p-6 space-y-6 max-h-[calc(100vh-160px)] overflow-y-auto">
-              {/* Mode toggle */}
-              <div className="flex gap-2 p-1 bg-slate-100 rounded-xl w-fit">
-                <button onClick={() => setMode('quantity')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${mode === 'quantity' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Quantity Adjustment</button>
-                <button onClick={() => setMode('value')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${mode === 'value' ? 'bg-white text-purple-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Value Adjustment</button>
+            <div className="p-6 space-y-5 max-h-[calc(100vh-140px)] overflow-y-auto">
+              {/* Mode of adjustment-button */}
+              <div>
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 block">Mode of Adjustment</label>
+                <div className="flex gap-2 p-1 bg-slate-100 rounded-xl w-fit">
+                  <button onClick={() => setMode('quantity')} className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${mode === 'quantity' ? 'bg-white text-blue-600 shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-700'}`}>Quantity Adjustment</button>
+                  <button onClick={() => setMode('value')} className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${mode === 'value' ? 'bg-white text-purple-600 shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-700'}`}>Value Adjustment</button>
+                </div>
               </div>
 
-              {/* Form fields */}
+              {/* Reference + Date */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Reference Number</label>
@@ -341,33 +351,41 @@ export default function InventoryAdjustmentsPage() {
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Date</label>
-                  <div className="flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-xl bg-white"><Calendar size={14} className="text-slate-400" /><input type="date" value={adjDate} onChange={e => setAdjDate(e.target.value)} className="flex-1 text-sm bg-transparent outline-none border-none text-slate-700" /></div>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Account <span className="text-red-400">*</span></label>
-                  <select value={accountId} onChange={e => setAccountId(e.target.value)} className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2.5 bg-white outline-none focus:ring-2 focus:ring-blue-500/20">
-                    <option value="">Select account...</option>
-                    {glAccounts?.filter((a: any) => a.type === 'expense' || a.type === 'income').map((a: any) => (
-                      <option key={a.id} value={a.id}>{a.name} ({a.code})</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Location</label>
-                  <div className="flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-xl bg-white"><MapPin size={14} className="text-slate-400" /><input value={location} onChange={e => setLocation(e.target.value)} placeholder="e.g. Warehouse A" className="flex-1 text-sm bg-transparent outline-none border-none text-slate-700" /></div>
-                </div>
-                <div className="space-y-1.5 md:col-span-2">
-                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Reason</label>
-                  <input value={reason} onChange={e => setReason(e.target.value)} placeholder="Why is this adjustment needed?" className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2.5 bg-white outline-none focus:ring-2 focus:ring-blue-500/20" />
-                </div>
-                <div className="space-y-1.5 md:col-span-2">
-                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Description <span className="text-slate-400 font-normal">(max 500 characters)</span></label>
-                  <textarea value={description} onChange={e => { if (e.target.value.length <= 500) setDescription(e.target.value); }} rows={3} placeholder="Optional notes about this adjustment..." className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2.5 bg-white outline-none focus:ring-2 focus:ring-blue-500/20 resize-none" />
-                  <p className="text-[11px] text-slate-400 text-right">{description.length}/500</p>
+                  <div className="flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-xl bg-white">
+                    <Calendar size={14} className="text-slate-400 shrink-0" />
+                    <input type="date" value={adjDate} onChange={e => setAdjDate(e.target.value)} className="flex-1 text-sm bg-transparent outline-none border-none text-slate-700" />
+                    <span className="text-xs text-slate-400 font-medium ml-auto whitespace-nowrap">{fmtDateDisplay(adjDate)}</span>
+                  </div>
                 </div>
               </div>
 
-              {/* Items section */}
+              {/* Account + Reason + Location */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Account <span className="text-red-400">*</span></label>
+                <select value={accountId} onChange={e => setAccountId(e.target.value)} className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2.5 bg-white outline-none focus:ring-2 focus:ring-blue-500/20">
+                  <option value="">Select account...</option>
+                  {glAccounts?.map((a: any) => (
+                    <option key={a.id} value={a.id}>{a.name} ({a.code})</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Reason</label>
+                <input value={reason} onChange={e => setReason(e.target.value)} placeholder="Why is this adjustment needed?" className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2.5 bg-white outline-none focus:ring-2 focus:ring-blue-500/20" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Location</label>
+                <input value={location} onChange={e => setLocation(e.target.value)} placeholder="e.g. Warehouse A" className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2.5 bg-white outline-none focus:ring-2 focus:ring-blue-500/20" />
+              </div>
+
+              {/* Description */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Description: Max. 500 characters</label>
+                <textarea value={description} onChange={e => { if (e.target.value.length <= 500) setDescription(e.target.value); }} rows={3} placeholder="Optional notes about this adjustment..." className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2.5 bg-white outline-none focus:ring-2 focus:ring-blue-500/20 resize-none" />
+                <p className="text-[11px] text-slate-400 text-right">{description.length}/500</p>
+              </div>
+
+              {/* Item Table */}
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="text-sm font-semibold text-slate-700">Items</h4>
@@ -385,11 +403,11 @@ export default function InventoryAdjustmentsPage() {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="bg-slate-100/80 text-slate-500 text-xs uppercase tracking-wider">
-                          <th className="text-left px-3 py-2 font-semibold">Item Details</th>
-                          <th className="text-right px-3 py-2 font-semibold">{mode === 'quantity' ? 'Qty Available' : 'Current Unit Cost'}</th>
-                          <th className="text-right px-3 py-2 font-semibold">{mode === 'quantity' ? 'New Qty on Hand' : 'New Unit Cost'}</th>
-                          <th className="text-right px-3 py-2 font-semibold">{mode === 'quantity' ? 'Qty Adjusted' : 'Cost Change'}</th>
-                          <th className="text-center px-3 py-2 font-semibold" />
+                          <th className="text-left px-3 py-2.5 font-semibold">Item Details</th>
+                          <th className="text-right px-3 py-2.5 font-semibold">{mode === 'quantity' ? 'Quantity Available' : 'Current Unit Cost'}</th>
+                          <th className="text-right px-3 py-2.5 font-semibold">{mode === 'quantity' ? 'New Quantity on hand' : 'New Unit Cost'}</th>
+                          <th className="text-right px-3 py-2.5 font-semibold">{mode === 'quantity' ? 'Quantity Adjusted' : 'Cost Change'}</th>
+                          <th className="text-center px-3 py-2.5 font-semibold" />
                         </tr>
                       </thead>
                       <tbody>
@@ -398,28 +416,28 @@ export default function InventoryAdjustmentsPage() {
                           const costChg = mode === 'value' ? (si.newUnitCost - si.currentUnitCost) : 0;
                           return (
                             <tr key={si.itemId} className="border-t border-slate-100">
-                              <td className="px-3 py-2">
+                              <td className="px-3 py-2.5">
                                 <p className="font-medium text-slate-900">{si.itemName}</p>
                                 <p className="text-[11px] text-slate-400">{si.sku || '—'} · {si.unit || 'unit'}</p>
                               </td>
-                              <td className="px-3 py-2 text-right">
+                              <td className="px-3 py-2.5 text-right">
                                 {mode === 'quantity' ? (
                                   <span className="text-slate-600">{si.quantityAvailable}</span>
                                 ) : (
                                   <span className="text-slate-600">{fmtNaira(si.currentUnitCost)}</span>
                                 )}
                               </td>
-                              <td className="px-3 py-2 text-right">
+                              <td className="px-3 py-2.5 text-right">
                                 {mode === 'quantity' ? (
                                   <input type="number" value={si.newQuantity} onChange={e => setSelectedItems(prev => prev.map(s => s.itemId === si.itemId ? { ...s, newQuantity: Math.max(0, Number(e.target.value)) } : s))} className="w-24 text-right text-sm border border-slate-200 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-blue-500/20" />
                                 ) : (
                                   <input type="number" value={Math.round(si.newUnitCost / 100)} onChange={e => setSelectedItems(prev => prev.map(s => s.itemId === si.itemId ? { ...s, newUnitCost: Math.max(0, Number(e.target.value)) * 100 } : s))} className="w-28 text-right text-sm border border-slate-200 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-blue-500/20" />
                                 )}
                               </td>
-                              <td className={`px-3 py-2 text-right font-medium ${mode === 'quantity' ? (qtyAdj > 0 ? 'text-emerald-600' : qtyAdj < 0 ? 'text-red-600' : 'text-slate-400') : (costChg > 0 ? 'text-emerald-600' : costChg < 0 ? 'text-red-600' : 'text-slate-400')}`}>
+                              <td className={`px-3 py-2.5 text-right font-medium ${mode === 'quantity' ? (qtyAdj > 0 ? 'text-emerald-600' : qtyAdj < 0 ? 'text-red-600' : 'text-slate-400') : (costChg > 0 ? 'text-emerald-600' : costChg < 0 ? 'text-red-600' : 'text-slate-400')}`}>
                                 {mode === 'quantity' ? (qtyAdj > 0 ? `+${qtyAdj}` : qtyAdj) : (costChg !== 0 ? fmtNaira(costChg) : '—')}
                               </td>
-                              <td className="px-3 py-2 text-center">
+                              <td className="px-3 py-2.5 text-center">
                                 <button onClick={() => handleRemoveItem(si.itemId)} className="p-1 rounded-lg hover:bg-red-100 text-slate-400 hover:text-red-600"><X size={14} /></button>
                               </td>
                             </tr>
@@ -431,15 +449,21 @@ export default function InventoryAdjustmentsPage() {
                 )}
               </div>
 
-              {/* File upload */}
+              {/* More Actions placeholder */}
+              <div className="border-t border-slate-100 pt-4">
+                <h4 className="text-sm font-semibold text-slate-700 mb-2">More Actions</h4>
+                <p className="text-xs text-slate-400">Additional options will appear here in future updates.</p>
+              </div>
+
+              {/* Attach File(s) */}
               <div>
-                <h4 className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2"><Upload size={14} /> Attach File(s) to inventory adjustment</h4>
+                <h4 className="text-sm font-semibold text-slate-700 mb-2">Attach File(s) to inventory adjustment</h4>
                 <div className="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center hover:border-blue-400 transition-colors">
                   <input type="file" multiple accept="*" id="file-upload" className="hidden" onChange={e => { if (e.target.files) setFiles(Array.from(e.target.files).slice(0, 5)); }} />
                   <label htmlFor="file-upload" className="cursor-pointer">
                     <Upload size={24} className="mx-auto text-slate-400 mb-1" />
                     <p className="text-sm text-slate-500">Click to upload or drag & drop</p>
-                    <p className="text-[11px] text-slate-400">Maximum 5 files, 5MB each</p>
+                    <p className="text-[11px] text-slate-400">You can upload a maximum of 5 files, 5MB each</p>
                   </label>
                 </div>
                 {files.length > 0 && (
@@ -458,16 +482,14 @@ export default function InventoryAdjustmentsPage() {
             </div>
 
             {/* Footer buttons */}
-            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200">
-              <button onClick={() => setShowNewModal(false)} className="px-4 py-2 text-sm text-slate-500 hover:text-slate-700 font-medium">Cancel</button>
-              <div className="flex gap-2">
-                <button onClick={() => handleSubmit('draft')} disabled={saving} className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors disabled:opacity-50">
-                  {saving ? <Loader2 size={14} className="animate-spin" /> : null} Save as Draft
-                </button>
-                <button onClick={() => handleSubmit('adjusted')} disabled={saving} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors disabled:opacity-50">
-                  {saving ? <Loader2 size={14} className="animate-spin" /> : null} Convert to Adjusted
-                </button>
-              </div>
+            <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-slate-200">
+              <button onClick={() => setShowNewModal(false)} className="px-5 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">Cancel</button>
+              <button onClick={() => handleSubmit('draft')} disabled={saving} className="px-5 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors disabled:opacity-50 inline-flex items-center gap-2">
+                {saving ? <Loader2 size={14} className="animate-spin" /> : null} Save as Draft
+              </button>
+              <button onClick={() => handleSubmit('adjusted')} disabled={saving} className="px-5 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors disabled:opacity-50 inline-flex items-center gap-2 shadow-sm">
+                {saving ? <Loader2 size={14} className="animate-spin" /> : null} Convert to Adjusted
+              </button>
             </div>
           </div>
         </div>
