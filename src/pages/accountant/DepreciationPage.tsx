@@ -1,12 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { depreciationHistoryApi, fixedAssetsApi } from '../../lib/api';
 import { PageLoader } from '../../components/ui/PageLoader';
-import { Play, Loader2, X, ExternalLink, Search } from 'lucide-react';
+import { Play, Loader2, X, ExternalLink, Search, ChevronDown, ChevronRight } from 'lucide-react';
 
 function fmtNaira(v: number): string {
   return `₦${(v / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
+}
+
+function formatPeriod(d: string): string {
+  return new Date(d).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+}
+
+function periodKey(d: string): string {
+  const dt = new Date(d);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
 }
 
 export function DepreciationPage() {
@@ -15,6 +24,7 @@ export function DepreciationPage() {
   const [showRunModal, setShowRunModal] = useState(false);
   const [periodDate, setPeriodDate] = useState(new Date().toISOString().split('T')[0]);
   const [search, setSearch] = useState('');
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const { data: entries = [], isLoading } = useQuery({
     queryKey: ['depreciation-history'],
@@ -30,13 +40,34 @@ export function DepreciationPage() {
     },
   });
 
-  const filtered = search
-    ? entries.filter((r: any) =>
-        (r.assetNumber || '').toLowerCase().includes(search.toLowerCase()) ||
-        (r.assetName || '').toLowerCase().includes(search.toLowerCase()) ||
-        (r.jeNumber || '').toLowerCase().includes(search.toLowerCase())
-      )
-    : entries;
+  const filtered = useMemo(() => {
+    const list = Array.isArray(entries) ? entries : [];
+    if (!search) return list;
+    const q = search.toLowerCase();
+    return list.filter((r: any) =>
+      (r.assetNumber || '').toLowerCase().includes(q) ||
+      (r.assetName || '').toLowerCase().includes(q) ||
+      (r.jeNumber || '').toLowerCase().includes(q)
+    );
+  }, [entries, search]);
+
+  const grouped = useMemo(() => {
+    const map = new Map<string, any[]>();
+    for (const r of filtered) {
+      const k = periodKey(r.periodDate);
+      if (!map.has(k)) map.set(k, []);
+      map.get(k)!.push(r);
+    }
+    return Array.from(map.entries()).sort((a, b) => b[0].localeCompare(a[0]));
+  }, [filtered]);
+
+  const toggleGroup = (key: string) => {
+    setExpanded(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
@@ -61,7 +92,6 @@ export function DepreciationPage() {
             onChange={e => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300" />
         </div>
-        <span className="text-xs text-slate-400 font-medium">{filtered.length} entry{filtered.length !== 1 ? 'ies' : 'y'}</span>
       </div>
 
       {isLoading ? (
@@ -71,9 +101,10 @@ export function DepreciationPage() {
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
               <tr>
+                <th className="px-4 py-3 text-left w-8"></th>
+                <th className="px-4 py-3 text-left">Period</th>
                 <th className="px-4 py-3 text-left">Asset #</th>
                 <th className="px-4 py-3 text-left">Asset Name</th>
-                <th className="px-4 py-3 text-left">Period</th>
                 <th className="px-4 py-3 text-right">Amount (₦)</th>
                 <th className="px-4 py-3 text-right">Accum. Depr.</th>
                 <th className="px-4 py-3 text-right">Book Value</th>
@@ -81,24 +112,44 @@ export function DepreciationPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((r: any) => (
-                <tr key={r.id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-50 cursor-pointer"
-                  onClick={() => navigate(`/accountant/journals`)}>
-                  <td className="px-4 py-3 font-mono text-indigo-600 font-medium">{r.assetNumber}</td>
-                  <td className="px-4 py-3 text-slate-800">{r.assetName}</td>
-                  <td className="px-4 py-3 text-slate-500">{new Date(r.periodDate).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}</td>
-                  <td className="px-4 py-3 text-right font-mono tabular-nums text-slate-900">{fmtNaira(r.amount)}</td>
-                  <td className="px-4 py-3 text-right font-mono tabular-nums text-slate-600">{fmtNaira(r.accumulatedDepreciation)}</td>
-                  <td className="px-4 py-3 text-right font-mono tabular-nums text-slate-600">{fmtNaira(r.bookValue)}</td>
-                  <td className="px-4 py-3">
-                    <span className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-medium">
-                      {r.jeNumber} <ExternalLink className="w-3 h-3" />
-                    </span>
-                  </td>
-                </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-400">No depreciation entries found. Run depreciation to generate entries.</td></tr>
+              {grouped.map(([key, rows]) => {
+                const isOpen = expanded.has(key);
+                const periodLabel = formatPeriod(rows[0].periodDate);
+                const totalAmount = rows.reduce((s: number, r: any) => s + r.amount, 0);
+                return (
+                  <React.Fragment key={key}>
+                    <tr className="bg-slate-100/80 hover:bg-slate-100 cursor-pointer border-b border-slate-200"
+                      onClick={() => toggleGroup(key)}>
+                      <td className="px-4 py-2.5">{isOpen ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}</td>
+                      <td className="px-4 py-2.5 font-semibold text-slate-800" colSpan={2}>{periodLabel}</td>
+                      <td className="px-4 py-2.5 text-xs text-slate-500">{rows.length} asset{rows.length !== 1 ? 's' : ''}</td>
+                      <td className="px-4 py-2.5 text-right font-semibold font-mono tabular-nums text-slate-800">{fmtNaira(totalAmount)}</td>
+                      <td className="px-4 py-2.5"></td>
+                      <td className="px-4 py-2.5"></td>
+                      <td className="px-4 py-2.5"></td>
+                    </tr>
+                    {isOpen && rows.map((r: any) => (
+                      <tr key={r.id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-50 cursor-pointer"
+                        onClick={() => navigate(`/accountant/journals`)}>
+                        <td className="px-4 py-3"></td>
+                        <td className="px-4 py-3 text-slate-400 text-xs">{formatPeriod(r.periodDate)}</td>
+                        <td className="px-4 py-3 font-mono text-indigo-600 font-medium">{r.assetNumber}</td>
+                        <td className="px-4 py-3 text-slate-800">{r.assetName}</td>
+                        <td className="px-4 py-3 text-right font-mono tabular-nums text-slate-900">{fmtNaira(r.amount)}</td>
+                        <td className="px-4 py-3 text-right font-mono tabular-nums text-slate-600">{fmtNaira(r.accumulatedDepreciation)}</td>
+                        <td className="px-4 py-3 text-right font-mono tabular-nums text-slate-600">{fmtNaira(r.bookValue)}</td>
+                        <td className="px-4 py-3">
+                          <span className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-medium">
+                            {r.jeNumber} <ExternalLink className="w-3 h-3" />
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </React.Fragment>
+                );
+              })}
+              {grouped.length === 0 && (
+                <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-400">No depreciation entries found. Run depreciation to generate entries.</td></tr>
               )}
             </tbody>
           </table>
