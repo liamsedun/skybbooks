@@ -41,6 +41,7 @@ export function CurrencyRatesPage() {
   const { data: rates, isLoading, error } = useQuery({
     queryKey: ['currency-rates'],
     queryFn: () => bankingApi.getCurrencyRates(),
+    refetchInterval: 5 * 60 * 1000,
   });
 
   const refreshMutation = useMutation({

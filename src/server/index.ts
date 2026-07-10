@@ -32,6 +32,7 @@ import notificationsRouter from '../routes/notifications';
 import projectsRouter from '../routes/projects';
 
 import { runMigration } from '../db/migrate';
+import { fetchLatestRates } from '../services/cbn.service';
 
 const logger = winston.createLogger({
   level: 'info',
@@ -51,6 +52,10 @@ const logger = winston.createLogger({
 
 async function startServer() {
   await runMigration();
+
+  // Auto-refresh currency rates on startup and every hour
+  fetchLatestRates().catch(() => {});
+  setInterval(() => fetchLatestRates().catch(() => {}), 60 * 60 * 1000);
 
   const app = express();
   const PORT = Number(process.env.PORT) || 3000;
