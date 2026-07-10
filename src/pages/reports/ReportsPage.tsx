@@ -624,10 +624,14 @@ function ReportShell({ reportType, title }: ReportPageProps) {
       if (isAgedReport) {
         if (reportType === 'aged-receivables') {
           const res = await reportsApi.getAgedReceivables({ format: 'json' });
-          return res.report || res.data || res;
+          const report = res.report || res.data || res;
+          const rows = report?.byCustomer || [];
+          return rows.map((r: any) => ({ name: r.customerName, current: r.current, days1to30: r.days1To30, days31to60: r.days31To60, days61to90: r.days61To90, days90Plus: r.daysOver90, total: r.totalOutstanding }));
         }
         const res = await reportsApi.getAgedPayables({ format: 'json' });
-        return res.report || res.data || res;
+        const report = res.report || res.data || res;
+        const rows = report?.byVendor || [];
+        return rows.map((r: any) => ({ name: r.vendorName, current: r.current, days1to30: r.days1To30, days31to60: r.days31To60, days61to90: r.days61To90, days90Plus: r.daysOver90, total: r.totalOutstanding }));
       }
       if (reportType === 'cash-flow') {
         const params: any = { startDate: sDate, endDate: eDate, format: 'json' };
@@ -753,15 +757,42 @@ function ReportShell({ reportType, title }: ReportPageProps) {
           const assetRows = assets.map((a: any) => `<tr><td style="padding-left:24px">${a.name||''}</td><td class="r">₦${((a.balance||0)/100).toLocaleString()}</td></tr>`).join('');
           const liabilityRows = liabilities.map((l: any) => `<tr><td style="padding-left:24px">${l.name||''}</td><td class="r">₦${((l.balance||0)/100).toLocaleString()}</td></tr>`).join('');
           const equityRows = equity.map((e: any) => `<tr><td style="padding-left:24px">${e.name||''}</td><td class="r">₦${((e.balance||0)/100).toLocaleString()}</td></tr>`).join('');
-          printWindow('Balance Sheet', `<table><thead><tr><th>Account</th><th class="r">Balance</th></tr></thead><tbody>
-            <tr style="background:#eff6ff;font-weight:bold"><td colspan="2" style="padding:8px 10px">ASSETS</td></tr>${assetRows}
-            <tr style="font-weight:bold;border-top:2px solid"><td style="padding:7px 10px">Total Assets</td><td class="r" style="padding:7px 10px">₦${(totalAssets/100).toLocaleString()}</td></tr>
-            <tr style="background:#fffbeb;font-weight:bold"><td colspan="2" style="padding:8px 10px">LIABILITIES</td></tr>${liabilityRows}
-            <tr style="font-weight:bold;border-top:2px solid"><td style="padding:7px 10px">Total Liabilities</td><td class="r" style="padding:7px 10px">₦${(totalLiabilities/100).toLocaleString()}</td></tr>
-            <tr style="background:#f5f3ff;font-weight:bold"><td colspan="2" style="padding:8px 10px">EQUITY</td></tr>${equityRows}
-            <tr style="font-weight:bold;border-top:2px solid"><td style="padding:7px 10px">Total Equity</td><td class="r" style="padding:7px 10px">₦${(totalEquity/100).toLocaleString()}</td></tr>
-            <tr style="font-weight:bold;border-top:3px double;background:#f1f5f9"><td style="padding:7px 10px">Total Liabilities &amp; Equity</td><td class="r" style="padding:7px 10px">₦${((totalLiabilities+totalEquity)/100).toLocaleString()}</td></tr>
-          </tbody></table>`, `As of ${asOfDate}`);
+          const org = (orgData as any)?.data || orgData || {};
+          const orgName = org.name || '';
+          const orgAddr = org.address ? `<p style="margin:0;font-size:11px;color:#475569">${org.address}</p>` : '';
+          const orgPhone = org.phone || '';
+          const orgEmail = org.email || '';
+          const orgWebsite = org.website || '';
+          const orgLogo = org.logoUrl ? `<img src="${org.logoUrl}" style="max-height:60px;max-width:200px;object-fit:contain" />` : '';
+          const contactInfo = [orgPhone, orgEmail, orgWebsite].filter(Boolean).join(' | ');
+          printWindow('Balance Sheet',
+            `<div style="text-align:center;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #e2e8f0">
+              ${orgLogo}
+              <h1 style="margin:4px 0;font-size:18px;color:#0f172a">${orgName}</h1>
+              ${orgAddr}
+              <p style="margin:2px 0;font-size:11px;color:#64748b">${contactInfo}</p>
+            </div>
+            <h2 style="font-size:16px;color:#0f172a;margin:0 0 8px">Balance Sheet</h2>
+            <p style="font-size:11px;color:#64748b;margin:0 0 12px">As of ${asOfDate} &bull; Generated: ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+            <table style="width:100%;border-collapse:collapse">
+              <thead>
+                <tr style="background:#f8fafc">
+                  <th style="padding:8px 12px;font-size:10px;font-weight:600;color:#64748b;text-align:left;text-transform:uppercase">Account</th>
+                  <th style="padding:8px 12px;font-size:10px;font-weight:600;color:#64748b;text-align:right;text-transform:uppercase">Balance</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style="background:#eff6ff;font-weight:bold"><td colspan="2" style="padding:8px 10px">ASSETS</td></tr>${assetRows}
+                <tr style="font-weight:bold;border-top:2px solid"><td style="padding:7px 10px">Total Assets</td><td style="padding:7px 10px;text-align:right;font-family:monospace">₦${(totalAssets/100).toLocaleString()}</td></tr>
+                <tr style="background:#fffbeb;font-weight:bold"><td colspan="2" style="padding:8px 10px">LIABILITIES</td></tr>${liabilityRows}
+                <tr style="font-weight:bold;border-top:2px solid"><td style="padding:7px 10px">Total Liabilities</td><td style="padding:7px 10px;text-align:right;font-family:monospace">₦${(totalLiabilities/100).toLocaleString()}</td></tr>
+                <tr style="background:#f5f3ff;font-weight:bold"><td colspan="2" style="padding:8px 10px">EQUITY</td></tr>${equityRows}
+                <tr style="font-weight:bold;border-top:2px solid"><td style="padding:7px 10px">Total Equity</td><td style="padding:7px 10px;text-align:right;font-family:monospace">₦${(totalEquity/100).toLocaleString()}</td></tr>
+                <tr style="font-weight:bold;border-top:3px double;background:#f1f5f9"><td style="padding:7px 10px">Total Liabilities &amp; Equity</td><td style="padding:7px 10px;text-align:right;font-family:monospace">₦${((totalLiabilities+totalEquity)/100).toLocaleString()}</td></tr>
+              </tbody>
+            </table>`,
+            `As of ${asOfDate}`
+          );
         } else if (reportType === 'cash-flow') {
           const cf = data?.data || data || {};
           const fmtPdf = (v: number) => `₦${(v/100).toLocaleString()}`;
@@ -785,14 +816,91 @@ function ReportShell({ reportType, title }: ReportPageProps) {
           addPdfRow('Net Change in Cash', fmtPdf(cf.netChangeInCash || 0), 'fw-bold border-top-3');
           addPdfRow('Opening Cash Balance', fmtPdf(cf.openingCash || 0));
           addPdfRow('Closing Cash Balance', fmtPdf(cf.closingCash || 0), 'fw-bold');
-          printWindow('Cash Flow Statement', `<table><thead><tr><th>Line Item</th><th class="r">Amount</th></tr></thead><tbody>${pdfRows.join('')}</tbody></table>`, `Period: ${sDate} - ${eDate}`);
+          const orgCf = (orgData as any)?.data || orgData || {};
+          const orgCfName = orgCf.name || '';
+          const orgCfAddr = orgCf.address ? `<p style="margin:0;font-size:11px;color:#475569">${orgCf.address}</p>` : '';
+          const orgCfPhone = orgCf.phone || '';
+          const orgCfEmail = orgCf.email || '';
+          const orgCfWebsite = orgCf.website || '';
+          const orgCfLogo = orgCf.logoUrl ? `<img src="${orgCf.logoUrl}" style="max-height:60px;max-width:200px;object-fit:contain" />` : '';
+          const orgCfContact = [orgCfPhone, orgCfEmail, orgCfWebsite].filter(Boolean).join(' | ');
+          printWindow('Cash Flow Statement',
+            `<div style="text-align:center;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #e2e8f0">
+              ${orgCfLogo}
+              <h1 style="margin:4px 0;font-size:18px;color:#0f172a">${orgCfName}</h1>
+              ${orgCfAddr}
+              <p style="margin:2px 0;font-size:11px;color:#64748b">${orgCfContact}</p>
+            </div>
+            <h2 style="font-size:16px;color:#0f172a;margin:0 0 8px">Cash Flow Statement</h2>
+            <p style="font-size:11px;color:#64748b;margin:0 0 12px">Period: ${sDate} - ${eDate} &bull; Generated: ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+            <table style="width:100%;border-collapse:collapse">
+              <thead>
+                <tr style="background:#f8fafc">
+                  <th style="padding:8px 12px;font-size:10px;font-weight:600;color:#64748b;text-align:left;text-transform:uppercase">Line Item</th>
+                  <th style="padding:8px 12px;font-size:10px;font-weight:600;color:#64748b;text-align:right;text-transform:uppercase">Amount</th>
+                </tr>
+              </thead>
+              <tbody>${pdfRows.join('')}</tbody>
+            </table>`,
+            `Period: ${sDate} - ${eDate}`
+          );
         } else if (reportType === 'aged-receivables' || reportType === 'aged-payables') {
           const label = reportType === 'aged-receivables' ? 'Customer' : 'Vendor';
           const title = reportType === 'aged-receivables' ? 'Aged Receivables' : 'Aged Payables';
-          const rows = (Array.isArray(data) ? data : []).map((r: any) =>
-            `<tr><td>${r.name||r.customerName||r.vendorName||''}</td><td class="r">₦${((r.current||0)/100).toLocaleString()}</td><td class="r">₦${((r.days1to30||0)/100).toLocaleString()}</td><td class="r">₦${((r.days31to60||0)/100).toLocaleString()}</td><td class="r">₦${((r.days61to90||0)/100).toLocaleString()}</td><td class="r">₦${((r.days90Plus||0)/100).toLocaleString()}</td><td class="r">₦${((r.total||0)/100).toLocaleString()}</td></tr>`
+          const list = Array.isArray(data) ? data : [];
+          const pdfRows = list.map((r: any) =>
+            `<tr><td style="padding:6px 10px;font-size:11px;border-bottom:1px solid #f1f5f9">${r.name||''}</td><td style="padding:6px 10px;font-size:11px;text-align:right;font-family:monospace;border-bottom:1px solid #f1f5f9">₦${((r.current||0)/100).toLocaleString()}</td><td style="padding:6px 10px;font-size:11px;text-align:right;font-family:monospace;border-bottom:1px solid #f1f5f9">₦${((r.days1to30||0)/100).toLocaleString()}</td><td style="padding:6px 10px;font-size:11px;text-align:right;font-family:monospace;border-bottom:1px solid #f1f5f9">₦${((r.days31to60||0)/100).toLocaleString()}</td><td style="padding:6px 10px;font-size:11px;text-align:right;font-family:monospace;border-bottom:1px solid #f1f5f9">₦${((r.days61to90||0)/100).toLocaleString()}</td><td style="padding:6px 10px;font-size:11px;text-align:right;font-family:monospace;border-bottom:1px solid #f1f5f9">₦${((r.days90Plus||0)/100).toLocaleString()}</td><td style="padding:6px 10px;font-size:11px;text-align:right;font-weight:600;font-family:monospace;border-bottom:1px solid #f1f5f9">₦${((r.total||0)/100).toLocaleString()}</td></tr>`
           ).join('');
-          printWindow(title, `<table><thead><tr><th>${label}</th><th class="r">Current</th><th class="r">1-30</th><th class="r">31-60</th><th class="r">61-90</th><th class="r">90+</th><th class="r">Total</th></tr></thead><tbody>${rows||'<tr><td colspan="7" style="text-align:center;color:#94a3b8">No data</td></tr>'}</tbody></table>`, `${(Array.isArray(data) ? data : []).length} entries`);
+          const tCurr = list.reduce((s: number, r: any) => s + (r.current||0), 0);
+          const t1_30 = list.reduce((s: number, r: any) => s + (r.days1to30||0), 0);
+          const t31_60 = list.reduce((s: number, r: any) => s + (r.days31to60||0), 0);
+          const t61_90 = list.reduce((s: number, r: any) => s + (r.days61to90||0), 0);
+          const t90 = list.reduce((s: number, r: any) => s + (r.days90Plus||0), 0);
+          const tTotal = list.reduce((s: number, r: any) => s + (r.total||0), 0);
+          const orgAr = (orgData as any)?.data || orgData || {};
+          const orgArName = orgAr.name || '';
+          const orgArAddr = orgAr.address ? `<p style="margin:0;font-size:11px;color:#475569">${orgAr.address}</p>` : '';
+          const orgArPhone = orgAr.phone || '';
+          const orgArEmail = orgAr.email || '';
+          const orgArWebsite = orgAr.website || '';
+          const orgArLogo = orgAr.logoUrl ? `<img src="${orgAr.logoUrl}" style="max-height:60px;max-width:200px;object-fit:contain" />` : '';
+          const orgArContact = [orgArPhone, orgArEmail, orgArWebsite].filter(Boolean).join(' | ');
+          printWindow(title,
+            `<div style="text-align:center;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #e2e8f0">
+              ${orgArLogo}
+              <h1 style="margin:4px 0;font-size:18px;color:#0f172a">${orgArName}</h1>
+              ${orgArAddr}
+              <p style="margin:2px 0;font-size:11px;color:#64748b">${orgArContact}</p>
+            </div>
+            <h2 style="font-size:16px;color:#0f172a;margin:0 0 8px">${title}</h2>
+            <p style="font-size:11px;color:#64748b;margin:0 0 12px">As of ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+            <table style="width:100%;border-collapse:collapse">
+              <thead>
+                <tr style="background:#f8fafc">
+                  <th style="padding:8px 10px;font-size:10px;font-weight:600;color:#64748b;text-align:left;text-transform:uppercase">${label}</th>
+                  <th style="padding:8px 10px;font-size:10px;font-weight:600;color:#64748b;text-align:right;text-transform:uppercase">Current</th>
+                  <th style="padding:8px 10px;font-size:10px;font-weight:600;color:#64748b;text-align:right;text-transform:uppercase">1-30</th>
+                  <th style="padding:8px 10px;font-size:10px;font-weight:600;color:#64748b;text-align:right;text-transform:uppercase">31-60</th>
+                  <th style="padding:8px 10px;font-size:10px;font-weight:600;color:#64748b;text-align:right;text-transform:uppercase">61-90</th>
+                  <th style="padding:8px 10px;font-size:10px;font-weight:600;color:#64748b;text-align:right;text-transform:uppercase">90+</th>
+                  <th style="padding:8px 10px;font-size:10px;font-weight:600;color:#64748b;text-align:right;text-transform:uppercase">Total</th>
+                </tr>
+              </thead>
+              <tbody>${pdfRows || '<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:20px">No data</td></tr>'}</tbody>
+              <tfoot>
+                <tr style="border-top:2px solid #0f172a;font-weight:700">
+                  <td style="padding:8px 10px;font-size:12px">TOTAL</td>
+                  <td style="padding:8px 10px;font-size:12px;text-align:right;font-family:monospace">₦${(tCurr/100).toLocaleString()}</td>
+                  <td style="padding:8px 10px;font-size:12px;text-align:right;font-family:monospace">₦${(t1_30/100).toLocaleString()}</td>
+                  <td style="padding:8px 10px;font-size:12px;text-align:right;font-family:monospace">₦${(t31_60/100).toLocaleString()}</td>
+                  <td style="padding:8px 10px;font-size:12px;text-align:right;font-family:monospace">₦${(t61_90/100).toLocaleString()}</td>
+                  <td style="padding:8px 10px;font-size:12px;text-align:right;font-family:monospace">₦${(t90/100).toLocaleString()}</td>
+                  <td style="padding:8px 10px;font-size:12px;text-align:right;font-family:monospace">₦${(tTotal/100).toLocaleString()}</td>
+                </tr>
+              </tfoot>
+            </table>`,
+            `${list.length} entries`
+          );
         } else {
           const rows = (Array.isArray(data) ? data : []).map((r: any) =>
             `<tr><td>${(r.code||r.accountCode||'')}</td><td>${(r.name||r.accountName||'')}</td><td class="c">${r.type||r.accountType||''}</td><td class="r">₦${((r.debit||r.debitAmount||0)/100).toLocaleString()}</td><td class="r">₦${((r.credit||r.creditAmount||0)/100).toLocaleString()}</td></tr>`
@@ -969,19 +1077,32 @@ function ReportTable({ data, reportType, compareEnabled, onAccountClick }: { dat
           <tbody>
             {(Array.isArray(data) ? data : []).map((row: any, i: number) => (
               <tr key={i} className="border-t border-slate-100 hover:bg-slate-50/50 even:bg-slate-50/50 transition-colors">
-                <td className="px-3 py-3 font-medium text-slate-800">{row.name || row.customerName || row.vendorName || `Item ${i + 1}`}</td>
+                <td className="px-3 py-3 font-medium text-slate-800">{row.name || `Item ${i + 1}`}</td>
                 <td className="px-3 py-3 text-right text-slate-600">{fmtNaira(row.current || 0)}</td>
                 <td className="px-3 py-3 text-right text-slate-600">{fmtNaira(row.days1to30 || 0)}</td>
                 <td className="px-3 py-3 text-right text-slate-600">{fmtNaira(row.days31to60 || 0)}</td>
                 <td className="px-3 py-3 text-right text-slate-600">{fmtNaira(row.days61to90 || 0)}</td>
                 <td className="px-3 py-3 text-right text-slate-600">{fmtNaira(row.days90Plus || 0)}</td>
-                <td className="px-3 py-3 text-right font-semibold text-slate-800">{fmtNaira(row.total || row.current + row.days1to30 + row.days31to60 + row.days61to90 + row.days90Plus || 0)}</td>
+                <td className="px-3 py-3 text-right font-semibold text-slate-800">{fmtNaira(row.total || 0)}</td>
               </tr>
             ))}
             {(!Array.isArray(data) || data.length === 0) && (
               <tr><td colSpan={7} className="px-3 py-8 text-center text-slate-400">No data available.</td></tr>
             )}
           </tbody>
+          {Array.isArray(data) && data.length > 0 && (
+          <tfoot>
+            <tr className="border-t-2 border-slate-300 bg-slate-100 font-bold text-sm">
+              <td className="px-3 py-3 text-slate-800">TOTAL</td>
+              <td className="px-3 py-3 text-right text-slate-800">{fmtNaira(data.reduce((s: number, r: any) => s + (r.current||0), 0))}</td>
+              <td className="px-3 py-3 text-right text-slate-800">{fmtNaira(data.reduce((s: number, r: any) => s + (r.days1to30||0), 0))}</td>
+              <td className="px-3 py-3 text-right text-slate-800">{fmtNaira(data.reduce((s: number, r: any) => s + (r.days31to60||0), 0))}</td>
+              <td className="px-3 py-3 text-right text-slate-800">{fmtNaira(data.reduce((s: number, r: any) => s + (r.days61to90||0), 0))}</td>
+              <td className="px-3 py-3 text-right text-slate-800">{fmtNaira(data.reduce((s: number, r: any) => s + (r.days90Plus||0), 0))}</td>
+              <td className="px-3 py-3 text-right text-slate-800">{fmtNaira(data.reduce((s: number, r: any) => s + (r.total||0), 0))}</td>
+            </tr>
+          </tfoot>
+          )}
         </table>
       </div>
     );
