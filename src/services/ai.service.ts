@@ -395,8 +395,8 @@ export class AIService {
     const insights: Array<{ title: string; detail: string; severity: 'info' | 'warning' | 'alert'; metric?: string }> = [];
 
     // --- 1. Revenue ---
-    const revenue = currentMonthData.revenue.total;
-    const priorRevenue = priorMonthData.revenue.total;
+    const revenue = currentMonthData.totalRevenue ?? (currentMonthData.operatingRevenue?.total || 0) + (currentMonthData.otherOperatingIncome?.total || 0);
+    const priorRevenue = priorMonthData.totalRevenue ?? (priorMonthData.operatingRevenue?.total || 0) + (priorMonthData.otherOperatingIncome?.total || 0);
     if (revenue === 0) {
       insights.push({
         title: 'Zero Revenue Recorded',

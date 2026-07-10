@@ -38,13 +38,18 @@ Maintain and enhance accounting features: fix kobo/naira display, parent-child a
 ### Blocked
 - (none)
 
-### This Session (Custom Reports & Audit-Shield)
-- **26-endpoint custom reports backend**: Created `src/routes/customReports.ts` with endpoints for Customer/Supplier summaries & statements, Sales by Customer/Item, Tax summary & transactions, GL summary & transactions, Inventory summary, Fixed asset summary & depreciation schedule, Expense claims, Employee summary, Payslip summary & by-item breakdown, Receipts & payments summary, Bank account summary, Cash equivalents, Capital accounts summary, Actual vs budget, Taxable sales/purchases per customer/supplier, Intangible assets (stub)
-- **Custom reports API client**: Added `customReportsApi` with 26 methods in `src/lib/api.ts`
-- **Custom reports route**: Registered `/api/custom-reports` in `src/server/index.ts`
-- **CustomReportsPage redesign**: Complete rewrite with categorized accordion sections (Customer→Supplier→Tax→Inventory→Fixed Assets→Payroll→Banking→GL & Accounting), quick-filter pill buttons, gradient table headers, color-coded summary cards, clickable rows that navigate to invoice/bill detail pages via `getSourceLink()`, CSV/PDF export, date range pickers, search bar
-- **Audit-Shield deduplication**: Grouped duplicate anomaly alerts by `description|amount|reason` composite key in `AuditLogsPage.tsx` — shows "N occurrences" badge instead of N identical cards; 64 duplicate alerts collapsed to ~4 grouped cards
-- **Audit-Shield CSV export**: Updated to include `Occurrences` column, uses grouped data
+### This Session (IFRS Income Statement & Balance Sheet)
+- **Income Statement date input crash fix**: Added `isNaN` guards in `getDefaultCompareDates()`/`getDefaultCompareAsOf()` + try-catch in `useEffect` to prevent blank-page crash when user types partially
+- **Income Statement CSV export fix**: Restructured CSV block to handle object tree data (Revenue → Cost of Sales → Gross Profit → Operating Expenses → EBIT → Net Profit) with section headers, sub-section labels, and totals; array fallback for other reports
+- **Income Statement Excel export fix**: Replaced broken `apiDownload()` with `reportsApi.getIncomeStatement({ format: 'excel' })` (Axios blob) + `downloadBlob()`; `getIncomeStatement()` sets `responseType: 'blob'` for excel format
+- **IFRS IAS 1 Income Statement**: `computePnL()` groups expense accounts by `subType` (cost_of_sales, selling_distribution, administrative, staff_costs, finance_costs, tax_expense); returns Gross Profit after Cost of Sales, 3 operating expense sub-sections (Selling & Distribution, Administrative, Staff Costs), Operating Profit (EBIT), Finance Costs, Tax Expense, Net Profit
+- **Income Statement frontend**: Updated `SinglePeriodPnLTable`, `ComparativePnLTable`, `buildPnLRows` for new IFRS sub-section structure; CSV, PDF (`generateIncomeStatementPDF`), and Excel (`exportIncomeStatement`) exports updated
+- **Account subType migration**: Startup migration normalises existing expense `subType` values (`'Cost of Sales'` → `'cost_of_sales'`, `'Administrative Expenses'` → `'administrative'`, etc.)
+- **Balance Sheet IFRS restructure**: `getBalanceSheet()` completely rewritten — groups by code prefix into currentAssets/nonCurrentAssets/currentLiabilities/nonCurrentLiabilities/equity with proper sub-sections; contra-asset netting (accum. depreciation → Net Book Value for PP&E/ROU/Intangibles)
+- **Auto-reclassification rules**: Bank overdrafts (`balance < 0` → `Bank Overdraft – [name]` under currentLiabilities); debit payables (`payable < 0` → `Overpayment Receivable – [name]` under currentAssets); negative inventory zeroed at sub-account, flagged at parent; all logged in `reclassified` array
+- **Equity waterfall**: Share Capital, Share Premium, Retained Earnings (opening + profit/loss for period + dividends + other), Other Reserves, Non-controlling Interest, General Reserve; profit for period computed dynamically from revenue - expense JE balance
+- **Out-of-balance warning**: Computed as `totalAssets - (totalLiabilities + totalEquity)`; displayed as red warning banner on frontend; no suspense account created
+- **Balance Sheet frontend**: New `SinglePeriodBalanceSheetTable` component with NBV display, contra-asset sections, reclassified item markings, sub-section grouping, accounting equation check, hide/show zero accounts + account codes toggles (localStorage persistence), red out-of-balance warning banner
 
 ## Key Decisions
 - Parent-child rollup done post-hoc after individual account balances are computed (backend for Trial Balance, `useMemo` for Chart of Accounts frontend)
@@ -59,10 +64,11 @@ Maintain and enhance accounting features: fix kobo/naira display, parent-child a
 - `fxRate` sent as `number | undefined` in payloads; `populateFxRate()` on backend handles null/undefined by looking up latest rate
 
 ## Next Steps
-1. Push to origin/main and verify Render auto-deploy completes
-2. Update detail views (InvoiceDetail, BillDetail, etc.) to display currency + both original and base (NGN) amounts
-3. Test multi-currency transaction flow end-to-end
-4. Investigate Purchase Order unit price bug: AMC Tier 2 item shows extra zero (2,500,000 instead of 250,000) — likely a data issue with the item's stored `purchasePrice` value rather than a code bug
+1. Update ComparativeBalanceSheetTable and inline PDF/CSV/Excel exports for new Balance Sheet IFRS structure
+2. Push to origin/main and verify Render auto-deploy completes
+3. Update detail views (InvoiceDetail, BillDetail, etc.) to display currency + both original and base (NGN) amounts
+4. Test multi-currency transaction flow end-to-end
+5. Investigate Purchase Order unit price bug: AMC Tier 2 item shows extra zero (2,500,000 instead of 250,000) — likely a data issue with the item's stored `purchasePrice` value rather than a code bug
 
 ## Critical Context
 - `TrialBalanceRow` type no longer includes `parentId` after revert (field removed from backend type and response)

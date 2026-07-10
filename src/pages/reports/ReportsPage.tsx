@@ -756,6 +756,10 @@ function ReportShell({ reportType, title }: ReportPageProps) {
   const [importing, setImporting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const [drillDown, setDrillDown] = useState<any | null>(null);
+  const [showZero, setShowZero] = useState(() => localStorage.getItem('bs_showZero') !== 'true');
+  const [showCodes, setShowCodes] = useState(() => localStorage.getItem('bs_showCodes') === 'true');
+  const [isShowZero, setIsShowZero] = useState(() => localStorage.getItem('is_showZero') !== 'false');
+  const [isShowCodes, setIsShowCodes] = useState(() => localStorage.getItem('is_showCodes') === 'true');
 
   const isBalanceSheet = reportType === 'balance-sheet';
   const isAgedReport = reportType === 'aged-receivables' || reportType === 'aged-payables';
@@ -828,17 +832,33 @@ function ReportShell({ reportType, title }: ReportPageProps) {
         headers = ['Account', 'Amount'];
         csvRows = [];
         const isData = (data as any)?.current || data || {};
-        const rev = isData.revenue || {};
+        const opRev = isData.operatingRevenue || {};
+        const ooi = isData.otherOperatingIncome || {};
         const cos = isData.costOfSales || {};
-        const oe = isData.operatingExpenses || {};
+        const sc = isData.staffCosts || {};
+        const adm = isData.administrative || {};
+        const sd = isData.sellingDistribution || {};
+        const ooe = isData.otherOperatingExpenses || {};
+        const fi = isData.financeIncome || {};
         const fc = isData.financeCosts || {};
-        const tx = isData.taxExpense || {};
-        const revTotal = rev.total || 0;
+        const tx = isData.incomeTaxExpense || {};
+        const opRevTotal = opRev.total || 0;
+        const ooiTotal = ooi.total || 0;
+        const totalRevenue = isData.totalRevenue ?? (opRevTotal + ooiTotal);
         const cosTotal = cos.total || 0;
-        const gp = revTotal - cosTotal;
-        const opExTotal = oe.total || 0;
-        const operatingProfit = isData.operatingProfit ?? gp - opExTotal;
-        const netProfit = isData.netProfit ?? operatingProfit - (fc.total || 0) - (tx.total || 0);
+        const grossProfit = isData.grossProfit ?? (totalRevenue - cosTotal);
+        const scTotal = sc.total || 0;
+        const admTotal = adm.total || 0;
+        const sdTotal = sd.total || 0;
+        const ooeTotal = ooe.total || 0;
+        const opExTotal = isData.totalOperatingExpenses ?? (scTotal + admTotal + sdTotal + ooeTotal);
+        const operatingProfit = isData.operatingProfit ?? (grossProfit - opExTotal);
+        const fiTotal = fi.total || 0;
+        const fcTotal = fc.total || 0;
+        const pbt = isData.profitBeforeTax ?? (operatingProfit + fiTotal - fcTotal);
+        const txTotal = tx.total || 0;
+        const netProfit = isData.netProfit ?? (pbt - txTotal);
+        const etr = isData.effectiveTaxRate ?? (pbt > 0 ? Math.round((txTotal / pbt) * 1000) / 10 : 0);
         const addSec = (label: string, accounts: any[], total: number) => {
           csvRows.push([label, '']);
           (accounts || []).forEach((a: any) => csvRows.push([a.name, ((a.balance||0)/100).toFixed(2)]));
@@ -850,19 +870,24 @@ function ReportShell({ reportType, title }: ReportPageProps) {
           data.accounts.forEach((a: any) => csvRows.push([a.name, ((a.balance||0)/100).toFixed(2)]));
           csvRows.push([`Total ${label}`, (data.total/100).toFixed(2)]);
         };
-        addSec('Revenue', rev.accounts, revTotal);
+        addSec('Operating Revenue', opRev.accounts, opRevTotal);
+        addSec('Other Operating Income', ooi.accounts, ooiTotal);
+        csvRows.push(['TOTAL REVENUE', (totalRevenue/100).toFixed(2)]);
         addSec('Cost of Sales', cos.accounts, cosTotal);
-        csvRows.push(['Gross Profit', (gp/100).toFixed(2)]);
+        csvRows.push(['GROSS PROFIT', (grossProfit/100).toFixed(2)]);
         csvRows.push(['Operating Expenses', '']);
-        addSubSec('Selling & Distribution Expenses', oe.sellingDistribution);
-        addSubSec('Administrative Expenses', oe.administrative);
-        addSubSec('Staff Costs', oe.staffCosts);
-        addSubSec('Other Operating Expenses', oe.other);
+        addSubSec('Staff Costs', sc);
+        addSubSec('Administrative Expenses', adm);
+        addSubSec('Selling & Distribution Expenses', sd);
+        addSubSec('Other Operating Expenses', ooe);
         csvRows.push(['Total Operating Expenses', (opExTotal/100).toFixed(2)]);
-        csvRows.push(['Operating Profit (EBIT)', (operatingProfit/100).toFixed(2)]);
-        if (fc.accounts?.length) addSec('Finance Costs', fc.accounts, fc.total || 0);
-        if (tx.accounts?.length) addSec('Tax Expense', tx.accounts, tx.total || 0);
-        csvRows.push(['Net Profit', (netProfit/100).toFixed(2)]);
+        csvRows.push(['OPERATING PROFIT (EBIT)', (operatingProfit/100).toFixed(2)]);
+        if (fi.accounts?.length) addSec('Finance Income', fi.accounts, fiTotal);
+        if (fc.accounts?.length) addSec('Finance Costs', fc.accounts, fcTotal);
+        csvRows.push(['PROFIT BEFORE TAX', (pbt/100).toFixed(2)]);
+        if (tx.accounts?.length) addSec('Income Tax Expense', tx.accounts, txTotal);
+        csvRows.push(['NET PROFIT AFTER TAX', (netProfit/100).toFixed(2)]);
+        if (pbt > 0) csvRows.push([`Effective Tax Rate: ${etr}%`, '']);
       } else {
         const rows = Array.isArray(data) ? data : [];
         if (!rows.length) return;
@@ -908,17 +933,33 @@ function ReportShell({ reportType, title }: ReportPageProps) {
       try {
         if (reportType === 'income-statement') {
           const current = (data as any)?.current || data || {};
-          const revenue = current.revenue || {};
+          const opRev = current.operatingRevenue || {};
+          const ooi = current.otherOperatingIncome || {};
           const cos = current.costOfSales || {};
-          const oe = current.operatingExpenses || {};
+          const sc = current.staffCosts || {};
+          const adm = current.administrative || {};
+          const sd = current.sellingDistribution || {};
+          const ooe = current.otherOperatingExpenses || {};
+          const fi = current.financeIncome || {};
           const fc = current.financeCosts || {};
-          const tx = current.taxExpense || {};
-          const revTotal = revenue.total || 0;
+          const tx = current.incomeTaxExpense || {};
+          const opRevTotal = opRev.total || 0;
+          const ooiTotal = ooi.total || 0;
+          const totalRevenue = current.totalRevenue ?? (opRevTotal + ooiTotal);
           const cosTotal = cos.total || 0;
-          const grossProfit = revTotal - cosTotal;
-          const opExTotal = oe.total || 0;
-          const operatingProfit = current.operatingProfit ?? grossProfit - opExTotal;
-          const netProfit = current.netProfit ?? operatingProfit - (fc.total || 0) - (tx.total || 0);
+          const grossProfit = current.grossProfit ?? (totalRevenue - cosTotal);
+          const scTotal = sc.total || 0;
+          const admTotal = adm.total || 0;
+          const sdTotal = sd.total || 0;
+          const ooeTotal = ooe.total || 0;
+          const opExTotal = current.totalOperatingExpenses ?? (scTotal + admTotal + sdTotal + ooeTotal);
+          const operatingProfit = current.operatingProfit ?? (grossProfit - opExTotal);
+          const fiTotal = fi.total || 0;
+          const fcTotal = fc.total || 0;
+          const pbt = current.profitBeforeTax ?? (operatingProfit + fiTotal - fcTotal);
+          const txTotal = tx.total || 0;
+          const netProfit = current.netProfit ?? (pbt - txTotal);
+          const etr = current.effectiveTaxRate ?? (pbt > 0 ? Math.round((txTotal / pbt) * 1000) / 10 : 0);
           const org = (orgData as any)?.data || orgData || {};
           const orgName = org.name || '';
           const orgAddr = org.address ? `<p style="margin:0;font-size:11px;color:#475569">${org.address}</p>` : '';
@@ -942,19 +983,25 @@ function ReportShell({ reportType, title }: ReportPageProps) {
             return `<tr style="background:#f8fafc"><td colspan="2" style="padding:4px 12px;padding-left:28px;font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">${label}</td></tr>${accRows}<tr style="border-top:1px solid #e2e8f0;background:#f8fafc;font-weight:600"><td style="padding:4px 12px;padding-left:28px;font-size:10px;color:#64748b">Total ${label}</td><td style="padding:4px 12px;font-size:10px;text-align:right;font-family:monospace">₦${(data.total/100).toLocaleString()}</td></tr>`;
           }
 
-          const pdfRows = secRows('Revenue', revenue.accounts, revTotal) +
+          const pdfRows =
+            secRows('Operating Revenue', opRev.accounts, opRevTotal) +
+            secRows('Other Operating Income', ooi.accounts, ooiTotal) +
+            `<tr style="border-top:1px solid #cbd5e1;background:#f1f5f9;font-weight:700"><td style="padding:6px 12px;padding-left:24px;font-size:12px;color:#0f172a">TOTAL REVENUE</td><td style="padding:6px 12px;font-size:12px;text-align:right;font-family:monospace">₦${(totalRevenue/100).toLocaleString()}</td></tr>` +
             secRows('Cost of Sales', cos.accounts, cosTotal) +
-            `<tr style="border-top:2px solid #059669;background:#ecfdf5;font-weight:700"><td style="padding:6px 12px;padding-left:24px;font-size:12px;color:#059669">Gross Profit</td><td style="padding:6px 12px;font-size:12px;text-align:right;font-family:monospace">₦${(grossProfit/100).toLocaleString()}</td></tr>` +
+            `<tr style="border-top:2px solid ${grossProfit < 0 ? '#dc2626' : '#059669'};background:${grossProfit < 0 ? '#fef2f2' : '#ecfdf5'};font-weight:700"><td style="padding:6px 12px;padding-left:24px;font-size:12px;color:${grossProfit < 0 ? '#dc2626' : '#059669'}">GROSS PROFIT</td><td style="padding:6px 12px;font-size:12px;text-align:right;font-family:monospace;color:${grossProfit < 0 ? '#dc2626' : '#059669'}">₦${(grossProfit/100).toLocaleString()}</td></tr>` +
             `<tr style="background:#f1f5f9"><td colspan="2" style="padding:6px 12px;font-size:11px;font-weight:700;color:#475569;text-transform:uppercase">Operating Expenses</td></tr>` +
-            subSecRows('Selling & Distribution Expenses', oe.sellingDistribution) +
-            subSecRows('Administrative Expenses', oe.administrative) +
-            subSecRows('Staff Costs', oe.staffCosts) +
-            subSecRows('Other Operating Expenses', oe.other) +
+            subSecRows('Staff Costs', sc) +
+            subSecRows('Administrative Expenses', adm) +
+            subSecRows('Selling & Distribution Expenses', sd) +
+            subSecRows('Other Operating Expenses', ooe) +
             `<tr style="border-top:1px solid #cbd5e1;background:#f1f5f9;font-weight:600"><td style="padding:6px 12px;padding-left:24px;font-size:12px;color:#0f172a">Total Operating Expenses</td><td style="padding:6px 12px;font-size:12px;text-align:right;font-family:monospace">₦${(opExTotal/100).toLocaleString()}</td></tr>` +
-            `<tr style="border-top:1px solid #94a3b8;background:#eef2f3;font-weight:700"><td style="padding:6px 12px;padding-left:24px;font-size:12px;color:#1e293b">Operating Profit (EBIT)</td><td style="padding:6px 12px;font-size:12px;text-align:right;font-family:monospace">₦${(operatingProfit/100).toLocaleString()}</td></tr>` +
-            (fc.accounts?.length ? secRows('Finance Costs', fc.accounts, fc.total || 0) : '') +
-            (tx.accounts?.length ? secRows('Tax Expense', tx.accounts, tx.total || 0) : '') +
-            `<tr style="border-top:2px solid #1e3a8a;background:#1e3a8a;font-weight:700"><td style="padding:8px 12px;padding-left:24px;font-size:13px;color:#ffffff">Net Profit</td><td style="padding:8px 12px;font-size:13px;text-align:right;font-family:monospace;color:#ffffff">₦${(netProfit/100).toLocaleString()}</td></tr>`;
+            `<tr style="border-top:2px solid #94a3b8;background:#eef2f3;font-weight:700"><td style="padding:6px 12px;padding-left:24px;font-size:12px;color:#1e293b">OPERATING PROFIT (EBIT)</td><td style="padding:6px 12px;font-size:12px;text-align:right;font-family:monospace">₦${(operatingProfit/100).toLocaleString()}</td></tr>` +
+            (fi.accounts?.length ? secRows('Finance Income', fi.accounts, fiTotal) : '') +
+            (fc.accounts?.length ? secRows('Finance Costs', fc.accounts, fcTotal) : '') +
+            `<tr style="border-top:2px solid #94a3b8;background:${pbt < 0 ? '#fef2f2' : '#eef2f3'};font-weight:700"><td style="padding:6px 12px;padding-left:24px;font-size:12px;color:${pbt < 0 ? '#dc2626' : '#1e293b'}">PROFIT BEFORE TAX</td><td style="padding:6px 12px;font-size:12px;text-align:right;font-family:monospace;color:${pbt < 0 ? '#dc2626' : '#1e293b'}">₦${(pbt/100).toLocaleString()}</td></tr>` +
+            (tx.accounts?.length ? secRows('Income Tax Expense', tx.accounts, txTotal) : '') +
+            `<tr style="border-top:3px double;background:${netProfit < 0 ? '#7f1d1d' : '#1e3a8a'};font-weight:700"><td style="padding:8px 12px;padding-left:24px;font-size:13px;color:#ffffff">NET PROFIT AFTER TAX</td><td style="padding:8px 12px;font-size:13px;text-align:right;font-family:monospace;color:#ffffff">₦${(netProfit/100).toLocaleString()}</td></tr>` +
+            (pbt > 0 ? `<tr style="background:#f8fafc"><td colspan="2" style="padding:4px 12px;font-size:10px;color:#64748b;font-style:italic">Effective Tax Rate: ${etr}%  (Tax Expense ÷ Profit Before Tax)</td></tr>` : '');
 
           printWindow('Income Statement',
             `<div style="text-align:center;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #e2e8f0">
@@ -1226,10 +1273,16 @@ function ReportShell({ reportType, title }: ReportPageProps) {
         {isAgedReport ? (
           <p className="text-sm text-slate-500">Aging as of {fmtDate(new Date().toISOString())}</p>
         ) : isBalanceSheet ? (
+          <>
           <div className="flex items-center gap-2">
             <label className="text-sm font-medium text-slate-600">As of:</label>
             <input type="date" value={asOfDate} onChange={e => setAsOfDate(e.target.value)} className="border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
           </div>
+          <div className="flex items-center gap-2 ml-auto">
+            <button onClick={() => { setShowZero(!showZero); localStorage.setItem('bs_showZero', String(!showZero)); }} className={`text-xs font-semibold px-3 py-1.5 rounded-xl border transition-all ${showZero ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-slate-100 border-slate-200 text-slate-500'}`}>{showZero ? 'Hide Zero Accounts' : 'Show Zero Accounts'}</button>
+            <button onClick={() => { setShowCodes(!showCodes); localStorage.setItem('bs_showCodes', String(!showCodes)); }} className={`text-xs font-semibold px-3 py-1.5 rounded-xl border transition-all ${showCodes ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-slate-100 border-slate-200 text-slate-500'}`}>{showCodes ? 'Hide Codes' : 'Show Codes'}</button>
+          </div>
+          </>
         ) : (
           <>
             <div className="flex items-center gap-2">
@@ -1239,6 +1292,10 @@ function ReportShell({ reportType, title }: ReportPageProps) {
             <div className="flex items-center gap-2">
               <label className="text-sm font-medium text-slate-600">To:</label>
               <input type="date" value={eDate} onChange={e => setEDate(e.target.value)} className="border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+            </div>
+            <div className="flex items-center gap-2 ml-auto">
+              <button onClick={() => { setIsShowZero(!isShowZero); localStorage.setItem('is_showZero', String(!isShowZero)); }} className={`text-xs font-semibold px-3 py-1.5 rounded-xl border transition-all ${isShowZero ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-slate-100 border-slate-200 text-slate-500'}`}>{isShowZero ? 'Hide Zero Accounts' : 'Show Zero Accounts'}</button>
+              <button onClick={() => { setIsShowCodes(!isShowCodes); localStorage.setItem('is_showCodes', String(!isShowCodes)); }} className={`text-xs font-semibold px-3 py-1.5 rounded-xl border transition-all ${isShowCodes ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-slate-100 border-slate-200 text-slate-500'}`}>{isShowCodes ? 'Hide Codes' : 'Show Codes'}</button>
             </div>
           </>
         )}
@@ -1279,7 +1336,7 @@ function ReportShell({ reportType, title }: ReportPageProps) {
       ) : error ? (
         <div className="flex items-center gap-2 p-4 bg-red-50 text-red-700 rounded-xl text-sm"><AlertCircle className="w-4 h-4" /> Failed to load report.</div>
       ) : (
-        <ReportTable data={data} reportType={reportType} compareEnabled={compareEnabled} onAccountClick={(acct: any) => setDrillDown(acct)} />
+        <ReportTable data={data} reportType={reportType} compareEnabled={compareEnabled} onAccountClick={(acct: any) => setDrillDown(acct)} showZero={showZero} showCodes={showCodes} isShowZero={isShowZero} isShowCodes={isShowCodes} asOfDate={asOfDate} />
       )}
 
       {drillDown && <AccountDrilldownModal account={drillDown} sDate={sDate} eDate={isBalanceSheet ? `${asOfDate}` : eDate} onClose={() => setDrillDown(null)} />}
@@ -1287,7 +1344,7 @@ function ReportShell({ reportType, title }: ReportPageProps) {
   );
 }
 
-function ReportTable({ data, reportType, compareEnabled, onAccountClick }: { data: any; reportType: ReportType; compareEnabled?: boolean; onAccountClick?: (acct: any) => void }) {
+function ReportTable({ data, reportType, compareEnabled, onAccountClick, showZero, showCodes, isShowZero, isShowCodes, asOfDate }: { data: any; reportType: ReportType; compareEnabled?: boolean; onAccountClick?: (acct: any) => void; showZero?: boolean; showCodes?: boolean; isShowZero?: boolean; isShowCodes?: boolean; asOfDate?: string }) {
   if (!data) return null;
 
   // Comparative mode — data contains { current, prior, variance }
@@ -1352,68 +1409,12 @@ function ReportTable({ data, reportType, compareEnabled, onAccountClick }: { dat
 
   if (reportType === 'balance-sheet') {
     const bsData = data?.data || data;
-    const assets = bsData?.assets?.accounts || [];
-    const liabilities = bsData?.liabilities?.accounts || [];
-    const equity = bsData?.equity?.accounts || [];
-    const totalAssets = bsData?.totalAssets || 0;
-    const totalLiabilities = bsData?.totalLiabilities || 0;
-    const totalEquity = bsData?.totalEquity || 0;
-    return (
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-            <tr>
-              <th className="text-left px-3 py-3">Account</th>
-              <th className="text-right px-3 py-3">Balance</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr className="bg-blue-50"><td colSpan={2} className="px-3 py-2 text-xs font-bold text-blue-800 uppercase tracking-wider">Assets</td></tr>
-            {assets.map((a: any, i: number) => (
-              <tr key={`a-${i}`} className={`border-t border-slate-100 hover:bg-slate-50/50 even:bg-slate-50/50 transition-colors ${a.accountId ? 'cursor-pointer' : ''}`} onClick={() => a.accountId && onAccountClick?.(a)}>
-                <td className="px-3 py-2.5 pl-8 text-slate-800">{a.name}</td>
-                <td className="px-3 py-2.5 text-right font-semibold text-slate-800">{fmtNaira(a.balance)}</td>
-              </tr>
-            ))}
-            <tr className="border-t-2 border-blue-200 bg-blue-50/50">
-              <td className="px-3 py-2 text-sm font-bold text-slate-800">Total Assets</td>
-              <td className="px-3 py-2 text-right font-bold text-slate-800">{fmtNaira(totalAssets)}</td>
-            </tr>
-            <tr className="bg-amber-50"><td colSpan={2} className="px-3 py-2 text-xs font-bold text-amber-800 uppercase tracking-wider">Liabilities</td></tr>
-            {liabilities.map((l: any, i: number) => (
-              <tr key={`l-${i}`} className={`border-t border-slate-100 hover:bg-slate-50/50 even:bg-slate-50/50 transition-colors ${l.accountId ? 'cursor-pointer' : ''}`} onClick={() => l.accountId && onAccountClick?.(l)}>
-                <td className="px-3 py-2.5 pl-8 text-slate-800">{l.name}</td>
-                <td className="px-3 py-2.5 text-right font-semibold text-slate-800">{fmtNaira(l.balance)}</td>
-              </tr>
-            ))}
-            <tr className="border-t-2 border-amber-200 bg-amber-50/50">
-              <td className="px-3 py-2 text-sm font-bold text-slate-800">Total Liabilities</td>
-              <td className="px-3 py-2 text-right font-bold text-slate-800">{fmtNaira(totalLiabilities)}</td>
-            </tr>
-            <tr className="bg-violet-50"><td colSpan={2} className="px-3 py-2 text-xs font-bold text-violet-800 uppercase tracking-wider">Equity</td></tr>
-            {equity.map((e: any, i: number) => (
-              <tr key={`e-${i}`} className={`border-t border-slate-100 hover:bg-slate-50/50 even:bg-slate-50/50 transition-colors ${e.accountId ? 'cursor-pointer' : ''}`} onClick={() => e.accountId && onAccountClick?.(e)}>
-                <td className="px-3 py-2.5 pl-8 text-slate-800">{e.name}</td>
-                <td className="px-3 py-2.5 text-right font-semibold text-slate-800">{fmtNaira(e.balance)}</td>
-              </tr>
-            ))}
-            <tr className="border-t-2 border-violet-200 bg-violet-50/50">
-              <td className="px-3 py-2 text-sm font-bold text-slate-800">Total Equity</td>
-              <td className="px-3 py-2 text-right font-bold text-slate-800">{fmtNaira(totalEquity)}</td>
-            </tr>
-            <tr className="border-t-2 border-slate-300 bg-slate-100">
-              <td className="px-3 py-3 text-base font-bold text-slate-900">Total Liabilities &amp; Equity</td>
-              <td className="px-3 py-3 text-right text-base font-bold text-slate-900">{fmtNaira(totalLiabilities + totalEquity)}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    );
+    return <SinglePeriodBalanceSheetTable data={bsData} onAccountClick={onAccountClick} showZero={showZero} showCodes={showCodes} />;
   }
 
   if (reportType === 'income-statement') {
     const current = data?.current || data;
-    return <SinglePeriodPnLTable current={current} onAccountClick={onAccountClick} />;
+    return <SinglePeriodPnLTable current={current} onAccountClick={onAccountClick} showZero={isShowZero} showCodes={isShowCodes} />;
   }
 
   if (reportType === 'cash-flow') {
@@ -1705,125 +1706,178 @@ function buildPnLRows(current: any, prior: any | null): any[] {
       const priorBal = priorMap.get(code) || 0;
       secCurrTotal += a.balance;
       secPriorTotal += priorBal;
-      secRows.push({ accountId: a.accountId, name: a.name, currentBalance: a.balance, priorBalance: priorBal, variance: a.balance - priorBal, isRevenue });
+      secRows.push({ accountId: a.accountId, name: a.name, code: a.code, currentBalance: a.balance, priorBalance: priorBal, variance: a.balance - priorBal, isRevenue });
     }
     for (const a of priorAccounts) {
       const code = a.code || a.accountId;
       if (!currAccounts.some((ca: any) => (ca.code || ca.accountId) === code)) {
         secCurrTotal += 0;
         secPriorTotal += a.balance;
-        secRows.push({ accountId: a.accountId, name: a.name, currentBalance: 0, priorBalance: a.balance, variance: 0 - a.balance, isRevenue });
+        secRows.push({ accountId: a.accountId, name: a.name, code: a.code, currentBalance: 0, priorBalance: a.balance, variance: 0 - a.balance, isRevenue });
       }
     }
     return { section: label, children: secRows, totalCurrent: secCurrTotal, totalPrior: secPriorTotal, isRevenue };
   }
   const rows: any[] = [];
-  // 1. Revenue
-  rows.push(buildSec('revenue', 'Revenue', true));
-  // 2. Cost of Sales
+  // 1. Operating Revenue
+  rows.push(buildSec('operatingRevenue', 'Operating Revenue', true));
+  // 2. Other Operating Income
+  rows.push(buildSec('otherOperatingIncome', 'Other Operating Income', true));
+  // Total Revenue summary
+  const trCurr = current?.totalRevenue ?? (current?.operatingRevenue?.total || 0) + (current?.otherOperatingIncome?.total || 0);
+  const trPrior = prior?.totalRevenue ?? (prior?.operatingRevenue?.total || 0) + (prior?.otherOperatingIncome?.total || 0);
+  rows.push({ section: 'TOTAL REVENUE', isSummary: true, summaryCurrent: trCurr, summaryPrior: trPrior, isRevenue: true });
+  // 3. Cost of Sales
   rows.push(buildSec('costOfSales', 'Cost of Sales', false));
-  // 3. Gross Profit
-  const gpCurr = (current?.revenue?.total || 0) - (current?.costOfSales?.total || 0);
-  const gpPrior = (prior?.revenue?.total || 0) - (prior?.costOfSales?.total || 0);
-  rows.push({ section: 'Gross Profit', isSummary: true, summaryCurrent: gpCurr, summaryPrior: gpPrior, isRevenue: true });
-  // 4. Operating Expenses sub-sections
-  const oe = current?.operatingExpenses || {};
-  const oePrior = prior?.operatingExpenses || {};
+  // 4. Gross Profit
+  const gpCurr = current?.grossProfit ?? (trCurr - (current?.costOfSales?.total || 0));
+  const gpPrior = prior?.grossProfit ?? (trPrior - (prior?.costOfSales?.total || 0));
+  rows.push({ section: 'GROSS PROFIT', isSummary: true, summaryCurrent: gpCurr, summaryPrior: gpPrior, isRevenue: true });
+  // 5. Operating Expenses sub-sections
   const subSections = [
-    { key: 'sellingDistribution', label: 'Selling & Distribution Expenses', isRevenue: false },
-    { key: 'administrative', label: 'Administrative Expenses', isRevenue: false },
     { key: 'staffCosts', label: 'Staff Costs', isRevenue: false },
+    { key: 'administrative', label: 'Administrative Expenses', isRevenue: false },
+    { key: 'sellingDistribution', label: 'Selling & Distribution Expenses', isRevenue: false },
+    { key: 'otherOperatingExpenses', label: 'Other Operating Expenses', isRevenue: false },
   ];
   for (const sub of subSections) {
-    const ssData: any = { [sub.key]: oe[sub.key], ...{} };
-    const priorSsData: any = { [sub.key]: oePrior[sub.key], ...{} };
-    const subRows = buildSec(sub.key, sub.label, false);
-    subRows.section = sub.label;
-    rows.push(subRows);
+    const currAccounts = current?.[sub.key]?.accounts || [];
+    const priorAccounts = prior?.[sub.key]?.accounts || [];
+    if (currAccounts.length > 0 || priorAccounts.length > 0) {
+      rows.push(buildSec(sub.key, sub.label, false));
+    }
   }
-  // Other Operating Expenses (if any)
-  if ((oe.other?.accounts || []).length > 0 || (oePrior?.other?.accounts || []).length > 0) {
-    rows.push(buildSec('other', 'Other Operating Expenses', false));
-  }
-  // Operating Expenses total
-  const opExCurr = oe?.total || 0;
-  const opExPrior = oePrior?.total || 0;
+  // Total Operating Expenses summary
+  const opExCurr = current?.totalOperatingExpenses ?? 0;
+  const opExPrior = prior?.totalOperatingExpenses ?? 0;
   rows.push({ section: 'Total Operating Expenses', isSummary: true, summaryCurrent: opExCurr, summaryPrior: opExPrior, isRevenue: false });
-  // 5. Operating Profit (EBIT)
+  // 6. Operating Profit (EBIT)
   const opCurr = current?.operatingProfit ?? (gpCurr - opExCurr);
   const opPrior = prior?.operatingProfit ?? (gpPrior - opExPrior);
-  rows.push({ section: 'Operating Profit (EBIT)', isSummary: true, summaryCurrent: opCurr, summaryPrior: opPrior, isRevenue: true });
-  // 6. Finance Costs (if any)
+  rows.push({ section: 'OPERATING PROFIT (EBIT)', isSummary: true, summaryCurrent: opCurr, summaryPrior: opPrior, isRevenue: true });
+  // 7. Finance Income (if any)
+  const fiCurr = current?.financeIncome?.accounts || [];
+  const fiPrior = prior?.financeIncome?.accounts || [];
+  if (fiCurr.length > 0 || fiPrior.length > 0) {
+    rows.push(buildSec('financeIncome', 'Finance Income', true));
+  }
+  // 8. Finance Costs (if any)
   const fcCurr = current?.financeCosts?.accounts || [];
   const fcPrior = prior?.financeCosts?.accounts || [];
   if (fcCurr.length > 0 || fcPrior.length > 0) {
     rows.push(buildSec('financeCosts', 'Finance Costs', false));
   }
-  // 7. Tax Expense (if any)
-  const txCurr = current?.taxExpense?.accounts || [];
-  const txPrior = prior?.taxExpense?.accounts || [];
+  // 9. Profit Before Tax
+  const fiTotalCurr = current?.financeIncome?.total || 0;
+  const fcTotalCurr = current?.financeCosts?.total || 0;
+  const fiTotalPrior = prior?.financeIncome?.total || 0;
+  const fcTotalPrior = prior?.financeCosts?.total || 0;
+  const pbtCurr = current?.profitBeforeTax ?? (opCurr + fiTotalCurr - fcTotalCurr);
+  const pbtPrior = prior?.profitBeforeTax ?? (opPrior + fiTotalPrior - fcTotalPrior);
+  rows.push({ section: 'PROFIT BEFORE TAX', isSummary: true, summaryCurrent: pbtCurr, summaryPrior: pbtPrior, isRevenue: true });
+  // 10. Income Tax Expense (if any)
+  const txCurr = current?.incomeTaxExpense?.accounts || [];
+  const txPrior = prior?.incomeTaxExpense?.accounts || [];
   if (txCurr.length > 0 || txPrior.length > 0) {
-    rows.push(buildSec('taxExpense', 'Tax Expense', false));
+    rows.push(buildSec('incomeTaxExpense', 'Income Tax Expense', false));
   }
-  // 8. Net Profit
-  const npCurr = current?.netProfit ?? (opCurr - (current?.financeCosts?.total || 0) - (current?.taxExpense?.total || 0));
-  const npPrior = prior?.netProfit ?? (opPrior - (prior?.financeCosts?.total || 0) - (prior?.taxExpense?.total || 0));
-  rows.push({ section: 'Net Profit', isSummary: true, summaryCurrent: npCurr, summaryPrior: npPrior, isRevenue: true });
+  // 11. Net Profit After Tax
+  const npCurr = current?.netProfit ?? (pbtCurr - (current?.incomeTaxExpense?.total || 0));
+  const npPrior = prior?.netProfit ?? (pbtPrior - (prior?.incomeTaxExpense?.total || 0));
+  rows.push({ section: 'NET PROFIT AFTER TAX', isSummary: true, summaryCurrent: npCurr, summaryPrior: npPrior, isRevenue: true });
   return rows;
 }
 
-function SinglePeriodPnLTable({ current, onAccountClick }: { current: any; onAccountClick?: (acct: any) => void }) {
-  function renderSection(label: string, accounts: any[], total: number) {
+function SinglePeriodPnLTable({ current, onAccountClick, showZero, showCodes }: { current: any; onAccountClick?: (acct: any) => void; showZero?: boolean; showCodes?: boolean }) {
+  function shouldShow(balance: number): boolean {
+    return showZero || Math.abs(balance) > 0.01;
+  }
+  function fmtPnL(val: number): string {
+    const abs = Math.abs(val / 100);
+    const formatted = abs.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return val < 0 ? `(₦${formatted})` : `₦${formatted}`;
+  }
+  function renderSection(label: string, accounts: any[], total: number, indent: string = 'pl-8', subIndent: string = 'pl-8') {
+    const visible = (accounts || []).filter((a: any) => shouldShow(a.balance));
+    if (!showZero && visible.length === 0 && Math.abs(total) < 0.01) return null;
     return (
       <>
         <tr className="bg-slate-100/50">
           <td colSpan={2} className="px-3 py-2 text-xs font-bold text-slate-700 uppercase tracking-wider">{label}</td>
         </tr>
-        {(accounts || []).map((a: any, i: number) => (
+        {visible.map((a: any, i: number) => (
           <tr key={i} className={`border-t border-slate-100 hover:bg-slate-50/50 even:bg-slate-50/50 transition-colors ${a.accountId ? 'cursor-pointer' : ''}`} onClick={() => a.accountId && onAccountClick?.(a)}>
-            <td className="px-3 py-2.5 pl-8 text-slate-800">{a.name}</td>
-            <td className="px-3 py-2.5 text-right font-semibold text-slate-800">{fmtNaira(a.balance)}</td>
+            <td className={`px-3 py-2.5 ${subIndent} text-slate-800`}>{showCodes && a.code ? <span className="text-slate-400 mr-1.5 text-[11px] font-mono">{a.code}</span> : ''}{a.name}</td>
+            <td className="px-3 py-2.5 text-right font-semibold text-slate-800">{fmtPnL(a.balance)}</td>
           </tr>
         ))}
         <tr className="border-t border-slate-200 bg-slate-50/50 font-medium">
-          <td className="px-3 py-2 pl-8 text-sm text-slate-700">Total {label}</td>
-          <td className="px-3 py-2 text-right text-slate-800">{fmtNaira(total)}</td>
+          <td className={`px-3 py-2 ${indent} text-sm text-slate-700`}>Total {label}</td>
+          <td className="px-3 py-2 text-right text-slate-800">{fmtPnL(total)}</td>
         </tr>
       </>
     );
   }
-  function renderSubSection(label: string, data: any) {
+  function renderSubSection(label: string, data: any, indent: string = 'pl-10', subIndent: string = 'pl-14') {
+    const accounts = data?.accounts || [];
+    const total = data?.total || 0;
+    const visible = accounts.filter((a: any) => shouldShow(a.balance));
+    if (!showZero && visible.length === 0 && Math.abs(total) < 0.01) return null;
     return (
       <>
         <tr className="bg-slate-50/30">
-          <td colSpan={2} className="px-3 py-1.5 pl-10 text-xs font-semibold text-slate-500 uppercase tracking-wider">{label}</td>
+          <td colSpan={2} className={`px-3 py-1.5 ${indent} text-xs font-semibold text-slate-500 uppercase tracking-wider`}>{label}</td>
         </tr>
-        {(data?.accounts || []).map((a: any, i: number) => (
+        {visible.map((a: any, i: number) => (
           <tr key={i} className={`border-t border-slate-100 hover:bg-slate-50/50 even:bg-slate-50/50 transition-colors ${a.accountId ? 'cursor-pointer' : ''}`} onClick={() => a.accountId && onAccountClick?.(a)}>
-            <td className="px-3 py-2 pl-14 text-slate-700">{a.name}</td>
-            <td className="px-3 py-2 text-right font-semibold text-slate-700">{fmtNaira(a.balance)}</td>
+            <td className={`px-3 py-2 ${subIndent} text-slate-700`}>{showCodes && a.code ? <span className="text-slate-400 mr-1.5 text-[11px] font-mono">{a.code}</span> : ''}{a.name}</td>
+            <td className="px-3 py-2 text-right font-semibold text-slate-700">{fmtPnL(a.balance)}</td>
           </tr>
         ))}
         <tr className="border-t border-slate-200 bg-slate-50/30 font-medium">
-          <td className="px-3 py-1.5 pl-10 text-xs text-slate-500">Total {label}</td>
-          <td className="px-3 py-1.5 text-right text-slate-600">{fmtNaira(data?.total || 0)}</td>
+          <td className={`px-3 py-1.5 ${indent} text-xs text-slate-500`}>Total {label}</td>
+          <td className="px-3 py-1.5 text-right text-slate-600">{fmtPnL(total)}</td>
         </tr>
       </>
     );
   }
+  function profitRow(label: string, value: number, isLoss: boolean = false) {
+    return (
+      <tr className={`border-t-2 ${isLoss ? 'border-red-300 bg-red-50/50' : 'border-slate-300 bg-slate-100'} font-bold`}>
+        <td className={`px-3 py-2.5 pl-8 text-sm ${isLoss ? 'text-red-700' : 'text-slate-900'}`}>{label}</td>
+        <td className={`px-3 py-2.5 text-right ${isLoss ? 'text-red-700' : 'text-slate-900'}`}>{fmtPnL(value)}</td>
+      </tr>
+    );
+  }
 
-  const revenue = current?.revenue || {};
+  const opRev = current?.operatingRevenue || {};
+  const ooi = current?.otherOperatingIncome || {};
   const cos = current?.costOfSales || {};
-  const oe = current?.operatingExpenses || {};
+  const sc = current?.staffCosts || {};
+  const adm = current?.administrative || {};
+  const sd = current?.sellingDistribution || {};
+  const ooe = current?.otherOperatingExpenses || {};
+  const fi = current?.financeIncome || {};
   const fc = current?.financeCosts || {};
-  const tx = current?.taxExpense || {};
+  const tx = current?.incomeTaxExpense || {};
 
-  const revenueTotal = revenue.total || 0;
+  const opRevTotal = opRev.total || 0;
+  const ooiTotal = ooi.total || 0;
+  const totalRevenue = current?.totalRevenue ?? (opRevTotal + ooiTotal);
   const cosTotal = cos.total || 0;
-  const grossProfit = revenueTotal - cosTotal;
-  const opExTotal = oe?.total || 0;
+  const grossProfit = current?.grossProfit ?? (totalRevenue - cosTotal);
+  const scTotal = sc.total || 0;
+  const admTotal = adm.total || 0;
+  const sdTotal = sd.total || 0;
+  const ooeTotal = ooe.total || 0;
+  const opExTotal = current?.totalOperatingExpenses ?? (scTotal + admTotal + sdTotal + ooeTotal);
   const operatingProfit = current?.operatingProfit ?? (grossProfit - opExTotal);
-  const netProfit = current?.netProfit ?? (operatingProfit - (fc.total || 0) - (tx.total || 0));
+  const fiTotal = fi.total || 0;
+  const fcTotal = fc.total || 0;
+  const profitBeforeTax = current?.profitBeforeTax ?? (operatingProfit + fiTotal - fcTotal);
+  const txTotal = tx.total || 0;
+  const netProfit = current?.netProfit ?? (profitBeforeTax - txTotal);
+  const effectiveTaxRate = current?.effectiveTaxRate ?? (profitBeforeTax > 0 ? Math.round((txTotal / profitBeforeTax) * 1000) / 10 : 0);
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
@@ -1835,33 +1889,39 @@ function SinglePeriodPnLTable({ current, onAccountClick }: { current: any; onAcc
           </tr>
         </thead>
         <tbody>
-          {renderSection('Revenue', revenue.accounts, revenueTotal)}
-          {renderSection('Cost of Sales', cos.accounts, cosTotal)}
-          <tr className="border-t-2 border-emerald-200 bg-emerald-50/50 font-bold">
-            <td className="px-3 py-2 pl-8 text-sm text-slate-800">Gross Profit</td>
-            <td className="px-3 py-2 text-right text-slate-800">{fmtNaira(grossProfit)}</td>
+          {renderSection('Operating Revenue', opRev.accounts, opRevTotal)}
+          {renderSection('Other Operating Income', ooi.accounts, ooiTotal)}
+          <tr className="border-t border-slate-200 bg-slate-100/70 font-semibold">
+            <td className="px-3 py-2 pl-8 text-sm text-slate-800">TOTAL REVENUE</td>
+            <td className="px-3 py-2 text-right text-slate-800">{fmtPnL(totalRevenue)}</td>
           </tr>
+          {renderSection('Cost of Sales', cos.accounts, cosTotal)}
+          {profitRow('GROSS PROFIT', grossProfit, grossProfit < 0)}
           <tr className="bg-slate-100/50">
             <td colSpan={2} className="px-3 py-2 text-xs font-bold text-slate-700 uppercase tracking-wider">Operating Expenses</td>
           </tr>
-          {renderSubSection('Selling & Distribution Expenses', oe.sellingDistribution)}
-          {renderSubSection('Administrative Expenses', oe.administrative)}
-          {renderSubSection('Staff Costs', oe.staffCosts)}
-          {(oe.other?.accounts || []).length > 0 && renderSubSection('Other Operating Expenses', oe.other)}
-          <tr className="border-t border-slate-200 bg-slate-100/70 font-medium">
+          {renderSubSection('Staff Costs', sc)}
+          {renderSubSection('Administrative Expenses', adm)}
+          {renderSubSection('Selling & Distribution Expenses', sd)}
+          {renderSubSection('Other Operating Expenses', ooe)}
+          <tr className="border-t border-slate-200 bg-slate-100/70 font-semibold">
             <td className="px-3 py-2 pl-8 text-sm text-slate-800">Total Operating Expenses</td>
-            <td className="px-3 py-2 text-right text-slate-800">{fmtNaira(opExTotal)}</td>
+            <td className="px-3 py-2 text-right text-slate-800">{fmtPnL(opExTotal)}</td>
           </tr>
-          <tr className="border-t-2 border-slate-300 bg-slate-100 font-bold">
-            <td className="px-3 py-2.5 pl-8 text-sm text-slate-900">Operating Profit (EBIT)</td>
-            <td className="px-3 py-2.5 text-right text-slate-900">{fmtNaira(operatingProfit)}</td>
+          {profitRow('OPERATING PROFIT (EBIT)', operatingProfit, operatingProfit < 0)}
+          {renderSection('Finance Income', fi.accounts, fiTotal)}
+          {renderSection('Finance Costs', fc.accounts, fcTotal)}
+          {profitRow('PROFIT BEFORE TAX', profitBeforeTax, profitBeforeTax < 0)}
+          {renderSection('Income Tax Expense', tx.accounts, txTotal)}
+          <tr className={`border-t-2 bg-slate-900 font-bold ${netProfit < 0 ? 'border-red-500 bg-red-900' : 'border-blue-900 bg-blue-900'}`}>
+            <td className={`px-3 py-3 text-sm ${netProfit < 0 ? 'text-red-200' : 'text-white'}`}>NET PROFIT AFTER TAX</td>
+            <td className={`px-3 py-3 text-right ${netProfit < 0 ? 'text-red-200' : 'text-white'}`}>{fmtPnL(netProfit)}</td>
           </tr>
-          {(fc.accounts || []).length > 0 && renderSection('Finance Costs', fc.accounts, fc.total || 0)}
-          {(tx.accounts || []).length > 0 && renderSection('Tax Expense', tx.accounts, tx.total || 0)}
-          <tr className="border-t-2 border-blue-900 bg-blue-900 font-bold">
-            <td className="px-3 py-3 text-sm text-white">Net Profit</td>
-            <td className="px-3 py-3 text-right text-white">{fmtNaira(netProfit)}</td>
-          </tr>
+          {profitBeforeTax > 0 && (
+            <tr className="bg-slate-50 border-t border-slate-200">
+              <td colSpan={2} className="px-3 py-2 text-xs text-slate-500 italic">Effective Tax Rate: {effectiveTaxRate}%  (Tax Expense ÷ Profit Before Tax)</td>
+            </tr>
+          )}
         </tbody>
       </table>
     </div>
@@ -1926,6 +1986,203 @@ function ComparativePnLTable({ current, prior, onAccountClick }: { current: any;
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function SinglePeriodBalanceSheetTable({ data, onAccountClick, showZero, showCodes }: { data: any; onAccountClick?: (acct: any) => void; showZero?: boolean; showCodes?: boolean }) {
+  if (!data) return <div className="p-6 text-center text-slate-400 text-sm">No balance sheet data available.</div>;
+
+  const hasOB = Math.abs(data.outOfBalance) > 1;
+
+  function shouldShow(balance: number): boolean {
+    return showZero || Math.abs(balance) > 0.01;
+  }
+
+  function fmt(val: number): string {
+    return `₦${(val / 100).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+
+  function renderItems(items: any[], indent: string = 'pl-8', labelPrefix: string = '') {
+    return items.filter((i: any) => shouldShow(i.balance)).map((item: any, idx: number) => (
+      <tr key={`${item.accountId || item.code || idx}`} className={`border-t border-slate-100 hover:bg-slate-50/50 even:bg-slate-50/50 transition-colors ${item.accountId !== 're-opening' && item.accountId !== 're-profit-period' && item.accountId !== 're-dividends' && item.accountId !== 're-other' && item.accountId && !item.accountId.startsWith('re-') ? 'cursor-pointer' : ''}`}
+        onClick={() => item.accountId && !item.accountId.startsWith('re-') && onAccountClick?.(item)}>
+        <td className={`px-3 py-2 ${indent} ${item.balance === 0 ? 'text-slate-300' : 'text-slate-800'}`}>
+          {showCodes && item.code ? <span className="text-slate-400 mr-1.5 text-[11px] font-mono">{item.code}</span> : ''}
+          {item.name}{item.reclassified ? <span className="text-slate-400 italic text-[10px] ml-1">(reclassified)</span> : ''}
+        </td>
+        <td className={`px-3 py-2 text-right ${item.balance === 0 ? 'text-slate-300' : 'font-semibold text-slate-800'}`}>{fmt(item.balance)}</td>
+      </tr>
+    ));
+  }
+
+  function renderSection(label: string, total: number, items: any[], indent: string = 'pl-8', bg: string = 'bg-slate-100/50') {
+    if (!showZero && total === 0 && items.every((i: any) => !shouldShow(i.balance))) return null;
+    return (
+      <>
+        <tr className={bg}>
+          <td colSpan={2} className="px-3 py-2 text-xs font-bold text-slate-700 uppercase tracking-wider">{label}</td>
+        </tr>
+        {renderItems(items, indent)}
+        <tr className="border-t border-slate-200 bg-slate-50/50 font-medium">
+          <td className="px-3 py-2 pl-8 text-sm text-slate-700">Total {label}</td>
+          <td className="px-3 py-2 text-right text-slate-800">{fmt(total)}</td>
+        </tr>
+      </>
+    );
+  }
+
+  function renderNBVSection(label: string, costItems: any[], costTotal: number, contraItems: any[], contraTotal: number, netTotal: number) {
+    const show = showZero || netTotal !== 0 || costTotal !== 0;
+    if (!show) return null;
+    return (
+      <>
+        <tr className="bg-slate-100/50">
+          <td colSpan={2} className="px-3 py-2 text-xs font-bold text-slate-700 uppercase tracking-wider">{label}</td>
+        </tr>
+        {renderItems(costItems, 'pl-8')}
+        {contraItems.length > 0 && contraItems.map((ci: any) => (
+          <tr key={ci.accountId || ci.code} className="border-t border-slate-100 text-slate-500">
+            <td className="px-3 py-2 pl-8 text-sm">Less: {ci.name}</td>
+            <td className="px-3 py-2 text-right text-sm">{fmt(-Math.abs(ci.balance))}</td>
+          </tr>
+        ))}
+        <tr className="border-t border-slate-200 bg-slate-50/50 font-semibold">
+          <td className="px-3 py-2 pl-8 text-sm text-slate-700">Net Book Value – {label}</td>
+          <td className="px-3 py-2 text-right text-slate-800">{fmt(netTotal)}</td>
+        </tr>
+      </>
+    );
+  }
+
+  const ca = data?.currentAssets || {};
+  const nca = data?.nonCurrentAssets || {};
+  const cl = data?.currentLiabilities || {};
+  const ncl = data?.nonCurrentLiabilities || {};
+  const eq = data?.equity || {};
+
+  const caSections = ca.subSections || [];
+  const ncaSections = nca.subSections || [];
+  const clSections = cl.subSections || [];
+  const nclSections = ncl.subSections || [];
+  const eqSections = eq.subSections || [];
+
+  const totalAssets = data?.totalAssets || 0;
+  const totalLiabilities = data?.totalLiabilities || 0;
+  const totalEquity = data?.totalEquity || 0;
+  const liabilitiesAndEquity = totalLiabilities + totalEquity;
+
+  return (
+    <div className="space-y-4">
+      {hasOB && (
+        <div className="bg-red-50 border-2 border-red-300 rounded-xl p-4 flex items-start gap-3">
+          <AlertCircle className="w-6 h-6 text-red-500 mt-0.5 shrink-0" />
+          <div>
+            <p className="font-bold text-red-800 text-sm">⚠ Trial Balance Out of Balance by {fmt(Math.abs(data.outOfBalance))}</p>
+            <p className="text-red-600 text-xs mt-1">This report may be unreliable. Please reconcile your journals before publishing this statement.</p>
+          </div>
+        </div>
+      )}
+
+      {(data?.reclassified || []).length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700">
+          {data.reclassified.map((r: any, i: number) => (
+            <p key={i}>• Reclassified <strong>{r.from}</strong> from {r.fromSection} to {r.toSection} ({r.reason})</p>
+          ))}
+        </div>
+      )}
+
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+            <tr>
+              <th className="text-left px-3 py-3">Account</th>
+              <th className="text-right px-3 py-3">Balance</th>
+            </tr>
+          </thead>
+          <tbody>
+            {/* ASSETS */}
+            <tr className="bg-blue-50"><td colSpan={2} className="px-3 py-2.5 text-xs font-bold text-blue-800 uppercase tracking-wider tracking-wide">Assets</td></tr>
+
+            {/* Current Assets */}
+            <tr className="bg-blue-50/50"><td colSpan={2} className="px-3 py-1.5 pl-6 text-[10px] font-semibold text-blue-600 uppercase tracking-wider">Current Assets</td></tr>
+            {caSections.map((sec: any) => (
+              sec.key === 'ppe' || sec.key === 'rou' || sec.key === 'intangibles'
+                ? renderNBVSection(sec.label, sec.items || [], sec.total || 0, sec.contraItems || [], sec.contraTotal || 0, sec.netTotal ?? sec.total)
+                : renderSection(sec.label, sec.total || 0, sec.items || [], 'pl-10', 'bg-blue-50/20')
+            ))}
+            <tr className="border-t-2 border-blue-200 bg-blue-50/70 font-bold">
+              <td className="px-3 py-2 pl-6 text-sm text-slate-800">Total Current Assets</td>
+              <td className="px-3 py-2 text-right text-slate-800">{fmt(ca.total || 0)}</td>
+            </tr>
+
+            {/* Non-Current Assets */}
+            <tr className="bg-blue-50/50"><td colSpan={2} className="px-3 py-1.5 pl-6 text-[10px] font-semibold text-blue-600 uppercase tracking-wider">Non-Current Assets</td></tr>
+            {ncaSections.map((sec: any) => (
+              sec.key === 'ppe' || sec.key === 'rou' || sec.key === 'intangibles'
+                ? renderNBVSection(sec.label, sec.items || [], sec.total || 0, sec.contraItems || [], sec.contraTotal || 0, sec.netTotal ?? sec.total)
+                : renderSection(sec.label, sec.total || 0, sec.items || [], 'pl-10', 'bg-blue-50/20')
+            ))}
+            <tr className="border-t-2 border-blue-200 bg-blue-50/70 font-bold">
+              <td className="px-3 py-2 pl-6 text-sm text-slate-800">Total Non-Current Assets</td>
+              <td className="px-3 py-2 text-right text-slate-800">{fmt(nca.total || 0)}</td>
+            </tr>
+
+            {/* Total Assets */}
+            <tr className="border-t-2 border-blue-300 bg-blue-100 font-bold text-base">
+              <td className="px-3 py-3 text-slate-900">TOTAL ASSETS</td>
+              <td className="px-3 py-3 text-right text-slate-900">{fmt(totalAssets)}</td>
+            </tr>
+
+            {/* LIABILITIES */}
+            <tr className="bg-amber-50"><td colSpan={2} className="px-3 py-2.5 text-xs font-bold text-amber-800 uppercase tracking-wider tracking-wide">Liabilities</td></tr>
+
+            {/* Current Liabilities */}
+            <tr className="bg-amber-50/50"><td colSpan={2} className="px-3 py-1.5 pl-6 text-[10px] font-semibold text-amber-600 uppercase tracking-wider">Current Liabilities</td></tr>
+            {clSections.map((sec: any) => renderSection(sec.label, sec.total || 0, sec.items || [], 'pl-10', 'bg-amber-50/20'))}
+            <tr className="border-t-2 border-amber-200 bg-amber-50/70 font-bold">
+              <td className="px-3 py-2 pl-6 text-sm text-slate-800">Total Current Liabilities</td>
+              <td className="px-3 py-2 text-right text-slate-800">{fmt(cl.total || 0)}</td>
+            </tr>
+
+            {/* Non-Current Liabilities */}
+            <tr className="bg-amber-50/50"><td colSpan={2} className="px-3 py-1.5 pl-6 text-[10px] font-semibold text-amber-600 uppercase tracking-wider">Non-Current Liabilities</td></tr>
+            {nclSections.map((sec: any) => renderSection(sec.label, sec.total || 0, sec.items || [], 'pl-10', 'bg-amber-50/20'))}
+            <tr className="border-t-2 border-amber-200 bg-amber-50/70 font-bold">
+              <td className="px-3 py-2 pl-6 text-sm text-slate-800">Total Non-Current Liabilities</td>
+              <td className="px-3 py-2 text-right text-slate-800">{fmt(ncl.total || 0)}</td>
+            </tr>
+
+            {/* Total Liabilities */}
+            <tr className="border-t-2 border-amber-300 bg-amber-100 font-bold">
+              <td className="px-3 py-2.5 text-sm text-slate-900">TOTAL LIABILITIES</td>
+              <td className="px-3 py-2.5 text-right text-slate-900">{fmt(totalLiabilities)}</td>
+            </tr>
+
+            {/* EQUITY */}
+            <tr className="bg-violet-50"><td colSpan={2} className="px-3 py-2.5 text-xs font-bold text-violet-800 uppercase tracking-wider tracking-wide">Equity</td></tr>
+            {eqSections.map((sec: any) => renderSection(sec.label, sec.total || 0, sec.items || [], 'pl-10', 'bg-violet-50/20'))}
+            <tr className="border-t-2 border-violet-200 bg-violet-100 font-bold">
+              <td className="px-3 py-2.5 text-sm text-slate-900">TOTAL EQUITY</td>
+              <td className="px-3 py-2.5 text-right text-slate-900">{fmt(totalEquity)}</td>
+            </tr>
+
+            {/* Total Liabilities & Equity */}
+            <tr className="border-t-2 border-slate-300 bg-slate-100 font-bold text-base">
+              <td className="px-3 py-3 text-slate-900">TOTAL LIABILITIES &amp; EQUITY</td>
+              <td className="px-3 py-3 text-right text-slate-900">{fmt(liabilitiesAndEquity)}</td>
+            </tr>
+
+            {/* Accounting Equation Check */}
+            <tr className="border-t border-slate-200">
+              <td colSpan={2} className="px-3 py-2 text-xs text-slate-500">
+                Accounting Equation Check: Total Assets ({fmt(totalAssets)}) = Total Liabilities ({fmt(totalLiabilities)}) + Total Equity ({fmt(totalEquity)})
+                {Math.abs(totalAssets - liabilitiesAndEquity) < 1 ? <span className="text-emerald-600 font-bold ml-2">✅ Balanced</span> : <span className="text-red-600 font-bold ml-2">⚠ {fmt(totalAssets - liabilitiesAndEquity)} out of balance</span>}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

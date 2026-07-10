@@ -769,21 +769,25 @@ async function computePnL(
       )
     );
 
-  const revenues: any[] = [];
+  const operatingRevenue: any[] = [];
+  const otherOperatingIncome: any[] = [];
+  const financeIncome: any[] = [];
   const costOfSales: any[] = [];
-  const sellingDistribution: any[] = [];
-  const administrative: any[] = [];
   const staffCosts: any[] = [];
+  const administrative: any[] = [];
+  const sellingDistribution: any[] = [];
   const otherOperating: any[] = [];
   const financeCosts: any[] = [];
   const taxExpense: any[] = [];
 
-  let totalRevenue = 0;
+  let totalOperatingRevenue = 0;
+  let totalOtherOperatingIncome = 0;
+  let totalFinanceIncome = 0;
   let totalCostOfSales = 0;
-  let totalSellingDistribution = 0;
-  let totalAdministrative = 0;
   let totalStaffCosts = 0;
-  let totalOtherOperating = 0;
+  let totalAdministrative = 0;
+  let totalSellingDistribution = 0;
+  let totalOtherOperatingExpenses = 0;
   let totalFinanceCosts = 0;
   let totalTaxExpense = 0;
 
@@ -794,97 +798,84 @@ async function computePnL(
 
     if (acct.type === 'revenue') {
       const balance = crSum - drSum;
-      if (balance !== 0) {
-        revenues.push({
-          accountId: acct.id,
-          code: acct.code,
-          name: acct.name,
-          balance
-        });
-        totalRevenue += balance;
+      const code = parseInt(acct.code, 10);
+      const item = { accountId: acct.id, code: acct.code, name: acct.name, balance };
+
+      // 600000–600899: Core operating revenue
+      if (code >= 600000 && code <= 600899) {
+        operatingRevenue.push(item);
+        totalOperatingRevenue += balance;
+      } else if (code >= 601000 && code <= 601899) {
+        otherOperatingIncome.push(item);
+        totalOtherOperatingIncome += balance;
+      } else if (code >= 900000 && code <= 900999) {
+        financeIncome.push(item);
+        totalFinanceIncome += balance;
+      } else {
+        operatingRevenue.push(item);
+        totalOperatingRevenue += balance;
       }
     } else if (acct.type === 'expense') {
       const balance = drSum - crSum;
-      if (balance === 0) continue;
-
-      const item = {
-        accountId: acct.id,
-        code: acct.code,
-        name: acct.name,
-        balance
-      };
-
       const st = (acct.subType || '').toLowerCase().replace(/\s+/g, '_');
+      let name = acct.name;
+      if (acct.code === '700100') name = 'Cost of Inventory Sold';
+      const item = { accountId: acct.id, code: acct.code, name, balance };
 
-      if (st === 'cost_of_sales' || st === 'cost of sales') {
+      if (st === 'cost_of_sales') {
         costOfSales.push(item);
         totalCostOfSales += balance;
-      } else if (st === 'selling_distribution' || st === 'selling & distribution') {
-        sellingDistribution.push(item);
-        totalSellingDistribution += balance;
-      } else if (st === 'administrative' || st === 'administrative expenses') {
-        administrative.push(item);
-        totalAdministrative += balance;
-      } else if (st === 'staff_costs' || st === 'staff costs') {
+      } else if (st === 'staff_costs') {
         staffCosts.push(item);
         totalStaffCosts += balance;
-      } else if (st === 'finance_costs' || st === 'finance costs') {
+      } else if (st === 'administrative') {
+        administrative.push(item);
+        totalAdministrative += balance;
+      } else if (st === 'selling_distribution') {
+        sellingDistribution.push(item);
+        totalSellingDistribution += balance;
+      } else if (st === 'other_operating') {
+        otherOperating.push(item);
+        totalOtherOperatingExpenses += balance;
+      } else if (st === 'finance_costs') {
         financeCosts.push(item);
         totalFinanceCosts += balance;
-      } else if (st === 'tax_expense' || st === 'tax expense') {
+      } else if (st === 'tax_expense') {
         taxExpense.push(item);
         totalTaxExpense += balance;
       } else {
         otherOperating.push(item);
-        totalOtherOperating += balance;
+        totalOtherOperatingExpenses += balance;
       }
     }
   }
 
+  const totalRevenue = totalOperatingRevenue + totalOtherOperatingIncome;
   const grossProfit = totalRevenue - totalCostOfSales;
-  const totalOperatingExpenses = totalSellingDistribution + totalAdministrative + totalStaffCosts + totalOtherOperating;
+  const totalOperatingExpenses = totalSellingDistribution + totalAdministrative + totalStaffCosts + totalOtherOperatingExpenses;
   const operatingProfit = grossProfit - totalOperatingExpenses;
-  const netProfit = operatingProfit - totalFinanceCosts - totalTaxExpense;
+  const profitBeforeTax = operatingProfit + totalFinanceIncome - totalFinanceCosts;
+  const netProfit = profitBeforeTax - totalTaxExpense;
+  const effectiveTaxRate = profitBeforeTax > 0 ? Math.round((totalTaxExpense / profitBeforeTax) * 1000) / 10 : 0;
 
   return {
-    revenue: {
-      accounts: revenues,
-      total: totalRevenue
-    },
-    costOfSales: {
-      accounts: costOfSales,
-      total: totalCostOfSales
-    },
+    operatingRevenue: { accounts: operatingRevenue, total: totalOperatingRevenue },
+    otherOperatingIncome: { accounts: otherOperatingIncome, total: totalOtherOperatingIncome },
+    totalRevenue,
+    costOfSales: { accounts: costOfSales, total: totalCostOfSales },
     grossProfit,
-    operatingExpenses: {
-      sellingDistribution: {
-        accounts: sellingDistribution,
-        total: totalSellingDistribution
-      },
-      administrative: {
-        accounts: administrative,
-        total: totalAdministrative
-      },
-      staffCosts: {
-        accounts: staffCosts,
-        total: totalStaffCosts
-      },
-      other: {
-        accounts: otherOperating,
-        total: totalOtherOperating
-      },
-      total: totalOperatingExpenses
-    },
+    staffCosts: { accounts: staffCosts, total: totalStaffCosts },
+    administrative: { accounts: administrative, total: totalAdministrative },
+    sellingDistribution: { accounts: sellingDistribution, total: totalSellingDistribution },
+    otherOperatingExpenses: { accounts: otherOperating, total: totalOtherOperatingExpenses },
+    totalOperatingExpenses,
     operatingProfit,
-    financeCosts: {
-      accounts: financeCosts,
-      total: totalFinanceCosts
-    },
-    taxExpense: {
-      accounts: taxExpense,
-      total: totalTaxExpense
-    },
-    netProfit
+    financeIncome: { accounts: financeIncome, total: totalFinanceIncome },
+    financeCosts: { accounts: financeCosts, total: totalFinanceCosts },
+    profitBeforeTax,
+    incomeTaxExpense: { accounts: taxExpense, total: totalTaxExpense },
+    netProfit,
+    effectiveTaxRate
   };
 }
 
@@ -926,6 +917,12 @@ export async function getProfitAndLoss(
  * @param asOfDate Snapshot date limit.
  * @returns Integrated snapshot of accounting balances.
  */
+interface BalItem { accountId: string; code: string; name: string; balance: number; reclassified?: string; isContra?: boolean; }
+
+function stKey(subType: string | null): string {
+  return (subType || '').toLowerCase().replace(/\s+/g, '_');
+}
+
 export async function getBalanceSheet(
   orgId: string,
   asOfDate: Date,
@@ -953,93 +950,260 @@ export async function getBalanceSheet(
       )
     );
 
-  const assets: any[] = [];
-  const liabilities: any[] = [];
-  const equities: any[] = [];
-
-  let totalAssets = 0;
-  let totalLiabilities = 0;
-  let totalEquityBeforeRetained = 0;
+  // First pass: compute net balance per account (dr-cr for assets, cr-dr for liabilities/equity)
+  const allItems: BalItem[] = [];
   let cumulativeNetIncome = 0;
+  const codePrefix = (code: string, len: number) => code.substring(0, len);
 
   for (const acct of orgAccounts) {
     const matched = records.filter((r) => r.accountId === acct.id);
     const dr = matched.reduce((sum, curr) => sum + (curr.currency && curr.currency !== 'NGN' ? toNgn(curr.debitAmount, curr.fxRate) : curr.debitAmount), 0);
     const cr = matched.reduce((sum, curr) => sum + (curr.currency && curr.currency !== 'NGN' ? toNgn(curr.creditAmount, curr.fxRate) : curr.creditAmount), 0);
 
-    const item = {
-      accountId: acct.id,
-      code: acct.code,
-      name: acct.name
-    };
-
     if (acct.type === 'asset') {
-      const balance = dr - cr;
-      if (balance !== 0) {
-        assets.push({ ...item, balance });
-        totalAssets += balance;
-      }
+      allItems.push({ accountId: acct.id, code: acct.code, name: acct.name, balance: dr - cr });
     } else if (acct.type === 'liability') {
-      const balance = cr - dr;
-      if (balance !== 0) {
-        liabilities.push({ ...item, balance });
-        totalLiabilities += balance;
-      }
+      allItems.push({ accountId: acct.id, code: acct.code, name: acct.name, balance: cr - dr });
     } else if (acct.type === 'equity') {
-      const balance = cr - dr;
-      if (balance !== 0) {
-        equities.push({ ...item, balance });
-        totalEquityBeforeRetained += balance;
-      }
+      allItems.push({ accountId: acct.id, code: acct.code, name: acct.name, balance: cr - dr });
     } else if (acct.type === 'revenue') {
-      cumulativeNetIncome += (cr - dr); // Cr increases revenue
+      cumulativeNetIncome += (cr - dr);
     } else if (acct.type === 'expense') {
-      cumulativeNetIncome -= (dr - cr); // Dr increases expense
+      cumulativeNetIncome -= (dr - cr);
     }
   }
 
-  // Inject period net income seamlessly into Equity section to close books balanced
-  if (cumulativeNetIncome !== 0) {
-    equities.push({
-      accountId: 'dynamic-retained-earnings',
-      code: 'RE-RETAINED',
-      name: 'Retained Earnings (Current period net earnings)',
-      balance: cumulativeNetIncome
-    });
+  // Identify contra-asset accounts (accumulated depreciation/amortisation)
+  const contraCodes = new Set<string>();
+  const isContra = (item: BalItem) =>
+    item.name.toLowerCase().includes('accumulated depreciation') ||
+    item.name.toLowerCase().includes('accumulated amortisation') ||
+    item.name.toLowerCase().includes('allowance for impairment') ||
+    item.name.toLowerCase().includes('inventory write-down') ||
+    item.code === '101200' || item.code === '102600' ||
+    item.code.startsWith('2011') || (item.code.startsWith('2012') && item.code.endsWith('01')) ||
+    item.code === '202500';
+
+  // Separate contra-assets and normal items
+  const contraItems: BalItem[] = [];
+  const normalItems: BalItem[] = [];
+  for (const item of allItems) {
+    if (isContra(item)) {
+      contraItems.push(item);
+      contraCodes.add(item.code);
+    } else {
+      normalItems.push(item);
+    }
   }
 
-  let totalEquity = totalEquityBeforeRetained + cumulativeNetIncome;
-  let liabilitiesAndEquity = totalLiabilities + totalEquity;
+  // Apply reclassification rules
+  const reclassified: any[] = [];
+  const finalItems: BalItem[] = [];
 
-  const accountingDifference = totalAssets - liabilitiesAndEquity;
-  if (Math.abs(accountingDifference) > 1) {
-    equities.push({
-      accountId: 'system-suspense',
-      code: 'SYS-SUSPENSE',
-      name: 'System (Unreconciled sub-ledger differences)',
-      balance: accountingDifference,
-    });
-    totalEquity += accountingDifference;
-    liabilitiesAndEquity = totalLiabilities + totalEquity;
+  for (const item of normalItems) {
+    const c = item.code;
+    // Bank accounts (100200-100500) with negative balance → Bank Overdraft
+    if ((c.startsWith('1002') || c.startsWith('1003') || c.startsWith('1004') || c.startsWith('1005') || c.startsWith('1001')) && item.balance < 0) {
+      reclassified.push({ from: item.name, fromSection: 'currentAssets', toSection: 'currentLiabilities', reason: 'negative bank balance' });
+      finalItems.push({ ...item, name: `Bank Overdraft – ${item.name}`, balance: -item.balance, reclassified: 'overdraft' });
+      continue;
+    }
+    // Payable accounts with negative balance (net debit) → Overpayment Receivable
+    if ((c.startsWith('300') || c.startsWith('301') || c.startsWith('302')) && item.balance < 0) {
+      reclassified.push({ from: item.name, fromSection: 'currentLiabilities', toSection: 'currentAssets', reason: 'debit balance payable' });
+      finalItems.push({ ...item, name: `Overpayment Receivable – ${item.name}`, balance: -item.balance, reclassified: 'overpayment' });
+      continue;
+    }
+    // Inventory sub-accounts (102xxx) with negative balance → zero at individual level, warn at parent
+    if (c.startsWith('102') && c !== '102000' && item.balance < 0) {
+      finalItems.push({ ...item, balance: 0, reclassified: 'negative-inventory-zeroed' });
+      continue;
+    }
+    finalItems.push(item);
   }
+
+  // Group by section using code prefix ranges
+  function sectionGroup(code: string): string {
+    const p3 = codePrefix(code, 3);
+    const p2 = codePrefix(code, 2);
+    if (p2 === '10' || p2 === '11') return 'currentAssets';
+    if (p2 === '20' || p2 === '21') return 'nonCurrentAssets';
+    if (p2 === '30' || p2 === '31' || p2 === '32') return 'currentLiabilities';
+    if (p2 === '40' || p2 === '41' || p2 === '42') return 'nonCurrentLiabilities';
+    if (p2 === '50' || p2 === '51') return 'equity';
+    if (p2 === '90' || p2 === '91') return 'nonCurrentAssets'; // finance income/costs → assets if debit
+    return 'other';
+  }
+
+  // Sub-group within sections
+  function subGroup(item: BalItem): string {
+    const c = item.code;
+    if (c.startsWith('100')) return 'cashAndEquivalents';
+    if (c.startsWith('101')) return 'tradeReceivables';
+    if (c.startsWith('102')) return 'inventories';
+    if (c.startsWith('103')) return 'financialAssets';
+    if (c.startsWith('104')) return 'otherCurrent';
+    if (c.startsWith('200') || c.startsWith('2010') || c.startsWith('2011') || c.startsWith('2012')) return 'ppe';
+    if (c.startsWith('202')) return 'intangibles';
+    if (c.startsWith('203')) return 'investmentProperty';
+    if (c.startsWith('204')) return 'longTermInvestments';
+    if (c.startsWith('205')) return 'deferredTax';
+    if (c.startsWith('206')) return 'otherNonCurrent';
+    if (c.startsWith('300') || c.startsWith('304') || c.startsWith('305')) return 'tradePayables';
+    if (c.startsWith('301')) return 'taxLiabilities';
+    if (c.startsWith('302')) return 'borrowings';
+    if (c.startsWith('303')) return 'currentDebt';
+    if (c.startsWith('400') || c.startsWith('401')) return 'longTermBorrowings';
+    if (c.startsWith('402')) return 'deferredTaxLiability';
+    if (c.startsWith('403')) return 'employeeBenefits';
+    if (c.startsWith('404')) return 'provisions';
+    if (c.startsWith('405')) return 'deferredRevenue';
+    if (c.startsWith('500')) return 'shareCapital';
+    if (c.startsWith('501')) return 'sharePremium';
+    if (c.startsWith('502')) return 'retainedEarnings';
+    if (c.startsWith('503')) return 'otherReserves';
+    if (c.startsWith('504')) return 'nonControllingInterest';
+    if (c.startsWith('505')) return 'generalReserve';
+    return 'other';
+  }
+
+  // Build grouped structure
+  function buildGrouped(source: BalItem[]) {
+    const groups: Record<string, BalItem[]> = {
+      cashAndEquivalents: [], tradeReceivables: [], inventories: [], financialAssets: [], otherCurrent: [],
+      ppe: [], intangibles: [], investmentProperty: [], longTermInvestments: [], deferredTax: [], otherNonCurrent: [],
+      tradePayables: [], taxLiabilities: [], borrowings: [], currentDebt: [],
+      longTermBorrowings: [], deferredTaxLiability: [], employeeBenefits: [], provisions: [], deferredRevenue: [],
+      shareCapital: [], sharePremium: [], retainedEarnings: [], otherReserves: [], nonControllingInterest: [], generalReserve: [],
+      other: []
+    };
+    for (const item of source) {
+      const sg = subGroup(item);
+      if (groups[sg]) groups[sg].push(item);
+      else groups.other.push(item);
+    }
+    return groups;
+  }
+
+  const grouped = buildGrouped(finalItems);
+
+  // Compute totals per section
+  function sum(arr: BalItem[]) { return arr.reduce((s, i) => s + i.balance, 0); }
+
+  // Contra-asset netting: net accumulated depreciation against PP&E
+  // Determine net PP&E value
+  const ppeNetItems: BalItem[] = [];
+  const ppeCostItems = grouped.ppe;
+  const ppeContraItems = contraItems.filter(i => i.code.startsWith('200') || i.code.startsWith('2010'));
+  const ppeCost = sum(ppeCostItems);
+  const ppeDep = sum(ppeContraItems);
+  const ppeNet = ppeCost - ppeDep;
+
+  // ROU netting
+  const rouCostItems = grouped.ppe.filter(i => i.code.startsWith('2011') || i.code.startsWith('2012'));
+  const rouContraItems = contraItems.filter(i => i.code.startsWith('2011') && i.code.endsWith('01'));
+  const rouCost = sum(rouCostItems);
+  const rouDep = sum(rouContraItems);
+  const rouNet = rouCost - rouDep;
+
+  // Intangible netting
+  const intangCostItems = grouped.intangibles;
+  const intangContraItems = contraItems.filter(i => i.code === '202500');
+  const intangCost = sum(intangCostItems);
+  const intangAmort = sum(intangContraItems);
+  const intangNet = intangCost - intangAmort;
+
+  // Current assets total (with reclassified overpayments added to tradeReceivables)
+  const curAssets = [
+    { key: 'cashAndEquivalents', label: 'Cash and Cash Equivalents', items: grouped.cashAndEquivalents, total: sum(grouped.cashAndEquivalents) },
+    { key: 'tradeReceivables', label: 'Trade & Other Receivables', items: grouped.tradeReceivables, total: sum(grouped.tradeReceivables) },
+    { key: 'inventories', label: 'Inventories', items: grouped.inventories, total: sum(grouped.inventories) },
+    { key: 'financialAssets', label: 'Financial Assets – Current', items: grouped.financialAssets, total: sum(grouped.financialAssets) },
+    { key: 'otherCurrent', label: 'Other Current Assets', items: grouped.otherCurrent, total: sum(grouped.otherCurrent) },
+  ];
+  const totalCurrentAssets = curAssets.reduce((s, g) => s + g.total, 0);
+
+  // Non-current assets
+  const nonCurAssets = [
+    { key: 'ppe', label: 'Property, Plant & Equipment', items: ppeCostItems, total: ppeCost, contraItems: ppeContraItems, contraTotal: ppeDep, netTotal: ppeNet },
+    { key: 'rou', label: 'Right-of-Use Assets', items: rouCostItems, total: rouCost, contraItems: rouContraItems, contraTotal: rouDep, netTotal: rouNet },
+    { key: 'intangibles', label: 'Intangible Assets', items: intangCostItems, total: intangCost, contraItems: intangContraItems, contraTotal: intangAmort, netTotal: intangNet },
+    { key: 'investmentProperty', label: 'Investment Property', items: grouped.investmentProperty, total: sum(grouped.investmentProperty) },
+    { key: 'longTermInvestments', label: 'Long-term Investments', items: grouped.longTermInvestments, total: sum(grouped.longTermInvestments) },
+    { key: 'deferredTax', label: 'Deferred Tax Asset', items: grouped.deferredTax, total: sum(grouped.deferredTax) },
+    { key: 'otherNonCurrent', label: 'Other Non-current Assets', items: grouped.otherNonCurrent, total: sum(grouped.otherNonCurrent) },
+  ];
+  const otherItemsAsset = contraItems.filter(i => !ppeContraItems.includes(i) && !rouContraItems.includes(i) && !intangContraItems.includes(i)).reduce((s, i) => s + i.balance, 0);
+  const totalNonCurrentAssets = nonCurAssets.reduce((s, g) => s + (g.netTotal != null ? g.netTotal : g.total), 0) + (otherItemsAsset > 0 ? otherItemsAsset : 0);
+  const totalAssets = totalCurrentAssets + totalNonCurrentAssets;
+
+  // Current liabilities (with reclassified overdrafts added to tradePayables)
+  // Move reclassified overdraft items to borrowings sub-section
+  const overdraftItems = finalItems.filter(i => i.reclassified === 'overdraft');
+  const curLiabilities = [
+    { key: 'tradePayables', label: 'Trade & Other Payables', items: [...grouped.tradePayables, ...overdraftItems], total: sum(grouped.tradePayables) + sum(overdraftItems) },
+    { key: 'taxLiabilities', label: 'Tax Liabilities', items: grouped.taxLiabilities, total: sum(grouped.taxLiabilities) },
+    { key: 'borrowings', label: 'Short-term Borrowings', items: grouped.borrowings, total: sum(grouped.borrowings) },
+    { key: 'currentDebt', label: 'Current Portion of Long-term Debt', items: grouped.currentDebt, total: sum(grouped.currentDebt) },
+  ];
+  const totalCurrentLiabilities = curLiabilities.reduce((s, g) => s + g.total, 0);
+
+  // Non-current liabilities
+  const nonCurLiabilities = [
+    { key: 'longTermBorrowings', label: 'Long-term Borrowings', items: grouped.longTermBorrowings, total: sum(grouped.longTermBorrowings) },
+    { key: 'deferredTaxLiability', label: 'Deferred Tax Liability', items: grouped.deferredTaxLiability, total: sum(grouped.deferredTaxLiability) },
+    { key: 'employeeBenefits', label: 'Employee Benefit Obligations', items: grouped.employeeBenefits, total: sum(grouped.employeeBenefits) },
+    { key: 'provisions', label: 'Provisions & Contingent Liabilities', items: grouped.provisions, total: sum(grouped.provisions) },
+    { key: 'deferredRevenue', label: 'Deferred Revenue – Non-current', items: grouped.deferredRevenue, total: sum(grouped.deferredRevenue) },
+  ];
+  const totalNonCurrentLiabilities = nonCurLiabilities.reduce((s, g) => s + g.total, 0);
+  const totalLiabilities = totalCurrentLiabilities + totalNonCurrentLiabilities;
+
+  // Equity: build proper waterfall
+  // Retained earnings: opening balance from equity accounts with code 502xxx (502000, 502100)
+  const reAccounts = grouped.retainedEarnings;
+  const openingReItems = reAccounts.filter(i => i.code === '502000' || i.code === '502100');
+  const dividendItems = reAccounts.filter(i => i.code === '502300');
+  const otherRE = reAccounts.filter(i => i.code !== '502000' && i.code !== '502100' && i.code !== '502300');
+  const openingReTotal = sum(openingReItems);
+  const dividendTotal = sum(dividendItems);
+  const otherRETotal = sum(otherRE);
+
+  // Profit for period from income statement
+  const profitForPeriod = cumulativeNetIncome;
+
+  // Total retained earnings
+  const totalRetainedEarnings = openingReTotal + profitForPeriod + dividendTotal + otherRETotal;
+
+  const equitySections = [
+    { key: 'shareCapital', label: 'Share Capital', items: grouped.shareCapital, total: sum(grouped.shareCapital) },
+    { key: 'sharePremium', label: 'Share Premium', items: grouped.sharePremium, total: sum(grouped.sharePremium) },
+    { key: 'retainedEarnings', label: 'Retained Earnings', items: [
+      { accountId: 're-opening', code: '502000', name: 'Retained Earnings – Opening Balance', balance: openingReTotal },
+      { accountId: 're-profit-period', code: '502200', name: 'Profit / (Loss) for the Period', balance: profitForPeriod },
+      ...(dividendTotal !== 0 ? [{ accountId: 're-dividends', code: '502300', name: 'Less: Dividends Declared', balance: dividendTotal }] : []),
+      ...(otherRETotal !== 0 ? [{ accountId: 're-other', code: '502400', name: 'Other Retained Earnings', balance: otherRETotal }] : []),
+    ], total: totalRetainedEarnings },
+    { key: 'otherReserves', label: 'Other Reserves', items: grouped.otherReserves, total: sum(grouped.otherReserves) },
+    { key: 'nonControllingInterest', label: 'Non-controlling Interest', items: grouped.nonControllingInterest, total: sum(grouped.nonControllingInterest) },
+    { key: 'generalReserve', label: 'General Reserve', items: grouped.generalReserve, total: sum(grouped.generalReserve) },
+  ];
+  const totalEquity = equitySections.reduce((s, g) => s + g.total, 0);
+  const liabilitiesAndEquity = totalLiabilities + totalEquity;
+  const outOfBalance = totalAssets - liabilitiesAndEquity;
 
   const result = {
-    assets: {
-      accounts: assets,
-      total: totalAssets
-    },
-    liabilities: {
-      accounts: liabilities,
-      total: totalLiabilities
-    },
-    equity: {
-      accounts: equities,
-      total: totalEquity
-    },
+    currentAssets: { subSections: curAssets, total: totalCurrentAssets },
+    nonCurrentAssets: { subSections: nonCurAssets, total: totalNonCurrentAssets },
     totalAssets,
+    currentLiabilities: { subSections: curLiabilities, total: totalCurrentLiabilities },
+    nonCurrentLiabilities: { subSections: nonCurLiabilities, total: totalNonCurrentLiabilities },
     totalLiabilities,
+    equity: { subSections: equitySections, total: totalEquity },
     totalEquity,
-    liabilitiesAndEquity
+    liabilitiesAndEquity,
+    outOfBalance,
+    reclassified,
   };
 
   if (compareAsOfDate) {

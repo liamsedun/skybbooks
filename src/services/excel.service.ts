@@ -348,50 +348,82 @@ export async function exportIncomeStatement(
     writeTotalRow(`Total ${title}`, currentData.total, priorData.total);
   }
 
-  // REVENUE
-  writeCategorySection('Revenue Accounts', currentPnl.revenue.accounts, priorPnl.revenue.accounts);
-  writeTotalRow('TOTAL REVENUE', currentPnl.revenue.total, priorPnl.revenue.total);
+  // OPERATING REVENUE
+  writeCategorySection('Operating Revenue', currentPnl.operatingRevenue.accounts, priorPnl.operatingRevenue.accounts);
+  // OTHER OPERATING INCOME
+  if (currentPnl.otherOperatingIncome.accounts.length > 0 || priorPnl.otherOperatingIncome.accounts.length > 0) {
+    writeCategorySection('Other Operating Income', currentPnl.otherOperatingIncome.accounts, priorPnl.otherOperatingIncome.accounts);
+  }
+  const totalRevenueCurr = currentPnl.totalRevenue ?? (currentPnl.operatingRevenue.total + currentPnl.otherOperatingIncome.total);
+  const totalRevenuePrior = priorPnl.totalRevenue ?? (priorPnl.operatingRevenue.total + priorPnl.otherOperatingIncome.total);
+  writeTotalRow('TOTAL REVENUE', totalRevenueCurr, totalRevenuePrior);
 
   // COST OF SALES
   writeCategorySection('Cost of Sales', currentPnl.costOfSales.accounts, priorPnl.costOfSales.accounts);
   writeTotalRow('TOTAL COST OF SALES', currentPnl.costOfSales.total, priorPnl.costOfSales.total);
 
   // GROSS PROFIT
-  writeTotalRow('GROSS PROFIT', currentPnl.grossProfit, priorPnl.grossProfit, {
+  const gpCurr = currentPnl.grossProfit ?? (totalRevenueCurr - currentPnl.costOfSales.total);
+  const gpPrior = priorPnl.grossProfit ?? (totalRevenuePrior - priorPnl.costOfSales.total);
+  writeTotalRow('GROSS PROFIT', gpCurr, gpPrior, {
     style: { font: { name: 'Arial', bold: true, size: 10, color: { argb: PRIMARY_HEX } } },
     fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: SECONDARY_HEX } },
   });
 
   // OPERATING EXPENSES
   ws.addRow(['OPERATING EXPENSES'.toUpperCase()]).getCell(1).font = { name: 'Arial', bold: true, size: 11, color: { argb: PRIMARY_HEX } };
-  writeSubSectionExcel('Selling & Distribution Expenses', currentPnl.operatingExpenses.sellingDistribution, priorPnl.operatingExpenses.sellingDistribution);
-  writeSubSectionExcel('Administrative Expenses', currentPnl.operatingExpenses.administrative, priorPnl.operatingExpenses.administrative);
-  writeSubSectionExcel('Staff Costs', currentPnl.operatingExpenses.staffCosts, priorPnl.operatingExpenses.staffCosts);
-  if (currentPnl.operatingExpenses.other.accounts.length > 0 || priorPnl.operatingExpenses.other.accounts.length > 0) {
-    writeSubSectionExcel('Other Operating Expenses', currentPnl.operatingExpenses.other, priorPnl.operatingExpenses.other);
+  writeSubSectionExcel('Staff Costs', currentPnl.staffCosts, priorPnl.staffCosts);
+  writeSubSectionExcel('Administrative Expenses', currentPnl.administrative, priorPnl.administrative);
+  writeSubSectionExcel('Selling & Distribution Expenses', currentPnl.sellingDistribution, priorPnl.sellingDistribution);
+  if ((currentPnl.otherOperatingExpenses?.accounts || []).length > 0 || (priorPnl.otherOperatingExpenses?.accounts || []).length > 0) {
+    writeSubSectionExcel('Other Operating Expenses', currentPnl.otherOperatingExpenses, priorPnl.otherOperatingExpenses);
   }
-  writeTotalRow('TOTAL OPERATING EXPENSES', currentPnl.operatingExpenses.total, priorPnl.operatingExpenses.total);
+  const opExCurr = currentPnl.totalOperatingExpenses ?? (currentPnl.staffCosts.total + currentPnl.administrative.total + currentPnl.sellingDistribution.total + (currentPnl.otherOperatingExpenses?.total || 0));
+  const opExPrior = priorPnl.totalOperatingExpenses ?? (priorPnl.staffCosts.total + priorPnl.administrative.total + priorPnl.sellingDistribution.total + (priorPnl.otherOperatingExpenses?.total || 0));
+  writeTotalRow('TOTAL OPERATING EXPENSES', opExCurr, opExPrior);
 
   // OPERATING PROFIT (EBIT)
-  writeTotalRow('OPERATING PROFIT (EBIT)', currentPnl.operatingProfit, priorPnl.operatingProfit, {
+  const opCurr = currentPnl.operatingProfit ?? (gpCurr - opExCurr);
+  const opPrior = priorPnl.operatingProfit ?? (gpPrior - opExPrior);
+  writeTotalRow('OPERATING PROFIT (EBIT)', opCurr, opPrior, {
     style: { font: { name: 'Arial', bold: true, size: 10, color: { argb: '1E3A8A' } } },
     fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'EEF2F3' } },
   });
 
+  // FINANCE INCOME
+  if ((currentPnl.financeIncome?.accounts || []).length > 0 || (priorPnl.financeIncome?.accounts || []).length > 0) {
+    writeCategorySection('Finance Income', currentPnl.financeIncome.accounts, priorPnl.financeIncome.accounts);
+    writeTotalRow('TOTAL FINANCE INCOME', currentPnl.financeIncome.total, priorPnl.financeIncome.total);
+  }
+
   // FINANCE COSTS
-  if (currentPnl.financeCosts.accounts.length > 0 || priorPnl.financeCosts.accounts.length > 0) {
+  if ((currentPnl.financeCosts?.accounts || []).length > 0 || (priorPnl.financeCosts?.accounts || []).length > 0) {
     writeCategorySection('Finance Costs', currentPnl.financeCosts.accounts, priorPnl.financeCosts.accounts);
     writeTotalRow('TOTAL FINANCE COSTS', currentPnl.financeCosts.total, priorPnl.financeCosts.total);
   }
 
-  // TAX EXPENSE
-  if (currentPnl.taxExpense.accounts.length > 0 || priorPnl.taxExpense.accounts.length > 0) {
-    writeCategorySection('Tax Expense', currentPnl.taxExpense.accounts, priorPnl.taxExpense.accounts);
-    writeTotalRow('TOTAL TAX EXPENSE', currentPnl.taxExpense.total, priorPnl.taxExpense.total);
+  // PROFIT BEFORE TAX
+  const fiCurr = currentPnl.financeIncome?.total || 0;
+  const fcCurr = currentPnl.financeCosts?.total || 0;
+  const fiPrior = priorPnl.financeIncome?.total || 0;
+  const fcPrior = priorPnl.financeCosts?.total || 0;
+  const pbtCurr = currentPnl.profitBeforeTax ?? (opCurr + fiCurr - fcCurr);
+  const pbtPrior = priorPnl.profitBeforeTax ?? (opPrior + fiPrior - fcPrior);
+  writeTotalRow('PROFIT BEFORE TAX', pbtCurr, pbtPrior, {
+    style: { font: { name: 'Arial', bold: true, size: 10, color: { argb: '1E3A8A' } } },
+    fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'EEF2F3' } },
+  });
+
+  // INCOME TAX EXPENSE
+  if ((currentPnl.incomeTaxExpense?.accounts || []).length > 0 || (priorPnl.incomeTaxExpense?.accounts || []).length > 0) {
+    writeCategorySection('Income Tax Expense', currentPnl.incomeTaxExpense.accounts, priorPnl.incomeTaxExpense.accounts);
+    writeTotalRow('TOTAL INCOME TAX EXPENSE', currentPnl.incomeTaxExpense.total, priorPnl.incomeTaxExpense.total);
   }
 
-  // NET PROFIT
-  writeTotalRow('NET PROFIT', currentPnl.netProfit, priorPnl.netProfit, {
+  // NET PROFIT AFTER TAX
+  const npCurr = currentPnl.netProfit ?? (pbtCurr - (currentPnl.incomeTaxExpense?.total || 0));
+  const npPrior = priorPnl.netProfit ?? (pbtPrior - (priorPnl.incomeTaxExpense?.total || 0));
+  writeTotalRow('NET PROFIT AFTER TAX', npCurr, npPrior, {
     style: { font: { name: 'Arial', bold: true, size: 12, color: { argb: 'FFFFFF' } } },
     fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: '1E3A8A' } },
   });

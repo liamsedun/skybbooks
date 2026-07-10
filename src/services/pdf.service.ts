@@ -1493,17 +1493,47 @@ export async function generateIncomeStatementPDF(orgId: string, startDate: Date,
     let y = 110;
     doc.fontSize(10).font('Helvetica-Bold').fillColor('#111827');
 
-    // REVENUE
-    y = writeSection('REVENUE', pnl.revenue, y);
+    const opRevTotal = pnl.operatingRevenue?.total || 0;
+    const ooiTotal = pnl.otherOperatingIncome?.total || 0;
+    const totalRevenue = pnl.totalRevenue ?? (opRevTotal + ooiTotal);
+    const cosTotal = pnl.costOfSales?.total || 0;
+    const grossProfit = pnl.grossProfit ?? (totalRevenue - cosTotal);
+    const scTotal = pnl.staffCosts?.total || 0;
+    const admTotal = pnl.administrative?.total || 0;
+    const sdTotal = pnl.sellingDistribution?.total || 0;
+    const ooeTotal = pnl.otherOperatingExpenses?.total || 0;
+    const opExTotal = pnl.totalOperatingExpenses ?? (scTotal + admTotal + sdTotal + ooeTotal);
+    const operatingProfit = pnl.operatingProfit ?? (grossProfit - opExTotal);
+    const fiTotal = pnl.financeIncome?.total || 0;
+    const fcTotal = pnl.financeCosts?.total || 0;
+    const pbt = pnl.profitBeforeTax ?? (operatingProfit + fiTotal - fcTotal);
+    const txTotal = pnl.incomeTaxExpense?.total || 0;
+    const netProfit = pnl.netProfit ?? (pbt - txTotal);
+    const etr = pnl.effectiveTaxRate ?? (pbt > 0 ? Math.round((txTotal / pbt) * 1000) / 10 : 0);
+
+    // OPERATING REVENUE
+    y = writeSection('OPERATING REVENUE', pnl.operatingRevenue, y);
+
+    // OTHER OPERATING INCOME
+    if (pnl.otherOperatingIncome?.accounts?.length > 0) {
+      y = writeSection('OTHER OPERATING INCOME', pnl.otherOperatingIncome, y);
+    }
+
+    // TOTAL REVENUE
+    doc.font('Helvetica-Bold').fillColor('#111827');
+    doc.text('TOTAL REVENUE', 40, y);
+    doc.text(formatNaira(totalRevenue), 400, y, { align: 'right', width: 140 });
+    y += 18;
 
     // COST OF SALES
     y = writeSection('COST OF SALES', pnl.costOfSales, y);
 
     // GROSS PROFIT
-    doc.rect(40, y, 515, 22).fill('#ecfdf5');
-    doc.fillColor('#059669').fontSize(10).font('Helvetica-Bold');
+    const gpColor = grossProfit < 0 ? '#dc2626' : '#059669';
+    doc.rect(40, y, 515, 22).fill(grossProfit < 0 ? '#fef2f2' : '#ecfdf5');
+    doc.fillColor(gpColor).fontSize(10).font('Helvetica-Bold');
     doc.text('GROSS PROFIT', 50, y + 6);
-    doc.text(formatNaira(pnl.grossProfit), 400, y + 6, { align: 'right', width: 140 });
+    doc.text(formatNaira(grossProfit), 400, y + 6, { align: 'right', width: 140 });
     y += 28;
 
     // OPERATING EXPENSES
@@ -1512,41 +1542,60 @@ export async function generateIncomeStatementPDF(orgId: string, startDate: Date,
     doc.moveTo(40, y).lineTo(555, y).strokeColor('#e5e7eb').stroke();
     y += 8;
 
-    y = writeSubSection('Selling & Distribution Expenses', pnl.operatingExpenses.sellingDistribution, y);
-    y = writeSubSection('Administrative Expenses', pnl.operatingExpenses.administrative, y);
-    y = writeSubSection('Staff Costs', pnl.operatingExpenses.staffCosts, y);
-
-    if (pnl.operatingExpenses.other.accounts.length > 0) {
-      y = writeSubSection('Other Operating Expenses', pnl.operatingExpenses.other, y);
+    y = writeSubSection('Staff Costs', pnl.staffCosts, y);
+    y = writeSubSection('Administrative Expenses', pnl.administrative, y);
+    y = writeSubSection('Selling & Distribution Expenses', pnl.sellingDistribution, y);
+    if (pnl.otherOperatingExpenses?.accounts?.length > 0) {
+      y = writeSubSection('Other Operating Expenses', pnl.otherOperatingExpenses, y);
     }
 
     doc.font('Helvetica-Bold').fillColor('#111827');
     doc.text('Total Operating Expenses', 40, y);
-    doc.text(formatNaira(pnl.operatingExpenses.total), 400, y, { align: 'right', width: 140 });
+    doc.text(formatNaira(opExTotal), 400, y, { align: 'right', width: 140 });
     y += 18;
 
     // OPERATING PROFIT (EBIT)
     doc.rect(40, y, 515, 22).fill('#eef2f3');
     doc.fillColor('#1e293b').fontSize(10).font('Helvetica-Bold');
     doc.text('OPERATING PROFIT (EBIT)', 50, y + 6);
-    doc.text(formatNaira(pnl.operatingProfit), 400, y + 6, { align: 'right', width: 140 });
+    doc.text(formatNaira(operatingProfit), 400, y + 6, { align: 'right', width: 140 });
     y += 28;
 
+    // FINANCE INCOME
+    if (pnl.financeIncome?.accounts?.length > 0) {
+      y = writeSection('FINANCE INCOME', pnl.financeIncome, y);
+    }
+
     // FINANCE COSTS
-    if (pnl.financeCosts.accounts.length > 0) {
+    if (pnl.financeCosts?.accounts?.length > 0) {
       y = writeSection('FINANCE COSTS', pnl.financeCosts, y);
     }
 
-    // TAX EXPENSE
-    if (pnl.taxExpense.accounts.length > 0) {
-      y = writeSection('TAX EXPENSE', pnl.taxExpense, y);
+    // PROFIT BEFORE TAX
+    doc.rect(40, y, 515, 22).fill('#eef2f3');
+    doc.fillColor('#1e293b').fontSize(10).font('Helvetica-Bold');
+    doc.text('PROFIT BEFORE TAX', 50, y + 6);
+    doc.text(formatNaira(pbt), 400, y + 6, { align: 'right', width: 140 });
+    y += 28;
+
+    // INCOME TAX EXPENSE
+    if (pnl.incomeTaxExpense?.accounts?.length > 0) {
+      y = writeSection('INCOME TAX EXPENSE', pnl.incomeTaxExpense, y);
     }
 
-    // NET PROFIT
-    doc.rect(40, y, 515, 24).fill('#1e3a8a');
+    // NET PROFIT AFTER TAX
+    const npColor = netProfit < 0 ? '#7f1d1d' : '#1e3a8a';
+    doc.rect(40, y, 515, 24).fill(npColor);
     doc.fillColor('#ffffff').fontSize(11).font('Helvetica-Bold');
-    doc.text('NET PROFIT / (LOSS)', 50, y + 7);
-    doc.text(formatNaira(pnl.netProfit), 400, y + 7, { align: 'right', width: 140 });
+    doc.text('NET PROFIT AFTER TAX', 50, y + 7);
+    doc.text(formatNaira(netProfit), 400, y + 7, { align: 'right', width: 140 });
+    y += 28;
+
+    // Effective Tax Rate
+    if (pbt > 0) {
+      doc.fontSize(8).font('Helvetica-Oblique').fillColor('#64748b');
+      doc.text(`Effective Tax Rate: ${etr}%  (Tax Expense ÷ Profit Before Tax)`, 40, y + 4);
+    }
   });
 }
 
