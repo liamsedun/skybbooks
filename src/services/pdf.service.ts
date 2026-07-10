@@ -1424,27 +1424,20 @@ export async function generateTrialBalancePDF(orgId: string, startDate: Date, en
       formatNaira(row.closingCredit)
     ]);
 
-    const y = drawStripeTable(doc, 110, headers, cw, aligns, rows, 16, brandColor);
+    let y = drawStripeTable(doc, 110, headers, cw, aligns, rows, 16, brandColor);
 
-    // Render Totals
-    doc.rect(40, y, 515, 20).fill('#f3f4f6');
-    doc.fillColor('#1f2937').fontSize(7.5).font('Helvetica-Bold');
-    doc.text('TOTAL DEBITS & CREDITS', 40 + 5, y + 6);
-    
-    const fieldsToSum = [
-      tb.reduce((s, r) => s + r.openingDebit, 0),
-      tb.reduce((s, r) => s + r.openingCredit, 0),
-      tb.reduce((s, r) => s + r.periodDebit, 0),
-      tb.reduce((s, r) => s + r.periodCredit, 0),
-      tb.reduce((s, r) => s + r.closingDebit, 0),
-      tb.reduce((s, r) => s + r.closingCredit, 0)
-    ];
+    // Page overflow check before totals
+    if (y > 720) { doc.addPage(); y = 50; }
 
-    let x = 40 + 50 + 135 + 50;
-    fieldsToSum.forEach((val, i) => {
-      doc.text(formatNaira(val), x + 5, y + 6, { width: 47 - 10, align: 'right' });
-      x += 47;
-    });
+    const totalDr = tb.reduce((s, r) => s + r.closingDebit, 0);
+    const totalCr = tb.reduce((s, r) => s + r.closingCredit, 0);
+
+    const closeDrX = 40 + 50 + 135 + 50 + 47 + 47 + 47;
+    doc.rect(40, y, 515, 20).fill('#eef2f6');
+    doc.fillColor('#1f2937').fontSize(8).font('Helvetica-Bold');
+    doc.text('Total', 40 + 5, y + 6);
+    doc.text(formatNaira(totalDr), closeDrX + 5, y + 6, { width: 47 - 10, align: 'right' });
+    doc.text(formatNaira(totalCr), closeDrX + 47 + 5, y + 6, { width: 47 - 10, align: 'right' });
   });
 }
 
