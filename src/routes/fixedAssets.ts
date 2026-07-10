@@ -428,12 +428,57 @@ router.get('/depreciation-entries', async (req: AuthenticatedRequest, res: Respo
   try {
     const orgId = req.user!.orgId!;
 
+    // Find JEs that reference depreciation accounts (8107=PP&E, 8109=ROU)
     const result = await db.execute(sql`
-      SELECT count(*)::int AS cnt FROM depreciation_entries
+      SELECT DISTINCT ON (je.id)
+        je.id, je.entry_number, je.date, je.description, je.source, je.created_at
+      FROM journal_entries je
+      LEFT JOIN journal_lines jl ON jl.entry_id = je.id
+      LEFT JOIN accounts a ON a.id = jl.account_id
+      WHERE je.org_id = ${orgId}
+        AND (a.code LIKE '8107%' OR a.code LIKE '8109%')
+      ORDER BY je.id, je.created_at DESC
+      LIMIT 50
     `);
-    const cnt = result?.rows?.[0]?.cnt || 0;
+    const entries: any[] = result?.rows || [];
+    const grouped: any[] = [];
 
-    return res.status(200).json({ ok: true, depreciationEntriesCount: cnt, orgId });
+    for (const entry of entries) {
+      const linesRes = await db.execute(sql`
+        SELECT a.code, a.name, jl.description, jl.debit_amount, jl.credit_amount
+        FROM journal_lines jl
+        LEFT JOIN accounts a ON a.id = jl.account_id
+        WHERE jl.entry_id = ${entry.id}
+        ORDER BY jl.created_at
+      `);
+      const dbLines: any[] = linesRes?.rows || [];
+      let totalDebit = 0;
+      let totalCredit = 0;
+      for (const l of dbLines) {
+        totalDebit += Number(l.debit_amount) || 0;
+        totalCredit += Number(l.credit_amount) || 0;
+      }
+      grouped.push({
+        journalEntryId: entry.id,
+        entryNumber: entry.entry_number || '',
+        date: entry.date ? new Date(entry.date).toISOString() : new Date().toISOString(),
+        description: entry.description || '',
+        reference: entry.source || null,
+        source: 'manual',
+        createdAt: entry.created_at ? new Date(entry.created_at).toISOString() : new Date().toISOString(),
+        lines: dbLines.map(l => ({
+          accountCode: l.code,
+          accountName: l.name || '',
+          description: l.description || '',
+          debit: Number(l.debit_amount) || 0,
+          credit: Number(l.credit_amount) || 0,
+        })),
+        totalDebit,
+        totalCredit,
+      });
+    }
+
+    return res.status(200).json(grouped);
   } catch (err) {
     console.error('[Depreciation Entries] Error:', err);
     const msg = err instanceof Error ? err.message : String(err);
