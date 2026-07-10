@@ -35,6 +35,99 @@ router.get('/', async (req: AuthenticatedRequest, res: Response, next: NextFunct
   } catch (err) { return next(err); }
 });
 
+// Debug: check data counts
+router.get('/depreciation-debug', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const deResult = await db.execute(sql`SELECT count(*)::int AS cnt FROM depreciation_entries`);
+    const assetResult = await db.execute(sql`SELECT count(*)::int AS cnt FROM fixed_assets WHERE org_id = ${orgId}`);
+    const activeResult = await db.execute(sql`SELECT count(*)::int AS cnt FROM fixed_assets WHERE org_id = ${orgId} AND status = 'active' AND depreciation_method != 'no_depreciation'`);
+    const jeResult = await db.execute(sql`SELECT count(*)::int AS cnt FROM journal_entries WHERE org_id = ${orgId}`);
+    const deprJeResult = await db.execute(sql`SELECT count(*)::int AS cnt FROM journal_entries WHERE org_id = ${orgId} AND description ILIKE '%depreciation%'`);
+    const sampleJeResult = await db.execute(sql`SELECT id, entry_number, description FROM journal_entries WHERE org_id = ${orgId} AND description ILIKE '%depreciation%' LIMIT 3`);
+    const sampleDeResult = await db.execute(sql`SELECT * FROM depreciation_entries LIMIT 3`);
+    return res.json({
+      depreciationEntries: deResult?.rows?.[0]?.cnt || 0,
+      fixedAssets: assetResult?.rows?.[0]?.cnt || 0,
+      activeDepreciableAssets: activeResult?.rows?.[0]?.cnt || 0,
+      totalJournalEntries: jeResult?.rows?.[0]?.cnt || 0,
+      journalEntriesWithDepreciation: deprJeResult?.rows?.[0]?.cnt || 0,
+      sampleDepreciationJEs: sampleJeResult?.rows || [],
+      sampleDepreciationEntries: sampleDeResult?.rows || [],
+    });
+  } catch (err) {
+    console.error('[Depreciation Debug] Error:', err);
+    return next(err);
+  }
+});
+
+// GET /depreciation-entries - Returns account-level balances for depreciation accounts
+// Uses raw SQL
+router.get('/depreciation-entries', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+
+    // Step 1: Find depreciation-related accounts (by name or code pattern)
+    const acctResult = await db.execute(sql`
+      SELECT id, code, name, type FROM accounts
+      WHERE org_id = ${orgId}
+        AND (
+          LOWER(name) LIKE '%depreciation%'
+          OR LOWER(name) LIKE '%amortisation%'
+          OR LOWER(name) LIKE '%amortization%'
+          OR code LIKE '2002%' OR code LIKE '2003%'
+          OR code LIKE '2004%' OR code LIKE '2005%'
+          OR code LIKE '2006%' OR code LIKE '2007%'
+          OR code LIKE '2011%' OR code LIKE '2012%'
+          OR code LIKE '8107%' OR code LIKE '8109%'
+        )
+      ORDER BY code
+    `);
+
+    const depAccounts = acctResult?.rows || [];
+    if (depAccounts.length === 0) return res.json([]);
+
+    const acctIds = depAccounts.map((r: any) => r.id);
+
+    // Step 2: Get journal line totals for those accounts
+    const balResult = await db.execute(sql`
+      SELECT
+        account_id,
+        COALESCE(SUM(debit_amount), 0) AS total_debit,
+        COALESCE(SUM(credit_amount), 0) AS total_credit
+      FROM journal_lines
+      WHERE account_id = ANY(${acctIds}::uuid[])
+      GROUP BY account_id
+    `);
+
+    const balMap = new Map<string, { debit: number; credit: number }>();
+    for (const r of (balResult?.rows || [])) {
+      balMap.set(r.account_id, { debit: Number(r.total_debit), credit: Number(r.total_credit) });
+    }
+
+    // Step 3: Build result with debit/credit columns
+    const result = depAccounts.map((a: any) => {
+      const b = balMap.get(a.id) || { debit: 0, credit: 0 };
+      const isContraAsset = a.type === 'asset' && String(a.name || '').toLowerCase().startsWith('accumulated');
+      const isDebitBook = (a.type === 'asset' && !isContraAsset) || a.type === 'expense';
+      const net = isDebitBook ? b.debit - b.credit : b.credit - b.debit;
+      return {
+        accountId: a.id,
+        accountCode: a.code,
+        accountName: a.name,
+        type: a.type,
+        debit: net > 0 ? net : 0,
+        credit: net < 0 ? Math.abs(net) : 0,
+      };
+    });
+
+    return res.json(result);
+  } catch (err) {
+    console.error('[Depreciation Entries] Error:', err);
+    return res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
 router.get('/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const orgId = req.user!.orgId!;
@@ -398,98 +491,6 @@ router.post('/run-depreciation', async (req: AuthenticatedRequest, res: Response
 });
 
 // Debug: check data counts
-router.get('/depreciation-debug', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  try {
-    const orgId = req.user!.orgId!;
-    const deResult = await db.execute(sql`SELECT count(*)::int AS cnt FROM depreciation_entries`);
-    const assetResult = await db.execute(sql`SELECT count(*)::int AS cnt FROM fixed_assets WHERE org_id = ${orgId}`);
-    const activeResult = await db.execute(sql`SELECT count(*)::int AS cnt FROM fixed_assets WHERE org_id = ${orgId} AND status = 'active' AND depreciation_method != 'no_depreciation'`);
-    const jeResult = await db.execute(sql`SELECT count(*)::int AS cnt FROM journal_entries WHERE org_id = ${orgId}`);
-    const deprJeResult = await db.execute(sql`SELECT count(*)::int AS cnt FROM journal_entries WHERE org_id = ${orgId} AND description ILIKE '%depreciation%'`);
-    const sampleJeResult = await db.execute(sql`SELECT id, entry_number, description FROM journal_entries WHERE org_id = ${orgId} AND description ILIKE '%depreciation%' LIMIT 3`);
-    const sampleDeResult = await db.execute(sql`SELECT * FROM depreciation_entries LIMIT 3`);
-    return res.json({
-      depreciationEntries: deResult?.rows?.[0]?.cnt || 0,
-      fixedAssets: assetResult?.rows?.[0]?.cnt || 0,
-      activeDepreciableAssets: activeResult?.rows?.[0]?.cnt || 0,
-      totalJournalEntries: jeResult?.rows?.[0]?.cnt || 0,
-      journalEntriesWithDepreciation: deprJeResult?.rows?.[0]?.cnt || 0,
-      sampleDepreciationJEs: sampleJeResult?.rows || [],
-      sampleDepreciationEntries: sampleDeResult?.rows || [],
-    });
-  } catch (err) {
-    console.error('[Depreciation Debug] Error:', err);
-    return next(err);
-  }
-});
-
-// GET /depreciation-entries - Returns account-level balances for depreciation accounts
-// Uses raw SQL
-router.get('/depreciation-entries', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  try {
-    const orgId = req.user!.orgId!;
-
-    // Step 1: Find depreciation-related accounts (by name or code pattern)
-    const acctResult = await db.execute(sql`
-      SELECT id, code, name, type FROM accounts
-      WHERE org_id = ${orgId}
-        AND (
-          LOWER(name) LIKE '%depreciation%'
-          OR LOWER(name) LIKE '%amortisation%'
-          OR LOWER(name) LIKE '%amortization%'
-          OR code LIKE '2002%' OR code LIKE '2003%'
-          OR code LIKE '2004%' OR code LIKE '2005%'
-          OR code LIKE '2006%' OR code LIKE '2007%'
-          OR code LIKE '2011%' OR code LIKE '2012%'
-          OR code LIKE '8107%' OR code LIKE '8109%'
-        )
-      ORDER BY code
-    `);
-
-    const depAccounts = acctResult?.rows || [];
-    if (depAccounts.length === 0) return res.json([]);
-
-    const acctIds = depAccounts.map((r: any) => r.id);
-
-    // Step 2: Get journal line totals for those accounts
-    const balResult = await db.execute(sql`
-      SELECT
-        account_id,
-        COALESCE(SUM(debit_amount), 0) AS total_debit,
-        COALESCE(SUM(credit_amount), 0) AS total_credit
-      FROM journal_lines
-      WHERE account_id = ANY(${acctIds}::uuid[])
-      GROUP BY account_id
-    `);
-
-    const balMap = new Map<string, { debit: number; credit: number }>();
-    for (const r of (balResult?.rows || [])) {
-      balMap.set(r.account_id, { debit: Number(r.total_debit), credit: Number(r.total_credit) });
-    }
-
-    // Step 3: Build result with debit/credit columns
-    const result = depAccounts.map((a: any) => {
-      const b = balMap.get(a.id) || { debit: 0, credit: 0 };
-      const isContraAsset = a.type === 'asset' && String(a.name || '').toLowerCase().startsWith('accumulated');
-      const isDebitBook = (a.type === 'asset' && !isContraAsset) || a.type === 'expense';
-      const net = isDebitBook ? b.debit - b.credit : b.credit - b.debit;
-      return {
-        accountId: a.id,
-        accountCode: a.code,
-        accountName: a.name,
-        type: a.type,
-        debit: net > 0 ? net : 0,
-        credit: net < 0 ? Math.abs(net) : 0,
-      };
-    });
-
-    return res.json(result);
-  } catch (err) {
-    console.error('[Depreciation Entries] Error:', err);
-    return res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
-  }
-});
-
 // PATCH /depreciation-entries/:entryId - Edit a depreciation journal entry's lines
 router.patch('/depreciation-entries/:entryId', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
