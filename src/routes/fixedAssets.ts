@@ -443,12 +443,28 @@ router.get('/depreciation-entries', async (req: AuthenticatedRequest, res: Respo
       .where(and(eq(fixedAssets.orgId, orgId), eq(fixedAssets.status, 'active')));
     const faAccountIds = new Set(faAccounts.map(fa => fa.accountId));
 
-    // Filter to depreciation-related accounts: by code pattern, name, or linked to fixed assets
+    // Find accounts referenced in manual journal entries with "depreciation" in description
+    const depJEs = await db
+      .select({ id: journalEntries.id })
+      .from(journalEntries)
+      .where(and(eq(journalEntries.orgId, orgId), ilike(journalEntries.description, '%depreciation%')));
+    const depEntryAccountIds = new Set<string>();
+    if (depJEs.length > 0) {
+      const depLines = await db
+        .select({ accountId: journalLines.accountId })
+        .from(journalLines)
+        .where(inArray(journalLines.entryId, depJEs.map(je => je.id)));
+      depLines.forEach(l => depEntryAccountIds.add(l.accountId));
+    }
+
+    // Filter to depreciation-related accounts: by name, code pattern, linked to fixed assets,
+    // or referenced in depreciation journal entries
     const depCodePatterns = ['2002', '2003', '2004', '2005', '2006', '2007', '2011', '2012', '8107', '8109'];
     const depAccounts = isDebug ? allAccounts : allAccounts.filter(a => {
       if (a.name.toLowerCase().includes('depreciation')) return true;
       if (a.name.toLowerCase().includes('amortisation') || a.name.toLowerCase().includes('amortization')) return true;
       if (faAccountIds.has(a.id)) return true;
+      if (depEntryAccountIds.has(a.id)) return true;
       for (const p of depCodePatterns) {
         if (a.code.startsWith(p)) return true;
       }
