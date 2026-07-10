@@ -411,16 +411,19 @@ router.get('/depreciation-entries', async (req: AuthenticatedRequest, res: Respo
         source: journalEntries.source,
         createdAt: journalEntries.createdAt,
       })
-      .from(journalEntries)
-      .where(and(
-        eq(journalEntries.orgId, orgId),
-        sql`${journalEntries.description} ILIKE '%depreciation%'`
-      ))
+      .from(depreciationEntries)
+      .innerJoin(journalEntries, eq(depreciationEntries.journalEntryId, journalEntries.id))
+      .where(eq(journalEntries.orgId, orgId))
       .orderBy(desc(journalEntries.createdAt))
       .limit(50);
 
+    // Deduplicate by journal entry (one JE can have multiple asset lines)
+    const seen = new Set<string>();
     const grouped: any[] = [];
     for (const entry of entries) {
+      if (seen.has(entry.id)) continue;
+      seen.add(entry.id);
+
       const dbLines = await db
         .select({
           accountCode: accounts.code,
