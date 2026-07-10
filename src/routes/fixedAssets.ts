@@ -402,6 +402,7 @@ router.get('/depreciation-entries', async (req: AuthenticatedRequest, res: Respo
   try {
     const orgId = req.user!.orgId!;
 
+    // Get entries from depreciation_entries table (new runs) OR matching description (legacy)
     const entries = await db
       .select({
         id: journalEntries.id,
@@ -411,9 +412,15 @@ router.get('/depreciation-entries', async (req: AuthenticatedRequest, res: Respo
         source: journalEntries.source,
         createdAt: journalEntries.createdAt,
       })
-      .from(depreciationEntries)
-      .innerJoin(journalEntries, eq(depreciationEntries.journalEntryId, journalEntries.id))
-      .where(eq(journalEntries.orgId, orgId))
+      .from(journalEntries)
+      .leftJoin(depreciationEntries, eq(depreciationEntries.journalEntryId, journalEntries.id))
+      .where(and(
+        eq(journalEntries.orgId, orgId),
+        or(
+          sql`${depreciationEntries.journalEntryId} IS NOT NULL`,
+          sql`${journalEntries.description} ILIKE '%depreciation%'`
+        )
+      ))
       .orderBy(desc(journalEntries.createdAt))
       .limit(50);
 
