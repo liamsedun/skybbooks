@@ -2,7 +2,7 @@ import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { db, fixedAssets, accounts, depreciationEntries, journalEntries, journalLines } from '../db/schema';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
-import { eq, and, asc, desc, sql, ilike, or } from 'drizzle-orm';
+import { eq, and, asc, desc, sql, ilike, or, inArray } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
 import { createJournalEntry, updateJournalEntry } from '../services/ledger.service';
 
@@ -423,29 +423,18 @@ router.get('/depreciation-debug', async (req: AuthenticatedRequest, res: Respons
   }
 });
 
-// GET /depreciation-entries - List all depreciation runs with journal lines
+// GET /depreciation-entries - Returns account-level balances for depreciation accounts
 router.get('/depreciation-entries', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const orgId = req.user!.orgId!;
 
-    // Simple: query all JEs that have lines with depreciation-related accounts
-    const jeRows = await db
-      .selectDistinctOn([journalEntries.id], {
-        id: journalEntries.id,
-        entryNumber: journalEntries.entryNumber,
-        date: journalEntries.date,
-        description: journalEntries.description,
-        source: journalEntries.source,
-        createdAt: journalEntries.createdAt,
-      })
-      .from(journalEntries)
-      .innerJoin(journalLines, eq(journalLines.entryId, journalEntries.id))
-      .innerJoin(accounts, eq(journalLines.accountId, accounts.id))
+    // Get accounts with depreciation-related codes
+    const depAccounts = await db
+      .select()
+      .from(accounts)
       .where(and(
-        eq(journalEntries.orgId, orgId),
+        eq(accounts.orgId, orgId),
         or(
-          sql`${accounts.code} LIKE '8107%'`,
-          sql`${accounts.code} LIKE '8109%'`,
           sql`${accounts.code} LIKE '2002%'`,
           sql`${accounts.code} LIKE '2003%'`,
           sql`${accounts.code} LIKE '2004%'`,
@@ -454,57 +443,53 @@ router.get('/depreciation-entries', async (req: AuthenticatedRequest, res: Respo
           sql`${accounts.code} LIKE '2007%'`,
           sql`${accounts.code} LIKE '2011%'`,
           sql`${accounts.code} LIKE '2012%'`,
-          ilike(journalEntries.description, '%depreciation%'),
+          sql`${accounts.code} LIKE '8107%'`,
+          sql`${accounts.code} LIKE '8109%'`,
         )
       ))
-      .orderBy(journalEntries.id, desc(journalEntries.createdAt))
-      .limit(50);
+      .orderBy(accounts.code);
 
-    const grouped: any[] = [];
-    for (const entry of jeRows) {
-      const dbLines = await db
-        .select({
-          accountCode: accounts.code,
-          accountName: accounts.name,
-          description: journalLines.description,
-          debit: journalLines.debitAmount,
-          credit: journalLines.creditAmount,
-        })
-        .from(journalLines)
-        .leftJoin(accounts, eq(journalLines.accountId, accounts.id))
-        .where(eq(journalLines.entryId, entry.id))
-        .orderBy(journalLines.createdAt);
+    // Get all journal lines for these accounts
+    const acctIds = depAccounts.map(a => a.id);
+    if (acctIds.length === 0) return res.status(200).json([]);
 
-      let totalDebit = 0;
-      let totalCredit = 0;
-      for (const l of dbLines) { totalDebit += l.debit; totalCredit += l.credit; }
+    const lines = await db
+      .select({
+        accountId: journalLines.accountId,
+        debit: journalLines.debitAmount,
+        credit: journalLines.creditAmount,
+      })
+      .from(journalLines)
+      .where(inArray(journalLines.accountId, acctIds));
 
-      grouped.push({
-        journalEntryId: entry.id,
-        entryNumber: entry.entryNumber || '',
-        date: entry.date ? entry.date.toISOString() : new Date().toISOString(),
-        description: entry.description || '',
-        reference: entry.source || null,
-        source: 'manual',
-        createdAt: entry.createdAt ? entry.createdAt.toISOString() : new Date().toISOString(),
-        lines: dbLines.map(l => ({
-          accountCode: l.accountCode,
-          accountName: l.accountName || '',
-          description: l.description || '',
-          debit: Number(l.debit) || 0,
-          credit: Number(l.credit) || 0,
-        })),
-        totalDebit,
-        totalCredit,
-      });
+    // Compute total debit/credit per account
+    const balanceMap = new Map<string, { debit: number; credit: number }>();
+    for (const acct of depAccounts) {
+      balanceMap.set(acct.id, { debit: 0, credit: 0 });
+    }
+    for (const l of lines) {
+      const b = balanceMap.get(l.accountId);
+      if (b) { b.debit += Number(l.debit) || 0; b.credit += Number(l.credit) || 0; }
     }
 
-    return res.status(200).json(grouped);
+    const result = depAccounts.map(a => {
+      const b = balanceMap.get(a.id) || { debit: 0, credit: 0 };
+      const isContra = a.type === 'asset' && a.name.toLowerCase().includes('accumulated');
+      const net = (a.type === 'expense' || (a.type === 'asset' && !isContra)) ? b.debit - b.credit : b.credit - b.debit;
+      return {
+        accountId: a.id,
+        accountCode: a.code,
+        accountName: a.name,
+        type: a.type,
+        debit: net > 0 ? net : 0,
+        credit: net < 0 ? Math.abs(net) : 0,
+      };
+    });
+
+    return res.status(200).json(result);
   } catch (err) {
     console.error('[Depreciation Entries] Error:', err);
-    const msg = err instanceof Error ? err.message : String(err);
-    const stack = err instanceof Error ? err.stack : '';
-    return res.status(500).json({ error: msg, stack: stack?.split('\n').slice(0,5).join(' | ') });
+    return res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
 });
 
