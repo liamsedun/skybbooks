@@ -2,7 +2,7 @@ import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { db, fixedAssets, accounts, depreciationEntries, journalEntries, journalLines } from '../db/schema';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
-import { eq, and, desc, sql } from 'drizzle-orm';
+import { eq, and, asc, desc, sql } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
 import { createJournalEntry, updateJournalEntry } from '../services/ledger.service';
 
@@ -395,6 +395,32 @@ router.post('/run-depreciation', async (req: AuthenticatedRequest, res: Response
       journalEntryNumber: journalEntry.entryNumber,
     });
   } catch (err) { return next(err); }
+});
+
+// Debug: check data counts
+router.get('/depreciation-debug', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const deResult = await db.execute(sql`SELECT count(*)::int AS cnt FROM depreciation_entries`);
+    const assetResult = await db.execute(sql`SELECT count(*)::int AS cnt FROM fixed_assets WHERE org_id = ${orgId}`);
+    const activeResult = await db.execute(sql`SELECT count(*)::int AS cnt FROM fixed_assets WHERE org_id = ${orgId} AND status = 'active' AND depreciation_method != 'no_depreciation'`);
+    const jeResult = await db.execute(sql`SELECT count(*)::int AS cnt FROM journal_entries WHERE org_id = ${orgId}`);
+    const deprJeResult = await db.execute(sql`SELECT count(*)::int AS cnt FROM journal_entries WHERE org_id = ${orgId} AND description ILIKE '%depreciation%'`);
+    const sampleJeResult = await db.execute(sql`SELECT id, entry_number, description FROM journal_entries WHERE org_id = ${orgId} AND description ILIKE '%depreciation%' LIMIT 3`);
+    const sampleDeResult = await db.execute(sql`SELECT * FROM depreciation_entries LIMIT 3`);
+    return res.json({
+      depreciationEntries: deResult?.rows?.[0]?.cnt || 0,
+      fixedAssets: assetResult?.rows?.[0]?.cnt || 0,
+      activeDepreciableAssets: activeResult?.rows?.[0]?.cnt || 0,
+      totalJournalEntries: jeResult?.rows?.[0]?.cnt || 0,
+      journalEntriesWithDepreciation: deprJeResult?.rows?.[0]?.cnt || 0,
+      sampleDepreciationJEs: sampleJeResult?.rows || [],
+      sampleDepreciationEntries: sampleDeResult?.rows || [],
+    });
+  } catch (err) {
+    console.error('[Depreciation Debug] Error:', err);
+    return next(err);
+  }
 });
 
 // GET /depreciation-entries - List all depreciation runs with journal lines
