@@ -5,8 +5,10 @@ import { depreciationHistoryApi, fixedAssetsApi } from '../../lib/api';
 import { PageLoader } from '../../components/ui/PageLoader';
 import { Play, Loader2, X, ExternalLink, Search, ChevronDown, ChevronRight } from 'lucide-react';
 
-function fmtNaira(v: number): string {
-  return `₦${(v / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
+function fmtNaira(v: number | string): string {
+  const n = Number(v);
+  if (isNaN(n) || !isFinite(n)) return '₦0.00';
+  return `₦${(n / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
 }
 
 function formatPeriod(d: string): string {
@@ -115,9 +117,9 @@ export function DepreciationPage() {
               {grouped.map(([key, rows]) => {
                 const isOpen = expanded.has(key);
                 const periodLabel = formatPeriod(rows[0].periodDate);
-                const totalAmount = rows.reduce((s: number, r: any) => s + r.amount, 0);
-                const totalAccumDepr = rows.reduce((s: number, r: any) => s + r.accumulatedDepreciation, 0);
-                const totalBookValue = rows.reduce((s: number, r: any) => s + r.bookValue, 0);
+                const totalAmount = rows.reduce((s: number, r: any) => s + Number(r.amount), 0);
+                const totalAccumDepr = rows.reduce((s: number, r: any) => s + Number(r.accumulatedDepreciation), 0);
+                const totalBookValue = rows.reduce((s: number, r: any) => s + Number(r.bookValue), 0);
                 const jeNumber = rows[0]?.jeNumber || '';
                 const jeId = rows[0]?.journalEntryId || '';
                 return (
