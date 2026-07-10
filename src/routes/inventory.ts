@@ -520,6 +520,7 @@ router.get('/valuation-statement', async (req: AuthenticatedRequest, res: Respon
 const adjustSchema = z.object({
   date: z.string().optional(),
   mode: z.enum(['quantity', 'value']),
+  reference: z.string().optional().nullable(),
   accountId: z.string().uuid().optional().nullable(),
   reason: z.string().optional().nullable(),
   location: z.string().optional().nullable(),
@@ -608,12 +609,15 @@ router.post('/adjustments', async (req: AuthenticatedRequest, res: Response, nex
     const userId = req.user!.userId!;
     const body = adjustSchema.parse(req.body);
 
-    // Generate reference number
-    const count = await db
-      .select({ c: sql<number>`count(*)` })
-      .from(inventoryAdjustments)
-      .where(eq(inventoryAdjustments.orgId, orgId));
-    const ref = `ADJ-${String(Number(count[0]?.c || 0) + 1).padStart(4, '0')}`;
+    // Generate reference number (use custom if provided)
+    let ref = body.reference?.trim();
+    if (!ref) {
+      const count = await db
+        .select({ c: sql<number>`count(*)` })
+        .from(inventoryAdjustments)
+        .where(eq(inventoryAdjustments.orgId, orgId));
+      ref = `ADJ-${String(Number(count[0]?.c || 0) + 1).padStart(4, '0')}`;
+    }
 
     // Calculate adjusted quantities
     const itemsWithAdj = body.items.map(it => ({

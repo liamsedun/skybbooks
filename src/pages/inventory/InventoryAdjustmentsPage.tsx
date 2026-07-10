@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import {
@@ -51,6 +51,7 @@ export default function InventoryAdjustmentsPage() {
   // New adjustment form state
   const [mode, setMode] = useState<'quantity' | 'value'>('quantity');
   const [adjDate, setAdjDate] = useState(new Date().toISOString().split('T')[0]);
+  const [reference, setReference] = useState('');
   const [accountId, setAccountId] = useState('');
   const [reason, setReason] = useState('');
   const [location, setLocation] = useState('');
@@ -89,6 +90,42 @@ export default function InventoryAdjustmentsPage() {
       return res.data;
     },
   });
+
+  // Fetch org settings for default adjustment account
+  const { data: orgSettings } = useQuery<any>({
+    queryKey: ['orgSettings'],
+    queryFn: async () => {
+      const res = await api.get('/org/settings');
+      return res.data;
+    },
+  });
+
+  // Pre-fill account with default from settings
+  useEffect(() => {
+    if (orgSettings?.accountant?.defaultAdjustmentAccountId && !accountId) {
+      setAccountId(orgSettings.accountant.defaultAdjustmentAccountId);
+    }
+  }, [orgSettings]);
+
+  const [defaultAccount, setDefaultAccount] = useState('');
+  useEffect(() => {
+    if (orgSettings?.accountant?.defaultAdjustmentAccountId) {
+      setDefaultAccount(orgSettings.accountant.defaultAdjustmentAccountId);
+    }
+  }, [orgSettings]);
+
+  const [savingDefaultAccount, setSavingDefaultAccount] = useState(false);
+  const [defaultAccountSaved, setDefaultAccountSaved] = useState(false);
+  const handleSaveDefaultAccount = async () => {
+    if (!defaultAccount) return;
+    setSavingDefaultAccount(true);
+    try {
+      await api.patch('/org/settings', { settings: { accountant: { defaultAdjustmentAccountId: defaultAccount } } });
+      setDefaultAccountSaved(true);
+      setTimeout(() => setDefaultAccountSaved(false), 3000);
+    } catch { /* ignore */ }
+    setSavingDefaultAccount(false);
+  };
 
   const filtered = useMemo(() => {
     if (!adjustments) return [];
@@ -142,7 +179,8 @@ export default function InventoryAdjustmentsPage() {
   const resetForm = () => {
     setMode('quantity');
     setAdjDate(new Date().toISOString().split('T')[0]);
-    setAccountId('');
+    setReference('');
+    setAccountId(orgSettings?.accountant?.defaultAdjustmentAccountId || '');
     setReason('');
     setLocation('');
     setDescription('');
@@ -181,6 +219,7 @@ export default function InventoryAdjustmentsPage() {
       const payload: any = {
         mode,
         date: adjDate,
+        reference: reference.trim() || undefined,
         accountId,
         reason: reason || null,
         location: location || null,
@@ -218,6 +257,20 @@ export default function InventoryAdjustmentsPage() {
     return adjustments.find((a: any) => a.id === viewingId);
   }, [viewingId, adjustments]);
 
+  // Save default adjustment account
+  const [savingDefaultAccount, setSavingDefaultAccount] = useState(false);
+  const [defaultAccountSaved, setDefaultAccountSaved] = useState(false);
+  const handleSaveDefaultAccount = async () => {
+    if (!accountId) return;
+    setSavingDefaultAccount(true);
+    try {
+      await api.patch('/org/settings', { settings: { accountant: { defaultAdjustmentAccountId: accountId } } });
+      setDefaultAccountSaved(true);
+      setTimeout(() => setDefaultAccountSaved(false), 3000);
+    } catch { /* ignore */ }
+    setSavingDefaultAccount(false);
+  };
+
   return (
     <div className="p-4 md:p-6 space-y-6">
       {/* Header */}
@@ -229,6 +282,24 @@ export default function InventoryAdjustmentsPage() {
         <button onClick={() => { resetForm(); setShowNewModal(true); }} className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all text-sm font-semibold shadow-md hover:shadow-lg">
           <Plus size={18} /> +New
         </button>
+      </div>
+
+      {/* Default Adjustment Account */}
+      <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex-1">
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">Default Adjustments Account</label>
+            <select value={defaultAccount} onChange={e => setDefaultAccount(e.target.value)} className="w-full sm:w-80 text-sm border border-slate-200 rounded-xl px-3 py-2 bg-white outline-none focus:ring-2 focus:ring-blue-500/20">
+              <option value="">Select default adjustment account...</option>
+              {glAccounts?.map((a: any) => (
+                <option key={a.id} value={a.id}>{a.name} ({a.code})</option>
+              ))}
+            </select>
+          </div>
+          <button onClick={handleSaveDefaultAccount} disabled={savingDefaultAccount || !defaultAccount} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors disabled:opacity-50 shrink-0">
+            {savingDefaultAccount ? 'Saving...' : defaultAccountSaved ? 'Saved ✓' : 'Save'}
+          </button>
+        </div>
       </div>
 
       {/* Summary cards */}
@@ -347,7 +418,10 @@ export default function InventoryAdjustmentsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Reference Number</label>
-                  <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-400"><Hash size={14} /> Auto-generated</div>
+                  <div className="flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-xl bg-white">
+                    <Hash size={14} className="text-slate-400 shrink-0" />
+                    <input value={reference} onChange={e => setReference(e.target.value)} placeholder="Auto-generated if left empty" className="flex-1 text-sm bg-transparent outline-none border-none text-slate-700 placeholder:text-slate-400" />
+                  </div>
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Date</label>

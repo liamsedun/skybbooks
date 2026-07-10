@@ -15,6 +15,7 @@ export interface OrgSettings {
   creditNotes?: { autoGenerateNumbers?: boolean };
   purchases?: { autoGenerateNumbers?: boolean };
   revenueRecognition?: { method?: 'accrual' | 'cash'; deferRevenue?: boolean; autoDeferredSchedule?: boolean };
+  accountant?: { defaultAdjustmentAccountId?: string; [key: string]: any };
   [key: string]: any;
 }
 
@@ -31,6 +32,7 @@ const DEFAULT_SETTINGS: OrgSettings = {
   salesOrders: { autoGenerateNumbers: true },
   creditNotes: { autoGenerateNumbers: true },
   revenueRecognition: { method: 'accrual', deferRevenue: false, autoDeferredSchedule: false },
+  accountant: { defaultAdjustmentAccountId: '' },
 };
 
 export async function getOrgSettings(orgId: string): Promise<OrgSettings> {
