@@ -321,18 +321,18 @@ export function PurchaseCreditNotesPage() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5">
+        <button onClick={() => { setDateFrom(''); setDateTo(''); setStatusFilter('all'); setSearchTerm(''); }} className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 text-left cursor-pointer hover:border-blue-300 hover:shadow-md transition-all duration-200">
           <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total Credit Notes</p>
           <p className="text-xl font-bold text-slate-900 mt-1">{totals.count}</p>
-        </div>
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5">
+        </button>
+        <button onClick={() => { setDateFrom(''); setDateTo(''); setStatusFilter('all'); setSearchTerm(''); }} className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 text-left cursor-pointer hover:border-blue-300 hover:shadow-md transition-all duration-200">
           <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total Issued Value</p>
           <p className="text-xl font-bold text-slate-900 mt-1">{formatNaira(totals.totalIssued)}</p>
-        </div>
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5">
+        </button>
+        <button onClick={() => { setDateFrom(''); setDateTo(''); setStatusFilter('all'); setSearchTerm(''); }} className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 text-left cursor-pointer hover:border-blue-300 hover:shadow-md transition-all duration-200">
           <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Outstanding Credit</p>
           <p className="text-xl font-bold text-amber-600 mt-1">{formatNaira(totals.totalOutstanding)}</p>
-        </div>
+        </button>
       </div>
 
       {actionError && (
