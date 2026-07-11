@@ -51,18 +51,18 @@ export async function runMigration() {
     await db.execute(sql`UPDATE accounts SET system_account_role = 'bank' WHERE code IN ('100200','100300') AND system_account_role = 'none'`);
     await db.execute(sql`UPDATE accounts SET system_account_role = 'accounts_payable' WHERE code = '300100' AND system_account_role = 'none'`);
     await db.execute(sql`UPDATE accounts SET system_account_role = 'vat_payable' WHERE code = '301300' AND system_account_role = 'none'`);
-    await db.execute(sql`UPDATE accounts SET system_account_role = 'paye_payable' WHERE code = '301500' AND system_account_role = 'none'`);
+    await db.execute(sql`UPDATE accounts SET system_account_role = 'payroll_clearing' WHERE code = '301500' AND system_account_role != 'payroll_clearing'`);
     await db.execute(sql`UPDATE accounts SET system_account_role = 'pension_payable' WHERE code = '301600' AND system_account_role = 'none'`);
     await db.execute(sql`UPDATE accounts SET system_account_role = 'retained_earnings' WHERE code = '502000' AND system_account_role = 'none'`);
     await db.execute(sql`UPDATE accounts SET system_account_role = 'cogs' WHERE code = '700000' AND system_account_role = 'none'`);
     await db.execute(sql`UPDATE accounts SET system_account_role = 'wht_receivable' WHERE code = '101500' AND system_account_role = 'none'`);
     await db.execute(sql`UPDATE accounts SET system_account_role = 'wht_payable' WHERE code = '301400' AND system_account_role = 'none'`);
 
-    // Add payroll-specific accounts (301501 PAYE Payable Payroll, 306000 NHIS Payable) if missing
+    // Add payroll-specific accounts (301501 PAYE Payable, 306000 NHIS Payable) if missing
     await db.execute(sql`
       INSERT INTO accounts (id, org_id, code, name, type, sub_type, description, is_system, is_active, system_account_role)
-      SELECT gen_random_uuid(), o.id, '301501', 'PAYE Payable (Payroll)', 'liability', 'Current Liabilities',
-             'PITA – PAYE tax from payroll runs. Remit to State IRS by 10th.', true, true, 'none'
+      SELECT gen_random_uuid(), o.id, '301501', 'PAYE Payable', 'liability', 'Current Liabilities',
+             'PITA – Employee income tax deducted at source. Remit to State IRS by 10th.', true, true, 'paye_payable'
       FROM organisations o
       WHERE NOT EXISTS (SELECT 1 FROM accounts a WHERE a.org_id = o.id AND a.code = '301501')
     `);
@@ -74,10 +74,9 @@ export async function runMigration() {
       WHERE NOT EXISTS (SELECT 1 FROM accounts a WHERE a.org_id = o.id AND a.code = '306000')
     `);
 
-    // Reassign old payroll JE lines from wrong accounts to correct accounts
-    // Old name-based resolvers posted PAYE to 301500 (matched by name 'PAYE')
-    // and otherDeductions (incl. NHIS) also to 301500 (fallback when no 'deductions'/'clearing' account found)
-    // New code posts PAYE to 301501, NHIS to 306000, otherDeductions to 301800 (fallback)
+    // Reassign old payroll PAYE lines from 301500 (old PAYE Payable) to 301501 (new PAYE Payable).
+    // 301500 is now repurposed as Employee Accrued Salary (Clearing) — old otherDeductions
+    // (incl. NHIS) stay on 301500 since they are clearing items.
     await db.execute(sql`
       UPDATE journal_lines jl
       SET account_id = target_acct.id
@@ -90,18 +89,8 @@ export async function runMigration() {
         AND target_acct.code = '301501'
         AND jl.description ILIKE '%PAYE%'
     `);
-    await db.execute(sql`
-      UPDATE journal_lines jl
-      SET account_id = target_acct.id
-      FROM journal_entries je, accounts source_acct, accounts target_acct
-      WHERE jl.entry_id = je.id
-        AND je.source = 'payroll'
-        AND jl.account_id = source_acct.id
-        AND source_acct.code = '301500'
-        AND target_acct.org_id = je.org_id
-        AND target_acct.code = '301800'
-        AND jl.description ILIKE '%other miscellaneous%'
-    `);
+    // Rename existing 301500 accounts to Employee Accrued Salary (Clearing)
+    await db.execute(sql`UPDATE accounts SET name = 'Employee Accrued Salary (Clearing)', system_account_role = 'payroll_clearing' WHERE code = '301500' AND system_account_role != 'payroll_clearing'`);
 
     // Add WHT columns to invoices and bills
     await db.execute(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS wht_rate numeric`);

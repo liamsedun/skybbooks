@@ -293,10 +293,6 @@ async function resolveSalaryExpenseAccount(orgId: string, tx: any): Promise<stri
   return resolveAccountByCode(orgId, '800000', tx);
 }
 
-async function resolveEmployerPensionExpenseAccount(orgId: string, tx: any): Promise<string> {
-  return resolveAccountByCode(orgId, '800100', tx);
-}
-
 async function resolvePayePayableAccount(orgId: string, tx: any): Promise<string> {
   return resolveAccountByCode(orgId, '301501', tx);
 }
@@ -311,15 +307,6 @@ async function resolveNhfPayableAccount(orgId: string, tx: any): Promise<string>
 
 async function resolveNhisPayableAccount(orgId: string, tx: any): Promise<string> {
   return resolveAccountByCode(orgId, '306000', tx);
-}
-
-async function resolveOtherDeductionsAccount(orgId: string, tx: any): Promise<string> {
-  // Fallback to NHF payable if no dedicated deductions account exists
-  try {
-    return await resolveAccountByCode(orgId, '207000', tx);
-  } catch {
-    return resolveNhfPayableAccount(orgId, tx);
-  }
 }
 
 async function resolveBankAccount(orgId: string, tx: any): Promise<string> {
@@ -526,52 +513,36 @@ export async function approvePayroll(runId: string, approverId: string): Promise
 
     // 3. Resolve Bookkeeping Ledger Accounts
     const salaryExpenseAccId = await resolveSalaryExpenseAccount(run.orgId, tx);
-    const employerPensionExpenseAccId = await resolveEmployerPensionExpenseAccount(run.orgId, tx);
     const payePayableAccId = await resolvePayePayableAccount(run.orgId, tx);
     const pensionPayableAccId = await resolvePensionPayableAccount(run.orgId, tx);
     const nhfPayableAccId = await resolveNhfPayableAccount(run.orgId, tx);
     const nhisPayableAccId = await resolveNhisPayableAccount(run.orgId, tx);
-    const otherDeductionsAccId = await resolveOtherDeductionsAccount(run.orgId, tx);
-
-    // Resolve bank ledger account: use the user-selected bank account if set, else auto-resolve
-    let bankAccId: string;
-    if (run.bankAccountId) {
-      const [ba] = await tx
-        .select()
-        .from(bankAccounts)
-        .where(eq(bankAccounts.id, run.bankAccountId))
-        .limit(1);
-      if (!ba) throw new AppError('Selected bank account not found.', 404);
-      bankAccId = ba.accountId;
-    } else {
-      bankAccId = await resolveBankAccount(run.orgId, tx);
-    }
-
-    // Determine net pay credit target: accrued salary account (if set, park as liability) or Bank (direct disbursement)
-    const netPayCreditAccId = run.accruedSalaryAccountId || bankAccId;
+    const accruedSalaryAccId = await resolveAccountByCode(run.orgId, '301500', tx);
 
     // 4. Construct double-entry journal lines
     const journalLinesPayload: any[] = [];
 
-    // DR Salary Expense (Gross salary of all active employees)
-    if (totalGross > 0) {
+    // DR Salary & Wages expense with TOTAL cost of payroll (gross salaries + employer pension)
+    const totalCost = totalGross + totalPensionEmployer;
+    if (totalCost > 0) {
       journalLinesPayload.push({
         accountId: salaryExpenseAccId,
-        debit: totalGross,
-        description: `Gross Wages & Salaries for Payroll Run ${run.runNumber}`
+        debit: totalCost,
+        description: `Total Payroll Cost (Gross Salary + Employer Pension) for Run ${run.runNumber}`
       });
     }
 
-    // DR Employer Pension Expense (Employer 10% pension match obligations)
-    if (totalPensionEmployer > 0) {
+    // CR Employee Accrued Salary (301500 Clearing) — net salary + other deductions payable
+    const clearingAmount = totalNet + (totalOtherDeductions - totalNhis);
+    if (clearingAmount > 0) {
       journalLinesPayload.push({
-        accountId: employerPensionExpenseAccId,
-        debit: totalPensionEmployer,
-        description: `Employer Pension Contribution Expense for Run ${run.runNumber}`
+        accountId: accruedSalaryAccId,
+        credit: clearingAmount,
+        description: `Net Salary & Other Deductions Clearing for Run ${run.runNumber}`
       });
     }
 
-    // CR PAYE Taxes liability
+    // CR PAYE Payable (301501)
     if (totalPaye > 0) {
       journalLinesPayload.push({
         accountId: payePayableAccId,
@@ -580,7 +551,7 @@ export async function approvePayroll(runId: string, approverId: string): Promise
       });
     }
 
-    // CR Pension liability (Employee 8% + Employer 10%)
+    // CR Pension Payable (301600) — employee + employer portions
     const totalPensionObligation = totalPensionEmployee + totalPensionEmployer;
     if (totalPensionObligation > 0) {
       journalLinesPayload.push({
@@ -590,7 +561,7 @@ export async function approvePayroll(runId: string, approverId: string): Promise
       });
     }
 
-    // CR NHF Housing liability
+    // CR NHF Payable (301800)
     if (totalNhf > 0) {
       journalLinesPayload.push({
         accountId: nhfPayableAccId,
@@ -599,33 +570,12 @@ export async function approvePayroll(runId: string, approverId: string): Promise
       });
     }
 
-    // CR NHIS liability
+    // CR NHIS Payable (306000)
     if (totalNhis > 0) {
       journalLinesPayload.push({
         accountId: nhisPayableAccId,
         credit: totalNhis,
         description: `NHIS Employee Health Insurance Liabilities for Run ${run.runNumber}`
-      });
-    }
-
-    // CR Other deductions liability (excl. NHIS which is separated above)
-    const otherDeductionsExclNhis = totalOtherDeductions - totalNhis;
-    if (otherDeductionsExclNhis > 0) {
-      journalLinesPayload.push({
-        accountId: otherDeductionsAccId,
-        credit: otherDeductionsExclNhis,
-        description: `Other Miscellaneous Deductions for Run ${run.runNumber}`
-      });
-    }
-
-    // CR Net Pay (either bank disbursement or accrued salary liability)
-    if (totalNet > 0) {
-      journalLinesPayload.push({
-        accountId: netPayCreditAccId,
-        credit: totalNet,
-        description: run.accruedSalaryAccountId
-          ? `Net Wage Salaries Accrued Liability for Run ${run.runNumber}`
-          : `Net Wage Salaries Bank Disbursement Transfer for Run ${run.runNumber}`
       });
     }
 
