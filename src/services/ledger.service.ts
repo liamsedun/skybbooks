@@ -26,7 +26,7 @@ export type CreateJournalEntryInput = {
   date: Date;
   description: string;
   reference?: string;
-  source: 'manual' | 'invoice' | 'bill' | 'payment' | 'payroll' | 'bank_feed' | 'opening_balance' | 'opening_stock' | 'transfer';
+  source: 'manual' | 'invoice' | 'bill' | 'payment' | 'payroll' | 'bank_feed' | 'opening_balance' | 'opening_stock' | 'transfer' | 'vat_settlement';
   sourceId?: string;
   projectId?: string;
   createdBy: string;

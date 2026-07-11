@@ -44,10 +44,34 @@ export const journalSourceEnum = pgEnum('journal_source', [
   'bank_feed',
   'opening_balance',
   'opening_stock',
-  'transfer'
+  'transfer',
+  'vat_settlement'
 ]);
 
 export const contactTypeEnum = pgEnum('contact_type', ['customer', 'vendor', 'both']);
+
+export const vatTreatmentEnum = pgEnum('vat_treatment', [
+  'standard',
+  'zero_rated',
+  'exempt',
+  'blocked',
+  'reverse_charge',
+  'outside_scope',
+  'system',
+]);
+
+export const vatPeriodStatusEnum = pgEnum('vat_period_status', [
+  'draft',
+  'reviewed',
+  'filed',
+  'paid',
+]);
+
+export const vatReturnLineTypeEnum = pgEnum('vat_return_line_type', [
+  'output',
+  'input',
+  'adjustment',
+]);
 
 export const systemAccountRoleEnum = pgEnum('system_account_role', [
   'accounts_receivable',
@@ -257,6 +281,7 @@ export const accounts = pgTable('accounts', {
   description: text('description'),
   openingBalance: bigint('opening_balance', { mode: 'number' }).default(0).notNull(),
   systemAccountRole: systemAccountRoleEnum('system_account_role').default('none').notNull(),
+  vatTreatment: vatTreatmentEnum('vat_treatment').default('standard').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
@@ -285,6 +310,10 @@ export const journalLines = pgTable('journal_lines', {
   description: text('description'),
   currency: text('currency').default('NGN').notNull(),
   fxRate: numeric('fx_rate', { precision: 18, scale: 8 }),
+  vatAmount: bigint('vat_amount', { mode: 'number' }).default(0),
+  vatTreatment: vatTreatmentEnum('vat_treatment'),
+  vatAccountId: uuid('vat_account_id').references(() => accounts.id),
+  supplierVatNumber: text('supplier_vat_number'),
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
@@ -482,6 +511,7 @@ export const invoiceLines = pgTable('invoice_lines', {
   discountPct: numeric('discount_pct'),
   taxRate: numeric('tax_rate'),
   taxAmount: bigint('tax_amount', { mode: 'number' }).default(0).notNull(),
+  vatTreatment: text('vat_treatment').default('standard'),
   lineTotal: bigint('line_total', { mode: 'number' }).default(0).notNull(),
   accountId: uuid('account_id').references(() => accounts.id),
   createdAt: timestamp('created_at').defaultNow().notNull()
@@ -592,6 +622,7 @@ export const billLines = pgTable('bill_lines', {
   unitPrice: bigint('unit_price', { mode: 'number' }).notNull(),
   taxRate: numeric('tax_rate'),
   taxAmount: bigint('tax_amount', { mode: 'number' }).default(0).notNull(),
+  vatTreatment: text('vat_treatment').default('standard'),
   lineTotal: bigint('line_total', { mode: 'number' }).default(0).notNull(),
   accountId: uuid('account_id').references(() => accounts.id),
   createdAt: timestamp('created_at').defaultNow().notNull()
@@ -672,6 +703,40 @@ export const expenses = pgTable('expenses', {
   recurringId: uuid('recurring_id'),
   journalEntryId: uuid('journal_entry_id').references(() => journalEntries.id),
   createdBy: uuid('created_by').references(() => users.id).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+// --- VAT Periods ---
+
+export const vatPeriods = pgTable('vat_periods', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  periodStart: timestamp('period_start').notNull(),
+  periodEnd: timestamp('period_end').notNull(),
+  periodLabel: text('period_label').notNull(),
+  totalOutputVat: bigint('total_output_vat', { mode: 'number' }).default(0).notNull(),
+  totalInputVat: bigint('total_input_vat', { mode: 'number' }).default(0).notNull(),
+  netVatPayable: bigint('net_vat_payable', { mode: 'number' }).default(0).notNull(),
+  excessInputBroughtForward: bigint('excess_input_brought_forward', { mode: 'number' }).default(0).notNull(),
+  excessInputCarriedForward: bigint('excess_input_carried_forward', { mode: 'number' }).default(0).notNull(),
+  status: vatPeriodStatusEnum('status').default('draft').notNull(),
+  settlementJournalEntryId: uuid('settlement_journal_entry_id').references(() => journalEntries.id),
+  filedAt: timestamp('filed_at'),
+  paidAt: timestamp('paid_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+});
+
+export const vatReturnLines = pgTable('vat_return_lines', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  vatPeriodId: uuid('vat_period_id').references(() => vatPeriods.id).notNull(),
+  lineType: vatReturnLineTypeEnum('line_type').notNull(),
+  supplyCategory: text('supply_category').notNull(),
+  grossAmount: bigint('gross_amount', { mode: 'number' }).default(0).notNull(),
+  vatRate: numeric('vat_rate', { precision: 5, scale: 2 }).default('7.5').notNull(),
+  vatAmount: bigint('vat_amount', { mode: 'number' }).default(0).notNull(),
+  journalLineIds: uuid('journal_line_ids').array(),
+  isRecoverable: boolean('is_recoverable').default(true).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
@@ -1644,6 +1709,8 @@ export const db = drizzle(pool, {
   auditLog,
     currencyRates,
     closedPeriods,
+    vatPeriods,
+    vatReturnLines,
 
     // Relations
     organisationsRelations,

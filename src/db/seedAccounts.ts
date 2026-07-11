@@ -16,6 +16,7 @@ const ACCOUNT_SEEDS: { code: string; name: string; type: 'asset' | 'liability' |
   { code: '101400', name: 'Receivable from Related Parties', type: 'asset', subType: 'Current Assets', description: 'IAS 24 – Amounts due from subsidiaries / associates. Transfer pricing rules apply.' },
   { code: '101500', name: 'WHT Receivable', type: 'asset', subType: 'Current Assets', description: 'CITA / WHT Regs – Withholding tax credit receivable. Obtain WHT credit notes from FIRS.', systemAccountRole: 'wht_receivable' },
   { code: '101600', name: 'VAT Receivable / Input VAT', type: 'asset', subType: 'Current Assets', description: 'VATA – Input VAT recoverable from FIRS. File VAT returns monthly; offset against output VAT.', systemAccountRole: 'vat_receivable' },
+  { code: '101650', name: 'VAT Refund Receivable', type: 'asset', subType: 'Current Assets', description: 'VATA – Excess input VAT claimed as refund from FIRS.' },
   { code: '101700', name: 'Prepayments', type: 'asset', subType: 'Current Assets', description: 'IAS 1 – Expenses paid in advance (rents, insurance, subscriptions).' },
   { code: '101800', name: 'Other Receivables', type: 'asset', subType: 'Current Assets', description: 'IFRS 9 – Deposits, claims receivable.' },
   { code: '102000', name: 'Inventories', type: 'asset', subType: 'Current Assets', description: 'IAS 2 – Goods held for sale or production.', systemAccountRole: 'inventory' },
@@ -206,6 +207,7 @@ const ACCOUNT_SEEDS: { code: string; name: string; type: 'asset' | 'liability' |
   { code: '811900', name: 'Cleaning & Janitorial Services', type: 'expense', subType: 'Administrative Expenses', description: 'IAS 1 – WHT on payments to companies.' },
   { code: '812000', name: 'Printing & Reproduction', type: 'expense', subType: 'Administrative Expenses', description: 'IAS 1 – Printing and document services.' },
   { code: '812100', name: 'IT & Software Expenses', type: 'expense', subType: 'Administrative Expenses', description: 'IAS 1 / IAS 38 – SaaS, maintenance, software support.' },
+  { code: '812200', name: 'Irrecoverable VAT Expense', type: 'expense', subType: 'Administrative Expenses', description: 'VATA – Input VAT on exempt/blocked supplies charged to P&L.' },
 
   // ── SELLING & DISTRIBUTION ──
   { code: '820000', name: 'Advertising & Marketing', type: 'expense', subType: 'Selling & Distribution', description: 'IAS 1 – WHT 10% on agency fees; VAT on media spend.' },

@@ -31,6 +31,7 @@ import periodsRouter from '../routes/periods';
 import platformRouter from '../routes/platform';
 import notificationsRouter from '../routes/notifications';
 import projectsRouter from '../routes/projects';
+import vatRouter from '../routes/vat';
 
 import { runMigration } from '../db/migrate';
 import { fetchLatestRates } from '../services/cbn.service';
@@ -139,6 +140,7 @@ async function startServer() {
   app.use('/api/notifications', notificationsRouter);
   app.use('/api/projects', projectsRouter);
   app.use('/api/custom-reports', customReportsRouter);
+  app.use('/api/vat', vatRouter);
 
   app.get('/api/health', (req, res) => {
     res.json({ status: 'healthy', timestamp: new Date().toISOString() });

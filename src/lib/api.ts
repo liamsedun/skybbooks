@@ -1064,6 +1064,30 @@ export const projectsApi = {
   delete: async (id: string) => { const res = await api.delete(`/projects/${id}`); return res.data; },
 };
 
+// 10. VAT Endpoints
+export const vatApi = {
+  getReturn: async (params: { startDate: string; endDate: string }) => {
+    const res = await api.get('/vat/return', { params });
+    return res.data;
+  },
+  settle: async (data: { startDate: string; endDate: string; totalOutputVat: number; totalInputVat: number; excessInputBroughtForward?: number }) => {
+    const res = await api.post('/vat/settle', data);
+    return res.data;
+  },
+  getPeriods: async () => {
+    const res = await api.get('/vat/periods');
+    return res.data;
+  },
+  getSettings: async () => {
+    const res = await api.get('/vat/settings');
+    return res.data;
+  },
+  updateSettings: async (data: any) => {
+    const res = await api.put('/vat/settings', data);
+    return res.data;
+  },
+};
+
 export function downloadBlob(blob: Blob, filename: string) {
   try {
     const url = URL.createObjectURL(blob);

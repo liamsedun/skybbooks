@@ -52,6 +52,7 @@ import {
   BalanceSheetPage,
   CashFlowPage,
   GeneralLedgerPage,
+  VATReturnPage,
   AgedReceivablesPage,
   AgedPayablesPage,
 
@@ -290,6 +291,7 @@ function AppRoutes() {
           <Route path="/reports/balance-sheet" element={<BalanceSheetPage />} />
           <Route path="/reports/cash-flow" element={<CashFlowPage />} />
           <Route path="/reports/general-ledger" element={<GeneralLedgerPage />} />
+          <Route path="/reports/vat-return" element={<VATReturnPage />} />
           <Route path="/reports/aged-receivables" element={<AgedReceivablesPage />} />
           <Route path="/reports/aged-payables" element={<AgedPayablesPage />} />
           <Route path="/reports/audit-logs" element={<AuditLogsPage />} />
