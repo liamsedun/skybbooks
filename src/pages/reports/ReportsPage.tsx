@@ -1561,23 +1561,15 @@ function ReportShell({ reportType, title }: ReportPageProps) {
                   <th style="padding:8px 12px;font-size:10px;font-weight:600;color:#64748b;text-align:right;text-transform:uppercase">Amount</th>
                 </tr>
               </thead>
-              <tbody>${mainRows || '<tr><td colspan="2" style="text-align:center;color:#94a3b8;padding:20px">No data</td></tr>'}</tbody>
-              <tbody style="page-break-before:always;page-break-inside:avoid;break-inside:avoid">${summaryRows}</tbody>
+              <tbody>${(mainRows||'') + summaryRows || '<tr><td colspan="2" style="text-align:center;color:#94a3b8;padding:20px">No data</td></tr>'}</tbody>
             </table>`,
             `Period: ${sDate} - ${eDate}`
           );
         } else if (reportType === 'balance-sheet') {
           const bsData = (data as any)?.data || data || {};
-          const assets = bsData?.assets?.accounts || [];
-          const liabilities = bsData?.liabilities?.accounts || [];
-          const equity = bsData?.equity?.accounts || [];
           const totalAssets = bsData?.totalAssets || 0;
           const totalLiabilities = bsData?.totalLiabilities || 0;
           const totalEquity = bsData?.totalEquity || 0;
-          const bsHeadingNames = new Set(['Cash and Cash Equivalents', 'Trade & Other Receivables', 'Inventory', 'Prepayments', 'Other Current Assets', 'Property, Plant & Equipment', 'Right-of-Use Assets', 'Intangible Assets', 'Other Non-Current Assets', 'Trade & Other Payables', 'Accruals & Deferred Income', 'Other Current Liabilities', 'Non-Current Liabilities', 'Equity', 'Retained Earnings', 'Reserves']);
-          const assetRows = assets.filter((a: any) => !(bsHeadingNames.has(a.name) && (a.balance||0) === 0)).map((a: any) => `<tr><td style="padding-left:24px">${a.name||''}</td><td class="r">₦${((a.balance||0)/100).toLocaleString()}</td></tr>`).join('');
-          const liabilityRows = liabilities.filter((l: any) => !(bsHeadingNames.has(l.name) && (l.balance||0) === 0)).map((l: any) => `<tr><td style="padding-left:24px">${l.name||''}</td><td class="r">₦${((l.balance||0)/100).toLocaleString()}</td></tr>`).join('');
-          const equityRows = equity.filter((e: any) => !(bsHeadingNames.has(e.name) && (e.balance||0) === 0)).map((e: any) => `<tr><td style="padding-left:24px">${e.name||''}</td><td class="r">₦${((e.balance||0)/100).toLocaleString()}</td></tr>`).join('');
           const org = (orgData as any)?.data || orgData || {};
           const orgName = org.name || '';
           const orgAddr = org.address ? `<p style="margin:0;font-size:11px;color:#475569">${org.address}</p>` : '';
@@ -1586,6 +1578,27 @@ function ReportShell({ reportType, title }: ReportPageProps) {
           const orgWebsite = org.website || '';
           const orgLogo = org.logoUrl ? `<img src="${org.logoUrl}" style="max-height:60px;max-width:200px;object-fit:contain" />` : '';
           const contactInfo = [orgPhone, orgEmail, orgWebsite].filter(Boolean).join(' | ');
+          function printSecRows(label: string, items: any[], total: number): string {
+            const accRows = items.filter((i: any) => i.name !== label).map((i: any) =>
+              `<tr><td style="padding:3px 12px;padding-left:24px;font-size:10px">${i.code ? `<span style="color:#94a3b8;font-family:monospace;font-size:9px;margin-right:4px">${i.code}</span>` : ''}${i.name||''}</td><td style="padding:3px 12px;font-size:10px;text-align:right;font-family:monospace">₦${((i.balance||0)/100).toLocaleString()}</td></tr>`
+            ).join('');
+            return `<tr style="background:#f1f5f9"><td colspan="2" style="padding:6px 12px;font-size:10px;font-weight:700;color:#475569;text-transform:uppercase">${label}</td></tr>${accRows}<tr style="border-top:1px solid #e2e8f0;font-weight:600;background:#f8fafc"><td style="padding:4px 12px;padding-left:24px;font-size:10px;color:#64748b">Total ${label}</td><td style="padding:4px 12px;font-size:10px;text-align:right;font-family:monospace">₦${(total/100).toLocaleString()}</td></tr>`;
+          }
+          function printNBVSec(label: string, costItems: any[], costTotal: number, contraItems: any[], contraTotal: number, netTotal: number): string {
+            return `<tr style="background:#f1f5f9"><td colspan="2" style="padding:6px 12px;font-size:10px;font-weight:700;color:#475569;text-transform:uppercase">${label}</td></tr>${costItems.map((i: any) => `<tr><td style="padding:3px 12px;padding-left:24px;font-size:10px">${i.name||''}</td><td style="padding:3px 12px;font-size:10px;text-align:right;font-family:monospace">₦${((i.balance||0)/100).toLocaleString()}</td></tr>`).join('')}${contraItems.map((i: any) => `<tr><td style="padding:3px 12px;padding-left:24px;font-size:10px;color:#64748b">Less: ${i.name||''}</td><td style="padding:3px 12px;font-size:10px;text-align:right;font-family:monospace;color:#64748b">(₦${(Math.abs(i.balance||0)/100).toLocaleString()})</td></tr>`).join('')}<tr style="border-top:1px solid #e2e8f0;font-weight:600;background:#f8fafc"><td style="padding:4px 12px;padding-left:24px;font-size:10px;color:#64748b">Net Book Value – ${label}</td><td style="padding:4px 12px;font-size:10px;text-align:right;font-family:monospace">₦${((netTotal??costTotal)/100).toLocaleString()}</td></tr>`;
+          }
+          function printSection(label: string, total: number, items: any[]): string {
+            return items.map((sec: any) => sec.key === 'ppe' || sec.key === 'rou' || sec.key === 'intangibles'
+              ? printNBVSec(sec.label, sec.items||[], sec.total||0, sec.contraItems||[], sec.contraTotal||0, sec.netTotal??sec.total)
+              : printSecRows(sec.label, sec.items||[], sec.total||0)
+            ).join('') + `<tr style="border-top:1px solid #cbd5e1;background:#eef2f3;font-weight:700"><td style="padding:5px 12px;padding-left:16px;font-size:11px;color:#0f172a">Total ${label}</td><td style="padding:5px 12px;font-size:11px;text-align:right;font-family:monospace">₦${(total/100).toLocaleString()}</td></tr>`;
+          }
+          const ca = bsData.currentAssets || {}; const nca = bsData.nonCurrentAssets || {};
+          const cl = bsData.currentLiabilities || {}; const ncl = bsData.nonCurrentLiabilities || {};
+          const eq = bsData.equity || {};
+          const assetHtml = printSection('Current Assets', ca.total||0, ca.subSections||[]) + printSection('Non-Current Assets', nca.total||0, nca.subSections||[]);
+          const liabilityHtml = printSection('Current Liabilities', cl.total||0, cl.subSections||[]) + printSection('Non-Current Liabilities', ncl.total||0, ncl.subSections||[]);
+          const equityHtml = printSection('Equity', eq.total||0, eq.subSections||[]);
           printWindow('Balance Sheet',
             `<div style="text-align:center;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #e2e8f0">
               ${orgLogo}
@@ -1603,11 +1616,11 @@ function ReportShell({ reportType, title }: ReportPageProps) {
                 </tr>
               </thead>
               <tbody>
-                <tr style="background:#eff6ff;font-weight:bold"><td colspan="2" style="padding:8px 10px">ASSETS</td></tr>${assetRows}
+                <tr style="background:#eff6ff;font-weight:bold"><td colspan="2" style="padding:8px 10px">ASSETS</td></tr>${assetHtml}
                 <tr style="font-weight:bold;border-top:2px solid"><td style="padding:7px 10px">Total Assets</td><td style="padding:7px 10px;text-align:right;font-family:monospace">₦${(totalAssets/100).toLocaleString()}</td></tr>
-                <tr style="background:#fffbeb;font-weight:bold"><td colspan="2" style="padding:8px 10px">LIABILITIES</td></tr>${liabilityRows}
+                <tr style="background:#fffbeb;font-weight:bold"><td colspan="2" style="padding:8px 10px">LIABILITIES</td></tr>${liabilityHtml}
                 <tr style="font-weight:bold;border-top:2px solid"><td style="padding:7px 10px">Total Liabilities</td><td style="padding:7px 10px;text-align:right;font-family:monospace">₦${(totalLiabilities/100).toLocaleString()}</td></tr>
-                <tr style="background:#f5f3ff;font-weight:bold"><td colspan="2" style="padding:8px 10px">EQUITY</td></tr>${equityRows}
+                <tr style="background:#f5f3ff;font-weight:bold"><td colspan="2" style="padding:8px 10px">EQUITY</td></tr>${equityHtml}
                 <tr style="font-weight:bold;border-top:2px solid"><td style="padding:7px 10px">Total Equity</td><td style="padding:7px 10px;text-align:right;font-family:monospace">₦${(totalEquity/100).toLocaleString()}</td></tr>
                 <tr style="font-weight:bold;border-top:3px double;background:#f1f5f9"><td style="padding:7px 10px">Total Liabilities &amp; Equity</td><td style="padding:7px 10px;text-align:right;font-family:monospace">₦${((totalLiabilities+totalEquity)/100).toLocaleString()}</td></tr>
               </tbody>
