@@ -31,25 +31,15 @@ Maintain and enhance accounting features: fix kobo/naira display, parent-child a
 - **Multi-currency backend**: Added `fxRate` column + `populateFxRate()` calls to expenses, credit notes, vendor credits, purchase orders, and payments made services; fixed `populateFxRate` calls that incorrectly passed `tx` as baseCurrency
 - **CurrencySelector component**: Reusable `src/components/ui/CurrencySelector.tsx` with currency dropdown + auto-filled fxRate from rates API; shows editable FX Rate input for non-NGN currencies
 - **CurrencySelector integration**: Added to all 9 transaction forms — InvoiceForm, Bills, Expenses, PaymentsReceived, RecordPaymentDrawer, PaymentsMade (create+edit), CreditNotes, PurchaseCreditNotes, PurchaseOrders — replacing hardcoded `currency: 'NGN'` with dynamic selector
+- **Opening stock TB/IS fix**: `getInventoryValueAsOf()` rewritten to forward approach; Opening Stock in Trial Balance now matches Income Statement (₦103.2M)
+- **Payroll JE restructure**: Added 301501 PAYE Payable, 306000 NHIS Payable, 800301 PAYE Expense accounts; payroll JEs wire through 301500 clearing; employer NHIS (10% of basic) added
+- **balanceSheet bank override → JE-based approach**: Removed `bankMap` from both `getTrialBalance()` and `getBalanceSheet()`; Flutterwave sync no longer sets `currentBalance` directly; manual balance adjust / OB import create JEs through 207000 Bank Clearing Suspense
 
 ### In Progress
 - (none)
 
 ### Blocked
 - (none)
-
-### This Session (IFRS Income Statement & Balance Sheet)
-- **Income Statement date input crash fix**: Added `isNaN` guards in `getDefaultCompareDates()`/`getDefaultCompareAsOf()` + try-catch in `useEffect` to prevent blank-page crash when user types partially
-- **Income Statement CSV export fix**: Restructured CSV block to handle object tree data (Revenue → Cost of Sales → Gross Profit → Operating Expenses → EBIT → Net Profit) with section headers, sub-section labels, and totals; array fallback for other reports
-- **Income Statement Excel export fix**: Replaced broken `apiDownload()` with `reportsApi.getIncomeStatement({ format: 'excel' })` (Axios blob) + `downloadBlob()`; `getIncomeStatement()` sets `responseType: 'blob'` for excel format
-- **IFRS IAS 1 Income Statement**: `computePnL()` groups expense accounts by `subType` (cost_of_sales, selling_distribution, administrative, staff_costs, finance_costs, tax_expense); returns Gross Profit after Cost of Sales, 3 operating expense sub-sections (Selling & Distribution, Administrative, Staff Costs), Operating Profit (EBIT), Finance Costs, Tax Expense, Net Profit
-- **Income Statement frontend**: Updated `SinglePeriodPnLTable`, `ComparativePnLTable`, `buildPnLRows` for new IFRS sub-section structure; CSV, PDF (`generateIncomeStatementPDF`), and Excel (`exportIncomeStatement`) exports updated
-- **Account subType migration**: Startup migration normalises existing expense `subType` values (`'Cost of Sales'` → `'cost_of_sales'`, `'Administrative Expenses'` → `'administrative'`, etc.)
-- **Balance Sheet IFRS restructure**: `getBalanceSheet()` completely rewritten — groups by code prefix into currentAssets/nonCurrentAssets/currentLiabilities/nonCurrentLiabilities/equity with proper sub-sections; contra-asset netting (accum. depreciation → Net Book Value for PP&E/ROU/Intangibles)
-- **Auto-reclassification rules**: Bank overdrafts (`balance < 0` → `Bank Overdraft – [name]` under currentLiabilities); debit payables (`payable < 0` → `Overpayment Receivable – [name]` under currentAssets); negative inventory zeroed at sub-account, flagged at parent; all logged in `reclassified` array
-- **Equity waterfall**: Share Capital, Share Premium, Retained Earnings (opening + profit/loss for period + dividends + other), Other Reserves, Non-controlling Interest, General Reserve; profit for period computed dynamically from revenue - expense JE balance
-- **Out-of-balance warning**: Computed as `totalAssets - (totalLiabilities + totalEquity)`; displayed as red warning banner on frontend; no suspense account created
-- **Balance Sheet frontend**: New `SinglePeriodBalanceSheetTable` component with NBV display, contra-asset sections, reclassified item markings, sub-section grouping, accounting equation check, hide/show zero accounts + account codes toggles (localStorage persistence), red out-of-balance warning banner
 
 ## Key Decisions
 - Parent-child rollup done post-hoc after individual account balances are computed (backend for Trial Balance, `useMemo` for Chart of Accounts frontend)
@@ -69,6 +59,7 @@ Maintain and enhance accounting features: fix kobo/naira display, parent-child a
 3. Update detail views (InvoiceDetail, BillDetail, etc.) to display currency + both original and base (NGN) amounts
 4. Test multi-currency transaction flow end-to-end
 5. Investigate Purchase Order unit price bug: AMC Tier 2 item shows extra zero (2,500,000 instead of 250,000) — likely a data issue with the item's stored `purchasePrice` value rather than a code bug
+6. Verify bank reconciliation flow still works after bankMap removal — bank feed transactions are imported as 'unreconciled' and matched against GL-based JEs; clearing account (207000) shows the difference
 
 ## Critical Context
 - `TrialBalanceRow` type no longer includes `parentId` after revert (field removed from backend type and response)
@@ -78,6 +69,10 @@ Maintain and enhance accounting features: fix kobo/naira display, parent-child a
 - Pre-existing TS errors (module resolution, `opening_stock` enum) still present in `ledger.service.ts:273` and `ReportsPage.tsx:1177,1179`
 - CurrencySelector component at `src/components/ui/CurrencySelector.tsx`; relied upon by all 9 transaction form files
 - `populateFxRate(orgId, currency, date)` takes 3 args (no `tx` parameter)
+- Bank balance in TB/BS now comes solely from journal lines; `bankAccounts.currentBalance` is a side-effect of `createJournalEntry()` — no more manual override
+- Manual balance adjustments and CSV opening balance imports create JEs debiting/crediting bank GL account with contra to 207000 (Bank Clearing Suspense)
+- Flutterwave sync imports transactions as unreconciled; no JE is created during sync; currentBalance unchanged
+- 207000 Bank Clearing Suspense must exist in every org (seed + migration); it's the counterparty for any balance JE not backed by a real transaction
 
 ## Relevant Files
 - `src/pages/accountant/ChartOfAccounts.tsx`: `fmtNaira()` kobo→naira fix, `computeAggregateBalances()` parent rollup, `toDebitCredit()` helper, debit/credit columns, parent-excluded totals, client-side CSV export
