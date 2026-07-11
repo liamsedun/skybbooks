@@ -30,6 +30,11 @@ router.get('/', async (req: AuthenticatedRequest, res: Response, next: NextFunct
     const orgId = req.user!.orgId!;
     const { from, to, accountId } = req.query;
 
+    // Helper: convert amount to NGN if currency is foreign
+    function ngExpr(col: string): string {
+      return `CASE WHEN jl.currency IS NULL OR jl.currency = 'NGN' OR jl.fx_rate IS NULL OR CAST(jl.fx_rate AS numeric) <= 0 OR CAST(jl.fx_rate AS numeric) = 1.0 THEN ${col} ELSE ROUND(${col} * CAST(jl.fx_rate AS numeric)) END`;
+    }
+
     let query = sql`SELECT
         je.id, je.org_id AS "orgId", je.entry_number AS "entryNumber",
         je.description, je.source, je.source_id AS "sourceId",
@@ -39,8 +44,8 @@ router.get('/', async (req: AuthenticatedRequest, res: Response, next: NextFunct
       FROM journal_entries je
       LEFT JOIN (
         SELECT jl.entry_id,
-          SUM(CASE WHEN jl.debit_amount > 0 THEN jl.debit_amount ELSE 0 END) AS td,
-          SUM(CASE WHEN jl.credit_amount > 0 THEN jl.credit_amount ELSE 0 END) AS tc
+          SUM(CASE WHEN jl.debit_amount > 0 THEN ${sql.raw(ngExpr('jl.debit_amount'))} ELSE 0 END) AS td,
+          SUM(CASE WHEN jl.credit_amount > 0 THEN ${sql.raw(ngExpr('jl.credit_amount'))} ELSE 0 END) AS tc
         FROM journal_lines jl GROUP BY jl.entry_id
       ) t ON je.id = t.entry_id
       WHERE je.org_id = ${orgId}::uuid`;
@@ -74,7 +79,17 @@ router.get('/:id', async (req: AuthenticatedRequest, res: Response, next: NextFu
       .select()
       .from(journalLines)
       .where(eq(journalLines.entryId, id));
-    return res.status(200).json({ ...entry, lines });
+    const convertedLines = lines.map(line => {
+      const isForeign = line.currency && line.currency !== 'NGN';
+      const rate = isForeign && line.fxRate ? parseFloat(String(line.fxRate)) : null;
+      const shouldConvert = rate !== null && rate > 0 && rate !== 1.0;
+      return {
+        ...line,
+        debitAmount: shouldConvert ? Math.round(line.debitAmount * rate!) : line.debitAmount,
+        creditAmount: shouldConvert ? Math.round(line.creditAmount * rate!) : line.creditAmount,
+      };
+    });
+    return res.status(200).json({ ...entry, lines: convertedLines });
   } catch (err) { return next(err); }
 });
 
