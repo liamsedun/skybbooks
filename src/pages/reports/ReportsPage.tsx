@@ -2015,37 +2015,27 @@ function ReportTable({ data, reportType, compareEnabled, onAccountClick, showZer
   if (reportType === 'aged-receivables' || reportType === 'aged-payables') {
     const [activeBucket, setActiveBucket] = useState<string | null>(null);
     const title = reportType === 'aged-receivables' ? 'Customer' : 'Vendor';
+    const entityLabel = reportType === 'aged-receivables' ? 'customer' : 'vendor';
     const allRows: any[] = Array.isArray(data) ? data : [];
 
-    const bucketKey = (bucket: string): keyof any => {
-      const map: Record<string, string> = { current: 'current', days1to30: 'days1to30', days31to60: 'days31to60', days61to90: 'days61to90', days90Plus: 'days90Plus', total: 'total' };
-      return map[bucket] || 'total';
-    };
+    const bucketKey: Record<string, string> = { current: 'current', days1to30: 'days1to30', days31to60: 'days31to60', days61to90: 'days61to90', days90Plus: 'days90Plus', total: 'total' };
+    const bucketLabel: Record<string, string> = { current: 'Current', days1to30: '1-30 Days', days31to60: '31-60 Days', days61to90: '61-90 Days', days90Plus: '90+ Days', total: 'Total' };
 
     const filteredRows = activeBucket
-      ? allRows.filter(r => (r[bucketKey(activeBucket)] || 0) > 0)
+      ? allRows.filter(r => (r[activeBucket] || 0) > 0)
       : allRows;
 
-    function BucketTh({ bucket, label, className }: { bucket: string; label: string; className?: string }) {
-      const isActive = activeBucket === bucket;
-      const total = allRows.reduce((s: number, r: any) => s + (r[bucketKey(bucket)] || 0), 0);
-      return (
-        <th
-          className={`${className || 'text-right px-3 py-3'} cursor-pointer select-none transition-colors duration-150 ${isActive ? 'bg-indigo-100 text-indigo-800' : 'hover:bg-slate-100'}`}
-          onClick={() => setActiveBucket(isActive ? null : bucket)}
-          title={`${label}: ₦${(total / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })} — click to ${isActive ? 'clear filter' : 'filter by this bucket'}`}
-        >
-          {label}
-        </th>
-      );
-    }
+    function isBucketActive(b: string): boolean { return activeBucket === b; }
+    function toggleBucket(b: string): void { setActiveBucket(isBucketActive(b) ? null : b); }
+
+    const bucketHeaders = ['current', 'days1to30', 'days31to60', 'days61to90', 'days90Plus', 'total'];
 
     return (
       <div>
         {activeBucket && (
           <div className="mb-3 flex items-center gap-2 text-sm">
             <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 font-medium text-xs">
-              Filtered: <strong>{activeBucket === 'current' ? 'Current' : activeBucket === 'days1to30' ? '1-30 Days' : activeBucket === 'days31to60' ? '31-60 Days' : activeBucket === 'days61to90' ? '61-90 Days' : activeBucket === 'days90Plus' ? '90+ Days' : 'Total'}</strong> — {filteredRows.length} customer{filteredRows.length !== 1 ? 's' : ''}
+              Filtered: <strong>{bucketLabel[activeBucket]}</strong> — {filteredRows.length} {entityLabel}{filteredRows.length !== 1 ? 's' : ''}
             </span>
             <button onClick={() => setActiveBucket(null)} className="text-xs text-red-600 hover:text-red-800 underline">Clear filter</button>
           </div>
@@ -2055,24 +2045,25 @@ function ReportTable({ data, reportType, compareEnabled, onAccountClick, showZer
             <thead className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
               <tr>
                 <th className="text-left px-3 py-3">{title}</th>
-                <BucketTh bucket="current" label="Current" />
-                <BucketTh bucket="days1to30" label="1-30 Days" />
-                <BucketTh bucket="days31to60" label="31-60 Days" />
-                <BucketTh bucket="days61to90" label="61-90 Days" />
-                <BucketTh bucket="days90Plus" label="90+ Days" />
-                <BucketTh bucket="total" label="Total" />
+                {bucketHeaders.map(b => (
+                  <th key={b}
+                    className={`text-right px-3 py-3 cursor-pointer select-none transition-colors duration-150 ${isBucketActive(b) ? 'bg-indigo-100 text-indigo-800' : 'hover:bg-slate-100'}`}
+                    onClick={() => toggleBucket(b)}
+                  >
+                    {bucketLabel[b]}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {filteredRows.map((row: any, i: number) => (
                 <tr key={i} className="border-t border-slate-100 hover:bg-slate-50/50 even:bg-slate-50/50 transition-colors">
                   <td className="px-3 py-3 font-medium text-slate-800">{row.name || `Item ${i + 1}`}</td>
-                  <td className={`px-3 py-3 text-right ${activeBucket === 'current' ? 'bg-indigo-50 font-semibold text-indigo-800' : 'text-slate-600'}`}>{fmtNaira(row.current || 0)}</td>
-                  <td className={`px-3 py-3 text-right ${activeBucket === 'days1to30' ? 'bg-indigo-50 font-semibold text-indigo-800' : 'text-slate-600'}`}>{fmtNaira(row.days1to30 || 0)}</td>
-                  <td className={`px-3 py-3 text-right ${activeBucket === 'days31to60' ? 'bg-indigo-50 font-semibold text-indigo-800' : 'text-slate-600'}`}>{fmtNaira(row.days31to60 || 0)}</td>
-                  <td className={`px-3 py-3 text-right ${activeBucket === 'days61to90' ? 'bg-indigo-50 font-semibold text-indigo-800' : 'text-slate-600'}`}>{fmtNaira(row.days61to90 || 0)}</td>
-                  <td className={`px-3 py-3 text-right ${activeBucket === 'days90Plus' ? 'bg-indigo-50 font-semibold text-indigo-800' : 'text-slate-600'}`}>{fmtNaira(row.days90Plus || 0)}</td>
-                  <td className={`px-3 py-3 text-right font-semibold ${activeBucket === 'total' ? 'bg-indigo-50 text-indigo-800' : 'text-slate-800'}`}>{fmtNaira(row.total || 0)}</td>
+                  {bucketHeaders.map(b => (
+                    <td key={b} className={`px-3 py-3 text-right ${isBucketActive(b) ? 'bg-indigo-50 font-semibold text-indigo-800' : 'text-slate-600'} ${b === 'total' ? 'font-semibold' : ''}`}>
+                      {fmtNaira(row[b] || 0)}
+                    </td>
+                  ))}
                 </tr>
               ))}
               {filteredRows.length === 0 && (
@@ -2083,12 +2074,11 @@ function ReportTable({ data, reportType, compareEnabled, onAccountClick, showZer
             <tfoot>
               <tr className="border-t-2 border-slate-300 bg-slate-100 font-bold text-sm">
                 <td className="px-3 py-3 text-slate-800">TOTAL</td>
-                <td className={`px-3 py-3 text-right text-slate-800 ${activeBucket === 'current' ? 'bg-indigo-100' : ''}`}>{fmtNaira(filteredRows.reduce((s: number, r: any) => s + (r.current||0), 0))}</td>
-                <td className={`px-3 py-3 text-right text-slate-800 ${activeBucket === 'days1to30' ? 'bg-indigo-100' : ''}`}>{fmtNaira(filteredRows.reduce((s: number, r: any) => s + (r.days1to30||0), 0))}</td>
-                <td className={`px-3 py-3 text-right text-slate-800 ${activeBucket === 'days31to60' ? 'bg-indigo-100' : ''}`}>{fmtNaira(filteredRows.reduce((s: number, r: any) => s + (r.days31to60||0), 0))}</td>
-                <td className={`px-3 py-3 text-right text-slate-800 ${activeBucket === 'days61to90' ? 'bg-indigo-100' : ''}`}>{fmtNaira(filteredRows.reduce((s: number, r: any) => s + (r.days61to90||0), 0))}</td>
-                <td className={`px-3 py-3 text-right text-slate-800 ${activeBucket === 'days90Plus' ? 'bg-indigo-100' : ''}`}>{fmtNaira(filteredRows.reduce((s: number, r: any) => s + (r.days90Plus||0), 0))}</td>
-                <td className={`px-3 py-3 text-right text-slate-800 ${activeBucket === 'total' ? 'bg-indigo-100' : ''}`}>{fmtNaira(filteredRows.reduce((s: number, r: any) => s + (r.total||0), 0))}</td>
+                {bucketHeaders.map(b => (
+                  <td key={b} className={`px-3 py-3 text-right text-slate-800 ${isBucketActive(b) ? 'bg-indigo-100' : ''}`}>
+                    {fmtNaira(filteredRows.reduce((s: number, r: any) => s + (r[b] || 0), 0))}
+                  </td>
+                ))}
               </tr>
             </tfoot>
             )}
