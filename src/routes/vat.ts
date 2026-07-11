@@ -72,7 +72,7 @@ router.get('/return', async (req: AuthenticatedRequest, res: Response, next: Nex
       .innerJoin(journalEntries, eq(journalLines.entryId, journalEntries.id))
       .where(and(
         eq(journalLines.accountId, outputVatAcct.id),
-        eq(journalLines.creditAmount, sql`${journalLines.creditAmount} > 0`),
+        sql`${journalLines.creditAmount} > 0`,
         eq(journalEntries.orgId, orgId),
         sql`${journalEntries.date} >= ${startDate}::date`,
         sql`${journalEntries.date} <= ${endDate}::date`
@@ -88,7 +88,7 @@ router.get('/return', async (req: AuthenticatedRequest, res: Response, next: Nex
       .innerJoin(journalEntries, eq(journalLines.entryId, journalEntries.id))
       .where(and(
         eq(journalLines.accountId, inputVatAcct.id),
-        eq(journalLines.debitAmount, sql`${journalLines.debitAmount} > 0`),
+        sql`${journalLines.debitAmount} > 0`,
         eq(journalEntries.orgId, orgId),
         sql`${journalEntries.date} >= ${startDate}::date`,
         sql`${journalEntries.date} <= ${endDate}::date`

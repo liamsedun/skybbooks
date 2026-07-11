@@ -753,7 +753,7 @@ export function VATReturnPage() {
   const [startDate, setStartDate] = useState(defaultStart);
   const [endDate, setEndDate] = useState(defaultEnd);
 
-  const { data: vatData, isLoading, refetch } = useQuery({
+  const { data: vatData, isLoading, error: vatError, refetch } = useQuery({
     queryKey: ['vat-return', startDate, endDate],
     queryFn: () => vatApi.getReturn({ startDate, endDate }),
     enabled: !!startDate && !!endDate,
@@ -903,6 +903,16 @@ export function VATReturnPage() {
           <div>
             <p className="text-sm font-medium text-red-800">Settlement Failed</p>
             <p className="text-xs text-red-600">{(settleMutation.error as any)?.message || 'An error occurred.'}</p>
+          </div>
+        </div>
+      )}
+
+      {vatError && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-red-800">VAT Return Error</p>
+            <p className="text-xs text-red-600">{(vatError as any)?.message || 'Failed to load VAT return data.'}</p>
           </div>
         </div>
       )}
