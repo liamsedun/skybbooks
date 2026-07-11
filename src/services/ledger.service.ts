@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { eq, and, lte, gte, sql, asc } from 'drizzle-orm';
-import { db, accounts, journalEntries, journalLines, bankAccounts, fixedAssets, contacts, inventoryLots, closedPeriods, invoices, paymentsReceived, bills } from '../db/schema';
+import { eq, and, lte, gte, gt, sql, asc } from 'drizzle-orm';
+import { db, accounts, journalEntries, journalLines, bankAccounts, fixedAssets, contacts, inventoryLots, inventoryTransactions, closedPeriods, invoices, paymentsReceived, bills } from '../db/schema';
 import { AppError } from '../lib/errors';
 import { toNgn, getRateForDate } from './currency.service';
 
@@ -739,6 +739,38 @@ export async function postOpeningBalances(
 }
 
 /**
+ * Get inventory valuation at a specific date by working backwards from current lots.
+ * Current lots reflect remaining qty after sales; we reverse transactions after asOfDate.
+ */
+async function getInventoryValueAsOf(orgId: string, asOfDate: Date): Promise<number> {
+  const [invResult] = await db
+    .select({
+      totalValue: sql<number>`coalesce(sum(${inventoryLots.quantity}::numeric * ${inventoryLots.costPerUnit}), 0)`
+    })
+    .from(inventoryLots)
+    .where(eq(inventoryLots.orgId, orgId));
+  const currentValue = Number(invResult?.totalValue || 0);
+  const txns = await db
+    .select({
+      type: inventoryTransactions.type,
+      quantity: inventoryTransactions.quantity,
+      unitCost: inventoryTransactions.unitCost,
+    })
+    .from(inventoryTransactions)
+    .where(and(eq(inventoryTransactions.orgId, orgId), gt(inventoryTransactions.date, asOfDate)));
+  let adjustment = 0;
+  for (const txn of txns) {
+    const qty = Number(txn.quantity);
+    const cost = txn.unitCost || 0;
+    const val = qty * cost;
+    if (txn.type === 'purchase') adjustment -= val;
+    else if (txn.type === 'sale') adjustment += val;
+    else if (txn.type === 'adjustment') adjustment -= val;
+  }
+  return Math.max(0, currentValue + adjustment);
+}
+
+/**
  * Internal helper that computes the core P&L statement for a given period.
  */
 async function computePnL(
@@ -769,6 +801,11 @@ async function computePnL(
       )
     );
 
+  // Compute inventory valuation for Opening Stock (day before start) and Closing Stock (endDate)
+  const dayBeforeStart = new Date(startDate.getTime() - 86400000);
+  const openingStockVal = await getInventoryValueAsOf(orgId, dayBeforeStart);
+  const closingStockVal = await getInventoryValueAsOf(orgId, endDate);
+
   const operatingRevenue: any[] = [];
   const otherOperatingIncome: any[] = [];
   const financeIncome: any[] = [];
@@ -791,6 +828,10 @@ async function computePnL(
   let totalFinanceCosts = 0;
   let totalTaxExpense = 0;
 
+  // Track Purchases of Goods (700200) balance separately for COGS formula
+  let purchasesOfGoodsBal = 0;
+  let purchasesOfGoodsItem: any = null;
+
   for (const acct of orgAccounts) {
     const matchedLines = records.filter((r) => r.accountId === acct.id);
     const drSum = matchedLines.reduce((sum, curr) => sum + (curr.currency && curr.currency !== 'NGN' ? toNgn(curr.debitAmount, curr.fxRate) : curr.debitAmount), 0);
@@ -801,7 +842,6 @@ async function computePnL(
       const code = parseInt(acct.code, 10);
       const item = { accountId: acct.id, code: acct.code, name: acct.name, balance };
 
-      // 600000–600899: Core operating revenue
       if (code >= 600000 && code <= 600899) {
         operatingRevenue.push(item);
         totalOperatingRevenue += balance;
@@ -818,9 +858,26 @@ async function computePnL(
     } else if (acct.type === 'expense') {
       const balance = drSum - crSum;
       const st = (acct.subType || '').toLowerCase().replace(/\s+/g, '_');
-      let name = acct.name;
-      if (acct.code === '700100') name = 'Cost of Inventory Sold';
-      const item = { accountId: acct.id, code: acct.code, name, balance };
+      const code = acct.code;
+
+      // Cost of Inventory Sold (700100) is COMPUTED from opening stock + purchases - closing stock, not from its stored balance
+      if (code === '700100') {
+        continue;
+      }
+
+      // Track Purchases of Goods (700200) separately for the COGS formula
+      if (code === '700200') {
+        purchasesOfGoodsBal = balance;
+        purchasesOfGoodsItem = { accountId: acct.id, code: acct.code, name: acct.name, balance };
+        continue;
+      }
+
+      // Closing Stock (700600) is captured via inventory valuation; skip from normal aggregation
+      if (code === '700600') {
+        continue;
+      }
+
+      const item = { accountId: acct.id, code, name: acct.name, balance };
 
       if (st === 'cost_of_sales') {
         costOfSales.push(item);
@@ -850,6 +907,10 @@ async function computePnL(
     }
   }
 
+  // Compute Cost of Inventory Sold = Opening Stock + Purchases of Goods - Closing Stock
+  const inventorySold = openingStockVal + purchasesOfGoodsBal - closingStockVal;
+  totalCostOfSales += inventorySold;
+
   const totalRevenue = totalOperatingRevenue + totalOtherOperatingIncome;
   const grossProfit = totalRevenue - totalCostOfSales;
   const totalOperatingExpenses = totalSellingDistribution + totalAdministrative + totalStaffCosts + totalOtherOperatingExpenses;
@@ -862,7 +923,14 @@ async function computePnL(
     operatingRevenue: { accounts: operatingRevenue, total: totalOperatingRevenue },
     otherOperatingIncome: { accounts: otherOperatingIncome, total: totalOtherOperatingIncome },
     totalRevenue,
-    costOfSales: { accounts: costOfSales, total: totalCostOfSales },
+    costOfSales: {
+      openingStock: openingStockVal,
+      purchasesOfGoods: purchasesOfGoodsItem ? { ...purchasesOfGoodsItem } : null,
+      closingStock: closingStockVal,
+      inventorySold,
+      accounts: costOfSales,
+      total: totalCostOfSales
+    },
     grossProfit,
     staffCosts: { accounts: staffCosts, total: totalStaffCosts },
     administrative: { accounts: administrative, total: totalAdministrative },

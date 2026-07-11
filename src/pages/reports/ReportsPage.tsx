@@ -875,7 +875,16 @@ function ReportShell({ reportType, title }: ReportPageProps) {
         addSec('Operating Revenue', opRev.accounts, opRevTotal);
         addSec('Other Operating Income', ooi.accounts, ooiTotal);
         csvRows.push(['TOTAL REVENUE', (totalRevenue/100).toFixed(2)]);
-        addSec('Cost of Sales', cos.accounts, cosTotal);
+        // Cost of Sales with computed COGS breakdown
+        csvRows.push(['Cost of Sales', '']);
+        if (cos.openingStock !== undefined) {
+          if (Math.abs(cos.openingStock) >= 0.01 || showZero) csvRows.push(['Opening Stock', (cos.openingStock/100).toFixed(2)]);
+          if (cos.purchasesOfGoods && (Math.abs(cos.purchasesOfGoods.balance) >= 0.01 || showZero)) csvRows.push([`${cos.purchasesOfGoods.name} (${cos.purchasesOfGoods.code})`, (cos.purchasesOfGoods.balance/100).toFixed(2)]);
+          if (Math.abs(cos.closingStock) >= 0.01 || showZero) csvRows.push(['Closing Stock', (-cos.closingStock/100).toFixed(2)]);
+          csvRows.push(['Cost of Inventory Sold', (cos.inventorySold/100).toFixed(2)]);
+        }
+        (cos.accounts || []).forEach((a: any) => csvRows.push([a.name, ((a.balance||0)/100).toFixed(2)]));
+        csvRows.push(['Total Cost of Sales', (cosTotal/100).toFixed(2)]);
         csvRows.push(['GROSS PROFIT', (grossProfit/100).toFixed(2)]);
         csvRows.push(['Operating Expenses', '']);
         addSubSec('Staff Costs', sc);
@@ -979,6 +988,29 @@ function ReportShell({ reportType, title }: ReportPageProps) {
           const orgLogo = org.logoUrl ? `<img src="${org.logoUrl}" style="max-height:60px;max-width:200px;object-fit:contain" />` : '';
           const contactInfo = [orgPhone, orgEmail, orgWebsite].filter(Boolean).join(' | ');
 
+          function cogsRows(cos: any) {
+            const opening = cos?.openingStock ?? 0;
+            const closing = cos?.closingStock ?? 0;
+            const invSold = cos?.inventorySold ?? 0;
+            const pog = cos?.purchasesOfGoods || null;
+            const accounts = cos?.accounts || [];
+            const casTotal = cos?.total || 0;
+            const hasInvCalc = opening !== 0 || (pog && pog.balance !== 0) || closing !== 0;
+            let r = '<tr style="background:#f1f5f9"><td colspan="2" style="padding:6px 12px;font-size:11px;font-weight:700;color:#475569;text-transform:uppercase">Cost of Sales</td></tr>';
+            if (hasInvCalc || invSold !== 0) {
+              r += '<tr style="background:#f8fafc"><td colspan="2" style="padding:4px 12px;padding-left:28px;font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Cost of Inventory Sold</td></tr>';
+              if (opening !== 0) r += `<tr><td style="padding:3px 12px;padding-left:36px;font-size:10px;border-bottom:1px solid #f1f5f9">Opening Stock</td><td style="padding:3px 12px;font-size:10px;text-align:right;font-family:monospace;border-bottom:1px solid #f1f5f9">₦${(opening/100).toLocaleString()}</td></tr>`;
+              if (pog && pog.balance !== 0) r += `<tr><td style="padding:3px 12px;padding-left:36px;font-size:10px;border-bottom:1px solid #f1f5f9">${pog.name} (${pog.code})</td><td style="padding:3px 12px;font-size:10px;text-align:right;font-family:monospace;border-bottom:1px solid #f1f5f9">₦${(pog.balance/100).toLocaleString()}</td></tr>`;
+              if (closing !== 0) r += `<tr><td style="padding:3px 12px;padding-left:36px;font-size:10px;border-bottom:1px solid #f1f5f9">Closing Stock</td><td style="padding:3px 12px;font-size:10px;text-align:right;font-family:monospace;border-bottom:1px solid #f1f5f9">₦${(-closing/100).toLocaleString()}</td></tr>`;
+              r += `<tr style="border-top:1px solid #e2e8f0;background:#f8fafc;font-weight:600"><td style="padding:4px 12px;padding-left:28px;font-size:10px;color:#64748b">Cost of Inventory Sold</td><td style="padding:4px 12px;font-size:10px;text-align:right;font-family:monospace">₦${(invSold/100).toLocaleString()}</td></tr>`;
+            }
+            const accRows = (accounts || []).map((a: any) =>
+              `<tr><td style="padding:4px 12px;padding-left:24px;font-size:11px;border-bottom:1px solid #f1f5f9">${a.name}</td><td style="padding:4px 12px;font-size:11px;text-align:right;font-family:monospace;border-bottom:1px solid #f1f5f9">₦${((a.balance||0)/100).toLocaleString()}</td></tr>`
+            ).join('');
+            r += accRows;
+            r += `<tr style="border-top:1px solid #cbd5e1;background:#f8fafc;font-weight:600"><td style="padding:6px 12px;padding-left:24px;font-size:12px;color:#0f172a">Total Cost of Sales</td><td style="padding:6px 12px;font-size:12px;text-align:right;font-family:monospace">₦${(casTotal/100).toLocaleString()}</td></tr>`;
+            return r;
+          }
           function secRows(label: string, accounts: any[], total: number) {
             const accRows = (accounts || []).map((a: any) =>
               `<tr><td style="padding:4px 12px;padding-left:24px;font-size:11px;border-bottom:1px solid #f1f5f9">${a.name}</td><td style="padding:4px 12px;font-size:11px;text-align:right;font-family:monospace;border-bottom:1px solid #f1f5f9">₦${((a.balance||0)/100).toLocaleString()}</td></tr>`
@@ -997,7 +1029,7 @@ function ReportShell({ reportType, title }: ReportPageProps) {
             secRows('Operating Revenue', opRev.accounts, opRevTotal) +
             secRows('Other Operating Income', ooi.accounts, ooiTotal) +
             `<tr style="border-top:1px solid #cbd5e1;background:#f1f5f9;font-weight:700"><td style="padding:6px 12px;padding-left:24px;font-size:12px;color:#0f172a">TOTAL REVENUE</td><td style="padding:6px 12px;font-size:12px;text-align:right;font-family:monospace">₦${(totalRevenue/100).toLocaleString()}</td></tr>` +
-            secRows('Cost of Sales', cos.accounts, cosTotal) +
+            cogsRows(cos) +
             `<tr style="border-top:2px solid ${grossProfit < 0 ? '#dc2626' : '#059669'};background:${grossProfit < 0 ? '#fef2f2' : '#ecfdf5'};font-weight:700"><td style="padding:6px 12px;padding-left:24px;font-size:12px;color:${grossProfit < 0 ? '#dc2626' : '#059669'}">GROSS PROFIT</td><td style="padding:6px 12px;font-size:12px;text-align:right;font-family:monospace;color:${grossProfit < 0 ? '#dc2626' : '#059669'}">₦${(grossProfit/100).toLocaleString()}</td></tr>` +
             `<tr style="background:#f1f5f9"><td colspan="2" style="padding:6px 12px;font-size:11px;font-weight:700;color:#475569;text-transform:uppercase">Operating Expenses</td></tr>` +
             subSecRows('Staff Costs', sc) +
@@ -1786,8 +1818,59 @@ function buildPnLRows(current: any, prior: any | null): any[] {
   const trCurr = current?.totalRevenue ?? (current?.operatingRevenue?.total || 0) + (current?.otherOperatingIncome?.total || 0);
   const trPrior = prior?.totalRevenue ?? (prior?.operatingRevenue?.total || 0) + (prior?.otherOperatingIncome?.total || 0);
   rows.push({ section: 'TOTAL REVENUE', isSummary: true, summaryCurrent: trCurr, summaryPrior: trPrior, isRevenue: true });
-  // 3. Cost of Sales
-  rows.push(buildSec('costOfSales', 'Cost of Sales', false));
+  // 3. Cost of Sales (with computed COGS breakdown)
+  (function() {
+    const cos = current?.costOfSales || {};
+    const cosPrior = prior?.costOfSales || {};
+    const currAccounts = cos?.accounts || [];
+    const priorAccounts = cosPrior?.accounts || [];
+    const priorMap = new Map(priorAccounts.map((a: any) => [a.code || a.accountId, a.balance]));
+    const children: any[] = [];
+    let secCurr = 0;
+    let secPrior = 0;
+    // Computed COGS breakdown
+    const opening = cos?.openingStock ?? 0;
+    const closing = cos?.closingStock ?? 0;
+    const invSold = cos?.inventorySold ?? 0;
+    const pog = cos?.purchasesOfGoods || null;
+    const priorOpening = cosPrior?.openingStock ?? 0;
+    const priorClosing = cosPrior?.closingStock ?? 0;
+    const priorInvSold = cosPrior?.inventorySold ?? 0;
+    const priorPog = cosPrior?.purchasesOfGoods || null;
+    if (opening !== 0 || priorOpening !== 0) {
+      children.push({ name: 'Opening Stock', currentBalance: opening, priorBalance: priorOpening, variance: opening - priorOpening, isRevenue: false });
+      secCurr += opening; secPrior += priorOpening;
+    }
+    if ((pog && pog.balance !== 0) || (priorPog && priorPog.balance !== 0)) {
+      const curBal = pog?.balance || 0;
+      const priBal = priorPog?.balance || 0;
+      children.push({ name: `${pog?.name || 'Purchases of Goods'} (${pog?.code || '700200'})`, currentBalance: curBal, priorBalance: priBal, variance: curBal - priBal, isRevenue: false });
+      secCurr += curBal; secPrior += priBal;
+    }
+    if (closing !== 0 || priorClosing !== 0) {
+      children.push({ name: 'Closing Stock', currentBalance: -closing, priorBalance: -priorClosing, variance: -closing + priorClosing, isRevenue: false });
+      secCurr -= closing; secPrior -= priorClosing;
+    }
+    if (invSold !== 0 || priorInvSold !== 0) {
+      children.push({ name: 'Cost of Inventory Sold', isSubtotal: true, currentBalance: invSold, priorBalance: priorInvSold, variance: invSold - priorInvSold, isRevenue: false });
+    }
+    // Other cost of sales accounts (700300, 700400, 700500, 700700, 700800)
+    for (const a of currAccounts) {
+      const code = a.code || a.accountId;
+      const priorBal = priorMap.get(code) || 0;
+      secCurr += a.balance;
+      secPrior += priorBal;
+      children.push({ accountId: a.accountId, name: a.name, code: a.code, currentBalance: a.balance, priorBalance: priorBal, variance: a.balance - priorBal, isRevenue: false });
+    }
+    for (const a of priorAccounts) {
+      const code = a.code || a.accountId;
+      if (!currAccounts.some((ca: any) => (ca.code || ca.accountId) === code)) {
+        secPrior += a.balance;
+        children.push({ accountId: a.accountId, name: a.name, code: a.code, currentBalance: 0, priorBalance: a.balance, variance: 0 - a.balance, isRevenue: false });
+      }
+    }
+    rows.push({ section: 'Cost of Sales', children, totalCurrent: secCurr, totalPrior: secPrior, isRevenue: false });
+  })();
   // 4. Gross Profit
   const gpCurr = current?.grossProfit ?? (trCurr - (current?.costOfSales?.total || 0));
   const gpPrior = prior?.grossProfit ?? (trPrior - (prior?.costOfSales?.total || 0));
@@ -1908,6 +1991,65 @@ function SinglePeriodPnLTable({ current, onAccountClick, showZero, showCodes }: 
       </tr>
     );
   }
+  function renderCostOfSales(cos: any) {
+    const accounts = cos?.accounts || [];
+    const casTotal = cos?.total || 0;
+    const opening = cos?.openingStock ?? 0;
+    const closing = cos?.closingStock ?? 0;
+    const invSold = cos?.inventorySold ?? 0;
+    const pog = cos?.purchasesOfGoods || null;
+    const hasInvCalc = opening !== 0 || (pog && pog.balance !== 0) || closing !== 0;
+    const visible = accounts.filter((a: any) => shouldShow(a.balance));
+    if (!showZero && !hasInvCalc && visible.length === 0 && Math.abs(casTotal) < 0.01) return null;
+    const showInv = !showZero ? (hasInvCalc || Math.abs(invSold) >= 0.01) : true;
+    return (
+      <>
+        <tr className="bg-slate-100/50">
+          <td colSpan={2} className="px-3 py-2 text-xs font-bold text-slate-700 uppercase tracking-wider">Cost of Sales</td>
+        </tr>
+        {showInv && (
+          <>
+            <tr className="border-t border-slate-100 bg-slate-50/30">
+              <td className="px-3 py-2 pl-12 text-xs font-semibold text-slate-500">Cost of Inventory Sold</td>
+              <td></td>
+            </tr>
+            {shouldShow(opening) && (
+              <tr className="border-t border-slate-100 even:bg-slate-50/50 hover:bg-slate-50/50 transition-colors">
+                <td className="px-3 py-2.5 pl-16 text-slate-700">Opening Stock</td>
+                <td className="px-3 py-2.5 text-right font-semibold text-slate-700">{fmtPnL(opening)}</td>
+              </tr>
+            )}
+            {pog && shouldShow(pog.balance) && (
+              <tr className="border-t border-slate-100 even:bg-slate-50/50 hover:bg-slate-50/50 transition-colors">
+                <td className="px-3 py-2.5 pl-16 text-slate-700">{showCodes ? <span className="text-slate-400 mr-1.5 text-[11px] font-mono">{pog.code}</span> : ''}{pog.name}</td>
+                <td className="px-3 py-2.5 text-right font-semibold text-slate-700">{fmtPnL(pog.balance)}</td>
+              </tr>
+            )}
+            {shouldShow(closing) && (
+              <tr className="border-t border-slate-100 even:bg-slate-50/50 hover:bg-slate-50/50 transition-colors">
+                <td className="px-3 py-2.5 pl-16 text-slate-700">Closing Stock</td>
+                <td className="px-3 py-2.5 text-right font-semibold text-slate-700">{fmtPnL(-closing)}</td>
+              </tr>
+            )}
+            <tr className="border-t border-slate-200 bg-slate-50/50 font-medium">
+              <td className="px-3 py-2 pl-12 text-sm text-slate-700">Cost of Inventory Sold</td>
+              <td className="px-3 py-2 text-right text-slate-800">{fmtPnL(invSold)}</td>
+            </tr>
+          </>
+        )}
+        {visible.map((a: any, i: number) => (
+          <tr key={i} className={`border-t border-slate-100 hover:bg-slate-50/50 even:bg-slate-50/50 transition-colors ${a.accountId ? 'cursor-pointer' : ''}`} onClick={() => a.accountId && onAccountClick?.(a)}>
+            <td className={`px-3 py-2.5 pl-12 text-slate-800`}>{showCodes && a.code ? <span className="text-slate-400 mr-1.5 text-[11px] font-mono">{a.code}</span> : ''}{a.name}</td>
+            <td className="px-3 py-2.5 text-right font-semibold text-slate-800">{fmtPnL(a.balance)}</td>
+          </tr>
+        ))}
+        <tr className="border-t border-slate-200 bg-slate-50/50 font-medium">
+          <td className="px-3 py-2 pl-8 text-sm text-slate-700">Total Cost of Sales</td>
+          <td className="px-3 py-2 text-right text-slate-800">{fmtPnL(casTotal)}</td>
+        </tr>
+      </>
+    );
+  }
 
   const opRev = current?.operatingRevenue || {};
   const ooi = current?.otherOperatingIncome || {};
@@ -1954,7 +2096,7 @@ function SinglePeriodPnLTable({ current, onAccountClick, showZero, showCodes }: 
             <td className="px-3 py-2 pl-8 text-sm text-slate-800">TOTAL REVENUE</td>
             <td className="px-3 py-2 text-right text-slate-800">{fmtPnL(totalRevenue)}</td>
           </tr>
-          {renderSection('Cost of Sales', cos.accounts, cosTotal)}
+          {renderCostOfSales(cos)}
           {profitRow('GROSS PROFIT', grossProfit, grossProfit < 0)}
           <tr className="bg-slate-100/50">
             <td colSpan={2} className="px-3 py-2 text-xs font-bold text-slate-700 uppercase tracking-wider">Operating Expenses</td>
