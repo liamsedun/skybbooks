@@ -74,6 +74,35 @@ export async function runMigration() {
       WHERE NOT EXISTS (SELECT 1 FROM accounts a WHERE a.org_id = o.id AND a.code = '306000')
     `);
 
+    // Reassign old payroll JE lines from wrong accounts to correct accounts
+    // Old name-based resolvers posted PAYE to 301500 (matched by name 'PAYE')
+    // and otherDeductions (incl. NHIS) also to 301500 (fallback when no 'deductions'/'clearing' account found)
+    // New code posts PAYE to 301501, NHIS to 306000, otherDeductions to 301800 (fallback)
+    await db.execute(sql`
+      UPDATE journal_lines jl
+      SET account_id = target_acct.id
+      FROM journal_entries je, accounts source_acct, accounts target_acct
+      WHERE jl.entry_id = je.id
+        AND je.source = 'payroll'
+        AND jl.account_id = source_acct.id
+        AND source_acct.code = '301500'
+        AND target_acct.org_id = je.org_id
+        AND target_acct.code = '301501'
+        AND jl.description ILIKE '%PAYE%'
+    `);
+    await db.execute(sql`
+      UPDATE journal_lines jl
+      SET account_id = target_acct.id
+      FROM journal_entries je, accounts source_acct, accounts target_acct
+      WHERE jl.entry_id = je.id
+        AND je.source = 'payroll'
+        AND jl.account_id = source_acct.id
+        AND source_acct.code = '301500'
+        AND target_acct.org_id = je.org_id
+        AND target_acct.code = '301800'
+        AND jl.description ILIKE '%other miscellaneous%'
+    `);
+
     // Add WHT columns to invoices and bills
     await db.execute(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS wht_rate numeric`);
     await db.execute(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS wht_amount bigint DEFAULT 0 NOT NULL`);
