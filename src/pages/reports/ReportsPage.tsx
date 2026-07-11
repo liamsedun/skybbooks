@@ -1378,13 +1378,13 @@ function ReportShell({ reportType, title }: ReportPageProps) {
         if (reportType === 'aged-receivables') {
           const res = await reportsApi.getAgedReceivables({ format: 'json' });
           const report = res.report || res.data || res;
-          const rows = report?.byCustomer || [];
-          return rows.map((r: any) => ({ name: r.customerName, current: r.current, days1to30: r.days1To30, days31to60: r.days31To60, days61to90: r.days61To90, days90Plus: r.daysOver90, total: r.totalOutstanding }));
+          const rows = (report?.byCustomer || []).map((r: any) => ({ name: r.customerName, entityId: r.customerId, current: r.current, days1to30: r.days1To30, days31to60: r.days31To60, days61to90: r.days61To90, days90Plus: r.daysOver90, total: r.totalOutstanding }));
+          return { rows, invoices: report?.invoices || [] };
         }
         const res = await reportsApi.getAgedPayables({ format: 'json' });
         const report = res.report || res.data || res;
-        const rows = report?.byVendor || [];
-        return rows.map((r: any) => ({ name: r.vendorName, current: r.current, days1to30: r.days1To30, days31to60: r.days31To60, days61to90: r.days61To90, days90Plus: r.daysOver90, total: r.totalOutstanding }));
+        const rows = (report?.byVendor || []).map((r: any) => ({ name: r.vendorName, entityId: r.vendorId, current: r.current, days1to30: r.days1To30, days31to60: r.days31To60, days61to90: r.days61To90, days90Plus: r.daysOver90, total: r.totalOutstanding }));
+        return { rows, bills: report?.bills || [] };
       }
       if (reportType === 'cash-flow') {
         const params: any = { startDate: sDate, endDate: eDate, format: 'json' };
@@ -1476,7 +1476,7 @@ function ReportShell({ reportType, title }: ReportPageProps) {
         csvRows.push(['NET PROFIT AFTER TAX', (netProfit/100).toFixed(2)]);
         if (pbt > 0) csvRows.push([`Effective Tax Rate: ${etr}%`, '']);
       } else {
-        const rows = Array.isArray(data) ? data : [];
+        const rows = data?.rows || (Array.isArray(data) ? data : []);
         if (!rows.length) return;
         if (reportType === 'aged-receivables' || reportType === 'aged-payables') {
           headers = ['Name', 'Current', '1-30 Days', '31-60 Days', '61-90 Days', '90+ Days', 'Total'];
@@ -1769,7 +1769,7 @@ function ReportShell({ reportType, title }: ReportPageProps) {
         } else if (reportType === 'aged-receivables' || reportType === 'aged-payables') {
           const label = reportType === 'aged-receivables' ? 'Customer' : 'Vendor';
           const title = reportType === 'aged-receivables' ? 'Aged Receivables' : 'Aged Payables';
-          const list = Array.isArray(data) ? data : [];
+          const list = data?.rows || (Array.isArray(data) ? data : []);
           const pdfRows = list.map((r: any) =>
             `<tr><td style="padding:6px 10px;font-size:11px;border-bottom:1px solid #f1f5f9">${r.name||''}</td><td style="padding:6px 10px;font-size:11px;text-align:right;font-family:monospace;border-bottom:1px solid #f1f5f9">₦${((r.current||0)/100).toLocaleString()}</td><td style="padding:6px 10px;font-size:11px;text-align:right;font-family:monospace;border-bottom:1px solid #f1f5f9">₦${((r.days1to30||0)/100).toLocaleString()}</td><td style="padding:6px 10px;font-size:11px;text-align:right;font-family:monospace;border-bottom:1px solid #f1f5f9">₦${((r.days31to60||0)/100).toLocaleString()}</td><td style="padding:6px 10px;font-size:11px;text-align:right;font-family:monospace;border-bottom:1px solid #f1f5f9">₦${((r.days61to90||0)/100).toLocaleString()}</td><td style="padding:6px 10px;font-size:11px;text-align:right;font-family:monospace;border-bottom:1px solid #f1f5f9">₦${((r.days90Plus||0)/100).toLocaleString()}</td><td style="padding:6px 10px;font-size:11px;text-align:right;font-weight:600;font-family:monospace;border-bottom:1px solid #f1f5f9">₦${((r.total||0)/100).toLocaleString()}</td></tr>`
           ).join('');
@@ -2014,9 +2014,13 @@ function ReportTable({ data, reportType, compareEnabled, onAccountClick, showZer
 
   if (reportType === 'aged-receivables' || reportType === 'aged-payables') {
     const [activeBucket, setActiveBucket] = useState<string | null>(null);
+    const [drillEntity, setDrillEntity] = useState<string | null>(null);
     const title = reportType === 'aged-receivables' ? 'Customer' : 'Vendor';
     const entityLabel = reportType === 'aged-receivables' ? 'customer' : 'vendor';
-    const allRows: any[] = Array.isArray(data) ? data : [];
+    const isReceivables = reportType === 'aged-receivables';
+    const allRows: any[] = data?.rows || (Array.isArray(data) ? data : []);
+    const invoices: any[] = data?.invoices || [];
+    const bills: any[] = data?.bills || [];
 
     const bucketKey: Record<string, string> = { current: 'current', days1to30: 'days1to30', days31to60: 'days31to60', days61to90: 'days61to90', days90Plus: 'days90Plus', total: 'total' };
     const bucketLabel: Record<string, string> = { current: 'Current', days1to30: '1-30 Days', days31to60: '31-60 Days', days61to90: '61-90 Days', days90Plus: '90+ Days', total: 'Total' };
@@ -2030,6 +2034,16 @@ function ReportTable({ data, reportType, compareEnabled, onAccountClick, showZer
 
     const bucketHeaders = ['current', 'days1to30', 'days31to60', 'days61to90', 'days90Plus', 'total'];
 
+    const drillItems = drillEntity
+      ? isReceivables
+        ? invoices.filter((inv: any) => inv.customerName === drillEntity)
+        : bills.filter((bl: any) => bl.vendorName === drillEntity)
+      : [];
+
+    function fmtNairaDrill(v: number): string {
+      return `₦${(v / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
+    }
+
     return (
       <div>
         {activeBucket && (
@@ -2040,6 +2054,52 @@ function ReportTable({ data, reportType, compareEnabled, onAccountClick, showZer
             <button onClick={() => setActiveBucket(null)} className="text-xs text-red-600 hover:text-red-800 underline">Clear filter</button>
           </div>
         )}
+
+        {/* Drill-down modal */}
+        {drillEntity && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setDrillEntity(null)}>
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-y-auto m-4" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between p-5 border-b border-slate-200">
+                <h3 className="text-lg font-bold text-slate-900">{drillEntity} — {isReceivables ? 'Invoices' : 'Bills'}</h3>
+                <button onClick={() => setDrillEntity(null)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"><X className="w-5 h-5" /></button>
+              </div>
+              {drillItems.length === 0 ? (
+                <div className="p-8 text-center text-slate-400">No individual {isReceivables ? 'invoices' : 'bills'} found.</div>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider sticky top-0">
+                    <tr>
+                      <th className="text-left px-4 py-3">{isReceivables ? 'Invoice' : 'Bill'} #</th>
+                      <th className="text-left px-4 py-3">Due Date</th>
+                      <th className="text-right px-4 py-3">Balance Due</th>
+                      <th className="text-right px-4 py-3">Overdue</th>
+                      <th className="text-right px-4 py-3">Bucket</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {drillItems.map((item: any, i: number) => (
+                      <tr key={item.id || i} className="border-t border-slate-100 hover:bg-slate-50/50 transition-colors">
+                        <td className="px-4 py-2.5 font-medium text-slate-800">{item.invoiceNumber || item.billNumber || '—'}</td>
+                        <td className="px-4 py-2.5 text-slate-600">{new Date(item.dueDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+                        <td className="px-4 py-2.5 text-right font-mono text-slate-800">{fmtNairaDrill(item.balanceDue)}</td>
+                        <td className="px-4 py-2.5 text-right text-slate-600">{item.overdueDays || 0}d</td>
+                        <td className="px-4 py-2.5 text-right"><span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">{item.bucket}</span></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t-2 border-slate-300 bg-slate-100 font-bold text-sm">
+                      <td colSpan={2} className="px-4 py-3 text-slate-800">Total</td>
+                      <td className="px-4 py-3 text-right text-slate-800">{fmtNairaDrill(drillItems.reduce((s: number, item: any) => s + (item.balanceDue || 0), 0))}</td>
+                      <td colSpan={2}></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
@@ -2058,7 +2118,9 @@ function ReportTable({ data, reportType, compareEnabled, onAccountClick, showZer
             <tbody>
               {filteredRows.map((row: any, i: number) => (
                 <tr key={i} className="border-t border-slate-100 hover:bg-slate-50/50 even:bg-slate-50/50 transition-colors">
-                  <td className="px-3 py-3 font-medium text-slate-800">{row.name || `Item ${i + 1}`}</td>
+                  <td className="px-3 py-3 font-medium text-blue-600 cursor-pointer hover:text-blue-800 hover:underline" onClick={() => setDrillEntity(row.name)}>
+                    {row.name || `Item ${i + 1}`}
+                  </td>
                   {bucketHeaders.map(b => (
                     <td key={b} className={`px-3 py-3 text-right ${isBucketActive(b) ? 'bg-indigo-50 font-semibold text-indigo-800' : 'text-slate-600'} ${b === 'total' ? 'font-semibold' : ''}`}>
                       {fmtNaira(row[b] || 0)}
