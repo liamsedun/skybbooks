@@ -167,6 +167,7 @@ export function ChartOfAccountsPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.delete(`/accountant/accounts/${id}`),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['accountant', 'accounts'] }); setDeleteTarget(null); },
+    onError: (err: any) => { alert(err?.response?.data?.error || 'Failed to delete account.'); },
   });
 
   const seedMutation = useMutation({
@@ -340,11 +341,9 @@ export function ChartOfAccountsPage() {
             );
           })()}
           <td className="py-2.5 pr-2 text-right">
-            <div className="opacity-0 group-hover:opacity-100 flex items-center justify-end gap-1 transition-opacity">
+            <div className="flex items-center justify-end gap-1">
               <button onClick={() => openEditModal(node)} className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all duration-200" aria-label="Edit account"><Pencil size={14} /></button>
-              {!node.isSystem && (
-                <button onClick={() => setDeleteTarget(node)} className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all duration-200" aria-label="Delete account"><Trash2 size={14} /></button>
-              )}
+              <button onClick={() => setDeleteTarget(node)} className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all duration-200" aria-label="Delete account"><Trash2 size={14} /></button>
             </div>
           </td>
         </tr>
@@ -517,6 +516,9 @@ export function ChartOfAccountsPage() {
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 px-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5 border border-slate-200/80">
             <h2 className="text-base font-semibold text-slate-900 mb-2">Delete Account</h2>
+            {deleteTarget.isSystem && (
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 mb-3">This is a system account. It may be linked to transactions — deletion may be blocked by the server.</p>
+            )}
             <p className="text-sm text-slate-500 mb-4">Are you sure you want to delete <span className="font-medium text-slate-700">{deleteTarget.code} — {deleteTarget.name}</span>? This cannot be undone.</p>
             <div className="flex justify-end gap-2">
               <button onClick={() => setDeleteTarget(null)} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-xl transition-all duration-200 border border-slate-200/80">Cancel</button>
