@@ -1117,6 +1117,25 @@ export async function getBalanceSheet(
     }
   }
 
+  // Override bank account balances with banking-module currentBalance (matching Trial Balance)
+  const bankByAccount = await db
+    .select({
+      accountId: bankAccounts.accountId,
+      totalBalance: sql<number>`coalesce(sum(${bankAccounts.currentBalance}), 0)`
+    })
+    .from(bankAccounts)
+    .where(eq(bankAccounts.orgId, orgId))
+    .groupBy(bankAccounts.accountId);
+  const bankMap = new Map<string, number>();
+  for (const r of bankByAccount) bankMap.set(r.accountId, r.totalBalance);
+  for (const item of allItems) {
+    const bankBal = bankMap.get(item.accountId);
+    if (bankBal !== undefined) {
+      // Override the balance computed from journal lines with the bank-module currentBalance
+      item.balance = bankBal;
+    }
+  }
+
   // Identify contra-asset accounts (accumulated depreciation/amortisation)
   const contraCodes = new Set<string>();
   const isContra = (item: BalItem) =>
