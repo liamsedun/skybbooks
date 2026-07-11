@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { eq, and, lte, gte, gt, sql, asc } from 'drizzle-orm';
+import { eq, and, lte, gte, sql, asc } from 'drizzle-orm';
 import { db, accounts, journalEntries, journalLines, bankAccounts, fixedAssets, contacts, inventoryLots, inventoryTransactions, closedPeriods, invoices, paymentsReceived, bills } from '../db/schema';
 import { AppError } from '../lib/errors';
 import { toNgn, getRateForDate } from './currency.service';
@@ -744,17 +744,13 @@ export async function postOpeningBalances(
 }
 
 /**
- * Get inventory valuation at a specific date by working backwards from current lots.
- * Current lots reflect remaining qty after sales; we reverse transactions after asOfDate.
+ * Get inventory valuation at a specific date using forward approach.
+ * Sums all immutable inventory_transactions up to asOfDate:
+ *   purchases (+qty×cost), sales (-qty×cost), adjustments (±qty×cost),
+ *   value adjustments (qty=0 → +unitCost carries the value diff).
+ * Correctly handles fully consumed lots because transaction records never vanish.
  */
 export async function getInventoryValueAsOf(orgId: string, asOfDate: Date): Promise<number> {
-  const [invResult] = await db
-    .select({
-      totalValue: sql<number>`coalesce(sum(${inventoryLots.quantity}::numeric * ${inventoryLots.costPerUnit}), 0)`
-    })
-    .from(inventoryLots)
-    .where(eq(inventoryLots.orgId, orgId));
-  const currentValue = Number(invResult?.totalValue || 0);
   const txns = await db
     .select({
       type: inventoryTransactions.type,
@@ -762,17 +758,29 @@ export async function getInventoryValueAsOf(orgId: string, asOfDate: Date): Prom
       unitCost: inventoryTransactions.unitCost,
     })
     .from(inventoryTransactions)
-    .where(and(eq(inventoryTransactions.orgId, orgId), gt(inventoryTransactions.date, asOfDate)));
-  let adjustment = 0;
+    .where(and(eq(inventoryTransactions.orgId, orgId), lte(inventoryTransactions.date, asOfDate)));
+
+  let value = 0;
   for (const txn of txns) {
     const qty = Number(txn.quantity);
     const cost = txn.unitCost || 0;
-    const val = qty * cost;
-    if (txn.type === 'purchase') adjustment -= val;
-    else if (txn.type === 'sale') adjustment += val;
-    else if (txn.type === 'adjustment') adjustment -= val;
+    if (txn.type === 'purchase') {
+      value += qty * cost;
+    } else if (txn.type === 'sale') {
+      value -= qty * cost;
+    } else if (txn.type === 'adjustment') {
+      if (qty === 0) {
+        // Value adjustment: unitCost IS the value change (positive = increase, negative = decrease)
+        value += cost;
+      } else {
+        // Quantity adjustment: qty carries the sign (positive = add, negative = remove)
+        value += qty * cost;
+      }
+    }
+    // 'transfer' type: skip (not yet implemented in transaction recording)
   }
-  return Math.max(0, currentValue + adjustment);
+
+  return Math.max(0, value);
 }
 
 /**
@@ -811,6 +819,39 @@ async function computePnL(
   const openingStockVal = await getInventoryValueAsOf(orgId, dayBeforeStart);
   const closingStockVal = await getInventoryValueAsOf(orgId, endDate);
 
+  // Compute Net Purchases from inventory_transactions in the period (bypasses 700200 JE which may be 0
+  // when purchases are tracked through inventory account rather than expensed directly)
+  const periodTxns = await db
+    .select({
+      type: inventoryTransactions.type,
+      quantity: inventoryTransactions.quantity,
+      unitCost: inventoryTransactions.unitCost,
+      referenceType: inventoryTransactions.referenceType,
+    })
+    .from(inventoryTransactions)
+    .where(and(
+      eq(inventoryTransactions.orgId, orgId),
+      gte(inventoryTransactions.date, startDate),
+      lte(inventoryTransactions.date, endDate)
+    ));
+
+  let purchasesInPeriod = 0;
+  let adjustmentsInPeriod = 0;
+  for (const txn of periodTxns) {
+    const qty = Number(txn.quantity);
+    const cost = txn.unitCost || 0;
+    const val = qty * cost;
+    if (txn.type === 'purchase' && txn.referenceType !== 'opening_stock') {
+      purchasesInPeriod += val;
+    } else if (txn.type === 'adjustment') {
+      if (qty === 0) {
+        adjustmentsInPeriod += cost; // unitCost IS the value diff
+      } else {
+        adjustmentsInPeriod += val; // qty carries sign
+      }
+    }
+  }
+
   const operatingRevenue: any[] = [];
   const otherOperatingIncome: any[] = [];
   const financeIncome: any[] = [];
@@ -833,8 +874,7 @@ async function computePnL(
   let totalFinanceCosts = 0;
   let totalTaxExpense = 0;
 
-  // Track Purchases of Goods (700200) balance separately for COGS formula
-  let purchasesOfGoodsBal = 0;
+  // Track Purchases of Goods (700200) JE balance for display alongside transaction-based figures
   let purchasesOfGoodsItem: any = null;
 
   for (const acct of orgAccounts) {
@@ -870,9 +910,8 @@ async function computePnL(
         continue;
       }
 
-      // Track Purchases of Goods (700200) separately for the COGS formula
+      // Track Purchases of Goods (700200) JE balance for reference display
       if (code === '700200') {
-        purchasesOfGoodsBal = balance;
         purchasesOfGoodsItem = { accountId: acct.id, code: acct.code, name: acct.name, balance };
         continue;
       }
@@ -912,8 +951,9 @@ async function computePnL(
     }
   }
 
-  // Compute Cost of Inventory Sold = Opening Stock + Purchases of Goods - Closing Stock
-  const inventorySold = openingStockVal + purchasesOfGoodsBal - closingStockVal;
+  // Compute Cost of Inventory Sold = Opening Stock + Net Purchases (from inv transactions) - Closing Stock
+  const purchasesVal = purchasesInPeriod + adjustmentsInPeriod;
+  const inventorySold = openingStockVal + purchasesVal - closingStockVal;
   totalCostOfSales += inventorySold;
 
   const totalRevenue = totalOperatingRevenue + totalOtherOperatingIncome;
@@ -930,7 +970,7 @@ async function computePnL(
     totalRevenue,
     costOfSales: {
       openingStock: openingStockVal,
-      purchasesOfGoods: purchasesOfGoodsItem ? { ...purchasesOfGoodsItem } : null,
+      purchasesOfGoods: purchasesOfGoodsItem ? { ...purchasesOfGoodsItem, balance: purchasesInPeriod } : { accountId: null, code: '700200', name: 'Purchases of Goods', balance: purchasesInPeriod },
       closingStock: closingStockVal,
       inventorySold,
       accounts: costOfSales,
