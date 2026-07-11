@@ -278,129 +278,48 @@ export function calculatePayrollForEmployee(employee: any, payPeriod?: { start?:
 // 2. ACCOUNT RESOLVERS FOR PAYROLL ACCOUNTING SYSTEM
 // =========================================================================
 
+/** Find an account by code for this org. Throws if not found. */
+async function resolveAccountByCode(orgId: string, code: string, tx: any): Promise<string> {
+  const [acct] = await tx
+    .select()
+    .from(accounts)
+    .where(and(eq(accounts.orgId, orgId), eq(accounts.code, code)))
+    .limit(1);
+  if (!acct) throw new AppError(`Account code ${code} not found for this organisation.`, 400);
+  return acct.id;
+}
+
 async function resolveSalaryExpenseAccount(orgId: string, tx: any): Promise<string> {
-  const [existing] = await tx
-    .select()
-    .from(accounts)
-    .where(
-      and(
-        eq(accounts.orgId, orgId),
-        eq(accounts.type, 'expense'),
-        sql`lower(${accounts.name}) like '%salary%' or lower(${accounts.name}) like '%wages%' or lower(${accounts.name}) like '%payroll%'`
-      )
-    )
-    .limit(1);
-
-  if (existing) return existing.id;
-
-  const [fallback] = await tx
-    .select()
-    .from(accounts)
-    .where(and(eq(accounts.orgId, orgId), eq(accounts.type, 'expense')))
-    .limit(1);
-
-  if (fallback) return fallback.id;
-
-  throw new AppError('Salary expense account not configured under this organization.', 400);
+  return resolveAccountByCode(orgId, '800000', tx);
 }
 
 async function resolveEmployerPensionExpenseAccount(orgId: string, tx: any): Promise<string> {
-  const [existing] = await tx
-    .select()
-    .from(accounts)
-    .where(
-      and(
-        eq(accounts.orgId, orgId),
-        eq(accounts.type, 'expense'),
-        sql`lower(${accounts.name}) like '%employer pension%' or lower(${accounts.name}) like '%pension expense%'`
-      )
-    )
-    .limit(1);
-
-  if (existing) return existing.id;
-
-  // Fallback to salary expense
-  return await resolveSalaryExpenseAccount(orgId, tx);
+  return resolveAccountByCode(orgId, '800100', tx);
 }
 
 async function resolvePayePayableAccount(orgId: string, tx: any): Promise<string> {
-  const [existing] = await tx
-    .select()
-    .from(accounts)
-    .where(
-      and(
-        eq(accounts.orgId, orgId),
-        eq(accounts.type, 'liability'),
-        sql`lower(${accounts.name}) like '%paye%' or lower(${accounts.name}) like '%tax payable%' or lower(${accounts.name}) like '%payroll liability%'`
-      )
-    )
-    .limit(1);
-
-  if (existing) return existing.id;
-
-  const [fallback] = await tx
-    .select()
-    .from(accounts)
-    .where(and(eq(accounts.orgId, orgId), eq(accounts.type, 'liability')))
-    .limit(1);
-
-  if (fallback) return fallback.id;
-
-  throw new AppError('PAYE elements liability account not configured.', 400);
+  return resolveAccountByCode(orgId, '301501', tx);
 }
 
 async function resolvePensionPayableAccount(orgId: string, tx: any): Promise<string> {
-  const [existing] = await tx
-    .select()
-    .from(accounts)
-    .where(
-      and(
-        eq(accounts.orgId, orgId),
-        eq(accounts.type, 'liability'),
-        sql`lower(${accounts.name}) like '%pension%'`
-      )
-    )
-    .limit(1);
-
-  if (existing) return existing.id;
-
-  return await resolvePayePayableAccount(orgId, tx);
+  return resolveAccountByCode(orgId, '301600', tx);
 }
 
 async function resolveNhfPayableAccount(orgId: string, tx: any): Promise<string> {
-  const [existing] = await tx
-    .select()
-    .from(accounts)
-    .where(
-      and(
-        eq(accounts.orgId, orgId),
-        eq(accounts.type, 'liability'),
-        sql`lower(${accounts.name}) like '%nhf%' or lower(${accounts.name}) like '%housing payable%'`
-      )
-    )
-    .limit(1);
+  return resolveAccountByCode(orgId, '301800', tx);
+}
 
-  if (existing) return existing.id;
-
-  return await resolvePensionPayableAccount(orgId, tx);
+async function resolveNhisPayableAccount(orgId: string, tx: any): Promise<string> {
+  return resolveAccountByCode(orgId, '306000', tx);
 }
 
 async function resolveOtherDeductionsAccount(orgId: string, tx: any): Promise<string> {
-  const [existing] = await tx
-    .select()
-    .from(accounts)
-    .where(
-      and(
-        eq(accounts.orgId, orgId),
-        eq(accounts.type, 'liability'),
-        sql`lower(${accounts.name}) like '%deductions%' or lower(${accounts.name}) like '%clearing%'`
-      )
-    )
-    .limit(1);
-
-  if (existing) return existing.id;
-
-  return await resolvePayePayableAccount(orgId, tx);
+  // Fallback to NHF payable if no dedicated deductions account exists
+  try {
+    return await resolveAccountByCode(orgId, '207000', tx);
+  } catch {
+    return resolveNhfPayableAccount(orgId, tx);
+  }
 }
 
 async function resolveBankAccount(orgId: string, tx: any): Promise<string> {
@@ -590,6 +509,7 @@ export async function approvePayroll(runId: string, approverId: string): Promise
     let totalPensionEmployee = 0;
     let totalPensionEmployer = 0;
     let totalNhf = 0;
+    let totalNhis = 0;
     let totalOtherDeductions = 0;
     let totalNet = 0;
 
@@ -599,6 +519,7 @@ export async function approvePayroll(runId: string, approverId: string): Promise
       totalPensionEmployee += l.pensionEmployee;
       totalPensionEmployer += l.pensionEmployer;
       totalNhf += l.nhf;
+      totalNhis += l.nhis;
       totalOtherDeductions += l.otherDeductions;
       totalNet += l.netPay;
     }
@@ -609,6 +530,7 @@ export async function approvePayroll(runId: string, approverId: string): Promise
     const payePayableAccId = await resolvePayePayableAccount(run.orgId, tx);
     const pensionPayableAccId = await resolvePensionPayableAccount(run.orgId, tx);
     const nhfPayableAccId = await resolveNhfPayableAccount(run.orgId, tx);
+    const nhisPayableAccId = await resolveNhisPayableAccount(run.orgId, tx);
     const otherDeductionsAccId = await resolveOtherDeductionsAccount(run.orgId, tx);
 
     // Resolve bank ledger account: use the user-selected bank account if set, else auto-resolve
@@ -677,11 +599,21 @@ export async function approvePayroll(runId: string, approverId: string): Promise
       });
     }
 
-    // CR Other deductions liability
-    if (totalOtherDeductions > 0) {
+    // CR NHIS liability
+    if (totalNhis > 0) {
+      journalLinesPayload.push({
+        accountId: nhisPayableAccId,
+        credit: totalNhis,
+        description: `NHIS Employee Health Insurance Liabilities for Run ${run.runNumber}`
+      });
+    }
+
+    // CR Other deductions liability (excl. NHIS which is separated above)
+    const otherDeductionsExclNhis = totalOtherDeductions - totalNhis;
+    if (otherDeductionsExclNhis > 0) {
       journalLinesPayload.push({
         accountId: otherDeductionsAccId,
-        credit: totalOtherDeductions,
+        credit: otherDeductionsExclNhis,
         description: `Other Miscellaneous Deductions for Run ${run.runNumber}`
       });
     }

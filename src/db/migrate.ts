@@ -58,6 +58,22 @@ export async function runMigration() {
     await db.execute(sql`UPDATE accounts SET system_account_role = 'wht_receivable' WHERE code = '101500' AND system_account_role = 'none'`);
     await db.execute(sql`UPDATE accounts SET system_account_role = 'wht_payable' WHERE code = '301400' AND system_account_role = 'none'`);
 
+    // Add payroll-specific accounts (301501 PAYE Payable Payroll, 306000 NHIS Payable) if missing
+    await db.execute(sql`
+      INSERT INTO accounts (id, org_id, code, name, type, sub_type, description, is_system, is_active, system_account_role)
+      SELECT gen_random_uuid(), o.id, '301501', 'PAYE Payable (Payroll)', 'liability', 'Current Liabilities',
+             'PITA – PAYE tax from payroll runs. Remit to State IRS by 10th.', true, true, 'none'
+      FROM organisations o
+      WHERE NOT EXISTS (SELECT 1 FROM accounts a WHERE a.org_id = o.id AND a.code = '301501')
+    `);
+    await db.execute(sql`
+      INSERT INTO accounts (id, org_id, code, name, type, sub_type, description, is_system, is_active, system_account_role)
+      SELECT gen_random_uuid(), o.id, '306000', 'NHIS Payable', 'liability', 'Current Liabilities',
+             'NHIS Act – Employee health insurance contributions. Remit to NHIS.', true, true, 'none'
+      FROM organisations o
+      WHERE NOT EXISTS (SELECT 1 FROM accounts a WHERE a.org_id = o.id AND a.code = '306000')
+    `);
+
     // Add WHT columns to invoices and bills
     await db.execute(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS wht_rate numeric`);
     await db.execute(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS wht_amount bigint DEFAULT 0 NOT NULL`);

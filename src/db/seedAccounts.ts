@@ -86,6 +86,7 @@ const ACCOUNT_SEEDS: { code: string; name: string; type: 'asset' | 'liability' |
   { code: '301300', name: 'VAT Payable (Output VAT)', type: 'liability', subType: 'Current Liabilities', description: 'VATA – VAT collected from customers less input VAT. File monthly; due 21st.', systemAccountRole: 'vat_payable' },
   { code: '301400', name: 'WHT Payable', type: 'liability', subType: 'Current Liabilities', description: 'CITA / WHT Regs – WHT deducted from payments; remit to FIRS within 30 days.', systemAccountRole: 'wht_payable' },
   { code: '301500', name: 'PAYE Payable', type: 'liability', subType: 'Current Liabilities', description: 'PITA – Employee income tax deducted at source. Remit to State IRS by 10th.', systemAccountRole: 'paye_payable' },
+  { code: '301501', name: 'PAYE Payable (Payroll)', type: 'liability', subType: 'Current Liabilities', description: 'PITA – PAYE tax from payroll runs. Remit to State IRS by 10th.' },
   { code: '301600', name: 'Pension Contribution Payable', type: 'liability', subType: 'Current Liabilities', description: 'Pension Reform Act – 10% employer / 8% employee. Remit to PFA within 7 days.', systemAccountRole: 'pension_payable' },
   { code: '301700', name: 'NSITF Contribution Payable', type: 'liability', subType: 'Current Liabilities', description: 'NSITF Act – 1% of total monthly payroll. Remit to NSITF.' },
   { code: '301800', name: 'NHF Contribution Payable', type: 'liability', subType: 'Current Liabilities', description: 'NHF Act – 2.5% of employee salary. Remit to FMBN.' },
@@ -98,6 +99,7 @@ const ACCOUNT_SEEDS: { code: string; name: string; type: 'asset' | 'liability' |
   { code: '303000', name: 'Current Portion of Long-term Debt', type: 'liability', subType: 'Current Liabilities', description: 'IFRS 9 – Long-term liabilities due within 12 months.' },
   { code: '304000', name: 'Lease Liabilities – Current', type: 'liability', subType: 'Current Liabilities', description: 'IFRS 16 – Current portion of lease obligations.' },
   { code: '305000', name: 'Dividends Payable', type: 'liability', subType: 'Current Liabilities', description: 'IAS 10 / IAS 32 – Declared but unpaid dividends. WHT 10% on payment.' },
+  { code: '306000', name: 'NHIS Payable', type: 'liability', subType: 'Current Liabilities', description: 'NHIS Act – Employee health insurance contributions. Remit to NHIS.' },
 
   // ── NON-CURRENT LIABILITIES ──
   { code: '400000', name: 'Long-term Borrowings', type: 'liability', subType: 'Non-Current Liabilities', description: 'IFRS 9 / IAS 32 – Long-term debt obligations.' },
