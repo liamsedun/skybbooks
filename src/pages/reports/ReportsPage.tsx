@@ -1527,7 +1527,7 @@ function ReportShell({ reportType, title }: ReportPageProps) {
           const summaryRows =
             `<tr style="border-top:2px solid #94a3b8;background:${pbt < 0 ? '#fef2f2' : '#eef2f3'};font-weight:700"><td style="padding:6px 12px;padding-left:24px;font-size:12px;color:${pbt < 0 ? '#dc2626' : '#1e293b'}">PROFIT BEFORE TAX</td><td style="padding:6px 12px;font-size:12px;text-align:right;font-family:monospace;color:${pbt < 0 ? '#dc2626' : '#1e293b'}">₦${(pbt/100).toLocaleString()}</td></tr>` +
             (tx.accounts?.length ? secRows('Income Tax Expense', tx.accounts, txTotal) : '') +
-            `<tr style="border-top:3px double;background:${netProfit < 0 ? '#7f1d1d' : '#1e3a8a'};font-weight:700"><td style="padding:8px 12px;padding-left:24px;font-size:13px;color:#ffffff">NET PROFIT AFTER TAX</td><td style="padding:8px 12px;font-size:13px;text-align:right;font-family:monospace;color:#ffffff">₦${(netProfit/100).toLocaleString()}</td></tr>` +
+            `<tr style="border-top:3px double #0f172a;background:#f8fafc;font-weight:700"><td style="padding:8px 12px;padding-left:24px;font-size:13px;color:#0f172a">NET PROFIT AFTER TAX</td><td style="padding:8px 12px;font-size:13px;text-align:right;font-family:monospace;color:#0f172a">₦${(netProfit/100).toLocaleString()}</td></tr>` +
             (pbt > 0 ? `<tr style="background:#f8fafc"><td colspan="2" style="padding:4px 12px;font-size:10px;color:#64748b;font-style:italic">Effective Tax Rate: ${etr}%  (Tax Expense ÷ Profit Before Tax)</td></tr>` : '');
           const mainRows =
             secRows('Operating Revenue', opRev.accounts, opRevTotal) +
@@ -2637,9 +2637,9 @@ function SinglePeriodPnLTable({ current, onAccountClick, showZero, showCodes }: 
           {renderSection('Finance Costs', fc.accounts, fcTotal)}
           {profitRow('PROFIT BEFORE TAX', profitBeforeTax, profitBeforeTax < 0)}
           {renderSection('Income Tax Expense', tx.accounts, txTotal)}
-          <tr className={`border-t-2 bg-slate-900 font-bold ${netProfit < 0 ? 'border-red-500 bg-red-900' : 'border-blue-900 bg-blue-900'}`}>
-            <td className={`px-3 py-3 text-sm ${netProfit < 0 ? 'text-red-200' : 'text-white'}`}>NET PROFIT AFTER TAX</td>
-            <td className={`px-3 py-3 text-right ${netProfit < 0 ? 'text-red-200' : 'text-white'}`}>{fmtPnL(netProfit)}</td>
+          <tr className={`border-t-2 font-bold ${netProfit < 0 ? 'border-red-500 bg-red-50' : 'border-slate-400 bg-slate-100'}`}>
+            <td className={`px-3 py-3 text-sm ${netProfit < 0 ? 'text-red-800' : 'text-slate-900'}`}>NET PROFIT AFTER TAX</td>
+            <td className={`px-3 py-3 text-right ${netProfit < 0 ? 'text-red-800' : 'text-slate-900'}`}>{fmtPnL(netProfit)}</td>
           </tr>
           {profitBeforeTax > 0 && (
             <tr className="bg-slate-50 border-t border-slate-200">
