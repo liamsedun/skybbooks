@@ -2025,13 +2025,13 @@ function ReportTable({ data, reportType, compareEnabled, onAccountClick, showZer
 
     const bucketKey: Record<string, string> = { current: 'current', days1to30: 'days1to30', days31to60: 'days31to60', days61to90: 'days61to90', days90Plus: 'days90Plus', total: 'total' };
     const bucketLabel: Record<string, string> = { current: 'Current', days1to30: '1-30 Days', days31to60: '31-60 Days', days61to90: '61-90 Days', days90Plus: '90+ Days', total: 'Total' };
-    const bucketColor: Record<string, { head: string; cell: string; text: string }> = {
-      current: { head: 'bg-emerald-100 text-emerald-800', cell: 'bg-emerald-50 text-emerald-800', text: 'text-emerald-800' },
-      days1to30: { head: 'bg-blue-100 text-blue-800', cell: 'bg-blue-50 text-blue-800', text: 'text-blue-800' },
-      days31to60: { head: 'bg-amber-100 text-amber-800', cell: 'bg-amber-50 text-amber-800', text: 'text-amber-800' },
-      days61to90: { head: 'bg-orange-100 text-orange-800', cell: 'bg-orange-50 text-orange-800', text: 'text-orange-800' },
-      days90Plus: { head: 'bg-red-100 text-red-800', cell: 'bg-red-50 text-red-800', text: 'text-red-800' },
-      total: { head: 'bg-violet-100 text-violet-800', cell: 'bg-violet-50 text-violet-800', text: 'text-violet-800' },
+    const bucketColor: Record<string, { head: string; activeHead: string; cell: string }> = {
+      current: { head: 'bg-emerald-500 text-white hover:bg-emerald-600', activeHead: 'bg-emerald-700 text-white ring-2 ring-emerald-300', cell: 'bg-emerald-50' },
+      days1to30: { head: 'bg-blue-500 text-white hover:bg-blue-600', activeHead: 'bg-blue-700 text-white ring-2 ring-blue-300', cell: 'bg-blue-50' },
+      days31to60: { head: 'bg-amber-500 text-white hover:bg-amber-600', activeHead: 'bg-amber-700 text-white ring-2 ring-amber-300', cell: 'bg-amber-50' },
+      days61to90: { head: 'bg-orange-500 text-white hover:bg-orange-600', activeHead: 'bg-orange-700 text-white ring-2 ring-orange-300', cell: 'bg-orange-50' },
+      days90Plus: { head: 'bg-red-500 text-white hover:bg-red-600', activeHead: 'bg-red-700 text-white ring-2 ring-red-300', cell: 'bg-red-50' },
+      total: { head: 'bg-violet-500 text-white hover:bg-violet-600', activeHead: 'bg-violet-700 text-white ring-2 ring-violet-300', cell: 'bg-violet-50' },
     };
 
     const filteredRows = activeBucket
@@ -2057,7 +2057,7 @@ function ReportTable({ data, reportType, compareEnabled, onAccountClick, showZer
       <div>
         {activeBucket && (
           <div className="mb-3 flex items-center gap-2 text-sm">
-            <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full font-medium text-xs ${activeBucket ? bucketColor[activeBucket].head : 'bg-indigo-50 text-indigo-700'}`}>
+            <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full font-medium text-xs ${activeBucket ? bucketColor[activeBucket].head : 'bg-indigo-100 text-indigo-700'}`}>
               Filtered: <strong>{bucketLabel[activeBucket]}</strong> — {filteredRows.length} {entityLabel}{filteredRows.length !== 1 ? 's' : ''}
             </span>
             <button onClick={() => setActiveBucket(null)} className="text-xs text-red-600 hover:text-red-800 underline">Clear filter</button>
@@ -2126,7 +2126,7 @@ function ReportTable({ data, reportType, compareEnabled, onAccountClick, showZer
                 <th className="text-left px-3 py-3">{title}</th>
                 {bucketHeaders.map(b => (
                   <th key={b}
-                    className={`text-right px-3 py-3 cursor-pointer select-none transition-colors duration-150 ${isBucketActive(b) ? bucketColor[b].head : 'hover:bg-slate-100'}`}
+                    className={`text-right px-3 py-3 rounded-lg cursor-pointer select-none transition-all duration-150 font-bold ${isBucketActive(b) ? bucketColor[b].activeHead : bucketColor[b].head}`}
                     onClick={() => toggleBucket(b)}
                   >
                     {bucketLabel[b]}
@@ -2141,7 +2141,7 @@ function ReportTable({ data, reportType, compareEnabled, onAccountClick, showZer
                     {row.name || `Item ${i + 1}`}
                   </td>
                   {bucketHeaders.map(b => (
-                    <td key={b} className={`px-3 py-3 text-right ${isBucketActive(b) ? bucketColor[b].cell : 'text-slate-600'} ${b === 'total' ? 'font-semibold' : ''}`}>
+                    <td key={b} className={`px-3 py-3 text-right ${isBucketActive(b) ? bucketColor[b].cell + ' font-semibold' : 'text-slate-600'} ${b === 'total' ? 'font-semibold' : ''}`}>
                       {fmtNaira(row[b] || 0)}
                     </td>
                   ))}
@@ -2156,7 +2156,7 @@ function ReportTable({ data, reportType, compareEnabled, onAccountClick, showZer
               <tr className="border-t-2 border-slate-300 bg-slate-100 font-bold text-sm">
                 <td className="px-3 py-3 text-slate-800">TOTAL</td>
                 {bucketHeaders.map(b => (
-                  <td key={b} className={`px-3 py-3 text-right text-slate-800 ${isBucketActive(b) ? bucketColor[b].head : ''}`}>
+                  <td key={b} className={`px-3 py-3 text-right ${isBucketActive(b) ? bucketColor[b].head : 'text-slate-800'}`}>
                     {fmtNaira(filteredRows.reduce((s: number, r: any) => s + (r[b] || 0), 0))}
                   </td>
                 ))}
