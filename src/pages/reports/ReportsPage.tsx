@@ -2026,12 +2026,20 @@ function ReportTable({ data, reportType, compareEnabled, onAccountClick, showZer
     const bucketKey: Record<string, string> = { current: 'current', days1to30: 'days1to30', days31to60: 'days31to60', days61to90: 'days61to90', days90Plus: 'days90Plus', total: 'total' };
     const bucketLabel: Record<string, string> = { current: 'Current', days1to30: '1-30 Days', days31to60: '31-60 Days', days61to90: '61-90 Days', days90Plus: '90+ Days', total: 'Total' };
     const bucketColor: Record<string, { head: string; activeHead: string; cell: string }> = {
-      current: { head: 'bg-emerald-500 text-white hover:bg-emerald-600', activeHead: 'bg-emerald-700 text-white ring-2 ring-emerald-300', cell: 'bg-emerald-50' },
-      days1to30: { head: 'bg-blue-500 text-white hover:bg-blue-600', activeHead: 'bg-blue-700 text-white ring-2 ring-blue-300', cell: 'bg-blue-50' },
-      days31to60: { head: 'bg-amber-500 text-white hover:bg-amber-600', activeHead: 'bg-amber-700 text-white ring-2 ring-amber-300', cell: 'bg-amber-50' },
-      days61to90: { head: 'bg-orange-500 text-white hover:bg-orange-600', activeHead: 'bg-orange-700 text-white ring-2 ring-orange-300', cell: 'bg-orange-50' },
-      days90Plus: { head: 'bg-red-500 text-white hover:bg-red-600', activeHead: 'bg-red-700 text-white ring-2 ring-red-300', cell: 'bg-red-50' },
-      total: { head: 'bg-violet-500 text-white hover:bg-violet-600', activeHead: 'bg-violet-700 text-white ring-2 ring-violet-300', cell: 'bg-violet-50' },
+      current: { head: 'bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shadow-md shadow-emerald-200 hover:shadow-lg hover:shadow-emerald-300 hover:-translate-y-0.5', activeHead: 'bg-gradient-to-br from-emerald-600 to-emerald-800 text-white ring-2 ring-emerald-300 shadow-lg shadow-emerald-400 -translate-y-0.5', cell: 'bg-emerald-50' },
+      days1to30: { head: 'bg-gradient-to-br from-blue-400 to-blue-600 text-white shadow-md shadow-blue-200 hover:shadow-lg hover:shadow-blue-300 hover:-translate-y-0.5', activeHead: 'bg-gradient-to-br from-blue-600 to-blue-800 text-white ring-2 ring-blue-300 shadow-lg shadow-blue-400 -translate-y-0.5', cell: 'bg-blue-50' },
+      days31to60: { head: 'bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-md shadow-amber-200 hover:shadow-lg hover:shadow-amber-300 hover:-translate-y-0.5', activeHead: 'bg-gradient-to-br from-amber-600 to-amber-800 text-white ring-2 ring-amber-300 shadow-lg shadow-amber-400 -translate-y-0.5', cell: 'bg-amber-50' },
+      days61to90: { head: 'bg-gradient-to-br from-orange-400 to-orange-600 text-white shadow-md shadow-orange-200 hover:shadow-lg hover:shadow-orange-300 hover:-translate-y-0.5', activeHead: 'bg-gradient-to-br from-orange-600 to-orange-800 text-white ring-2 ring-orange-300 shadow-lg shadow-orange-400 -translate-y-0.5', cell: 'bg-orange-50' },
+      days90Plus: { head: 'bg-gradient-to-br from-red-400 to-red-600 text-white shadow-md shadow-red-200 hover:shadow-lg hover:shadow-red-300 hover:-translate-y-0.5', activeHead: 'bg-gradient-to-br from-red-600 to-red-800 text-white ring-2 ring-red-300 shadow-lg shadow-red-400 -translate-y-0.5', cell: 'bg-red-50' },
+      total: { head: 'bg-gradient-to-br from-violet-400 to-violet-600 text-white shadow-md shadow-violet-200 hover:shadow-lg hover:shadow-violet-300 hover:-translate-y-0.5', activeHead: 'bg-gradient-to-br from-violet-600 to-violet-800 text-white ring-2 ring-violet-300 shadow-lg shadow-violet-400 -translate-y-0.5', cell: 'bg-violet-50' },
+    };
+    const bucketIcon: Record<string, string> = {
+      current: '●',
+      days1to30: '●',
+      days31to60: '●',
+      days61to90: '●',
+      days90Plus: '●',
+      total: '◆',
     };
 
     const filteredRows = activeBucket
@@ -2056,11 +2064,16 @@ function ReportTable({ data, reportType, compareEnabled, onAccountClick, showZer
     return (
       <div>
         {activeBucket && (
-          <div className="mb-3 flex items-center gap-2 text-sm">
-            <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full font-medium text-xs ${activeBucket ? bucketColor[activeBucket].head : 'bg-indigo-100 text-indigo-700'}`}>
-              Filtered: <strong>{bucketLabel[activeBucket]}</strong> — {filteredRows.length} {entityLabel}{filteredRows.length !== 1 ? 's' : ''}
+          <div className="mb-4 flex items-center gap-3">
+            <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-xs shadow-sm ${activeBucket ? bucketColor[activeBucket].head : 'bg-indigo-100 text-indigo-700'}`}>
+              <span>{bucketIcon[activeBucket]}</span>
+              <span>Filtered: <strong>{bucketLabel[activeBucket]}</strong></span>
+              <span className="opacity-75">—</span>
+              <span>{filteredRows.length} {entityLabel}{filteredRows.length !== 1 ? 's' : ''}</span>
             </span>
-            <button onClick={() => setActiveBucket(null)} className="text-xs text-red-600 hover:text-red-800 underline">Clear filter</button>
+            <button onClick={() => setActiveBucket(null)} className="text-xs font-medium text-slate-400 hover:text-red-600 transition-colors hover:underline flex items-center gap-1">
+              <X className="w-3 h-3" /> Clear
+            </button>
           </div>
         )}
 
@@ -2119,18 +2132,33 @@ function ReportTable({ data, reportType, compareEnabled, onAccountClick, showZer
           </div>
         )}
 
+        {/* Placard row */}
+        <div className="flex gap-2 mb-4 flex-wrap">
+          {bucketHeaders.map(b => {
+            const total = allRows.reduce((s: number, r: any) => s + (r[b] || 0), 0);
+            const count = allRows.filter(r => (r[b] || 0) > 0).length;
+            return (
+              <button key={b} onClick={() => toggleBucket(b)}
+                className={`flex-1 min-w-[100px] px-4 py-3 rounded-xl cursor-pointer select-none transition-all duration-200 font-bold text-sm ${isBucketActive(b) ? bucketColor[b].activeHead : bucketColor[b].head}`}
+              >
+                <div className="flex items-center gap-1.5 mb-1">
+                  <span className="text-[10px] opacity-75">{bucketIcon[b]}</span>
+                  <span className="text-[10px] uppercase tracking-wider opacity-90">{bucketLabel[b]}</span>
+                </div>
+                <div className="text-sm font-bold">{fmtNaira(total)}</div>
+                <div className="text-[10px] mt-0.5 opacity-75">{count} {entityLabel}{count !== 1 ? 's' : ''}</div>
+              </button>
+            );
+          })}
+        </div>
+
         <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
               <tr>
                 <th className="text-left px-3 py-3">{title}</th>
                 {bucketHeaders.map(b => (
-                  <th key={b}
-                    className={`text-right px-3 py-3 rounded-lg cursor-pointer select-none transition-all duration-150 font-bold ${isBucketActive(b) ? bucketColor[b].activeHead : bucketColor[b].head}`}
-                    onClick={() => toggleBucket(b)}
-                  >
-                    {bucketLabel[b]}
-                  </th>
+                  <th key={b} className="text-right px-3 py-3">{bucketLabel[b]}</th>
                 ))}
               </tr>
             </thead>
