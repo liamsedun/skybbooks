@@ -850,13 +850,14 @@ function ValuationStatementModal({
     const rows: string[][] = [];
     for (const vi of filtered) {
       for (const line of vi.lines) {
+        const valStr = line.value !== 0 ? (line.value < 0 ? `(${formatNaira(Math.abs(line.value))})` : formatNaira(line.value)) : '';
         rows.push([
           vi.item.name, vi.item.sku||'', vi.item.unit||'',
           fmtDate(line.date), line.type.replace('_',' '), line.reference,
           line.inQty > 0 ? String(line.inQty) : '',
           line.outQty > 0 ? String(line.outQty) : '',
           line.unitCost > 0 ? formatNaira(line.unitCost) : '',
-          line.value > 0 ? formatNaira(line.value) : '',
+          valStr,
           String(line.balanceQty), formatNaira(line.balanceValue)
         ]);
       }
@@ -877,6 +878,7 @@ function ValuationStatementModal({
     const blocks = filtered.map(vi => {
       const rows = vi.lines.map(line => {
         const isOpen = line.type === 'opening_balance';
+        const valStr = line.value !== 0 ? (line.value < 0 ? `(${formatNaira(Math.abs(line.value))})` : formatNaira(line.value)) : '\u2014';
         return `<tr${isOpen?' style="background:#f8fafc"':''}>
           <td>${fmtDate(line.date)}</td>
           <td>${line.type.replace('_',' ')}</td>
@@ -884,7 +886,7 @@ function ValuationStatementModal({
           <td style="text-align:right">${line.inQty > 0 ? line.inQty : '\u2014'}</td>
           <td style="text-align:right">${line.outQty > 0 ? line.outQty : '\u2014'}</td>
           <td style="text-align:right">${line.unitCost > 0 ? formatNaira(line.unitCost) : '\u2014'}</td>
-          <td style="text-align:right">${line.value > 0 ? formatNaira(line.value) : '\u2014'}</td>
+          <td style="text-align:right">${valStr}</td>
           <td style="text-align:right"><strong>${line.balanceQty}</strong></td>
           <td style="text-align:right"><strong>${formatNaira(line.balanceValue)}</strong></td>
         </tr>`;
@@ -1038,9 +1040,16 @@ function ValuationStatementModal({
                               </span>
                             </td>
                             <td className="px-3 py-2">
-                              {line.referenceId ? (
+                              {line.referenceId && (line.type === 'purchase' || line.type === 'opening_balance') ? (
                                 <button
                                   onClick={() => navigate(`/purchases/bills/${line.referenceId}`)}
+                                  className="text-blue-600 hover:text-blue-800 font-medium hover:underline transition-colors"
+                                >
+                                  {line.reference}
+                                </button>
+                              ) : line.referenceId && line.type === 'sale' ? (
+                                <button
+                                  onClick={() => navigate(`/sales/invoices/${line.referenceId}`)}
                                   className="text-blue-600 hover:text-blue-800 font-medium hover:underline transition-colors"
                                 >
                                   {line.reference}
@@ -1055,7 +1064,7 @@ function ValuationStatementModal({
                               {line.unitCost > 0 ? formatNaira(line.unitCost) : '—'}
                             </td>
                             <td className="px-3 py-2 text-right text-slate-700">
-                              {line.value > 0 ? formatNaira(line.value) : '—'}
+                              {line.value !== 0 ? (line.value < 0 ? `(${formatNaira(Math.abs(line.value))})` : formatNaira(line.value)) : '—'}
                             </td>
                             <td className="px-3 py-2 text-right font-semibold text-slate-900">{line.balanceQty}</td>
                             <td className="px-3 py-2 text-right font-semibold text-slate-900">{formatNaira(line.balanceValue)}</td>

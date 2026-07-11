@@ -6,7 +6,7 @@ import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import multer from 'multer';
 import { v2 as cloudinary } from 'cloudinary';
-import { db, items, inventoryLots, inventoryTransactions, inventoryAdjustments, inventoryAdjustmentItems, accounts, documents, users } from '../db/schema';
+import { db, items, inventoryLots, inventoryTransactions, inventoryAdjustments, inventoryAdjustmentItems, accounts, documents, users, bills, invoices } from '../db/schema';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
 import { eq, and, lte, sql, inArray, desc } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
@@ -396,47 +396,62 @@ router.get('/valuation-statement', async (req: AuthenticatedRequest, res: Respon
     const result = [];
 
     for (const item of itemList) {
-      // Fetch lots up to endDate inclusive (set to end of day to catch all timestamps)
-      const lotConditions: any[] = [eq(inventoryLots.itemId, item.id), eq(inventoryLots.orgId, orgId)];
-      if (endDate) lotConditions.push(lte(inventoryLots.receivedDate, new Date(endDate + 'T23:59:59.999Z')));
-      const lots = await db
-        .select({
-          id: inventoryLots.id,
-          itemId: inventoryLots.itemId,
-          orgId: inventoryLots.orgId,
-          quantity: inventoryLots.quantity,
-          costPerUnit: inventoryLots.costPerUnit,
-          receivedDate: inventoryLots.receivedDate,
-          expiryDate: inventoryLots.expiryDate,
-          reference: inventoryLots.reference,
-          createdAt: inventoryLots.createdAt,
-          billId: inventoryTransactions.referenceId,
-        })
-        .from(inventoryLots)
-        .leftJoin(inventoryTransactions, and(
-          eq(inventoryTransactions.lotId, inventoryLots.id),
-          eq(inventoryTransactions.referenceType, 'bill'),
-          eq(inventoryTransactions.type, 'purchase'),
-        ))
-        .where(and(...lotConditions))
-        .orderBy(inventoryLots.receivedDate);
-
-      // Build ledger: opening stock lots → bill purchase lots
-      const lines: any[] = [];
-      let openingQty = 0;
-      let openingValue = 0;
-
-      // Separate lots into opening stock vs bill purchases
-      const openingLots = lots.filter(l => (l.reference || '').toLowerCase() === 'opening stock');
-      const purchaseLots = lots.filter(l => (l.reference || '').toLowerCase() !== 'opening stock');
-
-      // Opening balance from opening stock lots only
-      for (const lot of openingLots) {
-        openingQty += Number(lot.quantity);
-        openingValue += Number(lot.quantity) * (lot.costPerUnit || 0);
+      // Fetch ALL inventory transactions for this item (immutable records)
+      const txnConditions: any[] = [
+        eq(inventoryTransactions.itemId, item.id),
+        eq(inventoryTransactions.orgId, orgId)
+      ];
+      if (endDate) {
+        txnConditions.push(lte(inventoryTransactions.date, new Date(endDate + 'T23:59:59.999Z')));
       }
 
-      // Opening balance row
+      const txns = await db
+        .select({
+          id: inventoryTransactions.id,
+          itemId: inventoryTransactions.itemId,
+          orgId: inventoryTransactions.orgId,
+          lotId: inventoryTransactions.lotId,
+          type: inventoryTransactions.type,
+          quantity: inventoryTransactions.quantity,
+          unitCost: inventoryTransactions.unitCost,
+          referenceType: inventoryTransactions.referenceType,
+          referenceId: inventoryTransactions.referenceId,
+          date: inventoryTransactions.date,
+          createdAt: inventoryTransactions.createdAt,
+          lotReference: inventoryLots.reference,
+          billNumber: bills.billNumber,
+          invoiceNumber: invoices.invoiceNumber,
+        })
+        .from(inventoryTransactions)
+        .leftJoin(inventoryLots, eq(inventoryTransactions.lotId, inventoryLots.id))
+        .leftJoin(bills, and(
+          eq(inventoryTransactions.referenceType, 'bill'),
+          eq(inventoryTransactions.referenceId, bills.id)
+        ))
+        .leftJoin(invoices, and(
+          eq(inventoryTransactions.referenceType, 'invoice'),
+          eq(inventoryTransactions.referenceId, invoices.id)
+        ))
+        .where(and(...txnConditions))
+        .orderBy(inventoryTransactions.date, inventoryTransactions.createdAt);
+
+      // Separate opening stock transactions (original quantities are immutable)
+      const openingTxns = txns.filter(t => t.referenceType === 'opening_stock' && t.type === 'purchase');
+      const otherTxns = txns.filter(t => !(t.referenceType === 'opening_stock' && t.type === 'purchase'));
+
+      // Opening balance = sum of ALL opening stock transactions (original qty, not reduced)
+      let openingQty = 0;
+      let openingValue = 0;
+      for (const ot of openingTxns) {
+        const qty = Number(ot.quantity);
+        const cost = ot.unitCost || 0;
+        openingQty += qty;
+        openingValue += qty * cost;
+      }
+
+      const lines: any[] = [];
+
+      // Opening balance row (first line in ledger)
       lines.push({
         date: null,
         type: 'opening_balance',
@@ -453,42 +468,54 @@ router.get('/valuation-statement', async (req: AuthenticatedRequest, res: Respon
       let runningQty = openingQty;
       let runningValue = openingValue;
 
-      // Purchase lots (from bill approvals) as individual purchase lines
-      for (const lot of purchaseLots) {
-        const qty = Number(lot.quantity);
-        const cost = lot.costPerUnit || 0;
+      // Build human-readable reference for each transaction
+      function txnReference(t: any): string {
+        if (t.referenceType === 'opening_stock') return 'Opening Stock';
+        if (t.referenceType === 'bill') return t.billNumber || t.lotReference || 'Bill Purchase';
+        if (t.referenceType === 'invoice') return t.invoiceNumber || 'Invoice Sale';
+        if (t.referenceType === 'inventory_adjustment') return 'Adjustment';
+        return t.referenceType || t.type;
+      }
+
+      // Process all non-opening transactions chronologically
+      for (const txn of otherTxns) {
+        const qty = Number(txn.quantity);
+        const cost = txn.unitCost || 0;
         const val = qty * cost;
-        runningQty += qty;
-        runningValue += val;
+        let inQty = 0;
+        let outQty = 0;
+        let valueChange = 0;
+
+        if (txn.type === 'purchase' || (txn.type === 'adjustment' && qty > 0)) {
+          // Inflow: increase stock at cost
+          inQty = qty;
+          valueChange = val;
+          runningQty += qty;
+          runningValue += val;
+        } else if (txn.type === 'sale' || (txn.type === 'adjustment' && qty < 0)) {
+          // Outflow: decrease stock at lot cost (FIFO, unitCost already reflects consumed lot's cost)
+          const absQty = Math.abs(qty);
+          outQty = absQty;
+          valueChange = -val; // val is positive, make it negative
+          runningQty -= absQty;
+          runningValue -= val;
+        } else {
+          // Unknown type — skip
+          continue;
+        }
+
         lines.push({
-          date: lot.receivedDate,
-          type: 'purchase',
-          reference: lot.reference || 'Bill Purchase',
-          referenceId: lot.billId || null,
-          inQty: qty,
-          outQty: 0,
+          date: txn.date,
+          type: txn.type,
+          reference: txnReference(txn),
+          referenceId: txn.referenceId,
+          inQty,
+          outQty,
           unitCost: cost,
-          value: val,
+          value: valueChange,
           balanceQty: runningQty,
           balanceValue: runningValue
         });
-      }
-
-      // Sort purchase lines chronologically (opening_balance stays first)
-      const sortedLines = [
-        lines[0],
-        ...lines.slice(1).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-      ];
-
-      // Recompute running balances after sort
-      runningQty = openingQty;
-      runningValue = openingValue;
-      for (let i = 1; i < sortedLines.length; i++) {
-        const l = sortedLines[i];
-        const qtyChange = l.inQty - l.outQty;
-        runningQty += qtyChange;
-        runningValue += qtyChange * l.unitCost;
-        sortedLines[i] = { ...l, balanceQty: runningQty, balanceValue: runningValue };
       }
 
       result.push({
@@ -499,7 +526,7 @@ router.get('/valuation-statement', async (req: AuthenticatedRequest, res: Respon
           unit: item.unit,
           type: item.type
         },
-        lines: sortedLines,
+        lines,
         openingQty,
         openingValue,
         closingQty: runningQty,

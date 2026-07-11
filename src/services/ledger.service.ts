@@ -1233,43 +1233,120 @@ export async function getCashFlowStatement(
     .from(accounts)
     .where(eq(accounts.orgId, orgId));
 
-  // Determine which accounts qualify as Cash / Cash Equivalents
-  const isCashAccount = (a: any) =>
-    a.type === 'asset' &&
-    (a.subType?.toLowerCase().includes('cash') ||
-      a.subType?.toLowerCase().includes('bank') ||
-      a.name.toLowerCase().includes('cash') ||
-      a.name.toLowerCase().includes('bank') ||
-      a.code.startsWith('10') // standard cash code prefix
-    );
+  const accountById = new Map(orgAccounts.map((a: any) => [a.id, a]));
 
-  const cashAccountsList = orgAccounts.filter(isCashAccount);
-  const nonCashAccountsList = orgAccounts.filter((a) => !isCashAccount(a));
-
-  // 1. Calculate opening and ending cash parameters
-  let openingCashVal = 0;
-  let closingCashVal = 0;
-
-  for (const cashAcct of cashAccountsList) {
-    const balanceBeforeStar = await getAccountBalance(cashAcct.id, new Date(startDate.getTime() - 1));
-    openingCashVal += balanceBeforeStar;
-
-    const balanceEnd = await getAccountBalance(cashAcct.id, endDate);
-    closingCashVal += balanceEnd;
+  // ── Helper: exclude contra accounts ──
+  function isContra(a: any): boolean {
+    const name = (a.name || '').toLowerCase();
+    if (name.includes('accumulated depreciation') || name.includes('accumulated amortisation') || name.includes('allowance for')) return true;
+    const c = a.code || '';
+    if (c >= '201101' && c <= '202599') return true;
+    return false;
   }
 
-  // 2. Fetch income statement structures for net income
-  const incomeStmt = await getProfitAndLoss(orgId, startDate, endDate);
-  const netIncome = incomeStmt.current.netProfit;
+  function isCashCode(code: string): boolean {
+    const c = parseInt(code, 10);
+    return c >= 100000 && c <= 100999;
+  }
 
-  // 3. Calculate shifts in all non-cash accounts during the period to construct adjustments
-  const records = await db
+  function isPpeCode(code: string): boolean {
+    const c = parseInt(code, 10);
+    return (c >= 200000 && c <= 201999) || (c >= 202000 && c <= 204999);
+  }
+
+  function isInvestingCode(code: string): boolean {
+    const c = parseInt(code, 10);
+    return c >= 200000 && c <= 204999;
+  }
+
+  function isFinancingLiabilityCode(code: string): boolean {
+    const c = parseInt(code, 10);
+    return (c >= 302000 && c <= 302999) || (c >= 400000 && c <= 401999) || c === 304000 || c === 305000;
+  }
+
+  function isEquityCode(code: string): boolean {
+    const c = parseInt(code, 10);
+    return c >= 500000 && c <= 505999;
+  }
+
+  function isTaxCode(code: string): boolean {
+    const c = parseInt(code, 10);
+    return c >= 950000 && c <= 950999;
+  }
+
+  function isFinanceIncomeCode(code: string): boolean {
+    const c = parseInt(code, 10);
+    return c >= 900000 && c <= 900999;
+  }
+
+  function isFinanceCostCode(code: string): boolean {
+    const c = parseInt(code, 10);
+    return c >= 910000 && c <= 910999;
+  }
+
+  function isDepreciationCode(code: string): boolean {
+    const c = parseInt(code, 10);
+    return c === 810700 || c === 810800 || c === 810900;
+  }
+
+  function isImpairmentCode(code: string): boolean {
+    const c = parseInt(code, 10);
+    return c === 830000 || c === 830100;
+  }
+
+  function isDisposalLossCode(code: string): boolean {
+    const c = parseInt(code, 10);
+    return c === 830600;
+  }
+
+  function isDisposalProfitCode(code: string): boolean {
+    const c = parseInt(code, 10);
+    return c === 601400;
+  }
+
+  function isFxLossCode(code: string): boolean {
+    const c = parseInt(code, 10);
+    return c === 830300;
+  }
+
+  function isFxGainCode(code: string): boolean {
+    const c = parseInt(code, 10);
+    return c === 601800 || c === 900400;
+  }
+
+  // ── Working capital account definitions ──
+  const wcAssetAccounts = [
+    { codes: ['101000','101100'], label: '(Increase)/Decrease in Trade Receivables' },
+    { codes: ['101500'], label: '(Increase)/Decrease in WHT Receivable' },
+    { codes: ['101600'], label: '(Increase)/Decrease in VAT Receivable' },
+    { codes: ['101300'], label: '(Increase)/Decrease in Staff Advances' },
+    { codes: ['101700'], label: '(Increase)/Decrease in Prepayments' },
+    { codes: ['101800'], label: '(Increase)/Decrease in Other Receivables' },
+    { codes: ['102000','102100','102200','102300','102400','102500','102600'], label: '(Increase)/Decrease in Inventories' },
+    { codes: ['104000','104100','104200'], label: '(Increase)/Decrease in Other Current Assets' },
+  ];
+  const wcLiabilityAccounts = [
+    { codes: ['300100'], label: 'Increase/(Decrease) in Trade Creditors' },
+    { codes: ['300200'], label: 'Increase/(Decrease) in Accrued Expenses' },
+    { codes: ['300300'], label: 'Increase/(Decrease) in Other Payables' },
+    { codes: ['301300'], label: 'Increase/(Decrease) in VAT Payable' },
+    { codes: ['301400'], label: 'Increase/(Decrease) in WHT Payable' },
+    { codes: ['301501'], label: 'Increase/(Decrease) in PAYE Payable' },
+    { codes: ['301600'], label: 'Increase/(Decrease) in Pension Contribution Payable' },
+    { codes: ['301800'], label: 'Increase/(Decrease) in NHF Contribution Payable' },
+    { codes: ['301700'], label: 'Increase/(Decrease) in NSITF Contribution Payable' },
+    { codes: ['302000','302100','302200','302300'], label: 'Increase/(Decrease) in Short-term Borrowings' },
+  ];
+
+  // ── Fetch all journal lines for the period, grouped by entry ──
+  const rawLines = await db
     .select({
+      entryId: journalLines.entryId,
       accountId: journalLines.accountId,
       debitAmount: journalLines.debitAmount,
       creditAmount: journalLines.creditAmount,
       currency: journalLines.currency,
-      fxRate: journalLines.fxRate
+      fxRate: journalLines.fxRate,
     })
     .from(journalLines)
     .innerJoin(journalEntries, eq(journalLines.entryId, journalEntries.id))
@@ -1280,166 +1357,316 @@ export async function getCashFlowStatement(
         lte(journalEntries.date, endDate)
       )
     );
+    
+  // Group lines by entry for cash-matching
+  const linesByEntry = new Map<string, typeof rawLines>();
+  for (const line of rawLines) {
+    if (!linesByEntry.has(line.entryId)) linesByEntry.set(line.entryId, []);
+    linesByEntry.get(line.entryId)!.push(line);
+  }
 
-  const operatingAdjustments: { name: string; amount: number }[] = [];
-  const workingCapitalAdjustments: { name: string; amount: number }[] = [];
-  const investingItems: { name: string; amount: number }[] = [];
-  const financingItems: { name: string; amount: number }[] = [];
+  // Compute net movement per account (dr - cr for all accounts, positive = debit-heavy)
+  const netByAccount = new Map<string, number>();
+  for (const line of rawLines) {
+    const fxRateVal = line.fxRate ? Number(line.fxRate) : 1;
+    const dr = line.currency && line.currency !== 'NGN' ? toNgn(line.debitAmount, fxRateVal) : line.debitAmount;
+    const cr = line.currency && line.currency !== 'NGN' ? toNgn(line.creditAmount, fxRateVal) : line.creditAmount;
+    netByAccount.set(line.accountId, (netByAccount.get(line.accountId) || 0) + dr - cr);
+  }
 
-  let depreciationAddback = 0;
-  let operatingAdjustmentsTotal = 0;
+  // ── 1. Net Profit ──
+  const incomeStmt = await computePnL(orgId, startDate, endDate);
+  const netProfitVal = incomeStmt.netProfit || 0;
+
+  // ── 2. Non-cash adjustments ──
+  const adjustments: { name: string; amount: number }[] = [];
+  let adjustmentsTotal = 0;
+
+  // Depreciation
+  let depAmount = 0;
+  for (const a of orgAccounts) {
+    if (isDepreciationCode(a.code)) {
+      const net = netByAccount.get(a.id) || 0;
+      if (Math.abs(net) > 0) depAmount += net;
+    }
+  }
+  if (Math.abs(depAmount) > 0) {
+    adjustments.push({ name: 'Depreciation – PP&E', amount: depAmount });
+    adjustmentsTotal += depAmount;
+  }
+
+  // Other non-cash
+  const nonCashChecks = [
+    { codes: ['830000','830100'], label: 'Impairment Losses' },
+    { codes: ['830600'], label: 'Loss on Disposal of Assets' },
+    { codes: ['601400'], label: '(Profit) on Disposal of Assets' },
+  ];
+  for (const chk of nonCashChecks) {
+    let total = 0;
+    for (const a of orgAccounts) {
+      if (chk.codes.includes(a.code)) {
+        total += netByAccount.get(a.id) || 0;
+      }
+    }
+    if (Math.abs(total) > 0) {
+      adjustments.push({ name: chk.label, amount: -total });
+      adjustmentsTotal += -total;
+    }
+  }
+
+  // FX Gains/Losses net
+  let fxLoss = 0, fxGain = 0;
+  for (const a of orgAccounts) {
+    if (isFxLossCode(a.code)) fxLoss += netByAccount.get(a.id) || 0;
+    if (isFxGainCode(a.code)) fxGain += netByAccount.get(a.id) || 0;
+  }
+  const fxNet = fxLoss - fxGain;
+  if (Math.abs(fxNet) > 0) {
+    adjustments.push({ name: 'Foreign Exchange (Gains)/Losses – net', amount: fxNet });
+    adjustmentsTotal += fxNet;
+  }
+
+  // ── 3. Working Capital Changes ──
+  // Use getAccountBalance for accurate opening/closing
+  const wcItems: { name: string; amount: number }[] = [];
   let workingCapitalTotal = 0;
+
+  async function changeForAccounts(codes: string[], isAsset: boolean): Promise<number> {
+    let openingTotal = 0, closingTotal = 0;
+    for (const a of orgAccounts) {
+      if (codes.includes(a.code)) {
+        const opening = await getAccountBalance(a.id, new Date(startDate.getTime() - 1));
+        const closing = await getAccountBalance(a.id, endDate);
+        openingTotal += opening;
+        closingTotal += closing;
+      }
+    }
+    // For assets: increase = cash outflow (negative); for liabilities: increase = cash inflow (positive)
+    if (isAsset) return openingTotal - closingTotal;
+    return closingTotal - openingTotal;
+  }
+
+  for (const wc of wcAssetAccounts) {
+    const change = await changeForAccounts(wc.codes, true);
+    if (Math.abs(change) > 0) {
+      wcItems.push({ name: wc.label, amount: change });
+      workingCapitalTotal += change;
+    }
+  }
+  for (const wc of wcLiabilityAccounts) {
+    const change = await changeForAccounts(wc.codes, false);
+    if (Math.abs(change) > 0) {
+      wcItems.push({ name: wc.label, amount: change });
+      workingCapitalTotal += change;
+    }
+  }
+
+  const cashGeneratedFromOperations = netProfitVal + adjustmentsTotal + workingCapitalTotal;
+
+  // ── 4. Cash flows from investing (match entries with both investment and cash accounts) ──
+  const investingItems: { name: string; amount: number }[] = [];
   let investingTotal = 0;
+
+  // Track PP&E purchases and disposals via journal-entry-level matching
+  for (const [entryId, lines] of linesByEntry) {
+    const cashLine = lines.find(l => {
+      const a = accountById.get(l.accountId);
+      return a && isCashCode(a.code);
+    });
+    const investLine = lines.find(l => {
+      const a = accountById.get(l.accountId);
+      return a && isInvestingCode(a.code) && !isContra(a);
+    });
+    if (cashLine && investLine) {
+      const fxRateVal = investLine.fxRate ? Number(investLine.fxRate) : 1;
+      let investAmt = 0;
+      if (investLine.currency && investLine.currency !== 'NGN') {
+        investAmt = toNgn(investLine.debitAmount - investLine.creditAmount, fxRateVal);
+      } else {
+        investAmt = (investLine.debitAmount || 0) - (investLine.creditAmount || 0);
+      }
+      if (investAmt !== 0) {
+        const a = accountById.get(investLine.accountId)!;
+        const codeNum = parseInt(a.code, 10);
+        let label: string;
+        if (codeNum >= 200000 && codeNum <= 201999) {
+          label = investAmt > 0 ? 'Purchase of Property, Plant & Equipment' : 'Proceeds from Disposal of PP&E';
+        } else if (codeNum >= 202000 && codeNum <= 202499) {
+          label = investAmt > 0 ? 'Purchase of Intangible Assets' : 'Proceeds from Sale of Intangibles';
+        } else if (codeNum >= 204000 && codeNum <= 204999) {
+          label = investAmt > 0 ? 'Purchase of Long-term Investments' : 'Proceeds from Sale of Investments';
+        } else {
+          label = 'Other Investing Activity';
+        }
+        // Debit to asset = purchase (cash outflow = negative)
+        const cashEffect = -investAmt;
+        investingItems.push({ name: label, amount: cashEffect });
+        investingTotal += cashEffect;
+      }
+    }
+  }
+
+  // ── 5. Cash flows from financing (match entries with financing liability/equity and cash) ──
+  const financingItems: { name: string; amount: number }[] = [];
   let financingTotal = 0;
 
-  for (const acct of nonCashAccountsList) {
-    const matched = records.filter((r) => r.accountId === acct.id);
-    const dr = matched.reduce((sum, curr) => sum + (curr.currency && curr.currency !== 'NGN' ? toNgn(curr.debitAmount, curr.fxRate) : curr.debitAmount), 0);
-    const cr = matched.reduce((sum, curr) => sum + (curr.currency && curr.currency !== 'NGN' ? toNgn(curr.creditAmount, curr.fxRate) : curr.creditAmount), 0);
-
-    const netPeriodDebitDiff = dr - cr; 
-    const netPeriodCreditDiff = cr - dr;
-
-    // Detect Depreciation Expenses (Non-cash Addbacks)
-    const isDepreciation = acct.type === 'expense' && 
-                           (acct.name.toLowerCase().includes('depreciation') || 
-                            acct.name.toLowerCase().includes('amortization'));
-
-    if (isDepreciation && netPeriodDebitDiff !== 0) {
-      depreciationAddback += netPeriodDebitDiff;
-      continue; // Skip adding to ordinary working capital
-    }
-
-    // Operating Working Capitals (receivables, payables, inventories, prepayments, operating taxes)
-    const isReceivable = acct.type === 'asset' && 
-                         (acct.subType?.toLowerCase().includes('receivable') || 
-                          acct.name.toLowerCase().includes('receivable') || 
-                          acct.name.toLowerCase().includes('debtor'));
-
-    const isInventory = acct.type === 'asset' && 
-                        (acct.subType?.toLowerCase().includes('inventory') || 
-                         acct.name.toLowerCase().includes('inventory') || 
-                         acct.name.toLowerCase().includes('stock'));
-
-    const isPayable = acct.type === 'liability' &&
-                      (acct.subType?.toLowerCase().includes('payable') || 
-                       acct.name.toLowerCase().includes('payable') || 
-                       acct.name.toLowerCase().includes('creditor'));
-
-    if (isReceivable && netPeriodDebitDiff !== 0) {
-      // Increase in receivables reduces cash flows (Asset Dr diff is cash outflow)
-      const change = -netPeriodDebitDiff;
-      workingCapitalAdjustments.push({
-        name: `Change in Accounts Receivable (${acct.name})`,
-        amount: change
-      });
-      workingCapitalTotal += change;
-    } else if (isInventory && netPeriodDebitDiff !== 0) {
-      // Increase in inventory reduces cash flows
-      const change = -netPeriodDebitDiff;
-      workingCapitalAdjustments.push({
-        name: `Change in Inventory (${acct.name})`,
-        amount: change
-      });
-      workingCapitalTotal += change;
-    } else if (isPayable && netPeriodCreditDiff !== 0) {
-      // Increase in Accounts Payable raises cash flows (Liability Cr diff is cash inflow)
-      const change = netPeriodCreditDiff;
-      workingCapitalAdjustments.push({
-        name: `Change in Accounts Payable (${acct.name})`,
-        amount: change
-      });
-      workingCapitalTotal += change;
-    } else if (acct.type === 'asset' && netPeriodDebitDiff !== 0) {
-      // General non-fixed investment properties / operating prepayment shifts
-      const isFixedAsset = acct.subType?.toLowerCase().includes('fixed') || 
-                          acct.subType?.toLowerCase().includes('property') || 
-                          acct.name.toLowerCase().includes('equipment') || 
-                          acct.name.toLowerCase().includes('property') || 
-                          acct.name.toLowerCase().includes('furniture') || 
-                          acct.name.toLowerCase().includes('vehicle');
-
-      if (isFixedAsset) {
-        // Investing cash flow outflow (Acquisitions of Fixed Assets)
-        const change = -netPeriodDebitDiff;
-        investingItems.push({
-          name: `Purchase/Disposal of Fixed Asset (${acct.name})`,
-          amount: change
-        });
-        investingTotal += change;
-      } else {
-        // Other Operating Assets
-        const change = -netPeriodDebitDiff;
-        workingCapitalAdjustments.push({
-          name: `Change in Other Assets (${acct.name})`,
-          amount: change
-        });
-        workingCapitalTotal += change;
-      }
-    } else if (acct.type === 'liability' && netPeriodCreditDiff !== 0) {
-      // Determine if long-term loan/shareholder financing vs operating credits
-      const isFinancingLiability = acct.subType?.toLowerCase().includes('loan') || 
-                                   acct.subType?.toLowerCase().includes('equity') || 
-                                   acct.name.toLowerCase().includes('loan') || 
-                                   acct.name.toLowerCase().includes('debt') || 
-                                   acct.name.toLowerCase().includes('borrowing');
-      
-      if (isFinancingLiability) {
-        const change = netPeriodCreditDiff;
-        financingItems.push({
-          name: `Net Borrowings / (Repayments) (${acct.name})`,
-          amount: change
-        });
-        financingTotal += change;
-      } else {
-        const change = netPeriodCreditDiff;
-        workingCapitalAdjustments.push({
-          name: `Change in Other Accruals (${acct.name})`,
-          amount: change
-        });
-        workingCapitalTotal += change;
-      }
-    } else if (acct.type === 'equity' && netPeriodCreditDiff !== 0) {
-      // Capital investments / distributions (excluding dynamic periods earnings)
-      const change = netPeriodCreditDiff;
-      financingItems.push({
-        name: `Equity Transactions (${acct.name})`,
-        amount: change
-      });
-      financingTotal += change;
-    }
-  }
-
-  // Adjust non-cash addbacks
-  if (depreciationAddback !== 0) {
-    operatingAdjustments.push({
-      name: 'Adjust for Depreciation and Amortization (Non-Cash Expense)',
-      amount: depreciationAddback
+  for (const [entryId, lines] of linesByEntry) {
+    const cashLine = lines.find(l => {
+      const a = accountById.get(l.accountId);
+      return a && isCashCode(a.code);
     });
-    operatingAdjustmentsTotal += depreciationAddback;
+    if (!cashLine) continue;
+
+    // Borrowings
+    const borrowLine = lines.find(l => {
+      const a = accountById.get(l.accountId);
+      return a && isFinancingLiabilityCode(a.code);
+    });
+    if (borrowLine) {
+      const fxRateVal = borrowLine.fxRate ? Number(borrowLine.fxRate) : 1;
+      let amt = borrowLine.currency && borrowLine.currency !== 'NGN'
+        ? toNgn(borrowLine.debitAmount - borrowLine.creditAmount, fxRateVal)
+        : (borrowLine.debitAmount || 0) - (borrowLine.creditAmount || 0);
+      if (amt !== 0) {
+        const codeNum = parseInt(accountById.get(borrowLine.accountId)!.code, 10);
+        if (codeNum === 304000 || codeNum === 401000) {
+          financingItems.push({ name: 'Lease Liability Payments', amount: amt });
+        } else if (codeNum === 305000) {
+          financingItems.push({ name: 'Dividends Paid', amount: amt });
+        } else if (amt < 0) {
+          financingItems.push({ name: 'Repayment of Borrowings', amount: amt });
+        } else {
+          financingItems.push({ name: 'New Borrowings Received', amount: amt });
+        }
+        financingTotal += amt;
+      }
+    }
+
+    // Equity
+    const equityLine = lines.find(l => {
+      const a = accountById.get(l.accountId);
+      return a && isEquityCode(a.code);
+    });
+    if (equityLine && !borrowLine) {
+      const fxRateVal = equityLine.fxRate ? Number(equityLine.fxRate) : 1;
+      let amt = equityLine.currency && equityLine.currency !== 'NGN'
+        ? toNgn(equityLine.debitAmount - equityLine.creditAmount, fxRateVal)
+        : (equityLine.debitAmount || 0) - (equityLine.creditAmount || 0);
+      if (amt !== 0) {
+        financingItems.push({ name: 'Proceeds from Issue of Share Capital', amount: -amt });
+        financingTotal += -amt;
+      }
+    }
   }
 
-  const netCashFromOperating = netIncome + operatingAdjustmentsTotal + workingCapitalTotal;
-  const netCashFlowSum = netCashFromOperating + investingTotal + financingTotal;
+  // ── 6. Tax paid, Interest paid/received ──
+  let incomeTaxPaid = 0, interestPaid = 0, interestReceived = 0;
+  for (const [entryId, lines] of linesByEntry) {
+    const cashLine = lines.find(l => {
+      const a = accountById.get(l.accountId);
+      return a && isCashCode(a.code);
+    });
+    if (!cashLine) continue;
+    const cashDr = cashLine.debitAmount || 0;
+    const cashCr = cashLine.creditAmount || 0;
+
+    // Tax paid
+    const taxLine = lines.find(l => {
+      const a = accountById.get(l.accountId);
+      return a && isTaxCode(a.code);
+    });
+    if (taxLine) {
+      incomeTaxPaid += cashCr - cashDr;
+    }
+
+    // Interest paid
+    const intCostLine = lines.find(l => {
+      const a = accountById.get(l.accountId);
+      return a && isFinanceCostCode(a.code);
+    });
+    if (intCostLine) {
+      interestPaid += cashCr - cashDr;
+    }
+
+    // Interest received
+    const intIncLine = lines.find(l => {
+      const a = accountById.get(l.accountId);
+      return a && isFinanceIncomeCode(a.code);
+    });
+    if (intIncLine) {
+      interestReceived += cashDr - cashCr;
+    }
+  }
+
+  const netCashFromOperating = cashGeneratedFromOperations + incomeTaxPaid + interestPaid + interestReceived;
+
+  // ── 7. Opening and Closing Cash ──
+  let openingCash = 0, closingCash = 0;
+  for (const a of orgAccounts) {
+    if (isCashCode(a.code)) {
+      const opening = await getAccountBalance(a.id, new Date(startDate.getTime() - 1));
+      const closing = await getAccountBalance(a.id, endDate);
+      // Only include accounts with positive net balance (exclude overdrafts)
+      if (opening > 0) openingCash += opening;
+      if (closing > 0) closingCash += closing;
+    }
+  }
+
+  // Ledger cash balance for reconciliation
+  let ledgerCashBalance = 0;
+  for (const a of orgAccounts) {
+    if (isCashCode(a.code)) {
+      const bal = await getAccountBalance(a.id, endDate);
+      if (bal > 0) ledgerCashBalance += bal;
+    }
+  }
+
+  const netChangeInCash = netCashFromOperating + investingTotal + financingTotal;
+  // Recompute closing cash as opening + net change
+  const computedClosingCash = openingCash + netChangeInCash;
+  const reconciliationDiff = computedClosingCash - ledgerCashBalance;
+  const reconciled = Math.abs(reconciliationDiff) < 1;
+
+  // ── Aggregate investing/financing items ──
+  function aggregateItems(items: { name: string; amount: number }[]): { name: string; amount: number }[] {
+    const map = new Map<string, number>();
+    for (const it of items) {
+      map.set(it.name, (map.get(it.name) || 0) + it.amount);
+    }
+    const result: { name: string; amount: number }[] = [];
+    for (const [name, amount] of map) {
+      if (Math.abs(amount) > 0) result.push({ name, amount });
+    }
+    return result;
+  }
 
   return {
-    netIncome,
+    netIncome: netProfitVal,
     operatingActivities: {
-      adjustments: operatingAdjustments,
-      workingCapitalChanges: workingCapitalAdjustments,
+      adjustments,
+      adjustmentsTotal,
+      workingCapitalChanges: wcItems,
+      workingCapitalTotal,
+      cashGeneratedFromOperations,
+      incomeTaxPaid,
+      interestPaid,
+      interestReceived,
       total: netCashFromOperating
     },
     investingActivities: {
-      items: investingItems,
+      items: aggregateItems(investingItems),
       total: investingTotal
     },
     financingActivities: {
-      items: financingItems,
+      items: aggregateItems(financingItems),
       total: financingTotal
     },
-    netChangeInCash: netCashFlowSum,
-    openingCash: openingCashVal,
-    closingCash: closingCashVal
+    netChangeInCash: netChangeInCash,
+    openingCash,
+    closingCash: computedClosingCash,
+    ledgerCashBalance,
+    reconciliationDiff,
+    reconciled
   };
 }
 

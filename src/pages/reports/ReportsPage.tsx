@@ -760,6 +760,8 @@ function ReportShell({ reportType, title }: ReportPageProps) {
   const [showCodes, setShowCodes] = useState(() => localStorage.getItem('bs_showCodes') === 'true');
   const [isShowZero, setIsShowZero] = useState(() => localStorage.getItem('is_showZero') !== 'false');
   const [isShowCodes, setIsShowCodes] = useState(() => localStorage.getItem('is_showCodes') === 'true');
+  const [cfShowZero, setCfShowZero] = useState(() => localStorage.getItem('cf_showZero') !== 'false');
+  const [cfShowCodes, setCfShowCodes] = useState(() => localStorage.getItem('cf_showCodes') === 'true');
 
   const isBalanceSheet = reportType === 'balance-sheet';
   const isAgedReport = reportType === 'aged-receivables' || reportType === 'aged-payables';
@@ -902,14 +904,19 @@ function ReportShell({ reportType, title }: ReportPageProps) {
           headers = ['Line Item', 'Amount'];
           const flatRows: string[][] = [];
           const addRow = (label: string, amt: number) => flatRows.push([label, (amt/100).toFixed(2)]);
-          const netIncome = cf.netIncome || 0;
           const operating = cf.operatingActivities || {};
           const investing = cf.investingActivities || {};
           const financing = cf.financingActivities || {};
           addRow('A. OPERATING ACTIVITIES', 0);
-          addRow('Net Profit', netIncome);
+          addRow('Net Profit for the Period', cf.netIncome || 0);
           (operating.adjustments || []).forEach((a: any) => addRow(a.name, a.amount));
+          addRow('Total Adjustments for Non-Cash Items', operating.adjustmentsTotal || 0);
           (operating.workingCapitalChanges || []).forEach((w: any) => addRow(w.name, w.amount));
+          addRow('Total Changes in Working Capital', operating.workingCapitalTotal || 0);
+          addRow('Cash Generated from Operations', operating.cashGeneratedFromOperations || 0);
+          if (Math.abs(operating.incomeTaxPaid || 0) > 0) addRow('Income Tax Paid', operating.incomeTaxPaid);
+          if (Math.abs(operating.interestPaid || 0) > 0) addRow('Interest Paid', operating.interestPaid);
+          if (Math.abs(operating.interestReceived || 0) > 0) addRow('Interest Received', operating.interestReceived);
           addRow('Net Cash from Operating Activities', operating.total || 0);
           addRow('B. INVESTING ACTIVITIES', 0);
           (investing.items || []).forEach((iv: any) => addRow(iv.name, iv.amount));
@@ -917,9 +924,12 @@ function ReportShell({ reportType, title }: ReportPageProps) {
           addRow('C. FINANCING ACTIVITIES', 0);
           (financing.items || []).forEach((fn: any) => addRow(fn.name, fn.amount));
           addRow('Net Cash from Financing Activities', financing.total || 0);
-          addRow('Net Change in Cash', cf.netChangeInCash || 0);
-          addRow('Opening Cash Balance', cf.openingCash || 0);
-          addRow('Closing Cash Balance', cf.closingCash || 0);
+          addRow('Net Increase / (Decrease) in Cash', cf.netChangeInCash || 0);
+          addRow('Opening Cash & Cash Equivalents', cf.openingCash || 0);
+          addRow('Closing Cash & Cash Equivalents', cf.closingCash || 0);
+          addRow('Closing Cash per Ledger', cf.ledgerCashBalance || 0);
+          addRow('Difference', cf.reconciliationDiff || 0);
+          addRow('Reconciled', cf.reconciled ? 1 : 0);
           csvRows = flatRows;
         } else {
           headers = ['Account Code', 'Account Name', 'Type', 'Debit', 'Credit'];
@@ -1072,27 +1082,38 @@ function ReportShell({ reportType, title }: ReportPageProps) {
           );
         } else if (reportType === 'cash-flow') {
           const cf = data?.data || data || {};
-          const fmtPdf = (v: number) => `₦${(v/100).toLocaleString()}`;
+          const fmtPdf = (v: number) => v < 0 ? `(₦${(Math.abs(v)/100).toLocaleString()})` : `₦${(v/100).toLocaleString()}`;
           const pdfRows: string[] = [];
           const addPdfRow = (label: string, amt: string, cls?: string) => pdfRows.push(`<tr${cls?` class="${cls}"`:''}><td style="padding:4px 10px">${label}</td><td class="r" style="padding:4px 10px">${amt}</td></tr>`);
-          const netIncome = cf.netIncome || 0;
           const operating = cf.operatingActivities || {};
           const investing = cf.investingActivities || {};
           const financing = cf.financingActivities || {};
           addPdfRow('A. OPERATING ACTIVITIES', '', 'bg-emerald-50');
-          addPdfRow('Net Profit', fmtPdf(netIncome));
-          (operating.adjustments || []).forEach((a: any) => addPdfRow(a.name, fmtPdf(a.amount)));
-          (operating.workingCapitalChanges || []).forEach((w: any) => addPdfRow(w.name, fmtPdf(w.amount)));
-          addPdfRow('Net Cash from Operating Activities', fmtPdf(operating.total || 0), 'fw-bold border-top-2');
+          addPdfRow('Net Profit for the Period', fmtPdf(cf.netIncome || 0));
+          if (operating.adjustments?.length) {
+            addPdfRow('Adjustments for Non-Cash Items', '', 'bg-slate-50');
+            (operating.adjustments || []).forEach((a: any) => addPdfRow(a.name, fmtPdf(a.amount)));
+            addPdfRow('Total Adjustments', fmtPdf(operating.adjustmentsTotal || 0), 'fw-bold');
+          }
+          if (operating.workingCapitalChanges?.length) {
+            addPdfRow('Changes in Working Capital', '', 'bg-slate-50');
+            (operating.workingCapitalChanges || []).forEach((w: any) => addPdfRow(w.name, fmtPdf(w.amount)));
+            addPdfRow('Total Working Capital Changes', fmtPdf(operating.workingCapitalTotal || 0), 'fw-bold');
+          }
+          addPdfRow('Cash Generated from Operations', fmtPdf(operating.cashGeneratedFromOperations || 0), 'fw-bold');
+          if (Math.abs(operating.incomeTaxPaid || 0) > 0) addPdfRow('Income Tax Paid', fmtPdf(operating.incomeTaxPaid));
+          if (Math.abs(operating.interestPaid || 0) > 0) addPdfRow('Interest Paid', fmtPdf(operating.interestPaid));
+          if (Math.abs(operating.interestReceived || 0) > 0) addPdfRow('Interest Received', fmtPdf(operating.interestReceived));
+          addPdfRow('NET CASH FROM OPERATING ACTIVITIES', fmtPdf(operating.total || 0), 'fw-bold border-top-2');
           addPdfRow('B. INVESTING ACTIVITIES', '', 'bg-blue-50');
           (investing.items || []).forEach((iv: any) => addPdfRow(iv.name, fmtPdf(iv.amount)));
-          addPdfRow('Net Cash from Investing Activities', fmtPdf(investing.total || 0), 'fw-bold border-top-2');
+          addPdfRow('NET CASH FROM INVESTING ACTIVITIES', fmtPdf(investing.total || 0), 'fw-bold border-top-2');
           addPdfRow('C. FINANCING ACTIVITIES', '', 'bg-violet-50');
           (financing.items || []).forEach((fn: any) => addPdfRow(fn.name, fmtPdf(fn.amount)));
-          addPdfRow('Net Cash from Financing Activities', fmtPdf(financing.total || 0), 'fw-bold border-top-2');
-          addPdfRow('Net Change in Cash', fmtPdf(cf.netChangeInCash || 0), 'fw-bold border-top-3');
-          addPdfRow('Opening Cash Balance', fmtPdf(cf.openingCash || 0));
-          addPdfRow('Closing Cash Balance', fmtPdf(cf.closingCash || 0), 'fw-bold');
+          addPdfRow('NET CASH FROM FINANCING ACTIVITIES', fmtPdf(financing.total || 0), 'fw-bold border-top-2');
+          addPdfRow('NET INCREASE / (DECREASE) IN CASH', fmtPdf(cf.netChangeInCash || 0), 'fw-bold border-top-3');
+          addPdfRow('Opening Cash & Cash Equivalents', fmtPdf(cf.openingCash || 0));
+          addPdfRow('Closing Cash & Cash Equivalents', fmtPdf(cf.closingCash || 0), 'fw-bold');
           const orgCf = (orgData as any)?.data || orgData || {};
           const orgCfName = orgCf.name || '';
           const orgCfAddr = orgCf.address ? `<p style="margin:0;font-size:11px;color:#475569">${orgCf.address}</p>` : '';
@@ -1296,6 +1317,8 @@ function ReportShell({ reportType, title }: ReportPageProps) {
             <div className="flex items-center gap-2 ml-auto">
               <button onClick={() => { setIsShowZero(!isShowZero); localStorage.setItem('is_showZero', String(!isShowZero)); }} className={`text-xs font-semibold px-3 py-1.5 rounded-xl border transition-all ${isShowZero ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-slate-100 border-slate-200 text-slate-500'}`}>{isShowZero ? 'Hide Zero Accounts' : 'Show Zero Accounts'}</button>
               <button onClick={() => { setIsShowCodes(!isShowCodes); localStorage.setItem('is_showCodes', String(!isShowCodes)); }} className={`text-xs font-semibold px-3 py-1.5 rounded-xl border transition-all ${isShowCodes ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-slate-100 border-slate-200 text-slate-500'}`}>{isShowCodes ? 'Hide Codes' : 'Show Codes'}</button>
+              <button onClick={() => { setCfShowZero(!cfShowZero); localStorage.setItem('cf_showZero', String(!cfShowZero)); }} className={`text-xs font-semibold px-3 py-1.5 rounded-xl border transition-all ${cfShowZero ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-slate-100 border-slate-200 text-slate-500'}`}>{cfShowZero ? 'CF Hide Zero' : 'CF Show Zero'}</button>
+              <button onClick={() => { setCfShowCodes(!cfShowCodes); localStorage.setItem('cf_showCodes', String(!cfShowCodes)); }} className={`text-xs font-semibold px-3 py-1.5 rounded-xl border transition-all ${cfShowCodes ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-slate-100 border-slate-200 text-slate-500'}`}>{cfShowCodes ? 'CF Hide Codes' : 'CF Show Codes'}</button>
             </div>
           </>
         )}
@@ -1336,7 +1359,7 @@ function ReportShell({ reportType, title }: ReportPageProps) {
       ) : error ? (
         <div className="flex items-center gap-2 p-4 bg-red-50 text-red-700 rounded-xl text-sm"><AlertCircle className="w-4 h-4" /> Failed to load report.</div>
       ) : (
-        <ReportTable data={data} reportType={reportType} compareEnabled={compareEnabled} onAccountClick={(acct: any) => setDrillDown(acct)} showZero={showZero} showCodes={showCodes} isShowZero={isShowZero} isShowCodes={isShowCodes} asOfDate={asOfDate} />
+        <ReportTable data={data} reportType={reportType} compareEnabled={compareEnabled} onAccountClick={(acct: any) => setDrillDown(acct)} showZero={showZero} showCodes={showCodes} isShowZero={isShowZero} isShowCodes={isShowCodes} cfShowZero={cfShowZero} cfShowCodes={cfShowCodes} asOfDate={asOfDate} />
       )}
 
       {drillDown && <AccountDrilldownModal account={drillDown} sDate={sDate} eDate={isBalanceSheet ? `${asOfDate}` : eDate} onClose={() => setDrillDown(null)} />}
@@ -1344,7 +1367,7 @@ function ReportShell({ reportType, title }: ReportPageProps) {
   );
 }
 
-function ReportTable({ data, reportType, compareEnabled, onAccountClick, showZero, showCodes, isShowZero, isShowCodes, asOfDate }: { data: any; reportType: ReportType; compareEnabled?: boolean; onAccountClick?: (acct: any) => void; showZero?: boolean; showCodes?: boolean; isShowZero?: boolean; isShowCodes?: boolean; asOfDate?: string }) {
+function ReportTable({ data, reportType, compareEnabled, onAccountClick, showZero, showCodes, isShowZero, isShowCodes, cfShowZero, cfShowCodes, asOfDate }: { data: any; reportType: ReportType; compareEnabled?: boolean; onAccountClick?: (acct: any) => void; showZero?: boolean; showCodes?: boolean; isShowZero?: boolean; isShowCodes?: boolean; cfShowZero?: boolean; cfShowCodes?: boolean; asOfDate?: string }) {
   if (!data) return null;
 
   // Comparative mode — data contains { current, prior, variance }
@@ -1427,83 +1450,119 @@ function ReportTable({ data, reportType, compareEnabled, onAccountClick, showZer
     const workingCapital = operating.workingCapitalChanges || [];
     const investingItems = investing.items || [];
     const financingItems = financing.items || [];
+
+    function fmtCf(val: number): string {
+      const abs = Math.abs(val / 100);
+      const formatted = abs.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      return val < 0 ? `(₦${formatted})` : `₦${formatted}`;
+    }
+    function shouldShow(val: number): boolean {
+      return cfShowZero || Math.abs(val) > 0.01;
+    }
+    function cfRow(label: string, amount: number, indent: string = 'pl-8', bold: boolean = false) {
+      if (!shouldShow(amount) && !bold) return null;
+      const isNeg = amount < 0;
+      return (
+        <tr key={label} className="border-t border-slate-100 hover:bg-slate-50/50 transition-colors">
+          <td className={`px-3 py-2.5 ${indent} ${bold ? 'font-bold text-slate-900' : 'text-slate-800'}`}>{label}</td>
+          <td className={`px-3 py-2.5 text-right ${bold ? 'font-bold' : 'font-semibold'} ${isNeg ? 'text-red-600' : 'text-slate-800'}`}>{fmtCf(amount)}</td>
+        </tr>
+      );
+    }
+    function sectionHeader(label: string, bg: string, textColor: string) {
+      return <tr className={bg}><td colSpan={2} className={`px-3 py-2 text-xs font-bold ${textColor} uppercase tracking-wider`}>{label}</td></tr>;
+    }
+
+    const netOp = operating.total || 0;
+    const invTotal = investing.total || 0;
+    const finTotal = financing.total || 0;
+    const netChange = cf.netChangeInCash || 0;
+    const reconciles = cf.reconciled;
+
     return (
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-            <tr>
-              <th className="text-left px-3 py-3">Line Item</th>
-              <th className="text-right px-3 py-3">Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr className="bg-emerald-50"><td colSpan={2} className="px-3 py-2 text-xs font-bold text-emerald-800 uppercase tracking-wider">A. Operating Activities</td></tr>
-            <tr className="border-t border-slate-100 hover:bg-slate-50/50 transition-colors">
-              <td className="px-3 py-2.5 pl-8 text-slate-800">Net Profit (from P&amp;L)</td>
-              <td className="px-3 py-2.5 text-right font-semibold text-slate-800">{fmtNaira(netIncome)}</td>
-            </tr>
-            {adjustments.map((a: any, i: number) => (
-              <tr key={`adj-${i}`} className="border-t border-slate-100 hover:bg-slate-50/50 transition-colors">
-                <td className="px-3 py-2.5 pl-8 text-slate-800">{a.name}</td>
-                <td className="px-3 py-2.5 text-right text-slate-800">{fmtNaira(a.amount)}</td>
+      <div className="space-y-4">
+        {/* Reconciliation warning */}
+        {!reconciles && (
+          <div className="bg-red-50 border-2 border-red-300 rounded-xl p-4 flex items-start gap-3">
+            <AlertCircle className="w-6 h-6 text-red-500 mt-0.5 shrink-0" />
+            <div>
+              <p className="font-bold text-red-800 text-sm">⚠ Cash Flow does not reconcile to ledger cash balance</p>
+              <p className="text-red-600 text-xs mt-1">Computed closing cash: {fmtCf(cf.closingCash)}. Ledger cash balance: {fmtCf(cf.ledgerCashBalance)}. Difference: {fmtCf(cf.reconciliationDiff)}. Please review unrecorded transactions.</p>
+            </div>
+          </div>
+        )}
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+              <tr>
+                <th className="text-left px-3 py-3">Line Item</th>
+                <th className="text-right px-3 py-3">Amount</th>
               </tr>
-            ))}
-            {workingCapital.map((w: any, i: number) => (
-              <tr key={`wc-${i}`} className="border-t border-slate-100 hover:bg-slate-50/50 transition-colors">
-                <td className="px-3 py-2.5 pl-8 text-slate-800">{w.name}</td>
-                <td className="px-3 py-2.5 text-right text-slate-800">{fmtNaira(w.amount)}</td>
+            </thead>
+            <tbody>
+              {sectionHeader('A. Operating Activities', 'bg-emerald-50', 'text-emerald-800')}
+              {cfRow('Net Profit for the Period', netIncome)}
+              {/* Non-cash adjustments */}
+              {adjustments.length > 0 && (
+                <tr className="bg-slate-50/30"><td colSpan={2} className="px-3 py-1.5 pl-10 text-xs font-semibold text-slate-500 uppercase tracking-wider">Adjustments for Non-Cash Items</td></tr>
+              )}
+              {adjustments.map((a: any, i: number) => cfRow(a.name, a.amount, 'pl-14'))}
+              {adjustments.length > 0 && cfRow('Total Adjustments for Non-Cash Items', operating.adjustmentsTotal || 0, 'pl-10', true)}
+              {/* Working Capital */}
+              {workingCapital.length > 0 && (
+                <tr className="bg-slate-50/30"><td colSpan={2} className="px-3 py-1.5 pl-10 text-xs font-semibold text-slate-500 uppercase tracking-wider">Changes in Working Capital</td></tr>
+              )}
+              {workingCapital.map((w: any, i: number) => cfRow(w.name, w.amount, 'pl-14'))}
+              {workingCapital.length > 0 && cfRow('Total Changes in Working Capital', operating.workingCapitalTotal || 0, 'pl-10', true)}
+              {cfRow('Cash Generated from Operations', operating.cashGeneratedFromOperations || 0, 'pl-8', true)}
+              {shouldShow(operating.incomeTaxPaid) && cfRow('Income Tax Paid', operating.incomeTaxPaid || 0, 'pl-8')}
+              {shouldShow(operating.interestPaid) && cfRow('Interest Paid', operating.interestPaid || 0, 'pl-8')}
+              {shouldShow(operating.interestReceived) && cfRow('Interest Received', operating.interestReceived || 0, 'pl-8')}
+              <tr className={`border-t-2 border-emerald-200 bg-emerald-50/50 font-bold`}>
+                <td className="px-3 py-2.5 pl-8 text-sm text-slate-900">NET CASH FROM OPERATING ACTIVITIES</td>
+                <td className={`px-3 py-2.5 text-right ${netOp < 0 ? 'text-red-700' : 'text-slate-900'}`}>{fmtCf(netOp)}</td>
               </tr>
-            ))}
-            <tr className="border-t-2 border-emerald-200 bg-emerald-50/50">
-              <td className="px-3 py-2 text-sm font-bold text-slate-800">Net Cash from Operating Activities</td>
-              <td className="px-3 py-2 text-right font-bold text-slate-800">{fmtNaira(operating.total)}</td>
-            </tr>
-            <tr className="bg-blue-50"><td colSpan={2} className="px-3 py-2 text-xs font-bold text-blue-800 uppercase tracking-wider">B. Investing Activities</td></tr>
-            {investingItems.length === 0 && (
-              <tr className="border-t border-slate-100">
-                <td colSpan={2} className="px-3 py-2.5 pl-8 text-slate-400 italic">No investing activity</td>
+              {sectionHeader('B. Investing Activities', 'bg-blue-50', 'text-blue-800')}
+              {investingItems.length === 0 && (
+                <tr className="border-t border-slate-100"><td colSpan={2} className="px-3 py-2.5 pl-8 text-slate-400 italic">No investing activity</td></tr>
+              )}
+              {investingItems.map((iv: any, i: number) => cfRow(iv.name, iv.amount, 'pl-8'))}
+              <tr className={`border-t-2 border-blue-200 bg-blue-50/50 font-bold`}>
+                <td className="px-3 py-2.5 pl-8 text-sm text-slate-900">NET CASH FROM INVESTING ACTIVITIES</td>
+                <td className={`px-3 py-2.5 text-right ${invTotal < 0 ? 'text-red-700' : 'text-slate-900'}`}>{fmtCf(invTotal)}</td>
               </tr>
-            )}
-            {investingItems.map((iv: any, i: number) => (
-              <tr key={`inv-${i}`} className="border-t border-slate-100 hover:bg-slate-50/50 transition-colors">
-                <td className="px-3 py-2.5 pl-8 text-slate-800">{iv.name}</td>
-                <td className="px-3 py-2.5 text-right text-slate-800">{fmtNaira(iv.amount)}</td>
+              {sectionHeader('C. Financing Activities', 'bg-violet-50', 'text-violet-800')}
+              {financingItems.length === 0 && (
+                <tr className="border-t border-slate-100"><td colSpan={2} className="px-3 py-2.5 pl-8 text-slate-400 italic">No financing activity</td></tr>
+              )}
+              {financingItems.map((fn: any, i: number) => cfRow(fn.name, fn.amount, 'pl-8'))}
+              <tr className={`border-t-2 border-violet-200 bg-violet-50/50 font-bold`}>
+                <td className="px-3 py-2.5 pl-8 text-sm text-slate-900">NET CASH FROM FINANCING ACTIVITIES</td>
+                <td className={`px-3 py-2.5 text-right ${finTotal < 0 ? 'text-red-700' : 'text-slate-900'}`}>{fmtCf(finTotal)}</td>
               </tr>
-            ))}
-            <tr className="border-t-2 border-blue-200 bg-blue-50/50">
-              <td className="px-3 py-2 text-sm font-bold text-slate-800">Net Cash from Investing Activities</td>
-              <td className="px-3 py-2 text-right font-bold text-slate-800">{fmtNaira(investing.total)}</td>
-            </tr>
-            <tr className="bg-violet-50"><td colSpan={2} className="px-3 py-2 text-xs font-bold text-violet-800 uppercase tracking-wider">C. Financing Activities</td></tr>
-            {financingItems.length === 0 && (
-              <tr className="border-t border-slate-100">
-                <td colSpan={2} className="px-3 py-2.5 pl-8 text-slate-400 italic">No financing activity</td>
+              {/* Net Change */}
+              <tr className="border-t-2 border-slate-300 bg-slate-100 font-bold text-base">
+                <td className="px-3 py-3 text-slate-900">NET INCREASE / (DECREASE) IN CASH</td>
+                <td className={`px-3 py-3 text-right ${netChange < 0 ? 'text-red-700' : 'text-slate-900'}`}>{fmtCf(netChange)}</td>
               </tr>
-            )}
-            {financingItems.map((fn: any, i: number) => (
-              <tr key={`fin-${i}`} className="border-t border-slate-100 hover:bg-slate-50/50 transition-colors">
-                <td className="px-3 py-2.5 pl-8 text-slate-800">{fn.name}</td>
-                <td className="px-3 py-2.5 text-right text-slate-800">{fmtNaira(fn.amount)}</td>
+              <tr className="border-t border-slate-200">
+                <td className="px-3 py-2.5 pl-8 text-slate-600">Opening Cash &amp; Cash Equivalents</td>
+                <td className="px-3 py-2.5 text-right text-slate-600">{fmtNaira(cf.openingCash)}</td>
               </tr>
-            ))}
-            <tr className="border-t-2 border-violet-200 bg-violet-50/50">
-              <td className="px-3 py-2 text-sm font-bold text-slate-800">Net Cash from Financing Activities</td>
-              <td className="px-3 py-2 text-right font-bold text-slate-800">{fmtNaira(financing.total)}</td>
-            </tr>
-            <tr className="border-t-2 border-slate-300 bg-slate-100">
-              <td className="px-3 py-3 text-base font-bold text-slate-900">Net Change in Cash</td>
-              <td className="px-3 py-3 text-right text-base font-bold text-slate-900">{fmtNaira(cf.netChangeInCash)}</td>
-            </tr>
-            <tr className="border-t border-slate-200">
-              <td className="px-3 py-2.5 pl-8 text-slate-600">Opening Cash Balance</td>
-              <td className="px-3 py-2.5 text-right text-slate-600">{fmtNaira(cf.openingCash)}</td>
-            </tr>
-            <tr className="border-t border-slate-200">
-              <td className="px-3 py-2.5 pl-8 text-slate-600">Closing Cash Balance</td>
-              <td className="px-3 py-2.5 text-right font-semibold text-slate-800">{fmtNaira(cf.closingCash)}</td>
-            </tr>
-          </tbody>
-        </table>
+              <tr className="border-t border-slate-200">
+                <td className="px-3 py-2.5 pl-8 text-slate-600">Closing Cash &amp; Cash Equivalents</td>
+                <td className="px-3 py-2.5 text-right font-semibold text-slate-800">{fmtNaira(cf.closingCash)}</td>
+              </tr>
+              {/* Reconciliation */}
+              <tr className="border-t border-slate-200 bg-slate-50/50">
+                <td colSpan={2} className="px-3 py-2 text-xs text-slate-500">
+                  Reconciliation Check: Closing Cash per Statement: <strong>{fmtNaira(cf.closingCash)}</strong> &mdash; Closing Cash per Ledger: <strong>{fmtNaira(cf.ledgerCashBalance)}</strong> &mdash; Difference: <strong>{fmtNaira(cf.reconciliationDiff)}</strong>
+                  {reconciles ? <span className="text-emerald-600 font-bold ml-2">✅</span> : <span className="text-red-600 font-bold ml-2">⚠</span>}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     );
   }
