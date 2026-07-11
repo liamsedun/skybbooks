@@ -2000,6 +2000,7 @@ function ReportShell({ reportType, title }: ReportPageProps) {
 }
 
 function ReportTable({ data, reportType, compareEnabled, onAccountClick, showZero, showCodes, isShowZero, isShowCodes, cfShowZero, cfShowCodes, asOfDate }: { data: any; reportType: ReportType; compareEnabled?: boolean; onAccountClick?: (acct: any) => void; showZero?: boolean; showCodes?: boolean; isShowZero?: boolean; isShowCodes?: boolean; cfShowZero?: boolean; cfShowCodes?: boolean; asOfDate?: string }) {
+  const navigate = useNavigate();
   if (!data) return null;
 
   // Comparative mode — data contains { current, prior, variance }
@@ -2074,16 +2075,26 @@ function ReportTable({ data, reportType, compareEnabled, onAccountClick, showZer
                       <th className="text-right px-4 py-3">Balance Due</th>
                       <th className="text-right px-4 py-3">Overdue</th>
                       <th className="text-right px-4 py-3">Bucket</th>
+                      <th className="text-right px-4 py-3"></th>
                     </tr>
                   </thead>
                   <tbody>
                     {drillItems.map((item: any, i: number) => (
                       <tr key={item.id || i} className="border-t border-slate-100 hover:bg-slate-50/50 transition-colors">
-                        <td className="px-4 py-2.5 font-medium text-slate-800">{item.invoiceNumber || item.billNumber || '—'}</td>
+                        <td className="px-4 py-2.5 font-medium text-blue-600">
+                          <button onClick={() => navigate(isReceivables ? `/sales/invoices/${item.id}` : `/purchases/bills/${item.id}`)} className="hover:underline">
+                            {item.invoiceNumber || item.billNumber || '—'}
+                          </button>
+                        </td>
                         <td className="px-4 py-2.5 text-slate-600">{new Date(item.dueDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
                         <td className="px-4 py-2.5 text-right font-mono text-slate-800">{fmtNairaDrill(item.balanceDue)}</td>
                         <td className="px-4 py-2.5 text-right text-slate-600">{item.overdueDays || 0}d</td>
                         <td className="px-4 py-2.5 text-right"><span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">{item.bucket}</span></td>
+                        <td className="px-4 py-2.5 text-right">
+                          <button onClick={() => navigate(isReceivables ? `/sales/invoices/${item.id}` : `/purchases/bills/${item.id}`)} className="text-xs text-blue-600 hover:text-blue-800 hover:underline font-medium">
+                            View
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -2091,7 +2102,7 @@ function ReportTable({ data, reportType, compareEnabled, onAccountClick, showZer
                     <tr className="border-t-2 border-slate-300 bg-slate-100 font-bold text-sm">
                       <td colSpan={2} className="px-4 py-3 text-slate-800">Total</td>
                       <td className="px-4 py-3 text-right text-slate-800">{fmtNairaDrill(drillItems.reduce((s: number, item: any) => s + (item.balanceDue || 0), 0))}</td>
-                      <td colSpan={2}></td>
+                      <td colSpan={3}></td>
                     </tr>
                   </tfoot>
                 </table>
