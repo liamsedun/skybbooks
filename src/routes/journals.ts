@@ -28,7 +28,7 @@ const journalEntrySchema = z.object({
 router.get('/', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const orgId = req.user!.orgId!;
-    const { from, to } = req.query;
+    const { from, to, accountId } = req.query;
 
     let query = sql`SELECT
         je.id, je.org_id AS "orgId", je.entry_number AS "entryNumber",
@@ -49,6 +49,9 @@ router.get('/', async (req: AuthenticatedRequest, res: Response, next: NextFunct
     }
     if (to && typeof to === 'string' && to.trim()) {
       query = sql`${query} AND je.date <= ${to}::date`;
+    }
+    if (accountId && typeof accountId === 'string' && accountId.trim()) {
+      query = sql`${query} AND EXISTS (SELECT 1 FROM journal_lines jl2 WHERE jl2.entry_id = je.id AND jl2.account_id = ${accountId}::uuid)`;
     }
     query = sql`${query} ORDER BY je.date DESC`;
 

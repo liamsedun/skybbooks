@@ -814,7 +814,7 @@ export const accountantApi = {
 
 // 7b. Journals Endpoints
 export const journalsApi = {
-  getJournals: async (params?: { from?: string; to?: string }) => {
+  getJournals: async (params?: { from?: string; to?: string; accountId?: string }) => {
     const res = await api.get('/journals', { params });
     return res.data;
   },

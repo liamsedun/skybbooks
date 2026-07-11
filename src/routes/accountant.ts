@@ -161,6 +161,24 @@ router.post('/accounts', async (req: AuthenticatedRequest, res: Response, next: 
   }
 });
 
+// GET /api/accountant/accounts/:id
+router.get('/accounts/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { id } = req.params;
+    const [account] = await db
+      .select()
+      .from(accounts)
+      .where(and(eq(accounts.id, id), eq(accounts.orgId, orgId)))
+      .limit(1);
+    if (!account) throw new AppError('Account not found.', 404);
+    return res.status(200).json({ success: true, data: account });
+  } catch (err) {
+    if (err instanceof AppError) return next(err);
+    return next(err);
+  }
+});
+
 // PATCH /api/accountant/accounts/:id
 router.patch('/accounts/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {

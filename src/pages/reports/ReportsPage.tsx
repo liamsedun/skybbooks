@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { reportsApi, accountantApi, apiDownload, printWindow, api, orgApi, downloadBlob, journalsApi, vatApi } from '../../lib/api';
 import { Loader2, AlertCircle, CheckCircle2, Download, Search, Upload, FileText, X, RefreshCw, ExternalLink, Pencil, ChevronRight, ChevronDown, Briefcase, ArrowLeft, Eye } from 'lucide-react';
 import { downloadCsv, exportToCsv, CSV_TEMPLATES } from '../../lib/csvTemplates';
@@ -359,6 +359,11 @@ export function TrialBalancePage() {
                         title={`Go to ${link.label}`}
                       ><ExternalLink className="w-3 h-3" /> {link.label}</button>
                     )}
+                    <button
+                      onClick={e => { e.stopPropagation(); navigate(`/reports/general-ledger?accountId=${row.accountId || row.id}`); }}
+                      className="ml-1.5 inline-flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-800 hover:underline transition-colors"
+                      title="View journal entries for this account"
+                    ><FileText className="w-3 h-3" /> GL</button>
                   </td>
                   <td className="px-3 py-3 text-right text-slate-500 capitalize">{row.accountType || row.type || '—'}</td>
                   <td className="px-3 py-3 text-right text-slate-600">{fmtNaira(row.closingDebit || row.debit || 0)}</td>
@@ -503,13 +508,26 @@ export function AgedPayablesPage() {
   return <ReportShell reportType="aged-payables" title="Aged Payables" />;
 }
 export function GeneralLedgerPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const accountIdParam = searchParams.get('accountId') || '';
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [viewEntryId, setViewEntryId] = useState<string | null>(null);
 
+  const { data: accountInfo } = useQuery({
+    queryKey: ['account', accountIdParam],
+    queryFn: async () => {
+      if (!accountIdParam) return null;
+      const res = await api.get(`/accountant/accounts/${accountIdParam}`);
+      const body = res.data as any;
+      return body?.data || body;
+    },
+    enabled: !!accountIdParam,
+  });
+
   const { data: journals, isLoading } = useQuery({
-    queryKey: ['general-ledger', fromDate, toDate],
-    queryFn: () => journalsApi.getJournals({ from: fromDate || undefined, to: toDate || undefined }),
+    queryKey: ['general-ledger', fromDate, toDate, accountIdParam],
+    queryFn: () => journalsApi.getJournals({ from: fromDate || undefined, to: toDate || undefined, accountId: accountIdParam || undefined }),
   });
 
   const { data: journalDetail } = useQuery({
@@ -624,6 +642,16 @@ export function GeneralLedgerPage() {
               className="text-sm text-blue-600 hover:text-blue-800 mt-5">Clear</button>
           )}
         </div>
+        {accountIdParam && accountInfo && (
+          <div className="mt-3 flex items-center gap-2 text-sm">
+            <span className="text-gray-500">Filtered by account:</span>
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 font-medium text-xs">
+              {accountInfo.code || accountInfo.accountCode || ''} — {accountInfo.name || accountInfo.accountName || accountIdParam}
+            </span>
+            <button onClick={() => setSearchParams({})}
+              className="text-xs text-red-600 hover:text-red-800 underline">Clear filter</button>
+          </div>
+        )}
       </div>
 
       {isLoading ? (
