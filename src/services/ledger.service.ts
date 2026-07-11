@@ -1056,93 +1056,47 @@ export async function getBalanceSheet(
   asOfDate: Date,
   compareAsOfDate?: Date
 ): Promise<any> {
+  // Single source of truth: derive account balances from Trial Balance
+  const earlyDate = new Date('2000-01-01');
+  const tbRows = await getTrialBalance(orgId, earlyDate, asOfDate);
+
   const orgAccounts = await db
     .select()
     .from(accounts)
     .where(eq(accounts.orgId, orgId));
 
-  const records = await db
-    .select({
-      accountId: journalLines.accountId,
-      debitAmount: journalLines.debitAmount,
-      creditAmount: journalLines.creditAmount,
-      currency: journalLines.currency,
-      fxRate: journalLines.fxRate
-    })
-    .from(journalLines)
-    .innerJoin(journalEntries, eq(journalLines.entryId, journalEntries.id))
-    .where(
-      and(
-        eq(journalEntries.orgId, orgId),
-        lte(journalEntries.date, asOfDate)
-      )
-    );
+  // Build net balance map from Trial Balance (closingDebit - closingCredit)
+  const tbNetMap = new Map<string, number>();
+  for (const row of tbRows) {
+    if (row.accountId === 'system-suspense') continue;
+    tbNetMap.set(row.accountId, row.closingDebit - row.closingCredit);
+  }
 
-  // First pass: compute net balance per account (dr-cr for assets, cr-dr for liabilities/equity)
+  // Remove parent accounts (Trial Balance already rolled up their children's balances)
+  const parentIds = new Set<string>();
+  for (const a of orgAccounts) { if (a.parentId) parentIds.add(a.parentId); }
+  for (const pid of parentIds) tbNetMap.delete(pid);
+
+  // Build allItems and cumulativeNetIncome from Trial Balance closing balances
   const allItems: BalItem[] = [];
   let cumulativeNetIncome = 0;
   const codePrefix = (code: string, len: number) => code.substring(0, len);
 
   for (const acct of orgAccounts) {
-    const matched = records.filter((r) => r.accountId === acct.id);
-    const dr = matched.reduce((sum, curr) => sum + (curr.currency && curr.currency !== 'NGN' ? toNgn(curr.debitAmount, curr.fxRate) : curr.debitAmount), 0);
-    const cr = matched.reduce((sum, curr) => sum + (curr.currency && curr.currency !== 'NGN' ? toNgn(curr.creditAmount, curr.fxRate) : curr.creditAmount), 0);
+    if (parentIds.has(acct.id)) continue;
+    const net = tbNetMap.get(acct.id) || 0; // closingDebit - closingCredit (positive = debit balance)
 
     if (acct.type === 'asset') {
-      allItems.push({ accountId: acct.id, code: acct.code, name: acct.name, balance: dr - cr });
+      allItems.push({ accountId: acct.id, code: acct.code, name: acct.name, balance: net });
     } else if (acct.type === 'liability') {
-      allItems.push({ accountId: acct.id, code: acct.code, name: acct.name, balance: cr - dr });
+      allItems.push({ accountId: acct.id, code: acct.code, name: acct.name, balance: -net });
     } else if (acct.type === 'equity') {
-      allItems.push({ accountId: acct.id, code: acct.code, name: acct.name, balance: cr - dr });
+      allItems.push({ accountId: acct.id, code: acct.code, name: acct.name, balance: -net });
     } else if (acct.type === 'revenue') {
-      cumulativeNetIncome += (cr - dr);
+      cumulativeNetIncome += -net; // cr-dr = -net
     } else if (acct.type === 'expense') {
-      cumulativeNetIncome -= (dr - cr);
+      cumulativeNetIncome -= net; // minus (dr-cr) = -net
     }
-  }
-
-  // Load module balances (fixed assets, customer/vendor opening balances, inventory)
-  const [faByAccount, customerBal, vendorBal, inventoryValueAsOf] = await Promise.all([
-    db.select({
-      accountId: fixedAssets.accountId,
-      totalCost: sql<number>`coalesce(sum(${fixedAssets.purchaseCost}), 0)`,
-      totalDepr: sql<number>`coalesce(sum(${fixedAssets.accumulatedDepreciation}), 0)`
-    }).from(fixedAssets).where(and(eq(fixedAssets.orgId, orgId), eq(fixedAssets.status, 'active'))).groupBy(fixedAssets.accountId),
-    db.select({ totalBalance: sql<number>`coalesce(sum(${contacts.balance}), 0)` })
-      .from(contacts).where(and(eq(contacts.orgId, orgId), eq(contacts.type, 'customer'))),
-    db.select({ totalBalance: sql<number>`coalesce(sum(${contacts.balance}), 0)` })
-      .from(contacts).where(and(eq(contacts.orgId, orgId), eq(contacts.type, 'vendor'))),
-    getInventoryValueAsOf(orgId, asOfDate),
-  ]);
-  const faMap = new Map<string, { totalCost: number; totalDepr: number }>();
-  for (const r of faByAccount) faMap.set(r.accountId, r);
-  const customerOB = Number(customerBal[0]?.totalBalance || 0);
-  const vendorOB = Number(vendorBal[0]?.totalBalance || 0);
-  const arAccount = orgAccounts.find(a => a.systemAccountRole === 'accounts_receivable') || orgAccounts.find(a => a.type === 'asset' && (a.name.toLowerCase().includes('receivable') || a.code.startsWith('12')));
-  const apAccount = orgAccounts.find(a => a.systemAccountRole === 'accounts_payable') || orgAccounts.find(a => a.type === 'liability' && (a.name.toLowerCase().includes('creditor') || a.name.toLowerCase().includes('payable')));
-  const invAccount = orgAccounts.find(a => a.code.startsWith('102') && !a.name.toLowerCase().includes('contra'));
-
-  // Apply sub-ledger adjustments to computed balances
-  for (const acct of orgAccounts) {
-    const item = allItems.find(i => i.accountId === acct.id);
-    // accounts.openingBalance (set via Edit Opening Balances)
-    if (acct.openingBalance !== 0) {
-      const ob = Number(acct.openingBalance);
-      if (acct.type === 'asset') { if (item) item.balance += ob; }
-      else if (acct.type === 'liability' || acct.type === 'equity') { if (item) item.balance += ob; }
-      else if (acct.type === 'revenue') cumulativeNetIncome += ob;
-      else if (acct.type === 'expense') cumulativeNetIncome -= ob;
-    }
-    if (!item) continue;
-    // Fixed asset override: force linked account balance to match totalCost - totalDepr
-    const faData = faMap.get(acct.id);
-    if (faData) item.balance = faData.totalCost - faData.totalDepr;
-    // Inventory override: force inventory account to computed valuation
-    if (invAccount && acct.id === invAccount.id) item.balance = inventoryValueAsOf;
-    // Customer opening balance → AR account
-    if (customerOB > 0 && arAccount && acct.id === arAccount.id) item.balance += customerOB;
-    // Vendor opening balance → AP account
-    if (vendorOB > 0 && apAccount && acct.id === apAccount.id) item.balance += vendorOB;
   }
 
   // Identify contra-asset accounts (accumulated depreciation/amortisation)
