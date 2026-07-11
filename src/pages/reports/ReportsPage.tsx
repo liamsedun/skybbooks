@@ -1,8 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { reportsApi, accountantApi, apiDownload, printWindow, api, orgApi, downloadBlob } from '../../lib/api';
-import { Loader2, AlertCircle, CheckCircle2, Download, Search, Upload, FileText, X, RefreshCw, ExternalLink, Pencil, ChevronRight, ChevronDown, Briefcase } from 'lucide-react';
+import { reportsApi, accountantApi, apiDownload, printWindow, api, orgApi, downloadBlob, journalsApi } from '../../lib/api';
+import { Loader2, AlertCircle, CheckCircle2, Download, Search, Upload, FileText, X, RefreshCw, ExternalLink, Pencil, ChevronRight, ChevronDown, Briefcase, ArrowLeft, Eye } from 'lucide-react';
 import { downloadCsv, exportToCsv, CSV_TEMPLATES } from '../../lib/csvTemplates';
 
 const MODULE_LINKS: { prefix: string; path: string; label: string }[] = [
@@ -501,6 +501,181 @@ export function AgedReceivablesPage() {
 }
 export function AgedPayablesPage() {
   return <ReportShell reportType="aged-payables" title="Aged Payables" />;
+}
+export function GeneralLedgerPage() {
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+  const [viewEntryId, setViewEntryId] = useState<string | null>(null);
+
+  const { data: journals, isLoading } = useQuery({
+    queryKey: ['general-ledger', fromDate, toDate],
+    queryFn: () => journalsApi.getJournals({ from: fromDate || undefined, to: toDate || undefined }),
+  });
+
+  const { data: journalDetail } = useQuery({
+    queryKey: ['journal-detail', viewEntryId],
+    queryFn: () => journalsApi.getJournal(viewEntryId!),
+    enabled: !!viewEntryId,
+  });
+
+  const { data: orgData } = useQuery({ queryKey: ['org'], queryFn: orgApi.getOrg });
+  const orgName = (orgData as any)?.data?.name || (orgData as any)?.name || '';
+
+  function fmtNaira(v: number): string {
+    return `₦${(v / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
+  }
+
+  function fmtDate(d: string): string {
+    return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+
+  function exportCsv() {
+    const list = Array.isArray(journals) ? journals : [];
+    const headers = ['Date', 'Entry #', 'Description', 'Source', 'Total Debits (₦)', 'Total Credits (₦)'];
+    const rows = list.map((e: any) => [
+      e.date ? fmtDate(e.date) : '',
+      e.entryNumber || '',
+      e.description || '',
+      e.source || '',
+      fmtNaira(e.totalDebits || 0),
+      fmtNaira(e.totalCredits || 0),
+    ]);
+    exportToCsv(`general_ledger_${new Date().toISOString().split('T')[0]}.csv`, headers, rows);
+  }
+
+  if (viewEntryId && journalDetail) {
+    const entry = journalDetail as any;
+    const lines = entry.lines || [];
+    return (
+      <div className="p-6">
+        <button onClick={() => setViewEntryId(null)} className="text-blue-600 hover:text-blue-800 mb-4 flex items-center gap-1 text-sm">
+          <ArrowLeft className="w-4 h-4" /> Back to General Ledger
+        </button>
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-lg font-bold mb-4">Journal Entry — {entry.entryNumber}</h2>
+          <div className="grid grid-cols-2 gap-4 mb-4 text-sm text-gray-600">
+            <div><span className="font-medium">Date:</span> {fmtDate(entry.date)}</div>
+            <div><span className="font-medium">Source:</span> {entry.source || '—'}</div>
+            <div className="col-span-2"><span className="font-medium">Description:</span> {entry.description || '—'}</div>
+            {entry.reference && <div className="col-span-2"><span className="font-medium">Reference:</span> {entry.reference}</div>}
+          </div>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-200">
+                <th className="text-left py-2 px-3">Account</th>
+                <th className="text-left py-2 px-3">Description</th>
+                <th className="text-right py-2 px-3">Debit (₦)</th>
+                <th className="text-right py-2 px-3">Credit (₦)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lines.map((line: any, i: number) => (
+                <tr key={line.id || i} className="border-b border-gray-100">
+                  <td className="py-2 px-3">{line.accountName || line.accountId || '—'}</td>
+                  <td className="py-2 px-3">{line.description || '—'}</td>
+                  <td className="py-2 px-3 text-right">{line.debitAmount > 0 ? fmtNaira(line.debitAmount) : '—'}</td>
+                  <td className="py-2 px-3 text-right">{line.creditAmount > 0 ? fmtNaira(line.creditAmount) : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="font-bold border-t-2 border-gray-300">
+                <td className="py-2 px-3" colSpan={2}>Totals</td>
+                <td className="py-2 px-3 text-right">{fmtNaira(lines.reduce((s: number, l: any) => s + (l.debitAmount || 0), 0))}</td>
+                <td className="py-2 px-3 text-right">{fmtNaira(lines.reduce((s: number, l: any) => s + (l.creditAmount || 0), 0))}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    );
+  }
+
+  const list = Array.isArray(journals) ? journals : [];
+
+  return (
+    <div className="p-6">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">General Ledger</h1>
+          <p className="text-sm text-gray-500">All journal entries across the organisation</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <button onClick={exportCsv} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2">
+            <Download className="w-4 h-4" /> Export CSV
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-lg shadow mb-6 p-4">
+        <div className="flex items-center gap-4">
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">From Date</label>
+            <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)}
+              className="border rounded px-3 py-1.5 text-sm" />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">To Date</label>
+            <input type="date" value={toDate} onChange={e => setToDate(e.target.value)}
+              className="border rounded px-3 py-1.5 text-sm" />
+          </div>
+          {(fromDate || toDate) && (
+            <button onClick={() => { setFromDate(''); setToDate(''); }}
+              className="text-sm text-blue-600 hover:text-blue-800 mt-5">Clear</button>
+          )}
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-blue-600" /></div>
+      ) : list.length === 0 ? (
+        <div className="bg-white rounded-lg shadow p-12 text-center text-gray-400">
+          <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
+          <p>No journal entries found</p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="text-left py-3 px-4 font-medium text-gray-600">Date</th>
+                <th className="text-left py-3 px-4 font-medium text-gray-600">Entry #</th>
+                <th className="text-left py-3 px-4 font-medium text-gray-600">Description</th>
+                <th className="text-left py-3 px-4 font-medium text-gray-600">Source</th>
+                <th className="text-right py-3 px-4 font-medium text-gray-600">Total Debits (₦)</th>
+                <th className="text-right py-3 px-4 font-medium text-gray-600">Total Credits (₦)</th>
+                <th className="py-3 px-4"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {list.map((entry: any) => (
+                <tr key={entry.id} className="border-t border-gray-100 hover:bg-gray-50 cursor-pointer"
+                    onClick={() => setViewEntryId(entry.id)}>
+                  <td className="py-3 px-4 text-gray-700">{fmtDate(entry.date)}</td>
+                  <td className="py-3 px-4 font-mono text-blue-600">{entry.entryNumber}</td>
+                  <td className="py-3 px-4 text-gray-700 max-w-xs truncate">{entry.description || '—'}</td>
+                  <td className="py-3 px-4 text-gray-500 capitalize">{entry.source || '—'}</td>
+                  <td className="py-3 px-4 text-right font-mono">{fmtNaira(entry.totalDebits || 0)}</td>
+                  <td className="py-3 px-4 text-right font-mono">{fmtNaira(entry.totalCredits || 0)}</td>
+                  <td className="py-3 px-4 text-right">
+                    <Eye className="w-4 h-4 text-gray-400 inline" />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="border-t-2 border-gray-300 font-bold bg-gray-50">
+                <td className="py-3 px-4" colSpan={4}>Total</td>
+                <td className="py-3 px-4 text-right">{fmtNaira(list.reduce((s: number, e: any) => s + (e.totalDebits || 0), 0))}</td>
+                <td className="py-3 px-4 text-right">{fmtNaira(list.reduce((s: number, e: any) => s + (e.totalCredits || 0), 0))}</td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      )}
+    </div>
+  );
 }
 export function ProjectsReportPage() {
   return <ProjectsReport />;

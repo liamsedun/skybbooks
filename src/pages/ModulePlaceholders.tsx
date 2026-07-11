@@ -670,7 +670,7 @@ export { JournalsPage } from './accountant/JournalsPage';
 export { BudgetsPage } from './accountant/BudgetsPage';
 export { FixedAssetsPage } from './accountant/FixedAssetsPage';
 export { DepreciationPage } from './accountant/DepreciationPage';
-export { TrialBalancePage, IncomeStatementPage, BalanceSheetPage, CashFlowPage, AgedReceivablesPage, AgedPayablesPage, ProjectsReportPage } from './reports/ReportsPage';
+export { TrialBalancePage, IncomeStatementPage, BalanceSheetPage, CashFlowPage, GeneralLedgerPage, AgedReceivablesPage, AgedPayablesPage, ProjectsReportPage } from './reports/ReportsPage';
 export { CurrencyRatesPage } from './banking/CurrencyRatesPage';
 export { AuditLogsPage } from './reports/AuditLogsPage';
 export { InvitesSettingsPage } from './settings/InvitesPage';
