@@ -417,7 +417,7 @@ export async function getTrialBalance(
     .where(eq(journalEntries.orgId, orgId));
 
   // 3. Load module balances
-  const [faByAccount, bankByAccount, customerBal, vendorBal, invBalance] = await Promise.all([
+  const [faByAccount, bankByAccount, customerBal, vendorBal] = await Promise.all([
     db.select({
       accountId: fixedAssets.accountId,
       totalCost: sql<number>`coalesce(sum(${fixedAssets.purchaseCost}), 0)`,
@@ -431,10 +431,6 @@ export async function getTrialBalance(
       .from(contacts).where(and(eq(contacts.orgId, orgId), eq(contacts.type, 'customer'))),
     db.select({ totalBalance: sql<number>`coalesce(sum(${contacts.balance}), 0)` })
       .from(contacts).where(and(eq(contacts.orgId, orgId), eq(contacts.type, 'vendor'))),
-    db.select({
-      totalValue: sql<number>`coalesce(sum(${inventoryLots.quantity}::numeric * ${inventoryLots.costPerUnit}), 0)`
-    }).from(inventoryLots)
-      .where(eq(inventoryLots.orgId, orgId))
   ]);
 
   const faMap = new Map<string, { totalCost: number; totalDepr: number }>();
@@ -445,8 +441,9 @@ export async function getTrialBalance(
 
   const customerOB = Number(customerBal[0]?.totalBalance || 0);
   const vendorOB = Number(vendorBal[0]?.totalBalance || 0);
-  const closingInventoryValue = Number(invBalance[0]?.totalValue || 0);
+  // Inventory valuation: use forward approach from immutable transactions (same as Income Statement)
   const openingInventoryValue = await getInventoryValueAsOf(orgId, new Date(startDate.getTime() - 86400000));
+  const closingInventoryValue = await getInventoryValueAsOf(orgId, endDate);
 
   // Identify single AR, AP, and Inventory accounts
   const arAccount = orgAccounts.find(a => a.systemAccountRole === 'accounts_receivable')
