@@ -1563,9 +1563,7 @@ function ReportShell({ reportType, title }: ReportPageProps) {
               </thead>
               <tbody>${mainRows || '<tr><td colspan="2" style="text-align:center;color:#94a3b8;padding:20px">No data</td></tr>'}</tbody>
             </table>
-            <div style="page-break-inside:avoid;page-break-before:auto;break-inside:avoid">
-              <table style="width:100%;border-collapse:collapse">${summaryRows}</table>
-            </div>`,
+            <table style="width:100%;border-collapse:collapse;page-break-before:always;page-break-inside:avoid;break-inside:avoid">${summaryRows}</table>`,
             `Period: ${sDate} - ${eDate}`
           );
         } else if (reportType === 'balance-sheet') {
