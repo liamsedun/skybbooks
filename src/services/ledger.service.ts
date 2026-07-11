@@ -748,20 +748,45 @@ export async function postOpeningBalances(
  * Sums all immutable inventory_transactions up to asOfDate:
  *   purchases (+qty×cost), sales (-qty×cost), adjustments (±qty×cost),
  *   value adjustments (qty=0 → +unitCost carries the value diff).
- * Correctly handles fully consumed lots because transaction records never vanish.
+ *
+ * Opening stock transactions (type='purchase', referenceType='opening_stock') are ALWAYS
+ * included regardless of their recorded date, because they represent pre-existing stock
+ * that was entered into the system (often with the current date, not a historical one).
  */
 export async function getInventoryValueAsOf(orgId: string, asOfDate: Date): Promise<number> {
-  const txns = await db
+  // ALL opening stock transactions (always included — they represent pre-existing stock)
+  const openingTxns = await db
+    .select({
+      quantity: inventoryTransactions.quantity,
+      unitCost: inventoryTransactions.unitCost,
+    })
+    .from(inventoryTransactions)
+    .where(and(
+      eq(inventoryTransactions.orgId, orgId),
+      eq(inventoryTransactions.type, 'purchase'),
+      eq(inventoryTransactions.referenceType, 'opening_stock')
+    ));
+
+  let value = 0;
+  for (const txn of openingTxns) {
+    value += Number(txn.quantity) * (txn.unitCost || 0);
+  }
+
+  // Non-opening-stock transactions up to asOfDate
+  const otherTxns = await db
     .select({
       type: inventoryTransactions.type,
       quantity: inventoryTransactions.quantity,
       unitCost: inventoryTransactions.unitCost,
     })
     .from(inventoryTransactions)
-    .where(and(eq(inventoryTransactions.orgId, orgId), lte(inventoryTransactions.date, asOfDate)));
+    .where(and(
+      eq(inventoryTransactions.orgId, orgId),
+      lte(inventoryTransactions.date, asOfDate),
+      sql`NOT (${inventoryTransactions.type} = 'purchase' AND ${inventoryTransactions.referenceType} = 'opening_stock')`
+    ));
 
-  let value = 0;
-  for (const txn of txns) {
+  for (const txn of otherTxns) {
     const qty = Number(txn.quantity);
     const cost = txn.unitCost || 0;
     if (txn.type === 'purchase') {
