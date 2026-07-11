@@ -1200,7 +1200,12 @@ function ReportShell({ reportType, title }: ReportPageProps) {
             return `<tr style="background:#f8fafc"><td colspan="2" style="padding:4px 12px;padding-left:28px;font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">${label}</td></tr>${accRows}<tr style="border-top:1px solid #e2e8f0;background:#f8fafc;font-weight:600"><td style="padding:4px 12px;padding-left:28px;font-size:10px;color:#64748b">Total ${label}</td><td style="padding:4px 12px;font-size:10px;text-align:right;font-family:monospace">₦${(data.total/100).toLocaleString()}</td></tr>`;
           }
 
-          const pdfRows =
+          const summaryRows =
+            `<tr style="border-top:2px solid #94a3b8;background:${pbt < 0 ? '#fef2f2' : '#eef2f3'};font-weight:700"><td style="padding:6px 12px;padding-left:24px;font-size:12px;color:${pbt < 0 ? '#dc2626' : '#1e293b'}">PROFIT BEFORE TAX</td><td style="padding:6px 12px;font-size:12px;text-align:right;font-family:monospace;color:${pbt < 0 ? '#dc2626' : '#1e293b'}">₦${(pbt/100).toLocaleString()}</td></tr>` +
+            (tx.accounts?.length ? secRows('Income Tax Expense', tx.accounts, txTotal) : '') +
+            `<tr style="border-top:3px double;background:${netProfit < 0 ? '#7f1d1d' : '#1e3a8a'};font-weight:700"><td style="padding:8px 12px;padding-left:24px;font-size:13px;color:#ffffff">NET PROFIT AFTER TAX</td><td style="padding:8px 12px;font-size:13px;text-align:right;font-family:monospace;color:#ffffff">₦${(netProfit/100).toLocaleString()}</td></tr>` +
+            (pbt > 0 ? `<tr style="background:#f8fafc"><td colspan="2" style="padding:4px 12px;font-size:10px;color:#64748b;font-style:italic">Effective Tax Rate: ${etr}%  (Tax Expense ÷ Profit Before Tax)</td></tr>` : '');
+          const mainRows =
             secRows('Operating Revenue', opRev.accounts, opRevTotal) +
             secRows('Other Operating Income', ooi.accounts, ooiTotal) +
             `<tr style="border-top:1px solid #cbd5e1;background:#f1f5f9;font-weight:700"><td style="padding:6px 12px;padding-left:24px;font-size:12px;color:#0f172a">TOTAL REVENUE</td><td style="padding:6px 12px;font-size:12px;text-align:right;font-family:monospace">₦${(totalRevenue/100).toLocaleString()}</td></tr>` +
@@ -1214,11 +1219,7 @@ function ReportShell({ reportType, title }: ReportPageProps) {
             `<tr style="border-top:1px solid #cbd5e1;background:#f1f5f9;font-weight:600"><td style="padding:6px 12px;padding-left:24px;font-size:12px;color:#0f172a">Total Operating Expenses</td><td style="padding:6px 12px;font-size:12px;text-align:right;font-family:monospace">₦${(opExTotal/100).toLocaleString()}</td></tr>` +
             `<tr style="border-top:2px solid #94a3b8;background:#eef2f3;font-weight:700"><td style="padding:6px 12px;padding-left:24px;font-size:12px;color:#1e293b">OPERATING PROFIT (EBIT)</td><td style="padding:6px 12px;font-size:12px;text-align:right;font-family:monospace">₦${(operatingProfit/100).toLocaleString()}</td></tr>` +
             (fi.accounts?.length ? secRows('Finance Income', fi.accounts, fiTotal) : '') +
-            (fc.accounts?.length ? secRows('Finance Costs', fc.accounts, fcTotal) : '') +
-            `<tr style="border-top:2px solid #94a3b8;background:${pbt < 0 ? '#fef2f2' : '#eef2f3'};font-weight:700"><td style="padding:6px 12px;padding-left:24px;font-size:12px;color:${pbt < 0 ? '#dc2626' : '#1e293b'}">PROFIT BEFORE TAX</td><td style="padding:6px 12px;font-size:12px;text-align:right;font-family:monospace;color:${pbt < 0 ? '#dc2626' : '#1e293b'}">₦${(pbt/100).toLocaleString()}</td></tr>` +
-            (tx.accounts?.length ? secRows('Income Tax Expense', tx.accounts, txTotal) : '') +
-            `<tr style="border-top:3px double;background:${netProfit < 0 ? '#7f1d1d' : '#1e3a8a'};font-weight:700"><td style="padding:8px 12px;padding-left:24px;font-size:13px;color:#ffffff">NET PROFIT AFTER TAX</td><td style="padding:8px 12px;font-size:13px;text-align:right;font-family:monospace;color:#ffffff">₦${(netProfit/100).toLocaleString()}</td></tr>` +
-            (pbt > 0 ? `<tr style="background:#f8fafc"><td colspan="2" style="padding:4px 12px;font-size:10px;color:#64748b;font-style:italic">Effective Tax Rate: ${etr}%  (Tax Expense ÷ Profit Before Tax)</td></tr>` : '');
+            (fc.accounts?.length ? secRows('Finance Costs', fc.accounts, fcTotal) : '');
 
           printWindow('Income Statement',
             `<div style="text-align:center;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #e2e8f0">
@@ -1236,7 +1237,8 @@ function ReportShell({ reportType, title }: ReportPageProps) {
                   <th style="padding:8px 12px;font-size:10px;font-weight:600;color:#64748b;text-align:right;text-transform:uppercase">Amount</th>
                 </tr>
               </thead>
-              <tbody>${pdfRows || '<tr><td colspan="2" style="text-align:center;color:#94a3b8;padding:20px">No data</td></tr>'}</tbody>
+              <tbody>${mainRows || '<tr><td colspan="2" style="text-align:center;color:#94a3b8;padding:20px">No data</td></tr>'}</tbody>
+              <tbody style="page-break-inside:avoid">${summaryRows}</tbody>
             </table>`,
             `Period: ${sDate} - ${eDate}`
           );

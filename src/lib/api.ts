@@ -1095,7 +1095,7 @@ export function printWindow(title: string, bodyHtml: string, subtitle?: string) 
     tr:nth-child(even) td{background:#f8fafc}
     .footer{margin-top:40px;text-align:center;font-size:10px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:16px}
     .r{text-align:right} .c{text-align:center}
-    @media print{body{padding:20px}}
+    @media print{body{padding:20px;color-adjust:exact;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   </style></head><body>
   <div class="header">
     <div><div class="company">SkyBooks</div><div class="subtitle">By Skyhouse Accountants &amp; Technologies</div></div>
