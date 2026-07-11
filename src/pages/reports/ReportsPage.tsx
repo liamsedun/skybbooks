@@ -613,30 +613,30 @@ export function GeneralLedgerPage() {
             <div className="col-span-2"><span className="font-medium">Description:</span> {entry.description || '—'}</div>
             {entry.reference && <div className="col-span-2"><span className="font-medium">Reference:</span> {entry.reference}</div>}
           </div>
-          <table className="w-full text-sm">
+          <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-gray-200">
-                <th className="text-left py-2 px-3">Account</th>
-                <th className="text-left py-2 px-3">Description</th>
-                <th className="text-right py-2 px-3">Debit (₦)</th>
-                <th className="text-right py-2 px-3">Credit (₦)</th>
+                <th className="text-left py-1.5 px-2">Account</th>
+                <th className="text-left py-1.5 px-2">Description</th>
+                <th className="text-right py-1.5 px-2">Debit (₦)</th>
+                <th className="text-right py-1.5 px-2">Credit (₦)</th>
               </tr>
             </thead>
             <tbody>
               {lines.map((line: any, i: number) => (
                 <tr key={line.id || i} className="border-b border-gray-100">
-                  <td className="py-2 px-3">{(line.accountCode ? `${line.accountCode} — ` : '') + (line.accountName || line.accountId || '—')}</td>
-                  <td className="py-2 px-3">{line.description || '—'}</td>
-                  <td className="py-2 px-3 text-right">{line.debitAmount > 0 ? fmtNaira(line.debitAmount) : '—'}</td>
-                  <td className="py-2 px-3 text-right">{line.creditAmount > 0 ? fmtNaira(line.creditAmount) : '—'}</td>
+                  <td className="py-1.5 px-2">{(line.accountCode ? `${line.accountCode} — ` : '') + (line.accountName || line.accountId || '—')}</td>
+                  <td className="py-1.5 px-2">{line.description || '—'}</td>
+                  <td className="py-1.5 px-2 text-right">{line.debitAmount > 0 ? fmtNaira(line.debitAmount) : '—'}</td>
+                  <td className="py-1.5 px-2 text-right">{line.creditAmount > 0 ? fmtNaira(line.creditAmount) : '—'}</td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
               <tr className="font-bold border-t-2 border-gray-300">
-                <td className="py-2 px-3" colSpan={2}>Totals</td>
-                <td className="py-2 px-3 text-right">{fmtNaira(lines.reduce((s: number, l: any) => s + Number(l.debitAmount || 0), 0))}</td>
-                <td className="py-2 px-3 text-right">{fmtNaira(lines.reduce((s: number, l: any) => s + Number(l.creditAmount || 0), 0))}</td>
+                <td className="py-1.5 px-2" colSpan={2}>Totals</td>
+                <td className="py-1.5 px-2 text-right">{fmtNaira(lines.reduce((s: number, l: any) => s + Number(l.debitAmount || 0), 0))}</td>
+                <td className="py-1.5 px-2 text-right">{fmtNaira(lines.reduce((s: number, l: any) => s + Number(l.creditAmount || 0), 0))}</td>
               </tr>
             </tfoot>
           </table>
