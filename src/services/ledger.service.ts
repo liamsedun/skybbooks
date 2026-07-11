@@ -417,16 +417,12 @@ export async function getTrialBalance(
     .where(eq(journalEntries.orgId, orgId));
 
   // 3. Load module balances
-  const [faByAccount, bankByAccount, customerBal, vendorBal] = await Promise.all([
+  const [faByAccount, customerBal, vendorBal] = await Promise.all([
     db.select({
       accountId: fixedAssets.accountId,
       totalCost: sql<number>`coalesce(sum(${fixedAssets.purchaseCost}), 0)`,
       totalDepr: sql<number>`coalesce(sum(${fixedAssets.accumulatedDepreciation}), 0)`
     }).from(fixedAssets).where(and(eq(fixedAssets.orgId, orgId), eq(fixedAssets.status, 'active'))).groupBy(fixedAssets.accountId),
-    db.select({
-      accountId: bankAccounts.accountId,
-      totalBalance: sql<number>`coalesce(sum(${bankAccounts.currentBalance}), 0)`
-    }).from(bankAccounts).where(eq(bankAccounts.orgId, orgId)).groupBy(bankAccounts.accountId),
     db.select({ totalBalance: sql<number>`coalesce(sum(${contacts.balance}), 0)` })
       .from(contacts).where(and(eq(contacts.orgId, orgId), eq(contacts.type, 'customer'))),
     db.select({ totalBalance: sql<number>`coalesce(sum(${contacts.balance}), 0)` })
@@ -435,9 +431,6 @@ export async function getTrialBalance(
 
   const faMap = new Map<string, { totalCost: number; totalDepr: number }>();
   for (const r of faByAccount) faMap.set(r.accountId, r);
-
-  const bankMap = new Map<string, number>();
-  for (const r of bankByAccount) bankMap.set(r.accountId, r.totalBalance);
 
   const customerOB = Number(customerBal[0]?.totalBalance || 0);
   const vendorOB = Number(vendorBal[0]?.totalBalance || 0);
@@ -492,15 +485,6 @@ export async function getTrialBalance(
       const jeBalance = (openingDebits + periodDebits) - (openingCredits + periodCredits);
       const trueBalance = faData.totalCost - faData.totalDepr;
       const diff = trueBalance - jeBalance;
-      if (diff > 0) { periodDebits += diff; }
-      else if (diff < 0) { periodCredits += Math.abs(diff); }
-    }
-
-    // Bank accounts: force balance to currentBalance
-    const bankBal = bankMap.get(acct.id);
-    if (bankBal !== undefined && acctType === 'asset') {
-      const jeBalance = (openingDebits + periodDebits) - (openingCredits + periodCredits);
-      const diff = bankBal - jeBalance;
       if (diff > 0) { periodDebits += diff; }
       else if (diff < 0) { periodCredits += Math.abs(diff); }
     }
@@ -1114,25 +1098,6 @@ export async function getBalanceSheet(
       cumulativeNetIncome += (cr - dr);
     } else if (acct.type === 'expense') {
       cumulativeNetIncome -= (dr - cr);
-    }
-  }
-
-  // Override bank account balances with banking-module currentBalance (matching Trial Balance)
-  const bankByAccount = await db
-    .select({
-      accountId: bankAccounts.accountId,
-      totalBalance: sql<number>`coalesce(sum(${bankAccounts.currentBalance}), 0)`
-    })
-    .from(bankAccounts)
-    .where(eq(bankAccounts.orgId, orgId))
-    .groupBy(bankAccounts.accountId);
-  const bankMap = new Map<string, number>();
-  for (const r of bankByAccount) bankMap.set(r.accountId, r.totalBalance);
-  for (const item of allItems) {
-    const bankBal = bankMap.get(item.accountId);
-    if (bankBal !== undefined) {
-      // Override the balance computed from journal lines with the bank-module currentBalance
-      item.balance = bankBal;
     }
   }
 

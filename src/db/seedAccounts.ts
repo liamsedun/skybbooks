@@ -32,6 +32,7 @@ const ACCOUNT_SEEDS: { code: string; name: string; type: 'asset' | 'liability' |
   { code: '104000', name: 'Other Current Assets', type: 'asset', subType: 'Current Assets', description: 'IAS 1 – Miscellaneous current assets.' },
   { code: '104100', name: 'Assets Classified as Held for Sale', type: 'asset', subType: 'Current Assets', description: 'IFRS 5 – Must meet IFRS 5 criteria. Measure at lower of carrying amount & FV less costs to sell.' },
   { code: '104200', name: 'Current Tax Asset', type: 'asset', subType: 'Current Assets', description: 'IAS 12 – Overpayment of CIT / EDT. Refund claim or offset against future liability.' },
+  { code: '207000', name: 'Bank Clearing Suspense', type: 'asset', subType: 'Current Assets', description: 'Temporary clearing account for synced bank transactions awaiting reconciliation.' },
 
   // ── NON-CURRENT ASSETS ──
   { code: '200000', name: 'Property, Plant & Equipment (PP&E)', type: 'asset', subType: 'Non-Current Assets', description: 'IAS 16 – Tangible long-lived assets.' },

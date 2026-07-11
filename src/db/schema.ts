@@ -708,6 +708,7 @@ export const bankTransactions = pgTable('bank_transactions', {
   monoTransactionId: text('mono_transaction_id'),
   status: bankTxnStatusEnum('status').default('unreconciled').notNull(),
   journalLineId: uuid('journal_line_id').references(() => journalLines.id),
+  relatedJournalEntryId: uuid('related_journal_entry_id').references(() => journalEntries.id),
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 

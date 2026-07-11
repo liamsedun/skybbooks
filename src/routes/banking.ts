@@ -290,28 +290,89 @@ router.delete('/accounts/:id', async (req: AuthenticatedRequest, res: Response, 
   }
 });
 
-// PATCH /accounts/:id/balance — set opening balance on an existing bank account
+// PATCH /accounts/:id/balance — set opening/adjusted balance via journal entry
 router.patch('/accounts/:id/balance', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const orgId = req.user!.orgId!;
     const { id } = req.params;
     const { currentBalance } = z.object({ currentBalance: z.number() }).parse(req.body);
 
-    const [existing] = await db
+    const [ba] = await db
       .select()
       .from(bankAccounts)
       .where(and(eq(bankAccounts.id, id), eq(bankAccounts.orgId, orgId)))
       .limit(1);
 
-    if (!existing) {
+    if (!ba) {
       throw new AppError('Bank account not found.', 404);
     }
 
+    if (!ba.accountId) {
+      throw new AppError('Bank account has no linked GL account. Set one first.', 400);
+    }
+
+    // Resolve the Clearing Suspense account (207000)
+    const [clearing] = await db
+      .select()
+      .from(accounts)
+      .where(and(eq(accounts.orgId, orgId), eq(accounts.code, '207000')))
+      .limit(1);
+
+    if (!clearing) {
+      throw new AppError('Bank Clearing Suspense account (207000) not found for this org.', 500);
+    }
+
+    const delta = currentBalance - ba.currentBalance;
+    if (delta === 0) {
+      return res.status(200).json(ba); // no change needed
+    }
+
+    const description = ba.currentBalance === 0 && !ba.openingBalanceDate
+      ? `Opening balance — ${ba.name}`
+      : `Balance adjustment — ${ba.name}`;
+
+    if (delta > 0) {
+      await createJournalEntry({
+        orgId,
+        date: new Date(),
+        description,
+        source: 'opening_balance',
+        lines: [
+          { accountId: ba.accountId, debit: delta, credit: 0, description: 'Bank balance increase' },
+          { accountId: clearing.id, debit: 0, credit: delta, description: 'Contra to clearing' },
+        ],
+        createdBy: req.user!.id,
+        currency: 'NGN',
+      });
+    } else {
+      await createJournalEntry({
+        orgId,
+        date: new Date(),
+        description,
+        source: 'opening_balance',
+        lines: [
+          { accountId: ba.accountId, debit: 0, credit: -delta, description: 'Bank balance decrease' },
+          { accountId: clearing.id, debit: -delta, credit: 0, description: 'Contra to clearing' },
+        ],
+        createdBy: req.user!.id,
+        currency: 'NGN',
+      });
+    }
+
+    // Also set openingBalanceDate on first-time setup
+    if (!ba.openingBalanceDate) {
+      await db
+        .update(bankAccounts)
+        .set({ openingBalance: currentBalance, openingBalanceDate: new Date() })
+        .where(eq(bankAccounts.id, id));
+    }
+
+    // Re-fetch to return updated currentBalance (updated by createJournalEntry)
     const [updated] = await db
-      .update(bankAccounts)
-      .set({ currentBalance, openingBalance: currentBalance, openingBalanceDate: new Date() })
+      .select()
+      .from(bankAccounts)
       .where(eq(bankAccounts.id, id))
-      .returning();
+      .limit(1);
 
     return res.status(200).json(updated);
   } catch (err) {
@@ -329,29 +390,75 @@ router.post('/accounts/import-opening-balances', async (req: AuthenticatedReques
     const balanceKobo = Math.round(parseFloat(openingBalance || '0') * 100);
 
     // Look up by account number first, then by bank name
-    let [account] = await db
+    let [ba] = await db
       .select()
       .from(bankAccounts)
       .where(and(eq(bankAccounts.orgId, orgId), eq(bankAccounts.accountNumber, bankIdentifier)))
       .limit(1);
 
-    if (!account) {
-      [account] = await db
+    if (!ba) {
+      [ba] = await db
         .select()
         .from(bankAccounts)
         .where(and(eq(bankAccounts.orgId, orgId), eq(bankAccounts.name, bankIdentifier)))
         .limit(1);
     }
 
-    if (!account) {
+    if (!ba) {
       throw new AppError(`Bank account "${bankIdentifier}" not found.`, 404);
     }
 
+    if (!ba.accountId) {
+      throw new AppError('Bank account has no linked GL account. Set one first.', 400);
+    }
+
+    // Resolve the Clearing Suspense account (207000)
+    const [clearing] = await db
+      .select()
+      .from(accounts)
+      .where(and(eq(accounts.orgId, orgId), eq(accounts.code, '207000')))
+      .limit(1);
+
+    if (!clearing) {
+      throw new AppError('Bank Clearing Suspense account (207000) not found for this org.', 500);
+    }
+
+    const delta = balanceKobo - ba.currentBalance;
+    if (delta !== 0) {
+      if (delta > 0) {
+        await createJournalEntry({
+          orgId,
+          date: new Date(),
+          description: `Opening balance import — ${ba.name}`,
+          source: 'opening_balance',
+          lines: [
+            { accountId: ba.accountId, debit: delta, credit: 0, description: 'Opening balance from CSV import' },
+            { accountId: clearing.id, debit: 0, credit: delta, description: 'Contra to clearing' },
+          ],
+          createdBy: req.user!.id,
+          currency: 'NGN',
+        });
+      } else {
+        await createJournalEntry({
+          orgId,
+          date: new Date(),
+          description: `Opening balance import — ${ba.name}`,
+          source: 'opening_balance',
+          lines: [
+            { accountId: ba.accountId, debit: 0, credit: -delta, description: 'Opening balance from CSV import' },
+            { accountId: clearing.id, debit: -delta, credit: 0, description: 'Contra to clearing' },
+          ],
+          createdBy: req.user!.id,
+          currency: 'NGN',
+        });
+      }
+    }
+
     const [updated] = await db
-      .update(bankAccounts)
-      .set({ currentBalance: balanceKobo, openingBalance: balanceKobo })
-      .where(eq(bankAccounts.id, account.id))
-      .returning();
+      .select()
+      .from(bankAccounts)
+      .where(eq(bankAccounts.id, ba.id))
+      .limit(1);
 
     return res.status(200).json({ message: 'Opening balance updated.', account: updated.name, currentBalance: updated.currentBalance });
   } catch (err) {
@@ -482,16 +589,11 @@ router.post('/accounts/:id/sync', async (req: AuthenticatedRequest, res: Respons
 
     const count = await syncFlutterwaveTransactions(id, syncCutoff);
 
-    // Pull current balance and update
-    const freshBalanceKobo = await getFlutterwaveAccountBalance(ba.monoAccountId);
-    await db
-      .update(bankAccounts)
-      .set({
-        currentBalance: freshBalanceKobo
-      })
-      .where(eq(bankAccounts.id, id));
-
-    return res.status(200).json({ success: true, newTransactionsSynced: count, currentBalanceKobo: freshBalanceKobo });
+    // currentBalance is only updated via journal entries (createJournalEntry).
+    // Synced transactions are imported as 'unreconciled' — the GL balance
+    // (from JEs) is independent of the bank statement. Reconciliation matches
+    // them later; the difference appears in Bank Clearing Suspense (207000).
+    return res.status(200).json({ success: true, newTransactionsSynced: count });
   } catch (err) {
     next(err);
   }
