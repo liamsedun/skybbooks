@@ -351,7 +351,11 @@ export function TrialBalancePage() {
                     <span className={row._hasChildren ? 'font-semibold text-slate-800' : ''}>{row.accountCode || row.code || '—'}</span>
                   </td>
                   <td className="px-3 py-3">
-                    <span className={`${row._hasChildren ? 'font-semibold text-slate-800' : 'font-medium text-slate-700'} ${row._depth > 0 ? 'text-sm' : ''}`}>{row.accountName || row.name || `Account ${i + 1}`}</span>
+                    <button
+                      onClick={e => { e.stopPropagation(); navigate(`/reports/general-ledger?accountId=${row.accountId || row.id}`); }}
+                      className={`text-left hover:text-emerald-700 hover:underline transition-colors ${row._hasChildren ? 'font-semibold text-slate-800' : 'font-medium text-slate-700'} ${row._depth > 0 ? 'text-sm' : ''}`}
+                      title="View journal entries for this account"
+                    >{row.accountName || row.name || `Account ${i + 1}`}</button>
                     {link && (
                       <button
                         onClick={e => { e.stopPropagation(); navigate(link.path); }}
@@ -359,11 +363,6 @@ export function TrialBalancePage() {
                         title={`Go to ${link.label}`}
                       ><ExternalLink className="w-3 h-3" /> {link.label}</button>
                     )}
-                    <button
-                      onClick={e => { e.stopPropagation(); navigate(`/reports/general-ledger?accountId=${row.accountId || row.id}`); }}
-                      className="ml-1.5 inline-flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-800 hover:underline transition-colors"
-                      title="View journal entries for this account"
-                    ><FileText className="w-3 h-3" /> GL</button>
                   </td>
                   <td className="px-3 py-3 text-right text-slate-500 capitalize">{row.accountType || row.type || '—'}</td>
                   <td className="px-3 py-3 text-right text-slate-600">{fmtNaira(row.closingDebit || row.debit || 0)}</td>
@@ -555,10 +554,47 @@ export function GeneralLedgerPage() {
       e.entryNumber || '',
       e.description || '',
       e.source || '',
-      fmtNaira(e.totalDebits || 0),
-      fmtNaira(e.totalCredits || 0),
+      fmtNaira(Number(e.totalDebits || 0)),
+      fmtNaira(Number(e.totalCredits || 0)),
     ]);
     exportToCsv(`general_ledger_${new Date().toISOString().split('T')[0]}.csv`, headers, rows);
+  }
+
+  function printReport() {
+    const list = Array.isArray(journals) ? journals : [];
+    const totalDr = list.reduce((s: number, e: any) => s + Number(e.totalDebits || 0), 0);
+    const totalCr = list.reduce((s: number, e: any) => s + Number(e.totalCredits || 0), 0);
+    const periodStr = fromDate || toDate ? `${fromDate || '…'} – ${toDate || '…'}` : 'All periods';
+    const filterStr = accountIdParam && accountInfo ? `${accountInfo.code || accountInfo.accountCode || ''} — ${accountInfo.name || accountInfo.accountName || ''}` : '';
+
+    let tableRows = list.map((e: any) => `
+      <tr>
+        <td>${e.date ? fmtDate(e.date) : '—'}</td>
+        <td>${e.entryNumber || '—'}</td>
+        <td>${e.description || '—'}</td>
+        <td>${e.source || '—'}</td>
+        <td class="r">${e.totalDebits > 0 ? fmtNaira(Number(e.totalDebits)) : '—'}</td>
+        <td class="r">${e.totalCredits > 0 ? fmtNaira(Number(e.totalCredits)) : '—'}</td>
+      </tr>
+    `).join('');
+
+    const bodyHtml = `
+      ${filterStr ? `<p style="font-size:12px;color:#64748b;margin-bottom:8px">Account: ${filterStr}</p>` : ''}
+      <p style="font-size:11px;color:#64748b;margin-bottom:16px">Period: ${periodStr}</p>
+      <table>
+        <thead><tr><th>Date</th><th>Entry #</th><th>Description</th><th>Source</th><th class="r">Debit (₦)</th><th class="r">Credit (₦)</th></tr></thead>
+        <tbody>${tableRows}</tbody>
+        <tfoot>
+          <tr style="font-weight:700;border-top:2px solid #0f172a;background:#f1f5f9">
+            <td colspan="4" style="padding:10px 12px;font-size:12px">Total</td>
+            <td class="r" style="padding:10px 12px;font-size:12px">${fmtNaira(totalDr)}</td>
+            <td class="r" style="padding:10px 12px;font-size:12px">${fmtNaira(totalCr)}</td>
+          </tr>
+        </tfoot>
+      </table>
+    `;
+
+    printWindow('General Ledger', bodyHtml, periodStr);
   }
 
   if (viewEntryId && journalDetail) {
@@ -599,8 +635,8 @@ export function GeneralLedgerPage() {
             <tfoot>
               <tr className="font-bold border-t-2 border-gray-300">
                 <td className="py-2 px-3" colSpan={2}>Totals</td>
-                <td className="py-2 px-3 text-right">{fmtNaira(lines.reduce((s: number, l: any) => s + (l.debitAmount || 0), 0))}</td>
-                <td className="py-2 px-3 text-right">{fmtNaira(lines.reduce((s: number, l: any) => s + (l.creditAmount || 0), 0))}</td>
+                <td className="py-2 px-3 text-right">{fmtNaira(lines.reduce((s: number, l: any) => s + Number(l.debitAmount || 0), 0))}</td>
+                <td className="py-2 px-3 text-right">{fmtNaira(lines.reduce((s: number, l: any) => s + Number(l.creditAmount || 0), 0))}</td>
               </tr>
             </tfoot>
           </table>
@@ -619,8 +655,11 @@ export function GeneralLedgerPage() {
           <p className="text-sm text-gray-500">All journal entries across the organisation</p>
         </div>
         <div className="flex items-center gap-3">
+          <button onClick={printReport} className="px-4 py-2 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 flex items-center gap-2">
+            <FileText className="w-4 h-4" /> PDF
+          </button>
           <button onClick={exportCsv} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2">
-            <Download className="w-4 h-4" /> Export CSV
+            <Download className="w-4 h-4" /> CSV
           </button>
         </div>
       </div>
@@ -694,8 +733,8 @@ export function GeneralLedgerPage() {
             <tfoot>
               <tr className="border-t-2 border-gray-300 font-bold bg-gray-50">
                 <td className="py-3 px-4" colSpan={4}>Total</td>
-                <td className="py-3 px-4 text-right">{fmtNaira(list.reduce((s: number, e: any) => s + (e.totalDebits || 0), 0))}</td>
-                <td className="py-3 px-4 text-right">{fmtNaira(list.reduce((s: number, e: any) => s + (e.totalCredits || 0), 0))}</td>
+                <td className="py-3 px-4 text-right">{fmtNaira(list.reduce((s: number, e: any) => s + Number(e.totalDebits || 0), 0))}</td>
+                <td className="py-3 px-4 text-right">{fmtNaira(list.reduce((s: number, e: any) => s + Number(e.totalCredits || 0), 0))}</td>
                 <td></td>
               </tr>
             </tfoot>
