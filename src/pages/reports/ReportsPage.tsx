@@ -1850,10 +1850,18 @@ function ReportShell({ reportType, title }: ReportPageProps) {
               <input type="date" value={eDate} onChange={e => setEDate(e.target.value)} className="border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
             </div>
             <div className="flex items-center gap-2 ml-auto">
-              <button onClick={() => { setIsShowZero(!isShowZero); localStorage.setItem('is_showZero', String(!isShowZero)); }} className={`text-xs font-semibold px-3 py-1.5 rounded-xl border transition-all ${isShowZero ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-slate-100 border-slate-200 text-slate-500'}`}>{isShowZero ? 'Hide Zero Accounts' : 'Show Zero Accounts'}</button>
-              <button onClick={() => { setIsShowCodes(!isShowCodes); localStorage.setItem('is_showCodes', String(!isShowCodes)); }} className={`text-xs font-semibold px-3 py-1.5 rounded-xl border transition-all ${isShowCodes ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-slate-100 border-slate-200 text-slate-500'}`}>{isShowCodes ? 'Hide Codes' : 'Show Codes'}</button>
-              <button onClick={() => { setCfShowZero(!cfShowZero); localStorage.setItem('cf_showZero', String(!cfShowZero)); }} className={`text-xs font-semibold px-3 py-1.5 rounded-xl border transition-all ${cfShowZero ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-slate-100 border-slate-200 text-slate-500'}`}>{cfShowZero ? 'CF Hide Zero' : 'CF Show Zero'}</button>
-              <button onClick={() => { setCfShowCodes(!cfShowCodes); localStorage.setItem('cf_showCodes', String(!cfShowCodes)); }} className={`text-xs font-semibold px-3 py-1.5 rounded-xl border transition-all ${cfShowCodes ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-slate-100 border-slate-200 text-slate-500'}`}>{cfShowCodes ? 'CF Hide Codes' : 'CF Show Codes'}</button>
+              {reportType === 'income-statement' && (
+                <>
+                  <button onClick={() => { setIsShowZero(!isShowZero); localStorage.setItem('is_showZero', String(!isShowZero)); }} className={`text-xs font-semibold px-3 py-1.5 rounded-xl border transition-all ${isShowZero ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-slate-100 border-slate-200 text-slate-500'}`}>{isShowZero ? 'Hide Zero Accounts' : 'Show Zero Accounts'}</button>
+                  <button onClick={() => { setIsShowCodes(!isShowCodes); localStorage.setItem('is_showCodes', String(!isShowCodes)); }} className={`text-xs font-semibold px-3 py-1.5 rounded-xl border transition-all ${isShowCodes ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-slate-100 border-slate-200 text-slate-500'}`}>{isShowCodes ? 'Hide Codes' : 'Show Codes'}</button>
+                </>
+              )}
+              {reportType === 'cash-flow' && (
+                <>
+                  <button onClick={() => { setCfShowZero(!cfShowZero); localStorage.setItem('cf_showZero', String(!cfShowZero)); }} className={`text-xs font-semibold px-3 py-1.5 rounded-xl border transition-all ${cfShowZero ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-slate-100 border-slate-200 text-slate-500'}`}>{cfShowZero ? 'Hide Zero Accounts' : 'Show Zero Accounts'}</button>
+                  <button onClick={() => { setCfShowCodes(!cfShowCodes); localStorage.setItem('cf_showCodes', String(!cfShowCodes)); }} className={`text-xs font-semibold px-3 py-1.5 rounded-xl border transition-all ${cfShowCodes ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-slate-100 border-slate-200 text-slate-500'}`}>{cfShowCodes ? 'Hide Codes' : 'Show Codes'}</button>
+                </>
+              )}
             </div>
           </>
         )}
