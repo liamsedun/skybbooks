@@ -258,7 +258,7 @@ router.post(
         }
       }
 
-      // Create journal entry
+      // Create journal entry with lines
       const [countResult] = await db
         .select({ count: sql<number>`count(*)` })
         .from(journalEntries)
@@ -266,14 +266,23 @@ router.post(
       const count = Number(countResult?.count || 0) + 1;
       const entryNumber = `OB-${String(count).padStart(6, '0')}`;
 
-      await db.insert(journalEntries).values({
+      const [entry] = await db.insert(journalEntries).values({
         orgId,
         entryNumber,
         date: new Date('1970-01-01'),
         description: 'Opening balance import',
         source: 'opening_balance',
         createdBy: userId
-      });
+      }).returning();
+
+      await db.insert(journalLines).values(
+        journalLinesInput.map(l => ({
+          entryId: entry.id,
+          accountId: l.accountId,
+          debitAmount: l.debit,
+          creditAmount: l.credit,
+        }))
+      );
 
       return res.status(200).json({ success: true, message: `Imported ${journalLinesInput.length} opening balance lines successfully.` });
     } catch (error) {
@@ -347,14 +356,23 @@ router.post(
       const count = Number(countResult?.count || 0) + 1;
       const entryNumber = `OB-${String(count).padStart(6, '0')}`;
 
-      await db.insert(journalEntries).values({
+      const [entry] = await db.insert(journalEntries).values({
         orgId,
         entryNumber,
         date: new Date('1970-01-01'),
         description: 'Opening balance import',
         source: 'opening_balance',
         createdBy: userId
-      });
+      }).returning();
+
+      await db.insert(journalLines).values(
+        journalLinesInput.map(l => ({
+          entryId: entry.id,
+          accountId: l.accountId,
+          debitAmount: l.debit,
+          creditAmount: l.credit,
+        }))
+      );
 
       return res.status(200).json({ success: true, message: `Recorded ${journalLinesInput.length} opening balance lines successfully.` });
     } catch (error) {
