@@ -352,25 +352,27 @@ router.post('/accounts/import-csv', async (req: AuthenticatedRequest, res: Respo
       if (totalDebitsOb !== totalCreditsOb) {
         errors.push(`Opening balances are out of balance: ₦${(totalDebitsOb / 100).toFixed(2)} debits vs ₦${(totalCreditsOb / 100).toFixed(2)} credits. Accounts were created but balances not journalised.`);
       } else {
-        const [countResult] = await db
-          .select({ count: sql<number>`count(*)` })
-          .from(journalEntries)
-          .where(eq(journalEntries.orgId, orgId));
-        const count = Number(countResult?.count || 0) + 1;
-        const entryNumber = `OB-${String(count).padStart(6, '0')}`;
+        await db.transaction(async (tx) => {
+          const [countResult] = await tx
+            .select({ count: sql<number>`count(*)` })
+            .from(journalEntries)
+            .where(eq(journalEntries.orgId, orgId));
+          const count = Number(countResult?.count || 0) + 1;
+          const entryNumber = `OB-${String(count).padStart(6, '0')}`;
 
-        const [entry] = await db.insert(journalEntries).values({
-          orgId, entryNumber, date: new Date('1970-01-01'),
-          description: 'Opening balances from COA import', source: 'opening_balance', createdBy: userId
-        }).returning();
+          const [entry] = await tx.insert(journalEntries).values({
+            orgId, entryNumber, date: new Date('1970-01-01'),
+            description: 'Opening balances from COA import', source: 'opening_balance', createdBy: userId
+          }).returning();
 
-        for (const ob of obLines) {
-          await db.insert(journalLines).values({
-            entryId: entry.id, accountId: ob.accountId,
-            debitAmount: ob.debit, creditAmount: ob.credit,
-            currency: 'NGN'
-          });
-        }
+          for (const ob of obLines) {
+            await tx.insert(journalLines).values({
+              entryId: entry.id, accountId: ob.accountId,
+              debitAmount: ob.debit, creditAmount: ob.credit,
+              currency: 'NGN'
+            });
+          }
+        });
       }
     }
 

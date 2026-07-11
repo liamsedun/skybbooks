@@ -246,43 +246,45 @@ router.post(
         );
       }
 
-      // Update accounts.opening_balance
-      for (const line of journalLinesInput) {
-        const net = line.debit - line.credit;
-        const acct = orgAccounts.find(a => a.id === line.accountId);
-        if (acct) {
-          await db
-            .update(accounts)
-            .set({ openingBalance: sql`${accounts.openingBalance} + ${net}` })
-            .where(eq(accounts.id, line.accountId));
+      await db.transaction(async (tx) => {
+        // Update accounts.opening_balance
+        for (const line of journalLinesInput) {
+          const net = line.debit - line.credit;
+          const acct = orgAccounts.find(a => a.id === line.accountId);
+          if (acct) {
+            await tx
+              .update(accounts)
+              .set({ openingBalance: sql`${accounts.openingBalance} + ${net}` })
+              .where(eq(accounts.id, line.accountId));
+          }
         }
-      }
 
-      // Create journal entry with lines
-      const [countResult] = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(journalEntries)
-        .where(eq(journalEntries.orgId, orgId));
-      const count = Number(countResult?.count || 0) + 1;
-      const entryNumber = `OB-${String(count).padStart(6, '0')}`;
+        // Create journal entry with lines
+        const [countResult] = await tx
+          .select({ count: sql<number>`count(*)` })
+          .from(journalEntries)
+          .where(eq(journalEntries.orgId, orgId));
+        const count = Number(countResult?.count || 0) + 1;
+        const entryNumber = `OB-${String(count).padStart(6, '0')}`;
 
-      const [entry] = await db.insert(journalEntries).values({
-        orgId,
-        entryNumber,
-        date: new Date('1970-01-01'),
-        description: 'Opening balance import',
-        source: 'opening_balance',
-        createdBy: userId
-      }).returning();
+        const [entry] = await tx.insert(journalEntries).values({
+          orgId,
+          entryNumber,
+          date: new Date('1970-01-01'),
+          description: 'Opening balance import',
+          source: 'opening_balance',
+          createdBy: userId
+        }).returning();
 
-      await db.insert(journalLines).values(
-        journalLinesInput.map(l => ({
-          entryId: entry.id,
-          accountId: l.accountId,
-          debitAmount: l.debit,
-          creditAmount: l.credit,
-        }))
-      );
+        await tx.insert(journalLines).values(
+          journalLinesInput.map(l => ({
+            entryId: entry.id,
+            accountId: l.accountId,
+            debitAmount: l.debit,
+            creditAmount: l.credit,
+          }))
+        );
+      });
 
       return res.status(200).json({ success: true, message: `Imported ${journalLinesInput.length} opening balance lines successfully.` });
     } catch (error) {
@@ -341,38 +343,40 @@ router.post(
         );
       }
 
-      for (const line of journalLinesInput) {
-        const net = line.debit - line.credit;
-        await db
-          .update(accounts)
-          .set({ openingBalance: sql`${accounts.openingBalance} + ${net}` })
-          .where(eq(accounts.id, line.accountId));
-      }
+      await db.transaction(async (tx) => {
+        for (const line of journalLinesInput) {
+          const net = line.debit - line.credit;
+          await tx
+            .update(accounts)
+            .set({ openingBalance: sql`${accounts.openingBalance} + ${net}` })
+            .where(eq(accounts.id, line.accountId));
+        }
 
-      const [countResult] = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(journalEntries)
-        .where(eq(journalEntries.orgId, orgId));
-      const count = Number(countResult?.count || 0) + 1;
-      const entryNumber = `OB-${String(count).padStart(6, '0')}`;
+        const [countResult] = await tx
+          .select({ count: sql<number>`count(*)` })
+          .from(journalEntries)
+          .where(eq(journalEntries.orgId, orgId));
+        const count = Number(countResult?.count || 0) + 1;
+        const entryNumber = `OB-${String(count).padStart(6, '0')}`;
 
-      const [entry] = await db.insert(journalEntries).values({
-        orgId,
-        entryNumber,
-        date: new Date('1970-01-01'),
-        description: 'Opening balance import',
-        source: 'opening_balance',
-        createdBy: userId
-      }).returning();
+        const [entry] = await tx.insert(journalEntries).values({
+          orgId,
+          entryNumber,
+          date: new Date('1970-01-01'),
+          description: 'Opening balance import',
+          source: 'opening_balance',
+          createdBy: userId
+        }).returning();
 
-      await db.insert(journalLines).values(
-        journalLinesInput.map(l => ({
-          entryId: entry.id,
-          accountId: l.accountId,
-          debitAmount: l.debit,
-          creditAmount: l.credit,
-        }))
-      );
+        await tx.insert(journalLines).values(
+          journalLinesInput.map(l => ({
+            entryId: entry.id,
+            accountId: l.accountId,
+            debitAmount: l.debit,
+            creditAmount: l.credit,
+          }))
+        );
+      });
 
       return res.status(200).json({ success: true, message: `Recorded ${journalLinesInput.length} opening balance lines successfully.` });
     } catch (error) {

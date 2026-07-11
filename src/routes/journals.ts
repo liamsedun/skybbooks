@@ -90,37 +90,41 @@ router.post('/', async (req: AuthenticatedRequest, res: Response, next: NextFunc
       throw new AppError('Total debits must equal total credits.', 400);
     }
 
-    const [entry] = await db
-      .insert(journalEntries)
-      .values({
-        orgId,
-        entryNumber: body.entryNumber,
-        date: body.date,
-        description: body.description,
-        reference: body.reference,
-        source: 'manual',
-        createdBy: userId,
-      })
-      .returning();
+    const result = await db.transaction(async (tx) => {
+      const [entry] = await tx
+        .insert(journalEntries)
+        .values({
+          orgId,
+          entryNumber: body.entryNumber,
+          date: body.date,
+          description: body.description,
+          reference: body.reference,
+          source: 'manual',
+          createdBy: userId,
+        })
+        .returning();
 
-    if (body.lines.length > 0) {
-      await db.insert(journalLines).values(
-        body.lines.map(l => ({
-          entryId: entry.id,
-          accountId: l.accountId,
-          debitAmount: l.debitAmount,
-          creditAmount: l.creditAmount,
-          description: l.description,
-        }))
-      );
-    }
+      if (body.lines.length > 0) {
+        await tx.insert(journalLines).values(
+          body.lines.map(l => ({
+            entryId: entry.id,
+            accountId: l.accountId,
+            debitAmount: l.debitAmount,
+            creditAmount: l.creditAmount,
+            description: l.description,
+          }))
+        );
+      }
 
-    const lines = await db
-      .select()
-      .from(journalLines)
-      .where(eq(journalLines.entryId, entry.id));
+      const lines = await tx
+        .select()
+        .from(journalLines)
+        .where(eq(journalLines.entryId, entry.id));
 
-    return res.status(201).json({ ...entry, lines });
+      return { ...entry, lines };
+    });
+
+    return res.status(201).json(result);
   } catch (err) {
     if (err instanceof z.ZodError) return next(new AppError(err.issues[0]?.message || 'Validation failed', 400));
     return next(err);
@@ -212,7 +216,7 @@ router.post('/import-csv', async (req: AuthenticatedRequest, res: Response, next
       });
     }
 
-    // Create journal entries
+    // Create journal entries (each entry wrapped in its own transaction)
     for (const [entryNum, group] of groups) {
       const totalDebits = group.lines.reduce((s, l) => s + l.debitAmount, 0);
       const totalCredits = group.lines.reduce((s, l) => s + l.creditAmount, 0);
@@ -221,28 +225,30 @@ router.post('/import-csv', async (req: AuthenticatedRequest, res: Response, next
         continue;
       }
 
-      const [entry] = await db
-        .insert(journalEntries)
-        .values({
-          orgId,
-          entryNumber: entryNum,
-          date: group.date,
-          description: group.description,
-          reference: group.reference,
-          source: 'manual',
-          createdBy: userId,
-        })
-        .returning();
+      await db.transaction(async (tx) => {
+        const [entry] = await tx
+          .insert(journalEntries)
+          .values({
+            orgId,
+            entryNumber: entryNum,
+            date: group.date,
+            description: group.description,
+            reference: group.reference,
+            source: 'manual',
+            createdBy: userId,
+          })
+          .returning();
 
-      await db.insert(journalLines).values(
-        group.lines.map(l => ({
-          entryId: entry.id,
-          accountId: l.accountId,
-          debitAmount: l.debitAmount,
-          creditAmount: l.creditAmount,
-          description: l.description,
-        }))
-      );
+        await tx.insert(journalLines).values(
+          group.lines.map(l => ({
+            entryId: entry.id,
+            accountId: l.accountId,
+            debitAmount: l.debitAmount,
+            creditAmount: l.creditAmount,
+            description: l.description,
+          }))
+        );
+      });
       totalCreated++;
     }
 
