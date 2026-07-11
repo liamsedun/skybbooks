@@ -854,6 +854,7 @@ export const payrollLines = pgTable('payroll_lines', {
   nhf: bigint('nhf', { mode: 'number' }).default(0).notNull(),
   otherDeductions: bigint('other_deductions', { mode: 'number' }).default(0).notNull(),
   nhis: bigint('nhis', { mode: 'number' }).default(0).notNull(),
+  nhisEmployer: bigint('nhis_employer', { mode: 'number' }).default(0).notNull(),
   internalDeductions: jsonb('internal_deductions').default([]).notNull(),
   netPay: bigint('net_pay', { mode: 'number' }).default(0).notNull(),
   taxRelief: bigint('tax_relief', { mode: 'number' }).default(0).notNull(),

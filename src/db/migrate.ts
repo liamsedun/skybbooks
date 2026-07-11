@@ -91,6 +91,18 @@ export async function runMigration() {
     `);
     // Rename existing 301500 accounts to Employee Accrued Salary (Clearing)
     await db.execute(sql`UPDATE accounts SET name = 'Employee Accrued Salary (Clearing)', system_account_role = 'payroll_clearing' WHERE code = '301500' AND system_account_role != 'payroll_clearing'`);
+    // Rename 800300 from NHF Employer Contribution to NHIS Employer Contribution
+    await db.execute(sql`UPDATE accounts SET name = 'NHIS Employer Contribution', description = 'NHIS Act – 10% of basic salary employer health insurance contribution.' WHERE code = '800300'`);
+    // Add 800301 PAYE Expense account if missing
+    await db.execute(sql`
+      INSERT INTO accounts (id, org_id, code, name, type, sub_type, description, is_system, is_active, system_account_role)
+      SELECT gen_random_uuid(), o.id, '800301', 'PAYE Expense', 'expense', 'Staff Costs',
+             'Pay-As-You-Earn income tax expense on employee salaries.', true, true, 'none'
+      FROM organisations o
+      WHERE NOT EXISTS (SELECT 1 FROM accounts a WHERE a.org_id = o.id AND a.code = '800301')
+    `);
+    // Add nhis_employer column to payroll_lines
+    await db.execute(sql`ALTER TABLE payroll_lines ADD COLUMN IF NOT EXISTS nhis_employer bigint DEFAULT 0 NOT NULL`);
 
     // Add WHT columns to invoices and bills
     await db.execute(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS wht_rate numeric`);
