@@ -625,7 +625,7 @@ export function GeneralLedgerPage() {
             <tbody>
               {lines.map((line: any, i: number) => (
                 <tr key={line.id || i} className="border-b border-gray-100">
-                  <td className="py-2 px-3">{line.accountName || line.accountId || '—'}</td>
+                  <td className="py-2 px-3">{(line.accountCode ? `${line.accountCode} — ` : '') + (line.accountName || line.accountId || '—')}</td>
                   <td className="py-2 px-3">{line.description || '—'}</td>
                   <td className="py-2 px-3 text-right">{line.debitAmount > 0 ? fmtNaira(line.debitAmount) : '—'}</td>
                   <td className="py-2 px-3 text-right">{line.creditAmount > 0 ? fmtNaira(line.creditAmount) : '—'}</td>

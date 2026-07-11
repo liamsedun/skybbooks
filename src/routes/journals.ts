@@ -76,8 +76,25 @@ router.get('/:id', async (req: AuthenticatedRequest, res: Response, next: NextFu
       .limit(1);
     if (!entry) throw new AppError('Journal entry not found.', 404);
     const lines = await db
-      .select()
+      .select({
+        id: journalLines.id,
+        entryId: journalLines.entryId,
+        accountId: journalLines.accountId,
+        debitAmount: journalLines.debitAmount,
+        creditAmount: journalLines.creditAmount,
+        description: journalLines.description,
+        currency: journalLines.currency,
+        fxRate: journalLines.fxRate,
+        vatAmount: journalLines.vatAmount,
+        vatTreatment: journalLines.vatTreatment,
+        vatAccountId: journalLines.vatAccountId,
+        supplierVatNumber: journalLines.supplierVatNumber,
+        createdAt: journalLines.createdAt,
+        accountName: accounts.name,
+        accountCode: accounts.code,
+      })
       .from(journalLines)
+      .leftJoin(accounts, eq(journalLines.accountId, accounts.id))
       .where(eq(journalLines.entryId, id));
     const convertedLines = lines.map(line => {
       const isForeign = line.currency && line.currency !== 'NGN';
