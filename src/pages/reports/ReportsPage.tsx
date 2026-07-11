@@ -1574,9 +1574,10 @@ function ReportShell({ reportType, title }: ReportPageProps) {
           const totalAssets = bsData?.totalAssets || 0;
           const totalLiabilities = bsData?.totalLiabilities || 0;
           const totalEquity = bsData?.totalEquity || 0;
-          const assetRows = assets.map((a: any) => `<tr><td style="padding-left:24px">${a.name||''}</td><td class="r">₦${((a.balance||0)/100).toLocaleString()}</td></tr>`).join('');
-          const liabilityRows = liabilities.map((l: any) => `<tr><td style="padding-left:24px">${l.name||''}</td><td class="r">₦${((l.balance||0)/100).toLocaleString()}</td></tr>`).join('');
-          const equityRows = equity.map((e: any) => `<tr><td style="padding-left:24px">${e.name||''}</td><td class="r">₦${((e.balance||0)/100).toLocaleString()}</td></tr>`).join('');
+          const bsHeadingNames = new Set(['Cash and Cash Equivalents', 'Trade & Other Receivables', 'Inventory', 'Prepayments', 'Other Current Assets', 'Property, Plant & Equipment', 'Right-of-Use Assets', 'Intangible Assets', 'Other Non-Current Assets', 'Trade & Other Payables', 'Accruals & Deferred Income', 'Other Current Liabilities', 'Non-Current Liabilities', 'Equity', 'Retained Earnings', 'Reserves']);
+          const assetRows = assets.filter((a: any) => !(bsHeadingNames.has(a.name) && (a.balance||0) === 0)).map((a: any) => `<tr><td style="padding-left:24px">${a.name||''}</td><td class="r">₦${((a.balance||0)/100).toLocaleString()}</td></tr>`).join('');
+          const liabilityRows = liabilities.filter((l: any) => !(bsHeadingNames.has(l.name) && (l.balance||0) === 0)).map((l: any) => `<tr><td style="padding-left:24px">${l.name||''}</td><td class="r">₦${((l.balance||0)/100).toLocaleString()}</td></tr>`).join('');
+          const equityRows = equity.filter((e: any) => !(bsHeadingNames.has(e.name) && (e.balance||0) === 0)).map((e: any) => `<tr><td style="padding-left:24px">${e.name||''}</td><td class="r">₦${((e.balance||0)/100).toLocaleString()}</td></tr>`).join('');
           const org = (orgData as any)?.data || orgData || {};
           const orgName = org.name || '';
           const orgAddr = org.address ? `<p style="margin:0;font-size:11px;color:#475569">${org.address}</p>` : '';
@@ -2728,12 +2729,13 @@ function SinglePeriodBalanceSheetTable({ data, onAccountClick, showZero, showCod
 
   function renderSection(label: string, total: number, items: any[], indent: string = 'pl-8', bg: string = 'bg-slate-100/50') {
     if (!showZero && total === 0 && items.every((i: any) => !shouldShow(i.balance))) return null;
+    const sectionItems = items.filter((i: any) => i.name !== label);
     return (
       <>
         <tr className={bg}>
           <td colSpan={2} className="px-3 py-2 text-xs font-bold text-slate-700 uppercase tracking-wider">{label}</td>
         </tr>
-        {renderItems(items, indent)}
+        {renderItems(sectionItems, indent)}
         <tr className="border-t border-slate-200 bg-slate-50/50 font-medium">
           <td className="px-3 py-2 pl-8 text-sm text-slate-700">Total {label}</td>
           <td className="px-3 py-2 text-right text-slate-800">{fmt(total)}</td>
