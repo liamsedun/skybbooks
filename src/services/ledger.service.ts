@@ -1101,6 +1101,50 @@ export async function getBalanceSheet(
     }
   }
 
+  // Load module balances (fixed assets, customer/vendor opening balances, inventory)
+  const [faByAccount, customerBal, vendorBal, inventoryValueAsOf] = await Promise.all([
+    db.select({
+      accountId: fixedAssets.accountId,
+      totalCost: sql<number>`coalesce(sum(${fixedAssets.purchaseCost}), 0)`,
+      totalDepr: sql<number>`coalesce(sum(${fixedAssets.accumulatedDepreciation}), 0)`
+    }).from(fixedAssets).where(and(eq(fixedAssets.orgId, orgId), eq(fixedAssets.status, 'active'))).groupBy(fixedAssets.accountId),
+    db.select({ totalBalance: sql<number>`coalesce(sum(${contacts.balance}), 0)` })
+      .from(contacts).where(and(eq(contacts.orgId, orgId), eq(contacts.type, 'customer'))),
+    db.select({ totalBalance: sql<number>`coalesce(sum(${contacts.balance}), 0)` })
+      .from(contacts).where(and(eq(contacts.orgId, orgId), eq(contacts.type, 'vendor'))),
+    getInventoryValueAsOf(orgId, asOfDate),
+  ]);
+  const faMap = new Map<string, { totalCost: number; totalDepr: number }>();
+  for (const r of faByAccount) faMap.set(r.accountId, r);
+  const customerOB = Number(customerBal[0]?.totalBalance || 0);
+  const vendorOB = Number(vendorBal[0]?.totalBalance || 0);
+  const arAccount = orgAccounts.find(a => a.systemAccountRole === 'accounts_receivable') || orgAccounts.find(a => a.type === 'asset' && (a.name.toLowerCase().includes('receivable') || a.code.startsWith('12')));
+  const apAccount = orgAccounts.find(a => a.systemAccountRole === 'accounts_payable') || orgAccounts.find(a => a.type === 'liability' && (a.name.toLowerCase().includes('creditor') || a.name.toLowerCase().includes('payable')));
+  const invAccount = orgAccounts.find(a => a.code.startsWith('102') && !a.name.toLowerCase().includes('contra'));
+
+  // Apply sub-ledger adjustments to computed balances
+  for (const acct of orgAccounts) {
+    const item = allItems.find(i => i.accountId === acct.id);
+    // accounts.openingBalance (set via Edit Opening Balances)
+    if (acct.openingBalance !== 0) {
+      const ob = Number(acct.openingBalance);
+      if (acct.type === 'asset') { if (item) item.balance += ob; }
+      else if (acct.type === 'liability' || acct.type === 'equity') { if (item) item.balance += ob; }
+      else if (acct.type === 'revenue') cumulativeNetIncome += ob;
+      else if (acct.type === 'expense') cumulativeNetIncome -= ob;
+    }
+    if (!item) continue;
+    // Fixed asset override: force linked account balance to match totalCost - totalDepr
+    const faData = faMap.get(acct.id);
+    if (faData) item.balance = faData.totalCost - faData.totalDepr;
+    // Inventory override: force inventory account to computed valuation
+    if (invAccount && acct.id === invAccount.id) item.balance = inventoryValueAsOf;
+    // Customer opening balance → AR account
+    if (customerOB > 0 && arAccount && acct.id === arAccount.id) item.balance += customerOB;
+    // Vendor opening balance → AP account
+    if (vendorOB > 0 && apAccount && acct.id === apAccount.id) item.balance += vendorOB;
+  }
+
   // Identify contra-asset accounts (accumulated depreciation/amortisation)
   const contraCodes = new Set<string>();
   const isContra = (item: BalItem) =>
