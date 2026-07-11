@@ -9,7 +9,7 @@ import { authenticate, requireOrg, requireRole, AuthenticatedRequest } from '../
 import { eq, and, asc, sql } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
 import { seedAccounts } from '../db/seedAccounts';
-import { postOpeningBalances, getAccountLedger } from '../services/ledger.service';
+import { postOpeningBalances, getAccountLedger, getInventoryValueAsOf } from '../services/ledger.service';
 
 const router = Router();
 router.use(authenticate);

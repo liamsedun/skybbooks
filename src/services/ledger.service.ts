@@ -445,7 +445,8 @@ export async function getTrialBalance(
 
   const customerOB = Number(customerBal[0]?.totalBalance || 0);
   const vendorOB = Number(vendorBal[0]?.totalBalance || 0);
-  const inventoryValue = Number(invBalance[0]?.totalValue || 0);
+  const closingInventoryValue = Number(invBalance[0]?.totalValue || 0);
+  const openingInventoryValue = await getInventoryValueAsOf(orgId, new Date(startDate.getTime() - 86400000));
 
   // Identify single AR, AP, and Inventory accounts
   const arAccount = orgAccounts.find(a => a.systemAccountRole === 'accounts_receivable')
@@ -507,12 +508,16 @@ export async function getTrialBalance(
       else if (diff < 0) { periodCredits += Math.abs(diff); }
     }
 
-    // Inventory: force balance to stock valuation
-    if (inventoryValue > 0 && invAccount && acct.id === invAccount.id) {
-      const jeBalance = (openingDebits + periodDebits) - (openingCredits + periodCredits);
-      const diff = inventoryValue - jeBalance;
-      if (diff > 0) { periodDebits += diff; }
-      else if (diff < 0) { periodCredits += Math.abs(diff); }
+    // Inventory: force opening balance to opening stock valuation, closing to current lots
+    if (invAccount && acct.id === invAccount.id) {
+      const jeOpening = openingDebits - openingCredits;
+      const openDiff = openingInventoryValue - jeOpening;
+      if (openDiff > 0) openingDebits += openDiff;
+      else if (openDiff < 0) openingCredits += Math.abs(openDiff);
+      const jeTotal = (openingDebits + periodDebits) - (openingCredits + periodCredits);
+      const closeDiff = closingInventoryValue - jeTotal;
+      if (closeDiff > 0) periodDebits += closeDiff;
+      else if (closeDiff < 0) periodCredits += Math.abs(closeDiff);
     }
 
     // Customer opening balance → single AR account only
@@ -742,7 +747,7 @@ export async function postOpeningBalances(
  * Get inventory valuation at a specific date by working backwards from current lots.
  * Current lots reflect remaining qty after sales; we reverse transactions after asOfDate.
  */
-async function getInventoryValueAsOf(orgId: string, asOfDate: Date): Promise<number> {
+export async function getInventoryValueAsOf(orgId: string, asOfDate: Date): Promise<number> {
   const [invResult] = await db
     .select({
       totalValue: sql<number>`coalesce(sum(${inventoryLots.quantity}::numeric * ${inventoryLots.costPerUnit}), 0)`
