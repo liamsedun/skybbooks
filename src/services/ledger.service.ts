@@ -517,6 +517,15 @@ export async function getTrialBalance(
       else if (closeDiff < 0) periodCredits += Math.abs(closeDiff);
     }
 
+    // Opening Stock expense account (700100): override JE balance with computed opening inventory value (matching Income Statement)
+    const isOpeningStockAccount = acctType === 'expense' && acct.code === '700100';
+    if (isOpeningStockAccount) {
+      const jeOpening = openingDebits - openingCredits;
+      const openDiff = openingInventoryValue - jeOpening;
+      if (openDiff > 0) openingDebits += openDiff;
+      else if (openDiff < 0) openingCredits += Math.abs(openDiff);
+    }
+
     // Customer opening balance → single AR account only
     if (customerOB > 0 && arAccount && acct.id === arAccount.id) {
       openingDebits += customerOB;
