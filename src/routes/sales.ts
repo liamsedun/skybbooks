@@ -6,7 +6,7 @@
 import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { db, contacts, invoices, invoiceLines, quotes, salesOrders, paymentsReceived, paymentAllocations, creditNotes, accounts, paymentsMade, paymentMadeAllocations, journalEntries, expenses } from '../db/schema';
-import { eq, and, desc, asc, sql, inArray, getTableColumns } from 'drizzle-orm';
+import { eq, and, desc, asc, sql, gte, lte, inArray, getTableColumns } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
 import { generateInvoicePDF, generateQuotePDF } from '../services/pdf.service';
@@ -389,11 +389,14 @@ router.get('/payments', async (req: AuthenticatedRequest, res: Response, next: N
   try {
     const orgId = req.user!.orgId!;
     const pmtCols = getTableColumns(paymentsReceived);
+    const conditions = [eq(paymentsReceived.orgId, orgId)];
+    if (req.query.startDate) conditions.push(gte(paymentsReceived.date, new Date(req.query.startDate as string)));
+    if (req.query.endDate) conditions.push(lte(paymentsReceived.date, new Date(req.query.endDate as string)));
     const list = await db
       .select({ ...pmtCols, journalEntryNumber: journalEntries.entryNumber, journalEntryId: journalEntries.id })
       .from(paymentsReceived)
       .leftJoin(journalEntries, and(eq(journalEntries.source, 'payment'), eq(journalEntries.sourceId, paymentsReceived.id)))
-      .where(eq(paymentsReceived.orgId, orgId))
+      .where(and(...conditions))
       .orderBy(desc(paymentsReceived.date));
 
     return res.status(200).json(list);

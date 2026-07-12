@@ -19,7 +19,7 @@ import {
   accounts,
   journalEntries
 } from '../db/schema';
-import { eq, and, desc, sql, getTableColumns } from 'drizzle-orm';
+import { eq, and, desc, sql, gte, lte, getTableColumns } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
 import {
@@ -343,12 +343,15 @@ router.post('/bills/:id/duplicate', async (req: AuthenticatedRequest, res: Respo
 router.get('/payments', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const orgId = req.user!.orgId!;
+    const conditions = [eq(paymentsMade.orgId, orgId)];
+    if (req.query.startDate) conditions.push(gte(paymentsMade.date, new Date(req.query.startDate as string)));
+    if (req.query.endDate) conditions.push(lte(paymentsMade.date, new Date(req.query.endDate as string)));
     const pmtCols = getTableColumns(paymentsMade);
     const list = await db
       .select({ ...pmtCols, journalEntryNumber: journalEntries.entryNumber })
       .from(paymentsMade)
       .leftJoin(journalEntries, eq(paymentsMade.journalEntryId, journalEntries.id))
-      .where(eq(paymentsMade.orgId, orgId))
+      .where(and(...conditions))
       .orderBy(desc(paymentsMade.date));
 
     return res.status(200).json(list);
@@ -433,7 +436,10 @@ router.delete('/payments/:id', async (req: AuthenticatedRequest, res: Response, 
 router.get('/expenses', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const orgId = req.user!.orgId!;
-    const list = await listExpenses(orgId);
+    const filters: any = {};
+    if (req.query.startDate) filters.startDate = new Date(req.query.startDate as string);
+    if (req.query.endDate) filters.endDate = new Date(req.query.endDate as string);
+    const list = await listExpenses(orgId, filters);
     return res.status(200).json(list);
   } catch (err) {
     return next(err);

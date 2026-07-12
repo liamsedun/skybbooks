@@ -562,8 +562,8 @@ export const purchasesApi = {
     const res = await api.post(`/purchases/bills/${id}/duplicate`);
     return res.data;
   },
-  getPaymentsMade: async () => {
-    const res = await api.get('/purchases/payments');
+  getPaymentsMade: async (params?: any) => {
+    const res = await api.get('/purchases/payments', { params });
     return res.data;
   },
   createPaymentMade: async (data: any) => {
@@ -578,8 +578,8 @@ export const purchasesApi = {
     const res = await api.delete(`/purchases/payments/${id}`);
     return res.data;
   },
-  getExpenses: async () => {
-    const res = await api.get('/purchases/expenses');
+  getExpenses: async (params?: any) => {
+    const res = await api.get('/purchases/expenses', { params });
     return res.data;
   },
   createExpense: async (data: any) => {

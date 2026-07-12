@@ -106,43 +106,43 @@ export function Dashboard({ onNavigate }: { onNavigate: (viewId: string) => void
   });
 
   const accountsQuery = useQuery({
-    queryKey: ['bankAccounts'],
+    queryKey: ['bankAccounts', selectedPeriod],
     queryFn: bankingApi.getAccounts,
     staleTime: 10 * 1000,
     enabled: !!token,
   });
 
   const invoicesQuery = useQuery({
-    queryKey: ['dashboard-invoices'],
-    queryFn: () => salesApi.getInvoices({ limit: 500 }),
+    queryKey: ['dashboard-invoices', selectedPeriod],
+    queryFn: () => salesApi.getInvoices({ limit: 500, dateFrom: periodStartStr, dateTo: nowStr }),
     staleTime: 10 * 1000,
     enabled: !!token,
   });
 
   const billsQuery = useQuery({
-    queryKey: ['dashboard-bills'],
-    queryFn: () => purchasesApi.getBills({ limit: 500 }),
+    queryKey: ['dashboard-bills', selectedPeriod],
+    queryFn: () => purchasesApi.getBills({ limit: 500, dateFrom: periodStartStr, dateTo: nowStr }),
     staleTime: 10 * 1000,
     enabled: !!token,
   });
 
   const paymentsReceivedQuery = useQuery({
-    queryKey: ['dashboard-payments-received'],
-    queryFn: () => salesApi.getPaymentsReceived({ limit: 500 }),
+    queryKey: ['dashboard-payments-received', selectedPeriod],
+    queryFn: () => salesApi.getPaymentsReceived({ limit: 500, startDate: periodStartStr, endDate: nowStr }),
     staleTime: 10 * 1000,
     enabled: !!token,
   });
 
   const paymentsMadeQuery = useQuery({
-    queryKey: ['dashboard-payments-made'],
-    queryFn: () => purchasesApi.getPaymentsMade(),
+    queryKey: ['dashboard-payments-made', selectedPeriod],
+    queryFn: () => purchasesApi.getPaymentsMade({ startDate: periodStartStr, endDate: nowStr }),
     staleTime: 10 * 1000,
     enabled: !!token,
   });
 
   const expensesQuery = useQuery({
-    queryKey: ['dashboard-expenses'],
-    queryFn: () => purchasesApi.getExpenses(),
+    queryKey: ['dashboard-expenses', selectedPeriod],
+    queryFn: () => purchasesApi.getExpenses({ startDate: periodStartStr, endDate: nowStr }),
     staleTime: 10 * 1000,
     enabled: !!token,
   });
