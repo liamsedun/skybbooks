@@ -332,11 +332,13 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     return roleStr.charAt(0).toUpperCase() + roleStr.slice(1);
   };
 
+  const isSettingsPage = location.pathname.startsWith('/settings');
+
   return (
     <div className="min-h-screen bg-slate-50 flex" id="finance-os-applet-shell">
       
-      {/* 1. LEFT SIDEBAR: Standard desktop (hidden on tablet/mobile unless toggled) */}
-      <aside 
+      {/* 1. LEFT SIDEBAR — hidden on settings pages for full-width layout */}
+      {!isSettingsPage && (<aside 
         id="desktop-sidebar-pane"
         className={`fixed top-0 bottom-0 left-0 z-40 w-60 bg-surface border-r border-border-custom flex flex-col transition-transform duration-300 lg:translate-x-0 ${
           isMobileOpen ? 'translate-x-0' : '-translate-x-full'
@@ -455,10 +457,10 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
             </button>
           </div>
         </div>
-      </aside>
+      </aside>)}
 
       {/* Backdrop overlay for drawer when mobile menu is open */}
-      {isMobileOpen && (
+      {!isSettingsPage && isMobileOpen && (
         <div 
           onClick={() => setIsMobileOpen(false)}
           className="lg:hidden fixed inset-0 z-30 bg-slate-900/40 backdrop-blur-xs"
@@ -466,19 +468,20 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
       )}
 
       {/* 2. MAIN CONTAINER AREA WITH TOP HEADER */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto lg:h-screen" id="main-content-scroll-container">
+      <div className={`flex-1 flex flex-col min-w-0 overflow-y-auto ${isSettingsPage ? '' : 'lg:h-screen'}`} id="main-content-scroll-container">
         {/* TOP HEADER */}
-        <header className="h-14 md:h-16 px-4 md:px-6 bg-white border-b border-slate-100 flex items-center justify-between shrink-0 sticky top-0 z-20">
+        <header className={`h-14 md:h-16 px-4 md:px-6 bg-white border-b border-slate-100 flex items-center justify-between shrink-0 sticky top-0 z-20 ${isSettingsPage ? '' : ''}`}>
           
-          {/* Hamburger toggle button on smaller screens */}
-          <button 
+          {/* Hamburger toggle button on smaller screens — hidden on settings pages */}
+          {!isSettingsPage && (<button 
             onClick={() => setIsMobileOpen(!isMobileOpen)}
             className="lg:hidden p-2 border border-slate-200 hover:bg-slate-50 text-slate-500 rounded-xl outline-none mr-3 shrink-0 transition"
           >
             <Menu className="w-5 h-5" />
-          </button>
+          </button>)}
 
-          {/* Org Display capsule with selector */}
+          {/* Org Display capsule with selector — hidden on settings pages */}
+          {!isSettingsPage && (
           <div className="flex items-center space-x-2.5 sm:space-x-3.5 select-none" id="org-display-bubble">
             <div className="w-7 h-7 bg-primary-light text-primary rounded-lg flex items-center justify-center text-xs font-bold shadow-sm uppercase shrink-0 overflow-hidden">
               {developerLogoUrl ? (
@@ -501,15 +504,18 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
               </div>
             </div>
           </div>
+          )}
 
           {/* Header Action caps */}
           <div className="flex items-center space-x-2.5 sm:space-x-4 ml-auto" id="header-right-actions">
             
-            {/* Real-time UTC Live Status Clock */}
+            {/* Real-time UTC Live Status Clock — hidden on settings pages */}
+            {!isSettingsPage && (
             <span className="hidden md:inline-flex items-center text-[11px] font-mono font-semibold text-slate-500 bg-slate-50 border border-slate-100 rounded-full px-3 py-1">
               <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-2 inline-block animate-pulse"></span>
               Live Ledger Connected
             </span>
+            )}
 
             {/* Quick Audit Notifications */}
             <div className="relative">
@@ -607,11 +613,11 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
         </header>
 
         {/* 3. SCROLLABLE SCREEN CONTENT AREA */}
-        <main className="flex-1 p-4 sm:p-6 md:p-8 max-w-7xl w-full mx-auto" id="shell-inner-viewport">
+        <main className={`flex-1 p-4 sm:p-6 md:p-8 w-full mx-auto ${isSettingsPage ? '' : 'max-w-7xl'}`} id="shell-inner-viewport">
           {children || <Outlet />}
         </main>
         
-        <Footer />
+        {!isSettingsPage && <Footer />}
       </div>
     </div>
   );
