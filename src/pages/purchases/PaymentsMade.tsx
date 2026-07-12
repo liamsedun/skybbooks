@@ -409,7 +409,7 @@ export function PaymentsMadePage() {
         <div className="flex gap-2">
           <button onClick={() => { setModalOpen(true); setFormError(null); }}
             className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-sm font-semibold rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200 shadow-sm">
-            <Plus size={15} /> Record Payment
+            <Plus size={15} /> +New
           </button>
           <button onClick={() => exportPaymentsCSV(filtered, vendorMap)}
             className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl hover:bg-slate-50 transition-all duration-200">

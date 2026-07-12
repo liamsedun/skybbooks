@@ -811,7 +811,7 @@ export function PaymentsReceivedPage() {
             <button
               onClick={() => { setAddForm({ ...EMPTY_ADD_FORM, reference: nextReference }); setAddError(null); setAddOpen(true); }}
               className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-xs font-medium rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200 shadow-sm">
-              <Plus size={14} />Record Payment
+              <Plus size={14} />+New
             </button>
             <button onClick={() => exportPaymentsCSV(filtered)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl hover:bg-slate-50 transition-all duration-200">
               <Download size={14} /> CSV
