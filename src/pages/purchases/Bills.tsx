@@ -9,7 +9,7 @@ import { api, printWindow } from '../../lib/api';
 import {
   Plus, X, Loader2, AlertCircle, Search, FileText,
   CheckCircle2, Download, Ban, ChevronDown, ChevronUp,
-  Pencil, Trash2, Copy, Upload, Package, ArrowLeft, Eye, ExternalLink, Undo2
+  Pencil, Trash2, Copy, Upload, Package, ArrowLeft, Eye, ExternalLink, Undo2, Wallet, Clock
 } from 'lucide-react';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
 import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
@@ -371,25 +371,37 @@ function BillList() {
 
       {/* ── KPI Cards ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <button onClick={() => { setDateFrom(''); setDateTo(''); setStatusFilter('all'); setSearch(''); }} className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 text-left cursor-pointer hover:border-blue-300 hover:shadow-md transition-all duration-200">
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Total Bills</p>
-          <p className="text-lg font-bold mt-1 text-slate-900">{formatNaira(totals.total)}</p>
-          <p className="text-xs text-slate-400 mt-0.5">{totals.count} bills</p>
+        <button onClick={() => { setDateFrom(''); setDateTo(''); setStatusFilter('all'); setSearch(''); }} className="relative overflow-hidden bg-gradient-to-br from-slate-600 to-slate-800 rounded-2xl shadow-md p-5 text-left cursor-pointer hover:from-slate-700 hover:to-slate-900 hover:shadow-lg transition-all duration-200 group">
+          <div className="absolute top-3 right-3 p-2 rounded-xl bg-white/10 text-white/40 group-hover:scale-110 transition-transform duration-200">
+            <FileText size={20} />
+          </div>
+          <p className="text-[11px] font-semibold text-white/60 uppercase tracking-wider">Total Bills</p>
+          <p className="text-xl font-bold text-white mt-1.5">{formatNaira(totals.total)}</p>
+          <p className="text-[11px] text-white/40 mt-1">{totals.count} bills</p>
         </button>
-        <button onClick={() => { setDateFrom(''); setDateTo(''); setStatusFilter('paid'); setSearch(''); }} className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 text-left cursor-pointer hover:border-blue-300 hover:shadow-md transition-all duration-200">
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Amount Paid</p>
-          <p className="text-lg font-bold mt-1 text-green-600">{formatNaira(totals.paid)}</p>
-          <p className="text-xs text-slate-400 mt-0.5">settled</p>
+        <button onClick={() => { setDateFrom(''); setDateTo(''); setStatusFilter('paid'); setSearch(''); }} className="relative overflow-hidden bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-2xl shadow-md p-5 text-left cursor-pointer hover:from-emerald-600 hover:to-emerald-800 hover:shadow-lg transition-all duration-200 group">
+          <div className="absolute top-3 right-3 p-2 rounded-xl bg-white/10 text-white/40 group-hover:scale-110 transition-transform duration-200">
+            <CheckCircle2 size={20} />
+          </div>
+          <p className="text-[11px] font-semibold text-white/60 uppercase tracking-wider">Amount Paid</p>
+          <p className="text-xl font-bold text-white mt-1.5">{formatNaira(totals.paid)}</p>
+          <p className="text-[11px] text-white/40 mt-1">settled</p>
         </button>
-        <button onClick={() => { setDateFrom(''); setDateTo(''); setStatusFilter('open'); setSearch(''); }} className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 text-left cursor-pointer hover:border-blue-300 hover:shadow-md transition-all duration-200">
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Outstanding</p>
-          <p className="text-lg font-bold mt-1 text-blue-600">{formatNaira(totals.outstanding)}</p>
-          <p className="text-xs text-slate-400 mt-0.5">balance due</p>
+        <button onClick={() => { setDateFrom(''); setDateTo(''); setStatusFilter('open'); setSearch(''); }} className="relative overflow-hidden bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl shadow-md p-5 text-left cursor-pointer hover:from-blue-600 hover:to-blue-800 hover:shadow-lg transition-all duration-200 group">
+          <div className="absolute top-3 right-3 p-2 rounded-xl bg-white/10 text-white/40 group-hover:scale-110 transition-transform duration-200">
+            <Clock size={20} />
+          </div>
+          <p className="text-[11px] font-semibold text-white/60 uppercase tracking-wider">Outstanding</p>
+          <p className="text-xl font-bold text-white mt-1.5">{formatNaira(totals.outstanding)}</p>
+          <p className="text-[11px] text-white/40 mt-1">balance due</p>
         </button>
-        <button onClick={() => { setDateFrom(''); setDateTo(''); setStatusFilter('overdue'); setSearch(''); }} className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 text-left cursor-pointer hover:border-red-300 hover:shadow-md transition-all duration-200">
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Overdue</p>
-          <p className="text-lg font-bold mt-1 text-red-600">{formatNaira(totals.overdue)}</p>
-          <p className="text-xs text-slate-400 mt-0.5">past due</p>
+        <button onClick={() => { setDateFrom(''); setDateTo(''); setStatusFilter('overdue'); setSearch(''); }} className="relative overflow-hidden bg-gradient-to-br from-rose-500 to-rose-700 rounded-2xl shadow-md p-5 text-left cursor-pointer hover:from-rose-600 hover:to-rose-800 hover:shadow-lg transition-all duration-200 group">
+          <div className="absolute top-3 right-3 p-2 rounded-xl bg-white/10 text-white/40 group-hover:scale-110 transition-transform duration-200">
+            <AlertCircle size={20} />
+          </div>
+          <p className="text-[11px] font-semibold text-white/60 uppercase tracking-wider">Overdue</p>
+          <p className="text-xl font-bold text-white mt-1.5">{formatNaira(totals.overdue)}</p>
+          <p className="text-[11px] text-white/40 mt-1">past due</p>
         </button>
       </div>
 
