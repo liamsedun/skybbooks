@@ -1639,7 +1639,43 @@ function ReportShell({ reportType, title }: ReportPageProps) {
           csvRows = rows.map((r: any) => [r.name || r.customerName || r.vendorName || '', (r.current/100).toFixed(2), (r.days1to30/100).toFixed(2), (r.days31to60/100).toFixed(2), (r.days61to90/100).toFixed(2), (r.days90Plus/100).toFixed(2), (r.total/100).toFixed(2)]);
         } else if (reportType === 'balance-sheet') {
           headers = ['Account', 'Amount'];
-          csvRows = rows.map((r: any) => [r.accountName||'', ((r.balance||0)/100).toFixed(2)]);
+          csvRows = [];
+          const bsData = (data as any)?.data || data || {};
+          const addCSSec = (label: string, items: any[], total: number) => {
+            csvRows.push([label, '']);
+            items.forEach((i: any) => csvRows.push([i.name || i.code || '', ((i.balance || 0) / 100).toFixed(2)]));
+            csvRows.push([`Total ${label}`, (total / 100).toFixed(2)]);
+          };
+          const addCSVSection = (label: string, total: number, subSections: any[]) => {
+            csvRows.push([`--- ${label} ---`, '']);
+            (subSections || []).forEach((sec: any) => {
+              if (sec.key === 'ppe' || sec.key === 'rou' || sec.key === 'intangibles') {
+                addCSSec(sec.label, [...(sec.items || []), ...(sec.contraItems || []).map((ci: any) => ({ ...ci, balance: -Math.abs(ci.balance || 0) }))], sec.netTotal ?? sec.total);
+              } else {
+                addCSSec(sec.label, sec.items || [], sec.total || 0);
+              }
+            });
+            csvRows.push([`Total ${label}`, (total / 100).toFixed(2)]);
+          };
+          const ca = bsData.currentAssets || {};
+          const nca = bsData.nonCurrentAssets || {};
+          const cl = bsData.currentLiabilities || {};
+          const ncl = bsData.nonCurrentLiabilities || {};
+          const eq = bsData.equity || {};
+          csvRows.push(['ASSETS', '']);
+          addCSVSection('Current Assets', ca.total || 0, ca.subSections || []);
+          addCSVSection('Non-Current Assets', nca.total || 0, nca.subSections || []);
+          csvRows.push(['Total Assets', ((bsData.totalAssets || 0) / 100).toFixed(2)]);
+          csvRows.push(['', '']);
+          csvRows.push(['LIABILITIES', '']);
+          addCSVSection('Current Liabilities', cl.total || 0, cl.subSections || []);
+          addCSVSection('Non-Current Liabilities', ncl.total || 0, ncl.subSections || []);
+          csvRows.push(['Total Liabilities', ((bsData.totalLiabilities || 0) / 100).toFixed(2)]);
+          csvRows.push(['', '']);
+          csvRows.push(['EQUITY', '']);
+          addCSVSection('Equity', eq.total || 0, eq.subSections || []);
+          csvRows.push(['Total Equity', ((bsData.totalEquity || 0) / 100).toFixed(2)]);
+          csvRows.push(['Total Liabilities & Equity', (((bsData.totalLiabilities || 0) + (bsData.totalEquity || 0)) / 100).toFixed(2)]);
         } else if (reportType === 'cash-flow') {
           const cf = data?.data || data || {};
           headers = ['Line Item', 'Amount'];
@@ -2001,6 +2037,8 @@ function ReportShell({ reportType, title }: ReportPageProps) {
         console.error('Excel export failed:', err);
         alert('Failed to export Excel. Please try again.');
       });
+    } else if (reportType === 'balance-sheet') {
+      apiDownload(`/reports/balance-sheet?format=${format}&asOfDate=${asOfDate}`, `balance_sheet_${new Date().toISOString().split('T')[0]}.xlsx`);
     } else {
       apiDownload(`/reports/${reportType}?format=${format}&startDate=${sDate}&endDate=${eDate}`, `${reportType}_${new Date().toISOString().split('T')[0]}.${format}`);
     }
