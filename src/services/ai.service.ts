@@ -549,7 +549,14 @@ export class AIService {
     const totalFaCost = fa?.totalCost || 0;
     const totalFaDepr = fa?.totalDepr || 0;
     const faCount = fa?.count || 0;
-    const deprThisPeriod = currentMonthData.expense.accounts.filter((a: any) =>
+    const deprThisPeriod = [
+      ...(currentMonthData.staffCosts?.accounts || []),
+      ...(currentMonthData.administrative?.accounts || []),
+      ...(currentMonthData.sellingDistribution?.accounts || []),
+      ...(currentMonthData.otherOperatingExpenses?.accounts || []),
+      ...(currentMonthData.financeCosts?.accounts || []),
+      ...(currentMonthData.incomeTaxExpense?.accounts || []),
+    ].filter((a: any) =>
       a.name.toLowerCase().includes('depreciation') || a.name.toLowerCase().includes('amortisation')
     ).reduce((s: number, a: any) => s + a.balance, 0);
     if (totalFaCost > 0 && deprThisPeriod > 0) {
