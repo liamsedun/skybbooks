@@ -229,30 +229,22 @@ export function Dashboard({ onNavigate }: { onNavigate: (viewId: string) => void
   })();
 
   const agingBuckets = (() => {
-    const inAging = invoiceAgingQuery.data || [];
-    const outAging = billAgingQuery.data || [];
-    const arBuckets = { current: 0, days1to30: 0, days31to60: 0, days61to90: 0, days90Plus: 0 };
-    const apBuckets = { current: 0, days1to30: 0, days31to60: 0, days61to90: 0, days90Plus: 0 };
-
-    if (Array.isArray(inAging)) {
-      inAging.forEach((r: any) => {
-        arBuckets.current += Number(r.current || 0);
-        arBuckets.days1to30 += Number(r.days1to30 || 0);
-        arBuckets.days31to60 += Number(r.days31to60 || 0);
-        arBuckets.days61to90 += Number(r.days61to90 || 0);
-        arBuckets.days90Plus += Number(r.days90Plus || 0);
-      });
-    }
-    if (Array.isArray(outAging)) {
-      outAging.forEach((r: any) => {
-        apBuckets.current += Number(r.current || 0);
-        apBuckets.days1to30 += Number(r.days1to30 || 0);
-        apBuckets.days31to60 += Number(r.days31to60 || 0);
-        apBuckets.days61to90 += Number(r.days61to90 || 0);
-        apBuckets.days90Plus += Number(r.days90Plus || 0);
-      });
-    }
-
+    const inSummary = (invoiceAgingQuery.data as any)?.summary || {};
+    const outSummary = (billAgingQuery.data as any)?.summary || {};
+    const arBuckets = {
+      current: Number(inSummary.current || 0),
+      days1to30: Number(inSummary.days1To30 || 0),
+      days31to60: Number(inSummary.days31To60 || 0),
+      days61to90: Number(inSummary.days61To90 || 0),
+      days90Plus: Number(inSummary.daysOver90 || 0),
+    };
+    const apBuckets = {
+      current: Number(outSummary.current || 0),
+      days1to30: Number(outSummary.days1To30 || 0),
+      days31to60: Number(outSummary.days31To60 || 0),
+      days61to90: Number(outSummary.days61To90 || 0),
+      days90Plus: Number(outSummary.daysOver90 || 0),
+    };
     return {
       ar: [
         { name: 'Current', value: arBuckets.current },
@@ -510,41 +502,80 @@ export function Dashboard({ onNavigate }: { onNavigate: (viewId: string) => void
           </div>
         </div>
 
-        {/* Aging Pie Chart */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6">
-          <div className="flex items-center justify-between mb-5">
-            <div>
-              <h3 className="text-sm font-bold text-slate-800">Aging Summary</h3>
-              <p className="text-xs text-slate-400 mt-0.5">Receivables overdue buckets</p>
+        {/* Aging Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {/* AR Aging */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-sm font-bold text-slate-800">AR Aging</h3>
+                <p className="text-[11px] text-slate-400 mt-0.5">Receivables overdue buckets</p>
+              </div>
+              <Clock className="w-4 h-4 text-slate-400" />
             </div>
-            <Clock className="w-4 h-4 text-slate-400" />
+            {agingBuckets.ar.length > 0 ? (
+              <>
+                <div className="h-44">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={agingBuckets.ar} cx="50%" cy="50%" innerRadius={45} outerRadius={70} dataKey="value" nameKey="name" paddingAngle={3} animationBegin={0} animationDuration={1000} animationEasing="ease-out">
+                        {agingBuckets.ar.map((_, i) => (
+                          <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} stroke="none" />
+                        ))}
+                      </Pie>
+                      <Tooltip content={<AgingTooltip />} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="flex flex-wrap gap-1.5 mt-2 pt-3 border-t border-slate-100">
+                  {agingBuckets.ar.map((b, i) => (
+                    <span key={b.name} className="text-[10px] flex items-center gap-1 text-slate-500 bg-slate-50 px-2 py-1 rounded-lg">
+                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }} />
+                      {b.name}: <span className="font-semibold text-slate-700">{formatNaira(b.value)}</span>
+                    </span>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="h-44 flex items-center justify-center text-sm text-slate-400">No AR aging data</div>
+            )}
           </div>
-          {agingBuckets.ar.length > 0 ? (
-            <>
-              <div className="h-56">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={agingBuckets.ar} cx="50%" cy="50%" innerRadius={55} outerRadius={85} dataKey="value" nameKey="name" paddingAngle={3} animationBegin={0} animationDuration={1000} animationEasing="ease-out">
-                      {agingBuckets.ar.map((_, i) => (
-                        <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} stroke="none" />
-                      ))}
-                    </Pie>
-                    <Tooltip content={<AgingTooltip />} />
-                  </PieChart>
-                </ResponsiveContainer>
+          {/* AP Aging */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-sm font-bold text-slate-800">AP Aging</h3>
+                <p className="text-[11px] text-slate-400 mt-0.5">Payables overdue buckets</p>
               </div>
-              <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-slate-100">
-                {agingBuckets.ar.map((b, i) => (
-                  <span key={b.name} className="text-[10px] flex items-center gap-1.5 text-slate-500 bg-slate-50 px-2 py-1 rounded-lg">
-                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }} />
-                    {b.name}: <span className="font-semibold text-slate-700">{formatNaira(b.value)}</span>
-                  </span>
-                ))}
-              </div>
-            </>
-          ) : (
-            <div className="h-72 flex items-center justify-center text-sm text-slate-400">No aging data</div>
-          )}
+              <Clock className="w-4 h-4 text-slate-400" />
+            </div>
+            {agingBuckets.ap.length > 0 ? (
+              <>
+                <div className="h-44">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={agingBuckets.ap} cx="50%" cy="50%" innerRadius={45} outerRadius={70} dataKey="value" nameKey="name" paddingAngle={3} animationBegin={150} animationDuration={1000} animationEasing="ease-out">
+                        {agingBuckets.ap.map((_, i) => (
+                          <Cell key={i} fill={CHART_COLORS[(i + 5) % CHART_COLORS.length]} stroke="none" />
+                        ))}
+                      </Pie>
+                      <Tooltip content={<AgingTooltip />} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="flex flex-wrap gap-1.5 mt-2 pt-3 border-t border-slate-100">
+                  {agingBuckets.ap.map((b, i) => (
+                    <span key={b.name} className="text-[10px] flex items-center gap-1 text-slate-500 bg-slate-50 px-2 py-1 rounded-lg">
+                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: CHART_COLORS[(i + 5) % CHART_COLORS.length] }} />
+                      {b.name}: <span className="font-semibold text-slate-700">{formatNaira(b.value)}</span>
+                    </span>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="h-44 flex items-center justify-center text-sm text-slate-400">No AP aging data</div>
+            )}
+          </div>
         </div>
 
       </div>
