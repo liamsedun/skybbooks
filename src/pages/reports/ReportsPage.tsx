@@ -1631,13 +1631,7 @@ function ReportShell({ reportType, title }: ReportPageProps) {
         if (tx.accounts?.length) addSec('Income Tax Expense', tx.accounts, txTotal);
         csvRows.push(['NET PROFIT AFTER TAX', (netProfit/100).toFixed(2)]);
         if (pbt > 0) csvRows.push([`Effective Tax Rate: ${etr}%`, '']);
-      } else {
-        const rows = data?.rows || (Array.isArray(data) ? data : []);
-        if (!rows.length) return;
-        if (reportType === 'aged-receivables' || reportType === 'aged-payables') {
-          headers = ['Name', 'Current', '1-30 Days', '31-60 Days', '61-90 Days', '90+ Days', 'Total'];
-          csvRows = rows.map((r: any) => [r.name || r.customerName || r.vendorName || '', (r.current/100).toFixed(2), (r.days1to30/100).toFixed(2), (r.days31to60/100).toFixed(2), (r.days61to90/100).toFixed(2), (r.days90Plus/100).toFixed(2), (r.total/100).toFixed(2)]);
-        } else if (reportType === 'balance-sheet') {
+      } else if (reportType === 'balance-sheet') {
           headers = ['Account', 'Amount'];
           csvRows = [];
           const bsData = (data as any)?.data || data || {};
@@ -1676,6 +1670,12 @@ function ReportShell({ reportType, title }: ReportPageProps) {
           addCSVSection('Equity', eq.total || 0, eq.subSections || []);
           csvRows.push(['Total Equity', ((bsData.totalEquity || 0) / 100).toFixed(2)]);
           csvRows.push(['Total Liabilities & Equity', (((bsData.totalLiabilities || 0) + (bsData.totalEquity || 0)) / 100).toFixed(2)]);
+        } else {
+        const rows = data?.rows || (Array.isArray(data) ? data : []);
+        if (!rows.length) return;
+        if (reportType === 'aged-receivables' || reportType === 'aged-payables') {
+          headers = ['Name', 'Current', '1-30 Days', '31-60 Days', '61-90 Days', '90+ Days', 'Total'];
+          csvRows = rows.map((r: any) => [r.name || r.customerName || r.vendorName || '', (r.current/100).toFixed(2), (r.days1to30/100).toFixed(2), (r.days31to60/100).toFixed(2), (r.days61to90/100).toFixed(2), (r.days90Plus/100).toFixed(2), (r.total/100).toFixed(2)]);
         } else if (reportType === 'cash-flow') {
           const cf = data?.data || data || {};
           headers = ['Line Item', 'Amount'];
