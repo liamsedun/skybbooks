@@ -312,8 +312,7 @@ export function CreditNotesPage() {
             onClick={() => setShowCreateModal(true)}
             className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-xs font-medium rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200 shadow-sm"
           >
-            <Plus size={14} />
-            New Credit Note
+            <Plus size={14} /> +New
           </button>
         </div>
       </div>
@@ -402,7 +401,7 @@ export function CreditNotesPage() {
               onClick={() => setShowCreateModal(true)}
               className="mt-4 py-2 px-4 bg-indigo-600 text-white rounded-xl text-xs font-bold shadow-sm hover:bg-slate-900 transition"
             >
-              New Credit Note
+              +New
             </button>
           </div>
         ) : (

@@ -254,7 +254,7 @@ function VendorsList() {
             <FileText size={14} /> PDF
           </button>
           <button onClick={openCreate} className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-sm font-medium rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200">
-            <Plus size={15} /> Add Vendor
+            <Plus size={15} /> +New
           </button>
         </div>
       </div>
