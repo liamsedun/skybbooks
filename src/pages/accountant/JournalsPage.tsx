@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { journalsApi, accountantApi, printWindow, orgApi } from '../../lib/api';
 import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
 import { PageLoader } from '../../components/ui/PageLoader';
-import { Plus, X, Loader2, AlertCircle, CheckCircle2, Eye, Download, Upload, Printer, ExternalLink, ArrowLeft, RotateCcw } from 'lucide-react';
+import { Plus, X, Loader2, AlertCircle, CheckCircle2, Eye, Download, Upload, Printer, ExternalLink, ArrowLeft, RotateCcw, Trash2 } from 'lucide-react';
 import { exportToCsv } from '../../lib/csvTemplates';
 
 function fmtNaira(v: number): string {
@@ -633,47 +633,132 @@ function JournalForm({ onDone }: { onDone: () => void }) {
   const accList = Array.isArray(accounts) ? accounts : [];
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 space-y-4">
+    <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
       {success && <div className="flex items-center gap-2 p-3 bg-emerald-50 text-emerald-700 rounded-xl text-sm border border-emerald-200/80"><CheckCircle2 className="w-4 h-4" /> {success}</div>}
       {error && <div className="flex items-center gap-2 p-3 bg-red-50 text-red-700 rounded-xl text-sm border border-red-100/80"><AlertCircle className="w-4 h-4" /> {error}</div>}
 
-      <div className="grid grid-cols-3 gap-4">
-        <div><label className="text-xs font-semibold text-slate-500 uppercase">Entry #</label><input value={entryNumber} onChange={e => setEntryNumber(e.target.value)} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow mt-1" /></div>
-        <div><label className="text-xs font-semibold text-slate-500 uppercase">Date</label><input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow mt-1" /></div>
-        <div><label className="text-xs font-semibold text-slate-500 uppercase">Reference</label><input value={reference} onChange={e => setReference(e.target.value)} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow mt-1" /></div>
-      </div>
-      <div><label className="text-xs font-semibold text-slate-500 uppercase">Description</label><textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow mt-1" /></div>
-
-      <div className="bg-slate-50 rounded-xl p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold text-slate-500 uppercase">Journal Lines</span>
-          <button type="button" onClick={addLine} className="text-xs text-blue-600 hover:text-blue-800 font-semibold">+ Add Line</button>
-        </div>
-        {lines.map((line, i) => (
-          <div key={i} className="flex gap-2 items-start">
-            <AccountSearchSelect
-              accounts={accList}
-              value={line.accountId}
-              onChange={id => updateLine(i, 'accountId', id)}
-              placeholder="Select account"
-            />
-            <input placeholder="Debit (₦)" type="number" value={line.debitAmount || ''} onChange={e => updateLine(i, 'debitAmount', e.target.value)} className="w-32 px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
-            <input placeholder="Credit (₦)" type="number" value={line.creditAmount || ''} onChange={e => updateLine(i, 'creditAmount', e.target.value)} className="w-32 px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
-            <input placeholder="Description" value={line.description} onChange={e => updateLine(i, 'description', e.target.value)} className="flex-1 px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
-            {lines.length > 1 && <button type="button" onClick={() => removeLine(i)} className="p-1.5 text-red-500 hover:text-red-700"><X className="w-4 h-4" /></button>}
+      {/* Header */}
+      <div className="px-6 pt-5 pb-4 border-b border-slate-100">
+        <h2 className="text-lg font-bold text-slate-900 mb-4">New Journal Entry</h2>
+        <div className="grid grid-cols-4 gap-4">
+          <div>
+            <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Entry #</label>
+            <input value={entryNumber} onChange={e => setEntryNumber(e.target.value)}
+              className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-shadow font-mono" />
           </div>
-        ))}
-        <div className={`flex items-center justify-end gap-3 text-sm font-semibold ${isBalanced ? 'text-emerald-600' : 'text-red-600'}`}>
-          <span>Debits: {fmtNaira(totalDebits * 100)}</span>
-          <span>Credits: {fmtNaira(totalCredits * 100)}</span>
-          {isBalanced ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+          <div>
+            <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Date</label>
+            <input type="date" value={date} onChange={e => setDate(e.target.value)}
+              className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-shadow" />
+          </div>
+          <div>
+            <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Reference</label>
+            <input value={reference} onChange={e => setReference(e.target.value)}
+              className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-shadow" />
+          </div>
+          <div className="flex items-end justify-end pb-1">
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ${isBalanced ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+              {isBalanced ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
+              {isBalanced ? 'Balanced' : 'Out of Balance'}
+            </span>
+          </div>
         </div>
       </div>
 
-      <div className="flex justify-end gap-3">
-        <button type="button" onClick={onDone} className="px-4 py-2 text-sm font-semibold text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200 transition-all duration-200 border border-slate-200/80">Cancel</button>
-        <button type="submit" disabled={mutation.isPending} className="px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50 transition-all duration-200">
-          {mutation.isPending ? <Loader2 className="w-4 h-4 animate-spin inline" /> : null} Create Journal Entry
+      {/* Description row */}
+      <div className="px-6 py-3 border-b border-slate-100">
+        <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Description</label>
+        <input value={description} onChange={e => setDescription(e.target.value)}
+          placeholder="Brief description of this journal entry..."
+          className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-shadow" />
+      </div>
+
+      {/* Journal lines table */}
+      <div className="px-6 py-4">
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-sm font-bold text-slate-700">Journal Lines</span>
+          <button type="button" onClick={addLine}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors">
+            <Plus className="w-3.5 h-3.5" /> Add Line
+          </button>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-200">
+                <th className="px-2 py-2.5 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider w-8">#</th>
+                <th className="px-2 py-2.5 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Account</th>
+                <th className="px-2 py-2.5 text-right text-[11px] font-semibold text-slate-400 uppercase tracking-wider w-36">Debit (₦)</th>
+                <th className="px-2 py-2.5 text-right text-[11px] font-semibold text-slate-400 uppercase tracking-wider w-36">Credit (₦)</th>
+                <th className="px-2 py-2.5 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Description</th>
+                <th className="px-2 py-2.5 w-10" />
+              </tr>
+            </thead>
+            <tbody>
+              {lines.map((line, i) => (
+                <tr key={i} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                  <td className="px-2 py-2 text-xs text-slate-400 font-mono">{i + 1}</td>
+                  <td className="px-2 py-2">
+                    <AccountSearchSelect
+                      accounts={accList}
+                      value={line.accountId}
+                      onChange={id => updateLine(i, 'accountId', id)}
+                      placeholder="Select account"
+                    />
+                  </td>
+                  <td className="px-2 py-2">
+                    <input type="number" placeholder="0.00"
+                      value={line.debitAmount || ''}
+                      onChange={e => updateLine(i, 'debitAmount', e.target.value)}
+                      className="w-full px-3 py-2 text-sm text-right font-mono border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-shadow" />
+                  </td>
+                  <td className="px-2 py-2">
+                    <input type="number" placeholder="0.00"
+                      value={line.creditAmount || ''}
+                      onChange={e => updateLine(i, 'creditAmount', e.target.value)}
+                      className="w-full px-3 py-2 text-sm text-right font-mono border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-shadow" />
+                  </td>
+                  <td className="px-2 py-2">
+                    <input placeholder="Line description (optional)"
+                      value={line.description}
+                      onChange={e => updateLine(i, 'description', e.target.value)}
+                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-shadow" />
+                  </td>
+                  <td className="px-2 py-2 text-center">
+                    {lines.length > 1 && (
+                      <button type="button" onClick={() => removeLine(i)}
+                        className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="bg-slate-50">
+                <td colSpan={2} className="px-2 py-3 text-sm font-bold text-slate-700">Totals</td>
+                <td className="px-2 py-3 text-right font-mono font-bold text-sm">{fmtNaira(totalDebits * 100)}</td>
+                <td className="px-2 py-3 text-right font-mono font-bold text-sm">{fmtNaira(totalCredits * 100)}</td>
+                <td colSpan={2} className="px-2 py-3 text-xs text-slate-400">
+                  {isBalanced
+                    ? <span className="text-emerald-600 font-semibold flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> In balance</span>
+                    : <span className="text-red-600 font-semibold flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> Difference: {fmtNaira(Math.abs(totalDebits - totalCredits) * 100)}</span>}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      {/* Action buttons */}
+      <div className="px-6 py-4 bg-slate-50/50 border-t border-slate-100 flex items-center justify-end gap-3">
+        <button type="button" onClick={onDone}
+          className="px-4 py-2 text-sm font-semibold text-slate-600 bg-white rounded-lg hover:bg-slate-100 transition-colors border border-slate-200/80">Cancel</button>
+        <button type="submit" disabled={mutation.isPending}
+          className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors inline-flex items-center gap-2">
+          {mutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+          Create Journal Entry
         </button>
       </div>
     </form>
