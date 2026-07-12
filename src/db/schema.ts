@@ -1012,6 +1012,8 @@ export const auditLog = pgTable('audit_log', {
 }, (table) => ({
   orgCreatedIdx: index('idx_audit_log_org_created').on(table.orgId, table.createdAt),
   orgEntityIdx: index('idx_audit_log_org_entity').on(table.orgId, table.entityType, table.entityId),
+  entityLookupIdx: index('idx_audit_log_entity_lookup').on(table.orgId, table.entityType, table.entityId, table.createdAt),
+  userIdx: index('idx_audit_log_user').on(table.orgId, table.userId),
 }));
 
 export const currencyRates = pgTable('currency_rates', {

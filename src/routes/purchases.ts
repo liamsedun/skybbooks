@@ -274,6 +274,7 @@ router.patch('/bills/:id', async (req: AuthenticatedRequest, res: Response, next
     const body = updateBillSchema.parse(req.body);
 
     const updated = await updateBill(id, body, userId, orgId);
+    createAuditLog({ orgId, userId, action: 'update', entityType: 'bill', entityId: id, newValues: body, ...extractReqMeta(req) });
     return res.status(200).json(updated);
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -291,6 +292,7 @@ router.post('/bills/:id/approve', async (req: AuthenticatedRequest, res: Respons
     const { id } = req.params;
 
     const approved = await approveBill(id, userId, orgId);
+    createAuditLog({ orgId, userId, action: 'approve', entityType: 'bill', entityId: id, newValues: { status: 'open' }, ...extractReqMeta(req) });
     return res.status(200).json(approved);
   } catch (err) {
     return next(err);
@@ -305,6 +307,7 @@ router.post('/bills/:id/unapprove', async (req: AuthenticatedRequest, res: Respo
     const { id } = req.params;
 
     const unapproved = await unapproveBill(id, userId, orgId);
+    createAuditLog({ orgId, userId, action: 'unapprove', entityType: 'bill', entityId: id, newValues: { status: 'draft' }, ...extractReqMeta(req) });
     return res.status(200).json(unapproved);
   } catch (err) {
     return next(err);
@@ -334,6 +337,7 @@ router.post('/bills/:id/duplicate', async (req: AuthenticatedRequest, res: Respo
     const { id } = req.params;
 
     const duplicated = await duplicateBill(id, userId, orgId);
+    createAuditLog({ orgId, userId, action: 'create', entityType: 'bill', entityId: duplicated.id, newValues: { duplicatedFrom: id }, ...extractReqMeta(req) });
     return res.status(201).json(duplicated);
   } catch (err) {
     return next(err);
@@ -372,6 +376,7 @@ router.post('/payments', async (req: AuthenticatedRequest, res: Response, next: 
     const body = recordPaymentMadeSchema.parse(req.body);
 
     const paymentMade = await recordPaymentMade({ ...body, orgId }, userId);
+    createAuditLog({ orgId, userId, action: 'create', entityType: 'payment-made', entityId: paymentMade.id, newValues: { vendorId: body.vendorId, amount: paymentMade.amount }, ...extractReqMeta(req) });
     return res.status(201).json(paymentMade);
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -417,6 +422,7 @@ router.patch('/payments/:id', async (req: AuthenticatedRequest, res: Response, n
     const { id } = req.params;
 
     const updated = await updatePaymentMade(id, req.body, userId, orgId);
+    createAuditLog({ orgId, userId, action: 'update', entityType: 'payment-made', entityId: id, newValues: req.body, ...extractReqMeta(req) });
     return res.status(200).json(updated);
   } catch (err) {
     return next(err);
@@ -430,6 +436,7 @@ router.delete('/payments/:id', async (req: AuthenticatedRequest, res: Response, 
     const { id } = req.params;
 
     const result = await deletePaymentMade(id, userId, orgId);
+    createAuditLog({ orgId, userId, action: 'delete', entityType: 'payment-made', entityId: id, ...extractReqMeta(req) });
     return res.status(200).json(result);
   } catch (err) {
     return next(err);
@@ -460,6 +467,7 @@ router.post('/expenses', async (req: AuthenticatedRequest, res: Response, next: 
     const body = createExpenseSchema.parse(req.body);
 
     const expense = await createExpense({ ...body, orgId }, userId);
+    createAuditLog({ orgId, userId, action: 'create', entityType: 'expense', entityId: expense.id, newValues: { vendorId: body.vendorId, total: expense.total }, ...extractReqMeta(req) });
     return res.status(201).json(expense);
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -472,6 +480,8 @@ router.post('/expenses', async (req: AuthenticatedRequest, res: Response, next: 
 // Capture receipt file + OCR process
 router.post('/expenses/:id/receipt', upload.single('file'), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
+    const orgId = req.user!.orgId!;
+    const userId = req.user!.userId;
     const { id } = req.params;
 
     if (!req.file) {
@@ -480,6 +490,7 @@ router.post('/expenses/:id/receipt', upload.single('file'), async (req: Authenti
 
     // Attach receipt scanning process
     const ocrData = await attachReceipt(id, req.file.buffer);
+    createAuditLog({ orgId, userId, action: 'upload', entityType: 'expense', entityId: id, newValues: { receiptUploaded: true }, ...extractReqMeta(req) });
     return res.status(200).json(ocrData);
   } catch (err) {
     return next(err);
@@ -514,6 +525,7 @@ router.patch('/expenses/:id', async (req: AuthenticatedRequest, res: Response, n
     const body = updateExpenseSchema.parse(req.body);
 
     const updated = await updateExpense(id, body, userId, orgId);
+    createAuditLog({ orgId, userId, action: 'update', entityType: 'expense', entityId: id, newValues: body, ...extractReqMeta(req) });
     return res.status(200).json(updated);
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -530,6 +542,7 @@ router.delete('/expenses/:id', async (req: AuthenticatedRequest, res: Response, 
     const { id } = req.params;
 
     const result = await deleteExpense(id, userId, orgId);
+    createAuditLog({ orgId, userId, action: 'delete', entityType: 'expense', entityId: id, ...extractReqMeta(req) });
     return res.status(200).json(result);
   } catch (err) {
     return next(err);
@@ -569,6 +582,7 @@ router.post('/orders', async (req: AuthenticatedRequest, res: Response, next: Ne
     const body = createPOSchema.parse(req.body);
 
     const po = await createPO({ ...body, orgId }, userId);
+    createAuditLog({ orgId, userId, action: 'create', entityType: 'purchase-order', entityId: po.id, newValues: { vendorId: body.vendorId, total: po.total }, ...extractReqMeta(req) });
     return res.status(201).json(po);
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -598,6 +612,7 @@ router.patch('/orders/:id', async (req: AuthenticatedRequest, res: Response, nex
     const body = updatePOSchema.parse(req.body);
 
     const updated = await updatePO(id, body, userId, orgId);
+    createAuditLog({ orgId, userId, action: 'update', entityType: 'purchase-order', entityId: id, newValues: body, ...extractReqMeta(req) });
     return res.status(200).json(updated);
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -610,9 +625,11 @@ router.patch('/orders/:id', async (req: AuthenticatedRequest, res: Response, nex
 router.delete('/orders/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const orgId = req.user!.orgId!;
+    const userId = req.user!.userId;
     const { id } = req.params;
 
     const result = await deletePO(id, orgId);
+    createAuditLog({ orgId, userId, action: 'delete', entityType: 'purchase-order', entityId: id, ...extractReqMeta(req) });
     return res.status(200).json(result);
   } catch (err) {
     return next(err);
@@ -626,6 +643,7 @@ router.post('/orders/:id/confirm', async (req: AuthenticatedRequest, res: Respon
     const orgId = req.user!.orgId!;
     const { id } = req.params;
     const result = await confirmPO(id, userId, orgId);
+    createAuditLog({ orgId, userId, action: 'confirm', entityType: 'purchase-order', entityId: id, newValues: { status: 'confirmed' }, ...extractReqMeta(req) });
     return res.status(200).json(result);
   } catch (err) {
     return next(err);
@@ -638,6 +656,7 @@ router.post('/orders/:id/accept', async (req: AuthenticatedRequest, res: Respons
     const orgId = req.user!.orgId!;
     const { id } = req.params;
     const result = await acceptPO(id, userId, orgId);
+    createAuditLog({ orgId, userId, action: 'accept', entityType: 'purchase-order', entityId: id, newValues: { status: 'accepted' }, ...extractReqMeta(req) });
     return res.status(200).json(result);
   } catch (err) {
     return next(err);
@@ -650,6 +669,7 @@ router.post('/orders/:id/approve', async (req: AuthenticatedRequest, res: Respon
     const orgId = req.user!.orgId!;
     const { id } = req.params;
     const result = await approvePO(id, userId, orgId);
+    createAuditLog({ orgId, userId, action: 'approve', entityType: 'purchase-order', entityId: id, newValues: { status: 'approved' }, ...extractReqMeta(req) });
     return res.status(200).json(result);
   } catch (err) {
     return next(err);
@@ -664,6 +684,7 @@ router.post('/orders/:id/convert-to-expense', async (req: AuthenticatedRequest, 
     const { id } = req.params;
 
     const result = await convertToExpense(id, userId, orgId);
+    createAuditLog({ orgId, userId, action: 'convert', entityType: 'purchase-order', entityId: id, newValues: { status: 'converted', expenseId: result.expense.id }, ...extractReqMeta(req) });
     return res.status(200).json(result);
   } catch (err) {
     return next(err);
@@ -678,6 +699,7 @@ router.post('/orders/:id/convert-to-bill', async (req: AuthenticatedRequest, res
     const { id } = req.params;
 
     const result = await convertToBill(id, userId, orgId);
+    createAuditLog({ orgId, userId, action: 'convert', entityType: 'purchase-order', entityId: id, newValues: { status: 'converted', billId: result.bill.id }, ...extractReqMeta(req) });
     return res.status(200).json(result);
   } catch (err) {
     return next(err);
@@ -728,6 +750,7 @@ router.get('/vendors', async (req: AuthenticatedRequest, res: Response, next: Ne
 router.post('/vendors/import-csv', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const orgId = req.user!.orgId!;
+    const userId = req.user!.userId;
     const { csvData } = req.body;
     if (!csvData || typeof csvData !== 'string' || !csvData.trim()) {
       throw new AppError('CSV data is required.', 400);
@@ -797,6 +820,7 @@ router.post('/vendors/import-csv', async (req: AuthenticatedRequest, res: Respon
       }
     }
 
+    createAuditLog({ orgId, userId, action: 'import', entityType: 'vendor', newValues: { count: created.length }, ...extractReqMeta(req) });
     return res.status(201).json({
       success: true,
       message: `Imported ${created.length} vendor(s) successfully.`,
@@ -1025,6 +1049,7 @@ router.post('/credit-notes', async (req: AuthenticatedRequest, res: Response, ne
     const body = createVendorCreditSchema.parse(req.body);
 
     const credit = await createVendorCredit({ ...body, orgId }, userId);
+    createAuditLog({ orgId, userId, action: 'create', entityType: 'vendor-credit', entityId: credit.id, newValues: { vendorId: body.vendorId, total: credit.total }, ...extractReqMeta(req) });
     return res.status(201).json(credit);
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -1054,6 +1079,7 @@ router.post('/credit-notes/:id/apply', async (req: AuthenticatedRequest, res: Re
     const body = applyVendorCreditSchema.parse(req.body);
 
     const result = await applyVendorCredit(id, body.billId, body.amount, userId, orgId);
+    createAuditLog({ orgId, userId, action: 'apply', entityType: 'vendor-credit', entityId: id, newValues: { appliedToBill: body.billId, amount: body.amount }, ...extractReqMeta(req) });
     return res.status(200).json(result);
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -1070,6 +1096,7 @@ router.patch('/credit-notes/:id', async (req: AuthenticatedRequest, res: Respons
     const { id } = req.params;
 
     const updated = await updateVendorCredit(id, req.body, userId, orgId);
+    createAuditLog({ orgId, userId, action: 'update', entityType: 'vendor-credit', entityId: id, newValues: req.body, ...extractReqMeta(req) });
     return res.status(200).json(updated);
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -1086,6 +1113,7 @@ router.post('/credit-notes/:id/void', async (req: AuthenticatedRequest, res: Res
     const { id } = req.params;
 
     const voided = await voidVendorCredit(id, orgId, userId);
+    createAuditLog({ orgId, userId, action: 'void', entityType: 'vendor-credit', entityId: id, newValues: { status: 'void' }, ...extractReqMeta(req) });
     return res.status(200).json(voided);
   } catch (err) {
     return next(err);

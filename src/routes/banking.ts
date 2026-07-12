@@ -44,6 +44,7 @@ import {
 } from '../services/reconciliation.service';
 import { fetchLatestRates } from '../services/cbn.service';
 import { createJournalEntry, reverseJournalEntry } from '../services/ledger.service';
+import { createAuditLog, extractReqMeta } from '../services/audit.service';
 
 const router = Router();
 
@@ -204,6 +205,8 @@ router.post('/accounts', async (req: AuthenticatedRequest, res: Response, next: 
       .values(insertData)
       .returning();
 
+    await createAuditLog({ orgId, userId: req.user!.userId, action: 'create', entityType: 'bank-account', entityId: newBa.id, newValues: { name: body.name, accountNumber: body.accountNumber }, ...extractReqMeta(req) });
+
     return res.status(201).json(newBa);
   } catch (err) {
     next(err);
@@ -240,6 +243,8 @@ router.patch('/accounts/:id', async (req: AuthenticatedRequest, res: Response, n
       .set(setData)
       .where(eq(bankAccounts.id, id))
       .returning();
+
+    await createAuditLog({ orgId, userId: req.user!.userId, action: 'update', entityType: 'bank-account', entityId: id, newValues: body, ...extractReqMeta(req) });
 
     return res.status(200).json(updated);
   } catch (err) {
@@ -282,6 +287,8 @@ router.delete('/accounts/:id', async (req: AuthenticatedRequest, res: Response, 
     await db
       .delete(bankAccounts)
       .where(eq(bankAccounts.id, id));
+
+    await createAuditLog({ orgId, userId: req.user!.userId, action: 'delete', entityType: 'bank-account', entityId: id, ...extractReqMeta(req) });
 
     return res.status(200).json({ success: true, message: 'Bank account and pending transactions purged.' });
   } catch (err) {
@@ -373,6 +380,8 @@ router.patch('/accounts/:id/balance', async (req: AuthenticatedRequest, res: Res
       .where(eq(bankAccounts.id, id))
       .limit(1);
 
+    await createAuditLog({ orgId, userId: req.user!.userId, action: 'adjust', entityType: 'bank-account', entityId: id, newValues: { newBalance: currentBalance }, ...extractReqMeta(req) });
+
     return res.status(200).json(updated);
   } catch (err) {
     next(err);
@@ -459,6 +468,8 @@ router.post('/accounts/import-opening-balances', async (req: AuthenticatedReques
       .where(eq(bankAccounts.id, ba.id))
       .limit(1);
 
+    await createAuditLog({ orgId, userId: req.user!.userId, action: 'import', entityType: 'bank-account', entityId: ba.id, newValues: { openingBalance: req.body.openingBalance }, ...extractReqMeta(req) });
+
     return res.status(200).json({ message: 'Opening balance updated.', account: updated.name, currentBalance: updated.currentBalance });
   } catch (err) {
     next(err);
@@ -499,6 +510,8 @@ router.delete('/accounts/:id/clear-imported-statements', async (req: Authenticat
       .update(bankAccounts)
       .set({ currentBalance: 0, openingBalance: 0 })
       .where(eq(bankAccounts.id, id));
+
+    await createAuditLog({ orgId, userId: req.user!.userId, action: 'delete', entityType: 'bank-transaction', entityId: id, newValues: { cleared: true }, ...extractReqMeta(req) });
 
     return res.status(200).json({
       success: true,
@@ -555,6 +568,8 @@ router.post('/accounts/:id/flutterwave-callback', async (req: AuthenticatedReque
     }
 
     const authResult = await exchangeFlutterwaveCode(code, id);
+    await createAuditLog({ orgId, userId: req.user!.userId, action: 'connect', entityType: 'bank-account', entityId: id, newValues: { flutterwaveConnected: true }, ...extractReqMeta(req) });
+
     return res.status(200).json({ success: true, flutterwaveAccountId: authResult.id });
   } catch (err) {
     next(err);
@@ -591,6 +606,8 @@ router.post('/accounts/:id/sync', async (req: AuthenticatedRequest, res: Respons
     // Synced transactions are imported as 'unreconciled' — the GL balance
     // (from JEs) is independent of the bank statement. Reconciliation matches
     // them later; the difference appears in Bank Clearing Suspense (207000).
+    await createAuditLog({ orgId, userId: req.user!.userId, action: 'sync', entityType: 'bank-account', entityId: id, newValues: { synced: true }, ...extractReqMeta(req) });
+
     return res.status(200).json({ success: true, newTransactionsSynced: count });
   } catch (err) {
     next(err);
@@ -771,6 +788,8 @@ Return ONLY valid JSON matching this schema:
         insertedCount++;
       }
 
+      await createAuditLog({ orgId, userId: req.user!.userId, action: 'upload', entityType: 'bank-account', entityId: id, newValues: { statementUploaded: true }, ...extractReqMeta(req) });
+
       return res.status(200).json({
         success: true,
         message: `Successfully processed statement! Extracted and wrote ${insertedCount} transactions to SkyBooks ledger.`,
@@ -920,6 +939,7 @@ router.patch('/transactions/:id/reconcile', async (req: AuthenticatedRequest, re
     const { journalLineId } = manualReconcileSchema.parse(req.body);
 
     const result = await matchBankTransaction(id, journalLineId);
+    await createAuditLog({ orgId: req.user!.orgId!, userId: req.user!.userId, action: 'reconcile', entityType: 'bank-transaction', entityId: id, newValues: { status: 'reconciled' }, ...extractReqMeta(req) });
     return res.status(200).json(result);
   } catch (err) {
     next(err);
@@ -934,6 +954,7 @@ router.post('/transactions/:id/create-record', async (req: AuthenticatedRequest,
     const userId = req.user!.userId;
 
     const result = await createTransactionFromBankFeed(id, body, userId);
+    await createAuditLog({ orgId: req.user!.orgId!, userId, action: 'create', entityType: 'bank-transaction', entityId: id, newValues: { recordCreated: true }, ...extractReqMeta(req) });
     return res.status(201).json(result);
   } catch (err) {
     next(err);
@@ -956,6 +977,8 @@ router.post('/transactions/batch-create-record', async (req: AuthenticatedReques
         errors.push({ id, error: err.message || 'Unknown error' });
       }
     }
+
+    await createAuditLog({ orgId: req.user!.orgId!, userId, action: 'create', entityType: 'bank-transaction', entityId: body.ids.join(','), newValues: { batchCount: body.ids.length, successCount: results.length, errorCount: errors.length }, ...extractReqMeta(req) });
 
     return res.status(201).json({ success: results.length, errors });
   } catch (err) {
@@ -999,6 +1022,8 @@ router.post('/accounts/:id/auto-match', async (req: AuthenticatedRequest, res: R
         rulesMatchedCount++;
       }
     }
+
+    await createAuditLog({ orgId, userId: req.user!.userId, action: 'reconcile', entityType: 'bank-transaction', entityId: id, newValues: { autoMatched: true }, ...extractReqMeta(req) });
 
     return res.status(200).json({
       success: true,
@@ -1351,6 +1376,8 @@ router.post('/rules', async (req: AuthenticatedRequest, res: Response, next: Nex
       })
       .returning();
 
+    await createAuditLog({ orgId, userId: req.user!.userId, action: 'create', entityType: 'bank-rule', entityId: newRule.id, newValues: { name: body.name }, ...extractReqMeta(req) });
+
     return res.status(201).json(newRule);
   } catch (err) {
     next(err);
@@ -1380,6 +1407,8 @@ router.patch('/rules/:id', async (req: AuthenticatedRequest, res: Response, next
       .where(eq(bankRules.id, id))
       .returning();
 
+    await createAuditLog({ orgId, userId: req.user!.userId, action: 'update', entityType: 'bank-rule', entityId: id, newValues: body, ...extractReqMeta(req) });
+
     return res.status(200).json(updated);
   } catch (err) {
     next(err);
@@ -1405,6 +1434,8 @@ router.delete('/rules/:id', async (req: AuthenticatedRequest, res: Response, nex
     await db
       .delete(bankRules)
       .where(eq(bankRules.id, id));
+
+    await createAuditLog({ orgId, userId: req.user!.userId, action: 'delete', entityType: 'bank-rule', entityId: id, ...extractReqMeta(req) });
 
     return res.status(200).json({ success: true, message: 'Bank rule successfully removed.' });
   } catch (err) {
@@ -1564,6 +1595,8 @@ router.post('/transfers', async (req: AuthenticatedRequest, res: Response, next:
       return transfer;
     });
 
+    await createAuditLog({ orgId, userId, action: 'create', entityType: 'transfer', entityId: result.id, newValues: { fromAccountId: body.fromBankAccountId, toAccountId: body.toBankAccountId, amount: body.amount }, ...extractReqMeta(req) });
+
     return res.status(201).json(result);
   } catch (err) {
     next(err);
@@ -1601,6 +1634,8 @@ router.patch('/transfers/:id', async (req: AuthenticatedRequest, res: Response, 
       .where(eq(bankTransfers.id, id))
       .returning();
 
+    await createAuditLog({ orgId, userId: req.user!.userId, action: 'update', entityType: 'transfer', entityId: id, newValues: body, ...extractReqMeta(req) });
+
     return res.status(200).json(updated);
   } catch (err) {
     next(err);
@@ -1629,6 +1664,8 @@ router.delete('/transfers/:id', async (req: AuthenticatedRequest, res: Response,
 
     // Delete the transfer record
     await db.delete(bankTransfers).where(eq(bankTransfers.id, id));
+
+    await createAuditLog({ orgId, userId, action: 'void', entityType: 'transfer', entityId: id, newValues: { status: 'void' }, ...extractReqMeta(req) });
 
     return res.status(200).json({ success: true, message: 'Transfer reversed and deleted.' });
   } catch (err) {
@@ -1661,6 +1698,8 @@ router.post('/currency-rates/refresh', async (req: AuthenticatedRequest, res: Re
   try {
     const orgId = req.user!.orgId!;
     const rates = await fetchLatestRates(orgId);
+    await createAuditLog({ orgId, userId: req.user!.userId, action: 'refresh', entityType: 'currency-rate', newValues: { refreshed: true }, ...extractReqMeta(req) });
+
     return res.status(200).json({ success: true, updatedRates: rates });
   } catch (err) {
     next(err);

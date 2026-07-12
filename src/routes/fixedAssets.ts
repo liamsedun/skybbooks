@@ -5,6 +5,7 @@ import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/au
 import { eq, and, asc, desc, sql } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
 import { createJournalEntry, updateJournalEntry } from '../services/ledger.service';
+import { createAuditLog, extractReqMeta } from '../services/audit.service';
 
 const router = Router();
 router.use(authenticate);
@@ -118,6 +119,7 @@ router.post('/', async (req: AuthenticatedRequest, res: Response, next: NextFunc
       })
       .returning();
 
+    createAuditLog({ orgId, userId: req.user!.userId!, action: 'create', entityType: 'fixed-asset', entityId: asset.id, newValues: { name: body.name, purchaseCost: body.purchaseCost }, ...extractReqMeta(req) });
     return res.status(201).json(asset);
   } catch (err) {
     if (err instanceof z.ZodError) return next(new AppError(err.issues[0]?.message || 'Validation failed', 400));
@@ -150,6 +152,7 @@ router.patch('/:id', async (req: AuthenticatedRequest, res: Response, next: Next
       .where(and(eq(fixedAssets.id, id), eq(fixedAssets.orgId, orgId)))
       .returning();
     if (!asset) throw new AppError('Fixed asset not found.', 404);
+    createAuditLog({ orgId, userId: req.user!.userId!, action: 'update', entityType: 'fixed-asset', entityId: id, newValues: body, ...extractReqMeta(req) });
     return res.status(200).json(asset);
   } catch (err) {
     if (err instanceof z.ZodError) return next(new AppError(err.issues[0]?.message || 'Validation failed', 400));
@@ -166,6 +169,7 @@ router.delete('/:id', async (req: AuthenticatedRequest, res: Response, next: Nex
       .where(and(eq(fixedAssets.id, id), eq(fixedAssets.orgId, orgId)))
       .returning();
     if (!asset) throw new AppError('Fixed asset not found.', 404);
+    createAuditLog({ orgId, userId: req.user!.userId!, action: 'delete', entityType: 'fixed-asset', entityId: id, ...extractReqMeta(req) });
     return res.status(200).json({ message: 'Fixed asset deleted.' });
   } catch (err) { return next(err); }
 });
@@ -270,6 +274,7 @@ router.post('/import-csv', async (req: AuthenticatedRequest, res: Response, next
       created.push(asset);
     }
 
+    createAuditLog({ orgId, userId: req.user!.userId!, action: 'import', entityType: 'fixed-asset', newValues: { count: created.length }, ...extractReqMeta(req) });
     return res.status(201).json({
       success: true,
       message: `Imported ${created.length} fixed asset(s) successfully.${errors.length > 0 ? ` ${errors.length} error(s).` : ''}`,
@@ -319,6 +324,7 @@ router.post('/bulk-delete', async (req: AuthenticatedRequest, res: Response, nex
       .delete(fixedAssets)
       .where(and(eq(fixedAssets.orgId, orgId), sql`${fixedAssets.id} = ANY(${ids}::uuid[])`))
       .returning({ id: fixedAssets.id });
+    createAuditLog({ orgId, userId: req.user!.userId!, action: 'delete', entityType: 'fixed-asset', newValues: { count: deleted.length }, ...extractReqMeta(req) });
     return res.status(200).json({ message: `Deleted ${deleted.length} asset(s).`, count: deleted.length });
   } catch (err) {
     next(err);
@@ -443,6 +449,7 @@ router.post('/run-depreciation', async (req: AuthenticatedRequest, res: Response
         .where(eq(fixedAssets.id, upd.id));
     }
 
+    createAuditLog({ orgId, userId, action: 'depreciate', entityType: 'fixed-asset', newValues: { entriesCreated: entryRows.length }, ...extractReqMeta(req) });
     return res.json({
       success: true,
       message: `Depreciation run complete. Posted depreciation for ${entryRows.length} asset(s). Journal entry: ${journalEntry.entryNumber}`,
@@ -489,6 +496,7 @@ router.patch('/depreciation-entries/:entryId', async (req: AuthenticatedRequest,
       })),
     });
 
+    createAuditLog({ orgId, userId, action: 'update', entityType: 'depreciation-entry', entityId: entryId, newValues: body, ...extractReqMeta(req) });
     return res.status(200).json(updated);
   } catch (err) {
     return next(err);

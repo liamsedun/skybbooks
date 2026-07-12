@@ -4,6 +4,7 @@ import { db, projects } from '../db/schema';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
 import { eq, and, desc } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
+import { createAuditLog, extractReqMeta } from '../services/audit.service';
 
 const router = Router();
 router.use(authenticate);
@@ -92,6 +93,7 @@ router.post('/', async (req: AuthenticatedRequest, res: Response, next: NextFunc
         createdBy: userId,
       })
       .returning();
+    createAuditLog({ orgId, userId, action: 'create', entityType: 'project', entityId: project.id, newValues: { name: body.name, code: project.code }, ...extractReqMeta(req) });
     return res.status(201).json(project);
   } catch (err) {
     next(err);
@@ -126,6 +128,7 @@ router.patch('/:id', async (req: AuthenticatedRequest, res: Response, next: Next
       .set(updateData)
       .where(and(eq(projects.id, id), eq(projects.orgId, orgId)))
       .returning();
+    createAuditLog({ orgId, userId: req.user!.userId!, action: 'update', entityType: 'project', entityId: id, newValues: body, ...extractReqMeta(req) });
     return res.status(200).json(updated);
   } catch (err) {
     next(err);
@@ -143,6 +146,7 @@ router.delete('/:id', async (req: AuthenticatedRequest, res: Response, next: Nex
       .limit(1);
     if (!existing) throw new AppError('Project not found.', 404);
     await db.delete(projects).where(and(eq(projects.id, id), eq(projects.orgId, orgId)));
+    createAuditLog({ orgId, userId: req.user!.userId!, action: 'delete', entityType: 'project', entityId: id, ...extractReqMeta(req) });
     return res.status(200).json({ success: true });
   } catch (err) {
     next(err);

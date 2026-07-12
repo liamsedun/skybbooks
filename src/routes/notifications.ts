@@ -1,7 +1,7 @@
 import { Router, Response, NextFunction } from 'express';
 import { and, eq, lt, gt, sql, desc } from 'drizzle-orm';
 import { db, invoices, bills, payrollRuns, bankTransactions, items, inventoryLots, auditLog, contacts, bankAccounts } from '../db/schema';
-import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
+import { authenticate, requireOrg, requireRole, AuthenticatedRequest } from '../middleware/auth';
 
 const router = Router();
 router.use(authenticate);
@@ -130,23 +130,26 @@ router.get('/', async (req: AuthenticatedRequest, res: Response, next: NextFunct
       });
     }
 
-    // 6. Recent audit log activity (last 24h count)
-    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-    const recentActivity = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(auditLog)
-      .where(and(eq(auditLog.orgId, orgId), gt(auditLog.createdAt, oneDayAgo)))
-      .limit(1);
-    const activityCount = Number(recentActivity[0]?.count || 0);
-    if (activityCount > 0) {
-      notifications.push({
-        id: 'recent-activity',
-        icon: '\uD83D\uDD0D',
-        message: `${activityCount} accounting event(s) recorded in the last 24 hours`,
-        severity: 'info',
-        link: `/audit-log`,
-        timestamp: now.toISOString(),
-      });
+    // 6. Recent audit log activity (last 24h count) — admin/owner only
+    const isAdminOrOwner = req.user?.role === 'admin' || req.user?.role === 'owner';
+    if (isAdminOrOwner) {
+      const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      const recentActivity = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(auditLog)
+        .where(and(eq(auditLog.orgId, orgId), gt(auditLog.createdAt, oneDayAgo)))
+        .limit(1);
+      const activityCount = Number(recentActivity[0]?.count || 0);
+      if (activityCount > 0) {
+        notifications.push({
+          id: 'recent-activity',
+          icon: '\uD83D\uDD0D',
+          message: `${activityCount} accounting event(s) recorded in the last 24 hours`,
+          severity: 'info',
+          link: `/reports/audit-logs`,
+          timestamp: now.toISOString(),
+        });
+      }
     }
 
     // Sort by timestamp descending (most recent first)

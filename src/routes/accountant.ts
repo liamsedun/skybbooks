@@ -10,6 +10,7 @@ import { eq, and, asc, sql } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
 import { seedAccounts } from '../db/seedAccounts';
 import { postOpeningBalances, getAccountLedger, getInventoryValueAsOf } from '../services/ledger.service';
+import { createAuditLog, extractReqMeta } from '../services/audit.service';
 
 const router = Router();
 router.use(authenticate);
@@ -152,6 +153,7 @@ router.post('/accounts', async (req: AuthenticatedRequest, res: Response, next: 
       .values({ ...body, orgId, isSystem: false, isActive: body.isActive ?? true })
       .returning();
 
+    await createAuditLog({ orgId, userId: req.user!.id, action: 'create', entityType: 'account', entityId: account.id, newValues: { code: body.code, name: body.name }, ...extractReqMeta(req) });
     return res.status(201).json(account);
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -193,6 +195,7 @@ router.patch('/accounts/:id', async (req: AuthenticatedRequest, res: Response, n
       .returning();
 
     if (!account) throw new AppError('Account not found.', 404);
+    await createAuditLog({ orgId, userId: req.user!.id, action: 'update', entityType: 'account', entityId: id, newValues: body, ...extractReqMeta(req) });
     return res.status(200).json(account);
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -207,6 +210,7 @@ router.post('/accounts/seed', async (req: AuthenticatedRequest, res: Response, n
   try {
     const orgId = req.user!.orgId!;
     const result = await seedAccounts(orgId);
+    await createAuditLog({ orgId, userId: req.user!.id, action: 'seed', entityType: 'account', newValues: { seeded: true }, ...extractReqMeta(req) });
     return res.status(result.seeded > 0 ? 201 : 200).json(result);
   } catch (err) {
     return next(err);
@@ -230,6 +234,7 @@ router.delete('/accounts/:id', async (req: AuthenticatedRequest, res: Response, 
     if (existing.isSystem) throw new AppError('System accounts cannot be deleted.', 403);
 
     await db.delete(accounts).where(and(eq(accounts.id, id), eq(accounts.orgId, orgId)));
+    await createAuditLog({ orgId, userId: req.user!.id, action: 'delete', entityType: 'account', entityId: id, ...extractReqMeta(req) });
     return res.status(200).json({ message: 'Account deleted.' });
   } catch (err) {
     return next(err);
@@ -376,6 +381,7 @@ router.post('/accounts/import-csv', async (req: AuthenticatedRequest, res: Respo
       }
     }
 
+    await createAuditLog({ orgId, userId: req.user!.id, action: 'import', entityType: 'account', newValues: { count: created.length }, ...extractReqMeta(req) });
     return res.status(201).json({
       success: true,
       message: `Imported ${created.length} accounts successfully.`,
@@ -423,6 +429,7 @@ router.post('/post-opening-balances', requireRole('owner', 'admin'), async (req:
     const userId = req.user!.id;
     const asOfDate = req.body.asOfDate ? new Date(req.body.asOfDate as string) : new Date();
     const result = await postOpeningBalances(orgId, userId, asOfDate);
+    await createAuditLog({ orgId, userId: req.user!.id, action: 'post', entityType: 'opening-balance', newValues: { posted: true }, ...extractReqMeta(req) });
     return res.status(200).json(result);
   } catch (err) {
     if (err instanceof AppError && err.statusCode === 409) {

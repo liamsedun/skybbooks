@@ -10,7 +10,7 @@ export interface User {
   id: string;
   email: string;
   fullName: string;
-  role: 'owner' | 'accountant' | 'manager' | 'employee';
+  role: 'owner' | 'admin' | 'accountant' | 'manager' | 'employee';
   organisationId: string;
   isActive: boolean;
   lastLogin?: string;

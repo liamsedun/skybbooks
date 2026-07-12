@@ -4,6 +4,7 @@ import { db, budgets, budgetLines, accounts } from '../db/schema';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
 import { eq, and, desc } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
+import { createAuditLog, extractReqMeta } from '../services/audit.service';
 
 const router = Router();
 router.use(authenticate);
@@ -83,6 +84,7 @@ router.post('/', async (req: AuthenticatedRequest, res: Response, next: NextFunc
     }
 
     const lines = body.lines || [];
+    createAuditLog({ orgId, userId, action: 'create', entityType: 'budget', entityId: budget.id, newValues: { name: body.name }, ...extractReqMeta(req) });
     return res.status(201).json({ ...budget, lines });
   } catch (err) {
     if (err instanceof z.ZodError) return next(new AppError(err.issues[0]?.message || 'Validation failed', 400));
@@ -118,6 +120,7 @@ router.patch('/:id', async (req: AuthenticatedRequest, res: Response, next: Next
     }
 
     const lines = body.lines || [];
+    createAuditLog({ orgId, userId: req.user!.userId!, action: 'update', entityType: 'budget', entityId: id, newValues: body, ...extractReqMeta(req) });
     return res.status(200).json({ ...budget, lines });
   } catch (err) {
     if (err instanceof z.ZodError) return next(new AppError(err.issues[0]?.message || 'Validation failed', 400));
@@ -135,6 +138,7 @@ router.delete('/:id', async (req: AuthenticatedRequest, res: Response, next: Nex
       .where(and(eq(budgets.id, id), eq(budgets.orgId, orgId)))
       .returning();
     if (!budget) throw new AppError('Budget not found.', 404);
+    createAuditLog({ orgId, userId: req.user!.userId!, action: 'delete', entityType: 'budget', entityId: id, ...extractReqMeta(req) });
     return res.status(200).json({ message: 'Budget deleted.' });
   } catch (err) { return next(err); }
 });
@@ -226,6 +230,7 @@ router.post('/import-csv', async (req: AuthenticatedRequest, res: Response, next
       totalCreated++;
     }
 
+    createAuditLog({ orgId, userId, action: 'import', entityType: 'budget', newValues: { count: totalCreated }, ...extractReqMeta(req) });
     return res.status(201).json({
       success: true,
       message: `Imported ${totalCreated} budget(s) successfully.`,

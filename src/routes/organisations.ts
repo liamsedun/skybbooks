@@ -22,6 +22,7 @@ import { eq, and, sql } from 'drizzle-orm';
 import { db, organisations, users } from '../db/schema';
 import { AppError } from '../lib/errors';
 import { authenticate, requireOrg, requireRole, AuthenticatedRequest } from '../middleware/auth';
+import { createAuditLog, extractReqMeta } from '../services/audit.service';
 
 const router = Router();
 
@@ -229,6 +230,7 @@ router.patch('/', requireRole('owner', 'accountant'), async (req: AuthenticatedR
       throw new AppError('Organisation could not be updated or was not found.', 404);
     }
 
+    createAuditLog({ orgId, userId: req.user!.userId!, action: 'update', entityType: 'organisation', entityId: orgId, newValues: body, ...extractReqMeta(req) });
     return res.status(200).json(updatedOrg);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -284,6 +286,7 @@ router.patch('/settings', requireRole('owner', 'accountant'), async (req: Authen
       .returning({ settings: organisations.settings });
 
     if (!updated) throw new AppError('Could not update settings.', 500);
+    createAuditLog({ orgId, userId: req.user!.userId!, action: 'update', entityType: 'organisation', entityId: orgId, newValues: { settingsUpdated: true }, ...extractReqMeta(req) });
     return res.status(200).json(updated.settings);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -351,6 +354,7 @@ router.post('/logo', requireRole('owner', 'accountant'), (req: AuthenticatedRequ
         throw new AppError('Could not link uploaded logo to the specified organisation.', 404);
       }
 
+      createAuditLog({ orgId, userId: req.user!.userId!, action: 'upload', entityType: 'organisation', entityId: orgId, newValues: { logoUploaded: true }, ...extractReqMeta(req) });
       return res.status(200).json({
         message: 'Organisation logo uploaded and updated successfully.',
         logoUrl: updatedOrg.logoUrl,
@@ -425,6 +429,7 @@ router.post('/users/invite', requireRole('owner', 'accountant'), async (req: Aut
 
     const { passwordHash: _, ...userResponse } = newUser;
 
+    createAuditLog({ orgId, userId: req.user!.userId!, action: 'invite', entityType: 'user', newValues: { email: body.email }, ...extractReqMeta(req) });
     return res.status(201).json({
       message: `User ${body.fullName} has been successfully invited.`,
       user: userResponse
@@ -487,6 +492,7 @@ router.patch('/users/:userId', requireRole('owner'), async (req: AuthenticatedRe
 
     const { passwordHash: _, ...safeUser } = updatedUser;
 
+    createAuditLog({ orgId, userId: req.user!.userId!, action: 'update', entityType: 'user', entityId: userId, newValues: body, ...extractReqMeta(req) });
     return res.status(200).json({
       message: 'User profile updated successfully.',
       user: safeUser
@@ -593,6 +599,7 @@ router.post('/invite', requireRole('owner', 'admin'), async (req: AuthenticatedR
       }
     }
 
+    createAuditLog({ orgId, userId: req.user!.userId!, action: 'invite', entityType: 'user', newValues: { email }, ...extractReqMeta(req) });
     return res.status(201).json({
       message: emailSent
         ? `Invitation sent to ${email}. They'll receive an email with instructions.`
@@ -631,6 +638,7 @@ router.post('/invites/clear', requireRole('owner', 'admin'), async (req: Authent
 
     await db.delete(users).where(and(eq(users.organisationId, orgId), eq(users.isActive, false)));
 
+    createAuditLog({ orgId, userId: req.user!.userId!, action: 'clear', entityType: 'invite', ...extractReqMeta(req) });
     return res.status(200).json({ message: 'All pending invites cleared successfully.' });
   } catch (error) {
     return next(error);
@@ -672,6 +680,7 @@ router.post('/users/manual', requireRole('owner', 'admin'), async (req: Authenti
     if (!created) throw new AppError('Failed to create user.', 500);
 
     const { passwordHash: _, ...userResponse } = created;
+    createAuditLog({ orgId, userId: req.user!.userId!, action: 'create', entityType: 'user', newValues: { email: email.toLowerCase(), role }, ...extractReqMeta(req) });
     return res.status(201).json({ message: `User ${name} created successfully.`, user: userResponse });
   } catch (error) {
     if (error instanceof z.ZodError) {

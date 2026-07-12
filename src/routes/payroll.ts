@@ -18,6 +18,7 @@ import {
   getPayrollSummary
 } from '../services/payroll.service';
 import { createJournalEntry } from '../services/ledger.service';
+import { createAuditLog, extractReqMeta } from '../services/audit.service';
 
 const router = Router();
 
@@ -178,6 +179,7 @@ router.post('/employees', async (req: AuthenticatedRequest, res: Response, next:
       })
       .returning();
 
+    createAuditLog({ orgId, userId: req.user!.userId!, action: 'create', entityType: 'employee', entityId: employee.id, newValues: { staffId: body.staffId, fullName: `${body.firstName} ${body.lastName}` }, ...extractReqMeta(req) });
     return res.status(201).json(employee);
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -246,6 +248,7 @@ router.patch('/employees/:id', async (req: AuthenticatedRequest, res: Response, 
       .where(eq(employees.id, id))
       .returning();
 
+    createAuditLog({ orgId, userId: req.user!.userId!, action: 'update', entityType: 'employee', entityId: id, newValues: body, ...extractReqMeta(req) });
     return res.status(200).json(updated);
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -283,6 +286,7 @@ router.post('/runs', async (req: AuthenticatedRequest, res: Response, next: Next
     const body = runPayrollSchema.parse(req.body);
 
     const data = await runPayroll(orgId, body, userId);
+    createAuditLog({ orgId, userId, action: 'create', entityType: 'payroll-run', entityId: data.id, newValues: { runNumber: data.runNumber }, ...extractReqMeta(req) });
     return res.status(201).json(data);
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -341,6 +345,7 @@ router.post('/runs/:id/approve', async (req: AuthenticatedRequest, res: Response
     const userId = req.user!.userId;
 
     const approvedRunInfo = await approvePayroll(id, userId);
+    createAuditLog({ orgId: req.user!.orgId!, userId, action: 'approve', entityType: 'payroll-run', entityId: id, newValues: { status: 'approved' }, ...extractReqMeta(req) });
     return res.status(200).json(approvedRunInfo);
   } catch (err) {
     return next(err);
@@ -354,6 +359,7 @@ router.post('/runs/:id/unapprove', async (req: AuthenticatedRequest, res: Respon
     const userId = req.user!.userId;
 
     const result = await unapprovePayroll(id, userId);
+    createAuditLog({ orgId: req.user!.orgId!, userId, action: 'unapprove', entityType: 'payroll-run', entityId: id, newValues: { status: 'draft' }, ...extractReqMeta(req) });
     return res.status(200).json(result);
   } catch (err) {
     return next(err);
@@ -442,6 +448,7 @@ router.post('/runs/:id/pay', async (req: AuthenticatedRequest, res: Response, ne
 
     console.log(`[FinanceOS Payroll API Stub] Initiated automatic direct bank settlement:`, transferStubLogs);
 
+    createAuditLog({ orgId, userId, action: 'pay', entityType: 'payroll-run', entityId: id, newValues: { status: 'paid' }, ...extractReqMeta(req) });
     return res.status(200).json({
       message: `Payroll run ${updatedPay.runNumber} has been successfully closed as PAID.`,
       payrollRun: updatedPay,
@@ -554,6 +561,7 @@ router.post('/employees/bulk-delete', async (req: AuthenticatedRequest, res: Res
     const ids = req.body.ids as string[];
     if (!ids || !Array.isArray(ids) || ids.length === 0) throw new AppError('No employee IDs provided.', 400);
     await db.delete(employees).where(and(eq(employees.orgId, req.user!.orgId!), inArray(employees.id, ids)));
+    createAuditLog({ orgId: req.user!.orgId!, userId: req.user!.userId!, action: 'delete', entityType: 'employee', newValues: { count: ids.length }, ...extractReqMeta(req) });
     res.json({ success: true, deleted: ids.length });
   } catch (err) { return next(err); }
 });
@@ -566,6 +574,7 @@ router.delete('/employees/:id', async (req: AuthenticatedRequest, res: Response,
     const [emp] = await db.select().from(employees).where(and(eq(employees.id, id), eq(employees.orgId, orgId))).limit(1);
     if (!emp) throw new AppError('Employee not found.', 404);
     await db.delete(employees).where(eq(employees.id, id));
+    createAuditLog({ orgId, userId: req.user!.userId!, action: 'delete', entityType: 'employee', entityId: id, ...extractReqMeta(req) });
     res.json({ success: true });
   } catch (err) { return next(err); }
 });
@@ -580,6 +589,7 @@ router.delete('/runs/:id', async (req: AuthenticatedRequest, res: Response, next
     if (run.status !== 'draft') throw new AppError('Only draft runs can be deleted.', 400);
     await db.delete(payrollLines).where(eq(payrollLines.runId, id));
     await db.delete(payrollRuns).where(eq(payrollRuns.id, id));
+    createAuditLog({ orgId, userId: req.user!.userId!, action: 'delete', entityType: 'payroll-run', entityId: id, ...extractReqMeta(req) });
     res.json({ success: true });
   } catch (err) { return next(err); }
 });
@@ -596,6 +606,7 @@ router.post('/runs/bulk-delete', async (req: AuthenticatedRequest, res: Response
       await db.delete(payrollLines).where(inArray(payrollLines.runId, draftIds));
       await db.delete(payrollRuns).where(inArray(payrollRuns.id, draftIds));
     }
+    createAuditLog({ orgId, userId: req.user!.userId!, action: 'delete', entityType: 'payroll-run', newValues: { count: draftIds.length }, ...extractReqMeta(req) });
     res.json({ success: true, deleted: draftIds.length, skipped: ids.length - draftIds.length });
   } catch (err) { return next(err); }
 });
@@ -611,6 +622,7 @@ router.delete('/runs/:runId/payslips/:employeeId', async (req: AuthenticatedRequ
     const [line] = await db.select().from(payrollLines).where(and(eq(payrollLines.runId, runId), eq(payrollLines.employeeId, employeeId))).limit(1);
     if (!line) throw new AppError('Payslip line not found.', 404);
     await db.delete(payrollLines).where(eq(payrollLines.id, line.id));
+    createAuditLog({ orgId, userId: req.user!.userId!, action: 'delete', entityType: 'payslip', newValues: { runId, employeeId }, ...extractReqMeta(req) });
     res.json({ success: true });
   } catch (err) { return next(err); }
 });
@@ -626,6 +638,7 @@ router.post('/runs/:runId/payslips/bulk-delete', async (req: AuthenticatedReques
     if (!run) throw new AppError('Payroll run not found.', 404);
     if (run.status !== 'draft') throw new AppError('Can only delete payslips from draft runs.', 400);
     await db.delete(payrollLines).where(and(eq(payrollLines.runId, runId), inArray(payrollLines.employeeId, employeeIds)));
+    createAuditLog({ orgId, userId: req.user!.userId!, action: 'delete', entityType: 'payslip', newValues: { count: employeeIds.length }, ...extractReqMeta(req) });
     res.json({ success: true, deleted: employeeIds.length });
   } catch (err) { return next(err); }
 });

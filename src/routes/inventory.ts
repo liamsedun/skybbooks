@@ -11,6 +11,7 @@ import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/au
 import { eq, and, lte, sql, inArray, desc } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
 import { createJournalEntry } from '../services/ledger.service';
+import { createAuditLog, extractReqMeta } from '../services/audit.service';
 
 // Helper: auto-create opening stock lot when item has trackInventory + purchasePrice + numeric unit
 async function autoCreateOpeningStock(item: any, orgId: string, userId: string) {
@@ -156,6 +157,8 @@ router.post('/items', async (req: AuthenticatedRequest, res: Response, next: Nex
     // Auto-create opening stock if conditions are met
     await autoCreateOpeningStock(newItem, orgId, userId);
 
+    await createAuditLog({ orgId, userId, action: 'create', entityType: 'item', entityId: newItem.id, newValues: { name: body.name, sku: body.sku }, ...extractReqMeta(req) });
+
     return res.status(201).json(newItem);
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -189,6 +192,8 @@ router.patch('/items/:id', async (req: AuthenticatedRequest, res: Response, next
     // Auto-create opening stock if conditions are now met
     await autoCreateOpeningStock(updated, orgId, userId);
 
+    await createAuditLog({ orgId, userId, action: 'update', entityType: 'item', entityId: id, newValues: body, ...extractReqMeta(req) });
+
     return res.status(200).json(updated);
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -202,6 +207,7 @@ router.patch('/items/:id', async (req: AuthenticatedRequest, res: Response, next
 router.delete('/items/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const orgId = req.user!.orgId!;
+    const userId = req.user!.userId!;
     const { id } = req.params;
 
     const [existing] = await db
@@ -220,6 +226,8 @@ router.delete('/items/:id', async (req: AuthenticatedRequest, res: Response, nex
       }
       throw dbErr;
     }
+
+    await createAuditLog({ orgId, userId, action: 'delete', entityType: 'item', entityId: id, ...extractReqMeta(req) });
 
     return res.status(200).json({ message: 'Item deleted.' });
   } catch (err) {
@@ -296,6 +304,8 @@ router.post('/items/import-opening-stock', async (req: AuthenticatedRequest, res
       }
     }
 
+    await createAuditLog({ orgId, userId, action: 'import', entityType: 'item', entityId: item.id, newValues: { openingStockImported: true }, ...extractReqMeta(req) });
+
     return res.status(201).json({ message: 'Opening stock recorded.', item: item.name });
   } catch (err) {
     return next(err);
@@ -370,6 +380,8 @@ router.post('/items/record-opening-stock', async (req: AuthenticatedRequest, res
         });
       }
     }
+
+    await createAuditLog({ orgId, userId, action: 'create', entityType: 'inventory-lot', entityId: lot.id, newValues: { itemId: body.itemId, quantity: body.quantity }, ...extractReqMeta(req) });
 
     return res.status(201).json({ message: 'Opening stock recorded.', lot });
   } catch (err) {
@@ -685,6 +697,8 @@ router.post('/adjustments', async (req: AuthenticatedRequest, res: Response, nex
       .from(inventoryAdjustmentItems)
       .where(eq(inventoryAdjustmentItems.adjustmentId, adj.id));
 
+    await createAuditLog({ orgId, userId, action: 'create', entityType: 'inventory-adjustment', entityId: adj.id, newValues: { reference: adj.reference }, ...extractReqMeta(req) });
+
     return res.status(201).json({ ...adj, lineItems });
   } catch (err) {
     if (err instanceof z.ZodError) return next(new AppError(err.issues[0]?.message || 'Validation failed', 400));
@@ -881,6 +895,7 @@ async function applyValueAdjustment(adj: any, items: any[], orgId: string, userI
 router.patch('/adjustments/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const orgId = req.user!.orgId!;
+    const userId = req.user!.userId!;
     const { id } = req.params;
     const body = req.body;
 
@@ -932,6 +947,8 @@ router.patch('/adjustments/:id', async (req: AuthenticatedRequest, res: Response
       .from(inventoryAdjustmentItems)
       .where(eq(inventoryAdjustmentItems.adjustmentId, id));
 
+    await createAuditLog({ orgId, userId, action: 'update', entityType: 'inventory-adjustment', entityId: id, newValues: body, ...extractReqMeta(req) });
+
     return res.status(200).json({ ...updated, lineItems });
   } catch (err) { return next(err); }
 });
@@ -973,6 +990,8 @@ router.post('/adjustments/:id/adjust', async (req: AuthenticatedRequest, res: Re
       .where(eq(inventoryAdjustments.id, id))
       .limit(1);
 
+    await createAuditLog({ orgId, userId, action: 'adjust', entityType: 'inventory-adjustment', entityId: id, newValues: { status: 'adjusted' }, ...extractReqMeta(req) });
+
     return res.status(200).json({ ...updated, lineItems });
   } catch (err) { return next(err); }
 });
@@ -981,6 +1000,7 @@ router.post('/adjustments/:id/adjust', async (req: AuthenticatedRequest, res: Re
 router.delete('/adjustments/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const orgId = req.user!.orgId!;
+    const userId = req.user!.userId!;
     const { id } = req.params;
 
     const [existing] = await db
@@ -993,6 +1013,8 @@ router.delete('/adjustments/:id', async (req: AuthenticatedRequest, res: Respons
 
     await db.delete(inventoryAdjustmentItems).where(eq(inventoryAdjustmentItems.adjustmentId, id));
     await db.delete(inventoryAdjustments).where(eq(inventoryAdjustments.id, id));
+
+    await createAuditLog({ orgId, userId, action: 'delete', entityType: 'inventory-adjustment', entityId: id, ...extractReqMeta(req) });
 
     return res.status(200).json({ message: 'Adjustment deleted.' });
   } catch (err) { return next(err); }
@@ -1042,6 +1064,8 @@ router.post('/adjustments/:id/upload', upload.array('files', 5), async (req: Aut
 
       results.push(doc);
     }
+
+    await createAuditLog({ orgId, userId, action: 'upload', entityType: 'inventory-adjustment', entityId: id, newValues: { filesUploaded: true }, ...extractReqMeta(req) });
 
     return res.status(201).json({ files: results });
   } catch (err) { return next(err); }

@@ -5,6 +5,7 @@ import { db, accounts, journalEntries, journalLines, vatPeriods, vatReturnLines,
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
 import { AppError } from '../lib/errors';
 import { createJournalEntry } from '../services/ledger.service';
+import { createAuditLog, extractReqMeta } from '../services/audit.service';
 
 const router = Router();
 
@@ -236,6 +237,7 @@ router.post('/settle', async (req: AuthenticatedRequest, res: Response, next: Ne
       });
     }
 
+    createAuditLog({ orgId, userId, action: 'settle', entityType: 'vat-period', newValues: { netVat, periodStart: startDate, periodEnd: endDate }, ...extractReqMeta(req) });
     res.json({ success: true, journalEntry: je, netVat, excessCarriedForward });
   } catch (err) {
     next(err);
@@ -323,6 +325,7 @@ router.put('/settings', async (req: AuthenticatedRequest, res: Response, next: N
         .where(eq(organisations.id, orgId));
     }
 
+    createAuditLog({ orgId, userId: req.user!.userId!, action: 'update', entityType: 'organisation', entityId: orgId, newValues: { vatSettingsUpdated: true }, ...extractReqMeta(req) });
     res.json({ success: true });
   } catch (err) {
     next(err);

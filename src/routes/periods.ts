@@ -4,6 +4,7 @@ import { eq, and, desc, lte, gte } from 'drizzle-orm';
 import { db, closedPeriods, users } from '../db/schema';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
 import { AppError } from '../lib/errors';
+import { createAuditLog, extractReqMeta } from '../services/audit.service';
 
 const router = Router();
 
@@ -89,6 +90,7 @@ router.post('/close', async (req: AuthenticatedRequest, res: Response, next: Nex
       })
       .returning();
 
+    createAuditLog({ orgId, userId, action: 'close', entityType: 'accounting-period', newValues: { periodStart: body.periodStart, periodEnd: body.periodEnd }, ...extractReqMeta(req) });
     return res.status(201).json({ success: true, data: record });
   } catch (err) {
     next(err);
@@ -128,6 +130,7 @@ router.delete('/closed/:id', async (req: AuthenticatedRequest, res: Response, ne
       .delete(closedPeriods)
       .where(eq(closedPeriods.id, id));
 
+    createAuditLog({ orgId, userId, action: 'reopen', entityType: 'accounting-period', entityId: id, ...extractReqMeta(req) });
     return res.status(200).json({ success: true, message: 'Period re-opened. Backdated entries may now be posted.' });
   } catch (err) {
     next(err);

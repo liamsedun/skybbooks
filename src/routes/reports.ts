@@ -9,6 +9,7 @@ import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/au
 import { AppError } from '../lib/errors';
 import { db, accounts, journalEntries, journalLines, fixedAssets, bankAccounts, contacts, invoices, bills, projects, paymentsReceived } from '../db/schema';
 import { eq, and, asc, sql, lte, gte } from 'drizzle-orm';
+import { createAuditLog, extractReqMeta } from '../services/audit.service';
 import {
   getTrialBalance,
   getProfitAndLoss,
@@ -286,6 +287,7 @@ router.post(
         );
       });
 
+      createAuditLog({ orgId, userId, action: 'import', entityType: 'opening-balance', newValues: { count: journalLinesInput.length }, ...extractReqMeta(req) });
       return res.status(200).json({ success: true, message: `Imported ${journalLinesInput.length} opening balance lines successfully.` });
     } catch (error) {
       next(error);
@@ -378,6 +380,7 @@ router.post(
         );
       });
 
+      createAuditLog({ orgId, userId, action: 'create', entityType: 'opening-balance', newValues: { count: journalLinesInput.length }, ...extractReqMeta(req) });
       return res.status(200).json({ success: true, message: `Recorded ${journalLinesInput.length} opening balance lines successfully.` });
     } catch (error) {
       next(error);
@@ -428,6 +431,7 @@ router.post(
         return res.status(400).json({ success: false, message: 'Some accounts could not be updated', errors, updated });
       }
 
+      createAuditLog({ orgId, userId: req.user!.id, action: 'update', entityType: 'opening-balance', newValues: { count: updated }, ...extractReqMeta(req) });
       return res.status(200).json({ success: true, message: `Updated ${updated} account(s) successfully.` });
     } catch (error) {
       next(error);

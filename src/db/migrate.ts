@@ -706,6 +706,8 @@ export async function runMigration() {
     // Create indexes on audit_log for faster queries
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_audit_log_org_created ON audit_log (org_id, created_at DESC)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_audit_log_org_entity ON audit_log (org_id, entity_type, entity_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_audit_log_entity_lookup ON audit_log (org_id, entity_type, entity_id, created_at DESC)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_audit_log_user ON audit_log (org_id, user_id)`);
 
     // Add mono_account_status column to bank_accounts for Mono Connect health tracking
     await db.execute(sql`ALTER TABLE bank_accounts ADD COLUMN IF NOT EXISTS mono_account_status text DEFAULT 'pending'`);

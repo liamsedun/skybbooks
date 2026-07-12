@@ -204,6 +204,32 @@ function ProtectedRoute() {
   );
 }
 
+function RequireRoleRoute({ roles }: { roles: string[] }) {
+  const { isAuthenticated, isLoading, user } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center font-sans font-bold text-xs text-slate-400 select-none uppercase tracking-widest">
+        Verifying Security Vault...
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!user || !roles.includes(user.role)) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return (
+    <AppLayout>
+      <Outlet />
+    </AppLayout>
+  );
+}
+
 // =========================================================================
 // 3. CENTRAL APP ROOT & ROUTER WIRE
 // =========================================================================
@@ -294,7 +320,9 @@ function AppRoutes() {
           <Route path="/reports/vat-return" element={<VATReturnPage />} />
           <Route path="/reports/aged-receivables" element={<AgedReceivablesPage />} />
           <Route path="/reports/aged-payables" element={<AgedPayablesPage />} />
-          <Route path="/reports/audit-logs" element={<AuditLogsPage />} />
+          <Route element={<RequireRoleRoute roles={['owner', 'admin']} />}>
+            <Route path="/reports/audit-logs" element={<AuditLogsPage />} />
+          </Route>
           <Route path="/reports/projects" element={<ProjectsReportPage />} />
           <Route path="/reports/custom" element={<CustomReportsPage />} />
 

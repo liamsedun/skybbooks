@@ -11,9 +11,10 @@
 
 import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
-import { db, bankAccounts } from '../db/schema';
+import { db, bankAccounts, users } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import { syncFlutterwaveTransactions } from '../services/flutterwave.service';
+import { createAuditLog, extractReqMeta } from '../services/audit.service';
 
 const router = Router();
 
@@ -82,6 +83,15 @@ router.post(
               }
 
               await db.update(bankAccounts).set(updates).where(eq(bankAccounts.id, ba.id));
+
+              const [orgUser] = await db
+                .select({ id: users.id })
+                .from(users)
+                .where(eq(users.orgId, ba.orgId))
+                .limit(1);
+              if (orgUser) {
+                createAuditLog({ orgId: ba.orgId, userId: orgUser.id, action: 'update', entityType: 'bank-account', entityId: ba.id, newValues: { monoAccountStatus: updates.monoAccountStatus }, ...extractReqMeta(req) });
+              }
 
               // Trigger incremental sync if data is available
               const hasTransactions = dataStatus === 'AVAILABLE' ||
