@@ -446,7 +446,15 @@ export class AIService {
     const netProfit = currentMonthData.netProfit;
     const priorNet = priorMonthData.netProfit;
     if (netProfit < 0) {
-      const deprAccounts = currentMonthData.expense.accounts.filter((a: any) =>
+      const allExpenseAccounts = [
+        ...(currentMonthData.staffCosts?.accounts || []),
+        ...(currentMonthData.administrative?.accounts || []),
+        ...(currentMonthData.sellingDistribution?.accounts || []),
+        ...(currentMonthData.otherOperatingExpenses?.accounts || []),
+        ...(currentMonthData.financeCosts?.accounts || []),
+        ...(currentMonthData.incomeTaxExpense?.accounts || []),
+      ];
+      const deprAccounts = allExpenseAccounts.filter((a: any) =>
         a.name.toLowerCase().includes('depreciation') || a.name.toLowerCase().includes('amortisation')
       );
       const totalDepr = deprAccounts.reduce((s: number, a: any) => s + a.balance, 0);
