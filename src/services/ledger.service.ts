@@ -4,7 +4,7 @@
  */
 
 import { eq, and, lte, gte, sql, asc, inArray } from 'drizzle-orm';
-import { db, accounts, journalEntries, journalLines, bankAccounts, fixedAssets, contacts, inventoryLots, inventoryTransactions, closedPeriods, invoices, paymentsReceived, bills } from '../db/schema';
+import { db, accounts, journalEntries, journalLines, bankAccounts, fixedAssets, contacts, inventoryLots, inventoryTransactions, closedPeriods, invoices, paymentsReceived, bills, organisations } from '../db/schema';
 import { AppError } from '../lib/errors';
 import { toNgn, getRateForDate } from './currency.service';
 
@@ -1036,6 +1036,100 @@ export async function getProfitAndLoss(
   return { current, prior: null, variance: null };
 }
 
+// ── Equity component types ──
+export type EquityItem = { accountId: string; code: string; name: string; balance: number };
+export type EquityComponent = { key: string; label: string; items: EquityItem[]; total: number };
+export type EquityBalancesResult = { components: EquityComponent[]; totalEquity: number };
+
+/**
+ * Computes the balance of each equity component (Share Capital, Share Premium,
+ * Deposit for Shares, Retained Earnings, Other Reserves, Revaluation Surplus,
+ * Non-controlling Interest, General Reserve) as of a given date.
+ *
+ * Returns raw cumulative ledger balances — does NOT inject computed profit.
+ * Shared by getBalanceSheet() and getStatementOfChangesInEquity().
+ */
+export async function getEquityBalancesAsOf(orgId: string, asOfDate: Date): Promise<EquityBalancesResult> {
+  const earlyDate = new Date('2000-01-01');
+  const tbRows = await getTrialBalance(orgId, earlyDate, asOfDate);
+
+  const orgAccounts = await db
+    .select()
+    .from(accounts)
+    .where(eq(accounts.orgId, orgId));
+
+  const tbNetMap = new Map<string, number>();
+  for (const row of tbRows) {
+    if (row.accountId === 'system-suspense') continue;
+    tbNetMap.set(row.accountId, row.closingDebit - row.closingCredit);
+  }
+
+  const parentIds = new Set<string>();
+  for (const a of orgAccounts) { if (a.parentId) parentIds.add(a.parentId); }
+  for (const pid of parentIds) tbNetMap.delete(pid);
+
+  // Map account → code prefix → component
+  function componentKey(code: string): string {
+    if (code.startsWith('500')) return 'shareCapital';
+    if (code === '501000') return 'sharePremium';
+    if (code === '501001') return 'depositForShares';
+    if (code.startsWith('501')) return 'sharePremium'; // other 501xxx → share premium
+    if (code.startsWith('502')) return 'retainedEarnings';
+    if (code === '503400') return 'revaluationSurplus';
+    if (code.startsWith('503')) return 'otherReserves';
+    if (code.startsWith('504')) return 'nonControllingInterest';
+    if (code.startsWith('505')) return 'generalReserve';
+    return 'otherReserves'; // fallback
+  }
+
+  function componentLabel(key: string): string {
+    const labels: Record<string, string> = {
+      shareCapital: 'Share Capital',
+      sharePremium: 'Share Premium',
+      depositForShares: 'Deposit for Shares',
+      retainedEarnings: 'Retained Earnings',
+      otherReserves: 'Other Reserves',
+      revaluationSurplus: 'Revaluation Surplus',
+      nonControllingInterest: 'Non-controlling Interest',
+      generalReserve: 'General Reserve',
+    };
+    return labels[key] || key;
+  }
+
+  const componentMap = new Map<string, EquityItem[]>();
+  for (const acct of orgAccounts) {
+    if (parentIds.has(acct.id)) continue;
+    if (acct.type !== 'equity') continue;
+    const net = tbNetMap.get(acct.id) || 0;
+    const bal = -net; // equity is credit-nature; tbNetMap has closingDebit - closingCredit
+    const key = componentKey(acct.code);
+    if (!componentMap.has(key)) componentMap.set(key, []);
+    componentMap.get(key)!.push({ accountId: acct.id, code: acct.code, name: acct.name, balance: bal });
+  }
+
+  const components: EquityComponent[] = [];
+  let totalEquity = 0;
+  const order = ['shareCapital', 'sharePremium', 'depositForShares', 'retainedEarnings', 'otherReserves', 'revaluationSurplus', 'nonControllingInterest', 'generalReserve'];
+  for (const key of order) {
+    const items = componentMap.get(key) || [];
+    const total = items.reduce((s, i) => s + i.balance, 0);
+    if (items.length > 0 || total !== 0) {
+      components.push({ key, label: componentLabel(key), items, total });
+      totalEquity += total;
+    }
+  }
+  // Catch any items not in the predefined order
+  for (const [key, items] of componentMap) {
+    if (!order.includes(key)) {
+      const total = items.reduce((s, i) => s + i.balance, 0);
+      components.push({ key, label: componentLabel(key), items, total });
+      totalEquity += total;
+    }
+  }
+
+  return { components, totalEquity };
+}
+
 /**
  * Formats a Snapshot Balance Sheet as of a specified date.
  * Strictly verifies the primary Accounting Equation: Assets === Liabilities + Equity.
@@ -1077,9 +1171,8 @@ export async function getBalanceSheet(
   for (const a of orgAccounts) { if (a.parentId) parentIds.add(a.parentId); }
   for (const pid of parentIds) tbNetMap.delete(pid);
 
-  // Build allItems and cumulativeNetIncome from Trial Balance closing balances
+  // Build allItems from Trial Balance closing balances
   const allItems: BalItem[] = [];
-  let cumulativeNetIncome = 0;
   const codePrefix = (code: string, len: number) => code.substring(0, len);
 
   for (const acct of orgAccounts) {
@@ -1093,9 +1186,9 @@ export async function getBalanceSheet(
     } else if (acct.type === 'equity') {
       allItems.push({ accountId: acct.id, code: acct.code, name: acct.name, balance: -net });
     } else if (acct.type === 'revenue') {
-      cumulativeNetIncome += -net; // cr-dr = -net
+      // revenue handled via getProfitAndLoss below, not accumulated
     } else if (acct.type === 'expense') {
-      cumulativeNetIncome -= net; // minus (dr-cr) = -net
+      // expense handled via getProfitAndLoss below, not accumulated
     }
   }
 
@@ -1285,34 +1378,42 @@ export async function getBalanceSheet(
   const totalNonCurrentLiabilities = nonCurLiabilities.reduce((s, g) => s + g.total, 0);
   const totalLiabilities = totalCurrentLiabilities + totalNonCurrentLiabilities;
 
-  // Equity: build proper waterfall
-  // Retained earnings: opening balance from equity accounts with code 502xxx (502000, 502100)
-  const reAccounts = grouped.retainedEarnings;
-  const openingReItems = reAccounts.filter(i => i.code === '502000' || i.code === '502100');
-  const dividendItems = reAccounts.filter(i => i.code === '502300');
-  const otherRE = reAccounts.filter(i => i.code !== '502000' && i.code !== '502100' && i.code !== '502300');
-  const openingReTotal = sum(openingReItems);
-  const dividendTotal = sum(dividendItems);
-  const otherRETotal = sum(otherRE);
+  // Equity: build proper waterfall using extracted helper
+  const equityResult = await getEquityBalancesAsOf(orgId, asOfDate);
 
-  // Profit for period from income statement
-  const profitForPeriod = cumulativeNetIncome;
+  // Determine fiscal year start for period profit
+  const [orgRow] = await db
+    .select({ fiscalYearStart: organisations.fiscalYearStart })
+    .from(organisations).where(eq(organisations.id, orgId)).limit(1);
+  const fyStartStr = orgRow?.fiscalYearStart;
+  const year = asOfDate.getFullYear();
+  const fiscalYearStartDate = fyStartStr
+    ? new Date(`${fyStartStr} ${year}`)
+    : new Date(`${year}-01-01`);
 
-  // Total retained earnings
+  // Profit for period from income statement (fiscal-year bound)
+  const pnl = await getProfitAndLoss(orgId, fiscalYearStartDate, asOfDate);
+  const profitForPeriod = pnl.current.netProfit || 0;
+
+  // Build retained earnings waterfall from helper data
+  const reComp = equityResult.components.find(c => c.key === 'retainedEarnings');
+  const reItems = reComp?.items || [];
+  const openingReItems = reItems.filter(i => i.code === '502000' || i.code === '502100');
+  const dividendItems = reItems.filter(i => i.code === '502300');
+  const otherRE = reItems.filter(i => i.code !== '502000' && i.code !== '502100' && i.code !== '502300');
+  const openingReTotal = openingReItems.reduce((s, i) => s + i.balance, 0);
+  const dividendTotal = dividendItems.reduce((s, i) => s + i.balance, 0);
+  const otherRETotal = otherRE.reduce((s, i) => s + i.balance, 0);
   const totalRetainedEarnings = openingReTotal + profitForPeriod + dividendTotal + otherRETotal;
 
   const equitySections = [
-    { key: 'shareCapital', label: 'Share Capital', items: grouped.shareCapital, total: sum(grouped.shareCapital) },
-    { key: 'sharePremium', label: 'Share Premium', items: grouped.sharePremium, total: sum(grouped.sharePremium) },
+    ...equityResult.components.filter(c => c.key !== 'retainedEarnings').map(c => ({ key: c.key, label: c.label, items: c.items, total: c.total })),
     { key: 'retainedEarnings', label: 'Retained Earnings', items: [
       { accountId: 're-opening', code: '502000', name: 'Retained Earnings – Opening Balance', balance: openingReTotal },
       { accountId: 're-profit-period', code: '502200', name: 'Profit / (Loss) for the Period', balance: profitForPeriod },
       ...(dividendTotal !== 0 ? [{ accountId: 're-dividends', code: '502300', name: 'Less: Dividends Declared', balance: dividendTotal }] : []),
       ...(otherRETotal !== 0 ? [{ accountId: 're-other', code: '502400', name: 'Other Retained Earnings', balance: otherRETotal }] : []),
     ], total: totalRetainedEarnings },
-    { key: 'otherReserves', label: 'Other Reserves', items: grouped.otherReserves, total: sum(grouped.otherReserves) },
-    { key: 'nonControllingInterest', label: 'Non-controlling Interest', items: grouped.nonControllingInterest, total: sum(grouped.nonControllingInterest) },
-    { key: 'generalReserve', label: 'General Reserve', items: grouped.generalReserve, total: sum(grouped.generalReserve) },
   ];
   const totalEquity = equitySections.reduce((s, g) => s + g.total, 0);
   const liabilitiesAndEquity = totalLiabilities + totalEquity;
@@ -1338,6 +1439,237 @@ export async function getBalanceSheet(
   }
 
   return result;
+}
+
+// ── SOCIE types ──
+export type SocieColumn = { key: string; label: string };
+export type SocieRow = { label: string; columns: Record<string, number> };
+export type SocieYearBlock = {
+  yearLabel: string;
+  yearStart: Date;
+  yearEnd: Date;
+  columns: SocieColumn[];
+  rows: SocieRow[];
+  totals: Record<string, number>;
+};
+
+export type SocieCrossCheck = {
+  openingEquity: number;
+  profitForYear: number;
+  otherMovements: number;
+  closingEquity: number;
+  variance: number;
+  reconciled: boolean;
+};
+
+export type SocieResult = {
+  currentYear: SocieYearBlock;
+  priorYear: SocieYearBlock | null;
+  crossCheck: SocieCrossCheck;
+};
+
+/**
+ * Computes the Statement of Changes in Equity (SOCIE) for a given fiscal year
+ * and its immediately prior comparative year.
+ *
+ * Follows standard IFRS presentation:
+ *   Balance b/f → Profit for Year → Other Movements → Balance c/f
+ * per equity component, with a cross-check that opening + movements = closing.
+ *
+ * @param orgId  Organisation ID
+ * @param yearEndDate  End date of the current fiscal year (snapshot date)
+ * @param compareYearEndDate  Optional end date of the prior comparative year;
+ *   if omitted, computed as one year before yearEndDate.
+ */
+export async function getStatementOfChangesInEquity(
+  orgId: string,
+  yearEndDate: Date,
+  compareYearEndDate?: Date
+): Promise<SocieResult> {
+  // Resolve fiscal year start
+  const [orgRow] = await db
+    .select({ fiscalYearStart: organisations.fiscalYearStart })
+    .from(organisations).where(eq(organisations.id, orgId)).limit(1);
+  const fyStr = orgRow?.fiscalYearStart;
+
+  function fyStart(anchor: Date): Date {
+    const y = anchor.getFullYear();
+    return fyStr ? new Date(`${fyStr} ${y}`) : new Date(`${y}-01-01`);
+  }
+
+  const currentYearStart = fyStart(yearEndDate);
+  const currentYearEnd = yearEndDate;
+
+  // Prior year: same fiscal-month pattern, one year earlier
+  const priorYearEnd = compareYearEndDate || new Date(currentYearStart.getTime() - 86400000);
+  const priorYearStart = fyStart(priorYearEnd);
+
+  // Helper: build one year block
+  async function buildYearBlock(yearStart: Date, yearEnd: Date, yearLabel: string): Promise<SocieYearBlock> {
+    const dayBeforeStart = new Date(yearStart.getTime() - 86400000);
+
+    const [openingEq, closingEq] = await Promise.all([
+      getEquityBalancesAsOf(orgId, dayBeforeStart),
+      getEquityBalancesAsOf(orgId, yearEnd),
+    ]);
+
+    // Profit for the year (only affects Retained Earnings)
+    const pnl = await getProfitAndLoss(orgId, yearStart, yearEnd);
+    const profitForYear = pnl.current.netProfit || 0;
+
+    // Direct JE movements on equity accounts during the year
+    const rawMvmt = await db
+      .select({
+        accountId: journalLines.accountId,
+        debitAmount: journalLines.debitAmount,
+        creditAmount: journalLines.creditAmount,
+        currency: journalLines.currency,
+        fxRate: journalLines.fxRate,
+      })
+      .from(journalLines)
+      .innerJoin(journalEntries, eq(journalLines.entryId, journalEntries.id))
+      .innerJoin(accounts, eq(journalLines.accountId, accounts.id))
+      .where(
+        and(
+          eq(journalEntries.orgId, orgId),
+          eq(accounts.type, 'equity'),
+          gte(journalEntries.date, yearStart),
+          lte(journalEntries.date, yearEnd),
+        )
+      );
+
+    // Compute net movement per account (drNegative convention: credit-side positive for equity)
+    const mvmtByAccount = new Map<string, number>();
+    for (const l of rawMvmt) {
+      const fxRateVal = l.fxRate ? Number(l.fxRate) : 1;
+      const dr = l.currency && l.currency !== 'NGN' ? toNgn(l.debitAmount, fxRateVal) : (l.debitAmount || 0);
+      const cr = l.currency && l.currency !== 'NGN' ? toNgn(l.creditAmount, fxRateVal) : (l.creditAmount || 0);
+      const net = Number(cr) - Number(dr); // equity: credit - debit = increase
+      mvmtByAccount.set(l.accountId, (mvmtByAccount.get(l.accountId) || 0) + net);
+    }
+
+    // Build component-to-movement map
+    const allOpenComps = [...(openingEq.components || []), ...(closingEq.components || [])];
+    const seenKeys = new Set<string>();
+    const compLabels: Record<string, string> = {};
+    for (const c of allOpenComps) {
+      if (!seenKeys.has(c.key)) {
+        seenKeys.add(c.key);
+        compLabels[c.key] = c.label;
+      }
+    }
+
+    const columns: SocieColumn[] = Object.entries(compLabels).map(([key, label]) => ({ key, label }));
+
+    // Opening row
+    const openingRow: SocieRow = { label: `Balance at ${formatShortDate(yearStart)}`, columns: {} };
+    for (const c of openingEq.components || []) {
+      openingRow.columns[c.key] = c.total;
+    }
+    for (const col of columns) {
+      if (openingRow.columns[col.key] === undefined) openingRow.columns[col.key] = 0;
+    }
+
+    // Profit for the year row (only in retainedEarnings)
+    const profitRow: SocieRow = { label: 'Profit for the Year', columns: {} };
+    for (const col of columns) {
+      profitRow.columns[col.key] = col.key === 'retainedEarnings' ? profitForYear : 0;
+    }
+
+    // Other movements: direct JE postings grouped by component
+    const mvmtByComp = new Map<string, number>();
+    // We need the account→component mapping from getEquityBalancesAsOf's logic
+    // Reuse componentKey from the helper — inline it here
+    function compKey(code: string): string {
+      if (code.startsWith('500')) return 'shareCapital';
+      if (code === '501000') return 'sharePremium';
+      if (code === '501001') return 'depositForShares';
+      if (code.startsWith('501')) return 'sharePremium';
+      if (code.startsWith('502')) return 'retainedEarnings';
+      if (code === '503400') return 'revaluationSurplus';
+      if (code.startsWith('503')) return 'otherReserves';
+      if (code.startsWith('504')) return 'nonControllingInterest';
+      if (code.startsWith('505')) return 'generalReserve';
+      return 'otherReserves';
+    }
+
+    // Fetch accounts for code lookup
+    const allAcc = await db
+      .select({ id: accounts.id, code: accounts.code })
+      .from(accounts)
+      .where(and(eq(accounts.orgId, orgId), eq(accounts.type, 'equity')));
+    const accCodeMap = new Map(allAcc.map(a => [a.id, a.code]));
+
+    for (const [accId, net] of mvmtByAccount) {
+      const code = accCodeMap.get(accId);
+      if (!code) continue;
+      const key = compKey(code);
+      mvmtByComp.set(key, (mvmtByComp.get(key) || 0) + net);
+    }
+
+    const otherMovementsRow: SocieRow = { label: 'Other Movements in the Year', columns: {} };
+    for (const col of columns) {
+      let mvmt = mvmtByComp.get(col.key) || 0;
+      // For retainedEarnings, profit is already a separate row, so exclude it from other movements
+      // (profit isn't posted via JE in this system, so mvmt is already just dividends + adjustments)
+      otherMovementsRow.columns[col.key] = mvmt;
+    }
+
+    // Closing row
+    const closingRow: SocieRow = { label: `Balance at ${formatShortDate(yearEnd)}`, columns: {} };
+    for (const c of closingEq.components || []) {
+      closingRow.columns[c.key] = c.total;
+    }
+    for (const col of columns) {
+      if (closingRow.columns[col.key] === undefined) closingRow.columns[col.key] = 0;
+    }
+
+    const rows = [openingRow, profitRow, otherMovementsRow, closingRow];
+
+    // Compute totals (closing balances per component)
+    const totals: Record<string, number> = {};
+    for (const col of columns) {
+      totals[col.key] = closingRow.columns[col.key];
+    }
+
+    return { yearLabel, yearStart, yearEnd, columns, rows, totals };
+  }
+
+  const currentLabel = `Year ended ${formatShortDate(currentYearEnd)}`;
+  const priorLabel = `Year ended ${formatShortDate(priorYearEnd)}`;
+
+  const currentYear = await buildYearBlock(currentYearStart, currentYearEnd, currentLabel);
+  const priorYear = priorYearEnd < currentYearStart
+    ? await buildYearBlock(priorYearStart, priorYearEnd, priorLabel)
+    : null;
+
+  // Cross-check: total equity opening + profit + other movements = closing
+  const openingTotal = currentYear.rows[0].columns; // opening row
+  const profitTotal = currentYear.rows[1].columns; // profit row
+  const otherTotal = currentYear.rows[2].columns; // other movements row
+  const closingTotal = currentYear.rows[3].columns; // closing row
+
+  let openingEquity = 0, profitForYearVal = 0, otherMovementsVal = 0, closingEquityVal = 0;
+  for (const col of currentYear.columns) {
+    openingEquity += openingTotal[col.key] || 0;
+    profitForYearVal += profitTotal[col.key] || 0;
+    otherMovementsVal += otherTotal[col.key] || 0;
+    closingEquityVal += closingTotal[col.key] || 0;
+  }
+  const expectedClosing = openingEquity + profitForYearVal + otherMovementsVal;
+  const variance = closingEquityVal - expectedClosing;
+  const reconciled = Math.abs(variance) < 1;
+
+  return {
+    currentYear,
+    priorYear,
+    crossCheck: { openingEquity, profitForYear: profitForYearVal, otherMovements: otherMovementsVal, closingEquity: closingEquityVal, variance, reconciled },
+  };
+}
+
+function formatShortDate(d: Date): string {
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
 }
 
 /**

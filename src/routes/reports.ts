@@ -15,6 +15,7 @@ import {
   getProfitAndLoss,
   getBalanceSheet,
   getCashFlowStatement,
+  getStatementOfChangesInEquity,
   TrialBalanceRow
 } from '../services/ledger.service';
 import { getInvoiceAgingReport } from '../services/invoice.service';
@@ -34,7 +35,8 @@ import {
   generateIncomeStatementPDF,
   generateBalanceSheetPDF,
   generateCashFlowPDF,
-  generateAgedReportPDF
+  generateAgedReportPDF,
+  generateStatementOfChangesInEquityPDF,
 } from '../services/pdf.service';
 
 const router = Router();
@@ -529,8 +531,43 @@ router.get(
   }
 );
 
+const socieQuerySchema = z.object({
+  asOfDate: z.string().transform((val) => new Date(val)),
+  compareAsOf: z.string().optional().transform((val) => val ? new Date(val) : undefined),
+  format: z.enum(['pdf', 'excel', 'json']).default('json')
+});
+
 // =========================================================================
-// 5. GENERAL LEDGER ACCOUNT BOOK ENDPOINT
+// 5. STATEMENT OF CHANGES IN EQUITY (SOCIE) ENDPOINT
+// =========================================================================
+router.get(
+  '/statement-of-changes-in-equity',
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+      const { asOfDate, compareAsOf, format } = socieQuerySchema.parse(req.query);
+      const orgId = req.user!.orgId!;
+
+      if (format === 'json') {
+        const data = await getStatementOfChangesInEquity(orgId, asOfDate, compareAsOf);
+        return res.status(200).json({ success: true, data });
+      }
+
+      if (format === 'excel') {
+        return res.status(501).json({ success: false, error: 'Excel export not yet implemented for SOCIE.' });
+      }
+
+      if (format === 'pdf') {
+        const buffer = await generateStatementOfChangesInEquityPDF(orgId, asOfDate, compareAsOf);
+        return sendFileBuffer(res, buffer, 'application/pdf', 'statement_of_changes_in_equity.pdf', true);
+      }
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// =========================================================================
+// 6. GENERAL LEDGER ACCOUNT BOOK ENDPOINT
 // =========================================================================
 router.get(
   '/general-ledger',

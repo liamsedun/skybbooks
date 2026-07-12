@@ -31,7 +31,7 @@ import {
   users
 } from '../db/schema';
 import { AppError } from '../lib/errors';
-import { getTrialBalance, getProfitAndLoss, getBalanceSheet, getCashFlowStatement } from './ledger.service';
+import { getTrialBalance, getProfitAndLoss, getBalanceSheet, getCashFlowStatement, getStatementOfChangesInEquity } from './ledger.service';
 import { getInvoiceAgingReport } from './invoice.service';
 import { getBillAgingReport } from './bill.service';
 
@@ -1784,5 +1784,86 @@ export async function generateAgedReportPDF(orgId: string, isReceivable: boolean
       doc.text(formatNaira(val), x + 5, y + 6, { width: 60 - 10, align: 'right' });
       x += 60;
     });
+  });
+}
+
+// Statement of Changes in Equity PDF
+export async function generateStatementOfChangesInEquityPDF(orgId: string, asOfDate: Date, compareAsOf?: Date): Promise<Buffer> {
+  const [org] = await db.select().from(organisations).where(eq(organisations.id, orgId)).limit(1);
+  const socie = await getStatementOfChangesInEquity(orgId, asOfDate, compareAsOf);
+
+  const orgSettings = typeof org?.settings === 'string' ? JSON.parse(org.settings) : (org?.settings || {});
+  const brandColor = orgSettings.branding?.primaryColor || '#1e3a8a';
+
+  return generatePDFBuffer((doc) => {
+    drawReportHeader(doc, 'STATEMENT OF CHANGES IN EQUITY', socie.currentYear.yearLabel, org?.name || 'FinanceOS Unit', org, brandColor);
+
+    let y = 110;
+
+    // Helper: draw one year block table
+    function drawYearBlock(yearBlock: typeof socie.currentYear, label: string) {
+      if (y > 620) { doc.addPage(); y = 50; drawReportHeader(doc, 'STATEMENT OF CHANGES IN EQUITY (cont\'d)', label, org?.name || 'FinanceOS Unit', org, brandColor); y = 110; }
+
+      // Determine column widths: fixed label column + per-component columns
+      const cols = yearBlock.columns;
+      const colCount = cols.length;
+      const availableWidth = 515; // total page width minus margins
+      const labelW = 120;
+      const dataW = Math.max(60, Math.floor((availableWidth - labelW) / colCount));
+      const totalW = labelW + dataW * colCount;
+      const startX = 40 + Math.floor((availableWidth - totalW) / 2);
+
+      // Header row
+      doc.rect(startX, y, totalW, 16).fill(brandColor);
+      doc.fillColor('#ffffff').fontSize(6.5).font('Helvetica-Bold');
+      doc.text(label, startX + 3, y + 4, { width: labelW - 6 });
+      let hx = startX + labelW;
+      for (const col of cols) {
+        doc.text(col.label, hx + 2, y + 4, { width: dataW - 4, align: 'right' });
+        hx += dataW;
+      }
+      y += 16;
+
+      // Data rows
+      const rows = yearBlock.rows;
+      for (let rIdx = 0; rIdx < rows.length; rIdx++) {
+        const row = rows[rIdx];
+        if (y > 720) { doc.addPage(); y = 50; drawReportHeader(doc, 'STATEMENT OF CHANGES IN EQUITY (cont\'d)', label, org?.name || 'FinanceOS Unit', org, brandColor); y = 60; }
+
+        // Subtle background for total rows
+        const isTotal = rIdx === rows.length - 1 || rIdx === 0;
+        if (isTotal) {
+          doc.rect(startX, y, totalW, 14).fill('#f1f5f9');
+        }
+
+        doc.fillColor('#1f2937').font(isTotal ? 'Helvetica-Bold' : 'Helvetica').fontSize(6.5);
+        doc.text(row.label, startX + 3, y + 3, { width: labelW - 6 });
+
+        let dx = startX + labelW;
+        for (const col of cols) {
+          const val = row.columns[col.key] || 0;
+          doc.text(formatNaira(val), dx + 2, y + 3, { width: dataW - 4, align: 'right' });
+          dx += dataW;
+        }
+        y += 14;
+
+        // Light separator between rows
+        doc.moveTo(startX, y).lineTo(startX + totalW, y).strokeColor('#e5e7eb').lineWidth(0.5).stroke();
+      }
+
+      y += 10;
+
+      // Cross-check summary
+      doc.fontSize(6).font('Helvetica').fillColor('#6b7280');
+      doc.text(`Cross-check: Opening ${formatNaira(socie.crossCheck.openingEquity)} + Profit ${formatNaira(socie.crossCheck.profitForYear)} + Other ${formatNaira(socie.crossCheck.otherMovements)} = ${formatNaira(socie.crossCheck.openingEquity + socie.crossCheck.profitForYear + socie.crossCheck.otherMovements)}  |  Closing ${formatNaira(socie.crossCheck.closingEquity)}  |  Variance ${formatNaira(socie.crossCheck.variance)}  |  ${socie.crossCheck.reconciled ? '✓ Reconciled' : '✗ OUT OF BALANCE'}`,
+        startX, y, { width: totalW });
+      y += 14;
+    }
+
+    // Draw prior year first (if exists), then current year
+    if (socie.priorYear) {
+      drawYearBlock(socie.priorYear, socie.priorYear.yearLabel);
+    }
+    drawYearBlock(socie.currentYear, socie.currentYear.yearLabel);
   });
 }
