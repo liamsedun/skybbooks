@@ -196,7 +196,7 @@ function CustomerList() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active'>('all');
   const [modalOpen, setModalOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -238,7 +238,6 @@ function CustomerList() {
     const term = searchTerm.toLowerCase();
     return (customers || []).filter((c) => {
       if (statusFilter === 'active' && !c.isActive) return false;
-      if (statusFilter === 'inactive' && c.isActive) return false;
       if (!term) return true;
       return (
         c.name.toLowerCase().includes(term) ||
@@ -297,7 +296,7 @@ function CustomerList() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Customers</h1>
           <p className="text-sm text-slate-500 mt-1">
-            {counts.all} customers · {counts.active} active · {counts.inactive} inactive
+            {counts.all} customers · {counts.active} active
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -314,7 +313,7 @@ function CustomerList() {
             onClick={openAddModal}
             className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-xs font-medium rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200 shadow-sm"
           >
-            <Plus size={14} /> Add Customer
+            <Plus size={14} />New
           </button>
         </div>
       </div>
@@ -350,22 +349,6 @@ function CustomerList() {
           <div className="text-left">
             <span className="block text-sm font-bold">Active</span>
             <span className={`block text-[10px] font-medium ${statusFilter === 'active' ? 'text-white/70' : 'text-emerald-400'}`}>{counts.active} customers</span>
-          </div>
-        </button>
-        <button
-          onClick={() => setStatusFilter('inactive')}
-          className={`flex items-center gap-3 px-5 py-3.5 rounded-2xl text-sm font-bold transition-all duration-200 border shadow-sm ${
-            statusFilter === 'inactive'
-              ? 'bg-gradient-to-br from-amber-600 to-amber-700 text-white border-amber-500 shadow-md ring-2 ring-amber-300'
-              : 'bg-gradient-to-br from-amber-50 to-amber-100/80 text-amber-700 border-amber-200/70 hover:shadow-md hover:border-amber-300 hover:from-amber-100 hover:to-amber-200/80'
-          }`}
-        >
-          <div className={`p-2 rounded-xl ${statusFilter === 'inactive' ? 'bg-white/15' : 'bg-amber-100/80'}`}>
-            <X size={18} className={statusFilter === 'inactive' ? 'text-white' : 'text-amber-500'} />
-          </div>
-          <div className="text-left">
-            <span className="block text-sm font-bold">Inactive</span>
-            <span className={`block text-[10px] font-medium ${statusFilter === 'inactive' ? 'text-white/70' : 'text-amber-400'}`}>{counts.inactive} customers</span>
           </div>
         </button>
       </div>

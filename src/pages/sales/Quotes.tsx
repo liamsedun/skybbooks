@@ -301,7 +301,7 @@ export function QuotesPage() {
             <Upload size={14} /> Import CSV
           </button>
           <button onClick={openAddModal} className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-xs font-medium rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200 shadow-sm">
-            <Plus size={14} />New Quote
+            <Plus size={14} />New
           </button>
         </div>
       </div>
@@ -316,7 +316,7 @@ export function QuotesPage() {
         {/* List */}
         <div className={`flex-1 min-w-0 ${selectedId?'hidden lg:block':''}`}>
           <div className="flex flex-wrap gap-3">
-            {(['all','draft','sent','accepted','declined','expired','converted'] as const).map(s=>{
+            {(['all','draft','sent','accepted'] as const).map(s=>{
               const meta=STATUS_META[s]; const Icon=meta.icon; const count=s==='all'?counts.all:(counts.byStatus[s]||0);
               const active=statusFilter===s;
               return (
