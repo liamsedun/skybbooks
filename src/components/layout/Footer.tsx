@@ -35,7 +35,7 @@ export function Footer() {
         <div className="flex items-center gap-2">
           <a
             href="tel:+2348157377000"
-            className="p-2 rounded-xl bg-slate-50 text-slate-400 hover:text-sky-500 hover:bg-sky-50 transition-all border border-slate-100 flex items-center justify-center duration-150 cursor-pointer"
+            className="p-2 rounded-xl bg-purple-50 text-purple-400 hover:text-purple-700 hover:bg-purple-100 transition-all border border-purple-100 flex items-center justify-center duration-150 cursor-pointer"
             title="Call Phone (+234 815 737 7000)"
             aria-label="Call +234 815 737 7000"
           >
@@ -43,7 +43,7 @@ export function Footer() {
           </a>
           <a
             href="mailto:hello@skyaccounting.com.ng"
-            className="p-2 rounded-xl bg-slate-50 text-slate-400 hover:text-sky-500 hover:bg-sky-50 transition-all border border-slate-100 flex items-center justify-center duration-150 cursor-pointer"
+            className="p-2 rounded-xl bg-purple-50 text-purple-400 hover:text-purple-700 hover:bg-purple-100 transition-all border border-purple-100 flex items-center justify-center duration-150 cursor-pointer"
             title="Email: hello@skyaccounting.com.ng"
             aria-label="Email: hello@skyaccounting.com.ng"
           >
@@ -53,7 +53,7 @@ export function Footer() {
             href="https://www.skyaccounting.com.ng"
             target="_blank"
             rel="noopener noreferrer"
-            className="p-2 rounded-xl bg-slate-50 text-slate-400 hover:text-sky-500 hover:bg-sky-50 transition-all border border-slate-100 flex items-center justify-center duration-150 cursor-pointer"
+            className="p-2 rounded-xl bg-purple-50 text-purple-400 hover:text-purple-700 hover:bg-purple-100 transition-all border border-purple-100 flex items-center justify-center duration-150 cursor-pointer"
             title="Website: www.skyaccounting.com.ng"
             aria-label="Website: www.skyaccounting.com.ng"
           >
@@ -66,7 +66,7 @@ export function Footer() {
             href="https://facebook.com/skyhouse"
             target="_blank"
             rel="noopener noreferrer"
-            className="p-2 rounded-xl bg-slate-50 text-slate-400 hover:text-sky-500 hover:bg-sky-50 transition-all border border-slate-100 flex items-center justify-center duration-150 cursor-pointer"
+            className="p-2 rounded-xl bg-purple-50 text-purple-400 hover:text-purple-700 hover:bg-purple-100 transition-all border border-purple-100 flex items-center justify-center duration-150 cursor-pointer"
             title="Facebook Page"
             aria-label="Facebook Profile"
           >
@@ -76,7 +76,7 @@ export function Footer() {
             href="https://twitter.com/skyhouse"
             target="_blank"
             rel="noopener noreferrer"
-            className="p-2 rounded-xl bg-slate-50 text-slate-400 hover:text-sky-500 hover:bg-sky-50 transition-all border border-slate-100 flex items-center justify-center duration-150 cursor-pointer"
+            className="p-2 rounded-xl bg-purple-50 text-purple-400 hover:text-purple-700 hover:bg-purple-100 transition-all border border-purple-100 flex items-center justify-center duration-150 cursor-pointer"
             title="Twitter Stream"
             aria-label="Twitter Profile"
           >
@@ -86,7 +86,7 @@ export function Footer() {
             href="https://linkedin.com/company/skyhouse"
             target="_blank"
             rel="noopener noreferrer"
-            className="p-2 rounded-xl bg-slate-50 text-slate-400 hover:text-sky-500 hover:bg-sky-50 transition-all border border-slate-100 flex items-center justify-center duration-150 cursor-pointer"
+            className="p-2 rounded-xl bg-purple-50 text-purple-400 hover:text-purple-700 hover:bg-purple-100 transition-all border border-purple-100 flex items-center justify-center duration-150 cursor-pointer"
             title="LinkedIn Corporate Profile"
             aria-label="LinkedIn Profile"
           >

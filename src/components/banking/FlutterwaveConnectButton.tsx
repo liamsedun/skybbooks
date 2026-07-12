@@ -142,10 +142,10 @@ export function FlutterwaveConnectButton({
             {error}
           </p>
         )}
-        <p className="text-[9px] text-slate-400 font-medium flex items-center gap-1">
+        <a href="https://mono.co" target="_blank" rel="noopener noreferrer" className="text-[9px] text-slate-400 font-medium flex items-center gap-1 hover:text-purple-600 transition-colors">
           <ExternalLink className="w-2.5 h-2.5" />
           Powered by Mono
-        </p>
+        </a>
       </div>
     </>
   );
