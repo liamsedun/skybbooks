@@ -505,13 +505,13 @@ export function Dashboard({ onNavigate }: { onNavigate: (viewId: string) => void
         {/* Aging Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {/* AR Aging */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5">
+          <div onClick={() => navigate('/reports/aged-receivables')} className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 cursor-pointer hover:shadow-md hover:border-indigo-300 transition-all duration-200">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-sm font-bold text-slate-800">AR Aging</h3>
                 <p className="text-[11px] text-slate-400 mt-0.5">Receivables overdue buckets</p>
               </div>
-              <Clock className="w-4 h-4 text-slate-400" />
+              <ArrowUpRight className="w-4 h-4 text-slate-400" />
             </div>
             {agingBuckets.ar.length > 0 ? (
               <>
@@ -541,13 +541,13 @@ export function Dashboard({ onNavigate }: { onNavigate: (viewId: string) => void
             )}
           </div>
           {/* AP Aging */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5">
+          <div onClick={() => navigate('/reports/aged-payables')} className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 cursor-pointer hover:shadow-md hover:border-indigo-300 transition-all duration-200">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-sm font-bold text-slate-800">AP Aging</h3>
                 <p className="text-[11px] text-slate-400 mt-0.5">Payables overdue buckets</p>
               </div>
-              <Clock className="w-4 h-4 text-slate-400" />
+              <ArrowUpRight className="w-4 h-4 text-slate-400" />
             </div>
             {agingBuckets.ap.length > 0 ? (
               <>
