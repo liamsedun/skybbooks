@@ -32,7 +32,8 @@ import {
   Sparkles,
   Package,
   ArrowRightLeft,
-  TrendingDown
+  TrendingDown,
+  ReceiptText
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -176,6 +177,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     'rep_aged_payables': '/reports/aged-payables',
     'rep_audit_logs': '/reports/audit-logs',
     'rep_custom': '/reports/custom',
+    'rep_tax_computation': '/reports/tax-computation',
     'rep_projects': '/reports/projects',
     'set_organisation': '/settings/organisation',
     'set_invites': '/settings/invites',
@@ -286,6 +288,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
         { name: 'Aged Payables', id: 'rep_aged_payables', icon: FileBarChart },
         { name: 'Audit Logs', id: 'rep_audit_logs', icon: History },
         { name: 'Custom Reports', id: 'rep_custom', icon: FileCode },
+        { name: 'Tax Computation', id: 'rep_tax_computation', icon: ReceiptText },
         { name: 'Project Report', id: 'rep_projects', icon: Briefcase },
       ],
     },

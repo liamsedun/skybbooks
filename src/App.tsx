@@ -65,10 +65,12 @@ import {
   AuditLogsPage,
   ProjectsReportPage,
   CustomReportsPage,
+  TaxComputationPage,
   InvitesSettingsPage,
   IntegrationsSettingsPage
 } from './pages/ModulePlaceholders';
 import { SettingsLayout } from './components/settings/SettingsLayout';
+import { TaxConfigurationPage } from './pages/settings/TaxConfigurationPage';
 import {
   OrganisationProfilePage, BrandingPage, CustomDomainPage, LocationsPage,
   UsersPage, RolesPage, UserPreferencesPage,
@@ -320,6 +322,7 @@ function AppRoutes() {
             <Route path="/reports/audit-logs" element={<AuditLogsPage />} />
           </Route>
           <Route path="/reports/projects" element={<ProjectsReportPage />} />
+          <Route path="/reports/tax-computation" element={<TaxComputationPage />} />
           <Route path="/reports/custom" element={<CustomReportsPage />} />
 
           {/* System metadata & account preferences */}
@@ -349,6 +352,7 @@ function AppRoutes() {
             <Route path="workflow-logs" element={<WorkflowLogsPage />} />
             <Route path="schedules" element={<SchedulesPage />} />
             <Route path="taxes" element={<TaxesPage />} />
+            <Route path="tax" element={<TaxConfigurationPage />} />
             <Route path="contacts" element={<ContactsSettingsPage />} />
             <Route path="items" element={<ItemsSettingsPage />} />
             <Route path="revenue-recognition" element={<RevenueRecognitionPage />} />

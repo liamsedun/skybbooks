@@ -713,6 +713,147 @@ export async function runMigration() {
     await db.execute(sql`ALTER TABLE bank_accounts ADD COLUMN IF NOT EXISTS mono_account_status text DEFAULT 'pending'`);
     console.log('[Migration] Added mono_account_status column to bank_accounts.');
 
+    // ── Nigerian Tax Engine Migrations ──
+
+    // Add tax_provision to journal_source enum
+    await db.execute(sql`ALTER TYPE journal_source ADD VALUE IF NOT EXISTS 'tax_provision'`);
+
+    // Create tax_size_class, capital_allowance_class, tax_loss_status, tax_computation_status enums
+    const taxEnums = [
+      ['tax_size_class', ['small', 'medium', 'large']],
+      ['capital_allowance_class', ['industrial_building','non_industrial_building','plant_machinery_general','plant_machinery_agric','motor_vehicle','furniture_fittings','computer_it_equipment','intangible_asset']],
+      ['tax_loss_status', ['available', 'utilised', 'expired']],
+      ['tax_computation_status', ['draft', 'submitted', 'assessed']],
+    ];
+    for (const [enumName, values] of taxEnums) {
+      const vals = (values as string[]).map(v => `'${v}'`).join(', ');
+      await db.execute(sql`
+        DO $$ BEGIN
+          CREATE TYPE ${sql.raw(enumName as string)} AS ENUM (${sql.raw(vals)});
+        EXCEPTION
+          WHEN duplicate_object THEN NULL;
+        END $$;
+      `);
+    }
+
+    // Create tax_configurations table
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS tax_configurations (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        tax_year text NOT NULL,
+        size_class tax_size_class,
+        incorporation_date timestamp,
+        fiscal_year_end text DEFAULT 'Dec 31' NOT NULL,
+        pioneer_status boolean DEFAULT false NOT NULL,
+        pioneer_start_date timestamp,
+        pioneer_end_date timestamp,
+        minimum_tax_exempt_reason text,
+        nitda_applicable boolean DEFAULT false NOT NULL,
+        ppt_applicable boolean DEFAULT false NOT NULL,
+        export_exemption boolean DEFAULT false NOT NULL,
+        agricultural_exemption boolean DEFAULT false NOT NULL,
+        foreign_equity_exemption boolean DEFAULT false NOT NULL,
+        first_four_years_exemption boolean DEFAULT false NOT NULL,
+        created_at timestamp DEFAULT now() NOT NULL,
+        updated_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    console.log('[Migration] Created tax_configurations table.');
+
+    // Create capital_allowance_schedule table
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS capital_allowance_schedule (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        tax_year text NOT NULL,
+        asset_name text NOT NULL,
+        asset_class capital_allowance_class NOT NULL,
+        cost_price bigint DEFAULT 0 NOT NULL,
+        purchase_date timestamp NOT NULL,
+        initial_allowance_rate numeric(5,2),
+        initial_allowance_amount bigint DEFAULT 0 NOT NULL,
+        opening_wdv bigint DEFAULT 0 NOT NULL,
+        annual_allowance_rate numeric(5,2),
+        annual_allowance_amount bigint DEFAULT 0 NOT NULL,
+        closing_wdv bigint DEFAULT 0 NOT NULL,
+        disposal_proceeds bigint DEFAULT 0,
+        balancing_allowance bigint DEFAULT 0,
+        balancing_charge bigint DEFAULT 0,
+        is_disposed boolean DEFAULT false NOT NULL,
+        disposal_date timestamp,
+        created_at timestamp DEFAULT now() NOT NULL,
+        updated_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    console.log('[Migration] Created capital_allowance_schedule table.');
+
+    // Create tax_losses table
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS tax_losses (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        tax_year text NOT NULL,
+        loss_amount bigint DEFAULT 0 NOT NULL,
+        utilised_amount bigint DEFAULT 0 NOT NULL,
+        available_amount bigint DEFAULT 0 NOT NULL,
+        status tax_loss_status DEFAULT 'available' NOT NULL,
+        created_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    console.log('[Migration] Created tax_losses table.');
+
+    // Create tax_computations table
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS tax_computations (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        tax_year text NOT NULL,
+        period_start timestamp NOT NULL,
+        period_end timestamp NOT NULL,
+        gross_turnover bigint DEFAULT 0 NOT NULL,
+        accounting_pbt bigint DEFAULT 0 NOT NULL,
+        total_addbacks bigint DEFAULT 0 NOT NULL,
+        total_deductions bigint DEFAULT 0 NOT NULL,
+        assessable_profit bigint DEFAULT 0 NOT NULL,
+        cit_rate numeric(5,2) DEFAULT 0,
+        cit_from_profits bigint DEFAULT 0 NOT NULL,
+        minimum_tax bigint DEFAULT 0 NOT NULL,
+        cit_payable bigint DEFAULT 0 NOT NULL,
+        edt_payable bigint DEFAULT 0 NOT NULL,
+        cgt_payable bigint DEFAULT 0 NOT NULL,
+        nitda_levy bigint DEFAULT 0 NOT NULL,
+        deferred_tax_charge bigint DEFAULT 0 NOT NULL,
+        total_tax_expense bigint DEFAULT 0 NOT NULL,
+        wht_credits_applied bigint DEFAULT 0 NOT NULL,
+        net_cit_payable bigint DEFAULT 0 NOT NULL,
+        journal_entry_id uuid REFERENCES journal_entries(id),
+        status tax_computation_status DEFAULT 'draft' NOT NULL,
+        created_at timestamp DEFAULT now() NOT NULL,
+        updated_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    console.log('[Migration] Created tax_computations table.');
+
+    // Seed missing tax accounts for each org
+    // 301450 - Capital Gains Tax Payable
+    await db.execute(sql`
+      INSERT INTO accounts (id, org_id, code, name, type, sub_type, description, is_system, is_active, system_account_role)
+      SELECT gen_random_uuid(), o.id, '301450', 'Capital Gains Tax Payable', 'liability', 'Current Liabilities',
+             'CGTA – Tax on chargeable gains from asset disposals. Remit to FIRS.', true, true, 'none'
+      FROM organisations o
+      WHERE NOT EXISTS (SELECT 1 FROM accounts a WHERE a.org_id = o.id AND a.code = '301450')
+    `);
+    // 950600 - NITDA Levy Expense
+    await db.execute(sql`
+      INSERT INTO accounts (id, org_id, code, name, type, sub_type, description, is_system, is_active, system_account_role)
+      SELECT gen_random_uuid(), o.id, '950600', 'NITDA Levy Expense', 'expense', 'tax_expense',
+             'NITDA Act – 1% of PBT for IT sector companies. Deductible for CIT.', true, true, 'none'
+      FROM organisations o
+      WHERE NOT EXISTS (SELECT 1 FROM accounts a WHERE a.org_id = o.id AND a.code = '950600')
+    `);
+    console.log('[Migration] Seeded tax accounts 301450 (CGT Payable) and 950600 (NITDA Levy Expense).');
+
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema push:', err);

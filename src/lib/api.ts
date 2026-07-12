@@ -1065,6 +1065,45 @@ export const projectsApi = {
 };
 
 // 10. VAT Endpoints
+export const taxApi = {
+  getConfiguration: async (params?: { taxYear?: string }) => {
+    const res = await api.get('/tax/configuration', { params });
+    return res.data;
+  },
+  updateConfiguration: async (data: any) => {
+    const res = await api.put('/tax/configuration', data);
+    return res.data;
+  },
+  compute: async (params: { taxYear?: string; startDate?: string; endDate?: string }) => {
+    const res = await api.get('/tax/compute', { params });
+    return res.data;
+  },
+  post: async (data: { taxYear: string; startDate: string; endDate: string; confirmed?: boolean }) => {
+    const res = await api.post('/tax/post', data);
+    return res.data;
+  },
+  getCapitalAllowances: async (params?: { taxYear?: string }) => {
+    const res = await api.get('/tax/capital-allowances', { params });
+    return res.data;
+  },
+  saveCapitalAllowance: async (data: any) => {
+    const res = await api.post('/tax/capital-allowances', data);
+    return res.data;
+  },
+  deleteCapitalAllowance: async (id: string) => {
+    const res = await api.delete(`/tax/capital-allowances/${id}`);
+    return res.data;
+  },
+  getLosses: async () => {
+    const res = await api.get('/tax/losses');
+    return res.data;
+  },
+  getSchedule: async () => {
+    const res = await api.get('/tax/schedule');
+    return res.data;
+  },
+};
+
 export const vatApi = {
   getReturn: async (params: { startDate: string; endDate: string }) => {
     const res = await api.get('/vat/return', { params });

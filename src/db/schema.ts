@@ -46,7 +46,8 @@ export const journalSourceEnum = pgEnum('journal_source', [
   'opening_balance',
   'opening_stock',
   'transfer',
-  'vat_settlement'
+  'vat_settlement',
+  'tax_provision'
 ]);
 
 export const contactTypeEnum = pgEnum('contact_type', ['customer', 'vendor', 'both']);
@@ -220,6 +221,35 @@ export const budgetStatusEnum = pgEnum('budget_status', [
   'draft',
   'active',
   'archived'
+]);
+
+export const taxSizeClassEnum = pgEnum('tax_size_class', [
+  'small',
+  'medium',
+  'large'
+]);
+
+export const capitalAllowanceClassEnum = pgEnum('capital_allowance_class', [
+  'industrial_building',
+  'non_industrial_building',
+  'plant_machinery_general',
+  'plant_machinery_agric',
+  'motor_vehicle',
+  'furniture_fittings',
+  'computer_it_equipment',
+  'intangible_asset'
+]);
+
+export const taxLossStatusEnum = pgEnum('tax_loss_status', [
+  'available',
+  'utilised',
+  'expired'
+]);
+
+export const taxComputationStatusEnum = pgEnum('tax_computation_status', [
+  'draft',
+  'submitted',
+  'assessed'
 ]);
 
 // ==========================================
@@ -740,6 +770,129 @@ export const vatReturnLines = pgTable('vat_return_lines', {
   isRecoverable: boolean('is_recoverable').default(true).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
+
+// --- Tax Configuration ---
+
+export const taxConfigurations = pgTable('tax_configurations', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  taxYear: text('tax_year').notNull(),
+  sizeClass: taxSizeClassEnum('size_class'),
+  incorporationDate: timestamp('incorporation_date'),
+  fiscalYearEnd: text('fiscal_year_end').default('Dec 31').notNull(),
+  pioneerStatus: boolean('pioneer_status').default(false).notNull(),
+  pioneerStartDate: timestamp('pioneer_start_date'),
+  pioneerEndDate: timestamp('pioneer_end_date'),
+  minimumTaxExemptReason: text('minimum_tax_exempt_reason'),
+  nitdaApplicable: boolean('nitda_applicable').default(false).notNull(),
+  pptApplicable: boolean('ppt_applicable').default(false).notNull(),
+  exportExemption: boolean('export_exemption').default(false).notNull(),
+  agriculturalExemption: boolean('agricultural_exemption').default(false).notNull(),
+  foreignEquityExemption: boolean('foreign_equity_exemption').default(false).notNull(),
+  firstFourYearsExemption: boolean('first_four_years_exemption').default(false).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+});
+
+export const taxConfigurationsRelations = relations(taxConfigurations, ({ one }) => ({
+  organisation: one(organisations, {
+    fields: [taxConfigurations.orgId],
+    references: [organisations.id]
+  })
+}));
+
+// --- Capital Allowance Schedule ---
+
+export const capitalAllowanceSchedule = pgTable('capital_allowance_schedule', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  taxYear: text('tax_year').notNull(),
+  assetName: text('asset_name').notNull(),
+  assetClass: capitalAllowanceClassEnum('asset_class').notNull(),
+  costPrice: bigint('cost_price', { mode: 'number' }).default(0).notNull(),
+  purchaseDate: timestamp('purchase_date').notNull(),
+  initialAllowanceRate: numeric('initial_allowance_rate', { precision: 5, scale: 2 }),
+  initialAllowanceAmount: bigint('initial_allowance_amount', { mode: 'number' }).default(0).notNull(),
+  openingWDV: bigint('opening_wdv', { mode: 'number' }).default(0).notNull(),
+  annualAllowanceRate: numeric('annual_allowance_rate', { precision: 5, scale: 2 }),
+  annualAllowanceAmount: bigint('annual_allowance_amount', { mode: 'number' }).default(0).notNull(),
+  closingWDV: bigint('closing_wdv', { mode: 'number' }).default(0).notNull(),
+  disposalProceeds: bigint('disposal_proceeds', { mode: 'number' }).default(0),
+  balancingAllowance: bigint('balancing_allowance', { mode: 'number' }).default(0),
+  balancingCharge: bigint('balancing_charge', { mode: 'number' }).default(0),
+  isDisposed: boolean('is_disposed').default(false).notNull(),
+  disposalDate: timestamp('disposal_date'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+});
+
+export const capitalAllowanceScheduleRelations = relations(capitalAllowanceSchedule, ({ one }) => ({
+  organisation: one(organisations, {
+    fields: [capitalAllowanceSchedule.orgId],
+    references: [organisations.id]
+  })
+}));
+
+// --- Tax Losses ---
+
+export const taxLosses = pgTable('tax_losses', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  taxYear: text('tax_year').notNull(),
+  lossAmount: bigint('loss_amount', { mode: 'number' }).default(0).notNull(),
+  utilisedAmount: bigint('utilised_amount', { mode: 'number' }).default(0).notNull(),
+  availableAmount: bigint('available_amount', { mode: 'number' }).default(0).notNull(),
+  status: taxLossStatusEnum('status').default('available').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+export const taxLossesRelations = relations(taxLosses, ({ one }) => ({
+  organisation: one(organisations, {
+    fields: [taxLosses.orgId],
+    references: [organisations.id]
+  })
+}));
+
+// --- Tax Computations ---
+
+export const taxComputations = pgTable('tax_computations', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  taxYear: text('tax_year').notNull(),
+  periodStart: timestamp('period_start').notNull(),
+  periodEnd: timestamp('period_end').notNull(),
+  grossTurnover: bigint('gross_turnover', { mode: 'number' }).default(0).notNull(),
+  accountingPBT: bigint('accounting_pbt', { mode: 'number' }).default(0).notNull(),
+  totalAddbacks: bigint('total_addbacks', { mode: 'number' }).default(0).notNull(),
+  totalDeductions: bigint('total_deductions', { mode: 'number' }).default(0).notNull(),
+  assessableProfit: bigint('assessable_profit', { mode: 'number' }).default(0).notNull(),
+  citRate: numeric('cit_rate', { precision: 5, scale: 2 }).default('0'),
+  citFromProfits: bigint('cit_from_profits', { mode: 'number' }).default(0).notNull(),
+  minimumTax: bigint('minimum_tax', { mode: 'number' }).default(0).notNull(),
+  citPayable: bigint('cit_payable', { mode: 'number' }).default(0).notNull(),
+  edtPayable: bigint('edt_payable', { mode: 'number' }).default(0).notNull(),
+  cgtPayable: bigint('cgt_payable', { mode: 'number' }).default(0).notNull(),
+  nitdaLevy: bigint('nitda_levy', { mode: 'number' }).default(0).notNull(),
+  deferredTaxCharge: bigint('deferred_tax_charge', { mode: 'number' }).default(0).notNull(),
+  totalTaxExpense: bigint('total_tax_expense', { mode: 'number' }).default(0).notNull(),
+  whtCreditsApplied: bigint('wht_credits_applied', { mode: 'number' }).default(0).notNull(),
+  netCitPayable: bigint('net_cit_payable', { mode: 'number' }).default(0).notNull(),
+  journalEntryId: uuid('journal_entry_id').references(() => journalEntries.id),
+  status: taxComputationStatusEnum('status').default('draft').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+});
+
+export const taxComputationsRelations = relations(taxComputations, ({ one }) => ({
+  organisation: one(organisations, {
+    fields: [taxComputations.orgId],
+    references: [organisations.id]
+  }),
+  journalEntry: one(journalEntries, {
+    fields: [taxComputations.journalEntryId],
+    references: [journalEntries.id]
+  })
+}));
 
 // --- Banking ---
 
@@ -1719,6 +1872,10 @@ export const db = drizzle(pool, {
     closedPeriods,
     vatPeriods,
     vatReturnLines,
+    taxConfigurations,
+    capitalAllowanceSchedule,
+    taxLosses,
+    taxComputations,
 
     // Relations
     organisationsRelations,
@@ -1759,7 +1916,11 @@ export const db = drizzle(pool, {
     budgetLinesRelations,
     auditLogRelations,
     currencyRatesRelations,
-    closedPeriodsRelations
+    closedPeriodsRelations,
+    taxConfigurationsRelations,
+    capitalAllowanceScheduleRelations,
+    taxLossesRelations,
+    taxComputationsRelations
   }
 });
 
@@ -1809,6 +1970,10 @@ export const schema = {
   budgetLines,
   auditLog,
   currencyRates,
-  closedPeriods
+  closedPeriods,
+  taxConfigurations,
+  capitalAllowanceSchedule,
+  taxLosses,
+  taxComputations
 };
 
