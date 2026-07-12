@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { auditLogApi, api, orgApi, printWindow } from '../../lib/api';
-import { Loader2, AlertCircle, Search, Download, RefreshCw, Shield, ShieldAlert, AlertTriangle, Info, History, ExternalLink } from 'lucide-react';
+import { Loader2, AlertCircle, Search, Download, RefreshCw, Shield, ShieldAlert, AlertTriangle, Info, History, ExternalLink, ChevronDown, ChevronUp, Eye, Edit3, Trash2, FileText } from 'lucide-react';
 import { exportToCsv } from '../../lib/csvTemplates';
 
 function fmtDate(d: string): string {
@@ -13,6 +13,73 @@ function fmtDateShort(d: string): string {
 }
 function fmtNaira(kobo: number): string {
   return `₦${(kobo / 100).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+const ENTITY_ROUTES: Record<string, { path: string; label: (id: string) => string }> = {
+  contact: { path: '/sales/customers', label: () => 'View Customer' },
+  customer: { path: '/sales/customers', label: () => 'View Customer' },
+  vendor: { path: '/purchases/vendors', label: () => 'View Vendor' },
+  invoice: { path: '/sales/invoices', label: (id) => `View Invoice` },
+  bill: { path: '/purchases/bills', label: (id) => `View Bill` },
+  payment: { path: '/sales/payments', label: () => 'View Payment' },
+  expense: { path: '/purchases/expenses', label: () => 'View Expense' },
+  'journal-entry': { path: '/accounting/journal', label: () => 'View in GL' },
+  journal_entry: { path: '/accounting/journal', label: () => 'View in GL' },
+  'journal-entry-line': { path: '/accounting/journal', label: () => 'View in GL' },
+  quote: { path: '/sales/quotes', label: () => 'View Quote' },
+  'sales-order': { path: '/sales/orders', label: () => 'View Order' },
+  'purchase-order': { path: '/purchases/orders', label: () => 'View Order' },
+  'vendor-credit': { path: '/purchases/vendor-credits', label: () => 'View Credit' },
+  'credit-note': { path: '/sales/credit-notes', label: () => 'View Credit Note' },
+  'fixed-asset': { path: '/accounting/fixed-assets', label: () => 'View Asset' },
+  'bank-account': { path: '/banking/accounts', label: () => 'View Account' },
+  organisation: { path: '/settings', label: () => 'View Settings' },
+  user: { path: '/settings/users', label: () => 'View User' },
+  'ai_service': { path: '', label: () => '' },
+};
+
+const ACTION_STYLES: Record<string, { icon: any; color: string; bg: string; border: string }> = {
+  create: { icon: Edit3, color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200' },
+  update: { icon: Edit3, color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200' },
+  delete: { icon: Trash2, color: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200' },
+  AI_CALL: { icon: FileText, color: 'text-indigo-700', bg: 'bg-indigo-50', border: 'border-indigo-200' },
+};
+
+function getActionStyle(action: string) {
+  const lower = action.toLowerCase();
+  if (lower.startsWith('ai_')) return ACTION_STYLES.AI_CALL;
+  if (lower.startsWith('create') || lower.includes('create')) return ACTION_STYLES.create;
+  if (lower.startsWith('update') || lower.includes('update')) return ACTION_STYLES.update;
+  if (lower.startsWith('delete') || lower.includes('delete')) return ACTION_STYLES.delete;
+  return { icon: Eye, color: 'text-slate-700', bg: 'bg-slate-50', border: 'border-slate-200' };
+}
+
+function DiffView({ oldValues, newValues }: { oldValues: Record<string, any>; newValues: Record<string, any> }) {
+  const allKeys = [...new Set([...Object.keys(oldValues || {}), ...Object.keys(newValues || {})])]
+    .filter(k => k !== 'updatedAt' && k !== 'createdAt');
+  if (allKeys.length === 0) return <span className="text-xs text-slate-400 italic">No changed fields</span>;
+  return (
+    <div className="text-xs font-mono space-y-0.5">
+      {allKeys.map(key => {
+        const oldVal = oldValues?.[key];
+        const newVal = newValues?.[key];
+        const changed = JSON.stringify(oldVal) !== JSON.stringify(newVal);
+        return (
+          <div key={key} className={`flex gap-2 ${changed ? '' : 'opacity-40'}`}>
+            <span className="text-slate-500 min-w-[100px]">{key}:</span>
+            {changed ? (
+              <>
+                <span className="text-red-600 line-through flex-1">{oldVal === undefined ? '∅' : JSON.stringify(oldVal)}</span>
+                <span className="text-emerald-600 flex-1">{newVal === undefined ? '∅' : JSON.stringify(newVal)}</span>
+              </>
+            ) : (
+              <span className="text-slate-600 flex-1">{JSON.stringify(oldVal)}</span>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 interface Anomaly {
@@ -57,6 +124,7 @@ export function AuditLogsPage() {
   const [actionFilter, setActionFilter] = useState('');
   const [entityFilter, setEntityFilter] = useState('');
   const [limit] = useState(200);
+  const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [threatFilter, setThreatFilter] = useState<string>('all');
   const [anomalies, setAnomalies] = useState<Anomaly[]>([]);
@@ -167,8 +235,8 @@ export function AuditLogsPage() {
 
   function exportAuditLogsCSV() {
     const today = new Date().toISOString().split('T')[0];
-    const headers = ['Timestamp', 'Action', 'Entity Type', 'Entity ID', 'User', 'IP Address'];
-    const rows = logs.map((l: any) => [l.createdAt ? new Date(l.createdAt).toLocaleString('en-GB') : '', l.action||'', l.entityType||'', l.entityId||'', l.user?.name||l.user?.email||'', l.ipAddress||'']);
+    const headers = ['Timestamp', 'Action', 'Entity Type', 'Entity ID', 'User', 'IP Address', 'User Agent'];
+    const rows = logs.map((l: any) => [l.createdAt ? new Date(l.createdAt).toLocaleString('en-GB') : '', l.action||'', l.entityType||'', l.entityId||'', l.user?.name||l.user?.email||'', l.ipAddress||'', l.userAgent||'']);
     exportToCsv(`audit_logs_${today}.csv`, headers, rows);
   }
 
@@ -192,7 +260,7 @@ export function AuditLogsPage() {
 
       const list = data?.data || [];
       const rows = list.map((l: any) =>
-        `<tr><td style="padding:6px 10px;font-size:11px;border-bottom:1px solid #f1f5f9">${new Date(l.createdAt).toLocaleDateString('en-GB')}</td><td style="padding:6px 10px;font-size:11px;border-bottom:1px solid #f1f5f9"><span style="background:#f1f5f9;padding:2px 8px;border-radius:999px;font-size:10px">${l.action}</span></td><td style="padding:6px 10px;font-size:11px;border-bottom:1px solid #f1f5f9">${l.entityType}</td><td style="padding:6px 10px;font-size:11px;font-family:monospace;border-bottom:1px solid #f1f5f9">${l.entityId||'—'}</td><td style="padding:6px 10px;font-size:11px;border-bottom:1px solid #f1f5f9">${l.user?.name||l.user?.email||'—'}</td><td style="padding:6px 10px;font-size:11px;border-bottom:1px solid #f1f5f9">${l.ipAddress||'—'}</td></tr>`
+        `<tr><td style="padding:6px 10px;font-size:11px;border-bottom:1px solid #f1f5f9">${new Date(l.createdAt).toLocaleDateString('en-GB')}</td><td style="padding:6px 10px;font-size:11px;border-bottom:1px solid #f1f5f9"><span style="background:#f1f5f9;padding:2px 8px;border-radius:999px;font-size:10px">${l.action}</span></td><td style="padding:6px 10px;font-size:11px;border-bottom:1px solid #f1f5f9">${l.entityType}</td><td style="padding:6px 10px;font-size:11px;font-family:monospace;border-bottom:1px solid #f1f5f9">${l.entityId||'—'}</td><td style="padding:6px 10px;font-size:11px;border-bottom:1px solid #f1f5f9">${l.user?.name||l.user?.email||'—'}</td><td style="padding:6px 10px;font-size:11px;border-bottom:1px solid #f1f5f9">${l.ipAddress||'—'}</td><td style="padding:6px 10px;font-size:11px;color:#94a3b8;border-bottom:1px solid #f1f5f9">${l.userAgent ? l.userAgent.substring(0, 50) : '—'}</td></tr>`
       ).join('');
       printWindow('Audit Logs',
         `<div style="text-align:center;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #e2e8f0">
@@ -211,8 +279,9 @@ export function AuditLogsPage() {
             <th style="padding:8px 10px;font-size:10px;font-weight:600;color:#64748b;text-align:left;text-transform:uppercase">Entity ID</th>
             <th style="padding:8px 10px;font-size:10px;font-weight:600;color:#64748b;text-align:left;text-transform:uppercase">User</th>
             <th style="padding:8px 10px;font-size:10px;font-weight:600;color:#64748b;text-align:left;text-transform:uppercase">IP Address</th>
+            <th style="padding:8px 10px;font-size:10px;font-weight:600;color:#64748b;text-align:left;text-transform:uppercase">User Agent</th>
           </tr></thead>
-          <tbody>${rows||'<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:20px">No records</td></tr>'}</tbody>
+          <tbody>${rows||'<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:20px">No records</td></tr>'}</tbody>
         </table>`,
         `${list.length} entries`
       );
@@ -271,25 +340,80 @@ export function AuditLogsPage() {
                   <tr>
                     <th className="text-left px-3 py-3">Timestamp</th>
                     <th className="text-left px-3 py-3">Action</th>
-                    <th className="text-left px-3 py-3">Entity Type</th>
-                    <th className="text-left px-3 py-3">Entity ID</th>
+                    <th className="text-left px-3 py-3">Entity</th>
+                    <th className="text-left px-3 py-3">Changes</th>
                     <th className="text-left px-3 py-3">User</th>
-                    <th className="text-left px-3 py-3">IP Address</th>
+                    <th className="text-left px-3 py-3">Source</th>
+                    <th className="text-left px-3 py-3"></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {logs.map((log: any) => (
-                    <tr key={log.id} className="border-t border-slate-100 hover:bg-slate-50/50 even:bg-slate-50/50 transition-colors">
-                      <td className="px-3 py-3 text-slate-600 whitespace-nowrap">{fmtDate(log.createdAt)}</td>
-                      <td className="px-3 py-3"><span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border border-slate-200 bg-slate-100 text-slate-600">{log.action}</span></td>
-                      <td className="px-3 py-3 text-slate-600">{log.entityType}</td>
-                      <td className="px-3 py-3 font-mono text-xs text-slate-500 max-w-[120px] truncate">{log.entityId || '—'}</td>
-                      <td className="px-3 py-3 text-slate-600">{log.user?.name || log.user?.email || '—'}</td>
-                      <td className="px-3 py-3 text-slate-500">{log.ipAddress || '—'}</td>
-                    </tr>
-                  ))}
+                  {logs.map((log: any) => {
+                    const as = getActionStyle(log.action);
+                    const ActionIcon = as.icon;
+                    const entityRoute = ENTITY_ROUTES[log.entityType] || ENTITY_ROUTES[log.entityType?.replace(/_/g, '-')];
+                    const hasDiff = log.oldValues && log.newValues && Object.keys(log.oldValues).length > 0;
+                    const isExpanded = expandedRow === log.id;
+                    return (
+                      <React.Fragment key={log.id}>
+                        <tr className={`border-t border-slate-100 transition-colors ${isExpanded ? 'bg-indigo-50/50' : 'hover:bg-slate-50/50 even:bg-slate-50/50'}`}>
+                          <td className="px-3 py-3 text-slate-600 whitespace-nowrap text-xs">{fmtDate(log.createdAt)}</td>
+                          <td className="px-3 py-3">
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${as.border} ${as.bg} ${as.color}`}>
+                              <ActionIcon className="w-3 h-3" /> {log.action}
+                            </span>
+                          </td>
+                          <td className="px-3 py-3">
+                            <div className="text-slate-600 text-xs font-medium">{log.entityType}</div>
+                            {log.entityId && entityRoute?.path ? (
+                              <Link to={`${entityRoute.path}/${log.entityId}`} className="text-indigo-600 hover:text-indigo-800 hover:underline text-[11px] font-mono inline-flex items-center gap-1">
+                                {log.entityId.slice(0, 8)}… <ExternalLink className="w-3 h-3" />
+                              </Link>
+                            ) : (
+                            <span className="text-slate-400 text-[11px] font-mono">{log.entityId ? log.entityId.slice(0, 8) + '…' : '—'}</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-3">
+                            {hasDiff ? (
+                              <button onClick={() => setExpandedRow(isExpanded ? null : log.id)} className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-medium">
+                                {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                                {isExpanded ? 'Hide' : `${Object.keys(log.newValues || {}).length} fields`}
+                              </button>
+                            ) : (
+                              <span className="text-xs text-slate-400">—</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-3 text-xs text-slate-600">{log.user?.name || log.user?.email || '—'}</td>
+                          <td className="px-3 py-3 text-xs text-slate-400">
+                            <div>{log.ipAddress || '—'}</div>
+                            {log.userAgent && <div className="text-[10px] text-slate-300 truncate max-w-[120px]" title={log.userAgent}>{log.userAgent.slice(0, 40)}…</div>}
+                          </td>
+                          <td className="px-3 py-3">
+                            {entityRoute?.path && log.entityId && (
+                              <Link to={`${entityRoute.path}/${log.entityId}`}
+                                className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 hover:underline whitespace-nowrap">
+                                <Eye className="w-3 h-3" /> View
+                              </Link>
+                            )}
+                          </td>
+                        </tr>
+                        {isExpanded && hasDiff && (
+                          <tr className="bg-slate-50 border-t border-indigo-100">
+                            <td colSpan={7} className="px-3 py-4">
+                              <div className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">Field Changes</div>
+                              <DiffView oldValues={log.oldValues} newValues={log.newValues} />
+                              <div className="mt-2 pt-2 border-t border-slate-200 flex items-center gap-2 text-[11px] text-slate-500">
+                                <span className="text-red-600">◀ strikethrough</span> = old value
+                                <span className="text-emerald-600 ml-2">▶</span> = new value
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
                   {logs.length === 0 && (
-                    <tr><td colSpan={6} className="px-3 py-8 text-center text-slate-400">No audit log entries found.</td></tr>
+                    <tr><td colSpan={7} className="px-3 py-8 text-center text-slate-400">No audit log entries found.</td></tr>
                   )}
                 </tbody>
               </table>

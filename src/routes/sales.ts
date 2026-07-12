@@ -41,6 +41,7 @@ import {
   deleteRecurringInvoice,
   generateInvoiceFromTemplate
 } from '../services/recurring.service';
+import { createAuditLog, extractReqMeta } from '../services/audit.service';
 
 const router = Router();
 
@@ -257,6 +258,7 @@ router.post('/invoices', async (req: AuthenticatedRequest, res: Response, next: 
     const body = createInvoiceSchema.parse(req.body);
 
     const invoice = await createInvoice({ ...body, orgId }, userId);
+    createAuditLog({ orgId, userId, action: 'create', entityType: 'invoice', entityId: invoice.id, newValues: { invoiceNumber: invoice.invoiceNumber, total: invoice.total, customerId: body.customerId }, ...extractReqMeta(req) });
     return res.status(201).json(invoice);
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -342,6 +344,7 @@ router.post('/invoices/:id/void', async (req: AuthenticatedRequest, res: Respons
     const { id } = req.params;
 
     const voided = await voidInvoice(id, userId);
+    createAuditLog({ orgId: req.user!.orgId!, userId, action: 'void', entityType: 'invoice', entityId: id, newValues: { status: 'void' }, ...extractReqMeta(req) });
     return res.status(200).json(voided);
   } catch (err) {
     return next(err);
@@ -653,6 +656,7 @@ router.get('/customers', async (req: AuthenticatedRequest, res: Response, next: 
 router.post('/customers', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const orgId = req.user!.orgId!;
+    const userId = req.user!.userId;
     const body = createCustomerSchema.parse(req.body);
 
     // Check for existing customer with same name to prevent duplicates on re-import
@@ -680,6 +684,7 @@ router.post('/customers', async (req: AuthenticatedRequest, res: Response, next:
         })
         .where(eq(contacts.id, existing.id))
         .returning();
+      createAuditLog({ orgId, userId, action: 'update', entityType: 'customer', entityId: existing.id, oldValues: { name: existing.name }, newValues: { name: body.name, ...body }, ...extractReqMeta(req) });
       return res.status(200).json(updated);
     }
 
@@ -702,6 +707,7 @@ router.post('/customers', async (req: AuthenticatedRequest, res: Response, next:
       })
       .returning();
 
+    createAuditLog({ orgId, userId, action: 'create', entityType: 'customer', entityId: customer.id, newValues: { name: customer.name, customerCode: customer.customerCode, email: customer.email }, ...extractReqMeta(req) });
     return res.status(201).json(customer);
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -738,6 +744,7 @@ router.get('/customers/:id', async (req: AuthenticatedRequest, res: Response, ne
 router.patch('/customers/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const orgId = req.user!.orgId!;
+    const userId = req.user!.userId;
     const { id } = req.params;
     const body = updateCustomerSchema.parse(req.body);
 
@@ -748,6 +755,7 @@ router.patch('/customers/:id', async (req: AuthenticatedRequest, res: Response, 
       .returning();
 
     if (!customer) throw new AppError('Customer was not found or belongs to another org.', 404);
+    createAuditLog({ orgId, userId, action: 'update', entityType: 'customer', entityId: id, newValues: body, ...extractReqMeta(req) });
     return res.status(200).json(customer);
   } catch (err) {
     if (err instanceof z.ZodError) {

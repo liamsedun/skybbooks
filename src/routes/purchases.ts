@@ -33,6 +33,7 @@ import {
   listBills,
   getBillAgingReport
 } from '../services/bill.service';
+import { createAuditLog, extractReqMeta } from '../services/audit.service';
 import {
   recordPaymentMade,
   updatePaymentMade,
@@ -243,6 +244,7 @@ router.post('/bills', async (req: AuthenticatedRequest, res: Response, next: Nex
     const body = createBillSchema.parse(req.body);
 
     const bill = await createBill({ ...body, orgId }, userId);
+    createAuditLog({ orgId, userId, action: 'create', entityType: 'bill', entityId: bill.id, newValues: { vendorId: body.vendorId, total: bill.total }, ...extractReqMeta(req) });
     return res.status(201).json(bill);
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -313,6 +315,7 @@ router.post('/bills/:id/void', async (req: AuthenticatedRequest, res: Response, 
     const { id } = req.params;
 
     const voided = await voidBill(id, userId);
+    createAuditLog({ orgId: req.user!.orgId!, userId, action: 'void', entityType: 'bill', entityId: id, newValues: { status: 'void' }, ...extractReqMeta(req) });
     return res.status(200).json(voided);
   } catch (err) {
     return next(err);
@@ -787,6 +790,7 @@ router.post('/vendors/import-csv', async (req: AuthenticatedRequest, res: Respon
 router.post('/vendors', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const orgId = req.user!.orgId!;
+    const userId = req.user!.userId;
     const body = createVendorSchema.parse(req.body);
 
     const [vendor] = await db
@@ -799,6 +803,7 @@ router.post('/vendors', async (req: AuthenticatedRequest, res: Response, next: N
       })
       .returning();
 
+    createAuditLog({ orgId, userId, action: 'create', entityType: 'vendor', entityId: vendor.id, newValues: { name: vendor.name, email: vendor.email }, ...extractReqMeta(req) });
     return res.status(201).json(vendor);
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -833,6 +838,7 @@ router.get('/vendors/:id', async (req: AuthenticatedRequest, res: Response, next
 router.patch('/vendors/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const orgId = req.user!.orgId!;
+    const userId = req.user!.userId;
     const { id } = req.params;
     const body = updateVendorSchema.parse(req.body);
 
@@ -843,6 +849,7 @@ router.patch('/vendors/:id', async (req: AuthenticatedRequest, res: Response, ne
       .returning();
 
     if (!vendor) throw new AppError('Vendor not found or belongs to another org.', 404);
+    createAuditLog({ orgId, userId, action: 'update', entityType: 'vendor', entityId: id, newValues: body, ...extractReqMeta(req) });
     return res.status(200).json(vendor);
   } catch (err) {
     if (err instanceof z.ZodError) {

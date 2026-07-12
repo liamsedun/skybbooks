@@ -5,6 +5,7 @@ import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/au
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
 import { reverseJournalEntry } from '../services/ledger.service';
+import { createAuditLog, extractReqMeta } from '../services/audit.service';
 
 const router = Router();
 router.use(authenticate);
@@ -156,6 +157,7 @@ router.post('/', async (req: AuthenticatedRequest, res: Response, next: NextFunc
       return { ...entry, lines };
     });
 
+    createAuditLog({ orgId, userId, action: 'create', entityType: 'journal-entry', entityId: result.id, newValues: { entryNumber: result.entryNumber, description: result.description, lineCount: result.lines.length }, ...extractReqMeta(req) });
     return res.status(201).json(result);
   } catch (err) {
     if (err instanceof z.ZodError) return next(new AppError(err.issues[0]?.message || 'Validation failed', 400));
@@ -313,6 +315,7 @@ router.post('/:id/reverse', async (req: AuthenticatedRequest, res: Response, nex
 
     const reversal = await reverseJournalEntry(id, new Date(), userId);
 
+    createAuditLog({ orgId, userId, action: 'reverse', entityType: 'journal-entry', entityId: id, newValues: { reversedByEntryId: reversal?.id }, oldValues: { isReversed: false }, ...extractReqMeta(req) });
     return res.status(200).json({ message: 'Entry reversed successfully.', reversal });
   } catch (err) { return next(err); }
 });

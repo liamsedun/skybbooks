@@ -1,12 +1,13 @@
 import { Router, Response, NextFunction } from 'express';
 import { db, auditLog, users } from '../db/schema';
-import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
+import { authenticate, requireOrg, requireRole, AuthenticatedRequest } from '../middleware/auth';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
 const router = Router();
 router.use(authenticate);
 router.use(requireOrg);
+router.use(requireRole('admin'));
 
 const querySchema = z.object({
   action: z.string().optional(),
@@ -37,6 +38,7 @@ router.get('/', async (req: AuthenticatedRequest, res: Response, next: NextFunct
         oldValues: auditLog.oldValues,
         newValues: auditLog.newValues,
         ipAddress: auditLog.ipAddress,
+        userAgent: auditLog.userAgent,
         createdAt: auditLog.createdAt,
         userId: auditLog.userId,
         user: {

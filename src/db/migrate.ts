@@ -701,6 +701,12 @@ export async function runMigration() {
       FROM organisations o
       WHERE NOT EXISTS (SELECT 1 FROM accounts a WHERE a.org_id = o.id AND a.code = '812200')
     `);
+    // Add user_agent column to audit_log if not exists
+    await db.execute(sql`ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS user_agent text`);
+    // Create indexes on audit_log for faster queries
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_audit_log_org_created ON audit_log (org_id, created_at DESC)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_audit_log_org_entity ON audit_log (org_id, entity_type, entity_id)`);
+
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema push:', err);

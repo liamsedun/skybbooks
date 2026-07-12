@@ -34,6 +34,7 @@ Maintain and enhance accounting features: fix kobo/naira display, parent-child a
 - **Opening stock TB/IS fix**: `getInventoryValueAsOf()` rewritten to forward approach; Opening Stock in Trial Balance now matches Income Statement (₦103.2M)
 - **Payroll JE restructure**: Added 301501 PAYE Payable, 306000 NHIS Payable, 800301 PAYE Expense accounts; payroll JEs wire through 301500 clearing; employer NHIS (10% of basic) added
 - **balanceSheet bank override → JE-based approach**: Removed `bankMap` from both `getTrialBalance()` and `getBalanceSheet()`; Flutterwave sync no longer sets `currentBalance` directly; manual balance adjust / OB import create JEs through 207000 Bank Clearing Suspense
+- **Audit trail system**: Added `userAgent` column + indexes to `audit_log` schema (`src/db/schema.ts:998`); startup migration creates column+indexes; admin-only guard on `GET /audit-log` + `/pdf` via `requireRole('admin')`; entity-route mapping in `AuditLogsPage.tsx` with collapsible `DiffView` (old→new field changes); action badge colors (create=green, update=amber, delete=red); user-agent and IP display in CSV/PDF exports; wired `createAuditLog()` into 10 key write routes (customer/vendor create+update, invoice/bill create+void, JE create+reverse)
 
 ### In Progress
 - (none)
@@ -52,14 +53,14 @@ Maintain and enhance accounting features: fix kobo/naira display, parent-child a
 - PO status enum extended with `confirmed`, `accepted`, `approved` for the approval workflow
 - CurrencySelector fetches rates via `bankingApi.getCurrencyRates()` and auto-fills fxRate on currency change; rate field editable for manual override
 - `fxRate` sent as `number | undefined` in payloads; `populateFxRate()` on backend handles null/undefined by looking up latest rate
+- Audit logs are immutable append-only; corrections must deep-link to entity edit/reversal rather than modifying logs directly
 
 ## Next Steps
-1. Update ComparativeBalanceSheetTable and inline PDF/CSV/Excel exports for new Balance Sheet IFRS structure
-2. Push to origin/main and verify Render auto-deploy completes
-3. Update detail views (InvoiceDetail, BillDetail, etc.) to display currency + both original and base (NGN) amounts
-4. Test multi-currency transaction flow end-to-end
-5. Investigate Purchase Order unit price bug: AMC Tier 2 item shows extra zero (2,500,000 instead of 250,000) — likely a data issue with the item's stored `purchasePrice` value rather than a code bug
-6. Verify bank reconciliation flow still works after bankMap removal — bank feed transactions are imported as 'unreconciled' and matched against GL-based JEs; clearing account (207000) shows the difference
+1. Push to origin/main and verify Render auto-deploy completes
+2. Update detail views (InvoiceDetail, BillDetail, etc.) to display currency + both original and base (NGN) amounts
+3. Test multi-currency transaction flow end-to-end
+4. Investigate Purchase Order unit price bug: AMC Tier 2 item shows extra zero (2,500,000 instead of 250,000) — likely a data issue with the item's stored `purchasePrice` value rather than a code bug
+5. Verify bank reconciliation flow still works after bankMap removal — bank feed transactions are imported as 'unreconciled' and matched against GL-based JEs; clearing account (207000) shows the difference
 
 ## Critical Context
 - `TrialBalanceRow` type no longer includes `parentId` after revert (field removed from backend type and response)
@@ -82,5 +83,8 @@ Maintain and enhance accounting features: fix kobo/naira display, parent-child a
 - `src/routes/purchases.ts`: `POST /vendors/import-csv` route with CSV parsing, validation, opening balance column
 - `src/pages/sales/Customers.tsx`: Auto-generated read-only customer code (CS-XXXX) in Add/Edit modal
 - `src/routes/sales.ts`: `POST /customers` generates sequential `customerCode` per org
-- `src/db/schema.ts`: `contacts.customerCode` column added
-- `src/db/migrate.ts`: Migration for `customer_code` column
+- `src/db/schema.ts`: `contacts.customerCode` column added; `auditLog` table with `userAgent` column + indexes
+- `src/db/migrate.ts`: Migration for `customer_code` column; migration for `user_agent` column + audit_log indexes
+- `src/services/audit.service.ts`: `createAuditLog()` helper, `extractReqMeta()` for IP/User-Agent extraction
+- `src/routes/auditLog.ts`: Admin-only route guard via `requireRole('admin')`
+- `src/pages/reports/AuditLogsPage.tsx`: Entity deep-links (customers/invoices/bills/etc.), collapsible DiffView for field changes, action badge colors, user-agent display, CSV/PDF with new columns

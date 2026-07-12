@@ -16,6 +16,7 @@ import {
   timestamp,
   numeric,
   jsonb,
+  index,
   type AnyPgColumn
 } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -1005,8 +1006,12 @@ export const auditLog = pgTable('audit_log', {
   oldValues: jsonb('old_values'),
   newValues: jsonb('new_values'),
   ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
   createdAt: timestamp('created_at').defaultNow().notNull()
-});
+}, (table) => ({
+  orgCreatedIdx: index('idx_audit_log_org_created').on(table.orgId, table.createdAt),
+  orgEntityIdx: index('idx_audit_log_org_entity').on(table.orgId, table.entityType, table.entityId),
+}));
 
 export const currencyRates = pgTable('currency_rates', {
   id: uuid('id').defaultRandom().primaryKey(),
