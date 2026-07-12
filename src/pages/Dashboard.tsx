@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -19,7 +19,8 @@ import {
   Banknote,
   Receipt,
   Calendar,
-  CheckCircle2
+  CheckCircle2,
+  ChevronDown
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import { useCurrency } from '../hooks/useCurrency';
@@ -293,6 +294,17 @@ export function Dashboard({ onNavigate }: { onNavigate: (viewId: string) => void
   const netWorthKobo = totalCashKobo + kpiReceivables - kpiPayables;
 
   const [refreshing, setRefreshing] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
   const refetchAll = async () => {
     setRefreshing(true);
     const keys = [
@@ -370,9 +382,33 @@ export function Dashboard({ onNavigate }: { onNavigate: (viewId: string) => void
           <button onClick={refetchAll} disabled={refreshing} className="inline-flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all disabled:opacity-60 shadow-sm">
             <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} /> {refreshing ? 'Refreshing...' : 'Refresh'}
           </button>
-          <button onClick={() => navigate('/sales/invoices/new')} className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-sm hover:shadow-md">
-            <PlusCircle className="w-4 h-4" /> New Invoice
-          </button>
+          <div className="relative" ref={dropdownRef}>
+            <button onClick={() => setDropdownOpen(!dropdownOpen)} className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-sm hover:shadow-md">
+              <PlusCircle className="w-4 h-4" /> +New <ChevronDown className={`w-3.5 h-3.5 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {dropdownOpen && (
+              <div className="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-xl border border-slate-200 z-50 py-1.5">
+                <button onClick={() => { setDropdownOpen(false); navigate('/sales/invoices/new'); }} className="flex items-center gap-2.5 w-full px-3.5 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors text-left">
+                  <FileText className="w-4 h-4 text-blue-500" /> New Invoice
+                </button>
+                <button onClick={() => { setDropdownOpen(false); navigate('/purchases/bills/new'); }} className="flex items-center gap-2.5 w-full px-3.5 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors text-left">
+                  <FileText className="w-4 h-4 text-orange-500" /> +Bills
+                </button>
+                <button onClick={() => { setDropdownOpen(false); navigate('/purchases/payments-made'); }} className="flex items-center gap-2.5 w-full px-3.5 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors text-left">
+                  <Banknote className="w-4 h-4 text-emerald-500" /> +Payments Made
+                </button>
+                <button onClick={() => { setDropdownOpen(false); navigate('/sales/payments'); }} className="flex items-center gap-2.5 w-full px-3.5 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors text-left">
+                  <Banknote className="w-4 h-4 text-indigo-500" /> +Payment Received
+                </button>
+                <button onClick={() => { setDropdownOpen(false); navigate('/purchases/vendors'); }} className="flex items-center gap-2.5 w-full px-3.5 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors text-left">
+                  <Building2 className="w-4 h-4 text-amber-500" /> +Vendor
+                </button>
+                <button onClick={() => { setDropdownOpen(false); navigate('/sales/customers'); }} className="flex items-center gap-2.5 w-full px-3.5 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors text-left">
+                  <Users className="w-4 h-4 text-cyan-500" /> +Customer
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
