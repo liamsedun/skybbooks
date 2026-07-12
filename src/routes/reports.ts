@@ -174,7 +174,7 @@ router.post(
     try {
       const { csvData } = importTbCsvSchema.parse(req.body);
       const orgId = req.user!.orgId!;
-      const userId = req.user!.id;
+      const userId = req.user!.userId;
 
       // Parse CSV
       const cleaned = csvData.replace(/^\uFEFF/, '').replace(/\r$/, '');
@@ -301,7 +301,7 @@ router.post(
     try {
       const { lines } = recordTbSchema.parse(req.body);
       const orgId = req.user!.orgId!;
-      const userId = req.user!.id;
+      const userId = req.user!.userId;
 
       const orgAccounts = await db
         .select()
@@ -431,7 +431,7 @@ router.post(
         return res.status(400).json({ success: false, message: 'Some accounts could not be updated', errors, updated });
       }
 
-      createAuditLog({ orgId, userId: req.user!.id, action: 'update', entityType: 'opening-balance', newValues: { count: updated }, ...extractReqMeta(req) });
+      createAuditLog({ orgId, userId: req.user!.userId, action: 'update', entityType: 'opening-balance', newValues: { count: updated }, ...extractReqMeta(req) });
       return res.status(200).json({ success: true, message: `Updated ${updated} account(s) successfully.` });
     } catch (error) {
       next(error);
