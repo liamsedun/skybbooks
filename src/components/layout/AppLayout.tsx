@@ -480,8 +480,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
             <Menu className="w-5 h-5" />
           </button>)}
 
-          {/* Org Display capsule with selector — hidden on settings pages */}
-          {!isSettingsPage && (
+          {/* Org Display capsule with selector */}
           <div className="flex items-center space-x-2.5 sm:space-x-3.5 select-none" id="org-display-bubble">
             <div className="w-7 h-7 bg-primary-light text-primary rounded-lg flex items-center justify-center text-xs font-bold shadow-sm uppercase shrink-0 overflow-hidden">
               {developerLogoUrl ? (
@@ -504,7 +503,6 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
               </div>
             </div>
           </div>
-          )}
 
           {/* Header Action caps */}
           <div className="flex items-center space-x-2.5 sm:space-x-4 ml-auto" id="header-right-actions">
@@ -617,7 +615,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
           {children || <Outlet />}
         </main>
         
-        {!isSettingsPage && <Footer />}
+        <Footer />
       </div>
     </div>
   );
