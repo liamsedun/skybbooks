@@ -1217,7 +1217,7 @@ router.get('/taxable-sales-per-customer', async (req: AuthenticatedRequest, res:
         customerId: invoices.customerId,
         customerName: contacts.name,
         customerEmail: contacts.email,
-        totalTaxableAmount: sql<number>`coalesce(sum(${invoices.taxAmount}), 0)`,
+        totalTaxableAmount: sql<number>`coalesce(sum(${invoices.subtotal}), 0)`,
         totalInvoiceAmount: sql<number>`coalesce(sum(${invoices.total}), 0)`,
         invoiceCount: sql<number>`count(*)`,
       })
@@ -1230,7 +1230,7 @@ router.get('/taxable-sales-per-customer', async (req: AuthenticatedRequest, res:
         lte(invoices.date, endDate)
       ))
       .groupBy(invoices.customerId, contacts.name, contacts.email)
-      .orderBy(desc(sql`coalesce(sum(${invoices.taxAmount}), 0)`));
+      .orderBy(desc(sql`coalesce(sum(${invoices.subtotal}), 0)`));
 
     return res.status(200).json({ success: true, data });
   } catch (error) {
@@ -1251,7 +1251,7 @@ router.get('/taxable-purchases-per-supplier', async (req: AuthenticatedRequest, 
         vendorId: bills.vendorId,
         vendorName: contacts.name,
         vendorEmail: contacts.email,
-        totalTaxableAmount: sql<number>`coalesce(sum(${bills.taxAmount}), 0)`,
+        totalTaxableAmount: sql<number>`coalesce(sum(${bills.subtotal}), 0)`,
         totalBillAmount: sql<number>`coalesce(sum(${bills.total}), 0)`,
         billCount: sql<number>`count(*)`,
       })
@@ -1264,7 +1264,7 @@ router.get('/taxable-purchases-per-supplier', async (req: AuthenticatedRequest, 
         lte(bills.date, endDate)
       ))
       .groupBy(bills.vendorId, contacts.name, contacts.email)
-      .orderBy(desc(sql`coalesce(sum(${bills.taxAmount}), 0)`));
+      .orderBy(desc(sql`coalesce(sum(${bills.subtotal}), 0)`));
 
     return res.status(200).json({ success: true, data });
   } catch (error) {
