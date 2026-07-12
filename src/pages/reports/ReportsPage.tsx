@@ -2397,7 +2397,8 @@ function ReportTable({ data, reportType, compareEnabled, onAccountClick, showZer
   }
 
   if (reportType === 'income-statement') {
-    const current = data?.current || data;
+    const stmt = data?.data || data;
+    const current = stmt?.current || stmt;
     return <SinglePeriodPnLTable current={current} onAccountClick={onAccountClick} showZero={isShowZero} showCodes={isShowCodes} />;
   }
 

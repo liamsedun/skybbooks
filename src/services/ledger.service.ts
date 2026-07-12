@@ -1379,20 +1379,49 @@ export async function getBalanceSheet(
   const totalLiabilities = totalCurrentLiabilities + totalNonCurrentLiabilities;
 
   // Equity: build proper waterfall using extracted helper
-  const equityResult = await getEquityBalancesAsOf(orgId, asOfDate);
+  let equityResult: EquityBalancesResult;
+  try {
+    equityResult = await getEquityBalancesAsOf(orgId, asOfDate);
+  } catch (e: any) {
+    throw new Error(`getEquityBalancesAsOf failed: ${e.message}`);
+  }
 
   // Determine fiscal year start for period profit
-  const [orgRow] = await db
-    .select({ fiscalYearStart: organisations.fiscalYearStart })
-    .from(organisations).where(eq(organisations.id, orgId)).limit(1);
-  const fyStartStr = orgRow?.fiscalYearStart;
+  let fyStartStr: string | null | undefined;
+  try {
+    const [orgRow] = await db
+      .select({ fiscalYearStart: organisations.fiscalYearStart })
+      .from(organisations).where(eq(organisations.id, orgId)).limit(1);
+    fyStartStr = orgRow?.fiscalYearStart;
+  } catch (e: any) {
+    throw new Error(`organisations query failed: ${e.message}`);
+  }
+
   const year = asOfDate.getFullYear();
-  const fiscalYearStartDate = fyStartStr
-    ? new Date(`${fyStartStr} ${year}`)
-    : new Date(`${year}-01-01`);
+
+  // Parse fiscalYearStart safely — stored as YYYY-MM-DD from date input
+  let fiscalYearStartDate: Date;
+  if (fyStartStr) {
+    // fyStartStr is like "2025-01-01" or "01-01"; extract month and day
+    const parts = fyStartStr.split('-');
+    if (parts.length >= 2) {
+      const month = parts[parts.length - 2].padStart(2, '0');
+      const day = parts[parts.length - 1].padStart(2, '0');
+      fiscalYearStartDate = new Date(`${year}-${month}-${day}`);
+    } else {
+      fiscalYearStartDate = new Date(`${year}-01-01`);
+    }
+  } else {
+    fiscalYearStartDate = new Date(`${year}-01-01`);
+  }
 
   // Profit for period from income statement (fiscal-year bound)
-  const pnl = await getProfitAndLoss(orgId, fiscalYearStartDate, asOfDate);
+  let pnl: any;
+  try {
+    pnl = await getProfitAndLoss(orgId, fiscalYearStartDate, asOfDate);
+  } catch (e: any) {
+    throw new Error(`getProfitAndLoss failed: ${e.message}`);
+  }
   const profitForPeriod = pnl.current.netProfit || 0;
 
   // Build retained earnings waterfall from helper data
