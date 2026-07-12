@@ -91,6 +91,9 @@ async function startServer() {
   }));
 
   // Body parsers
+  // IMPORTANT: Mono webhook route must be mounted BEFORE express.json()
+  // so the raw body is available for HMAC signature verification.
+  app.use('/api/webhooks/mono', (await import('../routes/monoWebhook')).default);
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 

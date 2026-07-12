@@ -28,6 +28,8 @@ services:
         sync: false
       - key: MONO_PUBLIC_KEY
         sync: false
+      - key: MONO_WEBHOOK_SECRET
+        sync: false
       - key: PAYSTACK_SECRET_KEY
         sync: false
       - key: PAYSTACK_PUBLIC_KEY

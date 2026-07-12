@@ -756,6 +756,7 @@ export const bankAccounts = pgTable('bank_accounts', {
   openingBalance: bigint('opening_balance', { mode: 'number' }).default(0).notNull(),
   openingBalanceDate: timestamp('opening_balance_date'),
   monoAccountId: text('mono_account_id'),
+  monoAccountStatus: text('mono_account_status').default('pending'),
   lastSyncedAt: timestamp('last_synced_at'),
   isActive: boolean('is_active').default(true).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull()

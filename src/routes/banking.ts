@@ -34,7 +34,6 @@ import {
   initiateFlutterwaveConnect,
   exchangeFlutterwaveCode,
   syncFlutterwaveTransactions,
-  getFlutterwaveAccountBalance
 } from '../services/flutterwave.service';
 import {
   matchBankTransaction,
@@ -515,11 +514,11 @@ router.delete('/accounts/:id/clear-imported-statements', async (req: Authenticat
 // 2. FLUTTERWAVE CONNECT INTEGRATION ENDPOINTS
 // =========================================================================
 
-// POST initiate Flutterwave Connect session
+// POST validate bank account before opening Mono Connect widget
+// The widget runs client-side — this route just confirms the account exists.
 router.post('/accounts/:id/connect-flutterwave', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const orgId = req.user!.orgId!;
-    const userId = req.user!.userId!;
     const { id } = req.params;
 
     const [ba] = await db
@@ -529,11 +528,10 @@ router.post('/accounts/:id/connect-flutterwave', async (req: AuthenticatedReques
       .limit(1);
 
     if (!ba) {
-      throw new AppError('Bank account structure not found.', 404);
+      throw new AppError('Bank account not found.', 404);
     }
 
-    const { token, connectUrl } = await initiateFlutterwaveConnect(orgId, userId);
-    return res.status(200).json({ success: true, token, connectUrl });
+    return res.status(200).json({ success: true });
   } catch (err) {
     next(err);
   }
@@ -563,7 +561,7 @@ router.post('/accounts/:id/flutterwave-callback', async (req: AuthenticatedReque
   }
 });
 
-// POST pull latest financial statements bank feed from Flutterwave
+// POST pull latest bank transactions from Mono
 router.post('/accounts/:id/sync', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const orgId = req.user!.orgId!;
