@@ -23,6 +23,7 @@ import {
   Upload,
   Download,
   Printer,
+  CheckCircle,
 } from 'lucide-react';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
 
@@ -322,30 +323,54 @@ function CustomerList() {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-3">
         <button
           onClick={() => setStatusFilter('all')}
-          className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
-            statusFilter === 'all' ? 'bg-slate-900 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+          className={`flex items-center gap-3 px-5 py-3.5 rounded-2xl text-sm font-bold transition-all duration-200 border shadow-sm ${
+            statusFilter === 'all'
+              ? 'bg-gradient-to-br from-slate-800 to-slate-900 text-white border-slate-700 shadow-md ring-2 ring-slate-300'
+              : 'bg-gradient-to-br from-slate-50 to-slate-100/80 text-slate-700 border-slate-200/70 hover:shadow-md hover:border-slate-300 hover:from-slate-100 hover:to-slate-200/80'
           }`}
         >
-          All ({counts.all})
+          <div className={`p-2 rounded-xl ${statusFilter === 'all' ? 'bg-white/15' : 'bg-slate-100/80'}`}>
+            <Users size={18} className={statusFilter === 'all' ? 'text-white' : 'text-slate-500'} />
+          </div>
+          <div className="text-left">
+            <span className="block text-sm font-bold">All</span>
+            <span className={`block text-[10px] font-medium ${statusFilter === 'all' ? 'text-white/70' : 'text-slate-400'}`}>{counts.all} customers</span>
+          </div>
         </button>
         <button
           onClick={() => setStatusFilter('active')}
-          className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
-            statusFilter === 'active' ? 'bg-slate-900 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+          className={`flex items-center gap-3 px-5 py-3.5 rounded-2xl text-sm font-bold transition-all duration-200 border shadow-sm ${
+            statusFilter === 'active'
+              ? 'bg-gradient-to-br from-emerald-600 to-emerald-700 text-white border-emerald-500 shadow-md ring-2 ring-emerald-300'
+              : 'bg-gradient-to-br from-emerald-50 to-emerald-100/80 text-emerald-700 border-emerald-200/70 hover:shadow-md hover:border-emerald-300 hover:from-emerald-100 hover:to-emerald-200/80'
           }`}
         >
-          Active ({counts.active})
+          <div className={`p-2 rounded-xl ${statusFilter === 'active' ? 'bg-white/15' : 'bg-emerald-100/80'}`}>
+            <CheckCircle size={18} className={statusFilter === 'active' ? 'text-white' : 'text-emerald-500'} />
+          </div>
+          <div className="text-left">
+            <span className="block text-sm font-bold">Active</span>
+            <span className={`block text-[10px] font-medium ${statusFilter === 'active' ? 'text-white/70' : 'text-emerald-400'}`}>{counts.active} customers</span>
+          </div>
         </button>
         <button
           onClick={() => setStatusFilter('inactive')}
-          className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
-            statusFilter === 'inactive' ? 'bg-slate-900 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+          className={`flex items-center gap-3 px-5 py-3.5 rounded-2xl text-sm font-bold transition-all duration-200 border shadow-sm ${
+            statusFilter === 'inactive'
+              ? 'bg-gradient-to-br from-amber-600 to-amber-700 text-white border-amber-500 shadow-md ring-2 ring-amber-300'
+              : 'bg-gradient-to-br from-amber-50 to-amber-100/80 text-amber-700 border-amber-200/70 hover:shadow-md hover:border-amber-300 hover:from-amber-100 hover:to-amber-200/80'
           }`}
         >
-          Inactive ({counts.inactive})
+          <div className={`p-2 rounded-xl ${statusFilter === 'inactive' ? 'bg-white/15' : 'bg-amber-100/80'}`}>
+            <X size={18} className={statusFilter === 'inactive' ? 'text-white' : 'text-amber-500'} />
+          </div>
+          <div className="text-left">
+            <span className="block text-sm font-bold">Inactive</span>
+            <span className={`block text-[10px] font-medium ${statusFilter === 'inactive' ? 'text-white/70' : 'text-amber-400'}`}>{counts.inactive} customers</span>
+          </div>
         </button>
       </div>
 
