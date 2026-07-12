@@ -2113,6 +2113,12 @@ export async function getCashFlowStatement(
       const cr = line.currency && line.currency !== 'NGN' ? toNgn(line.creditAmount, fxRateVal) : (line.creditAmount || 0);
       openingCashMap.set(line.accountId, (openingCashMap.get(line.accountId) || 0) + Number(dr) - Number(cr));
     }
+    // Include accounts.openingBalance (matches getTrialBalance behaviour for "Edit Opening Balances")
+    for (const a of orgAccounts) {
+      if (isCashCode(a.code) && a.openingBalance !== 0) {
+        openingCashMap.set(a.id, (openingCashMap.get(a.id) || 0) + a.openingBalance);
+      }
+    }
     for (const a of orgAccounts) {
       if (isCashCode(a.code)) {
         const opening = openingCashMap.get(a.id) || 0;
