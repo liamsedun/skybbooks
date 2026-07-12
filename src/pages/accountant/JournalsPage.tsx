@@ -641,7 +641,7 @@ function JournalForm({ editId, onDone }: { editId?: string | null; onDone: () =>
 
   const totalDebits = lines.reduce((s, l) => s + Number(l.debitAmount || 0), 0);
   const totalCredits = lines.reduce((s, l) => s + Number(l.creditAmount || 0), 0);
-  const isBalanced = totalDebits === totalCredits;
+  const isBalanced = Math.round(totalDebits * 100) === Math.round(totalCredits * 100);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

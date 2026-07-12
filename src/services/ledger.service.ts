@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { eq, and, lte, gte, sql, asc } from 'drizzle-orm';
+import { eq, and, lte, gte, sql, asc, inArray } from 'drizzle-orm';
 import { db, accounts, journalEntries, journalLines, bankAccounts, fixedAssets, contacts, inventoryLots, inventoryTransactions, closedPeriods, invoices, paymentsReceived, bills } from '../db/schema';
 import { AppError } from '../lib/errors';
 import { toNgn, getRateForDate } from './currency.service';
@@ -1552,35 +1552,29 @@ export async function getCashFlowStatement(
     adjustmentsTotal += fxNet;
   }
 
-  // ── 3. Working Capital Changes ──
-  // Use getAccountBalance for accurate opening/closing
+  // ── 3. Working Capital Changes (from netByAccount — no per-account queries) ──
   const wcItems: { name: string; amount: number }[] = [];
   let workingCapitalTotal = 0;
 
-  async function changeForAccounts(codes: string[], isAsset: boolean): Promise<number> {
-    let openingTotal = 0, closingTotal = 0;
+  function netForCodes(codes: string[]): number {
+    let total = 0;
     for (const a of orgAccounts) {
       if (codes.includes(a.code)) {
-        const opening = await getAccountBalance(a.id, new Date(startDate.getTime() - 1));
-        const closing = await getAccountBalance(a.id, endDate);
-        openingTotal += opening;
-        closingTotal += closing;
+        total += netByAccount.get(a.id) || 0;
       }
     }
-    // For assets: increase = cash outflow (negative); for liabilities: increase = cash inflow (positive)
-    if (isAsset) return openingTotal - closingTotal;
-    return closingTotal - openingTotal;
+    return total;
   }
 
   for (const wc of wcAssetAccounts) {
-    const change = await changeForAccounts(wc.codes, true);
+    const change = -netForCodes(wc.codes);
     if (Math.abs(change) > 0) {
       wcItems.push({ name: wc.label, amount: change });
       workingCapitalTotal += change;
     }
   }
   for (const wc of wcLiabilityAccounts) {
-    const change = await changeForAccounts(wc.codes, false);
+    const change = -netForCodes(wc.codes);
     if (Math.abs(change) > 0) {
       wcItems.push({ name: wc.label, amount: change });
       workingCapitalTotal += change;
@@ -1726,26 +1720,47 @@ export async function getCashFlowStatement(
 
   const netCashFromOperating = cashGeneratedFromOperations + incomeTaxPaid + interestPaid + interestReceived;
 
-  // ── 7. Opening and Closing Cash ──
+  // ── 7. Opening and Closing Cash (single bulk query for all cash accounts) ──
   let openingCash = 0, closingCash = 0;
-  for (const a of orgAccounts) {
-    if (isCashCode(a.code)) {
-      const opening = await getAccountBalance(a.id, new Date(startDate.getTime() - 1));
-      const closing = await getAccountBalance(a.id, endDate);
-      // Only include accounts with positive net balance (exclude overdrafts)
-      if (opening > 0) openingCash += opening;
-      if (closing > 0) closingCash += closing;
+  const cashAccountIds = orgAccounts.filter(a => isCashCode(a.code)).map(a => a.id);
+
+  if (cashAccountIds.length > 0) {
+    const openingLines = await db
+      .select({
+        accountId: journalLines.accountId,
+        debitAmount: journalLines.debitAmount,
+        creditAmount: journalLines.creditAmount,
+        currency: journalLines.currency,
+        fxRate: journalLines.fxRate,
+      })
+      .from(journalLines)
+      .innerJoin(journalEntries, eq(journalLines.entryId, journalEntries.id))
+      .where(
+        and(
+          eq(journalEntries.orgId, orgId),
+          lte(journalEntries.date, new Date(startDate.getTime() - 1)),
+          inArray(journalLines.accountId, cashAccountIds),
+        )
+      );
+    const openingCashMap = new Map<string, number>();
+    for (const line of openingLines) {
+      const fxRateVal = line.fxRate ? Number(line.fxRate) : 1;
+      const dr = line.currency && line.currency !== 'NGN' ? toNgn(line.debitAmount, fxRateVal) : (line.debitAmount || 0);
+      const cr = line.currency && line.currency !== 'NGN' ? toNgn(line.creditAmount, fxRateVal) : (line.creditAmount || 0);
+      openingCashMap.set(line.accountId, (openingCashMap.get(line.accountId) || 0) + Number(dr) - Number(cr));
+    }
+    for (const a of orgAccounts) {
+      if (isCashCode(a.code)) {
+        const opening = openingCashMap.get(a.id) || 0;
+        const closing = opening + (netByAccount.get(a.id) || 0);
+        if (opening > 0) openingCash += opening;
+        if (closing > 0) closingCash += closing;
+      }
     }
   }
 
-  // Ledger cash balance for reconciliation
-  let ledgerCashBalance = 0;
-  for (const a of orgAccounts) {
-    if (isCashCode(a.code)) {
-      const bal = await getAccountBalance(a.id, endDate);
-      if (bal > 0) ledgerCashBalance += bal;
-    }
-  }
+  // Ledger cash balance for reconciliation (same as closingCash above)
+  const ledgerCashBalance = closingCash;
 
   const netChangeInCash = netCashFromOperating + investingTotal + financingTotal;
   // Recompute closing cash as opening + net change
