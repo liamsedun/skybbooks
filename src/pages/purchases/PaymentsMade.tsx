@@ -8,7 +8,7 @@ import { CurrencySelector } from '../../components/ui/CurrencySelector';
 import {
   Upload, Plus, X, Loader2, AlertCircle, Search, CreditCard,
   CheckCircle2, Download, FileText, Eye, Pencil, Save, Trash2,
-  Banknote, Smartphone, Building2, Receipt,
+  Banknote, Smartphone, Building2, Receipt, Wallet, Calendar,
 } from 'lucide-react';
 
 interface Vendor { id: string; name: string; }
@@ -440,9 +440,13 @@ export function PaymentsMadePage() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <button onClick={() => { setDateFrom(''); setDateTo(''); setMethodFilter('all'); setSearch(''); }} className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 text-left cursor-pointer hover:border-blue-300 hover:shadow-md transition-all duration-200">
-          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total Disbursed</p>
-          <p className="text-xl font-bold text-slate-900 mt-1">{formatNaira(totalPaid)}</p>
+        <button onClick={() => { setDateFrom(''); setDateTo(''); setMethodFilter('all'); setSearch(''); }} className="relative overflow-hidden bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl shadow-md p-5 text-left cursor-pointer hover:from-blue-600 hover:to-blue-800 hover:shadow-lg transition-all duration-200 group">
+          <div className="absolute top-3 right-3 p-2 rounded-xl bg-white/10 text-white/40 group-hover:scale-110 transition-transform duration-200">
+            <Wallet size={20} />
+          </div>
+          <p className="text-[11px] font-semibold text-white/60 uppercase tracking-wider">Total Disbursed</p>
+          <p className="text-xl font-bold text-white mt-1.5">{formatNaira(totalPaid)}</p>
+          <p className="text-[11px] text-white/40 mt-1">Click to clear filters</p>
         </button>
         <button onClick={() => {
           const now = new Date();
@@ -452,13 +456,21 @@ export function PaymentsMadePage() {
           setDateTo(last.toISOString().split('T')[0]);
           setMethodFilter('all');
           setSearch('');
-        }} className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 text-left cursor-pointer hover:border-blue-300 hover:shadow-md transition-all duration-200">
-          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">This Month</p>
-          <p className="text-xl font-bold text-slate-900 mt-1">{formatNaira(thisMonthPaid)}</p>
+        }} className="relative overflow-hidden bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-2xl shadow-md p-5 text-left cursor-pointer hover:from-indigo-600 hover:to-indigo-800 hover:shadow-lg transition-all duration-200 group">
+          <div className="absolute top-3 right-3 p-2 rounded-xl bg-white/10 text-white/40 group-hover:scale-110 transition-transform duration-200">
+            <Calendar size={20} />
+          </div>
+          <p className="text-[11px] font-semibold text-white/60 uppercase tracking-wider">This Month</p>
+          <p className="text-xl font-bold text-white mt-1.5">{formatNaira(thisMonthPaid)}</p>
+          <p className="text-[11px] text-white/40 mt-1">{new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' })}</p>
         </button>
-        <button onClick={() => { setDateFrom(''); setDateTo(''); setMethodFilter('all'); setSearch(''); }} className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 text-left cursor-pointer hover:border-blue-300 hover:shadow-md transition-all duration-200">
-          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total Count</p>
-          <p className="text-xl font-bold text-slate-900 mt-1">{payments.length} payments</p>
+        <button onClick={() => { setDateFrom(''); setDateTo(''); setMethodFilter('all'); setSearch(''); }} className="relative overflow-hidden bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-2xl shadow-md p-5 text-left cursor-pointer hover:from-emerald-600 hover:to-emerald-800 hover:shadow-lg transition-all duration-200 group">
+          <div className="absolute top-3 right-3 p-2 rounded-xl bg-white/10 text-white/40 group-hover:scale-110 transition-transform duration-200">
+            <CreditCard size={20} />
+          </div>
+          <p className="text-[11px] font-semibold text-white/60 uppercase tracking-wider">Total Count</p>
+          <p className="text-xl font-bold text-white mt-1.5">{payments.length}</p>
+          <p className="text-[11px] text-white/40 mt-1">payments made</p>
         </button>
       </div>
 
