@@ -315,24 +315,19 @@ export function QuotesPage() {
       <div className="flex gap-6">
         {/* List */}
         <div className={`flex-1 min-w-0 ${selectedId?'hidden lg:block':''}`}>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2">
             {(['all','draft','sent','accepted'] as const).map(s=>{
               const meta=STATUS_META[s]; const Icon=meta.icon; const count=s==='all'?counts.all:(counts.byStatus[s]||0);
               const active=statusFilter===s;
               return (
               <button key={s} onClick={()=>setStatusFilter(s)}
-                className={`flex items-center gap-3 px-5 py-3.5 rounded-2xl text-sm font-bold transition-all duration-200 border shadow-sm ${
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all duration-200 border shadow-sm ${
                   active
                     ? `bg-gradient-to-br ${meta.gradientActive} text-white ${meta.borderActive} shadow-md ring-2 ${meta.ring}`
                     : `bg-gradient-to-br ${meta.gradient} text-slate-700 ${meta.border} hover:shadow-md hover:border-slate-300`
                 }`}>
-                <div className={`p-2 rounded-xl ${active?meta.iconBgActive:meta.iconBg}`}>
-                  <Icon className={`w-[18px] h-[18px] ${active?'text-white':''}`} />
-                </div>
-                <div className="text-left">
-                  <span className="block text-sm font-bold">{meta.label}</span>
-                  <span className={`block text-[10px] font-medium ${active?'text-white/70':'text-slate-400'}`}>{count} quotes</span>
-                </div>
+                <Icon className={`w-3.5 h-3.5 ${active?'text-white':''}`} />
+                <span>{meta.label} <span className={`${active?'text-white/70':'text-slate-400'}`}>({count})</span></span>
               </button>
             )})}
           </div>
