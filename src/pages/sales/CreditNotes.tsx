@@ -9,7 +9,7 @@ import { useSearchParams } from 'react-router-dom';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
 import {
   Search, Upload, Loader2, AlertCircle, X, Plus, FileMinus, ChevronRight,
-  Ban, CheckCircle2, ReceiptText, Download, FileText,
+  Ban, CheckCircle2, ReceiptText, Download, FileText, Wallet, Clock,
 } from 'lucide-react';
 import { CurrencySelector } from '../../components/ui/CurrencySelector';
 
@@ -320,17 +320,29 @@ export function CreditNotesPage() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <button onClick={() => { setDateFrom(''); setDateTo(''); setStatusFilter('all'); setSearchTerm(''); }} className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 text-left cursor-pointer hover:border-blue-300 hover:shadow-md transition-all duration-200">
-          <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Total Credit Notes</p>
-          <p className="text-xl font-bold text-slate-900 mt-1">{totals.count}</p>
+        <button onClick={() => { setDateFrom(''); setDateTo(''); setStatusFilter('all'); setSearchTerm(''); }} className="relative overflow-hidden bg-gradient-to-br from-violet-500 to-violet-700 rounded-2xl shadow-md p-5 text-left cursor-pointer hover:from-violet-600 hover:to-violet-800 hover:shadow-lg transition-all duration-200 group">
+          <div className="absolute top-3 right-3 p-2 rounded-xl bg-white/10 text-white/40 group-hover:scale-110 transition-transform duration-200">
+            <ReceiptText size={20} />
+          </div>
+          <p className="text-[11px] font-semibold text-white/60 uppercase tracking-wider">Total Credit Notes</p>
+          <p className="text-2xl font-bold text-white mt-1.5">{totals.count}</p>
+          <p className="text-[11px] text-white/40 mt-1">Click to clear filters</p>
         </button>
-        <button onClick={() => { setDateFrom(''); setDateTo(''); setStatusFilter('all'); setSearchTerm(''); }} className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 text-left cursor-pointer hover:border-blue-300 hover:shadow-md transition-all duration-200">
-          <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Total Issued Value</p>
-          <p className="text-xl font-bold text-slate-900 mt-1">{formatNaira(totals.totalIssued)}</p>
+        <button onClick={() => { setDateFrom(''); setDateTo(''); setStatusFilter('all'); setSearchTerm(''); }} className="relative overflow-hidden bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl shadow-md p-5 text-left cursor-pointer hover:from-blue-600 hover:to-blue-800 hover:shadow-lg transition-all duration-200 group">
+          <div className="absolute top-3 right-3 p-2 rounded-xl bg-white/10 text-white/40 group-hover:scale-110 transition-transform duration-200">
+            <Wallet size={20} />
+          </div>
+          <p className="text-[11px] font-semibold text-white/60 uppercase tracking-wider">Total Issued Value</p>
+          <p className="text-2xl font-bold text-white mt-1.5">{formatNaira(totals.totalIssued)}</p>
+          <p className="text-[11px] text-white/40 mt-1">total amount issued</p>
         </button>
-        <button onClick={() => { setDateFrom(''); setDateTo(''); setStatusFilter('all'); setSearchTerm(''); }} className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 text-left cursor-pointer hover:border-blue-300 hover:shadow-md transition-all duration-200">
-          <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Outstanding Credit</p>
-          <p className="text-xl font-bold text-amber-600 mt-1">{formatNaira(totals.totalOutstanding)}</p>
+        <button onClick={() => { setDateFrom(''); setDateTo(''); setStatusFilter('all'); setSearchTerm(''); }} className="relative overflow-hidden bg-gradient-to-br from-amber-500 to-amber-700 rounded-2xl shadow-md p-5 text-left cursor-pointer hover:from-amber-600 hover:to-amber-800 hover:shadow-lg transition-all duration-200 group">
+          <div className="absolute top-3 right-3 p-2 rounded-xl bg-white/10 text-white/40 group-hover:scale-110 transition-transform duration-200">
+            <Clock size={20} />
+          </div>
+          <p className="text-[11px] font-semibold text-white/60 uppercase tracking-wider">Outstanding Credit</p>
+          <p className="text-2xl font-bold text-white mt-1.5">{formatNaira(totals.totalOutstanding)}</p>
+          <p className="text-[11px] text-white/40 mt-1">yet to be applied</p>
         </button>
       </div>
 
