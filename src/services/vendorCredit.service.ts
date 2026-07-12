@@ -162,11 +162,11 @@ export async function createVendorCredit(input: any, createdBy: string): Promise
   });
 }
 
-export async function updateVendorCredit(id: string, input: any, userId: string): Promise<any> {
+export async function updateVendorCredit(id: string, input: any, userId: string, orgId: string): Promise<any> {
   const [credit] = await db
     .select()
     .from(vendorCredits)
-    .where(eq(vendorCredits.id, id))
+    .where(and(eq(vendorCredits.id, id), eq(vendorCredits.orgId, orgId)))
     .limit(1);
 
   if (!credit) throw new AppError('Vendor credit not found.', 404);
@@ -190,18 +190,18 @@ export async function updateVendorCredit(id: string, input: any, userId: string)
   const [updated] = await db
     .update(vendorCredits)
     .set(updates)
-    .where(eq(vendorCredits.id, id))
+    .where(and(eq(vendorCredits.id, id), eq(vendorCredits.orgId, orgId)))
     .returning();
 
   return updated;
 }
 
-export async function applyVendorCredit(cnId: string, billId: string, amount: number, userId: string): Promise<any> {
+export async function applyVendorCredit(cnId: string, billId: string, amount: number, userId: string, orgId: string): Promise<any> {
   return await db.transaction(async (tx) => {
     const [credit] = await tx
       .select()
       .from(vendorCredits)
-      .where(eq(vendorCredits.id, cnId))
+      .where(and(eq(vendorCredits.id, cnId), eq(vendorCredits.orgId, orgId)))
       .limit(1);
 
     if (!credit) throw new AppError('Vendor credit not found.', 404);
@@ -213,7 +213,7 @@ export async function applyVendorCredit(cnId: string, billId: string, amount: nu
     const [bill] = await tx
       .select()
       .from(bills)
-      .where(eq(bills.id, billId))
+      .where(and(eq(bills.id, billId), eq(bills.orgId, orgId)))
       .limit(1);
 
     if (!bill) throw new AppError('Bill not found.', 404);

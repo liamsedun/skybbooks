@@ -283,9 +283,10 @@ export async function createBill(input: any, createdBy: string): Promise<any> {
   });
 }
 
-export async function updateBill(billId: string, input: any, userId: string): Promise<any> {
-  const [billOrg] = await db.select({ orgId: bills.orgId }).from(bills).where(eq(bills.id, billId)).limit(1);
-  const settings = billOrg?.orgId ? await getOrgSettings(billOrg.orgId) : undefined;
+export async function updateBill(billId: string, input: any, userId: string, orgId: string): Promise<any> {
+  const [billOrg] = await db.select({ orgId: bills.orgId }).from(bills).where(and(eq(bills.id, billId), eq(bills.orgId, orgId))).limit(1);
+  if (!billOrg) throw new AppError('Bill not found.', 404);
+  const settings = await getOrgSettings(billOrg.orgId);
   const defaultTaxRate = settings?.general?.defaultTaxRate ?? 7.5;
 
   return await db.transaction(async (tx) => {
@@ -293,7 +294,7 @@ export async function updateBill(billId: string, input: any, userId: string): Pr
     const [bill] = await tx
       .select()
       .from(bills)
-      .where(eq(bills.id, billId))
+      .where(and(eq(bills.id, billId), eq(bills.orgId, orgId)))
       .limit(1);
 
     if (!bill) throw new AppError('Bill not found.', 404);
@@ -395,13 +396,13 @@ export async function updateBill(billId: string, input: any, userId: string): Pr
   });
 }
 
-export async function approveBill(billId: string, userId: string): Promise<any> {
+export async function approveBill(billId: string, userId: string, orgId: string): Promise<any> {
   return await db.transaction(async (tx) => {
     // 1. Load active Bill
     const [bill] = await tx
       .select()
       .from(bills)
-      .where(eq(bills.id, billId))
+      .where(and(eq(bills.id, billId), eq(bills.orgId, orgId)))
       .limit(1);
 
     if (!bill) throw new AppError('Bill not found.', 404);
@@ -478,12 +479,12 @@ export async function approveBill(billId: string, userId: string): Promise<any> 
   });
 }
 
-export async function voidBill(billId: string, userId: string): Promise<any> {
+export async function voidBill(billId: string, userId: string, orgId: string): Promise<any> {
   return await db.transaction(async (tx) => {
     const [bill] = await tx
       .select()
       .from(bills)
-      .where(eq(bills.id, billId))
+      .where(and(eq(bills.id, billId), eq(bills.orgId, orgId)))
       .limit(1);
 
     if (!bill) throw new AppError('Bill not found.', 404);
@@ -554,12 +555,12 @@ export async function voidBill(billId: string, userId: string): Promise<any> {
   });
 }
 
-export async function unapproveBill(billId: string, userId: string): Promise<any> {
+export async function unapproveBill(billId: string, userId: string, orgId: string): Promise<any> {
   return await db.transaction(async (tx) => {
     const [bill] = await tx
       .select()
       .from(bills)
-      .where(eq(bills.id, billId))
+      .where(and(eq(bills.id, billId), eq(bills.orgId, orgId)))
       .limit(1);
 
     if (!bill) throw new AppError('Bill not found.', 404);
@@ -619,12 +620,12 @@ export async function unapproveBill(billId: string, userId: string): Promise<any
   });
 }
 
-export async function duplicateBill(billId: string, userId: string): Promise<any> {
+export async function duplicateBill(billId: string, userId: string, orgId: string): Promise<any> {
   return await db.transaction(async (tx) => {
     const [origin] = await tx
       .select()
       .from(bills)
-      .where(eq(bills.id, billId))
+      .where(and(eq(bills.id, billId), eq(bills.orgId, orgId)))
       .limit(1);
 
     if (!origin) throw new AppError('Base bill not found.', 404);

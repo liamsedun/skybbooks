@@ -269,10 +269,11 @@ router.get('/bills/:id', async (req: AuthenticatedRequest, res: Response, next: 
 router.patch('/bills/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user!.userId;
+    const orgId = req.user!.orgId!;
     const { id } = req.params;
     const body = updateBillSchema.parse(req.body);
 
-    const updated = await updateBill(id, body, userId);
+    const updated = await updateBill(id, body, userId, orgId);
     return res.status(200).json(updated);
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -286,9 +287,10 @@ router.patch('/bills/:id', async (req: AuthenticatedRequest, res: Response, next
 router.post('/bills/:id/approve', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user!.userId;
+    const orgId = req.user!.orgId!;
     const { id } = req.params;
 
-    const approved = await approveBill(id, userId);
+    const approved = await approveBill(id, userId, orgId);
     return res.status(200).json(approved);
   } catch (err) {
     return next(err);
@@ -299,9 +301,10 @@ router.post('/bills/:id/approve', async (req: AuthenticatedRequest, res: Respons
 router.post('/bills/:id/unapprove', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user!.userId;
+    const orgId = req.user!.orgId!;
     const { id } = req.params;
 
-    const unapproved = await unapproveBill(id, userId);
+    const unapproved = await unapproveBill(id, userId, orgId);
     return res.status(200).json(unapproved);
   } catch (err) {
     return next(err);
@@ -312,10 +315,11 @@ router.post('/bills/:id/unapprove', async (req: AuthenticatedRequest, res: Respo
 router.post('/bills/:id/void', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user!.userId;
+    const orgId = req.user!.orgId!;
     const { id } = req.params;
 
-    const voided = await voidBill(id, userId);
-    createAuditLog({ orgId: req.user!.orgId!, userId, action: 'void', entityType: 'bill', entityId: id, newValues: { status: 'void' }, ...extractReqMeta(req) });
+    const voided = await voidBill(id, userId, orgId);
+    createAuditLog({ orgId, userId, action: 'void', entityType: 'bill', entityId: id, newValues: { status: 'void' }, ...extractReqMeta(req) });
     return res.status(200).json(voided);
   } catch (err) {
     return next(err);
@@ -326,9 +330,10 @@ router.post('/bills/:id/void', async (req: AuthenticatedRequest, res: Response, 
 router.post('/bills/:id/duplicate', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user!.userId;
+    const orgId = req.user!.orgId!;
     const { id } = req.params;
 
-    const duplicated = await duplicateBill(id, userId);
+    const duplicated = await duplicateBill(id, userId, orgId);
     return res.status(201).json(duplicated);
   } catch (err) {
     return next(err);
@@ -408,9 +413,10 @@ router.get('/payments/:id', async (req: AuthenticatedRequest, res: Response, nex
 router.patch('/payments/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user!.userId;
+    const orgId = req.user!.orgId!;
     const { id } = req.params;
 
-    const updated = await updatePaymentMade(id, req.body, userId);
+    const updated = await updatePaymentMade(id, req.body, userId, orgId);
     return res.status(200).json(updated);
   } catch (err) {
     return next(err);
@@ -420,9 +426,10 @@ router.patch('/payments/:id', async (req: AuthenticatedRequest, res: Response, n
 router.delete('/payments/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user!.userId;
+    const orgId = req.user!.orgId!;
     const { id } = req.params;
 
-    const result = await deletePaymentMade(id, userId);
+    const result = await deletePaymentMade(id, userId, orgId);
     return res.status(200).json(result);
   } catch (err) {
     return next(err);
@@ -502,10 +509,11 @@ router.get('/expenses/:id', async (req: AuthenticatedRequest, res: Response, nex
 router.patch('/expenses/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user!.userId;
+    const orgId = req.user!.orgId!;
     const { id } = req.params;
     const body = updateExpenseSchema.parse(req.body);
 
-    const updated = await updateExpense(id, body, userId);
+    const updated = await updateExpense(id, body, userId, orgId);
     return res.status(200).json(updated);
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -518,9 +526,10 @@ router.patch('/expenses/:id', async (req: AuthenticatedRequest, res: Response, n
 router.delete('/expenses/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user!.userId;
+    const orgId = req.user!.orgId!;
     const { id } = req.params;
 
-    const result = await deleteExpense(id, userId);
+    const result = await deleteExpense(id, userId, orgId);
     return res.status(200).json(result);
   } catch (err) {
     return next(err);
@@ -584,10 +593,11 @@ router.get('/orders/:id', async (req: AuthenticatedRequest, res: Response, next:
 router.patch('/orders/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user!.userId;
+    const orgId = req.user!.orgId!;
     const { id } = req.params;
     const body = updatePOSchema.parse(req.body);
 
-    const updated = await updatePO(id, body, userId);
+    const updated = await updatePO(id, body, userId, orgId);
     return res.status(200).json(updated);
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -613,8 +623,9 @@ router.delete('/orders/:id', async (req: AuthenticatedRequest, res: Response, ne
 router.post('/orders/:id/confirm', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user!.userId;
+    const orgId = req.user!.orgId!;
     const { id } = req.params;
-    const result = await confirmPO(id, userId);
+    const result = await confirmPO(id, userId, orgId);
     return res.status(200).json(result);
   } catch (err) {
     return next(err);
@@ -624,8 +635,9 @@ router.post('/orders/:id/confirm', async (req: AuthenticatedRequest, res: Respon
 router.post('/orders/:id/accept', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user!.userId;
+    const orgId = req.user!.orgId!;
     const { id } = req.params;
-    const result = await acceptPO(id, userId);
+    const result = await acceptPO(id, userId, orgId);
     return res.status(200).json(result);
   } catch (err) {
     return next(err);
@@ -635,8 +647,9 @@ router.post('/orders/:id/accept', async (req: AuthenticatedRequest, res: Respons
 router.post('/orders/:id/approve', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user!.userId;
+    const orgId = req.user!.orgId!;
     const { id } = req.params;
-    const result = await approvePO(id, userId);
+    const result = await approvePO(id, userId, orgId);
     return res.status(200).json(result);
   } catch (err) {
     return next(err);
@@ -647,9 +660,10 @@ router.post('/orders/:id/approve', async (req: AuthenticatedRequest, res: Respon
 router.post('/orders/:id/convert-to-expense', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user!.userId;
+    const orgId = req.user!.orgId!;
     const { id } = req.params;
 
-    const result = await convertToExpense(id, userId);
+    const result = await convertToExpense(id, userId, orgId);
     return res.status(200).json(result);
   } catch (err) {
     return next(err);
@@ -660,9 +674,10 @@ router.post('/orders/:id/convert-to-expense', async (req: AuthenticatedRequest, 
 router.post('/orders/:id/convert-to-bill', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user!.userId;
+    const orgId = req.user!.orgId!;
     const { id } = req.params;
 
-    const result = await convertToBill(id, userId);
+    const result = await convertToBill(id, userId, orgId);
     return res.status(200).json(result);
   } catch (err) {
     return next(err);
@@ -1034,10 +1049,11 @@ router.get('/credit-notes/:id', async (req: AuthenticatedRequest, res: Response,
 router.post('/credit-notes/:id/apply', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user!.userId;
+    const orgId = req.user!.orgId!;
     const { id } = req.params;
     const body = applyVendorCreditSchema.parse(req.body);
 
-    const result = await applyVendorCredit(id, body.billId, body.amount, userId);
+    const result = await applyVendorCredit(id, body.billId, body.amount, userId, orgId);
     return res.status(200).json(result);
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -1050,9 +1066,10 @@ router.post('/credit-notes/:id/apply', async (req: AuthenticatedRequest, res: Re
 router.patch('/credit-notes/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user!.userId;
+    const orgId = req.user!.orgId!;
     const { id } = req.params;
 
-    const updated = await updateVendorCredit(id, req.body, userId);
+    const updated = await updateVendorCredit(id, req.body, userId, orgId);
     return res.status(200).json(updated);
   } catch (err) {
     if (err instanceof z.ZodError) {

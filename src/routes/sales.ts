@@ -296,10 +296,11 @@ router.get('/invoices/:id', async (req: AuthenticatedRequest, res: Response, nex
 router.patch('/invoices/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user!.userId;
+    const orgId = req.user!.orgId!;
     const { id } = req.params;
     const body = updateInvoiceSchema.parse(req.body);
 
-    const updated = await updateInvoice(id, body, userId);
+    const updated = await updateInvoice(id, body, userId, orgId);
     return res.status(200).json(updated);
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -313,11 +314,12 @@ router.patch('/invoices/:id', async (req: AuthenticatedRequest, res: Response, n
 router.post('/invoices/bulk-send', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user!.userId;
+    const orgId = req.user!.orgId!;
     const { ids } = req.body;
     if (!Array.isArray(ids) || ids.length === 0) {
       return next(new AppError('ids must be a non-empty array.', 400));
     }
-    const results = await bulkSendInvoices(ids, userId);
+    const results = await bulkSendInvoices(ids, userId, orgId);
     return res.status(200).json({ sent: results.length });
   } catch (err) {
     return next(err);
@@ -328,9 +330,10 @@ router.post('/invoices/bulk-send', async (req: AuthenticatedRequest, res: Respon
 router.post('/invoices/:id/send', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user!.userId;
+    const orgId = req.user!.orgId!;
     const { id } = req.params;
 
-    const sent = await sendInvoice(id, userId);
+    const sent = await sendInvoice(id, userId, orgId);
     return res.status(200).json(sent);
   } catch (err) {
     return next(err);
@@ -341,10 +344,11 @@ router.post('/invoices/:id/send', async (req: AuthenticatedRequest, res: Respons
 router.post('/invoices/:id/void', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user!.userId;
+    const orgId = req.user!.orgId!;
     const { id } = req.params;
 
-    const voided = await voidInvoice(id, userId);
-    createAuditLog({ orgId: req.user!.orgId!, userId, action: 'void', entityType: 'invoice', entityId: id, newValues: { status: 'void' }, ...extractReqMeta(req) });
+    const voided = await voidInvoice(id, userId, orgId);
+    createAuditLog({ orgId, userId, action: 'void', entityType: 'invoice', entityId: id, newValues: { status: 'void' }, ...extractReqMeta(req) });
     return res.status(200).json(voided);
   } catch (err) {
     return next(err);
@@ -355,9 +359,10 @@ router.post('/invoices/:id/void', async (req: AuthenticatedRequest, res: Respons
 router.post('/invoices/:id/duplicate', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user!.userId;
+    const orgId = req.user!.orgId!;
     const { id } = req.params;
 
-    const duplicated = await duplicateInvoice(id, userId);
+    const duplicated = await duplicateInvoice(id, userId, orgId);
     return res.status(201).json(duplicated);
   } catch (err) {
     return next(err);
@@ -590,10 +595,11 @@ router.get('/credit-notes/:id', async (req: AuthenticatedRequest, res: Response,
 router.post('/credit-notes/:id/apply', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user!.userId;
+    const orgId = req.user!.orgId!;
     const { id } = req.params;
     const body = applyCreditNoteSchema.parse(req.body);
 
-    const result = await applyCreditNote(id, body.invoiceId, body.amount, userId);
+    const result = await applyCreditNote(id, body.invoiceId, body.amount, userId, orgId);
     return res.status(200).json(result);
   } catch (err) {
     if (err instanceof z.ZodError) {

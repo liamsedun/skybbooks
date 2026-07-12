@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import {
   Building2, Paintbrush, Globe, MapPinned, Users, Shield, UserCog,
@@ -6,7 +6,7 @@ import {
   Hash, LayoutTemplate, Mail, Tag, Layers, Zap, ListChecks, History, Timer,
   Package, BarChart2, FileText, FileClock, Repeat, ReceiptText, Banknote,
   FileCheck, Truck, ClipboardList, ArrowLeftRight, Wallet, PuzzleIcon,
-  ChevronDown, ChevronRight, ShoppingCart, Receipt, HelpCircle,
+  ChevronDown, Search, Menu, X, ShoppingCart, Receipt, HelpCircle,
 } from 'lucide-react';
 
 type NavItem = { label: string; path: string; icon: React.ComponentType<{ className?: string }> };
@@ -120,80 +120,217 @@ const NAV: NavGroup[] = [
   },
 ];
 
+function groupLabel(group: string): string {
+  return group.replace('Module Settings — ', '');
+}
+
 export function SettingsSidebar() {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   function toggle(group: string) {
     setCollapsed(prev => ({ ...prev, [group]: !prev[group] }));
   }
 
+  // Groups that are "Module Settings — *" get consolidated under one umbrella
+  const moduleSettingsGroups = NAV.filter(g => g.group.startsWith('Module Settings — '));
+  const topLevelGroups = NAV.filter(g => !g.group.startsWith('Module Settings — '));
+
+  // Filter by search query across both top-level and module sub-groups
+  const query = searchQuery.toLowerCase().trim();
+  const filteredTopLevel = useMemo(() => {
+    if (!query) return topLevelGroups;
+    return topLevelGroups
+      .map(g => ({ ...g, items: g.items.filter(i => i.label.toLowerCase().includes(query)) }))
+      .filter(g => g.items.length > 0);
+  }, [query, topLevelGroups]);
+
+  const filteredModuleSubGroups = useMemo(() => {
+    if (!query) return moduleSettingsGroups;
+    return moduleSettingsGroups
+      .map(g => ({ ...g, items: g.items.filter(i => i.label.toLowerCase().includes(query)) }))
+      .filter(g => g.items.length > 0);
+  }, [query, moduleSettingsGroups]);
+
+  // Active path helpers
+  const currentPath = location.pathname;
+  const activeItem = NAV.flatMap(g => g.items).find(i => i.path === currentPath);
+  const activeGroupLabel = activeItem
+    ? NAV.find(g => g.items.some(i => i.path === currentPath))?.group ?? ''
+    : '';
+
+  function renderGroup(group: NavGroup) {
+    const isOpen = collapsed[group.group] !== false;
+    const isActive = group.items.some(i => i.path === currentPath);
+    const label = groupLabel(group.group);
+
+    return (
+      <div key={group.group} className="flex flex-col">
+        <button
+          onClick={() => toggle(group.group)}
+          className={`flex items-center justify-between w-full px-2.5 py-1.5 text-left rounded-lg transition-all duration-150 ${
+            isActive ? 'bg-primary-light/60' : 'hover:bg-surface-subtle'
+          }`}
+        >
+          <span className={`text-[11px] font-bold tracking-[0.08em] uppercase ${
+            isActive ? 'text-primary' : 'text-ink-400'
+          }`}>
+            {label}
+          </span>
+          {isOpen
+            ? <ChevronDown size={12} className="text-ink-400" />
+            : <ChevronDown size={12} className="text-ink-400 -rotate-90" />
+          }
+        </button>
+        {isOpen && (
+          <div className="flex flex-col space-y-0.5 mt-0.5 ml-0.5">
+            {group.items.map(({ label, path, icon: Icon }) => (
+              <NavLink
+                key={path}
+                to={path}
+                onClick={() => setMobileOpen(false)}
+                className={({ isActive }) =>
+                  `flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl text-xs transition-all duration-150 ease-out group ${
+                    isActive
+                      ? 'bg-primary-light text-primary font-semibold shadow-sm'
+                      : 'text-ink-600 hover:text-primary hover:bg-surface-subtle'
+                  }`
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    <span className={`inline-flex items-center justify-center w-7 h-7 rounded-lg shrink-0 transition-all duration-150 ${
+                      isActive
+                        ? 'bg-primary text-white shadow-sm'
+                        : 'bg-transparent group-hover:bg-primary-light/50'
+                    }`}>
+                      <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-ink-400 group-hover:text-primary'}`} />
+                    </span>
+                    {label}
+                  </>
+                )}
+              </NavLink>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   const sidebar = (
     <nav className="w-56 shrink-0 self-start sticky top-6">
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden max-h-[calc(100vh-8rem)] overflow-y-auto">
-        {NAV.map(({ group, items }) => {
-          const isOpen = collapsed[group] !== false;
-          const isActive = items.some(i => i.path === location.pathname);
-          return (
-            <div key={group} className="border-b border-slate-100 last:border-0">
-              <button
-                onClick={() => toggle(group)}
-                className={`w-full flex items-center justify-between px-3 py-2 text-left transition-colors ${
-                  isActive ? 'bg-indigo-50' : 'hover:bg-slate-50'
-                }`}
-              >
-                <span className={`text-xs font-semibold tracking-wide uppercase ${
-                  isActive ? 'text-indigo-700' : 'text-slate-500'
-                }`}>
-                  {group.replace('Module Settings — ', '')}
-                </span>
-                {isOpen
-                  ? <ChevronDown size={13} className="text-slate-400" />
-                  : <ChevronRight size={13} className="text-slate-400" />
-                }
-              </button>
-              {isOpen && (
-                <div className="pb-1">
-                  {items.map(({ label, path, icon: Icon }) => (
-                    <NavLink
-                      key={path}
-                      to={path}
-                      onClick={() => setMobileOpen(false)}
-                      className={({ isActive }) =>
-                        `flex items-center gap-2.5 px-3 py-1.5 mx-1 rounded-lg text-xs transition-colors ${
-                          isActive
-                            ? 'bg-indigo-600 text-white font-medium'
-                            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                        }`
-                      }
-                    >
-                      <Icon className="w-3.5 h-3.5 shrink-0" />
-                      {label}
-                    </NavLink>
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })}
+      {/* Search */}
+      <div className="relative mb-3">
+        <Search className="w-3.5 h-3.5 text-ink-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          placeholder="Find setting..."
+          className="w-full pl-9 pr-3 py-2 text-xs font-medium border border-border-custom rounded-xl outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all duration-150 bg-white text-ink-900 placeholder-ink-400"
+        />
+      </div>
+
+      <div className="bg-white border border-border-custom rounded-xl overflow-hidden max-h-[calc(100vh-12rem)] overflow-y-auto sidebar-scrollbar">
+        {filteredTopLevel.map(renderGroup)}
+
+        {/* Consolidated Module Settings */}
+        {filteredModuleSubGroups.length > 0 && (
+          <div className="flex flex-col">
+            <button
+              onClick={() => toggle('__module_settings')}
+              className={`flex items-center justify-between w-full px-2.5 py-1.5 text-left rounded-lg transition-all duration-150 hover:bg-surface-subtle ${
+                moduleSettingsGroups.some(g => g.items.some(i => i.path === currentPath))
+                  ? 'bg-primary-light/60' : ''
+              }`}
+            >
+              <span className={`text-[11px] font-bold tracking-[0.08em] uppercase ${
+                moduleSettingsGroups.some(g => g.items.some(i => i.path === currentPath))
+                  ? 'text-primary' : 'text-ink-400'
+              }`}>
+                Module Settings
+              </span>
+              {collapsed['__module_settings'] !== false
+                ? <ChevronDown size={12} className="text-ink-400" />
+                : <ChevronDown size={12} className="text-ink-400 -rotate-90" />
+              }
+            </button>
+            {(collapsed['__module_settings'] !== false) && (
+              <div className="flex flex-col space-y-0.5 mt-0.5 ml-0.5">
+                {filteredModuleSubGroups.map(subGroup => (
+                  <div key={subGroup.group} className="flex flex-col">
+                    <span className="px-2.5 py-1 text-[10px] font-semibold text-ink-400 tracking-wider uppercase">
+                      {groupLabel(subGroup.group)}
+                    </span>
+                    <div className="flex flex-col space-y-0.5">
+                      {subGroup.items.map(({ label, path, icon: Icon }) => (
+                        <NavLink
+                          key={path}
+                          to={path}
+                          onClick={() => setMobileOpen(false)}
+                          className={({ isActive }) =>
+                            `flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl text-xs transition-all duration-150 ease-out group ${
+                              isActive
+                                ? 'bg-primary-light text-primary font-semibold shadow-sm'
+                                : 'text-ink-600 hover:text-primary hover:bg-surface-subtle'
+                            }`
+                          }
+                        >
+                          {({ isActive }) => (
+                            <>
+                              <span className={`inline-flex items-center justify-center w-7 h-7 rounded-lg shrink-0 transition-all duration-150 ${
+                                isActive
+                                  ? 'bg-primary text-white shadow-sm'
+                                  : 'bg-transparent group-hover:bg-primary-light/50'
+                              }`}>
+                                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-ink-400 group-hover:text-primary'}`} />
+                              </span>
+                              {label}
+                            </>
+                          )}
+                        </NavLink>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Custom Modules remains as its own group if it has items */}
+        {(() => {
+          const cm = NAV.find(g => g.group === 'Custom Modules');
+          if (!cm) return null;
+          const cmItems = query ? cm.items.filter(i => i.label.toLowerCase().includes(query)) : cm.items;
+          if (cmItems.length === 0) return null;
+          return renderGroup({ ...cm, items: cmItems });
+        })()}
+
+        {filteredTopLevel.length === 0 && filteredModuleSubGroups.length === 0 && (
+          <div className="px-3 py-6 text-center text-xs text-ink-400">
+            No settings match your search.
+          </div>
+        )}
       </div>
     </nav>
   );
 
   return (
     <>
-      {/* Mobile toggle */}
+      {/* Mobile toggle — matches AppLayout drawer pattern */}
       <button
         onClick={() => setMobileOpen(!mobileOpen)}
-        className="lg:hidden flex items-center gap-2 text-sm font-medium text-slate-600 mb-4 px-1"
+        className="lg:hidden flex items-center gap-2 px-3 py-2 text-xs font-medium text-ink-600 bg-white border border-border-custom rounded-xl transition-all duration-150 hover:bg-surface-subtle mb-4"
       >
-        <Settings size={16} />
-        Settings Menu
-        {mobileOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        {mobileOpen ? <X size={14} /> : <Menu size={14} />}
+        {activeGroupLabel ? groupLabel(activeGroupLabel) : 'Settings Menu'}
+        <ChevronDown size={12} className={`ml-auto transition-transform duration-200 ${mobileOpen ? 'rotate-180' : ''}`} />
       </button>
       {mobileOpen && (
-        <div className="lg:hidden mb-4">{sidebar}</div>
+        <div className="lg:hidden mb-6">{sidebar}</div>
       )}
       <div className="hidden lg:block">{sidebar}</div>
     </>
@@ -201,10 +338,32 @@ export function SettingsSidebar() {
 }
 
 export function SettingsLayout() {
+  const location = useLocation();
+
+  // Breadcrumb: derive group + page name from current path
+  const currentPath = location.pathname;
+  const activeGroup = NAV.find(g => g.items.some(i => i.path === currentPath));
+  const activeItem = activeGroup?.items.find(i => i.path === currentPath);
+
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 sm:py-8 flex gap-6 items-start">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 sm:py-8 flex flex-col lg:flex-row gap-6 items-start">
       <SettingsSidebar />
       <div className="flex-1 min-w-0">
+        {/* Consistent page header */}
+        {activeGroup && activeItem && (
+          <div className="mb-6">
+            <nav className="flex items-center gap-1.5 text-xs text-ink-400 mb-1.5">
+              <span className="font-medium">Settings</span>
+              <span className="text-ink-400">/</span>
+              <span className="text-ink-600 font-medium">{groupLabel(activeGroup.group)}</span>
+              <span className="text-ink-400">/</span>
+              <span className="text-ink-900 font-semibold">{activeItem.label}</span>
+            </nav>
+            <h1 className="text-xl font-extrabold text-ink-900">
+              {activeItem.label}
+            </h1>
+          </div>
+        )}
         <Outlet />
       </div>
     </div>

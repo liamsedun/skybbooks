@@ -608,11 +608,11 @@ export async function exportGeneralLedger(
 // =========================================================================
 // 4. EXPORT PAYROLL SCHEDULE
 // =========================================================================
-export async function exportPayrollSchedule(runId: string): Promise<Buffer> {
+export async function exportPayrollSchedule(runId: string, orgId: string): Promise<Buffer> {
   const [run] = await db
     .select()
     .from(payrollRuns)
-    .where(eq(payrollRuns.id, runId))
+    .where(and(eq(payrollRuns.id, runId), eq(payrollRuns.orgId, orgId)))
     .limit(1);
 
   if (!run) throw new AppError('Matched payroll run cycle could not be located.', 404);

@@ -18,7 +18,7 @@ cloudinary.config({
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { db, organisations, users } from '../db/schema';
 import { AppError } from '../lib/errors';
 import { authenticate, requireOrg, requireRole, AuthenticatedRequest } from '../middleware/auth';
@@ -64,31 +64,36 @@ const acceptInviteSchema = z.object({
 router.get('/invite/:token', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const { token } = req.params;
-    console.log(`[Invite Lookup] Searching for token: ${token}`);
 
-    const orgs = await db
+    // Use PostgreSQL JSON containment to find the org with a matching invite token.
+    // This avoids loading ALL orgs into memory, which would be a performance and
+    // information-disclosure risk.
+    const [org] = await db
       .select({ id: organisations.id, name: organisations.name, settings: organisations.settings })
-      .from(organisations);
+      .from(organisations)
+      .where(sql`${organisations.settings} @> ${JSON.stringify({ invites: [{ token, status: 'pending' }] })}::jsonb`)
+      .limit(1);
 
-    for (const org of orgs) {
-      const settings = typeof org.settings === 'object' && org.settings !== null ? org.settings : {};
-      const invites = Array.isArray((settings as any).invites) ? (settings as any).invites : [];
-      console.log(`[Invite Lookup] Org ${org.name}: ${invites.length} invites`);
-      invites.forEach((i: any) => console.log(`  - token: ${i.token?.substring(0, 16)}..., status: ${i.status}`));
-      const invite = invites.find((i: any) => i.token === token && i.status === 'pending');
-      if (invite) {
-        return res.status(200).json({
-          orgId: org.id,
-          orgName: org.name,
-          name: invite.name,
-          email: invite.email,
-          role: invite.role,
-          token,
-        });
-      }
+    if (!org) {
+      throw new AppError('Invalid or expired invitation token.', 404);
     }
 
-    throw new AppError('Invalid or expired invitation token.', 404);
+    const settings = typeof org.settings === 'object' && org.settings !== null ? org.settings : {};
+    const invites = Array.isArray((settings as any).invites) ? (settings as any).invites : [];
+    const invite = invites.find((i: any) => i.token === token && i.status === 'pending');
+
+    if (!invite) {
+      throw new AppError('Invalid or expired invitation token.', 404);
+    }
+
+    return res.status(200).json({
+      orgId: org.id,
+      orgName: org.name,
+      name: invite.name,
+      email: invite.email,
+      role: invite.role,
+      token,
+    });
   } catch (error) {
     return next(error);
   }
@@ -99,25 +104,21 @@ router.post('/invite/:token/accept', async (req: AuthenticatedRequest, res: Resp
     const { token } = req.params;
     const { password } = acceptInviteSchema.parse(req.body);
 
-    const orgs = await db
+    const [foundOrg] = await db
       .select({ id: organisations.id, name: organisations.name, settings: organisations.settings })
-      .from(organisations);
+      .from(organisations)
+      .where(sql`${organisations.settings} @> ${JSON.stringify({ invites: [{ token, status: 'pending' }] })}::jsonb`)
+      .limit(1);
 
-    let foundOrg: any = null;
-    let foundInvite: any = null;
-
-    for (const org of orgs) {
-      const settings = typeof org.settings === 'object' && org.settings !== null ? org.settings : {};
-      const invites = Array.isArray((settings as any).invites) ? (settings as any).invites : [];
-      const invite = invites.find((i: any) => i.token === token && i.status === 'pending');
-      if (invite) {
-        foundOrg = org;
-        foundInvite = invite;
-        break;
-      }
+    if (!foundOrg) {
+      throw new AppError('Invalid or expired invitation token.', 404);
     }
 
-    if (!foundOrg || !foundInvite) {
+    const settings = typeof foundOrg.settings === 'object' && foundOrg.settings !== null ? foundOrg.settings : {};
+    const invites = Array.isArray((settings as any).invites) ? (settings as any).invites : [];
+    const foundInvite = invites.find((i: any) => i.token === token && i.status === 'pending');
+
+    if (!foundInvite) {
       throw new AppError('Invalid or expired invitation token.', 404);
     }
 
@@ -147,8 +148,6 @@ router.post('/invite/:token/accept', async (req: AuthenticatedRequest, res: Resp
       .returning();
 
     // Mark invite as accepted
-    const settings = typeof foundOrg.settings === 'object' && foundOrg.settings !== null ? foundOrg.settings : {};
-    const invites = Array.isArray((settings as any).invites) ? (settings as any).invites : [];
     const updatedInvites = invites.map((i: any) =>
       i.token === token ? { ...i, status: 'accepted' } : i
     );

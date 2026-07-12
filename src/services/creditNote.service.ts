@@ -184,13 +184,13 @@ export async function createCreditNote(input: any, createdBy: string): Promise<a
   });
 }
 
-export async function applyCreditNote(cnId: string, invoiceId: string, amount: number, userId: string): Promise<any> {
+export async function applyCreditNote(cnId: string, invoiceId: string, amount: number, userId: string, orgId: string): Promise<any> {
   return await db.transaction(async (tx) => {
     // 1. Fetch credit note
     const [creditNote] = await tx
       .select()
       .from(creditNotes)
-      .where(eq(creditNotes.id, cnId))
+      .where(and(eq(creditNotes.id, cnId), eq(creditNotes.orgId, orgId)))
       .limit(1);
 
     if (!creditNote) throw new AppError('Credit note not found.', 404);
@@ -203,7 +203,7 @@ export async function applyCreditNote(cnId: string, invoiceId: string, amount: n
     const [invoice] = await tx
       .select()
       .from(invoices)
-      .where(eq(invoices.id, invoiceId))
+      .where(and(eq(invoices.id, invoiceId), eq(invoices.orgId, orgId)))
       .limit(1);
 
     if (!invoice) throw new AppError('Invoice not found.', 404);

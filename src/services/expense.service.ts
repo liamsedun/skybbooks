@@ -222,13 +222,13 @@ export async function listExpenses(orgId: string, filters?: { startDate?: Date; 
     .orderBy(sql`${expenses.date} desc`);
 }
 
-export async function updateExpense(expenseId: string, input: any, userId: string): Promise<any> {
+export async function updateExpense(expenseId: string, input: any, userId: string, orgId: string): Promise<any> {
   return await db.transaction(async (tx) => {
     // Check if expense exists
     const [expense] = await tx
       .select()
       .from(expenses)
-      .where(eq(expenses.id, expenseId))
+      .where(and(eq(expenses.id, expenseId), eq(expenses.orgId, orgId)))
       .limit(1);
 
     if (!expense) throw new AppError('Expense not found.', 404);
@@ -333,12 +333,12 @@ export async function updateExpense(expenseId: string, input: any, userId: strin
   });
 }
 
-export async function deleteExpense(expenseId: string, userId: string): Promise<any> {
+export async function deleteExpense(expenseId: string, userId: string, orgId: string): Promise<any> {
   return await db.transaction(async (tx) => {
     const [expense] = await tx
       .select()
       .from(expenses)
-      .where(eq(expenses.id, expenseId))
+      .where(and(eq(expenses.id, expenseId), eq(expenses.orgId, orgId)))
       .limit(1);
 
     if (!expense) throw new AppError('Expense not found.', 404);

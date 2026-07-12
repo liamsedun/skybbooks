@@ -143,16 +143,17 @@ export async function createPO(input: any, createdBy: string): Promise<any> {
   });
 }
 
-export async function updatePO(poId: string, input: any, userId: string): Promise<any> {
-  const [poOrg] = await db.select({ orgId: purchaseOrders.orgId }).from(purchaseOrders).where(eq(purchaseOrders.id, poId)).limit(1);
-  const settings = poOrg?.orgId ? await getOrgSettings(poOrg.orgId) : undefined;
+export async function updatePO(poId: string, input: any, userId: string, orgId: string): Promise<any> {
+  const [poOrg] = await db.select({ orgId: purchaseOrders.orgId }).from(purchaseOrders).where(and(eq(purchaseOrders.id, poId), eq(purchaseOrders.orgId, orgId))).limit(1);
+  if (!poOrg) throw new AppError('Purchase order not found.', 404);
+  const settings = await getOrgSettings(poOrg.orgId);
   const defaultTaxRate = settings?.general?.defaultTaxRate ?? 7.5;
 
   return await db.transaction(async (tx) => {
     const [po] = await tx
       .select()
       .from(purchaseOrders)
-      .where(eq(purchaseOrders.id, poId))
+      .where(and(eq(purchaseOrders.id, poId), eq(purchaseOrders.orgId, orgId)))
       .limit(1);
 
     if (!po) throw new AppError('Purchase order not found.', 404);
@@ -254,11 +255,11 @@ export async function sendPO(poId: string, userId: string): Promise<any> {
   };
 }
 
-export async function confirmPO(poId: string, userId: string): Promise<any> {
+export async function confirmPO(poId: string, userId: string, orgId: string): Promise<any> {
   const [po] = await db
     .update(purchaseOrders)
     .set({ status: 'confirmed' })
-    .where(and(eq(purchaseOrders.id, poId), eq(purchaseOrders.status, 'draft')))
+    .where(and(eq(purchaseOrders.id, poId), eq(purchaseOrders.orgId, orgId), eq(purchaseOrders.status, 'draft')))
     .returning();
 
   if (!po) throw new AppError('Purchase order not found or not in draft status.', 404);
@@ -267,11 +268,11 @@ export async function confirmPO(poId: string, userId: string): Promise<any> {
   return { ...po, notes: decoded.userNotes, lines: decoded.virtualLines };
 }
 
-export async function acceptPO(poId: string, userId: string): Promise<any> {
+export async function acceptPO(poId: string, userId: string, orgId: string): Promise<any> {
   const [po] = await db
     .update(purchaseOrders)
     .set({ status: 'accepted' })
-    .where(and(eq(purchaseOrders.id, poId), eq(purchaseOrders.status, 'confirmed')))
+    .where(and(eq(purchaseOrders.id, poId), eq(purchaseOrders.orgId, orgId), eq(purchaseOrders.status, 'confirmed')))
     .returning();
 
   if (!po) throw new AppError('Purchase order not found or not in confirmed status.', 404);
@@ -280,11 +281,11 @@ export async function acceptPO(poId: string, userId: string): Promise<any> {
   return { ...po, notes: decoded.userNotes, lines: decoded.virtualLines };
 }
 
-export async function approvePO(poId: string, userId: string): Promise<any> {
+export async function approvePO(poId: string, userId: string, orgId: string): Promise<any> {
   const [po] = await db
     .update(purchaseOrders)
     .set({ status: 'approved' })
-    .where(and(eq(purchaseOrders.id, poId), eq(purchaseOrders.status, 'accepted')))
+    .where(and(eq(purchaseOrders.id, poId), eq(purchaseOrders.orgId, orgId), eq(purchaseOrders.status, 'accepted')))
     .returning();
 
   if (!po) throw new AppError('Purchase order not found or not in accepted status.', 404);
@@ -293,10 +294,10 @@ export async function approvePO(poId: string, userId: string): Promise<any> {
   return { ...po, notes: decoded.userNotes, lines: decoded.virtualLines };
 }
 
-export async function convertToBill(poId: string, userId: string): Promise<any> {
-  const [poRow] = await db.select({ orgId: purchaseOrders.orgId }).from(purchaseOrders).where(eq(purchaseOrders.id, poId)).limit(1);
-  const orgId = poRow?.orgId;
-  const settings = orgId ? await getOrgSettings(orgId) : undefined;
+export async function convertToBill(poId: string, userId: string, orgId: string): Promise<any> {
+  const [poRow] = await db.select({ orgId: purchaseOrders.orgId }).from(purchaseOrders).where(and(eq(purchaseOrders.id, poId), eq(purchaseOrders.orgId, orgId))).limit(1);
+  if (!poRow) throw new AppError('Purchase order not found.', 404);
+  const settings = await getOrgSettings(poRow.orgId);
   const billSeries = (settings?.txnNumbering?.series || []).find((s: any) => s.module === 'Bill' || s.module === 'Vendor Bill');
   const numPrefix = billSeries?.prefix || 'BILL-';
   const startStr = billSeries?.start || '00001';
@@ -308,7 +309,7 @@ export async function convertToBill(poId: string, userId: string): Promise<any> 
     const [po] = await tx
       .select()
       .from(purchaseOrders)
-      .where(eq(purchaseOrders.id, poId))
+      .where(and(eq(purchaseOrders.id, poId), eq(purchaseOrders.orgId, orgId)))
       .limit(1);
 
     if (!po) throw new AppError('Purchase order not found.', 404);
@@ -444,11 +445,11 @@ export async function deletePO(poId: string, orgId: string): Promise<any> {
   return { message: `Purchase order ${deleted.poNumber} deleted successfully.` };
 }
 
-export async function convertToExpense(poId: string, userId: string): Promise<any> {
+export async function convertToExpense(poId: string, userId: string, orgId: string): Promise<any> {
   const [po] = await db
     .select()
     .from(purchaseOrders)
-    .where(eq(purchaseOrders.id, poId))
+    .where(and(eq(purchaseOrders.id, poId), eq(purchaseOrders.orgId, orgId)))
     .limit(1);
 
   if (!po) throw new AppError('Purchase order not found.', 404);

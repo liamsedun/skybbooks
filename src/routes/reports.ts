@@ -659,16 +659,17 @@ router.get(
   '/payroll-schedule',
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
+      const orgId = req.user!.orgId!;
       const { runId, format } = payrollScheduleQuerySchema.parse(req.query);
 
       if (format === 'excel') {
-        const buffer = await exportPayrollSchedule(runId);
+        const buffer = await exportPayrollSchedule(runId, orgId);
         return sendFileBuffer(res, buffer, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'payroll_bank_schedule.xlsx');
       }
 
       if (format === 'pdf') {
         // Fallback to beautiful Bank schedule sheet
-        const buffer = await exportPayrollSchedule(runId);
+        const buffer = await exportPayrollSchedule(runId, orgId);
         return sendFileBuffer(res, buffer, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'payroll_bank_schedule.xlsx');
       }
     } catch (error) {

@@ -841,12 +841,12 @@ export async function recordPaymentMade(input: any, createdBy: string): Promise<
   });
 }
 
-export async function updatePaymentMade(id: string, input: any, userId: string): Promise<any> {
+export async function updatePaymentMade(id: string, input: any, userId: string, orgId: string): Promise<any> {
   return await db.transaction(async (tx) => {
     const [pmt] = await tx
       .select()
       .from(paymentsMade)
-      .where(eq(paymentsMade.id, id))
+      .where(and(eq(paymentsMade.id, id), eq(paymentsMade.orgId, orgId)))
       .limit(1);
 
     if (!pmt) throw new AppError('Payment not found.', 404);
@@ -941,12 +941,12 @@ export async function updatePaymentMade(id: string, input: any, userId: string):
   });
 }
 
-export async function deletePaymentMade(paymentId: string, userId: string): Promise<any> {
+export async function deletePaymentMade(paymentId: string, userId: string, orgId: string): Promise<any> {
   return await db.transaction(async (tx) => {
     const [payment] = await tx
       .select()
       .from(paymentsMade)
-      .where(eq(paymentsMade.id, paymentId))
+      .where(and(eq(paymentsMade.id, paymentId), eq(paymentsMade.orgId, orgId)))
       .limit(1);
 
     if (!payment) throw new AppError('Payment not found.', 404);

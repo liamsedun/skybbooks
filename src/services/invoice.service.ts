@@ -439,9 +439,10 @@ export async function createInvoice(input: any, createdBy: string): Promise<any>
   });
 }
 
-export async function updateInvoice(id: string, input: any, updatedBy: string): Promise<any> {
-  const [invoiceOrg] = await db.select({ orgId: invoices.orgId }).from(invoices).where(eq(invoices.id, id)).limit(1);
-  const settings = invoiceOrg?.orgId ? await getOrgSettings(invoiceOrg.orgId) : undefined;
+export async function updateInvoice(id: string, input: any, updatedBy: string, orgId: string): Promise<any> {
+  const [invoiceOrg] = await db.select({ orgId: invoices.orgId }).from(invoices).where(and(eq(invoices.id, id), eq(invoices.orgId, orgId))).limit(1);
+  if (!invoiceOrg) throw new AppError('Invoice not found.', 404);
+  const settings = await getOrgSettings(invoiceOrg.orgId);
   const defaultTaxRate = settings?.general?.defaultTaxRate ?? 7.5;
 
   return await db.transaction(async (tx) => {
@@ -449,7 +450,7 @@ export async function updateInvoice(id: string, input: any, updatedBy: string): 
     const [existingInvoice] = await tx
       .select()
       .from(invoices)
-      .where(eq(invoices.id, id))
+      .where(and(eq(invoices.id, id), eq(invoices.orgId, orgId)))
       .limit(1);
 
     if (!existingInvoice) throw new AppError('Invoice not found.', 404);
@@ -575,12 +576,12 @@ export async function updateInvoice(id: string, input: any, updatedBy: string): 
   });
 }
 
-export async function sendInvoice(id: string, userId: string, txClient?: any): Promise<any> {
+export async function sendInvoice(id: string, userId: string, orgId: string, txClient?: any): Promise<any> {
   const run = async (tx: any) => {
     const [invoice] = await tx
       .select()
       .from(invoices)
-      .where(eq(invoices.id, id))
+      .where(and(eq(invoices.id, id), eq(invoices.orgId, orgId)))
       .limit(1);
 
     if (!invoice) throw new AppError('Invoice not found.', 404);
@@ -616,23 +617,23 @@ export async function sendInvoice(id: string, userId: string, txClient?: any): P
   return await db.transaction(run);
 }
 
-export async function bulkSendInvoices(ids: string[], userId: string): Promise<any[]> {
+export async function bulkSendInvoices(ids: string[], userId: string, orgId: string): Promise<any[]> {
   return await db.transaction(async (tx) => {
     const results: any[] = [];
     for (const id of ids) {
-      const result = await sendInvoice(id, userId, tx);
+      const result = await sendInvoice(id, userId, orgId, tx);
       results.push(result);
     }
     return results;
   });
 }
 
-export async function voidInvoice(id: string, userId: string): Promise<any> {
+export async function voidInvoice(id: string, userId: string, orgId: string): Promise<any> {
   return await db.transaction(async (tx) => {
     const [invoice] = await tx
       .select()
       .from(invoices)
-      .where(eq(invoices.id, id))
+      .where(and(eq(invoices.id, id), eq(invoices.orgId, orgId)))
       .limit(1);
 
     if (!invoice) throw new AppError('Invoice not found.', 404);
@@ -665,12 +666,12 @@ export async function voidInvoice(id: string, userId: string): Promise<any> {
   });
 }
 
-export async function duplicateInvoice(id: string, userId: string): Promise<any> {
+export async function duplicateInvoice(id: string, userId: string, orgId: string): Promise<any> {
   return await db.transaction(async (tx) => {
     const [invoice] = await tx
       .select()
       .from(invoices)
-      .where(eq(invoices.id, id))
+      .where(and(eq(invoices.id, id), eq(invoices.orgId, orgId)))
       .limit(1);
 
     if (!invoice) throw new AppError('Origin invoice not found.', 404);

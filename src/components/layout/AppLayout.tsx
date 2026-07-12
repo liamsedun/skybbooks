@@ -338,28 +338,28 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
       {/* 1. LEFT SIDEBAR: Standard desktop (hidden on tablet/mobile unless toggled) */}
       <aside 
         id="desktop-sidebar-pane"
-        className={`fixed top-0 bottom-0 left-0 z-40 w-60 bg-white border-r border-slate-100 flex flex-col transition-transform duration-300 lg:translate-x-0 ${
+        className={`fixed top-0 bottom-0 left-0 z-40 w-60 bg-surface border-r border-border-custom flex flex-col transition-transform duration-300 lg:translate-x-0 ${
           isMobileOpen ? 'translate-x-0' : '-translate-x-full'
         } lg:static lg:h-screen shrink-0`}
       >
         {/* Brand visual header area */}
-        <div className="h-16 px-5 border-b border-slate-50 flex items-center justify-between">
-          <div className="flex items-center space-x-3 select-none">
+        <div className="h-16 px-5 border-b border-border-custom flex items-center justify-between">
+          <div className="flex items-center space-x-2.5 select-none">
             {developerLogoUrl ? (
               <img src={developerLogoUrl} alt="" className="w-8 h-8 rounded object-contain shrink-0" />
             ) : (
-              <SkyhouseLogo className="w-9 h-9 drop-shadow-sm shrink-0" />
+              <SkyhouseLogo className="w-8 h-8 drop-shadow-sm shrink-0" />
             )}
             <div>
-              <h2 className="text-sm font-extrabold text-slate-800 uppercase tracking-widest leading-none">SkyBooks</h2>
-              <span className="text-[10px] text-slate-400 font-bold tracking-widest font-mono uppercase mt-1 inline-block">Books Engine</span>
+              <h2 className="text-sm font-extrabold text-ink-900 uppercase tracking-[0.12em] leading-none">SkyBooks</h2>
+              <span className="text-[10px] text-ink-400 font-semibold tracking-widest font-mono uppercase mt-0.5 inline-block">Books Engine</span>
             </div>
           </div>
           
           {/* Close drawer icon on small viewports */}
           <button 
             onClick={() => setIsMobileOpen(false)}
-            className="lg:hidden p-1.5 hover:bg-slate-50 text-slate-400 rounded-lg outline-none"
+            className="lg:hidden p-1.5 hover:bg-surface-subtle text-ink-400 rounded-lg outline-none transition-colors duration-150"
           >
             <X className="w-5 h-5" />
           </button>
@@ -368,38 +368,38 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
         {/* Dynamic Sidebar Search Engine */}
         <div className="p-3.5 border-b border-slate-50">
           <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+            <Search className="w-4 h-4 text-ink-400 absolute left-3 top-2.5 pointer-events-none" />
             <input
               type="text"
               id="sidebar-search-bar"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search functions & tags..."
-              className="w-full pl-9 pr-3 py-2 text-xs font-medium border border-slate-200 rounded-lg outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors bg-slate-50 text-ink-900 placeholder-ink-400"
+              className="w-full pl-9 pr-3 py-2 text-xs font-medium border border-border-custom rounded-xl outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all duration-150 bg-white text-ink-900 placeholder-ink-400"
             />
           </div>
         </div>
 
         {/* Scrollable Navigation section */}
-        <nav className="flex-1 overflow-y-auto p-4 space-y-4" id="sidebar-scrollable-links">
+        <nav className="flex-1 overflow-y-auto p-3 space-y-3 sidebar-scrollbar" id="sidebar-scrollable-links">
           {filteredNavigation.map((group) => {
             const isCollapsed = collapsedGroups[group.title] && !searchQuery;
             return (
-              <div key={group.title} className="flex flex-col space-y-1">
+              <div key={group.title} className="flex flex-col">
                 {/* Header Group toggler */}
                 <button
                   onClick={() => toggleGroup(group.title)}
-                  className="px-2 py-1 flex items-center justify-between text-[11px] font-bold text-ink-400 tracking-wider font-sans select-none text-left w-full hover:text-ink-600 transition-colors group"
+                  className="px-2 py-1.5 flex items-center justify-between text-[11px] font-bold text-ink-400 tracking-[0.08em] font-sans select-none text-left w-full hover:text-ink-600 transition-all duration-150 rounded-lg hover:bg-surface-subtle group"
                 >
                   <span>{group.title}</span>
                   {!searchQuery && (
-                    <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 text-ink-400 group-hover:text-ink-500 ${isCollapsed ? '-rotate-90' : ''}`} />
+                    <ChevronDown className={`w-3 h-3 transition-transform duration-200 text-ink-400 group-hover:text-ink-500 ${isCollapsed ? '-rotate-90' : ''}`} />
                   )}
                 </button>
 
                 {/* Sub-items array */}
                 {!isCollapsed && (
-                  <div className="flex flex-col space-y-0.5 mt-1">
+                  <div className="flex flex-col space-y-0.5 mt-0.5">
                     {group.items.map((item) => {
                       const targetPath = pathMap[item.id];
                       const isActive = currentView 
@@ -411,13 +411,19 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
                           key={item.id}
                           id={`nav-link-${item.id}`}
                           onClick={() => handleLinkClick(item.id)}
-                          className={`w-full px-3 py-1.5 flex items-center text-xs font-medium rounded-lg text-left transition-all relative ${
+                          className={`w-full px-2.5 py-1.5 flex items-center text-xs font-medium rounded-xl text-left transition-all duration-150 ease-out relative group ${
                             isActive
-                              ? 'bg-primary-light text-primary font-semibold border-l-3 border-primary rounded-l-none shadow-sm'
+                              ? 'bg-primary-light text-primary font-semibold shadow-sm'
                               : 'text-ink-600 hover:text-primary hover:bg-surface-subtle'
                           }`}
                         >
-                          <Icon className={`w-4 h-4 mr-3 shrink-0 ${isActive ? 'text-primary' : 'text-ink-400'}`} />
+                          <span className={`inline-flex items-center justify-center w-7 h-7 mr-2.5 rounded-lg shrink-0 transition-all duration-150 ${
+                            isActive
+                              ? 'bg-primary text-white shadow-sm'
+                              : 'bg-transparent group-hover:bg-primary-light/50'
+                          }`}>
+                            <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-ink-400 group-hover:text-primary'}`} />
+                          </span>
                           <span className="truncate">{item.name}</span>
                         </button>
                       );
@@ -430,20 +436,20 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
         </nav>
 
         {/* STICKY BOTTOM USER PROFILE SECTION */}
-        <div className="p-4 border-t border-slate-100 bg-slate-50/50" id="sidebar-sticky-footer">
-          <div className="flex items-center space-x-3 bg-white p-2.5 rounded-xl border border-slate-100">
-            <div className="w-8.5 h-8.5 rounded-lg bg-primary-light text-primary font-extrabold flex items-center justify-center text-xs shadow-sm select-none uppercase overflow-hidden">
+        <div className="p-3 border-t border-border-custom bg-white shadow-sm" id="sidebar-sticky-footer">
+          <div className="flex items-center space-x-2.5 p-2 rounded-xl bg-surface-subtle border border-border-custom/60">
+            <div className="w-8 h-8 rounded-lg bg-primary-light text-primary font-extrabold flex items-center justify-center text-xs shadow-sm select-none uppercase overflow-hidden shrink-0">
               {userAvatarUrl ? <img src={userAvatarUrl} alt="" className="w-full h-full object-cover" /> : userInitials}
             </div>
             <div className="flex-1 min-w-0 select-none">
               <h4 className="text-xs font-bold text-ink-900 truncate">{user?.fullName || 'Active Controller'}</h4>
-              <p className="text-[10px] text-ink-400 font-bold truncate mt-0.5">{formatRole(role)}</p>
+              <p className="text-[10px] text-ink-400 font-semibold truncate mt-0.5">{formatRole(role)}</p>
             </div>
             <button 
               id="sidebar-btn-logout"
               title="Sign Out Session"
               onClick={logout}
-              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-rose-600 transition-colors duration-150 outline-none"
+              className="p-1.5 rounded-lg hover:bg-rose-50 text-ink-400 hover:text-rose-600 transition-all duration-150 outline-none"
             >
               <LogOut className="w-4 h-4" />
             </button>
