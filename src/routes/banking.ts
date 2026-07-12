@@ -347,7 +347,7 @@ router.patch('/accounts/:id/balance', async (req: AuthenticatedRequest, res: Res
           { accountId: ba.accountId, debit: delta, credit: 0, description: 'Bank balance increase' },
           { accountId: clearing.id, debit: 0, credit: delta, description: 'Contra to clearing' },
         ],
-        createdBy: req.user!.id,
+        createdBy: req.user!.userId,
         currency: 'NGN',
       });
     } else {
@@ -360,7 +360,7 @@ router.patch('/accounts/:id/balance', async (req: AuthenticatedRequest, res: Res
           { accountId: ba.accountId, debit: 0, credit: -delta, description: 'Bank balance decrease' },
           { accountId: clearing.id, debit: -delta, credit: 0, description: 'Contra to clearing' },
         ],
-        createdBy: req.user!.id,
+        createdBy: req.user!.userId,
         currency: 'NGN',
       });
     }
@@ -443,7 +443,7 @@ router.post('/accounts/import-opening-balances', async (req: AuthenticatedReques
             { accountId: ba.accountId, debit: delta, credit: 0, description: 'Opening balance from CSV import' },
             { accountId: clearing.id, debit: 0, credit: delta, description: 'Contra to clearing' },
           ],
-          createdBy: req.user!.id,
+          createdBy: req.user!.userId,
           currency: 'NGN',
         });
       } else {
@@ -456,7 +456,7 @@ router.post('/accounts/import-opening-balances', async (req: AuthenticatedReques
             { accountId: ba.accountId, debit: 0, credit: -delta, description: 'Opening balance from CSV import' },
             { accountId: clearing.id, debit: -delta, credit: 0, description: 'Contra to clearing' },
           ],
-          createdBy: req.user!.id,
+          createdBy: req.user!.userId,
           currency: 'NGN',
         });
       }
