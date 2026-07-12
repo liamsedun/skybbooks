@@ -223,11 +223,7 @@ function RequireRoleRoute({ roles }: { roles: string[] }) {
     return <Navigate to="/dashboard" replace />;
   }
 
-  return (
-    <AppLayout>
-      <Outlet />
-    </AppLayout>
-  );
+  return <Outlet />;
 }
 
 // =========================================================================
