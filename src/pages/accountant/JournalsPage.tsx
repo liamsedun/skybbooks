@@ -714,7 +714,7 @@ function JournalForm({ editId, onDone }: { editId?: string | null; onDone: () =>
             <Plus className="w-3.5 h-3.5" /> Add Line
           </button>
         </div>
-        <div className="overflow-x-auto">
+        <div className="overflow-visible">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200">
