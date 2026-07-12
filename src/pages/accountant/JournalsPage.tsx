@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { journalsApi, accountantApi, printWindow, orgApi } from '../../lib/api';
 import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
 import { PageLoader } from '../../components/ui/PageLoader';
-import { Plus, X, Loader2, AlertCircle, CheckCircle2, Eye, Download, Upload, Printer, ExternalLink, ArrowLeft, RotateCcw, Trash2 } from 'lucide-react';
+import { Plus, X, Loader2, AlertCircle, CheckCircle2, Eye, Download, Upload, Printer, ExternalLink, ArrowLeft, RotateCcw, Trash2, Pencil } from 'lucide-react';
 import { exportToCsv } from '../../lib/csvTemplates';
 
 function fmtNaira(v: number): string {
@@ -38,6 +38,7 @@ export function JournalsPage() {
   const [searchParams] = useSearchParams();
   const entryParam = searchParams.get('entry');
   const [showForm, setShowForm] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
   const [viewId, setViewId] = useState<string | null>(null);
   const [showImport, setShowImport] = useState(false);
   const [csvText, setCsvText] = useState('');
@@ -191,7 +192,7 @@ export function JournalsPage() {
             <Download size={14} /> CSV
           </button>
           <button onClick={handlePrintPdf} className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-white bg-red-600 rounded-xl hover:bg-red-700 transition-all duration-200"><Printer className="w-3.5 h-3.5" /> PDF</button>
-          <button onClick={() => { setShowForm(true); setViewId(null); }} className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200"><Plus className="w-4 h-4" /> +New</button>
+          <button onClick={() => { setShowForm(true); setViewId(null); setEditId(null); }} className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200"><Plus className="w-4 h-4" /> +New</button>
         </div>
       </div>
 
@@ -232,9 +233,9 @@ export function JournalsPage() {
       )}
 
       {viewId ? (
-        <JournalDetailView journalId={viewId} onBack={() => setViewId(null)} />
+        <JournalDetailView journalId={viewId} onBack={() => setViewId(null)} onEdit={(id) => { setViewId(null); setEditId(id); setShowForm(true); }} />
       ) : showForm ? (
-        <JournalForm onDone={() => { setShowForm(false); queryClient.invalidateQueries({ queryKey: ['journals'] }); }} />
+        <JournalForm editId={editId} onDone={() => { setShowForm(false); setEditId(null); queryClient.invalidateQueries({ queryKey: ['journals'] }); }} />
       ) : isLoading ? (
         <PageLoader message="Loading journals..." />
       ) : (
@@ -331,7 +332,7 @@ export function JournalsPage() {
   );
 }
 
-function JournalDetailView({ journalId, onBack }: { journalId: string; onBack: () => void }) {
+function JournalDetailView({ journalId, onBack, onEdit }: { journalId: string; onBack: () => void; onEdit?: (id: string) => void }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: entry, isLoading } = useQuery({
@@ -549,11 +550,17 @@ function JournalDetailView({ journalId, onBack }: { journalId: string; onBack: (
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           {!entry.isReversed && entry.source === 'manual' && (
-            <button
-              onClick={handleReverse}
-              disabled={reverseMutation.isPending}
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200/80 rounded-xl transition-all duration-200 disabled:opacity-50"
-            >{reverseMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />} Reverse Entry</button>
+            <>
+              <button
+                onClick={() => onEdit?.(journalId)}
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 rounded-xl transition-all duration-200"
+              ><Pencil className="w-4 h-4" /> Edit</button>
+              <button
+                onClick={handleReverse}
+                disabled={reverseMutation.isPending}
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200/80 rounded-xl transition-all duration-200 disabled:opacity-50"
+              >{reverseMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />} Reverse Entry</button>
+            </>
           )}
         </div>
         <div className="flex items-center gap-3">
@@ -581,7 +588,7 @@ function JournalDetailView({ journalId, onBack }: { journalId: string; onBack: (
   );
 }
 
-function JournalForm({ onDone }: { onDone: () => void }) {
+function JournalForm({ editId, onDone }: { editId?: string | null; onDone: () => void }) {
   const [entryNumber, setEntryNumber] = useState(`JE-${Date.now()}`);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [description, setDescription] = useState('');
@@ -589,16 +596,41 @@ function JournalForm({ onDone }: { onDone: () => void }) {
   const [lines, setLines] = useState([{ accountId: '', debitAmount: 0, creditAmount: 0, description: '' }]);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [loaded, setLoaded] = useState(false);
 
   const { data: accounts } = useQuery({
     queryKey: ['accounts'],
     queryFn: () => accountantApi.getAccounts(),
   });
 
+  const { data: existingEntry } = useQuery({
+    queryKey: ['journal', editId],
+    queryFn: () => journalsApi.getJournal(editId!),
+    enabled: !!editId,
+  });
+
+  useEffect(() => {
+    if (existingEntry && !loaded) {
+      setEntryNumber(existingEntry.entryNumber || `JE-${Date.now()}`);
+      setDate(existingEntry.date ? existingEntry.date.slice(0, 10) : new Date().toISOString().split('T')[0]);
+      setDescription(existingEntry.description || '');
+      setReference(existingEntry.reference || '');
+      setLines((existingEntry.lines || []).map((l: any) => ({
+        accountId: l.accountId || '',
+        debitAmount: Number(l.debitAmount || 0) / 100,
+        creditAmount: Number(l.creditAmount || 0) / 100,
+        description: l.description || '',
+      })));
+      setLoaded(true);
+    }
+  }, [existingEntry, loaded]);
+
+  const isEdit = !!editId;
+
   const mutation = useMutation({
-    mutationFn: (data: any) => journalsApi.createJournal(data),
-    onSuccess: () => { setSuccess('Journal entry created.'); setTimeout(onDone, 1000); },
-    onError: (err: any) => setError(err.response?.data?.error || err.message || 'Failed to create.'),
+    mutationFn: (data: any) => isEdit ? journalsApi.updateJournal(editId!, data) : journalsApi.createJournal(data),
+    onSuccess: () => { setSuccess(isEdit ? 'Journal entry updated.' : 'Journal entry created.'); setTimeout(onDone, 1000); },
+    onError: (err: any) => setError(err.response?.data?.error || err.message || 'Failed to save.'),
   });
 
   const addLine = () => setLines([...lines, { accountId: '', debitAmount: 0, creditAmount: 0, description: '' }]);
@@ -639,7 +671,7 @@ function JournalForm({ onDone }: { onDone: () => void }) {
 
       {/* Header */}
       <div className="px-6 pt-5 pb-4 border-b border-slate-100">
-        <h2 className="text-lg font-bold text-slate-900 mb-4">New Journal Entry</h2>
+        <h2 className="text-lg font-bold text-slate-900 mb-4">{isEdit ? 'Edit Journal Entry' : 'New Journal Entry'}</h2>
         <div className="grid grid-cols-4 gap-4">
           <div>
             <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Entry #</label>
@@ -758,7 +790,7 @@ function JournalForm({ onDone }: { onDone: () => void }) {
         <button type="submit" disabled={mutation.isPending}
           className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors inline-flex items-center gap-2">
           {mutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-          Create Journal Entry
+          {isEdit ? 'Update Journal Entry' : 'Create Journal Entry'}
         </button>
       </div>
     </form>

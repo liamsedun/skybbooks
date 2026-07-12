@@ -1908,7 +1908,8 @@ export async function getAccountLedger(
 
 export async function updateJournalEntry(
   entryId: string,
-  input: { date: Date; description: string; lines: { id?: string; accountId: string; debitAmount: number; creditAmount: number; description: string }[] }
+  input: { date: Date; description: string; lines: { id?: string; accountId: string; debitAmount: number; creditAmount: number; description: string }[] },
+  orgId?: string
 ): Promise<any> {
   const [entry] = await db
     .select()
@@ -1916,6 +1917,16 @@ export async function updateJournalEntry(
     .where(eq(journalEntries.id, entryId))
     .limit(1);
   if (!entry) throw new AppError('Journal entry not found.', 404);
+
+  if (orgId) {
+    const periodCheck = await isDateInClosedPeriod(orgId, input.date);
+    if (periodCheck.isClosed) {
+      throw new AppError(
+        `Cannot post to a closed accounting period. Period ending ${periodCheck.periodEnd?.toISOString().split('T')[0]} was closed on ${periodCheck.closedAt?.toISOString().split('T')[0]}.`,
+        403
+      );
+    }
+  }
 
   let totalDebits = 0;
   let totalCredits = 0;
@@ -1925,7 +1936,6 @@ export async function updateJournalEntry(
   }
   if (totalDebits !== totalCredits) throw new AppError('Journal entry is out of balance.', 400);
 
-  // Delete existing lines and re-insert
   await db.delete(journalLines).where(eq(journalLines.entryId, entryId));
 
   for (const line of input.lines) {

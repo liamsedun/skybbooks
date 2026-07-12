@@ -4,7 +4,7 @@ import { db, journalEntries, journalLines, accounts } from '../db/schema';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
-import { reverseJournalEntry } from '../services/ledger.service';
+import { reverseJournalEntry, updateJournalEntry } from '../services/ledger.service';
 import { createAuditLog, extractReqMeta } from '../services/audit.service';
 
 const router = Router();
@@ -295,6 +295,40 @@ router.post('/import-csv', async (req: AuthenticatedRequest, res: Response, next
     if (err instanceof z.ZodError) return next(new AppError(err.issues[0]?.message || 'Validation failed', 400));
     return next(err);
   }
+});
+
+// PUT /journals/:id — update a manual journal entry
+router.put('/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const userId = req.user!.userId;
+    const { id } = req.params;
+
+    const [entry] = await db
+      .select()
+      .from(journalEntries)
+      .where(and(eq(journalEntries.id, id), eq(journalEntries.orgId, orgId)))
+      .limit(1);
+    if (!entry) throw new AppError('Journal entry not found.', 404);
+    if (entry.source !== 'manual') throw new AppError('Only manual journal entries can be edited.', 400);
+    if (entry.isReversed) throw new AppError('Cannot edit a reversed entry.', 400);
+
+    const body = journalEntrySchema.parse(req.body);
+    const oldValues = {
+      date: entry.date,
+      description: entry.description,
+      lines: await db.select().from(journalLines).where(eq(journalLines.entryId, id)),
+    };
+
+    const updated = await updateJournalEntry(id, {
+      date: body.date,
+      description: body.description || '',
+      lines: body.lines.map(l => ({ accountId: l.accountId, debitAmount: l.debitAmount, creditAmount: l.creditAmount, description: l.description || '' })),
+    }, orgId);
+
+    createAuditLog({ orgId, userId, action: 'update', entityType: 'journal-entry', entityId: id, oldValues, newValues: body, ...extractReqMeta(req) });
+    return res.status(200).json(updated);
+  } catch (err) { return next(err); }
 });
 
 // Reverse a manual journal entry

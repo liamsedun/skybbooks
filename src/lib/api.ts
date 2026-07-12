@@ -830,6 +830,10 @@ export const journalsApi = {
     const res = await api.post(`/journals/${id}/reverse`);
     return res.data;
   },
+  updateJournal: async (id: string, data: any) => {
+    const res = await api.put(`/journals/${id}`, data);
+    return res.data;
+  },
 };
 
 // 7c. Budgets Endpoints
