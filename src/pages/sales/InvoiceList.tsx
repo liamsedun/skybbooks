@@ -347,15 +347,15 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
           onClick={() => setStatusFilter('all')}
           className={`p-4 rounded-xl text-left border transition relative shadow-sm outline-none cursor-pointer ${
             statusFilter === 'all'
-              ? 'bg-primary-light border-primary/30 text-primary'
-              : 'bg-white border-slate-100 hover:border-slate-200 text-slate-500'
+              ? 'bg-indigo-100 border-indigo-300 text-indigo-700'
+              : 'bg-indigo-50 border-indigo-100 hover:border-indigo-200 text-indigo-600'
           }`}
         >
           <span className="text-[10px] font-bold uppercase tracking-wider block font-sans">All Billings</span>
-          <span className="text-lg font-bold text-ink-900 block mt-1 tabular-nums">
+          <span className="text-lg font-bold text-indigo-900 block mt-1 tabular-nums">
             {formatNaira(summaryKpis.totalAll, false)}
           </span>
-          <span className="absolute bottom-2.5 right-2 text-[10px] text-ink-400 font-bold">
+          <span className="absolute bottom-2.5 right-2 text-[10px] text-indigo-400 font-bold">
             {invoicesList.length} items
           </span>
         </button>
@@ -365,15 +365,15 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
           onClick={() => setStatusFilter('draft')}
           className={`p-4 rounded-xl text-left border transition relative shadow-sm outline-none cursor-pointer ${
             statusFilter === 'draft'
-              ? 'bg-slate-100 border-slate-300 text-ink-600'
-              : 'bg-white border-slate-100 hover:border-slate-200 text-slate-500'
+              ? 'bg-slate-200 border-slate-400 text-slate-700'
+              : 'bg-slate-100 border-slate-200 hover:border-slate-300 text-slate-500'
           }`}
         >
-          <span className="text-[10px] font-bold uppercase tracking-wider block font-sans text-slate-500">Drafts</span>
-          <span className="text-lg font-bold text-ink-900 block mt-1 tabular-nums">
+          <span className="text-[10px] font-bold uppercase tracking-wider block font-sans text-slate-600">Drafts</span>
+          <span className="text-lg font-bold text-slate-800 block mt-1 tabular-nums">
             {formatNaira(summaryKpis.totalDraft, false)}
           </span>
-          <span className="absolute bottom-2.5 right-2 text-[10px] text-ink-400 font-bold">
+          <span className="absolute bottom-2.5 right-2 text-[10px] text-slate-400 font-bold">
             {invoicesList.filter((i: any) => i.status?.toLowerCase() === 'draft').length} items
           </span>
         </button>
@@ -383,15 +383,15 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
           onClick={() => setStatusFilter('sent')}
           className={`p-4 rounded-xl text-left border transition relative shadow-sm outline-none cursor-pointer ${
             statusFilter === 'sent'
-              ? 'bg-info-bg border-info-custom/30 text-info-custom'
-              : 'bg-white border-slate-100 hover:border-slate-200 text-slate-500'
+              ? 'bg-blue-100 border-blue-300 text-blue-700'
+              : 'bg-blue-50 border-blue-100 hover:border-blue-200 text-blue-600'
           }`}
         >
-          <span className="text-[10px] font-bold uppercase tracking-wider block font-sans text-info-custom">Issued / Sent</span>
-          <span className="text-lg font-bold text-ink-900 block mt-1 tabular-nums">
+          <span className="text-[10px] font-bold uppercase tracking-wider block font-sans text-blue-600">Issued / Sent</span>
+          <span className="text-lg font-bold text-blue-900 block mt-1 tabular-nums">
             {formatNaira(summaryKpis.totalSent, false)}
           </span>
-          <span className="absolute bottom-2.5 right-2 text-[10px] text-ink-400 font-bold">
+          <span className="absolute bottom-2.5 right-2 text-[10px] text-blue-400 font-bold">
             {invoicesList.filter((i: any) => i.status?.toLowerCase() === 'sent').length} items
           </span>
         </button>
@@ -401,15 +401,15 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
           onClick={() => setStatusFilter('overdue')}
           className={`p-4 rounded-xl text-left border transition relative shadow-sm outline-none cursor-pointer ${
             statusFilter === 'overdue'
-              ? 'bg-danger-bg border-danger-custom/30 text-danger-custom'
-              : 'bg-white border-slate-100 hover:border-slate-200 text-slate-500'
+              ? 'bg-rose-100 border-rose-300 text-rose-700'
+              : 'bg-rose-50 border-rose-100 hover:border-rose-200 text-rose-600'
           }`}
         >
-          <span className="text-[10px] font-bold uppercase tracking-wider block font-sans text-danger-custom">Overdue Collects</span>
-          <span className="text-lg font-bold text-danger-custom block mt-1 tabular-nums">
+          <span className="text-[10px] font-bold uppercase tracking-wider block font-sans text-rose-600">Overdue Collects</span>
+          <span className="text-lg font-bold text-rose-700 block mt-1 tabular-nums">
             {formatNaira(summaryKpis.totalOverdue, false)}
           </span>
-          <span className="absolute bottom-2.5 right-2 text-[10px] text-ink-400 font-bold">
+          <span className="absolute bottom-2.5 right-2 text-[10px] text-rose-400 font-bold">
             {invoicesList.filter((i: any) => i.status?.toLowerCase() === 'overdue').length} items
           </span>
         </button>
@@ -419,15 +419,15 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
           onClick={() => setStatusFilter('paid')}
           className={`p-4 rounded-xl text-left border transition relative shadow-sm outline-none cursor-pointer ${
             statusFilter === 'paid'
-              ? 'bg-success-bg border-success-custom/30 text-success-custom'
-              : 'bg-white border-slate-100 hover:border-slate-200 text-slate-500'
+              ? 'bg-emerald-100 border-emerald-300 text-emerald-700'
+              : 'bg-emerald-50 border-emerald-100 hover:border-emerald-200 text-emerald-600'
           }`}
         >
-          <span className="text-[10px] font-bold uppercase tracking-wider block font-sans text-success-custom">Paid Realized</span>
-          <span className="text-lg font-bold text-ink-900 block mt-1 tabular-nums">
+          <span className="text-[10px] font-bold uppercase tracking-wider block font-sans text-emerald-600">Paid Realized</span>
+          <span className="text-lg font-bold text-emerald-800 block mt-1 tabular-nums">
             {formatNaira(summaryKpis.totalPaid, false)}
           </span>
-          <span className="absolute bottom-2.5 right-2 text-[10px] text-ink-400 font-bold">
+          <span className="absolute bottom-2.5 right-2 text-[10px] text-emerald-400 font-bold">
             {invoicesList.filter((i: any) => i.status?.toLowerCase() === 'paid').length} items
           </span>
         </button>
