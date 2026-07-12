@@ -714,72 +714,64 @@ function JournalForm({ editId, onDone }: { editId?: string | null; onDone: () =>
             <Plus className="w-3.5 h-3.5" /> Add Line
           </button>
         </div>
-        <div className="overflow-visible">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-200">
-                <th className="px-2 py-2.5 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider w-8">#</th>
-                <th className="px-2 py-2.5 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Account</th>
-                <th className="px-2 py-2.5 text-right text-[11px] font-semibold text-slate-400 uppercase tracking-wider w-36">Debit (₦)</th>
-                <th className="px-2 py-2.5 text-right text-[11px] font-semibold text-slate-400 uppercase tracking-wider w-36">Credit (₦)</th>
-                <th className="px-2 py-2.5 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Description</th>
-                <th className="px-2 py-2.5 w-10" />
-              </tr>
-            </thead>
-            <tbody>
-              {lines.map((line, i) => (
-                <tr key={i} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
-                  <td className="px-2 py-2 text-xs text-slate-400 font-mono">{i + 1}</td>
-                  <td className="px-2 py-2">
-                    <AccountSearchSelect
-                      accounts={accList}
-                      value={line.accountId}
-                      onChange={id => updateLine(i, 'accountId', id)}
-                      placeholder="Select account"
-                    />
-                  </td>
-                  <td className="px-2 py-2">
-                    <input type="number" placeholder="0.00"
-                      value={line.debitAmount || ''}
-                      onChange={e => updateLine(i, 'debitAmount', e.target.value)}
-                      className="w-full px-3 py-2 text-sm text-right font-mono border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-shadow" />
-                  </td>
-                  <td className="px-2 py-2">
-                    <input type="number" placeholder="0.00"
-                      value={line.creditAmount || ''}
-                      onChange={e => updateLine(i, 'creditAmount', e.target.value)}
-                      className="w-full px-3 py-2 text-sm text-right font-mono border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-shadow" />
-                  </td>
-                  <td className="px-2 py-2">
-                    <input placeholder="Line description (optional)"
-                      value={line.description}
-                      onChange={e => updateLine(i, 'description', e.target.value)}
-                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-shadow" />
-                  </td>
-                  <td className="px-2 py-2 text-center">
-                    {lines.length > 1 && (
-                      <button type="button" onClick={() => removeLine(i)}
-                        className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr className="bg-slate-50">
-                <td colSpan={2} className="px-2 py-3 text-sm font-bold text-slate-700">Totals</td>
-                <td className="px-2 py-3 text-right font-mono font-bold text-sm">{fmtNaira(totalDebits * 100)}</td>
-                <td className="px-2 py-3 text-right font-mono font-bold text-sm">{fmtNaira(totalCredits * 100)}</td>
-                <td colSpan={2} className="px-2 py-3 text-xs text-slate-400">
-                  {isBalanced
-                    ? <span className="text-emerald-600 font-semibold flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> In balance</span>
-                    : <span className="text-red-600 font-semibold flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> Difference: {fmtNaira(Math.abs(totalDebits - totalCredits) * 100)}</span>}
-                </td>
-              </tr>
-            </tfoot>
-          </table>
+        <div className="border border-slate-200 rounded-lg overflow-visible">
+          <div className="grid text-sm" style={{ gridTemplateColumns: '2rem 1fr 9rem 9rem 1fr 2.5rem' }}>
+            <div className="px-2 py-2.5 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-200">#</div>
+            <div className="px-2 py-2.5 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-200">Account</div>
+            <div className="px-2 py-2.5 text-right text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-200">Debit (₦)</div>
+            <div className="px-2 py-2.5 text-right text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-200">Credit (₦)</div>
+            <div className="px-2 py-2.5 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-200">Description</div>
+            <div className="border-b border-slate-200" />
+          </div>
+          {lines.map((line, i) => (
+            <div key={i} className="grid hover:bg-slate-50/50 transition-colors border-b border-slate-100" style={{ gridTemplateColumns: '2rem 1fr 9rem 9rem 1fr 2.5rem' }}>
+              <div className="px-2 py-2 text-xs text-slate-400 font-mono flex items-center">{i + 1}</div>
+              <div className="px-2 py-2">
+                <AccountSearchSelect
+                  accounts={accList}
+                  value={line.accountId}
+                  onChange={id => updateLine(i, 'accountId', id)}
+                  placeholder="Select account"
+                />
+              </div>
+              <div className="px-2 py-2">
+                <input type="number" placeholder="0.00"
+                  value={line.debitAmount || ''}
+                  onChange={e => updateLine(i, 'debitAmount', e.target.value)}
+                  className="w-full px-3 py-2 text-sm text-right font-mono border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-shadow" />
+              </div>
+              <div className="px-2 py-2">
+                <input type="number" placeholder="0.00"
+                  value={line.creditAmount || ''}
+                  onChange={e => updateLine(i, 'creditAmount', e.target.value)}
+                  className="w-full px-3 py-2 text-sm text-right font-mono border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-shadow" />
+              </div>
+              <div className="px-2 py-2">
+                <input placeholder="Line description (optional)"
+                  value={line.description}
+                  onChange={e => updateLine(i, 'description', e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-shadow" />
+              </div>
+              <div className="px-2 py-2 flex items-center justify-center">
+                {lines.length > 1 && (
+                  <button type="button" onClick={() => removeLine(i)}
+                    className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+          <div className="grid bg-slate-50" style={{ gridTemplateColumns: '2rem 1fr 9rem 9rem 1fr 2.5rem' }}>
+            <div className="px-2 py-3 text-sm font-bold text-slate-700 col-span-2">Totals</div>
+            <div className="px-2 py-3 text-right font-mono font-bold text-sm">{fmtNaira(totalDebits * 100)}</div>
+            <div className="px-2 py-3 text-right font-mono font-bold text-sm">{fmtNaira(totalCredits * 100)}</div>
+            <div className="px-2 py-3 text-xs text-slate-400 col-span-2">
+              {isBalanced
+                ? <span className="text-emerald-600 font-semibold flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> In balance</span>
+                : <span className="text-red-600 font-semibold flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> Difference: {fmtNaira(Math.abs(totalDebits - totalCredits) * 100)}</span>}
+            </div>
+          </div>
         </div>
       </div>
 
