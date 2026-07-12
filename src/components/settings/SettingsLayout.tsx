@@ -351,7 +351,7 @@ export function SettingsLayout() {
       <SettingsSidebar />
       <div className="flex-1 min-w-0">
         {/* Back to Dashboard */}
-        <button onClick={() => navigate('/dashboard')} className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink-600 hover:text-primary transition-colors mb-4">
+        <button onClick={() => navigate('/dashboard')} className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink-600 hover:text-primary transition-colors mb-8">
           <ArrowLeft className="w-4 h-4" /> Back to Dashboard
         </button>
         {/* Consistent page header */}

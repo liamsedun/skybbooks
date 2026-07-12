@@ -60,6 +60,29 @@ interface NavGroup {
   items: NavItem[];
 }
 
+function Tooltip({ children, label }: { children: React.ReactNode; label: string }) {
+  const [visible, setVisible] = useState(false);
+  let timer: ReturnType<typeof setTimeout> | null = null;
+
+  return (
+    <div
+      className="relative inline-flex"
+      onMouseEnter={() => { timer = setTimeout(() => setVisible(true), 400); }}
+      onMouseLeave={() => { if (timer) clearTimeout(timer); setVisible(false); }}
+    >
+      {children}
+      {visible && (
+        <span
+          className="absolute left-full ml-2.5 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-md text-xs whitespace-nowrap z-50 shadow-lg pointer-events-none"
+          style={{ backgroundColor: 'var(--color-ink-900)', color: 'white' }}
+        >
+          {label}
+        </span>
+      )}
+    </div>
+  );
+}
+
 export function AppLayout({ currentView, onViewChange, children }: AppLayoutProps) {
   const { user, organisation, logout } = useAuth();
   const { role, hasModuleAccess } = usePermissions();
@@ -72,6 +95,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   React.useEffect(() => {
     const handleOutsideClick = (event: MouseEvent) => {
@@ -340,24 +364,26 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
       {/* 1. LEFT SIDEBAR — hidden on settings pages for full-width layout */}
       {!isSettingsPage && (<aside 
         id="desktop-sidebar-pane"
-        className={`fixed top-0 bottom-0 left-0 z-40 w-60 bg-surface border-r border-border-custom flex flex-col transition-transform duration-300 lg:translate-x-0 ${
+        className={`fixed top-0 bottom-0 left-0 z-40 ${sidebarCollapsed ? 'w-16' : 'w-60'} bg-surface border-r border-border-custom flex flex-col transition-all duration-300 lg:translate-x-0 ${
           isMobileOpen ? 'translate-x-0' : '-translate-x-full'
         } lg:static lg:h-screen shrink-0`}
       >
         {/* Brand visual header area */}
-        <div className="h-16 px-5 border-b border-border-custom flex items-center justify-between">
-          <div className="flex items-center space-x-2.5 select-none">
+        <div className={`h-16 border-b border-border-custom flex items-center ${sidebarCollapsed ? 'px-2 justify-between' : 'px-5 justify-between'}`}>
+          <div className={`flex items-center select-none ${sidebarCollapsed ? '' : 'space-x-2.5'}`}>
             {developerLogoUrl ? (
-              <img src={developerLogoUrl} alt="" className="w-8 h-8 rounded object-contain shrink-0" />
+              <img src={developerLogoUrl} alt="" className="w-7 h-7 rounded object-contain shrink-0" />
             ) : (
-              <SkyhouseLogo className="w-8 h-8 drop-shadow-sm shrink-0" />
+              <SkyhouseLogo className={`${sidebarCollapsed ? 'w-5 h-5' : 'w-8 h-8'} drop-shadow-sm shrink-0`} />
             )}
-            <div>
-              <h2 className="text-sm font-extrabold text-ink-900 uppercase tracking-[0.12em] leading-none">SkyBooks</h2>
-              <span className="text-[10px] text-ink-400 font-semibold tracking-widest font-mono uppercase mt-0.5 inline-block">Books Engine</span>
-            </div>
+            {!sidebarCollapsed && (
+              <div>
+                <h2 className="text-sm font-extrabold text-ink-900 uppercase tracking-[0.12em] leading-none">SkyBooks</h2>
+                <span className="text-[10px] text-ink-400 font-semibold tracking-widest font-mono uppercase mt-0.5 inline-block">Books Engine</span>
+              </div>
+            )}
           </div>
-          
+
           {/* Close drawer icon on small viewports */}
           <button 
             onClick={() => setIsMobileOpen(false)}
@@ -365,9 +391,19 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
           >
             <X className="w-5 h-5" />
           </button>
+
+          {/* Collapse/expand toggle */}
+          <button
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            className={`${sidebarCollapsed ? 'absolute -right-3 top-4 z-50 bg-white border border-border-custom shadow-sm rounded-full p-1' : 'p-1.5'} hover:bg-surface-subtle text-ink-400 rounded-lg outline-none transition-colors duration-150`}
+            title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            <ArrowRight className={`w-4 h-4 transition-transform duration-200 ${sidebarCollapsed ? 'rotate-180' : ''}`} />
+          </button>
         </div>
 
         {/* Dynamic Sidebar Search Engine */}
+        {!sidebarCollapsed && (
         <div className="p-3.5 border-b border-slate-50">
           <div className="relative">
             <Search className="w-4 h-4 text-ink-400 absolute left-3 top-2.5 pointer-events-none" />
@@ -381,14 +417,16 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
             />
           </div>
         </div>
+        )}
 
         {/* Scrollable Navigation section */}
-        <nav className="flex-1 overflow-y-auto p-3 space-y-3 sidebar-scrollbar" id="sidebar-scrollable-links">
+        <nav className={`flex-1 overflow-y-auto ${sidebarCollapsed ? 'p-2' : 'p-3'} space-y-3 sidebar-scrollbar`} id="sidebar-scrollable-links">
           {filteredNavigation.map((group) => {
             const isCollapsed = collapsedGroups[group.title] && !searchQuery;
             return (
               <div key={group.title} className="flex flex-col">
                 {/* Header Group toggler */}
+                {!sidebarCollapsed && (
                 <button
                   onClick={() => toggleGroup(group.title)}
                   className="px-2 py-1.5 flex items-center justify-between text-[11px] font-bold text-ink-400 tracking-[0.08em] font-sans select-none text-left w-full hover:text-ink-600 transition-all duration-150 rounded-lg hover:bg-surface-subtle group"
@@ -398,37 +436,43 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
                     <ChevronDown className={`w-3 h-3 transition-transform duration-200 text-ink-400 group-hover:text-ink-500 ${isCollapsed ? '-rotate-90' : ''}`} />
                   )}
                 </button>
+                )}
 
                 {/* Sub-items array */}
-                {!isCollapsed && (
-                  <div className="flex flex-col space-y-0.5 mt-0.5">
+                {(!isCollapsed || sidebarCollapsed) && (
+                  <div className={`flex flex-col ${sidebarCollapsed ? 'items-center space-y-1' : 'space-y-0.5 mt-0.5'}`}>
                     {group.items.map((item) => {
                       const targetPath = pathMap[item.id];
                       const isActive = currentView 
                         ? currentView === item.id 
                         : (targetPath ? (location.pathname === targetPath || (targetPath !== '/dashboard' && location.pathname.startsWith(targetPath))) : false);
                       const Icon = item.icon;
-                      return (
+
+                      const navButton = (
                         <button
                           key={item.id}
                           id={`nav-link-${item.id}`}
                           onClick={() => handleLinkClick(item.id)}
-                          className={`w-full px-2.5 py-1.5 flex items-center text-xs font-medium rounded-xl text-left transition-all duration-150 ease-out relative group ${
+                          className={`${sidebarCollapsed ? 'px-0 py-2 justify-center w-full' : 'w-full px-2.5 py-1.5'} flex items-center text-xs font-medium rounded-xl text-left transition-all duration-150 ease-out relative group ${
                             isActive
                               ? 'bg-primary-light text-primary font-semibold shadow-sm'
                               : 'text-ink-600 hover:text-primary hover:bg-surface-subtle'
                           }`}
                         >
-                          <span className={`inline-flex items-center justify-center w-7 h-7 mr-2.5 rounded-lg shrink-0 transition-all duration-150 ${
+                          <span className={`inline-flex items-center justify-center w-7 h-7 ${sidebarCollapsed ? '' : 'mr-2.5'} rounded-lg shrink-0 transition-all duration-150 ${
                             isActive
                               ? 'bg-primary text-white shadow-sm'
                               : 'bg-transparent group-hover:bg-primary-light/50'
                           }`}>
                             <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-ink-400 group-hover:text-primary'}`} />
                           </span>
-                          <span className="truncate">{item.name}</span>
+                          {!sidebarCollapsed && <span className="truncate">{item.name}</span>}
                         </button>
                       );
+
+                      return sidebarCollapsed ? (
+                        <Tooltip key={item.id} label={item.name}>{navButton}</Tooltip>
+                      ) : navButton;
                     })}
                   </div>
                 )}
@@ -438,23 +482,29 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
         </nav>
 
         {/* STICKY BOTTOM USER PROFILE SECTION */}
-        <div className="p-3 border-t border-border-custom bg-white shadow-sm" id="sidebar-sticky-footer">
-          <div className="flex items-center space-x-2.5 p-2 rounded-xl bg-surface-subtle border border-border-custom/60">
-            <div className="w-8 h-8 rounded-lg bg-primary-light text-primary font-extrabold flex items-center justify-center text-xs shadow-sm select-none uppercase overflow-hidden shrink-0">
-              {userAvatarUrl ? <img src={userAvatarUrl} alt="" className="w-full h-full object-cover" /> : userInitials}
-            </div>
-            <div className="flex-1 min-w-0 select-none">
-              <h4 className="text-xs font-bold text-ink-900 truncate">{user?.fullName || 'Active Controller'}</h4>
-              <p className="text-[10px] text-ink-400 font-semibold truncate mt-0.5">{formatRole(role)}</p>
-            </div>
-            <button 
-              id="sidebar-btn-logout"
-              title="Sign Out Session"
-              onClick={logout}
-              className="p-1.5 rounded-lg hover:bg-rose-50 text-ink-400 hover:text-rose-600 transition-all duration-150 outline-none"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
+        <div className={`${sidebarCollapsed ? 'p-2' : 'p-3'} border-t border-border-custom bg-white shadow-sm`} id="sidebar-sticky-footer">
+          <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'space-x-2.5'} p-2 rounded-xl bg-surface-subtle border border-border-custom/60`}>
+            <Tooltip label={user?.fullName || 'Active Controller'}>
+              <div className="w-8 h-8 rounded-lg bg-primary-light text-primary font-extrabold flex items-center justify-center text-xs shadow-sm select-none uppercase overflow-hidden shrink-0">
+                {userAvatarUrl ? <img src={userAvatarUrl} alt="" className="w-full h-full object-cover" /> : userInitials}
+              </div>
+            </Tooltip>
+            {!sidebarCollapsed && (
+              <>
+                <div className="flex-1 min-w-0 select-none">
+                  <h4 className="text-xs font-bold text-ink-900 truncate">{user?.fullName || 'Active Controller'}</h4>
+                  <p className="text-[10px] text-ink-400 font-semibold truncate mt-0.5">{formatRole(role)}</p>
+                </div>
+                <button 
+                  id="sidebar-btn-logout"
+                  title="Sign Out Session"
+                  onClick={logout}
+                  className="p-1.5 rounded-lg hover:bg-rose-50 text-ink-400 hover:text-rose-600 transition-all duration-150 outline-none"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </>
+            )}
           </div>
         </div>
       </aside>)}
@@ -524,7 +574,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
               >
                 <Bell className="w-4 h-4 md:w-4.5 md:h-4.5 text-slate-500" />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 md:-top-1 md:-right-1 bg-primary text-white border-2 border-white rounded-full h-3.5 w-3.5 md:h-4.5 md:w-4.5 text-[7px] md:text-[8px] font-bold flex items-center justify-center">
+                  <span className="absolute -top-0.5 -right-0.5 md:-top-1 md:-right-1 bg-red-500 text-white border-2 border-white rounded-full h-3.5 w-3.5 md:h-4.5 md:w-4.5 text-[7px] md:text-[8px] font-bold flex items-center justify-center">
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 )}
