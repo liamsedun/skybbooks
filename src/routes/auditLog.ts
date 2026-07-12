@@ -7,7 +7,7 @@ import { z } from 'zod';
 const router = Router();
 router.use(authenticate);
 router.use(requireOrg);
-router.use(requireRole('admin'));
+router.use(requireRole('admin', 'owner'));
 
 const querySchema = z.object({
   action: z.string().optional(),
