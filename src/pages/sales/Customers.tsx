@@ -196,7 +196,7 @@ function CustomerList() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [modalOpen, setModalOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -238,6 +238,7 @@ function CustomerList() {
     const term = searchTerm.toLowerCase();
     return (customers || []).filter((c) => {
       if (statusFilter === 'active' && !c.isActive) return false;
+      if (statusFilter === 'inactive' && c.isActive) return false;
       if (!term) return true;
       return (
         c.name.toLowerCase().includes(term) ||
@@ -250,7 +251,10 @@ function CustomerList() {
   const counts = useMemo(() => {
     const all = customers?.length || 0;
     const active = (customers || []).filter((c) => c.isActive).length;
-    return { all, active, inactive: all - active };
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const newThisMonth = (customers || []).filter((c) => new Date(c.createdAt) >= monthStart).length;
+    return { all, active, inactive: all - active, newThisMonth };
   }, [customers]);
 
   function openAddModal() {
@@ -296,7 +300,7 @@ function CustomerList() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Customers</h1>
           <p className="text-sm text-slate-500 mt-1">
-            {counts.all} customers · {counts.active} active
+            {counts.all} customers · {counts.active} active · {counts.inactive} inactive · {counts.newThisMonth} new this month
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -318,38 +322,50 @@ function CustomerList() {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-2">
         <button
           onClick={() => setStatusFilter('all')}
-          className={`flex items-center gap-3 px-5 py-3.5 rounded-2xl text-sm font-bold transition-all duration-200 border shadow-sm ${
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all duration-200 border shadow-sm ${
             statusFilter === 'all'
               ? 'bg-gradient-to-br from-slate-800 to-slate-900 text-white border-slate-700 shadow-md ring-2 ring-slate-300'
-              : 'bg-gradient-to-br from-slate-50 to-slate-100/80 text-slate-700 border-slate-200/70 hover:shadow-md hover:border-slate-300 hover:from-slate-100 hover:to-slate-200/80'
+              : 'bg-gradient-to-br from-slate-50 to-slate-100/80 text-slate-700 border-slate-200/70 hover:shadow-md hover:border-slate-300'
           }`}
         >
-          <div className={`p-2 rounded-xl ${statusFilter === 'all' ? 'bg-white/15' : 'bg-slate-100/80'}`}>
-            <Users size={18} className={statusFilter === 'all' ? 'text-white' : 'text-slate-500'} />
-          </div>
-          <div className="text-left">
-            <span className="block text-sm font-bold">All</span>
-            <span className={`block text-[10px] font-medium ${statusFilter === 'all' ? 'text-white/70' : 'text-slate-400'}`}>{counts.all} customers</span>
-          </div>
+          <Users size={14} />
+          <span>All <span className={`${statusFilter === 'all' ? 'text-white/70' : 'text-slate-400'}`}>({counts.all})</span></span>
         </button>
         <button
           onClick={() => setStatusFilter('active')}
-          className={`flex items-center gap-3 px-5 py-3.5 rounded-2xl text-sm font-bold transition-all duration-200 border shadow-sm ${
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all duration-200 border shadow-sm ${
             statusFilter === 'active'
               ? 'bg-gradient-to-br from-emerald-600 to-emerald-700 text-white border-emerald-500 shadow-md ring-2 ring-emerald-300'
-              : 'bg-gradient-to-br from-emerald-50 to-emerald-100/80 text-emerald-700 border-emerald-200/70 hover:shadow-md hover:border-emerald-300 hover:from-emerald-100 hover:to-emerald-200/80'
+              : 'bg-gradient-to-br from-emerald-50 to-emerald-100/80 text-emerald-700 border-emerald-200/70 hover:shadow-md hover:border-emerald-300'
           }`}
         >
-          <div className={`p-2 rounded-xl ${statusFilter === 'active' ? 'bg-white/15' : 'bg-emerald-100/80'}`}>
-            <CheckCircle size={18} className={statusFilter === 'active' ? 'text-white' : 'text-emerald-500'} />
-          </div>
-          <div className="text-left">
-            <span className="block text-sm font-bold">Active</span>
-            <span className={`block text-[10px] font-medium ${statusFilter === 'active' ? 'text-white/70' : 'text-emerald-400'}`}>{counts.active} customers</span>
-          </div>
+          <CheckCircle size={14} />
+          <span>Active <span className={`${statusFilter === 'active' ? 'text-white/70' : 'text-emerald-400'}`}>({counts.active})</span></span>
+        </button>
+        <button
+          onClick={() => setStatusFilter('inactive')}
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all duration-200 border shadow-sm ${
+            statusFilter === 'inactive'
+              ? 'bg-gradient-to-br from-rose-600 to-rose-700 text-white border-rose-500 shadow-md ring-2 ring-rose-300'
+              : 'bg-gradient-to-br from-rose-50 to-rose-100/80 text-rose-700 border-rose-200/70 hover:shadow-md hover:border-rose-300'
+          }`}
+        >
+          <X size={14} />
+          <span>Inactive <span className={`${statusFilter === 'inactive' ? 'text-white/70' : 'text-rose-400'}`}>({counts.inactive})</span></span>
+        </button>
+        <button
+          onClick={() => setStatusFilter('all')}
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all duration-200 border shadow-sm ${
+            false
+              ? 'bg-gradient-to-br from-indigo-600 to-indigo-700 text-white border-indigo-500 shadow-md ring-2 ring-indigo-300'
+              : 'bg-gradient-to-br from-indigo-50 to-indigo-100/80 text-indigo-700 border-indigo-200/70 hover:shadow-md hover:border-indigo-300'
+          }`}
+        >
+          <Users size={14} />
+          <span>New <span className="text-indigo-400">({counts.newThisMonth})</span></span>
         </button>
       </div>
 
