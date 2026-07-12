@@ -9,7 +9,7 @@ import { api } from '../../lib/api';
 import {
   Search, Loader2, AlertCircle, CreditCard, Plus, Pencil,
   Banknote, Smartphone, Building2, Receipt, Trash2, X,
-  FileText, ChevronRight, Download, Upload, CheckCircle2,
+  FileText, ChevronRight, Download, Upload, CheckCircle2, Wallet, Calendar,
 } from 'lucide-react';
 import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
@@ -828,9 +828,13 @@ export function PaymentsReceivedPage() {
 
         {/* Summary cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <button onClick={() => { setDateFrom(''); setDateTo(''); setMethodFilter('all'); setSearchTerm(''); }} className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 text-left cursor-pointer hover:border-blue-300 hover:shadow-md transition-all duration-200">
-            <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Total Receipts</p>
-            <p className="text-xl font-bold text-slate-900 mt-1">{formatNaira((payments || []).reduce((s, p) => s + p.amount, 0))}</p>
+          <button onClick={() => { setDateFrom(''); setDateTo(''); setMethodFilter('all'); setSearchTerm(''); }} className="relative overflow-hidden bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl shadow-md p-5 text-left cursor-pointer hover:from-blue-600 hover:to-blue-800 hover:shadow-lg transition-all duration-200 group">
+            <div className="absolute top-3 right-3 p-2 rounded-xl bg-white/10 text-white/40 group-hover:scale-110 transition-transform duration-200">
+              <Wallet size={20} />
+            </div>
+            <p className="text-[11px] font-semibold text-white/60 uppercase tracking-wider">Total Receipts</p>
+            <p className="text-2xl font-bold text-white mt-1.5">{formatNaira((payments || []).reduce((s, p) => s + p.amount, 0))}</p>
+            <p className="text-[11px] text-white/40 mt-1">Click to clear filters</p>
           </button>
           <button onClick={() => {
             const now = new Date();
@@ -840,18 +844,26 @@ export function PaymentsReceivedPage() {
             setDateTo(last.toISOString().split('T')[0]);
             setMethodFilter('all');
             setSearchTerm('');
-          }} className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 text-left cursor-pointer hover:border-blue-300 hover:shadow-md transition-all duration-200">
-            <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">This Month</p>
-            <p className="text-xl font-bold text-slate-900 mt-1">
+          }} className="relative overflow-hidden bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-2xl shadow-md p-5 text-left cursor-pointer hover:from-indigo-600 hover:to-indigo-800 hover:shadow-lg transition-all duration-200 group">
+            <div className="absolute top-3 right-3 p-2 rounded-xl bg-white/10 text-white/40 group-hover:scale-110 transition-transform duration-200">
+              <Calendar size={20} />
+            </div>
+            <p className="text-[11px] font-semibold text-white/60 uppercase tracking-wider">This Month</p>
+            <p className="text-2xl font-bold text-white mt-1.5">
               {formatNaira((payments || []).filter(p => {
                 const d = new Date(p.date); const now = new Date();
                 return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
               }).reduce((s, p) => s + p.amount, 0))}
             </p>
+            <p className="text-[11px] text-white/40 mt-1">{new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' })}</p>
           </button>
-          <button onClick={() => { setDateFrom(''); setDateTo(''); setMethodFilter('all'); setSearchTerm(''); }} className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 text-left cursor-pointer hover:border-blue-300 hover:shadow-md transition-all duration-200">
-            <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Total Count</p>
-            <p className="text-xl font-bold text-slate-900 mt-1">{(payments || []).length} payments</p>
+          <button onClick={() => { setDateFrom(''); setDateTo(''); setMethodFilter('all'); setSearchTerm(''); }} className="relative overflow-hidden bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-2xl shadow-md p-5 text-left cursor-pointer hover:from-emerald-600 hover:to-emerald-800 hover:shadow-lg transition-all duration-200 group">
+            <div className="absolute top-3 right-3 p-2 rounded-xl bg-white/10 text-white/40 group-hover:scale-110 transition-transform duration-200">
+              <CreditCard size={20} />
+            </div>
+            <p className="text-[11px] font-semibold text-white/60 uppercase tracking-wider">Total Count</p>
+            <p className="text-2xl font-bold text-white mt-1.5">{(payments || []).length}</p>
+            <p className="text-[11px] text-white/40 mt-1">payments received</p>
           </button>
         </div>
 
