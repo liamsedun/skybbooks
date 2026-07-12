@@ -314,8 +314,7 @@ export function PurchaseCreditNotesPage() {
             onClick={() => setShowCreateModal(true)}
             className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-sm font-semibold rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200 shadow-sm"
           >
-            <Plus size={15} />
-            New Credit Note
+            <Plus size={15} /> +New
           </button>
         </div>
       </div>

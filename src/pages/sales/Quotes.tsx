@@ -288,7 +288,7 @@ export function QuotesPage() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Quotes</h1>
-          <p className="text-sm text-slate-500 mt-1">{counts.all} total · {counts.byStatus['draft']||0} draft · {counts.byStatus['accepted']||0} accepted</p>
+          <p className="text-sm text-slate-500 mt-1">{counts.all} total · {counts.byStatus['draft']||0} draft · {counts.byStatus['accepted']||0} accepted · {counts.byStatus['converted']||0} converted</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => exportQuotesCSV(filtered, customerMap)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl hover:bg-slate-50 transition-all duration-200">
@@ -316,7 +316,7 @@ export function QuotesPage() {
         {/* List */}
         <div className={`flex-1 min-w-0 ${selectedId?'hidden lg:block':''}`}>
           <div className="flex flex-wrap gap-2">
-            {(['all','draft','sent','accepted'] as const).map(s=>{
+            {(['all','draft','sent','accepted','converted'] as const).map(s=>{
               const meta=STATUS_META[s]; const Icon=meta.icon; const count=s==='all'?counts.all:(counts.byStatus[s]||0);
               const active=statusFilter===s;
               return (
