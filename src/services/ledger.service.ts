@@ -1623,6 +1623,9 @@ export async function getStatementOfChangesInEquity(
     for (const col of columns) {
       if (closingRow.columns[col.key] === undefined) closingRow.columns[col.key] = 0;
     }
+    // Profit is NOT posted to retained earnings via JE in this system, so add it
+    // to match the balance sheet's RE total (opening + JE movements + profit)
+    closingRow.columns['retainedEarnings'] = (closingRow.columns['retainedEarnings'] || 0) + profitForYear;
 
     const rows = [openingRow, profitRow, otherMovementsRow, closingRow];
 
