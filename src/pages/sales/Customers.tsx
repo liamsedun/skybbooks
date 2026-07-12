@@ -300,25 +300,21 @@ function CustomerList() {
             {counts.all} customers · {counts.active} active · {counts.inactive} inactive
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <button onClick={() => exportCustomersCSV(filtered)} className="flex items-center gap-3 px-5 py-3.5 bg-gradient-to-br from-emerald-50 to-emerald-100/80 text-emerald-700 border border-emerald-200/70 rounded-2xl hover:shadow-md hover:border-emerald-300 hover:from-emerald-100 hover:to-emerald-200/80 transition-all duration-200 font-semibold text-sm shadow-sm">
-            <div className="p-2 rounded-xl bg-emerald-100/80 text-emerald-600"><Download size={18} /></div>
-            <div className="text-left"><span className="block text-sm font-bold">CSV</span><span className="block text-[10px] font-medium text-emerald-500/80">Export customers</span></div>
+        <div className="flex items-center gap-2">
+          <button onClick={() => exportCustomersCSV(filtered)} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white text-emerald-700 text-xs font-medium border border-slate-200 rounded-xl hover:bg-emerald-50 transition-all duration-200">
+            <Download size={14} /> CSV
           </button>
-          <button onClick={() => exportCustomersPDF(filtered)} className="flex items-center gap-3 px-5 py-3.5 bg-gradient-to-br from-indigo-50 to-indigo-100/80 text-indigo-700 border border-indigo-200/70 rounded-2xl hover:shadow-md hover:border-indigo-300 hover:from-indigo-100 hover:to-indigo-200/80 transition-all duration-200 font-semibold text-sm shadow-sm">
-            <div className="p-2 rounded-xl bg-indigo-100/80 text-indigo-600"><FileText size={18} /></div>
-            <div className="text-left"><span className="block text-sm font-bold">PDF</span><span className="block text-[10px] font-medium text-indigo-500/80">Print directory</span></div>
+          <button onClick={() => exportCustomersPDF(filtered)} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white text-indigo-700 text-xs font-medium border border-slate-200 rounded-xl hover:bg-indigo-50 transition-all duration-200">
+            <FileText size={14} /> PDF
           </button>
-          <button onClick={() => setImportOpen(true)} className="flex items-center gap-3 px-5 py-3.5 bg-gradient-to-br from-amber-50 to-amber-100/80 text-amber-700 border border-amber-200/70 rounded-2xl hover:shadow-md hover:border-amber-300 hover:from-amber-100 hover:to-amber-200/80 transition-all duration-200 font-semibold text-sm shadow-sm">
-            <div className="p-2 rounded-xl bg-amber-100/80 text-amber-600"><Upload size={18} /></div>
-            <div className="text-left"><span className="block text-sm font-bold">Import CSV</span><span className="block text-[10px] font-medium text-amber-500/80">Bulk add customers</span></div>
+          <button onClick={() => setImportOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white text-amber-700 text-xs font-medium border border-slate-200 rounded-xl hover:bg-amber-50 transition-all duration-200">
+            <Upload size={14} /> Import CSV
           </button>
           <button
             onClick={openAddModal}
-            className="inline-flex items-center gap-2 px-5 py-3.5 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-sm font-bold rounded-2xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200 shadow-sm hover:shadow-md"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-xs font-medium rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200 shadow-sm"
           >
-            <Plus size={18} />
-            Add Customer
+            <Plus size={14} /> Add Customer
           </button>
         </div>
       </div>
