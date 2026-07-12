@@ -1,12 +1,12 @@
 import React, { useMemo, useState } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   Building2, Paintbrush, Globe, MapPinned, Users, Shield, UserCog,
   Settings, CreditCard, Clock, Scale, Bell, Store, Boxes,
   Hash, LayoutTemplate, Mail, Tag, Layers, Zap, ListChecks, History, Timer,
   Package, BarChart2, FileText, FileClock, Repeat, ReceiptText, Banknote,
   FileCheck, Truck, ClipboardList, ArrowLeftRight, Wallet, PuzzleIcon,
-  ChevronDown, Search, Menu, X, ShoppingCart, Receipt, HelpCircle,
+  ChevronDown, Search, Menu, X, ShoppingCart, Receipt, HelpCircle, ArrowLeft,
 } from 'lucide-react';
 
 type NavItem = { label: string; path: string; icon: React.ComponentType<{ className?: string }> };
@@ -339,6 +339,7 @@ export function SettingsSidebar() {
 
 export function SettingsLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Breadcrumb: derive group + page name from current path
   const currentPath = location.pathname;
@@ -349,6 +350,10 @@ export function SettingsLayout() {
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 sm:py-8 flex flex-col lg:flex-row gap-6 items-start">
       <SettingsSidebar />
       <div className="flex-1 min-w-0">
+        {/* Back to Dashboard */}
+        <button onClick={() => navigate('/dashboard')} className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink-600 hover:text-primary transition-colors mb-4">
+          <ArrowLeft className="w-4 h-4" /> Back to Dashboard
+        </button>
         {/* Consistent page header */}
         {activeGroup && activeItem && (
           <div className="mb-6">
