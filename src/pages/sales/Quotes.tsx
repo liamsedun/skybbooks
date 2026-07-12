@@ -39,13 +39,22 @@ const EMPTY_FORM: QuoteFormState = {
   status: 'draft', notes: '', terms: '', lines: [{ ...EMPTY_LINE }],
 };
 
-const STATUS_META: Record<QuoteStatus, { label: string; color: string; bg: string; icon: React.ComponentType<{ className?: string }> }> = {
-  draft:     { label: 'Draft',     color: 'text-slate-600',   bg: 'bg-slate-100',  icon: FileText },
-  sent:      { label: 'Sent',      color: 'text-blue-700',    bg: 'bg-blue-50',    icon: ArrowRight },
-  accepted:  { label: 'Accepted',  color: 'text-emerald-700', bg: 'bg-emerald-50', icon: CheckCircle2 },
-  declined:  { label: 'Declined',  color: 'text-rose-700',    bg: 'bg-rose-50',    icon: XCircle },
-  expired:   { label: 'Expired',   color: 'text-amber-700',   bg: 'bg-amber-50',   icon: Clock },
-  converted: { label: 'Converted', color: 'text-violet-700',  bg: 'bg-violet-50',  icon: RefreshCw },
+type FilterKey = 'all' | QuoteStatus;
+type StatusMeta = {
+  label: string;
+  gradient: string; gradientActive: string; border: string; borderActive: string; ring: string;
+  icon: React.ComponentType<{ className?: string }>;
+  iconBg: string; iconBgActive: string;
+  badgeColor: string; badgeBg: string;
+};
+const STATUS_META: Record<FilterKey, StatusMeta> = {
+  all:      { label: 'All',      gradient: 'from-slate-50 to-slate-100/80', gradientActive: 'from-slate-800 to-slate-900', border: 'border-slate-200/70', borderActive: 'border-slate-700', ring: 'ring-slate-300', icon: ClipboardList, iconBg: 'bg-slate-100/80', iconBgActive: 'bg-white/15', badgeColor: 'text-slate-600',   badgeBg: 'bg-slate-100' },
+  draft:    { label: 'Draft',    gradient: 'from-slate-50 to-slate-100/80', gradientActive: 'from-slate-700 to-slate-800', border: 'border-slate-200/70', borderActive: 'border-slate-600', ring: 'ring-slate-300', icon: FileText, iconBg: 'bg-slate-100/80', iconBgActive: 'bg-white/15', badgeColor: 'text-slate-600',   badgeBg: 'bg-slate-100' },
+  sent:     { label: 'Sent',     gradient: 'from-blue-50 to-blue-100/80',   gradientActive: 'from-blue-600 to-blue-700',   border: 'border-blue-200/70', borderActive: 'border-blue-500', ring: 'ring-blue-300', icon: ArrowRight, iconBg: 'bg-blue-100/80', iconBgActive: 'bg-white/15', badgeColor: 'text-blue-700',     badgeBg: 'bg-blue-50' },
+  accepted: { label: 'Accepted', gradient: 'from-emerald-50 to-emerald-100/80', gradientActive: 'from-emerald-600 to-emerald-700', border: 'border-emerald-200/70', borderActive: 'border-emerald-500', ring: 'ring-emerald-300', icon: CheckCircle2, iconBg: 'bg-emerald-100/80', iconBgActive: 'bg-white/15', badgeColor: 'text-emerald-700', badgeBg: 'bg-emerald-50' },
+  declined: { label: 'Declined', gradient: 'from-rose-50 to-rose-100/80',   gradientActive: 'from-rose-600 to-rose-700',   border: 'border-rose-200/70', borderActive: 'border-rose-500', ring: 'ring-rose-300', icon: XCircle, iconBg: 'bg-rose-100/80', iconBgActive: 'bg-white/15', badgeColor: 'text-rose-700',    badgeBg: 'bg-rose-50' },
+  expired:  { label: 'Expired',  gradient: 'from-amber-50 to-amber-100/80', gradientActive: 'from-amber-600 to-amber-700', border: 'border-amber-200/70', borderActive: 'border-amber-500', ring: 'ring-amber-300', icon: Clock, iconBg: 'bg-amber-100/80', iconBgActive: 'bg-white/15', badgeColor: 'text-amber-700',   badgeBg: 'bg-amber-50' },
+  converted:{ label: 'Converted',gradient: 'from-violet-50 to-violet-100/80', gradientActive: 'from-violet-600 to-violet-700', border: 'border-violet-200/70', borderActive: 'border-violet-500', ring: 'ring-violet-300', icon: RefreshCw, iconBg: 'bg-violet-100/80', iconBgActive: 'bg-white/15', badgeColor: 'text-violet-700',  badgeBg: 'bg-violet-50' },
 };
 
 function formatNaira(kobo: number | null | undefined): string {
@@ -306,13 +315,26 @@ export function QuotesPage() {
       <div className="flex gap-6">
         {/* List */}
         <div className={`flex-1 min-w-0 ${selectedId?'hidden lg:block':''}`}>
-          <div className="flex flex-wrap gap-2">
-            {(['all','draft','sent','accepted','declined','expired','converted'] as const).map(s=>(
+          <div className="flex flex-wrap gap-3">
+            {(['all','draft','sent','accepted','declined','expired','converted'] as const).map(s=>{
+              const meta=STATUS_META[s]; const Icon=meta.icon; const count=s==='all'?counts.all:(counts.byStatus[s]||0);
+              const active=statusFilter===s;
+              return (
               <button key={s} onClick={()=>setStatusFilter(s)}
-                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${statusFilter===s?'bg-slate-900 text-white shadow-sm':'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
-                {s==='all'?`All (${counts.all})`:`${STATUS_META[s].label} (${counts.byStatus[s]||0})`}
+                className={`flex items-center gap-3 px-5 py-3.5 rounded-2xl text-sm font-bold transition-all duration-200 border shadow-sm ${
+                  active
+                    ? `bg-gradient-to-br ${meta.gradientActive} text-white ${meta.borderActive} shadow-md ring-2 ${meta.ring}`
+                    : `bg-gradient-to-br ${meta.gradient} text-slate-700 ${meta.border} hover:shadow-md hover:border-slate-300`
+                }`}>
+                <div className={`p-2 rounded-xl ${active?meta.iconBgActive:meta.iconBg}`}>
+                  <Icon className={`w-[18px] h-[18px] ${active?'text-white':''}`} />
+                </div>
+                <div className="text-left">
+                  <span className="block text-sm font-bold">{meta.label}</span>
+                  <span className={`block text-[10px] font-medium ${active?'text-white/70':'text-slate-400'}`}>{count} quotes</span>
+                </div>
               </button>
-            ))}
+            )})}
           </div>
           <div className="flex gap-2 items-center">
             <div className="relative flex-1">
@@ -363,7 +385,7 @@ export function QuotesPage() {
                               className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-violet-50 text-violet-700 hover:bg-violet-100 border border-violet-200 transition-colors"
                             ><RefreshCw className="w-3 h-3" /> {q.convertedToInvoiceNumber || 'Converted'}</button>
                           ) : (
-                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${meta.color} ${meta.bg}`}>
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${meta.badgeColor} ${meta.badgeBg}`}>
                               <Icon className="w-3 h-3"/>{meta.label}
                             </span>
                           )}
@@ -428,7 +450,7 @@ export function QuotesPage() {
                 {/* Status */}
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-slate-400">Status</span>
-                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_META[selectedQuote.status].color} ${STATUS_META[selectedQuote.status].bg}`}>
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_META[selectedQuote.status].badgeColor} ${STATUS_META[selectedQuote.status].badgeBg}`}>
                     {React.createElement(STATUS_META[selectedQuote.status].icon,{className:"w-3 h-3"})}
                     {STATUS_META[selectedQuote.status].label}
                   </span>
