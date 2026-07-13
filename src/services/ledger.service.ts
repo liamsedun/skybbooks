@@ -1083,19 +1083,36 @@ async function tryLegacyIncomeStatement(orgId: string, fiscalYear: number): Prom
   const d = row.data as any;
   return {
     data: {
-      operatingRevenue: d.operatingRevenue || 0,
-      otherOperatingIncome: d.otherOperatingIncome || 0,
-      totalRevenue: d.totalRevenue || 0,
+      revenue: d.revenue || 0,
+      revenueNote: d.revenueNote || '',
       costOfSales: d.costOfSales || 0,
+      costOfSalesNote: d.costOfSalesNote || '',
       grossProfit: d.grossProfit || 0,
-      staffCosts: d.staffCosts || 0,
-      administrative: d.administrative || 0,
-      sellingDistribution: d.sellingDistribution || 0,
-      otherOperating: d.otherOperating || 0,
-      financeIncome: d.financeIncome || 0,
-      financeCosts: d.financeCosts || 0,
-      taxExpense: d.taxExpense || 0,
-      netProfit: d.netProfit || 0,
+      otherGainsOrLosses: d.otherGainsOrLosses || 0,
+      otherGainsOrLossesNote: d.otherGainsOrLossesNote || '',
+      impairmentOnFinancialAssets: d.impairmentOnFinancialAssets || 0,
+      impairmentOnFinancialAssetsNote: d.impairmentOnFinancialAssetsNote || '',
+      administrativeExpenses: d.administrativeExpenses || 0,
+      administrativeExpensesNote: d.administrativeExpensesNote || '',
+      operatingProfit: d.operatingProfit || 0,
+      financeCost: d.financeCost || 0,
+      financeCostNote: d.financeCostNote || '',
+      profitBeforeTax: d.profitBeforeTax || 0,
+      incomeTax: d.incomeTax || 0,
+      incomeTaxNote: d.incomeTaxNote || '',
+      deferredTax: d.deferredTax || 0,
+      deferredTaxNote: d.deferredTaxNote || '',
+      profitForTheYear: d.profitForTheYear || 0,
+      ociValuationGainLoss: d.ociValuationGainLoss || 0,
+      ociValuationNote: d.ociValuationNote || '',
+      ociGrantIncome: d.ociGrantIncome || 0,
+      ociGrantNote: d.ociGrantNote || '',
+      ociNetOfTaxes: d.ociNetOfTaxes || 0,
+      totalComprehensiveIncome: d.totalComprehensiveIncome || 0,
+      earningsPerShareKobo: d.earningsPerShareKobo || 0,
+      earningsPerShareNote: d.earningsPerShareNote || '',
+      dilutedEarningsPerShare: d.dilutedEarningsPerShare || 0,
+      dilutedEpsNote: d.dilutedEpsNote || '',
     },
     legacy: true as const,
   };
@@ -1171,8 +1188,9 @@ export async function getProfitAndLoss(
     if (!prior) {
       return { current, prior: null, variance: null, priorLegacy: false, priorEmpty: true };
     }
-    const amount = current.netProfit - prior.netProfit;
-    const percent = prior.netProfit !== 0 ? amount / prior.netProfit : 0;
+    const priorProfit = prior.profitForTheYear != null ? prior.profitForTheYear : prior.netProfit;
+    const amount = current.netProfit - priorProfit;
+    const percent = priorProfit !== 0 ? amount / priorProfit : 0;
     return { current, prior, variance: { amount, percent }, priorLegacy: isLegacy };
   }
 

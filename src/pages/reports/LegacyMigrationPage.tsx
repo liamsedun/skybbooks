@@ -8,20 +8,75 @@ type TabType = 'income' | 'cashflow' | 'socie' | 'settings';
 const fiscalYears = [2025, 2024, 2023, 2022, 2021, 2020];
 
 const IS_LINES = [
-  { key: 'operatingRevenue', label: 'Operating Revenue' },
-  { key: 'otherOperatingIncome', label: 'Other Operating Income' },
-  { key: 'totalRevenue', label: 'Total Revenue', computed: true },
-  { key: 'costOfSales', label: 'Cost of Sales' },
-  { key: 'grossProfit', label: 'Gross Profit', computed: true },
-  { key: 'staffCosts', label: 'Staff Costs' },
-  { key: 'administrative', label: 'Administrative Expenses' },
-  { key: 'sellingDistribution', label: 'Selling & Distribution' },
-  { key: 'otherOperating', label: 'Other Operating Expenses' },
-  { key: 'financeIncome', label: 'Finance Income' },
-  { key: 'financeCosts', label: 'Finance Costs' },
-  { key: 'taxExpense', label: 'Income Tax Expense' },
-  { key: 'netProfit', label: 'Net Profit', computed: true },
+  { key: 'revenue', label: 'Revenue', note: true },
+  { key: 'costOfSales', label: 'Cost of sales', note: true },
+  { key: 'grossProfit', label: 'Gross profit', computed: true, bold: true },
+  { key: 'otherGainsOrLosses', label: 'Other gains or losses', note: true },
+  { key: 'impairmentOnFinancialAssets', label: 'Impairment (loss)/gain on financial assets', note: true },
+  { key: 'administrativeExpenses', label: 'Administrative expenses', note: true },
+  { key: 'operatingProfit', label: 'Operating profit', computed: true, bold: true },
+  { key: 'financeCost', label: 'Finance cost', note: true },
+  { key: 'profitBeforeTax', label: 'Profit before tax', computed: true, bold: true },
+  { key: 'incomeTax', label: 'Income tax', note: true },
+  { key: 'deferredTax', label: 'Deferred Tax', note: true },
+  { key: 'profitForTheYear', label: 'Profit for the year', computed: true, bold: true },
+  { key: 'ociHeader', label: 'Other Comprehensive Income', section: true },
+  { key: 'ociValuationGainLoss', label: 'Gain/Loss on valuation of investments in equity instruments', note: true, indent: true },
+  { key: 'ociGrantIncome', label: 'Grant/other income', note: true, indent: true },
+  { key: 'ociNetOfTaxes', label: 'Other comprehensive income net of taxes', computed: true, indent: true },
+  { key: 'totalComprehensiveIncome', label: 'Total comprehensive income for the year', computed: true, bold: true },
+  { key: 'epsHeader', label: 'Earnings Per Share', section: true },
+  { key: 'earningsPerShareKobo', label: 'Earnings per share (kobo)', note: true },
+  { key: 'dilutedEarningsPerShare', label: 'Diluted earnings per share', note: true },
 ];
+
+const CF_OPERATING = [
+  { key: 'profitBeforeInterestAndTax', label: 'Profit before interest and income taxes' },
+  { key: 'depreciationPPE', label: 'Depreciation of property, plant and equipment' },
+  { key: 'amortization', label: 'Amortization' },
+  { key: 'decreaseIncreasePrepayments', label: 'Decrease/(increase) in prepayments' },
+  { key: 'decreaseIncreaseReceivables', label: 'Decrease/(increase) in trade and other receivables' },
+  { key: 'increaseDecreasePayables', label: 'Increase/(decrease) in trade and other payables' },
+  { key: 'increaseDecreaseDeferredIncome', label: 'Increase/(decrease) in deferred income' },
+  { key: 'grantOtherIncome', label: 'Grant/Other income' },
+  { key: 'provisionForTax', label: 'Provision for tax' },
+];
+
+const CF_INVESTING = [
+  { key: 'purchaseIntangibleAssets', label: 'Purchase of intangible assets' },
+  { key: 'purchasePPE', label: 'Purchase of property, plant and equipment/Compensation receivables' },
+  { key: 'interestReceived', label: 'Interest received' },
+  { key: 'proceedsFromSalePPE', label: 'Proceeds from sales of property, plant and equipment' },
+];
+
+const CF_FINANCING = [
+  { key: 'shareCapital', label: 'Share capital' },
+  { key: 'depositForShares', label: 'Deposit for shares' },
+  { key: 'retainedEarnings', label: 'Retained earnings' },
+  { key: 'sharePremium', label: 'Share Premium' },
+  { key: 'revaluation', label: 'Revaluation' },
+  { key: 'dividendsPaid', label: 'Dividends paid' },
+];
+
+const SOCIE_COLUMNS = ['revaluationSurplus', 'shareCapital', 'depositForShares', 'sharePremium', 'retainedEarnings'] as const;
+const SOCIE_COLUMN_LABELS: Record<string, string> = {
+  revaluationSurplus: 'Revaluation Surplus/(Deficit)',
+  shareCapital: 'Share Capital',
+  depositForShares: 'Deposit for Shares',
+  sharePremium: 'Share Premium',
+  retainedEarnings: 'Retained Earnings',
+};
+const SOCIE_ROWS = ['balanceBf', 'profitForYear', 'eclAdjustments', 'otherChanges', 'priorYearAdjustments', 'transactionsWithOwners'] as const;
+const SOCIE_ROW_LABELS: Record<string, string> = {
+  balanceBf: 'Balance b/f',
+  profitForYear: 'Profit for the Year',
+  eclAdjustments: 'Expected Credit Loss Adjustments',
+  otherChanges: 'Other Changes in the year',
+  priorYearAdjustments: 'Prior Year Adjustments',
+  transactionsWithOwners: 'Transactions with owners recorded directly in equity',
+};
+
+const initialSocieRow = { revaluationSurplus: 0, shareCapital: 0, depositForShares: 0, sharePremium: 0, retainedEarnings: 0 };
 
 function fmtKobo(v: number) {
   return (v / 100).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -30,6 +85,22 @@ function fmtKobo(v: number) {
 function toKobo(v: string) {
   const clean = v.replace(/[^0-9.-]/g, '');
   return Math.round(parseFloat(clean || '0') * 100);
+}
+
+function addSocieRows(...rows: typeof initialSocieRow[]): typeof initialSocieRow {
+  const result = { ...initialSocieRow };
+  for (const r of rows) {
+    result.revaluationSurplus += r.revaluationSurplus;
+    result.shareCapital += r.shareCapital;
+    result.depositForShares += r.depositForShares;
+    result.sharePremium += r.sharePremium;
+    result.retainedEarnings += r.retainedEarnings;
+  }
+  return result;
+}
+
+function socieColumnTotal(row: typeof initialSocieRow): number {
+  return row.revaluationSurplus + row.shareCapital + row.depositForShares + row.sharePremium + row.retainedEarnings;
 }
 
 export function LegacyMigrationPage() {
@@ -49,7 +120,6 @@ export function LegacyMigrationPage() {
   });
   const org = orgData?.data || orgData || {};
 
-  // Sync settings form fields when org data loads
   useEffect(() => {
     if (org) {
       setLiveGl(org?.liveGlStartFiscalYear != null ? String(org.liveGlStartFiscalYear) : '');
@@ -58,8 +128,6 @@ export function LegacyMigrationPage() {
   }, [org]);
 
   // Legacy statement data
-  const queryKey = ['legacy', tab, selectedFy];
-
   const { data: isData, isLoading: isLoad, refetch: refetchIS } = useQuery({
     queryKey: ['legacy', 'income', selectedFy],
     queryFn: () => legacyApi.getIncomeStatement(selectedFy),
@@ -90,40 +158,149 @@ export function LegacyMigrationPage() {
 
   const locked = existingRecord?.isLocked !== false;
 
-  // Income statement form state
-  const initialIsForm = { operatingRevenue: 0, otherOperatingIncome: 0, totalRevenue: 0, costOfSales: 0, grossProfit: 0, staffCosts: 0, administrative: 0, sellingDistribution: 0, otherOperating: 0, financeIncome: 0, financeCosts: 0, taxExpense: 0, netProfit: 0 };
+  // ── Income Statement form state ──
+  const initialIsForm = {
+    revenue: 0, revenueNote: '',
+    costOfSales: 0, costOfSalesNote: '',
+    otherGainsOrLosses: 0, otherGainsOrLossesNote: '',
+    impairmentOnFinancialAssets: 0, impairmentOnFinancialAssetsNote: '',
+    administrativeExpenses: 0, administrativeExpensesNote: '',
+    financeCost: 0, financeCostNote: '',
+    incomeTax: 0, incomeTaxNote: '',
+    deferredTax: 0, deferredTaxNote: '',
+    ociValuationGainLoss: 0, ociValuationNote: '',
+    ociGrantIncome: 0, ociGrantNote: '',
+    earningsPerShareKobo: 0, earningsPerShareNote: '',
+    dilutedEarningsPerShare: 0, dilutedEpsNote: '',
+  };
   const [isForm, setIsForm] = useState(initialIsForm);
 
   useEffect(() => {
     if (existingRecord && tab === 'income') {
       const d = existingRecord.data || {};
       setIsForm({
-        operatingRevenue: d.operatingRevenue || 0,
-        otherOperatingIncome: d.otherOperatingIncome || 0,
-        totalRevenue: d.totalRevenue || 0,
-        costOfSales: d.costOfSales || 0,
-        grossProfit: d.grossProfit || 0,
-        staffCosts: d.staffCosts || 0,
-        administrative: d.administrative || 0,
-        sellingDistribution: d.sellingDistribution || 0,
-        otherOperating: d.otherOperating || 0,
-        financeIncome: d.financeIncome || 0,
-        financeCosts: d.financeCosts || 0,
-        taxExpense: d.taxExpense || 0,
-        netProfit: d.netProfit || 0,
+        revenue: d.revenue || 0, revenueNote: d.revenueNote || '',
+        costOfSales: d.costOfSales || 0, costOfSalesNote: d.costOfSalesNote || '',
+        otherGainsOrLosses: d.otherGainsOrLosses || 0, otherGainsOrLossesNote: d.otherGainsOrLossesNote || '',
+        impairmentOnFinancialAssets: d.impairmentOnFinancialAssets || 0, impairmentOnFinancialAssetsNote: d.impairmentOnFinancialAssetsNote || '',
+        administrativeExpenses: d.administrativeExpenses || 0, administrativeExpensesNote: d.administrativeExpensesNote || '',
+        financeCost: d.financeCost || 0, financeCostNote: d.financeCostNote || '',
+        incomeTax: d.incomeTax || 0, incomeTaxNote: d.incomeTaxNote || '',
+        deferredTax: d.deferredTax || 0, deferredTaxNote: d.deferredTaxNote || '',
+        ociValuationGainLoss: d.ociValuationGainLoss || 0, ociValuationNote: d.ociValuationNote || '',
+        ociGrantIncome: d.ociGrantIncome || 0, ociGrantNote: d.ociGrantNote || '',
+        earningsPerShareKobo: d.earningsPerShareKobo || 0, earningsPerShareNote: d.earningsPerShareNote || '',
+        dilutedEarningsPerShare: d.dilutedEarningsPerShare || 0, dilutedEpsNote: d.dilutedEpsNote || '',
       });
     } else if (!existingRecord && tab === 'income') {
       setIsForm(initialIsForm);
     }
   }, [existingRecord, tab, selectedFy]);
 
-  // Computed fields
-  const computedTotalRevenue = isForm.operatingRevenue + isForm.otherOperatingIncome;
-  const computedGrossProfit = computedTotalRevenue - isForm.costOfSales;
-  const totalOpEx = isForm.staffCosts + isForm.administrative + isForm.sellingDistribution + isForm.otherOperating;
-  const computedNetProfit = computedGrossProfit - totalOpEx + isForm.financeIncome - isForm.financeCosts - isForm.taxExpense;
+  const computedGrossProfit = isForm.revenue - isForm.costOfSales;
+  const computedOperatingProfit = computedGrossProfit + isForm.otherGainsOrLosses + isForm.impairmentOnFinancialAssets - isForm.administrativeExpenses;
+  const computedProfitBeforeTax = computedOperatingProfit - isForm.financeCost;
+  const computedProfitForTheYear = computedProfitBeforeTax - isForm.incomeTax - isForm.deferredTax;
+  const computedOciNetOfTaxes = isForm.ociValuationGainLoss + isForm.ociGrantIncome;
+  const computedTotalComprehensiveIncome = computedProfitForTheYear + computedOciNetOfTaxes;
 
-  // Save mutation
+  // ── Cash Flow form state ──
+  const initialCfForm = {
+    profitBeforeInterestAndTax: 0, depreciationPPE: 0, amortization: 0,
+    decreaseIncreasePrepayments: 0, decreaseIncreaseReceivables: 0, increaseDecreasePayables: 0,
+    increaseDecreaseDeferredIncome: 0, grantOtherIncome: 0, provisionForTax: 0,
+    incomeTaxPaid: 0, purchaseIntangibleAssets: 0, purchasePPE: 0,
+    interestReceived: 0, proceedsFromSalePPE: 0, shareCapital: 0,
+    depositForShares: 0, retainedEarnings: 0, sharePremium: 0, revaluation: 0, dividendsPaid: 0,
+    cashAtBeginningOfYear: 0, cashAtEndOfYear: 0, cashAtEndOfYearOverride: false,
+    cashAndBankBalance: 0, termDeposit: 0, termLoan: 0,
+  };
+  const [cfForm, setCfForm] = useState(initialCfForm);
+
+  useEffect(() => {
+    if (existingRecord && tab === 'cashflow') {
+      const d = existingRecord.data || {};
+      setCfForm({
+        profitBeforeInterestAndTax: d.profitBeforeInterestAndTax || 0,
+        depreciationPPE: d.depreciationPPE || 0,
+        amortization: d.amortization || 0,
+        decreaseIncreasePrepayments: d.decreaseIncreasePrepayments || 0,
+        decreaseIncreaseReceivables: d.decreaseIncreaseReceivables || 0,
+        increaseDecreasePayables: d.increaseDecreasePayables || 0,
+        increaseDecreaseDeferredIncome: d.increaseDecreaseDeferredIncome || 0,
+        grantOtherIncome: d.grantOtherIncome || 0,
+        provisionForTax: d.provisionForTax || 0,
+        incomeTaxPaid: d.incomeTaxPaid || 0,
+        purchaseIntangibleAssets: d.purchaseIntangibleAssets || 0,
+        purchasePPE: d.purchasePPE || 0,
+        interestReceived: d.interestReceived || 0,
+        proceedsFromSalePPE: d.proceedsFromSalePPE || 0,
+        shareCapital: d.shareCapital || 0,
+        depositForShares: d.depositForShares || 0,
+        retainedEarnings: d.retainedEarnings || 0,
+        sharePremium: d.sharePremium || 0,
+        revaluation: d.revaluation || 0,
+        dividendsPaid: d.dividendsPaid || 0,
+        cashAtBeginningOfYear: d.cashAtBeginningOfYear || 0,
+        cashAtEndOfYear: d.cashAtEndOfYear || 0,
+        cashAtEndOfYearOverride: d.cashAtEndOfYearOverride || false,
+        cashAndBankBalance: d.cashAndBankBalance || 0,
+        termDeposit: d.termDeposit || 0,
+        termLoan: d.termLoan || 0,
+      });
+    } else if (!existingRecord && tab === 'cashflow') {
+      setCfForm(initialCfForm);
+    }
+  }, [existingRecord, tab, selectedFy]);
+
+  const cfComputedCashGenerated = cfForm.profitBeforeInterestAndTax + cfForm.depreciationPPE + cfForm.amortization
+    + cfForm.decreaseIncreasePrepayments + cfForm.decreaseIncreaseReceivables + cfForm.increaseDecreasePayables
+    + cfForm.increaseDecreaseDeferredIncome + cfForm.grantOtherIncome + cfForm.provisionForTax;
+  const cfComputedNetOperating = cfComputedCashGenerated - cfForm.incomeTaxPaid;
+  const cfComputedNetInvesting = -cfForm.purchaseIntangibleAssets - cfForm.purchasePPE + cfForm.interestReceived + cfForm.proceedsFromSalePPE;
+  const cfComputedNetFinancing = cfForm.shareCapital + cfForm.depositForShares + cfForm.retainedEarnings + cfForm.sharePremium + cfForm.revaluation - cfForm.dividendsPaid;
+  const cfComputedNetIncrease = cfComputedNetOperating + cfComputedNetInvesting + cfComputedNetFinancing;
+  const cfComputedEndOfYear = cfForm.cashAtEndOfYearOverride ? cfForm.cashAtEndOfYear : cfComputedNetIncrease + cfForm.cashAtBeginningOfYear;
+  const cfReconciliationDiff = cfComputedEndOfYear - (cfForm.cashAndBankBalance + cfForm.termDeposit + cfForm.termLoan);
+
+  // ── SOCIE form state ──
+  const [socieForm, setSocieForm] = useState({
+    balanceBf: { ...initialSocieRow },
+    profitForYear: { ...initialSocieRow },
+    eclAdjustments: { ...initialSocieRow },
+    otherChanges: { ...initialSocieRow },
+    priorYearAdjustments: { ...initialSocieRow },
+    transactionsWithOwners: { ...initialSocieRow },
+  });
+
+  useEffect(() => {
+    if (existingRecord && tab === 'socie') {
+      const d = existingRecord.data || {};
+      setSocieForm({
+        balanceBf: d.balanceBf || { ...initialSocieRow },
+        profitForYear: d.profitForYear || { ...initialSocieRow },
+        eclAdjustments: d.eclAdjustments || { ...initialSocieRow },
+        otherChanges: d.otherChanges || { ...initialSocieRow },
+        priorYearAdjustments: d.priorYearAdjustments || { ...initialSocieRow },
+        transactionsWithOwners: d.transactionsWithOwners || { ...initialSocieRow },
+      });
+    } else if (!existingRecord && tab === 'socie') {
+      setSocieForm({
+        balanceBf: { ...initialSocieRow },
+        profitForYear: { ...initialSocieRow },
+        eclAdjustments: { ...initialSocieRow },
+        otherChanges: { ...initialSocieRow },
+        priorYearAdjustments: { ...initialSocieRow },
+        transactionsWithOwners: { ...initialSocieRow },
+      });
+    }
+  }, [existingRecord, tab, selectedFy]);
+
+  const socieComputedTotalForYear = addSocieRows(socieForm.profitForYear, socieForm.eclAdjustments, socieForm.otherChanges, socieForm.priorYearAdjustments);
+  const socieComputedBalanceCf = addSocieRows(socieForm.balanceBf, socieComputedTotalForYear);
+  const socieComputedBalanceAsAt = addSocieRows(socieComputedBalanceCf, socieForm.transactionsWithOwners);
+
+  // ── Save mutation ──
   const saveMutation = useMutation({
     mutationFn: async (data: any) => {
       if (tab === 'income') return legacyApi.upsertIncomeStatement(selectedFy, { fiscalYear: selectedFy, periodLabel: `FY${selectedFy}`, data });
@@ -166,7 +343,32 @@ export function LegacyMigrationPage() {
   function handleNumberChange(key: string, value: string) {
     setIsForm((prev: any) => ({ ...prev, [key]: toKobo(value) }));
   }
+  function handleNoteChange(key: string, value: string) {
+    setIsForm((prev: any) => ({ ...prev, [key]: value }));
+  }
+  function handleCfChange(key: string, value: string) {
+    setCfForm((prev: any) => ({ ...prev, [key]: toKobo(value) }));
+  }
+  function handleSocieChange(row: string, col: string, value: string) {
+    setSocieForm((prev: any) => ({
+      ...prev,
+      [row]: { ...prev[row], [col]: toKobo(value) },
+    }));
+  }
 
+  function getIsComputed(key: string): number {
+    switch (key) {
+      case 'grossProfit': return computedGrossProfit;
+      case 'operatingProfit': return computedOperatingProfit;
+      case 'profitBeforeTax': return computedProfitBeforeTax;
+      case 'profitForTheYear': return computedProfitForTheYear;
+      case 'ociNetOfTaxes': return computedOciNetOfTaxes;
+      case 'totalComprehensiveIncome': return computedTotalComprehensiveIncome;
+      default: return 0;
+    }
+  }
+
+  // ── Settings tab ──
   function renderSettingsTab() {
     return (
       <div className="max-w-2xl mx-auto space-y-6">
@@ -201,6 +403,7 @@ export function LegacyMigrationPage() {
     );
   }
 
+  // ── Income Statement form ──
   function renderIncomeStatementForm() {
     const isSaved = !!existingRecord;
     const isLocked = isSaved && locked;
@@ -218,25 +421,39 @@ export function LegacyMigrationPage() {
         <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-              <tr><th className="text-left px-4 py-3">Line Item</th><th className="text-right px-4 py-3">Amount (NGN)</th></tr>
+              <tr><th className="text-left px-4 py-3">Line Item</th><th className="text-right px-4 py-3 w-16">Note</th><th className="text-right px-4 py-3">Amount (NGN)</th></tr>
             </thead>
             <tbody>
               {IS_LINES.map(line => {
-                const val = line.computed
-                  ? (line.key === 'totalRevenue' ? computedTotalRevenue
-                    : line.key === 'grossProfit' ? computedGrossProfit
-                    : computedNetProfit)
-                  : (isForm as any)[line.key] || 0;
+                if (line.section) {
+                  return (
+                    <tr key={line.key} className="bg-slate-50">
+                      <td colSpan={3} className="px-4 py-2 text-xs font-bold text-slate-500 uppercase tracking-wider">{line.label}</td>
+                    </tr>
+                  );
+                }
+                const val = line.computed ? getIsComputed(line.key) : (isForm as any)[line.key] || 0;
+                const noteKey = line.key === 'earningsPerShareKobo' ? 'earningsPerShareNote'
+                  : line.key === 'dilutedEarningsPerShare' ? 'dilutedEpsNote'
+                  : line.key + 'Note';
+                const noteVal = line.note ? (isForm as any)[noteKey] || '' : '';
                 const isComputed = line.computed;
                 return (
-                  <tr key={line.key} className={`border-t border-slate-100 ${line.key === 'netProfit' ? 'bg-slate-50 font-bold' : ''}`}>
-                    <td className={`px-4 py-2.5 ${line.key === 'totalRevenue' || line.key === 'grossProfit' ? 'font-semibold' : ''} ${line.key === 'netProfit' ? 'text-base' : 'text-slate-800'}`}>
+                  <tr key={line.key} className={`border-t border-slate-100 ${line.bold ? 'bg-slate-50 font-bold' : ''}`}>
+                    <td className={`px-4 py-2 ${line.indent ? 'pl-8' : ''} ${isComputed ? 'font-semibold' : ''} text-slate-800`}>
                       {line.label}
                       {isComputed && <span className="ml-2 text-[10px] text-slate-400">(auto)</span>}
                     </td>
-                    <td className="px-4 py-2.5 text-right">
+                    <td className="px-2 py-2 text-right">
+                      {line.note && (
+                        <input type="text" disabled={isLocked && !isEditing} value={noteVal}
+                          onChange={e => handleNoteChange(noteKey, e.target.value)}
+                          placeholder="Ref" className="w-14 text-center text-xs border border-slate-200 rounded px-1 py-1" />
+                      )}
+                    </td>
+                    <td className="px-4 py-2 text-right">
                       {isComputed ? (
-                        <span className={line.key === 'netProfit' && val < 0 ? 'text-red-600' : 'text-slate-800'}>
+                        <span className={line.key === 'profitForTheYear' && val < 0 ? 'text-red-600' : 'text-slate-800'}>
                           ₦{fmtKobo(val)}
                         </span>
                       ) : (
@@ -256,28 +473,233 @@ export function LegacyMigrationPage() {
     );
   }
 
+  // ── Cash Flow form ──
   function renderCashFlowForm() {
+    const isSaved = !!existingRecord;
+    const isLocked = isSaved && locked;
+
+    function cfLabel(key: string): string {
+      const all = [...CF_OPERATING, ...CF_INVESTING, ...CF_FINANCING];
+      return all.find(l => l.key === key)?.label || key;
+    }
+
+    function cfRow(key: string, label: string, isComputed: boolean) {
+      const val = isComputed
+        ? (key === 'cashGeneratedFromOperations' ? cfComputedCashGenerated
+          : key === 'netCashFromOperating' ? cfComputedNetOperating
+          : key === 'netCashFromInvesting' ? cfComputedNetInvesting
+          : key === 'netCashFromFinancing' ? cfComputedNetFinancing
+          : 0)
+        : (cfForm as any)[key] || 0;
+      return (
+        <tr key={key} className="border-t border-slate-100">
+          <td className={`px-4 py-2 text-slate-800 ${isComputed ? 'font-semibold' : ''}`}>
+            {label}
+            {isComputed && <span className="ml-2 text-[10px] text-slate-400">(auto)</span>}
+          </td>
+          <td className="px-4 py-2 text-right">
+            {isComputed ? (
+              <span className="text-slate-800">₦{fmtKobo(val)}</span>
+            ) : (
+              <input type="text" disabled={isLocked && !isEditing}
+                value={fmtKobo((cfForm as any)[key] || 0)}
+                onChange={e => handleCfChange(key, e.target.value)}
+                className={`text-right w-40 px-2 py-1 border border-slate-200 rounded-md text-sm ${isLocked && !isEditing ? 'bg-slate-50 text-slate-500' : 'bg-white'}`} />
+            )}
+          </td>
+        </tr>
+      );
+    }
+
+    function cfSection(title: string, keys: { key: string; label: string }[], computedKey?: string) {
+      return (
+        <>
+          <tr className="bg-slate-50">
+            <td colSpan={2} className="px-4 py-2 text-xs font-bold text-slate-500 uppercase tracking-wider">{title}</td>
+          </tr>
+          {keys.map(({ key, label }) => cfRow(key, label, false))}
+          {computedKey && cfRow(computedKey, (() => {
+            const map: Record<string, string> = {
+              cashGeneratedFromOperations: 'Cash generated from operating activities',
+              netCashFromOperating: 'Net Cash generated from operating activities',
+              netCashFromInvesting: 'Net Cash generated (used in) by investing activities',
+              netCashFromFinancing: 'Net Cash generated by (used in) Financing Activities',
+            };
+            return map[computedKey] || computedKey;
+          })(), true)}
+        </>
+      );
+    }
+
     return (
       <div className="space-y-4">
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-700">
-          <AlertTriangle className="w-5 h-5 inline mr-2" />
-          Enter the final prior-year cash flow statement figures for FY{selectedFy}. This data is used for comparative reporting in pre-cutover periods.
+        {isSaved && (
+          <div className={`px-4 py-2 rounded-lg text-sm flex items-center gap-2 ${isLocked ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
+            {isLocked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
+            {isLocked ? 'Locked' : 'Unlocked — editable'}
+            {existingRecord?.data && <span className="ml-auto text-xs opacity-70">Entered at {new Date(existingRecord.enteredAt).toLocaleString()}</span>}
+          </div>
+        )}
+
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+              <tr><th className="text-left px-4 py-3">Line Item</th><th className="text-right px-4 py-3">Amount (NGN)</th></tr>
+            </thead>
+            <tbody>
+              {cfSection('Operating Activities', CF_OPERATING, 'cashGeneratedFromOperations')}
+              {cfRow('incomeTaxPaid', 'Income tax paid', false)}
+              {cfRow('netCashFromOperating', 'Net Cash generated from operating activities', true)}
+
+              {cfSection('Investing Activities', CF_INVESTING, 'netCashFromInvesting')}
+
+              {cfSection('Financing Activities', CF_FINANCING, 'netCashFromFinancing')}
+
+              {/* Summary */}
+              <tr className="bg-slate-50">
+                <td colSpan={2} className="px-4 py-2 text-xs font-bold text-slate-500 uppercase tracking-wider">Summary</td>
+              </tr>
+              {cfRow('netIncreaseInCash', 'Net increase in cash and cash equivalents', true)}
+              {cfRow('cashAtBeginningOfYear', 'Cash and cash equivalents at the beginning of the year', false)}
+              <tr className="border-t border-slate-100">
+                <td className="px-4 py-2 font-semibold text-slate-800">
+                  Cash and cash equivalents at the end of the year
+                  {cfForm.cashAtEndOfYearOverride && <span className="ml-2 text-[10px] text-amber-500">(overridden)</span>}
+                </td>
+                <td className="px-4 py-2 text-right">
+                  {cfForm.cashAtEndOfYearOverride ? (
+                    <input type="text" disabled={isLocked && !isEditing}
+                      value={fmtKobo(cfForm.cashAtEndOfYear || 0)}
+                      onChange={e => handleCfChange('cashAtEndOfYear', e.target.value)}
+                      className={`text-right w-40 px-2 py-1 border border-amber-300 rounded-md text-sm ${isLocked && !isEditing ? 'bg-slate-50 text-slate-500' : 'bg-white'}`} />
+                  ) : (
+                    <span className="text-slate-800">₦{fmtKobo(cfComputedEndOfYear)}</span>
+                  )}
+                  {!isLocked && (
+                    <label className="ml-2 text-xs text-slate-400 cursor-pointer">
+                      <input type="checkbox" checked={cfForm.cashAtEndOfYearOverride}
+                        onChange={e => setCfForm(prev => ({ ...prev, cashAtEndOfYearOverride: e.target.checked }))}
+                        className="mr-1" />Override
+                    </label>
+                  )}
+                </td>
+              </tr>
+
+              {/* Cash & Cash Equivalents Breakdown */}
+              <tr className="bg-slate-50">
+                <td colSpan={2} className="px-4 py-2 text-xs font-bold text-slate-500 uppercase tracking-wider">Cash & Cash Equivalents Breakdown</td>
+              </tr>
+              {cfRow('cashAndBankBalance', 'Cash & Bank balance', false)}
+              {cfRow('termDeposit', 'Term Deposit', false)}
+              {cfRow('termLoan', 'Term Loan (deduction)', false)}
+              <tr className="border-t border-slate-100 bg-slate-50">
+                <td className="px-4 py-2 text-xs text-slate-500">
+                  Reconciliation to closing cash
+                  {Math.abs(cfReconciliationDiff) > 1 && (
+                    <span className={`ml-2 font-semibold ${Math.abs(cfReconciliationDiff) > 100 ? 'text-red-500' : 'text-amber-500'}`}>
+                      (off by ₦{fmtKobo(cfReconciliationDiff)})
+                    </span>
+                  )}
+                </td>
+                <td className="px-4 py-2 text-right text-xs text-slate-500">
+                  ₦{fmtKobo(cfForm.cashAndBankBalance + cfForm.termDeposit + cfForm.termLoan)}
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     );
   }
 
+  // ── SOCIE form ──
   function renderSocieForm() {
+    const isSaved = !!existingRecord;
+    const isLocked = isSaved && locked;
+
+    function socieInputRow(label: string, rowKey: string, rowData: typeof initialSocieRow, isComputed: boolean) {
+      const cols = [...SOCIE_COLUMNS] as string[];
+      return (
+        <tr key={rowKey} className="border-t border-slate-100">
+          <td className={`px-3 py-2 text-xs text-slate-800 whitespace-nowrap ${isComputed ? 'font-semibold' : ''}`}>
+            {label}
+            {isComputed && <span className="ml-1 text-[10px] text-slate-400">(auto)</span>}
+          </td>
+          {cols.map(col => (
+            <td key={col} className="px-1 py-1 text-right">
+              {isComputed ? (
+                <span className="text-xs text-slate-700">₦{fmtKobo((rowData as any)[col] || 0)}</span>
+              ) : (
+                <input type="text" disabled={isLocked && !isEditing}
+                  value={fmtKobo((rowData as any)[col] || 0)}
+                  onChange={e => handleSocieChange(rowKey, col, e.target.value)}
+                  className={`text-right w-28 px-1 py-1 border border-slate-200 rounded text-xs ${isLocked && !isEditing ? 'bg-slate-50 text-slate-500' : 'bg-white'}`} />
+              )}
+            </td>
+          ))}
+          <td className="px-3 py-2 text-right font-semibold text-xs text-slate-800">
+            ₦{fmtKobo(socieColumnTotal(rowData))}
+          </td>
+        </tr>
+      );
+    }
+
     return (
       <div className="space-y-4">
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-700">
-          <AlertTriangle className="w-5 h-5 inline mr-2" />
-          Enter the statement of changes in equity for FY{selectedFy}. This feeds the comparative equity section.
+        {isSaved && (
+          <div className={`px-4 py-2 rounded-lg text-sm flex items-center gap-2 ${isLocked ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
+            {isLocked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
+            {isLocked ? 'Locked' : 'Unlocked — editable'}
+            {existingRecord?.data && <span className="ml-auto text-xs opacity-70">Entered at {new Date(existingRecord.enteredAt).toLocaleString()}</span>}
+          </div>
+        )}
+
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-x-auto">
+          <table className="w-full text-sm min-w-[800px]">
+            <thead className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+              <tr>
+                <th className="text-left px-3 py-3 whitespace-nowrap">Statement of Changes in Equity</th>
+                {SOCIE_COLUMNS.map(col => (
+                  <th key={col} className="text-right px-1 py-3 whitespace-nowrap">{SOCIE_COLUMN_LABELS[col]}</th>
+                ))}
+                <th className="text-right px-3 py-3 whitespace-nowrap">Total Equity</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="bg-slate-50">
+                <td colSpan={SOCIE_COLUMNS.length + 2} className="px-3 py-2 text-xs font-bold text-slate-500">
+                  FY{selectedFy}
+                </td>
+              </tr>
+
+              {socieInputRow('Balance b/f', 'balanceBf', socieForm.balanceBf, false)}
+              {socieInputRow('Profit for the Year', 'profitForYear', socieForm.profitForYear, false)}
+              {socieInputRow('Expected Credit Loss Adjustments', 'eclAdjustments', socieForm.eclAdjustments, false)}
+              {socieInputRow('Other Changes in the year', 'otherChanges', socieForm.otherChanges, false)}
+              {socieInputRow('Prior Year Adjustments', 'priorYearAdjustments', socieForm.priorYearAdjustments, false)}
+              {socieInputRow('Total for the Year', 'totalForYear', socieComputedTotalForYear, true)}
+              {socieInputRow('Balance c/f', 'balanceCf', socieComputedBalanceCf, true)}
+
+              <tr className="bg-slate-100">
+                <td colSpan={SOCIE_COLUMNS.length + 2} className="px-3 py-2 text-xs font-bold text-slate-500">
+                  Transactions with owners recorded directly in equity
+                </td>
+              </tr>
+
+              {socieInputRow('Total Contribution', 'transactionsWithOwners', socieForm.transactionsWithOwners, false)}
+              {socieInputRow('Balance as at year-end', 'balanceAsAt', socieComputedBalanceAsAt, true)}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="text-xs text-slate-400 bg-slate-50 border border-slate-200 rounded-xl p-3">
+          For multi-year rollforward, save the prior year first — its closing balance will be auto-carried as the next year's opening balance when you create a new entry.
         </div>
       </div>
     );
   }
 
+  // ── Main render ──
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
       {/* Header */}
@@ -353,22 +775,81 @@ export function LegacyMigrationPage() {
               <button onClick={() => {
                 if (tab === 'income') {
                   saveMutation.mutate({
-                    operatingRevenue: isForm.operatingRevenue,
-                    otherOperatingIncome: isForm.otherOperatingIncome,
-                    totalRevenue: computedTotalRevenue,
+                    revenue: isForm.revenue,
+                    revenueNote: isForm.revenueNote,
                     costOfSales: isForm.costOfSales,
+                    costOfSalesNote: isForm.costOfSalesNote,
                     grossProfit: computedGrossProfit,
-                    staffCosts: isForm.staffCosts,
-                    administrative: isForm.administrative,
-                    sellingDistribution: isForm.sellingDistribution,
-                    otherOperating: isForm.otherOperating,
-                    financeIncome: isForm.financeIncome,
-                    financeCosts: isForm.financeCosts,
-                    taxExpense: isForm.taxExpense,
-                    netProfit: computedNetProfit,
+                    otherGainsOrLosses: isForm.otherGainsOrLosses,
+                    otherGainsOrLossesNote: isForm.otherGainsOrLossesNote,
+                    impairmentOnFinancialAssets: isForm.impairmentOnFinancialAssets,
+                    impairmentOnFinancialAssetsNote: isForm.impairmentOnFinancialAssetsNote,
+                    administrativeExpenses: isForm.administrativeExpenses,
+                    administrativeExpensesNote: isForm.administrativeExpensesNote,
+                    operatingProfit: computedOperatingProfit,
+                    financeCost: isForm.financeCost,
+                    financeCostNote: isForm.financeCostNote,
+                    profitBeforeTax: computedProfitBeforeTax,
+                    incomeTax: isForm.incomeTax,
+                    incomeTaxNote: isForm.incomeTaxNote,
+                    deferredTax: isForm.deferredTax,
+                    deferredTaxNote: isForm.deferredTaxNote,
+                    profitForTheYear: computedProfitForTheYear,
+                    ociValuationGainLoss: isForm.ociValuationGainLoss,
+                    ociValuationNote: isForm.ociValuationNote,
+                    ociGrantIncome: isForm.ociGrantIncome,
+                    ociGrantNote: isForm.ociGrantNote,
+                    ociNetOfTaxes: computedOciNetOfTaxes,
+                    totalComprehensiveIncome: computedTotalComprehensiveIncome,
+                    earningsPerShareKobo: isForm.earningsPerShareKobo,
+                    earningsPerShareNote: isForm.earningsPerShareNote,
+                    dilutedEarningsPerShare: isForm.dilutedEarningsPerShare,
+                    dilutedEpsNote: isForm.dilutedEpsNote,
+                  });
+                } else if (tab === 'cashflow') {
+                  saveMutation.mutate({
+                    profitBeforeInterestAndTax: cfForm.profitBeforeInterestAndTax,
+                    depreciationPPE: cfForm.depreciationPPE,
+                    amortization: cfForm.amortization,
+                    decreaseIncreasePrepayments: cfForm.decreaseIncreasePrepayments,
+                    decreaseIncreaseReceivables: cfForm.decreaseIncreaseReceivables,
+                    increaseDecreasePayables: cfForm.increaseDecreasePayables,
+                    increaseDecreaseDeferredIncome: cfForm.increaseDecreaseDeferredIncome,
+                    grantOtherIncome: cfForm.grantOtherIncome,
+                    provisionForTax: cfForm.provisionForTax,
+                    cashGeneratedFromOperations: cfComputedCashGenerated,
+                    incomeTaxPaid: cfForm.incomeTaxPaid,
+                    netCashFromOperating: cfComputedNetOperating,
+                    purchaseIntangibleAssets: cfForm.purchaseIntangibleAssets,
+                    purchasePPE: cfForm.purchasePPE,
+                    interestReceived: cfForm.interestReceived,
+                    proceedsFromSalePPE: cfForm.proceedsFromSalePPE,
+                    netCashFromInvesting: cfComputedNetInvesting,
+                    shareCapital: cfForm.shareCapital,
+                    depositForShares: cfForm.depositForShares,
+                    retainedEarnings: cfForm.retainedEarnings,
+                    sharePremium: cfForm.sharePremium,
+                    revaluation: cfForm.revaluation,
+                    dividendsPaid: cfForm.dividendsPaid,
+                    netCashFromFinancing: cfComputedNetFinancing,
+                    netIncreaseInCash: cfComputedNetIncrease,
+                    cashAtBeginningOfYear: cfForm.cashAtBeginningOfYear,
+                    cashAtEndOfYear: cfComputedEndOfYear,
+                    cashAtEndOfYearOverride: cfForm.cashAtEndOfYearOverride,
+                    cashAndBankBalance: cfForm.cashAndBankBalance,
+                    termDeposit: cfForm.termDeposit,
+                    termLoan: cfForm.termLoan,
                   });
                 } else {
-                  saveMutation.mutate({});
+                  saveMutation.mutate({
+                    yearLabel: `FY${selectedFy}`,
+                    balanceBf: socieForm.balanceBf,
+                    profitForYear: socieForm.profitForYear,
+                    eclAdjustments: socieForm.eclAdjustments,
+                    otherChanges: socieForm.otherChanges,
+                    priorYearAdjustments: socieForm.priorYearAdjustments,
+                    transactionsWithOwners: socieForm.transactionsWithOwners,
+                  });
                 }
               }}
                 className="px-4 py-1.5 text-sm font-semibold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-1.5"
@@ -387,7 +868,7 @@ export function LegacyMigrationPage() {
             <AlertTriangle className="w-10 h-10 text-amber-500 mx-auto mb-3" />
             <h3 className="text-lg font-bold text-slate-900 text-center mb-2">Unlock Legacy Statement?</h3>
             <p className="text-sm text-slate-500 text-center mb-6">
-              This will allow editing of a previously locked historical statement. This data feeds comparative reports — 
+              This will allow editing of a previously locked historical statement. This data feeds comparative reports —
               changing it may affect financial reporting. Are you sure?
             </p>
             <div className="flex gap-3">
