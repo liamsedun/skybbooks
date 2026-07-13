@@ -972,64 +972,50 @@ export async function exportBalanceSheet(orgId: string, asOfDate: Date): Promise
   });
 
   const numF = '₦#,##0.00;(₦#,##0.00);"-"';
-  const headerFont = { name: 'Arial', bold: true, size: 11, color: { argb: PRIMARY_HEX } };
-  const subHeaderFont = { name: 'Arial', bold: true, size: 10, color: { argb: '334155' } };
-  const totalFont = { name: 'Arial', bold: true, size: 10 };
 
-  let rowNum = ws.rowCount;
+  function nairaRow(vals: any[], nairaAmount: number) {
+    const r = ws.addRow(vals);
+    r.getCell(3).value = nairaAmount;
+    r.getCell(3).numFmt = numF;
+    r.getCell(3).alignment = { horizontal: 'right' };
+    return r;
+  }
 
-  function addRow(vals: any[], font?: any, fill?: any, border?: any) {
-    rowNum++;
-    const r = ws.getRow(rowNum);
-    vals.forEach((v, i) => { r.getCell(i + 1).value = v; });
+  function styleRow(r: any, font?: any, fill?: any, border?: any) {
     if (font) r.eachCell((c) => { c.font = font; });
     if (fill) r.eachCell((c) => { c.fill = fill; });
     if (border) r.eachCell((c) => { c.border = border; });
-    r.commit();
-    return r;
   }
 
-  function addNumRow(vals: any[], numVal: number, font?: any, border?: any) {
-    rowNum++;
-    const r = ws.getRow(rowNum);
-    vals.forEach((v, i) => { r.getCell(i + 1).value = v; });
-    r.getCell(3).value = numVal / 100;
-    r.getCell(3).numFmt = numF;
-    r.getCell(3).alignment = { horizontal: 'right' };
-    if (font) r.eachCell((c) => { c.font = font; });
-    if (border) r.eachCell((c) => { c.border = border; });
-    r.commit();
-    return r;
-  }
-
-  function writeSubSection(label: string, total: number, items: any[], indent?: string) {
-    addRow([indent ? `${indent}${label}` : label, '', total / 100], subHeaderFont);
+  function writeSubSection(label: string, total: number, items: any[]) {
+    nairaRow([label, '', total / 100]);
     for (const item of items) {
-      addNumRow([`  [${item.code}] ${item.name}`, '', item.balance]);
+      nairaRow([`  [${item.code}] ${item.name}`, '', item.balance / 100]);
     }
-    const t = addNumRow([`Total ${label}`, '', total], totalFont, { top: { style: 'thin' }, bottom: { style: 'thin' } });
+    const t = nairaRow([`Total ${label}`, '', total / 100]);
+    styleRow(t, { name: 'Arial', bold: true, size: 10 }, undefined, { top: { style: 'thin' }, bottom: { style: 'thin' } });
     ws.addRow([]);
-    rowNum++;
   }
 
   function writeNBVSubSection(label: string, costItems: any[], costTotal: number, contraItems: any[], contraTotal: number, netTotal: number) {
-    addRow([label, '', costTotal / 100], subHeaderFont);
+    nairaRow([label, '', costTotal / 100]);
     for (const item of costItems) {
-      addNumRow([`  [${item.code}] ${item.name}`, '', item.balance]);
+      nairaRow([`  [${item.code}] ${item.name}`, '', item.balance / 100]);
     }
     if (contraItems.length > 0) {
-      addRow([`  Less: Accumulated Depreciation/Amortisation`]);
+      ws.addRow(['  Less: Accumulated Depreciation/Amortisation']);
       for (const item of contraItems) {
-        addNumRow([`    [${item.code}] ${item.name}`, '', item.balance]);
+        nairaRow([`    [${item.code}] ${item.name}`, '', item.balance / 100]);
       }
     }
-    addNumRow([`Net Book Value – ${label}`, '', netTotal], totalFont, { top: { style: 'thin' }, bottom: { style: 'thin' } });
+    const t = nairaRow([`Net Book Value – ${label}`, '', netTotal / 100]);
+    styleRow(t, { name: 'Arial', bold: true, size: 10 }, undefined, { top: { style: 'thin' }, bottom: { style: 'thin' } });
     ws.addRow([]);
-    rowNum++;
   }
 
   function writeSectionGroup(label: string, section: { total: number; subSections: any[] }) {
-    addRow([label.toUpperCase(), '', section.total / 100], headerFont);
+    const sr = nairaRow([label.toUpperCase(), '', section.total / 100]);
+    styleRow(sr, { name: 'Arial', bold: true, size: 11, color: { argb: PRIMARY_HEX } });
     for (const sec of section.subSections) {
       if (sec.key === 'ppe' || sec.key === 'rou' || sec.key === 'intangibles') {
         writeNBVSubSection(sec.label, sec.items || [], sec.total || 0, sec.contraItems || [], sec.contraTotal || 0, sec.netTotal ?? sec.total);
@@ -1040,40 +1026,38 @@ export async function exportBalanceSheet(orgId: string, asOfDate: Date): Promise
   }
 
   // ASSETS
-  addRow(['ASSETS', '', bs.totalAssets / 100], headerFont);
+  let sr = nairaRow(['ASSETS', '', bs.totalAssets / 100]);
+  styleRow(sr, { name: 'Arial', bold: true, size: 11, color: { argb: PRIMARY_HEX } });
   writeSectionGroup('Current Assets', bs.currentAssets);
   writeSectionGroup('Non-Current Assets', bs.nonCurrentAssets);
-  addNumRow(['TOTAL ASSETS', '', bs.totalAssets], totalFont, { top: { style: 'thin' }, bottom: { style: 'thin' } });
+  let tr = nairaRow(['TOTAL ASSETS', '', bs.totalAssets / 100]);
+  styleRow(tr, { name: 'Arial', bold: true, size: 10 }, undefined, { top: { style: 'thin' }, bottom: { style: 'thin' } });
   ws.addRow([]);
-  rowNum++;
 
   // LIABILITIES
-  addRow(['LIABILITIES', '', bs.totalLiabilities / 100], headerFont);
+  sr = nairaRow(['LIABILITIES', '', bs.totalLiabilities / 100]);
+  styleRow(sr, { name: 'Arial', bold: true, size: 11, color: { argb: PRIMARY_HEX } });
   writeSectionGroup('Current Liabilities', bs.currentLiabilities);
   writeSectionGroup('Non-Current Liabilities', bs.nonCurrentLiabilities);
-  addNumRow(['TOTAL LIABILITIES', '', bs.totalLiabilities], totalFont, { top: { style: 'thin' }, bottom: { style: 'thin' } });
+  tr = nairaRow(['TOTAL LIABILITIES', '', bs.totalLiabilities / 100]);
+  styleRow(tr, { name: 'Arial', bold: true, size: 10 }, undefined, { top: { style: 'thin' }, bottom: { style: 'thin' } });
   ws.addRow([]);
-  rowNum++;
 
   // EQUITY
-  addRow(['EQUITY', '', bs.totalEquity / 100], headerFont);
+  sr = nairaRow(['EQUITY', '', bs.totalEquity / 100]);
+  styleRow(sr, { name: 'Arial', bold: true, size: 11, color: { argb: PRIMARY_HEX } });
   writeSectionGroup('Equity', bs.equity);
-  addNumRow(['TOTAL EQUITY', '', bs.totalEquity], totalFont, { top: { style: 'thin' }, bottom: { style: 'thin' } });
+  tr = nairaRow(['TOTAL EQUITY', '', bs.totalEquity / 100]);
+  styleRow(tr, { name: 'Arial', bold: true, size: 10 }, undefined, { top: { style: 'thin' }, bottom: { style: 'thin' } });
   ws.addRow([]);
-  rowNum++;
 
   // GRAND TOTAL
-  addRow(['TOTAL LIABILITIES AND EQUITY', '', bs.liabilitiesAndEquity / 100]);
-  const fRow = ws.getRow(rowNum);
-  fRow.eachCell((cell, idx) => {
-    cell.font = { name: 'Arial', bold: true, size: 11, color: { argb: 'FFFFFF' } };
-    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: PRIMARY_HEX } };
-    cell.border = { top: { style: 'thin' }, bottom: { style: 'double' } };
-    if (idx === 3) {
-      cell.numFmt = numF;
-      cell.alignment = { horizontal: 'right' };
-    }
-  });
+  const fRow = nairaRow(['TOTAL LIABILITIES AND EQUITY', '', bs.liabilitiesAndEquity / 100]);
+  styleRow(fRow,
+    { name: 'Arial', bold: true, size: 11, color: { argb: 'FFFFFF' } },
+    { type: 'pattern', pattern: 'solid', fgColor: { argb: PRIMARY_HEX } },
+    { top: { style: 'thin' }, bottom: { style: 'double' } }
+  );
 
   ws.columns = [
     { width: 55 },
