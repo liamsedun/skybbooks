@@ -42,6 +42,13 @@ export function LegacyMigrationPage() {
   const [liveGl, setLiveGl] = useState('');
   const [legacyName, setLegacyName] = useState('');
 
+  // Org settings for migration config
+  const { data: orgData, isLoading: orgLoading } = useQuery({
+    queryKey: ['org'],
+    queryFn: () => legacyApi.getOrg(),
+  });
+  const org = orgData?.data || orgData || {};
+
   // Sync settings form fields when org data loads
   useEffect(() => {
     if (org) {
@@ -49,13 +56,6 @@ export function LegacyMigrationPage() {
       setLegacyName(org?.legacySystemName || '');
     }
   }, [org]);
-
-  // Org settings for migration config
-  const { data: orgData, isLoading: orgLoading } = useQuery({
-    queryKey: ['org'],
-    queryFn: () => legacyApi.getOrg(),
-  });
-  const org = orgData?.data || orgData || {};
 
   // Legacy statement data
   const queryKey = ['legacy', tab, selectedFy];
