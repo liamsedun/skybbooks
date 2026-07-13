@@ -6,6 +6,8 @@ import { Loader2, AlertCircle, CheckCircle2, Download, Search, Upload, FileText,
 import { downloadCsv, exportToCsv, CSV_TEMPLATES } from '../../lib/csvTemplates';
 
 const MODULE_LINKS: { prefix: string; path: string; label: string; isJournal?: boolean }[] = [
+  { prefix: '1000', path: '/banking', label: 'Banking' },
+  { prefix: '1001', path: '/banking', label: 'Banking' },
   { prefix: '1002', path: '/banking', label: 'Banking' },
   { prefix: '1003', path: '/banking', label: 'Banking' },
   { prefix: '1004', path: '/banking', label: 'Banking' },

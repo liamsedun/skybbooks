@@ -45,7 +45,7 @@ const createEmployeeSchema = z.object({
   nhfNumber: z.string().optional().nullable().default(null),
   taxId: z.string().optional().nullable().default(null),
   isActive: z.boolean().optional().default(true),
-  pensionablePortionPct: z.number().int().min(1).max(100).optional().default(80),
+  pensionablePortionPct: z.number().int().min(0).max(100).optional().default(80),
   pensionRatePct: z.number().int().min(0).max(30).optional().default(8),
   nhisApplicable: z.boolean().optional().default(false),
   nhfApplicable: z.boolean().optional().default(true),

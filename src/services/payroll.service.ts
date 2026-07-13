@@ -125,8 +125,8 @@ export function calculatePayrollForEmployee(employee: any, payPeriod?: { start?:
   const utilitiesPct = Math.max(0, Math.min(100, Number(employee.utilitiesPct || 10))) / 100;
   const mealsPct = Math.max(0, Math.min(100, Number(employee.mealsPct || 5))) / 100;
   const othersPct = Math.max(0, Math.min(100, Number(employee.othersPct || 5))) / 100;
-  const pensionablePortionPct = Math.max(1, Math.min(100, Number(employee.pensionablePortionPct || 80))) / 100;
-  const pensionRatePct = Math.max(0, Math.min(30, Number(employee.pensionRatePct || 8))) / 100;
+  const pensionablePortionPct = Math.max(0, Math.min(100, Number(employee.pensionablePortionPct ?? 80))) / 100;
+  const pensionRatePct = Math.max(0, Math.min(30, Number(employee.pensionRatePct ?? 8))) / 100;
   const nhisApplicable = employee.nhisApplicable === true;
   const nhfApplicable = employee.nhfApplicable !== false;
   const annualRentKobo = Number(employee.annualRent || 0);
