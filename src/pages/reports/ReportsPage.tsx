@@ -2042,7 +2042,12 @@ function ReportShell({ reportType, title }: ReportPageProps) {
         alert('Failed to export Excel. Please try again.');
       });
     } else if (reportType === 'balance-sheet') {
-      apiDownload(`/reports/balance-sheet?format=${format}&asOfDate=${asOfDate}`, `balance_sheet_${new Date().toISOString().split('T')[0]}.xlsx`);
+      reportsApi.getBalanceSheet({ asOfDate, format: 'excel' }).then((blob: any) => {
+        downloadBlob(blob, `balance_sheet_${new Date().toISOString().split('T')[0]}.xlsx`);
+      }).catch((err: any) => {
+        console.error('Excel export failed:', err);
+        alert('Failed to export Excel. Please try again.');
+      });
     } else {
       apiDownload(`/reports/${reportType}?format=${format}&startDate=${sDate}&endDate=${eDate}`, `${reportType}_${new Date().toISOString().split('T')[0]}.${format}`);
     }

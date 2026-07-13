@@ -1026,7 +1026,8 @@ export const reportsApi = {
     return res.data;
   },
   getBalanceSheet: async (params: { asOfDate?: string; compareAsOf?: string; format?: 'json' | 'pdf' | 'excel' }) => {
-    const res = await api.get('/reports/balance-sheet', { params, responseType: params.format === 'pdf' ? 'blob' : undefined });
+    const isBinary = params.format === 'pdf' || params.format === 'excel';
+    const res = await api.get('/reports/balance-sheet', { params, responseType: isBinary ? 'blob' : undefined });
     return res.data;
   },
   getCashFlow: async (params: { startDate: string; endDate: string; format?: 'json' | 'pdf' | 'excel'; compareStart?: string; compareEnd?: string }) => {
