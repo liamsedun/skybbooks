@@ -39,6 +39,16 @@ export function LegacyMigrationPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [confirmUnlock, setConfirmUnlock] = useState<string | null>(null);
   const [saveMsg, setSaveMsg] = useState('');
+  const [liveGl, setLiveGl] = useState('');
+  const [legacyName, setLegacyName] = useState('');
+
+  // Sync settings form fields when org data loads
+  useEffect(() => {
+    if (org) {
+      setLiveGl(org?.liveGlStartFiscalYear != null ? String(org.liveGlStartFiscalYear) : '');
+      setLegacyName(org?.legacySystemName || '');
+    }
+  }, [org]);
 
   // Org settings for migration config
   const { data: orgData, isLoading: orgLoading } = useQuery({
@@ -158,9 +168,6 @@ export function LegacyMigrationPage() {
   }
 
   function renderSettingsTab() {
-    const [liveGl, setLiveGl] = useState(org?.liveGlStartFiscalYear || '');
-    const [legacyName, setLegacyName] = useState(org?.legacySystemName || '');
-
     return (
       <div className="max-w-2xl mx-auto space-y-6">
         <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6">
