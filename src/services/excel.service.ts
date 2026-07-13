@@ -962,7 +962,7 @@ export async function exportBalanceSheet(orgId: string, asOfDate: Date): Promise
 
   ws.addRow([]);
 
-  const colHeaders = ['Account Description', 'Account Category', 'Book Value (₦)'];
+  const colHeaders = ['Account Description', 'Sub-section', 'Book Value (₦)'];
   const hRow = ws.addRow(colHeaders);
   hRow.height = 24;
   hRow.eachCell((cell, idx) => {
@@ -972,40 +972,99 @@ export async function exportBalanceSheet(orgId: string, asOfDate: Date): Promise
   });
 
   const numF = '₦#,##0.00;(₦#,##0.00);"-"';
+  const headerFont = { name: 'Arial', bold: true, size: 11, color: { argb: PRIMARY_HEX } };
+  const subHeaderFont = { name: 'Arial', bold: true, size: 10, color: { argb: '334155' } };
+  const totalFont = { name: 'Arial', bold: true, size: 10 };
 
-  function writeSection(title: string, data: any) {
-    const sHeader = ws.addRow([title.toUpperCase()]);
-    sHeader.getCell(1).font = { name: 'Arial', bold: true, size: 11, color: { argb: PRIMARY_HEX } };
-    ws.addRow([]);
+  let rowNum = ws.rowCount;
 
-    data.accounts.forEach((acc: any) => {
-      const r = ws.addRow([
-        `[${acc.code}] ${acc.name}`,
-        acc.type.toUpperCase(),
-        acc.balance / 100
-      ]);
-      r.getCell(3).numFmt = numF;
-      r.getCell(3).alignment = { horizontal: 'right' };
-    });
-
-    ws.addRow([]);
-    const tRow = ws.addRow([`TOTAL ${title.toUpperCase()}`, '', data.total / 100]);
-    tRow.eachCell((cell, idx) => {
-      cell.font = { name: 'Arial', bold: true, size: 10 };
-      cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' } };
-      if (idx === 3) {
-        cell.numFmt = numF;
-        cell.alignment = { horizontal: 'right' };
-      }
-    });
-    ws.addRow([]);
+  function addRow(vals: any[], font?: any, fill?: any, border?: any) {
+    rowNum++;
+    const r = ws.getRow(rowNum);
+    vals.forEach((v, i) => { r.getCell(i + 1).value = v; });
+    if (font) r.eachCell((c) => { c.font = font; });
+    if (fill) r.eachCell((c) => { c.fill = fill; });
+    if (border) r.eachCell((c) => { c.border = border; });
+    r.commit();
+    return r;
   }
 
-  writeSection('Assets', bs.assets);
-  writeSection('Liabilities', bs.liabilities);
-  writeSection('Equity', bs.equity);
+  function addNumRow(vals: any[], numVal: number, font?: any, border?: any) {
+    rowNum++;
+    const r = ws.getRow(rowNum);
+    vals.forEach((v, i) => { r.getCell(i + 1).value = v; });
+    r.getCell(3).value = numVal / 100;
+    r.getCell(3).numFmt = numF;
+    r.getCell(3).alignment = { horizontal: 'right' };
+    if (font) r.eachCell((c) => { c.font = font; });
+    if (border) r.eachCell((c) => { c.border = border; });
+    r.commit();
+    return r;
+  }
 
-  const fRow = ws.addRow(['TOTAL LIABILITIES AND EQUITY', '', bs.liabilitiesAndEquity / 100]);
+  function writeSubSection(label: string, total: number, items: any[], indent?: string) {
+    addRow([indent ? `${indent}${label}` : label, '', total / 100], subHeaderFont);
+    for (const item of items) {
+      addNumRow([`  [${item.code}] ${item.name}`, '', item.balance]);
+    }
+    const t = addNumRow([`Total ${label}`, '', total], totalFont, { top: { style: 'thin' }, bottom: { style: 'thin' } });
+    ws.addRow([]);
+    rowNum++;
+  }
+
+  function writeNBVSubSection(label: string, costItems: any[], costTotal: number, contraItems: any[], contraTotal: number, netTotal: number) {
+    addRow([label, '', costTotal / 100], subHeaderFont);
+    for (const item of costItems) {
+      addNumRow([`  [${item.code}] ${item.name}`, '', item.balance]);
+    }
+    if (contraItems.length > 0) {
+      addRow([`  Less: Accumulated Depreciation/Amortisation`]);
+      for (const item of contraItems) {
+        addNumRow([`    [${item.code}] ${item.name}`, '', item.balance]);
+      }
+    }
+    addNumRow([`Net Book Value – ${label}`, '', netTotal], totalFont, { top: { style: 'thin' }, bottom: { style: 'thin' } });
+    ws.addRow([]);
+    rowNum++;
+  }
+
+  function writeSectionGroup(label: string, section: { total: number; subSections: any[] }) {
+    addRow([label.toUpperCase(), '', section.total / 100], headerFont);
+    for (const sec of section.subSections) {
+      if (sec.key === 'ppe' || sec.key === 'rou' || sec.key === 'intangibles') {
+        writeNBVSubSection(sec.label, sec.items || [], sec.total || 0, sec.contraItems || [], sec.contraTotal || 0, sec.netTotal ?? sec.total);
+      } else {
+        writeSubSection(sec.label, sec.total || 0, sec.items || []);
+      }
+    }
+  }
+
+  // ASSETS
+  addRow(['ASSETS', '', bs.totalAssets / 100], headerFont);
+  writeSectionGroup('Current Assets', bs.currentAssets);
+  writeSectionGroup('Non-Current Assets', bs.nonCurrentAssets);
+  addNumRow(['TOTAL ASSETS', '', bs.totalAssets], totalFont, { top: { style: 'thin' }, bottom: { style: 'thin' } });
+  ws.addRow([]);
+  rowNum++;
+
+  // LIABILITIES
+  addRow(['LIABILITIES', '', bs.totalLiabilities / 100], headerFont);
+  writeSectionGroup('Current Liabilities', bs.currentLiabilities);
+  writeSectionGroup('Non-Current Liabilities', bs.nonCurrentLiabilities);
+  addNumRow(['TOTAL LIABILITIES', '', bs.totalLiabilities], totalFont, { top: { style: 'thin' }, bottom: { style: 'thin' } });
+  ws.addRow([]);
+  rowNum++;
+
+  // EQUITY
+  addRow(['EQUITY', '', bs.totalEquity / 100], headerFont);
+  writeSectionGroup('Equity', bs.equity);
+  addNumRow(['TOTAL EQUITY', '', bs.totalEquity], totalFont, { top: { style: 'thin' }, bottom: { style: 'thin' } });
+  ws.addRow([]);
+  rowNum++;
+
+  // GRAND TOTAL
+  addRow(['TOTAL LIABILITIES AND EQUITY', '', bs.liabilitiesAndEquity / 100]);
+  const fRow = ws.getRow(rowNum);
   fRow.eachCell((cell, idx) => {
     cell.font = { name: 'Arial', bold: true, size: 11, color: { argb: 'FFFFFF' } };
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: PRIMARY_HEX } };
@@ -1017,8 +1076,8 @@ export async function exportBalanceSheet(orgId: string, asOfDate: Date): Promise
   });
 
   ws.columns = [
-    { width: 45 },
-    { width: 22 },
+    { width: 55 },
+    { width: 20 },
     { width: 22 }
   ];
 
