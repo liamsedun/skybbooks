@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { bankingApi } from '../../lib/api';
+import { bankingApi, reportsApi } from '../../lib/api';
 import { useCurrency } from '../../hooks/useCurrency';
 import { useAuth } from '../../hooks/useAuth';
 import { FlutterwaveConnectButton } from '../../components/banking/FlutterwaveConnectButton';
@@ -127,6 +127,19 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
     queryFn: bankingApi.getAccounts,
     enabled: !!token,
   });
+
+  // 1b. Fetch trial balance to derive bank balances from GL
+  const { data: tbData } = useQuery({
+    queryKey: ['trialBalance', '2000-01-01', new Date().toISOString().split('T')[0]],
+    queryFn: () => reportsApi.getTrialBalance({ startDate: '2000-01-01', endDate: new Date().toISOString().split('T')[0] }),
+    enabled: !!token,
+    staleTime: 30000,
+  });
+  const tbRows: any[] = tbData?.data || tbData || [];
+  const tbBalanceMap = new Map<string, number>();
+  for (const r of tbRows) {
+    tbBalanceMap.set(r.accountId, (r.closingDebit || 0) - (r.closingCredit || 0));
+  }
 
   // 2. Fetch general ledger Cash Accounts to pair with
   const { data: glAccounts = [] } = useQuery({
@@ -458,7 +471,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                       Current Bank balance
                     </label>
                     <div className="font-sans font-bold text-slate-900 text-lg lg:text-xl">
-                      {formatNaira(account.currentBalance ?? 0)}
+                      {formatNaira(tbBalanceMap.get(account.accountId) ?? account.currentBalance ?? 0)}
                     </div>
                   </div>
 
