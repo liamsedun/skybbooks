@@ -1026,13 +1026,29 @@ export const reportsApi = {
     return res.data;
   },
   getBalanceSheet: async (params: { asOfDate?: string; compareAsOf?: string; format?: 'json' | 'pdf' | 'excel' }) => {
-    const isBinary = params.format === 'pdf' || params.format === 'excel';
-    const res = await api.get('/reports/balance-sheet', { params, responseType: isBinary ? 'blob' : undefined });
+    if (params.format === 'excel' || params.format === 'pdf') {
+      const { asOfDate, compareAsOf, format } = params;
+      const token = localStorage.getItem('accessToken');
+      let url = `/reports/balance-sheet?format=${format}&token=${encodeURIComponent(token || '')}`;
+      if (asOfDate) url += `&asOfDate=${encodeURIComponent(asOfDate)}`;
+      if (compareAsOf) url += `&compareAsOf=${encodeURIComponent(compareAsOf)}`;
+      const res = await fetch(url);
+      return res.blob();
+    }
+    const res = await api.get('/reports/balance-sheet', { params, responseType: 'json' });
     return res.data;
   },
   getCashFlow: async (params: { startDate: string; endDate: string; format?: 'json' | 'pdf' | 'excel'; compareStart?: string; compareEnd?: string }) => {
-    const isBinary = params.format === 'pdf' || params.format === 'excel';
-    const res = await api.get('/reports/cash-flow', { params, responseType: isBinary ? 'blob' : undefined });
+    if (params.format === 'excel' || params.format === 'pdf') {
+      const { startDate, endDate, format, compareStart, compareEnd } = params;
+      const token = localStorage.getItem('accessToken');
+      let url = `/reports/cash-flow?format=${format}&token=${encodeURIComponent(token || '')}&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
+      if (compareStart) url += `&compareStart=${encodeURIComponent(compareStart)}`;
+      if (compareEnd) url += `&compareEnd=${encodeURIComponent(compareEnd)}`;
+      const res = await fetch(url);
+      return res.blob();
+    }
+    const res = await api.get('/reports/cash-flow', { params, responseType: 'json' });
     return res.data;
   },
   getGeneralLedger: async (params: { accountId: string; startDate: string; endDate: string; format?: 'pdf' | 'excel' | 'json' }) => {
