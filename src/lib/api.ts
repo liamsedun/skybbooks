@@ -1029,7 +1029,7 @@ export const reportsApi = {
     const res = await api.get('/reports/balance-sheet', { params, responseType: params.format === 'pdf' ? 'blob' : undefined });
     return res.data;
   },
-  getCashFlow: async (params: { startDate: string; endDate: string; format?: 'json' | 'pdf' | 'excel' }) => {
+  getCashFlow: async (params: { startDate: string; endDate: string; format?: 'json' | 'pdf' | 'excel'; compareStart?: string; compareEnd?: string }) => {
     const res = await api.get('/reports/cash-flow', { params, responseType: params.format === 'pdf' ? 'blob' : undefined });
     return res.data;
   },
@@ -1057,6 +1057,30 @@ export const reportsApi = {
     const res = await api.get('/reports/dashboard-summary', { params });
     return res.data;
   },
+};
+
+// 9a. Legacy / Migration Endpoints
+export const legacyApi = {
+  getOrg: async () => { const res = await api.get('/org'); return res.data; },
+  updateOrg: async (data: any) => { const res = await api.patch('/org', data); return res.data; },
+
+  // Income Statements
+  listIncomeStatements: async () => { const res = await api.get('/legacy/income-statements'); return res.data; },
+  getIncomeStatement: async (fiscalYear: number) => { const res = await api.get(`/legacy/income-statements/${fiscalYear}`); return res.data; },
+  upsertIncomeStatement: async (fiscalYear: number, data: any) => { const res = await api.put(`/legacy/income-statements/${fiscalYear}`, data); return res.data; },
+  unlockIncomeStatement: async (fiscalYear: number) => { const res = await api.patch(`/legacy/income-statements/${fiscalYear}/unlock`); return res.data; },
+
+  // Cash Flow Statements
+  listCashFlowStatements: async () => { const res = await api.get('/legacy/cash-flow-statements'); return res.data; },
+  getCashFlowStatement: async (fiscalYear: number) => { const res = await api.get(`/legacy/cash-flow-statements/${fiscalYear}`); return res.data; },
+  upsertCashFlowStatement: async (fiscalYear: number, data: any) => { const res = await api.put(`/legacy/cash-flow-statements/${fiscalYear}`, data); return res.data; },
+  unlockCashFlowStatement: async (fiscalYear: number) => { const res = await api.patch(`/legacy/cash-flow-statements/${fiscalYear}/unlock`); return res.data; },
+
+  // SOCIE
+  listSocieStatements: async () => { const res = await api.get('/legacy/statements-of-changes-in-equity'); return res.data; },
+  getSocieStatement: async (fiscalYear: number) => { const res = await api.get(`/legacy/statements-of-changes-in-equity/${fiscalYear}`); return res.data; },
+  upsertSocieStatement: async (fiscalYear: number, data: any) => { const res = await api.put(`/legacy/statements-of-changes-in-equity/${fiscalYear}`, data); return res.data; },
+  unlockSocieStatement: async (fiscalYear: number) => { const res = await api.patch(`/legacy/statements-of-changes-in-equity/${fiscalYear}/unlock`); return res.data; },
 };
 
 // 9. Projects Endpoints

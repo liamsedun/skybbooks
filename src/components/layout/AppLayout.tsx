@@ -179,6 +179,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     'rep_custom': '/reports/custom',
     'rep_tax_computation': '/reports/tax-computation',
     'rep_projects': '/reports/projects',
+    'rep_legacy': '/reports/legacy',
     'set_organisation': '/settings/organisation',
     'set_invites': '/settings/invites',
     'set_roles': '/settings/roles',
@@ -290,6 +291,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
         { name: 'Custom Reports', id: 'rep_custom', icon: FileCode },
         { name: 'Tax Computation', id: 'rep_tax_computation', icon: ReceiptText },
         { name: 'Project Report', id: 'rep_projects', icon: Briefcase },
+        { name: 'Legacy Migration', id: 'rep_legacy', icon: History },
       ],
     },
     {

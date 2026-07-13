@@ -66,6 +66,7 @@ import {
   ProjectsReportPage,
   CustomReportsPage,
   TaxComputationPage,
+  LegacyMigrationPage,
   InvitesSettingsPage,
   IntegrationsSettingsPage
 } from './pages/ModulePlaceholders';
@@ -324,6 +325,7 @@ function AppRoutes() {
           <Route path="/reports/projects" element={<ProjectsReportPage />} />
           <Route path="/reports/tax-computation" element={<TaxComputationPage />} />
           <Route path="/reports/custom" element={<CustomReportsPage />} />
+          <Route path="/reports/legacy" element={<LegacyMigrationPage />} />
 
           {/* System metadata & account preferences */}
           <Route path="/settings" element={<SettingsLayout />}>

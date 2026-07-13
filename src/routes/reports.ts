@@ -501,6 +501,14 @@ router.get(
   }
 );
 
+const cashFlowQuerySchema = z.object({
+  startDate: z.string().transform((val) => new Date(val)),
+  endDate: z.string().transform((val) => new Date(val)),
+  compareStart: z.string().optional().transform((val) => val ? new Date(val) : undefined),
+  compareEnd: z.string().optional().transform((val) => val ? new Date(val) : undefined),
+  format: z.enum(['pdf', 'excel', 'json']).default('json')
+});
+
 // =========================================================================
 // 4. CASH FLOW ENDPOINT
 // =========================================================================
@@ -508,11 +516,11 @@ router.get(
   '/cash-flow',
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      const { startDate, endDate, format } = dateRangeQuerySchema.parse(req.query);
+      const { startDate, endDate, compareStart, compareEnd, format } = cashFlowQuerySchema.parse(req.query);
       const orgId = req.user!.orgId!;
 
       if (format === 'json') {
-        const data = await getCashFlowStatement(orgId, startDate, endDate);
+        const data = await getCashFlowStatement(orgId, startDate, endDate, compareStart, compareEnd);
         return res.status(200).json({ success: true, data });
       }
 

@@ -677,3 +677,4 @@ export { InvitesSettingsPage } from './settings/InvitesPage';
 export { IntegrationsSettingsPage } from './settings/IntegrationsPage';
 
 export { CustomReportsPage } from './reports/CustomReportsPage';
+export { LegacyMigrationPage } from './reports/LegacyMigrationPage';

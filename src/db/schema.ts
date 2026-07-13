@@ -267,6 +267,8 @@ export const organisations = pgTable('organisations', {
   logoUrl: text('logo_url'),
   baseCurrency: text('base_currency').default('NGN').notNull(),
   fiscalYearStart: text('fiscal_year_start'),
+  liveGlStartFiscalYear: integer('live_gl_start_fiscal_year'),
+  legacySystemName: text('legacy_system_name'),
   vatNumber: text('vat_number'),
   rcNumber: text('rc_number'),
   website: text('website'),
@@ -988,6 +990,50 @@ export const closedPeriods = pgTable('closed_periods', {
   closedAt: timestamp('closed_at').defaultNow().notNull(),
   closedBy: uuid('closed_by').references(() => users.id).notNull()
 });
+
+// --- Legacy / Migration Financial Statements ---
+
+export const legacyIncomeStatements = pgTable('legacy_income_statements', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  fiscalYear: integer('fiscal_year').notNull(),
+  periodLabel: text('period_label').notNull(),
+  currency: text('currency').default('NGN').notNull(),
+  data: jsonb('data').notNull(),
+  isLocked: boolean('is_locked').default(true).notNull(),
+  enteredBy: uuid('entered_by').references(() => users.id).notNull(),
+  enteredAt: timestamp('entered_at').defaultNow().notNull()
+}, (table) => ({
+  legacyISOrgFyIdx: index('idx_legacy_is_org_fy').on(table.orgId, table.fiscalYear),
+}));
+
+export const legacyCashFlowStatements = pgTable('legacy_cash_flow_statements', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  fiscalYear: integer('fiscal_year').notNull(),
+  periodLabel: text('period_label').notNull(),
+  currency: text('currency').default('NGN').notNull(),
+  data: jsonb('data').notNull(),
+  isLocked: boolean('is_locked').default(true).notNull(),
+  enteredBy: uuid('entered_by').references(() => users.id).notNull(),
+  enteredAt: timestamp('entered_at').defaultNow().notNull()
+}, (table) => ({
+  legacyCFOrgFyIdx: index('idx_legacy_cf_org_fy').on(table.orgId, table.fiscalYear),
+}));
+
+export const legacyStatementsOfChangesInEquity = pgTable('legacy_statements_of_changes_in_equity', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  fiscalYear: integer('fiscal_year').notNull(),
+  periodLabel: text('period_label').notNull(),
+  currency: text('currency').default('NGN').notNull(),
+  data: jsonb('data').notNull(),
+  isLocked: boolean('is_locked').default(true).notNull(),
+  enteredBy: uuid('entered_by').references(() => users.id).notNull(),
+  enteredAt: timestamp('entered_at').defaultNow().notNull()
+}, (table) => ({
+  legacySocieOrgFyIdx: index('idx_legacy_socie_org_fy').on(table.orgId, table.fiscalYear),
+}));
 
 export const closedPeriodsRelations = relations(closedPeriods, ({ one }) => ({
   organisation: one(organisations, {
@@ -1876,6 +1922,9 @@ export const db = drizzle(pool, {
     capitalAllowanceSchedule,
     taxLosses,
     taxComputations,
+    legacyIncomeStatements,
+    legacyCashFlowStatements,
+    legacyStatementsOfChangesInEquity,
 
     // Relations
     organisationsRelations,
@@ -1974,6 +2023,9 @@ export const schema = {
   taxConfigurations,
   capitalAllowanceSchedule,
   taxLosses,
-  taxComputations
+  taxComputations,
+  legacyIncomeStatements,
+  legacyCashFlowStatements,
+  legacyStatementsOfChangesInEquity
 };
 

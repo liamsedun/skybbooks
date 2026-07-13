@@ -36,6 +36,8 @@ const updateOrgSchema = z.object({
   phone: z.string().optional(),
   email: z.string().email('Invalid email format.').optional(),
   fiscalYearStart: z.string().optional(),
+  liveGlStartFiscalYear: z.number().int().optional(),
+  legacySystemName: z.string().optional(),
   vatNumber: z.string().optional(),
   rcNumber: z.string().optional(),
   website: z.string().optional()
@@ -219,6 +221,8 @@ router.patch('/', requireRole('owner', 'accountant'), async (req: AuthenticatedR
         ...(body.phone !== undefined && { phone: body.phone }),
         ...(body.email !== undefined && { email: body.email }),
         ...(body.fiscalYearStart !== undefined && { fiscalYearStart: body.fiscalYearStart }),
+        ...(body.liveGlStartFiscalYear !== undefined && { liveGlStartFiscalYear: body.liveGlStartFiscalYear }),
+        ...(body.legacySystemName !== undefined && { legacySystemName: body.legacySystemName }),
         ...(body.vatNumber !== undefined && { vatNumber: body.vatNumber }),
         ...(body.rcNumber !== undefined && { rcNumber: body.rcNumber }),
         ...(body.website !== undefined && { website: body.website })

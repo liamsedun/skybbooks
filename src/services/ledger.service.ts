@@ -4,7 +4,7 @@
  */
 
 import { eq, and, lte, gte, sql, asc, inArray } from 'drizzle-orm';
-import { db, accounts, journalEntries, journalLines, bankAccounts, fixedAssets, contacts, inventoryLots, inventoryTransactions, closedPeriods, invoices, paymentsReceived, bills, organisations } from '../db/schema';
+import { db, accounts, journalEntries, journalLines, bankAccounts, fixedAssets, contacts, inventoryLots, inventoryTransactions, closedPeriods, invoices, paymentsReceived, bills, organisations, legacyIncomeStatements, legacyCashFlowStatements, legacyStatementsOfChangesInEquity } from '../db/schema';
 import { AppError } from '../lib/errors';
 import { toNgn, getRateForDate } from './currency.service';
 
@@ -1017,6 +1017,128 @@ async function computePnL(
  * @param compareEndDate Optional prior period end date.
  * @returns Comparative P&L with current, prior (optional), and variance.
  */
+// ── Legacy / Migration helpers ──
+
+/**
+ * Determines the fiscal year (as an integer) that a given date falls into,
+ * based on the org's fiscal year start month/day.
+ */
+function fiscalYearForDate(date: Date, fyStart: string | null): number {
+  const y = date.getFullYear();
+  if (!fyStart) return y;
+  const parts = fyStart.split('-').map(Number);
+  if (parts.length !== 2) return y;
+  const fyMonth = parts[0] - 1; // 0-indexed
+  const fyDay = parts[1];
+  const fyStartDate = new Date(y, fyMonth, fyDay);
+  // If date is before this year's FY start, it belongs to previous FY
+  if (date < fyStartDate) return y - 1;
+  return y;
+}
+
+/**
+ * Returns the org's liveGlStartFiscalYear if set, else null.
+ */
+async function getLiveGlCutover(orgId: string): Promise<number | null> {
+  const [org] = await db
+    .select({ liveGlStartFiscalYear: organisations.liveGlStartFiscalYear, fiscalYearStart: organisations.fiscalYearStart })
+    .from(organisations)
+    .where(eq(organisations.id, orgId))
+    .limit(1);
+  return org?.liveGlStartFiscalYear ?? null;
+}
+
+/**
+ * Determines whether a given period end date falls in a pre-cutover fiscal year.
+ * If yes, returns the fiscal year; otherwise null.
+ */
+async function preCutoverFiscalYear(orgId: string, endDate: Date): Promise<number | null> {
+  const [org] = await db
+    .select({ liveGlStartFiscalYear: organisations.liveGlStartFiscalYear, fiscalYearStart: organisations.fiscalYearStart })
+    .from(organisations)
+    .where(eq(organisations.id, orgId))
+    .limit(1);
+  if (!org?.liveGlStartFiscalYear) return null;
+  const fy = fiscalYearForDate(endDate, org.fiscalYearStart);
+  return fy < org.liveGlStartFiscalYear ? fy : null;
+}
+
+/**
+ * Tries to fetch a locked legacy income statement for a given fiscal year.
+ * Returns { data, legacy: true } if found, otherwise null.
+ */
+async function tryLegacyIncomeStatement(orgId: string, fiscalYear: number): Promise<{ data: any; legacy: true } | null> {
+  const [row] = await db
+    .select()
+    .from(legacyIncomeStatements)
+    .where(
+      and(
+        eq(legacyIncomeStatements.orgId, orgId),
+        eq(legacyIncomeStatements.fiscalYear, fiscalYear),
+        eq(legacyIncomeStatements.isLocked, true)
+      )
+    )
+    .limit(1);
+  if (!row) return null;
+  const d = row.data as any;
+  return {
+    data: {
+      operatingRevenue: d.operatingRevenue || 0,
+      otherOperatingIncome: d.otherOperatingIncome || 0,
+      totalRevenue: d.totalRevenue || 0,
+      costOfSales: d.costOfSales || 0,
+      grossProfit: d.grossProfit || 0,
+      staffCosts: d.staffCosts || 0,
+      administrative: d.administrative || 0,
+      sellingDistribution: d.sellingDistribution || 0,
+      otherOperating: d.otherOperating || 0,
+      financeIncome: d.financeIncome || 0,
+      financeCosts: d.financeCosts || 0,
+      taxExpense: d.taxExpense || 0,
+      netProfit: d.netProfit || 0,
+    },
+    legacy: true as const,
+  };
+}
+
+/**
+ * Tries to fetch a locked legacy cash flow statement for a given fiscal year.
+ */
+async function tryLegacyCashFlowStatement(orgId: string, fiscalYear: number): Promise<any | null> {
+  const [row] = await db
+    .select()
+    .from(legacyCashFlowStatements)
+    .where(
+      and(
+        eq(legacyCashFlowStatements.orgId, orgId),
+        eq(legacyCashFlowStatements.fiscalYear, fiscalYear),
+        eq(legacyCashFlowStatements.isLocked, true)
+      )
+    )
+    .limit(1);
+  if (!row) return null;
+  return row.data;
+}
+
+/**
+ * Tries to fetch a locked legacy SOCIE for a given fiscal year.
+ */
+async function tryLegacySocie(orgId: string, fiscalYear: number): Promise<any | null> {
+  const [row] = await db
+    .select()
+    .from(legacyStatementsOfChangesInEquity)
+    .where(
+      and(
+        eq(legacyStatementsOfChangesInEquity.orgId, orgId),
+        eq(legacyStatementsOfChangesInEquity.fiscalYear, fiscalYear),
+        eq(legacyStatementsOfChangesInEquity.isLocked, true)
+      )
+    )
+    .limit(1);
+  if (!row) return null;
+  return row.data;
+}
+
 export async function getProfitAndLoss(
   orgId: string,
   startDate: Date,
@@ -1027,10 +1149,31 @@ export async function getProfitAndLoss(
   const current = await computePnL(orgId, startDate, endDate);
 
   if (compareStartDate && compareEndDate) {
-    const prior = await computePnL(orgId, compareStartDate, compareEndDate);
+    // Check if the compare period is pre-cutover — use legacy if available
+    const legacyFy = await preCutoverFiscalYear(orgId, compareEndDate);
+    let prior: any;
+    let isLegacy = false;
+    if (legacyFy !== null) {
+      const legacyData = await tryLegacyIncomeStatement(orgId, legacyFy);
+      if (legacyData) {
+        prior = legacyData.data;
+        isLegacy = true;
+      }
+    }
+    if (!prior) {
+      // Try live computation, but if no entries exist for that period, return null
+      try {
+        prior = await computePnL(orgId, compareStartDate, compareEndDate);
+      } catch {
+        prior = null;
+      }
+    }
+    if (!prior) {
+      return { current, prior: null, variance: null, priorLegacy: false, priorEmpty: true };
+    }
     const amount = current.netProfit - prior.netProfit;
     const percent = prior.netProfit !== 0 ? amount / prior.netProfit : 0;
-    return { current, prior, variance: { amount, percent } };
+    return { current, prior, variance: { amount, percent }, priorLegacy: isLegacy };
   }
 
   return { current, prior: null, variance: null };
@@ -1671,9 +1814,20 @@ export async function getStatementOfChangesInEquity(
   const priorLabel = `Year ended ${formatShortDate(priorYearEnd)}`;
 
   const currentYear = await buildYearBlock(currentYearStart, currentYearEnd, currentLabel);
-  const priorYear = priorYearEnd < currentYearStart
-    ? await buildYearBlock(priorYearStart, priorYearEnd, priorLabel)
-    : null;
+  let priorYear: SocieYearBlock | null = null;
+  if (priorYearEnd < currentYearStart) {
+    // Check for legacy SOCIE data if prior year is pre-cutover
+    const legacyFy = await preCutoverFiscalYear(orgId, priorYearEnd);
+    if (legacyFy !== null) {
+      const legacyData = await tryLegacySocie(orgId, legacyFy);
+      if (legacyData) {
+        priorYear = legacyData as any;
+      }
+    }
+    if (!priorYear) {
+      priorYear = await buildYearBlock(priorYearStart, priorYearEnd, priorLabel);
+    }
+  }
 
   // Cross-check: total equity opening + profit + other movements = closing
   const openingTotal = currentYear.rows[0].columns; // opening row
@@ -1716,7 +1870,9 @@ function formatShortDate(d: Date): string {
 export async function getCashFlowStatement(
   orgId: string,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  compareStartDate?: Date,
+  compareEndDate?: Date
 ): Promise<any> {
   const orgAccounts = await db
     .select()
@@ -2151,7 +2307,7 @@ export async function getCashFlowStatement(
     return result;
   }
 
-  return {
+  const currentResult = {
     netIncome: netProfitVal,
     operatingActivities: {
       adjustments,
@@ -2179,6 +2335,39 @@ export async function getCashFlowStatement(
     reconciliationDiff,
     reconciled
   };
+
+  if (compareStartDate && compareEndDate) {
+    const legacyFy = await preCutoverFiscalYear(orgId, compareEndDate);
+    let priorResult: any = null;
+    let isLegacy = false;
+    if (legacyFy !== null) {
+      const legacyData = await tryLegacyCashFlowStatement(orgId, legacyFy);
+      if (legacyData) {
+        priorResult = legacyData;
+        isLegacy = true;
+      }
+    }
+    if (!priorResult) {
+      try {
+        priorResult = await getCashFlowStatement(orgId, compareStartDate, compareEndDate);
+      } catch {
+        priorResult = null;
+      }
+    }
+    if (!priorResult) {
+      return { current: currentResult, prior: null, variance: null, priorLegacy: false, priorEmpty: true };
+    }
+    const netChangeDiff = currentResult.netChangeInCash - (priorResult.netChangeInCash || 0);
+    const closingDiff = currentResult.closingCash - (priorResult.closingCash || 0);
+    return {
+      current: currentResult,
+      prior: priorResult,
+      variance: { netChangeInCash: netChangeDiff, closingCash: closingDiff },
+      priorLegacy: isLegacy
+    };
+  }
+
+  return currentResult;
 }
 
 /**

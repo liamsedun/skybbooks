@@ -854,6 +854,83 @@ export async function runMigration() {
     `);
     console.log('[Migration] Seeded tax accounts 301450 (CGT Payable) and 950600 (NITDA Levy Expense).');
 
+    // Create legacy / migration financial statements tables
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS legacy_income_statements (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        fiscal_year integer NOT NULL,
+        period_label text NOT NULL,
+        currency text DEFAULT 'NGN' NOT NULL,
+        data jsonb NOT NULL,
+        is_locked boolean DEFAULT true NOT NULL,
+        entered_by uuid REFERENCES users(id) NOT NULL,
+        entered_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    // Create indexes (IF NOT EXISTS via DO block to avoid duplicate index errors)
+    await db.execute(sql`
+      DO $$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_legacy_is_org_fy') THEN
+          CREATE INDEX idx_legacy_is_org_fy ON legacy_income_statements(org_id, fiscal_year);
+        END IF;
+      END $$;
+    `);
+    console.log('[Migration] Created legacy_income_statements table.');
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS legacy_cash_flow_statements (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        fiscal_year integer NOT NULL,
+        period_label text NOT NULL,
+        currency text DEFAULT 'NGN' NOT NULL,
+        data jsonb NOT NULL,
+        is_locked boolean DEFAULT true NOT NULL,
+        entered_by uuid REFERENCES users(id) NOT NULL,
+        entered_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`
+      DO $$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_legacy_cf_org_fy') THEN
+          CREATE INDEX idx_legacy_cf_org_fy ON legacy_cash_flow_statements(org_id, fiscal_year);
+        END IF;
+      END $$;
+    `);
+    console.log('[Migration] Created legacy_cash_flow_statements table.');
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS legacy_statements_of_changes_in_equity (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        fiscal_year integer NOT NULL,
+        period_label text NOT NULL,
+        currency text DEFAULT 'NGN' NOT NULL,
+        data jsonb NOT NULL,
+        is_locked boolean DEFAULT true NOT NULL,
+        entered_by uuid REFERENCES users(id) NOT NULL,
+        entered_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`
+      DO $$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_legacy_socie_org_fy') THEN
+          CREATE INDEX idx_legacy_socie_org_fy ON legacy_statements_of_changes_in_equity(org_id, fiscal_year);
+        END IF;
+      END $$;
+    `);
+    console.log('[Migration] Created legacy_statements_of_changes_in_equity table.');
+
+    // Add live_gl_start_fiscal_year and legacy_system_name columns to organisations
+    await db.execute(sql`
+      ALTER TABLE organisations ADD COLUMN IF NOT EXISTS live_gl_start_fiscal_year integer
+    `);
+    await db.execute(sql`
+      ALTER TABLE organisations ADD COLUMN IF NOT EXISTS legacy_system_name text
+    `);
+    console.log('[Migration] Added live_gl_start_fiscal_year and legacy_system_name columns to organisations.');
+
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema push:', err);

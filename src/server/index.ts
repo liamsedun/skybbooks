@@ -33,6 +33,7 @@ import notificationsRouter from '../routes/notifications';
 import projectsRouter from '../routes/projects';
 import vatRouter from '../routes/vat';
 import taxRouter from '../routes/tax';
+import legacyRouter from '../routes/legacy';
 
 import { runMigration } from '../db/migrate';
 import { fetchLatestRates } from '../services/cbn.service';
@@ -146,6 +147,7 @@ async function startServer() {
   app.use('/api/custom-reports', customReportsRouter);
   app.use('/api/vat', vatRouter);
   app.use('/api/tax', taxRouter);
+  app.use('/api/legacy', legacyRouter);
 
   app.get('/api/health', (req, res) => {
     res.json({ status: 'healthy', timestamp: new Date().toISOString() });
