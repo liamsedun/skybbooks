@@ -973,9 +973,8 @@ export async function exportBalanceSheet(orgId: string, asOfDate: Date): Promise
 
   const numF = '₦#,##0.00;(₦#,##0.00);"-"';
 
-  function nairaRow(vals: any[], nairaAmount: number) {
+  function nairaRow(vals: any[]) {
     const r = ws.addRow(vals);
-    r.getCell(3).value = nairaAmount;
     r.getCell(3).numFmt = numF;
     r.getCell(3).alignment = { horizontal: 'right' };
     return r;
