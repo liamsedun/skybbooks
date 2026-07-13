@@ -7,6 +7,7 @@ import { Router, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { z } from 'zod';
 import { eq, and, desc, or, like, sql } from 'drizzle-orm';
+import { getTrialBalance } from '../services/ledger.service';
 import {
   db,
   bankAccounts,
@@ -145,7 +146,19 @@ router.get('/accounts', async (req: AuthenticatedRequest, res: Response, next: N
       .where(eq(bankAccounts.orgId, orgId))
       .orderBy(desc(bankAccounts.createdAt));
 
-    return res.status(200).json(list);
+    // Attach TB-computed balance for each bank account
+    const now = new Date();
+    const tbRows = await getTrialBalance(orgId, new Date('2000-01-01'), now);
+    const tbMap = new Map<string, number>();
+    for (const r of tbRows) {
+      tbMap.set(r.accountId, (r.closingDebit || 0) - (r.closingCredit || 0));
+    }
+    const enriched = list.map(acct => ({
+      ...acct,
+      tbBalance: tbMap.get(acct.accountId) ?? acct.currentBalance ?? 0,
+    }));
+
+    return res.status(200).json(enriched);
   } catch (err) {
     next(err);
   }
