@@ -166,7 +166,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (viewId: string) => void
   const isLoading = summaryQuery.isLoading;
 
   const activeAccounts = Array.isArray(accountsQuery.data) ? accountsQuery.data : (accountsQuery.data ?? []);
-  const totalCashKobo = activeAccounts.reduce((sum: number, acc: any) => sum + (acc.currentBalance || acc.balance || 0), 0);
+  const totalCashKobo = activeAccounts.reduce((sum: number, acc: any) => sum + (acc.tbBalance ?? acc.currentBalance ?? acc.balance ?? 0), 0);
 
   const allInvoices = Array.isArray(invoicesQuery.data)
     ? invoicesQuery.data
