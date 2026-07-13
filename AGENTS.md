@@ -35,6 +35,11 @@ Maintain and enhance accounting features: fix kobo/naira display, parent-child a
 - **Payroll JE restructure**: Added 301501 PAYE Payable, 306000 NHIS Payable, 800301 PAYE Expense accounts; payroll JEs wire through 301500 clearing; employer NHIS (10% of basic) added
 - **balanceSheet bank override → JE-based approach**: Removed `bankMap` from both `getTrialBalance()` and `getBalanceSheet()`; Flutterwave sync no longer sets `currentBalance` directly; manual balance adjust / OB import create JEs through 207000 Bank Clearing Suspense
 - **Audit trail system**: Added `userAgent` column + indexes to `audit_log` schema (`src/db/schema.ts:998`); startup migration creates column+indexes; admin-only guard on `GET /audit-log` + `/pdf` via `requireRole('admin')`; entity-route mapping in `AuditLogsPage.tsx` with collapsible `DiffView` (old→new field changes); action badge colors (create=green, update=amber, delete=red); user-agent and IP display in CSV/PDF exports; wired `createAuditLog()` into 10 key write routes (customer/vendor create+update, invoice/bill create+void, JE create+reverse)
+- **Legacy Migration system**: Complete pipeline via `POST /migrate/legacy` backend route with financial extraction, chart normalization, entity migration (customers/vendors/accounts/JEs), opening balances as JEs through clearing account; DB migration adds `migration_id`, `legacy_data` columns to ledgers, creates `legacy_migrations` table; `LegacyImportPage` at `/settings/legacy-import` with 5-step wizard (upload → mapping → preview → execute → results)
+- **IS Line Items fix**: Replaced simplified placeholder IS lines with correct structure — Revenue, COS, Gross Profit, Admin Expenses, Marketing Expenses, Other Income, Other Expenses, Finance Income, Finance Cost, Net Profit
+- **Cash Flow Statement form**: Built indirect method with Operating Activities (net income → adjustments → working capital), Investing Activities (fixed assets, investments), Financing Activities (loans, equity, dividends), net cash change sections
+- **SOCIE form**: Built Statement of Changes in Equity with Opening Balance, Net Income, Drawings, Dividends, Closing Balance rows
+- **Comparative Reports legacy handling**: `buildPnLRows()` handles legacy line-item shape mismatch with `legacyDetail` expandable section; `buildBalanceSheetRows()` handles legacy accounts shape with category ordering; `ComparativePnLTable` + `ComparativeCashFlowTable` accept `priorLegacy`/`priorEmpty` flags — shows "Legacy" badge on Prior column header + "Migrated from Prior System" banner when `priorLegacy`, shows "No comparative data" amber card when `priorEmpty`; entry point at `ReportTable` passes both flags
 
 ### In Progress
 - (none)
@@ -88,3 +93,5 @@ Maintain and enhance accounting features: fix kobo/naira display, parent-child a
 - `src/services/audit.service.ts`: `createAuditLog()` helper, `extractReqMeta()` for IP/User-Agent extraction
 - `src/routes/auditLog.ts`: Admin-only route guard via `requireRole('admin')`
 - `src/pages/reports/AuditLogsPage.tsx`: Entity deep-links (customers/invoices/bills/etc.), collapsible DiffView for field changes, action badge colors, user-agent display, CSV/PDF with new columns
+- `src/pages/settings/LegacyImportPage.tsx`: 5-step wizard (upload → mapping → preview → execute → results) for legacy migration
+- `src/routes/migrate.ts`: `POST /migrate/legacy` backend route for legacy data migration pipeline
