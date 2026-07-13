@@ -2048,6 +2048,13 @@ function ReportShell({ reportType, title }: ReportPageProps) {
         console.error('Excel export failed:', err);
         alert('Failed to export Excel. Please try again.');
       });
+    } else if (reportType === 'cash-flow') {
+      reportsApi.getCashFlow({ startDate: sDate, endDate: eDate, format: 'excel' }).then((blob: any) => {
+        downloadBlob(blob, `cash_flow_${new Date().toISOString().split('T')[0]}.xlsx`);
+      }).catch((err: any) => {
+        console.error('Excel export failed:', err);
+        alert('Failed to export Excel. Please try again.');
+      });
     } else {
       apiDownload(`/reports/${reportType}?format=${format}&startDate=${sDate}&endDate=${eDate}`, `${reportType}_${new Date().toISOString().split('T')[0]}.${format}`);
     }

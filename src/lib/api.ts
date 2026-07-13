@@ -1031,7 +1031,8 @@ export const reportsApi = {
     return res.data;
   },
   getCashFlow: async (params: { startDate: string; endDate: string; format?: 'json' | 'pdf' | 'excel'; compareStart?: string; compareEnd?: string }) => {
-    const res = await api.get('/reports/cash-flow', { params, responseType: params.format === 'pdf' ? 'blob' : undefined });
+    const isBinary = params.format === 'pdf' || params.format === 'excel';
+    const res = await api.get('/reports/cash-flow', { params, responseType: isBinary ? 'blob' : undefined });
     return res.data;
   },
   getGeneralLedger: async (params: { accountId: string; startDate: string; endDate: string; format?: 'pdf' | 'excel' | 'json' }) => {
