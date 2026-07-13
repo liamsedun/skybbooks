@@ -1131,40 +1131,60 @@ export async function exportCashFlow(
     ws.addRow([]);
   }
 
+  const operatingLineItems = cf.operatingLineItems || [];
+  const investing = cf.investingActivities || {};
+  const financing = cf.financingActivities || {};
+  const cb = cf.cashBreakdown || {};
+
+  function addRow(label: string, amount: number) {
+    const r = ws.addRow([label, amount / 100]);
+    r.getCell(2).numFmt = numF;
+    return r;
+  }
+  function boldRow(label: string, amount: number) {
+    const r = ws.addRow([label, amount / 100]);
+    r.eachCell((cell, idx) => {
+      cell.font = { name: 'Arial', bold: true, size: 10 };
+      cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' } };
+      if (idx === 2) {
+        cell.numFmt = numF;
+        cell.alignment = { horizontal: 'right' };
+      }
+    });
+    return r;
+  }
+
   // 1. Operating Activities
-  writeSectionHeader('1. Operating Activities');
-  ws.addRow(['Net Income profit from standard bookkeeping', cf.netIncome / 100]).getCell(2).numFmt = numF;
-  cf.operatingActivities.adjustments.forEach((adj: any) => {
-    ws.addRow([adj.name, adj.amount / 100]).getCell(2).numFmt = numF;
+  writeSectionHeader('Operating Activities');
+  operatingLineItems.forEach((item: any) => {
+    const label = item.auto ? `${item.name}(auto)` : item.name;
+    ws.addRow([label, item.amount / 100]).getCell(2).numFmt = numF;
   });
-  cf.operatingActivities.workingCapitalChanges.forEach((wc: any) => {
-    ws.addRow([wc.name, wc.amount / 100]).getCell(2).numFmt = numF;
-  });
-  writeSectionSummary('Operating Activities', cf.operatingActivities.total);
+  boldRow('Net Cash from Operating Activities', cf.operatingActivities?.total || 0);
+  ws.addRow([]);
 
   // 2. Investing Activities
-  writeSectionHeader('2. Investing Activities');
-  cf.investingActivities.items.forEach((item: any) => {
+  writeSectionHeader('Investing Activities');
+  (investing.items || []).forEach((item: any) => {
     ws.addRow([item.name, item.amount / 100]).getCell(2).numFmt = numF;
   });
-  writeSectionSummary('Investing Activities', cf.investingActivities.total);
+  boldRow('Net Cash from Investing Activities', investing.total || 0);
+  ws.addRow([]);
 
   // 3. Financing Activities
-  writeSectionHeader('3. Financing Activities');
-  cf.financingActivities.items.forEach((item: any) => {
+  writeSectionHeader('Financing Activities');
+  (financing.items || []).forEach((item: any) => {
     ws.addRow([item.name, item.amount / 100]).getCell(2).numFmt = numF;
   });
-  writeSectionSummary('Financing Activities', cf.financingActivities.total);
-
-  // Reconciliation summary
-  writeSectionHeader('Cash Reconciliation Statement Summary');
-  const oRow = ws.addRow([`Opening cash holdings as of ${startDate.toLocaleDateString('en-GB')}`, cf.openingCash / 100]);
-  oRow.getCell(2).numFmt = numF;
-  const cRow = ws.addRow(['Net aggregated cash movement change during period', cf.netChangeInCash / 100]);
-  cRow.getCell(2).numFmt = numF;
-  
+  boldRow('Net Cash from Financing Activities', financing.total || 0);
   ws.addRow([]);
-  const totRow = ws.addRow([`CLOSING ACCUMULATED CASH HOLDINGS AS OF ${endDate.toLocaleDateString('en-GB')}`, cf.closingCash / 100]);
+
+  // Summary
+  writeSectionHeader('Summary');
+  ws.addRow(['Net increase in cash and cash equivalents', cf.netChangeInCash / 100]).getCell(2).numFmt = numF;
+  ws.addRow(['Cash and cash equivalents at the beginning of the year', cf.openingCash / 100]).getCell(2).numFmt = numF;
+  ws.addRow([]);
+  const totRow = ws.addRow(['Cash and cash equivalents at the end of the year', cf.closingCash / 100]);
   totRow.eachCell((cell, idx) => {
     cell.font = { name: 'Arial', bold: true, size: 11, color: { argb: 'FFFFFF' } };
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '0F766E' } };
@@ -1174,6 +1194,16 @@ export async function exportCashFlow(
       cell.alignment = { horizontal: 'right' };
     }
   });
+  ws.addRow([]);
+
+  // Cash & Cash Equivalents Breakdown
+  writeSectionHeader('Cash & Cash Equivalents Breakdown');
+  ws.addRow(['Cash & Bank balance', (cb.cashAndBankBalance || 0) / 100]).getCell(2).numFmt = numF;
+  ws.addRow(['Term Deposit', (cb.termDeposit || 0) / 100]).getCell(2).numFmt = numF;
+  ws.addRow(['Term Loan (deduction)', (cb.termLoan || 0) / 100]).getCell(2).numFmt = numF;
+  const offBy = Math.abs(cb.reconciliationDiff || 0) > 1 ? ` (off by ${(cb.reconciliationDiff || 0) / 100})` : '';
+  boldRow(`Reconciliation to closing cash${offBy}`, cb.breakdownTotal || 0);
+  ws.addRow([]);
 
   // Align cells
   ws.eachRow((row) => {

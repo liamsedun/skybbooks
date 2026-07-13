@@ -1138,8 +1138,24 @@ function legacyCashFlowToReportingShape(data: any): any {
   const closingCash = data.cashAtEndOfYearOverride ? (data.cashAtEndOfYear || 0) : (openingCash + netChange);
   const cashBreakdownTotal = (data.cashAndBankBalance || 0) + (data.termDeposit || 0) + (data.termLoan || 0);
 
+  const operatingLineItems: { name: string; amount: number; auto?: boolean }[] = [];
+  operatingLineItems.push({ name: 'Profit before interest and income taxes', amount: data.profitBeforeInterestAndTax || 0 });
+  if (data.depreciationPPE) operatingLineItems.push({ name: 'Depreciation of property, plant and equipment', amount: data.depreciationPPE });
+  if (data.amortization) operatingLineItems.push({ name: 'Amortization', amount: data.amortization });
+  if (data.decreaseIncreasePrepayments) operatingLineItems.push({ name: 'Decrease/(increase) in prepayments', amount: data.decreaseIncreasePrepayments });
+  if (data.decreaseIncreaseReceivables) operatingLineItems.push({ name: 'Decrease/(increase) in trade and other receivables', amount: data.decreaseIncreaseReceivables });
+  if (data.increaseDecreasePayables) operatingLineItems.push({ name: 'Increase/(decrease) in trade and other payables', amount: data.increaseDecreasePayables });
+  if (data.increaseDecreaseDeferredIncome) operatingLineItems.push({ name: 'Increase/(decrease) in deferred income', amount: data.increaseDecreaseDeferredIncome });
+  if (data.grantOtherIncome) operatingLineItems.push({ name: 'Grant/Other income', amount: data.grantOtherIncome });
+  if (data.provisionForTax) operatingLineItems.push({ name: 'Provision for tax', amount: data.provisionForTax });
+  operatingLineItems.push({ name: 'Cash generated from operating activities', amount: cashGeneratedFromOperations, auto: true });
+  operatingLineItems.push({ name: 'Income tax paid', amount: incomeTaxPaid });
+  operatingLineItems.push({ name: 'Net Cash generated from operating activities', amount: netCashFromOperating, auto: true });
+
   return {
     netIncome: data.profitBeforeInterestAndTax || 0,
+    profitBeforeInterestAndTax: data.profitBeforeInterestAndTax || 0,
+    operatingLineItems,
     operatingActivities: {
       adjustments: [
         ...(data.depreciationPPE ? [{ name: 'Depreciation of PPE', amount: data.depreciationPPE }] : []),
@@ -1156,7 +1172,7 @@ function legacyCashFlowToReportingShape(data: any): any {
       ],
       workingCapitalTotal,
       cashGeneratedFromOperations,
-      incomeTaxPaid,
+      incomeTaxPaid: -(data.incomeTaxPaid || 0),
       interestPaid: 0,
       interestReceived: data.interestReceived || 0,
       total: netCashFromOperating,
@@ -1187,6 +1203,14 @@ function legacyCashFlowToReportingShape(data: any): any {
     ledgerCashBalance: closingCash,
     reconciliationDiff: Math.abs(closingCash - cashBreakdownTotal) < 1 ? 0 : closingCash - cashBreakdownTotal,
     reconciled: Math.abs(closingCash - cashBreakdownTotal) < 1,
+    cashBreakdown: {
+      cashAndBankBalance: data.cashAndBankBalance || 0,
+      termDeposit: data.termDeposit || 0,
+      termLoan: -(data.termLoan || 0),
+      breakdownTotal: cashBreakdownTotal,
+      closingCashPerStatement: closingCash,
+      reconciliationDiff: Math.abs(closingCash - cashBreakdownTotal) < 1 ? 0 : closingCash - cashBreakdownTotal,
+    },
   };
 }
 
@@ -2188,6 +2212,10 @@ export async function getCashFlowStatement(
   // ── 1. Net Profit ──
   const incomeStmt = await computePnL(orgId, startDate, endDate);
   const netProfitVal = incomeStmt.netProfit || 0;
+  const financeIncomeTotal = incomeStmt.financeIncome?.total || 0;
+  const financeCostTotal = incomeStmt.financeCosts?.total || 0;
+  const taxExpenseTotal = incomeStmt.incomeTaxExpense?.total || 0;
+  const profitBeforeInterestAndTaxVal = netProfitVal + taxExpenseTotal + financeCostTotal - financeIncomeTotal;
 
   // ── 2. Non-cash adjustments ──
   const adjustments: { name: string; amount: number }[] = [];
@@ -2202,8 +2230,43 @@ export async function getCashFlowStatement(
     }
   }
   if (Math.abs(depAmount) > 0) {
-    adjustments.push({ name: 'Depreciation – PP&E', amount: depAmount });
+    adjustments.push({ name: 'Depreciation of property, plant and equipment', amount: depAmount });
     adjustmentsTotal += depAmount;
+  }
+
+  // Amortization (intangible asset amortisation expense, e.g. code 811000 range or 202500 contra)
+  let amortAmount = 0;
+  for (const a of orgAccounts) {
+    const c = parseInt(a.code, 10);
+    if (c === 811000 || c === 811100) {
+      const net = netByAccount.get(a.id) || 0;
+      if (Math.abs(net) > 0) amortAmount += net;
+    }
+  }
+  if (Math.abs(amortAmount) > 0) {
+    adjustments.push({ name: 'Amortization', amount: amortAmount });
+    adjustmentsTotal += amortAmount;
+  }
+
+  // Grant/Other income (other operating income accounts, code 601000+)
+  let grantOtherIncomeAmt = 0;
+  for (const a of orgAccounts) {
+    const c = parseInt(a.code, 10);
+    if (c >= 601000 && c <= 601899) {
+      const net = netByAccount.get(a.id) || 0;
+      if (Math.abs(net) > 0) grantOtherIncomeAmt += net;
+    }
+  }
+  // Grant/other income is a credit balance (revenue), shown as positive adjustment to add back
+  if (Math.abs(grantOtherIncomeAmt) > 0) {
+    adjustments.push({ name: 'Grant/Other income', amount: grantOtherIncomeAmt });
+    adjustmentsTotal += grantOtherIncomeAmt;
+  }
+
+  // Provision for tax (income tax expense)
+  if (Math.abs(taxExpenseTotal) > 0) {
+    adjustments.push({ name: 'Provision for tax', amount: taxExpenseTotal });
+    adjustmentsTotal += taxExpenseTotal;
   }
 
   // Other non-cash
@@ -2407,6 +2470,7 @@ export async function getCashFlowStatement(
 
   // ── 7. Opening and Closing Cash (single bulk query for all cash accounts) ──
   let openingCash = 0, closingCash = 0;
+  let cashAndBankBalance = 0, termDeposit = 0, termLoan = 0;
   const cashAccountIds = orgAccounts.filter(a => isCashCode(a.code)).map(a => a.id);
 
   if (cashAccountIds.length > 0) {
@@ -2446,7 +2510,24 @@ export async function getCashFlowStatement(
         const closing = opening + (netByAccount.get(a.id) || 0);
         if (opening > 0) openingCash += opening;
         if (closing > 0) closingCash += closing;
+        // Build cash breakdown
+        const codeNum = parseInt(a.code, 10);
+        const posClosing = closing > 0 ? closing : 0;
+        if (codeNum === 100600 || codeNum === 100601) {
+          termDeposit += posClosing;
+        } else {
+          cashAndBankBalance += posClosing;
+        }
       }
+    }
+  }
+
+  // Term loan deduction from financing liability accounts
+  for (const a of orgAccounts) {
+    const c = parseInt(a.code, 10);
+    if ((c >= 302000 && c <= 302999) || (c >= 400000 && c <= 400999)) {
+      const net = (netByAccount.get(a.id) || 0);
+      if (net < 0) termLoan += Math.abs(net);
     }
   }
 
@@ -2458,6 +2539,34 @@ export async function getCashFlowStatement(
   const computedClosingCash = openingCash + netChangeInCash;
   const reconciliationDiff = computedClosingCash - ledgerCashBalance;
   const reconciled = Math.abs(reconciliationDiff) < 1;
+
+  const breakdownTotal = cashAndBankBalance + termDeposit - termLoan;
+  const breakdownReconDiff = computedClosingCash - breakdownTotal;
+
+  // ── Build flat operating line items (legacy-style listing) ──
+  function operatingLine(label: string, amount: number): { name: string; amount: number; auto?: boolean } {
+    return { name: label, amount };
+  }
+  const operatingLineItems: { name: string; amount: number; auto?: boolean }[] = [];
+  operatingLineItems.push(operatingLine('Profit before interest and income taxes', profitBeforeInterestAndTaxVal));
+  if (Math.abs(depAmount) > 0) operatingLineItems.push(operatingLine('Depreciation of property, plant and equipment', depAmount));
+  if (Math.abs(amortAmount) > 0) operatingLineItems.push(operatingLine('Amortization', amortAmount));
+  // Working capital changes
+  for (const wc of wcItems) {
+    operatingLineItems.push(operatingLine(wc.name, wc.amount));
+  }
+  // Other adjustments
+  for (const adj of adjustments) {
+    const alreadyAdded = adj.name === 'Depreciation of property, plant and equipment' || adj.name === 'Amortization';
+    if (!alreadyAdded) {
+      operatingLineItems.push(operatingLine(adj.name, adj.amount));
+    }
+  }
+  operatingLineItems.push({ name: 'Cash generated from operating activities', amount: cashGeneratedFromOperations, auto: true });
+  if (Math.abs(interestPaid) > 0) operatingLineItems.push(operatingLine('Interest paid', interestPaid));
+  if (Math.abs(interestReceived) > 0) operatingLineItems.push(operatingLine('Interest received', interestReceived));
+  if (Math.abs(incomeTaxPaid) > 0) operatingLineItems.push(operatingLine('Income tax paid', incomeTaxPaid));
+  operatingLineItems.push({ name: 'Net Cash generated from operating activities', amount: netCashFromOperating, auto: true });
 
   // ── Aggregate investing/financing items ──
   function aggregateItems(items: { name: string; amount: number }[]): { name: string; amount: number }[] {
@@ -2498,7 +2607,17 @@ export async function getCashFlowStatement(
     closingCash: computedClosingCash,
     ledgerCashBalance,
     reconciliationDiff,
-    reconciled
+    reconciled,
+    profitBeforeInterestAndTax: profitBeforeInterestAndTaxVal,
+    operatingLineItems,
+    cashBreakdown: {
+      cashAndBankBalance,
+      termDeposit,
+      termLoan: -termLoan,
+      breakdownTotal: cashAndBankBalance + termDeposit - termLoan,
+      closingCashPerStatement: computedClosingCash,
+      reconciliationDiff: breakdownReconDiff,
+    },
   };
 
   if (compareStartDate && compareEndDate) {

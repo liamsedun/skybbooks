@@ -1685,32 +1685,27 @@ function ReportShell({ reportType, title }: ReportPageProps) {
           headers = ['Line Item', 'Amount'];
           const flatRows: string[][] = [];
           const addRow = (label: string, amt: number) => flatRows.push([label, (amt/100).toFixed(2)]);
-          const operating = cf.operatingActivities || {};
+          const operatingLineItems = cf.operatingLineItems || [];
           const investing = cf.investingActivities || {};
           const financing = cf.financingActivities || {};
-          addRow('A. OPERATING ACTIVITIES', 0);
-          addRow('Net Profit for the Period', cf.netIncome || 0);
-          (operating.adjustments || []).forEach((a: any) => addRow(a.name, a.amount));
-          addRow('Total Adjustments for Non-Cash Items', operating.adjustmentsTotal || 0);
-          (operating.workingCapitalChanges || []).forEach((w: any) => addRow(w.name, w.amount));
-          addRow('Total Changes in Working Capital', operating.workingCapitalTotal || 0);
-          addRow('Cash Generated from Operations', operating.cashGeneratedFromOperations || 0);
-          if (Math.abs(operating.incomeTaxPaid || 0) > 0) addRow('Income Tax Paid', operating.incomeTaxPaid);
-          if (Math.abs(operating.interestPaid || 0) > 0) addRow('Interest Paid', operating.interestPaid);
-          if (Math.abs(operating.interestReceived || 0) > 0) addRow('Interest Received', operating.interestReceived);
-          addRow('Net Cash from Operating Activities', operating.total || 0);
-          addRow('B. INVESTING ACTIVITIES', 0);
+          const cb = cf.cashBreakdown || {};
+          addRow('OPERATING ACTIVITIES', 0);
+          operatingLineItems.forEach((item: any) => addRow(item.auto ? `${item.name}(auto)` : item.name, item.amount));
+          addRow('Net Cash from Operating Activities', (cf.operatingActivities?.total || 0));
+          addRow('INVESTING ACTIVITIES', 0);
           (investing.items || []).forEach((iv: any) => addRow(iv.name, iv.amount));
           addRow('Net Cash from Investing Activities', investing.total || 0);
-          addRow('C. FINANCING ACTIVITIES', 0);
+          addRow('FINANCING ACTIVITIES', 0);
           (financing.items || []).forEach((fn: any) => addRow(fn.name, fn.amount));
           addRow('Net Cash from Financing Activities', financing.total || 0);
-          addRow('Net Increase / (Decrease) in Cash', cf.netChangeInCash || 0);
-          addRow('Opening Cash & Cash Equivalents', cf.openingCash || 0);
-          addRow('Closing Cash & Cash Equivalents', cf.closingCash || 0);
-          addRow('Closing Cash per Ledger', cf.ledgerCashBalance || 0);
-          addRow('Difference', cf.reconciliationDiff || 0);
-          addRow('Reconciled', cf.reconciled ? 1 : 0);
+          addRow('Net Increase in Cash and Cash Equivalents', cf.netChangeInCash || 0);
+          addRow('Cash and cash equivalents at the beginning of the year', cf.openingCash || 0);
+          addRow('Cash and cash equivalents at the end of the year', cf.closingCash || 0);
+          addRow('CASH & CASH EQUIVALENTS BREAKDOWN', 0);
+          addRow('Cash & Bank balance', cb.cashAndBankBalance || 0);
+          addRow('Term Deposit', cb.termDeposit || 0);
+          addRow('Term Loan (deduction)', cb.termLoan || 0);
+          addRow(`Reconciliation to closing cash(off by ${(cb.reconciliationDiff || 0)/100})`, cb.breakdownTotal || 0);
           csvRows = flatRows;
         } else {
           headers = ['Account Code', 'Account Name', 'Type', 'Debit', 'Credit'];
@@ -1905,35 +1900,28 @@ function ReportShell({ reportType, title }: ReportPageProps) {
           const fmtPdf = (v: number) => v < 0 ? `(₦${(Math.abs(v)/100).toLocaleString()})` : `₦${(v/100).toLocaleString()}`;
           const pdfRows: string[] = [];
           const addPdfRow = (label: string, amt: string, cls?: string) => pdfRows.push(`<tr${cls?` class="${cls}"`:''}><td style="padding:4px 10px">${label}</td><td class="r" style="padding:4px 10px">${amt}</td></tr>`);
-          const operating = cf.operatingActivities || {};
+          const operatingLineItems = cf.operatingLineItems || [];
           const investing = cf.investingActivities || {};
           const financing = cf.financingActivities || {};
-          addPdfRow('A. OPERATING ACTIVITIES', '', 'bg-emerald-50');
-          addPdfRow('Net Profit for the Period', fmtPdf(cf.netIncome || 0));
-          if (operating.adjustments?.length) {
-            addPdfRow('Adjustments for Non-Cash Items', '', 'bg-slate-50');
-            (operating.adjustments || []).forEach((a: any) => addPdfRow(a.name, fmtPdf(a.amount)));
-            addPdfRow('Total Adjustments', fmtPdf(operating.adjustmentsTotal || 0), 'fw-bold');
-          }
-          if (operating.workingCapitalChanges?.length) {
-            addPdfRow('Changes in Working Capital', '', 'bg-slate-50');
-            (operating.workingCapitalChanges || []).forEach((w: any) => addPdfRow(w.name, fmtPdf(w.amount)));
-            addPdfRow('Total Working Capital Changes', fmtPdf(operating.workingCapitalTotal || 0), 'fw-bold');
-          }
-          addPdfRow('Cash Generated from Operations', fmtPdf(operating.cashGeneratedFromOperations || 0), 'fw-bold');
-          if (Math.abs(operating.incomeTaxPaid || 0) > 0) addPdfRow('Income Tax Paid', fmtPdf(operating.incomeTaxPaid));
-          if (Math.abs(operating.interestPaid || 0) > 0) addPdfRow('Interest Paid', fmtPdf(operating.interestPaid));
-          if (Math.abs(operating.interestReceived || 0) > 0) addPdfRow('Interest Received', fmtPdf(operating.interestReceived));
-          addPdfRow('NET CASH FROM OPERATING ACTIVITIES', fmtPdf(operating.total || 0), 'fw-bold border-top-2');
-          addPdfRow('B. INVESTING ACTIVITIES', '', 'bg-blue-50');
+          const cb = cf.cashBreakdown || {};
+          addPdfRow('OPERATING ACTIVITIES', '', 'bg-emerald-50');
+          operatingLineItems.forEach((item: any) => addPdfRow(item.auto ? `${item.name}(auto)` : item.name, fmtPdf(item.amount)));
+          addPdfRow('Net Cash from Operating Activities', fmtPdf(cf.operatingActivities?.total || 0), 'fw-bold border-top-2');
+          addPdfRow('INVESTING ACTIVITIES', '', 'bg-blue-50');
           (investing.items || []).forEach((iv: any) => addPdfRow(iv.name, fmtPdf(iv.amount)));
-          addPdfRow('NET CASH FROM INVESTING ACTIVITIES', fmtPdf(investing.total || 0), 'fw-bold border-top-2');
-          addPdfRow('C. FINANCING ACTIVITIES', '', 'bg-violet-50');
+          addPdfRow('Net Cash from Investing Activities', fmtPdf(investing.total || 0), 'fw-bold border-top-2');
+          addPdfRow('FINANCING ACTIVITIES', '', 'bg-violet-50');
           (financing.items || []).forEach((fn: any) => addPdfRow(fn.name, fmtPdf(fn.amount)));
-          addPdfRow('NET CASH FROM FINANCING ACTIVITIES', fmtPdf(financing.total || 0), 'fw-bold border-top-2');
-          addPdfRow('NET INCREASE / (DECREASE) IN CASH', fmtPdf(cf.netChangeInCash || 0), 'fw-bold border-top-3');
-          addPdfRow('Opening Cash & Cash Equivalents', fmtPdf(cf.openingCash || 0));
-          addPdfRow('Closing Cash & Cash Equivalents', fmtPdf(cf.closingCash || 0), 'fw-bold');
+          addPdfRow('Net Cash from Financing Activities', fmtPdf(financing.total || 0), 'fw-bold border-top-2');
+          addPdfRow('Net Increase in Cash and Cash Equivalents', fmtPdf(cf.netChangeInCash || 0), 'fw-bold border-top-3');
+          addPdfRow('Cash and cash equivalents at the beginning of the year', fmtPdf(cf.openingCash || 0));
+          addPdfRow('Cash and cash equivalents at the end of the year', fmtPdf(cf.closingCash || 0), 'fw-bold');
+          addPdfRow('CASH & CASH EQUIVALENTS BREAKDOWN', '', 'bg-amber-50');
+          addPdfRow('Cash & Bank balance', fmtPdf(cb.cashAndBankBalance || 0));
+          addPdfRow('Term Deposit', fmtPdf(cb.termDeposit || 0));
+          addPdfRow('Term Loan (deduction)', fmtPdf(cb.termLoan || 0));
+          const offBy = Math.abs(cb.reconciliationDiff || 0) > 1 ? ` (off by ${fmtPdf(cb.reconciliationDiff)})` : '';
+          addPdfRow(`Reconciliation to closing cash${offBy}`, fmtPdf(cb.breakdownTotal || 0), 'fw-bold');
           const orgCf = (orgData as any)?.data || orgData || {};
           const orgCfName = orgCf.name || '';
           const orgCfAddr = orgCf.address ? `<p style="margin:0;font-size:11px;color:#475569">${orgCf.address}</p>` : '';
@@ -2423,14 +2411,12 @@ function ReportTable({ data, reportType, compareEnabled, onAccountClick, showZer
 
   if (reportType === 'cash-flow') {
     const cf = data?.data || data || {};
-    const netIncome = cf.netIncome || 0;
-    const operating = cf.operatingActivities || {};
+    const operatingLineItems = cf.operatingLineItems || [];
     const investing = cf.investingActivities || {};
     const financing = cf.financingActivities || {};
-    const adjustments = operating.adjustments || [];
-    const workingCapital = operating.workingCapitalChanges || [];
     const investingItems = investing.items || [];
     const financingItems = financing.items || [];
+    const cb = cf.cashBreakdown || {};
 
     function fmtCf(val: number): string {
       const abs = Math.abs(val / 100);
@@ -2440,12 +2426,13 @@ function ReportTable({ data, reportType, compareEnabled, onAccountClick, showZer
     function shouldShow(val: number): boolean {
       return cfShowZero || Math.abs(val) > 0.01;
     }
-    function cfRow(label: string, amount: number, indent: string = 'pl-8', bold: boolean = false) {
-      if (!shouldShow(amount) && !bold) return null;
+    function cfRow(label: string, amount: number, indent: string = 'pl-8', bold: boolean = false, autoLabel?: string) {
+      if (!shouldShow(amount) && !bold && !autoLabel) return null;
       const isNeg = amount < 0;
+      const displayLabel = autoLabel ? `${label}(auto)` : label;
       return (
         <tr key={label} className="border-t border-slate-100 hover:bg-slate-50/50 transition-colors">
-          <td className={`px-3 py-2.5 ${indent} ${bold ? 'font-bold text-slate-900' : 'text-slate-800'}`}>{label}</td>
+          <td className={`px-3 py-2.5 ${indent} ${bold ? 'font-bold text-slate-900' : 'text-slate-800'}`}>{displayLabel}</td>
           <td className={`px-3 py-2.5 text-right ${bold ? 'font-bold' : 'font-semibold'} ${isNeg ? 'text-red-600' : 'text-slate-800'}`}>{fmtCf(amount)}</td>
         </tr>
       );
@@ -2454,92 +2441,88 @@ function ReportTable({ data, reportType, compareEnabled, onAccountClick, showZer
       return <tr className={bg}><td colSpan={2} className={`px-3 py-2 text-xs font-bold ${textColor} uppercase tracking-wider`}>{label}</td></tr>;
     }
 
-    const netOp = operating.total || 0;
     const invTotal = investing.total || 0;
     const finTotal = financing.total || 0;
     const netChange = cf.netChangeInCash || 0;
-    const reconciles = cf.reconciled;
+    const opTotal = cf.operatingActivities?.total || 0;
 
     return (
       <div className="space-y-4">
-        {/* Reconciliation warning */}
-        {!reconciles && (
-          <div className="bg-red-50 border-2 border-red-300 rounded-xl p-4 flex items-start gap-3">
-            <AlertCircle className="w-6 h-6 text-red-500 mt-0.5 shrink-0" />
-            <div>
-              <p className="font-bold text-red-800 text-sm">⚠ Cash Flow does not reconcile to ledger cash balance</p>
-              <p className="text-red-600 text-xs mt-1">Computed closing cash: {fmtCf(cf.closingCash)}. Ledger cash balance: {fmtCf(cf.ledgerCashBalance)}. Difference: {fmtCf(cf.reconciliationDiff)}. Please review unrecorded transactions.</p>
-            </div>
-          </div>
-        )}
         <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
               <tr>
                 <th className="text-left px-3 py-3">Line Item</th>
-                <th className="text-right px-3 py-3">Amount</th>
+                <th className="text-right px-3 py-3">Amount (NGN)</th>
               </tr>
             </thead>
             <tbody>
-              {sectionHeader('A. Operating Activities', 'bg-emerald-50', 'text-emerald-800')}
-              {cfRow('Net Profit for the Period', netIncome)}
-              {/* Non-cash adjustments */}
-              {adjustments.length > 0 && (
-                <tr className="bg-slate-50/30"><td colSpan={2} className="px-3 py-1.5 pl-10 text-xs font-semibold text-slate-500 uppercase tracking-wider">Adjustments for Non-Cash Items</td></tr>
-              )}
-              {adjustments.map((a: any, i: number) => cfRow(a.name, a.amount, 'pl-14'))}
-              {adjustments.length > 0 && cfRow('Total Adjustments for Non-Cash Items', operating.adjustmentsTotal || 0, 'pl-10', true)}
-              {/* Working Capital */}
-              {workingCapital.length > 0 && (
-                <tr className="bg-slate-50/30"><td colSpan={2} className="px-3 py-1.5 pl-10 text-xs font-semibold text-slate-500 uppercase tracking-wider">Changes in Working Capital</td></tr>
-              )}
-              {workingCapital.map((w: any, i: number) => cfRow(w.name, w.amount, 'pl-14'))}
-              {workingCapital.length > 0 && cfRow('Total Changes in Working Capital', operating.workingCapitalTotal || 0, 'pl-10', true)}
-              {cfRow('Cash Generated from Operations', operating.cashGeneratedFromOperations || 0, 'pl-8', true)}
-              {shouldShow(operating.incomeTaxPaid) && cfRow('Income Tax Paid', operating.incomeTaxPaid || 0, 'pl-8')}
-              {shouldShow(operating.interestPaid) && cfRow('Interest Paid', operating.interestPaid || 0, 'pl-8')}
-              {shouldShow(operating.interestReceived) && cfRow('Interest Received', operating.interestReceived || 0, 'pl-8')}
-              <tr className={`border-t-2 border-emerald-200 bg-emerald-50/50 font-bold`}>
+              {/* ====== A. OPERATING ACTIVITIES ====== */}
+              {sectionHeader('Operating Activities', 'bg-emerald-50', 'text-emerald-800')}
+              {operatingLineItems.map((item: any, i: number) => {
+                const isAuto = item.auto === true;
+                const isSubTotal = item.name.startsWith('Net Cash') || item.name.startsWith('Cash generated');
+                return cfRow(item.name, item.amount, 'pl-8', isSubTotal, isAuto ? '' : undefined);
+              })}
+              <tr className="border-t-2 border-emerald-200 bg-emerald-50/50 font-bold">
                 <td className="px-3 py-2.5 pl-8 text-sm text-slate-900">NET CASH FROM OPERATING ACTIVITIES</td>
-                <td className={`px-3 py-2.5 text-right ${netOp < 0 ? 'text-red-700' : 'text-slate-900'}`}>{fmtCf(netOp)}</td>
+                <td className={`px-3 py-2.5 text-right ${opTotal < 0 ? 'text-red-700' : 'text-slate-900'}`}>{fmtCf(opTotal)}</td>
               </tr>
-              {sectionHeader('B. Investing Activities', 'bg-blue-50', 'text-blue-800')}
+
+              {/* ====== B. INVESTING ACTIVITIES ====== */}
+              {sectionHeader('Investing Activities', 'bg-blue-50', 'text-blue-800')}
               {investingItems.length === 0 && (
                 <tr className="border-t border-slate-100"><td colSpan={2} className="px-3 py-2.5 pl-8 text-slate-400 italic">No investing activity</td></tr>
               )}
               {investingItems.map((iv: any, i: number) => cfRow(iv.name, iv.amount, 'pl-8'))}
-              <tr className={`border-t-2 border-blue-200 bg-blue-50/50 font-bold`}>
-                <td className="px-3 py-2.5 pl-8 text-sm text-slate-900">NET CASH FROM INVESTING ACTIVITIES</td>
+              <tr className="border-t-2 border-blue-200 bg-blue-50/50 font-bold">
+                <td className="px-3 py-2.5 pl-8 text-sm text-slate-900">Net Cash generated (used in) by investing activities</td>
                 <td className={`px-3 py-2.5 text-right ${invTotal < 0 ? 'text-red-700' : 'text-slate-900'}`}>{fmtCf(invTotal)}</td>
               </tr>
-              {sectionHeader('C. Financing Activities', 'bg-violet-50', 'text-violet-800')}
+
+              {/* ====== C. FINANCING ACTIVITIES ====== */}
+              {sectionHeader('Financing Activities', 'bg-violet-50', 'text-violet-800')}
               {financingItems.length === 0 && (
                 <tr className="border-t border-slate-100"><td colSpan={2} className="px-3 py-2.5 pl-8 text-slate-400 italic">No financing activity</td></tr>
               )}
               {financingItems.map((fn: any, i: number) => cfRow(fn.name, fn.amount, 'pl-8'))}
-              <tr className={`border-t-2 border-violet-200 bg-violet-50/50 font-bold`}>
-                <td className="px-3 py-2.5 pl-8 text-sm text-slate-900">NET CASH FROM FINANCING ACTIVITIES</td>
+              <tr className="border-t-2 border-violet-200 bg-violet-50/50 font-bold">
+                <td className="px-3 py-2.5 pl-8 text-sm text-slate-900">Net Cash generated by (used in) Financing Activities</td>
                 <td className={`px-3 py-2.5 text-right ${finTotal < 0 ? 'text-red-700' : 'text-slate-900'}`}>{fmtCf(finTotal)}</td>
               </tr>
-              {/* Net Change */}
+
+              {/* ====== SUMMARY ====== */}
+              {sectionHeader('Summary', 'bg-slate-100', 'text-slate-700')}
               <tr className="border-t-2 border-slate-300 bg-slate-100 font-bold text-base">
-                <td className="px-3 py-3 text-slate-900">NET INCREASE / (DECREASE) IN CASH</td>
+                <td className="px-3 py-3 text-slate-900">Net increase in cash and cash equivalents</td>
                 <td className={`px-3 py-3 text-right ${netChange < 0 ? 'text-red-700' : 'text-slate-900'}`}>{fmtCf(netChange)}</td>
               </tr>
               <tr className="border-t border-slate-200">
-                <td className="px-3 py-2.5 pl-8 text-slate-600">Opening Cash &amp; Cash Equivalents</td>
-                <td className="px-3 py-2.5 text-right text-slate-600">{fmtNaira(cf.openingCash)}</td>
+                <td className="px-3 py-2.5 pl-8 text-slate-600">Cash and cash equivalents at the beginning of the year</td>
+                <td className="px-3 py-2.5 text-right text-slate-600">{fmtCf(cf.openingCash)}</td>
               </tr>
               <tr className="border-t border-slate-200">
-                <td className="px-3 py-2.5 pl-8 text-slate-600">Closing Cash &amp; Cash Equivalents</td>
-                <td className="px-3 py-2.5 text-right font-semibold text-slate-800">{fmtNaira(cf.closingCash)}</td>
+                <td className="px-3 py-2.5 pl-8 text-slate-600">Cash and cash equivalents at the end of the year</td>
+                <td className="px-3 py-2.5 text-right font-bold text-slate-800">{fmtCf(cf.closingCash)}</td>
               </tr>
-              {/* Reconciliation */}
+
+              {/* ====== CASH & CASH EQUIVALENTS BREAKDOWN ====== */}
+              {sectionHeader('Cash & Cash Equivalents Breakdown', 'bg-amber-50', 'text-amber-800')}
+              <tr className="border-t border-slate-200">
+                <td className="px-3 py-2.5 pl-8 text-slate-600">Cash & Bank balance</td>
+                <td className="px-3 py-2.5 text-right text-slate-800">{fmtCf(cb.cashAndBankBalance || 0)}</td>
+              </tr>
+              <tr className="border-t border-slate-200">
+                <td className="px-3 py-2.5 pl-8 text-slate-600">Term Deposit</td>
+                <td className="px-3 py-2.5 text-right text-slate-800">{fmtCf(cb.termDeposit || 0)}</td>
+              </tr>
+              <tr className="border-t border-slate-200">
+                <td className="px-3 py-2.5 pl-8 text-slate-600">Term Loan (deduction)</td>
+                <td className="px-3 py-2.5 text-right text-red-600">{fmtCf(cb.termLoan || 0)}</td>
+              </tr>
               <tr className="border-t border-slate-200 bg-slate-50/50">
-                <td colSpan={2} className="px-3 py-2 text-xs text-slate-500">
-                  Reconciliation Check: Closing Cash per Statement: <strong>{fmtNaira(cf.closingCash)}</strong> &mdash; Closing Cash per Ledger: <strong>{fmtNaira(cf.ledgerCashBalance)}</strong> &mdash; Difference: <strong>{fmtNaira(cf.reconciliationDiff)}</strong>
-                  {reconciles ? <span className="text-emerald-600 font-bold ml-2">✅</span> : <span className="text-red-600 font-bold ml-2">⚠</span>}
-                </td>
+                <td className="px-3 py-2.5 pl-8 font-bold text-slate-900">Reconciliation to closing cash{Math.abs(cb.reconciliationDiff || 0) > 1 ? `(off by ${fmtCf(cb.reconciliationDiff)})` : ''}</td>
+                <td className="px-3 py-2.5 text-right font-bold text-slate-900">{fmtCf(cb.breakdownTotal || 0)}</td>
               </tr>
             </tbody>
           </table>
