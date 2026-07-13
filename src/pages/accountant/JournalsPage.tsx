@@ -37,6 +37,7 @@ export function JournalsPage() {
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const entryParam = searchParams.get('entry');
+  const accountIdParam = searchParams.get('accountId');
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [viewId, setViewId] = useState<string | null>(null);
@@ -53,8 +54,8 @@ export function JournalsPage() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'balanced' | 'unbalanced'>('all');
 
   const { data: journals, isLoading } = useQuery({
-    queryKey: ['journals', dateFrom, dateTo],
-    queryFn: () => journalsApi.getJournals({ from: dateFrom || undefined, to: dateTo || undefined }),
+    queryKey: ['journals', dateFrom, dateTo, accountIdParam],
+    queryFn: () => journalsApi.getJournals({ from: dateFrom || undefined, to: dateTo || undefined, accountId: accountIdParam || undefined }),
   });
 
   const filteredJournals = React.useMemo(() => {

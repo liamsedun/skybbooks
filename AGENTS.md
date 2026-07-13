@@ -5,7 +5,7 @@ Maintain and enhance accounting features: fix kobo/naira display, parent-child a
 ## Constraints & Preferences
 - Balance values stored in kobo (bigint); frontend must divide by 100 for display (`fmtNaira`)
 - Parent accounts must NOT contribute to totals (would double-count children's balances)
-- Trial balance drill-down links use `MODULE_LINKS` prefix-matching in `ReportsPage.tsx`
+- Trial balance drill-down links use `MODULE_LINKS` prefix-matching in `ReportsPage.tsx`; manual journal links pass `?accountId=` to `/accountant/journals` for filtered view
 - Contacts table used for both customers and vendors (differentiated by `type` column)
 
 ## Progress
@@ -40,6 +40,9 @@ Maintain and enhance accounting features: fix kobo/naira display, parent-child a
 - **Cash Flow Statement form**: Built indirect method with Operating Activities (net income → adjustments → working capital), Investing Activities (fixed assets, investments), Financing Activities (loans, equity, dividends), net cash change sections
 - **SOCIE form**: Built Statement of Changes in Equity with Opening Balance, Net Income, Drawings, Dividends, Closing Balance rows
 - **Comparative Reports legacy handling**: `buildPnLRows()` handles legacy line-item shape mismatch with `legacyDetail` expandable section; `buildBalanceSheetRows()` handles legacy accounts shape with category ordering; `ComparativePnLTable` + `ComparativeCashFlowTable` accept `priorLegacy`/`priorEmpty` flags — shows "Legacy" badge on Prior column header + "Migrated from Prior System" banner when `priorLegacy`, shows "No comparative data" amber card when `priorEmpty`; entry point at `ReportTable` passes both flags
+- **Balance Sheet Excel export fixed**: `exportBalanceSheet()` rewritten to match `getBalanceSheet()` nested structure (`currentAssets.subSections`, etc.); uses `ws.addRow()` exclusively (no `getRow()`/`commit()`) to avoid XML corruption; `nairaRow` helper formats column 3 with numFmt
+- **Cash Flow Statement revamp**: Rewrote `getCashFlowStatement()` and all exports (frontend table, CSV, PDF, Excel) to match the legacy CF layout. Adds `profitBeforeInterestAndTax`, `operatingLineItems` flat list with auto subtotals, `cashBreakdown` section (cash & bank balance, term deposit, term loan), amortization/grant income/provision for tax as separate adjustment lines. Comparative table preserved via old fields.
+- **Legacy Migration PDF/Excel exports**: Added PDF (`printWindow`) and Excel (CSV download) buttons to all three statement tabs (Income, Cash Flow, SOCIE) on the Legacy Migration page. PDF build HTML tables with `printWindow()`; Excel generates downloadable CSV files.
 
 ### In Progress
 - (none)
@@ -79,6 +82,9 @@ Maintain and enhance accounting features: fix kobo/naira display, parent-child a
 - Manual balance adjustments and CSV opening balance imports create JEs debiting/crediting bank GL account with contra to 207000 (Bank Clearing Suspense)
 - Flutterwave sync imports transactions as unreconciled; no JE is created during sync; currentBalance unchanged
 - 207000 Bank Clearing Suspense must exist in every org (seed + migration); it's the counterparty for any balance JE not backed by a real transaction
+- **Excel export binary handling**: Must use Axios `responseType: 'blob'` (NOT `fetch().then(r => r.blob())` which corrupts binary). Report API functions in `api.ts` use this pattern.
+- **Excel row insertion**: Always use `ws.addRow()` rather than `ws.getRow(n)` + `r.commit()` — manual row tracking with `commit()` produces malformed XML in the xlsx.
+- **`nairaRow` helper pattern**: `ws.addRow(vals)` then set `r.getCell(n).numFmt` + alignment. Do NOT overwrite the cell value with a separate parameter — the value should already be in `vals` at the correct index.
 
 ## Relevant Files
 - `src/pages/accountant/ChartOfAccounts.tsx`: `fmtNaira()` kobo→naira fix, `computeAggregateBalances()` parent rollup, `toDebitCredit()` helper, debit/credit columns, parent-excluded totals, client-side CSV export

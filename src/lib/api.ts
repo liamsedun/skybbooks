@@ -1038,11 +1038,13 @@ export const reportsApi = {
     return res.data;
   },
   getAgedReceivables: async (params?: { format?: 'json' | 'pdf' | 'excel' }) => {
-    const res = await api.get('/reports/aged-receivables', { params, responseType: params?.format === 'pdf' ? 'blob' : undefined });
+    const isBinary = params?.format === 'pdf' || params?.format === 'excel';
+    const res = await api.get('/reports/aged-receivables', { params, responseType: isBinary ? 'blob' : undefined });
     return res.data;
   },
   getAgedPayables: async (params?: { format?: 'json' | 'pdf' | 'excel' }) => {
-    const res = await api.get('/reports/aged-payables', { params, responseType: params?.format === 'pdf' ? 'blob' : undefined });
+    const isBinary = params?.format === 'pdf' || params?.format === 'excel';
+    const res = await api.get('/reports/aged-payables', { params, responseType: isBinary ? 'blob' : undefined });
     return res.data;
   },
   getPayrollSchedule: async (params: { runId: string; format?: 'pdf' | 'excel' }) => {

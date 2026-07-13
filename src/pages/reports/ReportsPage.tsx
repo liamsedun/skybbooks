@@ -5,7 +5,7 @@ import { reportsApi, accountantApi, apiDownload, printWindow, api, orgApi, downl
 import { Loader2, AlertCircle, CheckCircle2, Download, Search, Upload, FileText, X, RefreshCw, ExternalLink, Pencil, ChevronRight, ChevronDown, ChevronUp, Briefcase, ArrowLeft, Eye, Database } from 'lucide-react';
 import { downloadCsv, exportToCsv, CSV_TEMPLATES } from '../../lib/csvTemplates';
 
-const MODULE_LINKS: { prefix: string; path: string; label: string }[] = [
+const MODULE_LINKS: { prefix: string; path: string; label: string; isJournal?: boolean }[] = [
   { prefix: '1002', path: '/banking', label: 'Banking' },
   { prefix: '1003', path: '/banking', label: 'Banking' },
   { prefix: '1004', path: '/banking', label: 'Banking' },
@@ -22,22 +22,32 @@ const MODULE_LINKS: { prefix: string; path: string; label: string }[] = [
   { prefix: '206', path: '/accountant/fixed-assets', label: 'Fixed Assets' },
   { prefix: '3000', path: '/purchases/bills', label: 'Bills' },
   { prefix: '3001', path: '/purchases/bills', label: 'Bills' },
-  { prefix: '500', path: '/accountant/manual-journals', label: 'Manual Journals' },
-  { prefix: '501', path: '/accountant/manual-journals', label: 'Manual Journals' },
-  { prefix: '502', path: '/accountant/manual-journals', label: 'Manual Journals' },
-  { prefix: '503', path: '/accountant/manual-journals', label: 'Manual Journals' },
-  { prefix: '504', path: '/accountant/manual-journals', label: 'Manual Journals' },
-  { prefix: '505', path: '/accountant/manual-journals', label: 'Manual Journals' },
-  { prefix: '600', path: '/sales', label: 'Sales' },
-  { prefix: '601', path: '/sales', label: 'Sales' },
+  { prefix: '3015', path: '/payroll/runs', label: 'Payroll' },
+  { prefix: '3016', path: '/payroll/runs', label: 'Payroll' },
+  { prefix: '3018', path: '/payroll/runs', label: 'Payroll' },
+  { prefix: '306', path: '/payroll/runs', label: 'Payroll' },
+  { prefix: '500', path: '/accountant/journals', label: 'Manual Journals', isJournal: true },
+  { prefix: '501', path: '/accountant/journals', label: 'Manual Journals', isJournal: true },
+  { prefix: '502', path: '/accountant/journals', label: 'Manual Journals', isJournal: true },
+  { prefix: '503', path: '/accountant/journals', label: 'Manual Journals', isJournal: true },
+  { prefix: '504', path: '/accountant/journals', label: 'Manual Journals', isJournal: true },
+  { prefix: '505', path: '/accountant/journals', label: 'Manual Journals', isJournal: true },
+  { prefix: '600', path: '/sales/invoices', label: 'Invoices' },
+  { prefix: '601', path: '/sales/invoices', label: 'Invoices' },
   { prefix: '700', path: '/inventory/items', label: 'Items' },
-  { prefix: '900', path: '/sales', label: 'Sales' },
+  { prefix: '8001', path: '/payroll/runs', label: 'Payroll' },
+  { prefix: '8003', path: '/payroll/runs', label: 'Payroll' },
+  { prefix: '900', path: '/sales/invoices', label: 'Invoices' },
 ];
 
-function getAccountModuleLink(code: string): { path: string; label: string } | null {
+function getAccountModuleLink(code: string, accountId?: string): { path: string; label: string } | null {
   const c = code.toString().trim();
   for (const m of MODULE_LINKS) {
-    if (c.startsWith(m.prefix)) return { path: m.path, label: m.label };
+    if (c.startsWith(m.prefix)) {
+      let path = m.path;
+      if (m.isJournal && accountId) path = `${m.path}?accountId=${accountId}`;
+      return { path, label: m.label };
+    }
   }
   return null;
 }
@@ -333,7 +343,7 @@ export function TrialBalancePage() {
             </thead>
             <tbody>
               {rows.map((row: any, i: number) => {
-                const link = getAccountModuleLink(row.accountCode || row.code || '');
+                const link = getAccountModuleLink(row.accountCode || row.code || '', row.accountId || row.id);
                 const padLeft = row._depth * 20;
                 return (
                 <tr key={i} className={`border-t border-slate-100 hover:bg-slate-50/50 even:bg-slate-50/50 transition-colors cursor-pointer ${row._depth > 0 ? 'bg-slate-50/30' : ''}`} onClick={() => setDrillDown(row)}>
@@ -2043,6 +2053,20 @@ function ReportShell({ reportType, title }: ReportPageProps) {
         console.error('Excel export failed:', err);
         alert('Failed to export Excel. Please try again.');
       });
+    } else if (reportType === 'aged-receivables') {
+      reportsApi.getAgedReceivables({ format: 'excel' }).then((blob: any) => {
+        downloadBlob(blob, `aged_receivables_${new Date().toISOString().split('T')[0]}.xlsx`);
+      }).catch((err: any) => {
+        console.error('Excel export failed:', err);
+        alert('Failed to export Excel. Please try again.');
+      });
+    } else if (reportType === 'aged-payables') {
+      reportsApi.getAgedPayables({ format: 'excel' }).then((blob: any) => {
+        downloadBlob(blob, `aged_payables_${new Date().toISOString().split('T')[0]}.xlsx`);
+      }).catch((err: any) => {
+        console.error('Excel export failed:', err);
+        alert('Failed to export Excel. Please try again.');
+      });
     } else {
       apiDownload(`/reports/${reportType}?format=${format}&startDate=${sDate}&endDate=${eDate}`, `${reportType}_${new Date().toISOString().split('T')[0]}.${format}`);
     }
@@ -2564,7 +2588,7 @@ function ReportTable({ data, reportType, compareEnabled, onAccountClick, showZer
 
 function AccountDrilldownModal({ account, sDate, eDate, onClose }: { account: any; sDate: string; eDate: string; onClose: () => void }) {
   const navigate = useNavigate();
-  const link = getAccountModuleLink(account.accountCode || account.code || '');
+  const link = getAccountModuleLink(account.accountCode || account.code || '', account.accountId);
   const { data, isLoading, isFetching, fetchNextPage, hasNextPage } = useInfiniteQuery({
     queryKey: ['account-ledger', account.accountId, sDate, eDate],
     queryFn: async ({ pageParam = 1 }) => {
@@ -2599,7 +2623,7 @@ function AccountDrilldownModal({ account, sDate, eDate, onClose }: { account: an
       case 'bill': return { path: `/purchases/bills/${sourceId}`, label: 'View Bill' };
       case 'payment': return { path: `/banking`, label: 'View Payment' };
       case 'payroll': return { path: `/payroll`, label: 'View Payroll' };
-      case 'journal': return { path: `/accountant/manual-journals`, label: 'View Journal' };
+      case 'journal': return { path: `/accountant/journals`, label: 'View Journal' };
       default: return null;
     }
   }
