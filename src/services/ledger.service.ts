@@ -1138,9 +1138,10 @@ async function tryLegacyCashFlowStatement(orgId: string, fiscalYear: number): Pr
 }
 
 /**
- * Tries to fetch a locked legacy SOCIE for a given fiscal year.
+ * Tries to fetch a locked legacy SOCIE for a given fiscal year
+ * and transforms it to the standard SocieYearBlock shape.
  */
-async function tryLegacySocie(orgId: string, fiscalYear: number): Promise<any | null> {
+async function tryLegacySocie(orgId: string, fiscalYear: number): Promise<SocieYearBlock | null> {
   const [row] = await db
     .select()
     .from(legacyStatementsOfChangesInEquity)
@@ -1153,7 +1154,71 @@ async function tryLegacySocie(orgId: string, fiscalYear: number): Promise<any | 
     )
     .limit(1);
   if (!row) return null;
-  return row.data;
+
+  const data = row.data as {
+    balanceBf?: Record<string, number>;
+    profitForYear?: Record<string, number>;
+    eclAdjustments?: Record<string, number>;
+    otherChanges?: Record<string, number>;
+    priorYearAdjustments?: Record<string, number>;
+    transactionsWithOwners?: Record<string, number>;
+  };
+
+  // Determine columns from the first non-empty section
+  const columnKeys: string[] = [];
+  const seen = new Set<string>();
+  for (const section of [data.balanceBf, data.profitForYear, data.eclAdjustments, data.otherChanges, data.priorYearAdjustments, data.transactionsWithOwners]) {
+    if (section) {
+      for (const k of Object.keys(section)) {
+        if (!seen.has(k)) { seen.add(k); columnKeys.push(k); }
+      }
+    }
+  }
+
+  const columnLabels: Record<string, string> = {
+    revaluationSurplus: 'Revaluation Surplus/(Deficit)',
+    shareCapital: 'Share Capital',
+    depositForShares: 'Deposit for Shares',
+    sharePremium: 'Share Premium',
+    retainedEarnings: 'Retained Earnings',
+  };
+  const columns: SocieColumn[] = columnKeys.map(k => ({ key: k, label: columnLabels[k] || k }));
+
+  function safeRow(src: Record<string, number> | undefined): Record<string, number> {
+    const r: Record<string, number> = {};
+    for (const col of columns) r[col.key] = src?.[col.key] || 0;
+    return r;
+  }
+
+  const balanceBf = safeRow(data.balanceBf);
+  const profit = safeRow(data.profitForYear);
+  const ecl = safeRow(data.eclAdjustments);
+  const other = safeRow(data.otherChanges);
+  const priorAdj = safeRow(data.priorYearAdjustments);
+  const ownerTxns = safeRow(data.transactionsWithOwners);
+
+  // Other Movements = ECL + Other Changes + Prior Year Adjustments
+  const otherMovements: Record<string, number> = {};
+  for (const col of columns) otherMovements[col.key] = ecl[col.key] + other[col.key] + priorAdj[col.key];
+
+  // Closing = Balance b/f + Profit + Other Movements + Transactions with Owners
+  const closing: Record<string, number> = {};
+  for (const col of columns) closing[col.key] = balanceBf[col.key] + profit[col.key] + otherMovements[col.key] + ownerTxns[col.key];
+
+  const yearLabel = row.periodLabel || `FY${fiscalYear}`;
+  const yearStart = new Date(fiscalYear, 0, 1);
+  const yearEnd = new Date(fiscalYear, 11, 31);
+
+  const rows: SocieRow[] = [
+    { label: `Balance at ${formatShortDate(yearStart)}`, columns: { ...balanceBf } },
+    { label: 'Profit for the Year', columns: { ...profit } },
+    { label: 'Other Movements in the Year', columns: otherMovements },
+    { label: `Balance at ${formatShortDate(yearEnd)}`, columns: closing },
+  ];
+
+  const totals: Record<string, number> = { ...closing };
+
+  return { yearLabel, yearStart, yearEnd, columns, rows, totals };
 }
 
 export async function getProfitAndLoss(
@@ -1655,6 +1720,8 @@ export type SocieCrossCheck = {
 export type SocieResult = {
   currentYear: SocieYearBlock;
   priorYear: SocieYearBlock | null;
+  priorLegacy: boolean;
+  priorEmpty: boolean;
   crossCheck: SocieCrossCheck;
 };
 
@@ -1833,17 +1900,26 @@ export async function getStatementOfChangesInEquity(
 
   const currentYear = await buildYearBlock(currentYearStart, currentYearEnd, currentLabel);
   let priorYear: SocieYearBlock | null = null;
+  let priorYearIsLegacy = false;
+  let priorYearComputed = false;
   if (priorYearEnd < currentYearStart) {
     // Check for legacy SOCIE data if prior year is pre-cutover
     const legacyFy = await preCutoverFiscalYear(orgId, priorYearEnd);
     if (legacyFy !== null) {
       const legacyData = await tryLegacySocie(orgId, legacyFy);
       if (legacyData) {
-        priorYear = legacyData as any;
+        priorYear = legacyData;
+        priorYearIsLegacy = true;
+        priorYearComputed = true;
       }
     }
     if (!priorYear) {
-      priorYear = await buildYearBlock(priorYearStart, priorYearEnd, priorLabel);
+      try {
+        priorYear = await buildYearBlock(priorYearStart, priorYearEnd, priorLabel);
+        priorYearComputed = true;
+      } catch {
+        priorYear = null;
+      }
     }
   }
 
@@ -1867,6 +1943,8 @@ export async function getStatementOfChangesInEquity(
   return {
     currentYear,
     priorYear,
+    priorLegacy: priorYearIsLegacy,
+    priorEmpty: !priorYearComputed,
     crossCheck: { openingEquity, profitForYear: profitForYearVal, otherMovements: otherMovementsVal, closingEquity: closingEquityVal, variance, reconciled },
   };
 }
