@@ -1022,7 +1022,16 @@ export const reportsApi = {
   },
 
   getIncomeStatement: async (params: { startDate: string; endDate: string; format?: 'json' | 'pdf' | 'excel'; compareStart?: string; compareEnd?: string }) => {
-    const res = await api.get('/reports/income-statement', { params, responseType: params.format === 'pdf' || params.format === 'excel' ? 'blob' : undefined });
+    if (params.format === 'excel' || params.format === 'pdf') {
+      const { startDate, endDate, format, compareStart, compareEnd } = params;
+      const token = localStorage.getItem('accessToken');
+      let url = `/reports/income-statement?format=${format}&token=${encodeURIComponent(token || '')}&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
+      if (compareStart) url += `&compareStart=${encodeURIComponent(compareStart)}`;
+      if (compareEnd) url += `&compareEnd=${encodeURIComponent(compareEnd)}`;
+      const res = await fetch(url);
+      return res.blob();
+    }
+    const res = await api.get('/reports/income-statement', { params, responseType: 'json' });
     return res.data;
   },
   getBalanceSheet: async (params: { asOfDate?: string; compareAsOf?: string; format?: 'json' | 'pdf' | 'excel' }) => {
