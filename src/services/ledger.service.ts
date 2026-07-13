@@ -1119,8 +1119,77 @@ async function tryLegacyIncomeStatement(orgId: string, fiscalYear: number): Prom
 }
 
 /**
- * Tries to fetch a locked legacy cash flow statement for a given fiscal year.
+ * Transforms flat legacy cash flow form data into the reporting shape
+ * that getCashFlowStatement() produces, so both current and prior
+ * periods render through the same frontend code path.
  */
+function legacyCashFlowToReportingShape(data: any): any {
+  const adjustmentsTotal = (data.depreciationPPE || 0) + (data.amortization || 0) + (data.grantOtherIncome || 0) + (data.provisionForTax || 0);
+  const workingCapitalTotal = (data.decreaseIncreasePrepayments || 0) + (data.decreaseIncreaseReceivables || 0) + (data.increaseDecreasePayables || 0) + (data.increaseDecreaseDeferredIncome || 0);
+  const cashGeneratedFromOperations = (data.profitBeforeInterestAndTax || 0) + adjustmentsTotal + workingCapitalTotal;
+  const incomeTaxPaid = -(data.incomeTaxPaid || 0);
+  const netCashFromOperating = cashGeneratedFromOperations + incomeTaxPaid;
+
+  const investingTotal = -(data.purchaseIntangibleAssets || 0) - (data.purchasePPE || 0) + (data.interestReceived || 0) + (data.proceedsFromSalePPE || 0);
+  const financingTotal = (data.shareCapital || 0) + (data.depositForShares || 0) + (data.retainedEarnings || 0) + (data.sharePremium || 0) + (data.revaluation || 0) - (data.dividendsPaid || 0);
+
+  const openingCash = data.cashAtBeginningOfYear || 0;
+  const netChange = netCashFromOperating + investingTotal + financingTotal;
+  const closingCash = data.cashAtEndOfYearOverride ? (data.cashAtEndOfYear || 0) : (openingCash + netChange);
+  const cashBreakdownTotal = (data.cashAndBankBalance || 0) + (data.termDeposit || 0) + (data.termLoan || 0);
+
+  return {
+    netIncome: data.profitBeforeInterestAndTax || 0,
+    operatingActivities: {
+      adjustments: [
+        ...(data.depreciationPPE ? [{ name: 'Depreciation of PPE', amount: data.depreciationPPE }] : []),
+        ...(data.amortization ? [{ name: 'Amortization', amount: data.amortization }] : []),
+        ...(data.grantOtherIncome ? [{ name: 'Grant/Other income', amount: data.grantOtherIncome }] : []),
+        ...(data.provisionForTax ? [{ name: 'Provision for tax', amount: data.provisionForTax }] : []),
+      ],
+      adjustmentsTotal,
+      workingCapitalChanges: [
+        ...(data.decreaseIncreasePrepayments ? [{ name: 'Decrease/(increase) in prepayments', amount: data.decreaseIncreasePrepayments }] : []),
+        ...(data.decreaseIncreaseReceivables ? [{ name: 'Decrease/(increase) in trade and other receivables', amount: data.decreaseIncreaseReceivables }] : []),
+        ...(data.increaseDecreasePayables ? [{ name: 'Increase/(decrease) in trade and other payables', amount: data.increaseDecreasePayables }] : []),
+        ...(data.increaseDecreaseDeferredIncome ? [{ name: 'Increase/(decrease) in deferred income', amount: data.increaseDecreaseDeferredIncome }] : []),
+      ],
+      workingCapitalTotal,
+      cashGeneratedFromOperations,
+      incomeTaxPaid,
+      interestPaid: 0,
+      interestReceived: data.interestReceived || 0,
+      total: netCashFromOperating,
+    },
+    investingActivities: {
+      items: [
+        ...(data.purchaseIntangibleAssets ? [{ name: 'Purchase of intangible assets', amount: -(data.purchaseIntangibleAssets) }] : []),
+        ...(data.purchasePPE ? [{ name: 'Purchase of PPE', amount: -(data.purchasePPE) }] : []),
+        ...(data.interestReceived ? [{ name: 'Interest received', amount: data.interestReceived }] : []),
+        ...(data.proceedsFromSalePPE ? [{ name: 'Proceeds from sale of PPE', amount: data.proceedsFromSalePPE }] : []),
+      ],
+      total: investingTotal,
+    },
+    financingActivities: {
+      items: [
+        ...(data.shareCapital ? [{ name: 'Share capital', amount: data.shareCapital }] : []),
+        ...(data.depositForShares ? [{ name: 'Deposit for shares', amount: data.depositForShares }] : []),
+        ...(data.retainedEarnings ? [{ name: 'Retained earnings', amount: data.retainedEarnings }] : []),
+        ...(data.sharePremium ? [{ name: 'Share premium', amount: data.sharePremium }] : []),
+        ...(data.revaluation ? [{ name: 'Revaluation', amount: data.revaluation }] : []),
+        ...(data.dividendsPaid ? [{ name: 'Dividends paid', amount: -(data.dividendsPaid) }] : []),
+      ],
+      total: financingTotal,
+    },
+    netChangeInCash: netChange,
+    openingCash,
+    closingCash,
+    ledgerCashBalance: closingCash,
+    reconciliationDiff: Math.abs(closingCash - cashBreakdownTotal) < 1 ? 0 : closingCash - cashBreakdownTotal,
+    reconciled: Math.abs(closingCash - cashBreakdownTotal) < 1,
+  };
+}
+
 async function tryLegacyCashFlowStatement(orgId: string, fiscalYear: number): Promise<any | null> {
   const [row] = await db
     .select()
@@ -1134,7 +1203,7 @@ async function tryLegacyCashFlowStatement(orgId: string, fiscalYear: number): Pr
     )
     .limit(1);
   if (!row) return null;
-  return row.data;
+  return legacyCashFlowToReportingShape(row.data);
 }
 
 /**
