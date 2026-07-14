@@ -449,6 +449,26 @@ export function PayslipsPage() {
                 </tr>
               ))}
             </tbody>
+            <tfoot>
+              {(() => {
+                const tg = filtered.reduce((s: number, l: any) => s + (l.grossPay || 0), 0);
+                const tp = filtered.reduce((s: number, l: any) => s + (l.paye || 0), 0);
+                const tpens = filtered.reduce((s: number, l: any) => s + (l.pensionEmployee || 0), 0);
+                const tnhf = filtered.reduce((s: number, l: any) => s + (l.nhf || 0), 0);
+                const tn = filtered.reduce((s: number, l: any) => s + (l.netPay || 0), 0);
+                return (
+                  <tr className="bg-slate-50/80 border-t border-slate-200 font-semibold text-sm">
+                    <td colSpan={4} className="px-4 py-3 text-slate-600">Totals</td>
+                    <td className="px-2 py-3 text-right font-mono">{formatNaira(tg)}</td>
+                    <td className="px-2 py-3 text-right font-mono text-red-700">{formatNaira(tp)}</td>
+                    <td className="px-2 py-3 text-right font-mono text-amber-700">{formatNaira(tpens)}</td>
+                    <td className="px-2 py-3 text-right font-mono text-slate-600">{formatNaira(tnhf)}</td>
+                    <td className="px-2 py-3 text-right font-mono text-emerald-700">{formatNaira(tn)}</td>
+                    <td></td>
+                  </tr>
+                );
+              })()}
+            </tfoot>
           </table>
         </div>
       )}
