@@ -780,8 +780,8 @@ router.post('/accounts/:id/upload-statement', (req: AuthenticatedRequest, res: R
 
       // ── Parse file content ──
 
-      // 1. CSV
-      if (ext === 'csv' || file.mimetype === 'text/csv' || file.mimetype === 'application/vnd.ms-excel') {
+      // 1. CSV (note: .xls files have mimetype application/vnd.ms-excel but must NOT go here — they go to Excel branch below)
+      if (ext === 'csv' || file.mimetype === 'text/csv') {
         const csvText = file.buffer.toString('utf-8');
         let lines = csvText.split(/\r?\n/).map(l => l.trim()).filter(l => l);
         if (lines.length < 2) throw new AppError('CSV file appears empty.', 400);
