@@ -48,7 +48,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   // Load org users
   const loadUsers = useCallback(async () => {
-    if (!user?.orgId) return;
+    if (!user?.organisationId) return;
     try {
       const res = await orgApi.getUsers();
       const list = Array.isArray(res) ? res : (res?.users || res?.data || []);
