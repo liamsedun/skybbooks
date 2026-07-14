@@ -100,7 +100,7 @@ export default function ChatPage() {
 
   async function createConversation() {
     if (selectedUsers.length === 0) return;
-    setCreating(true);
+      setCreating(true);
     try {
       const res = await api.post('/chat/conversations', { participantIds: selectedUsers });
       const conv = res.data.data;
@@ -108,7 +108,10 @@ export default function ChatPage() {
       setShowNewChat(false);
       setSelectedUsers([]);
       await loadConvs();
-    } catch { /* ignore */ }
+    } catch (e: any) {
+      console.error('[Chat] Create conversation failed:', e?.response?.data || e?.message || e);
+      alert('Failed to create conversation. Check console for details.');
+    }
     finally { setCreating(false); }
   }
 

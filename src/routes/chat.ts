@@ -106,46 +106,34 @@ router.post('/conversations', async (req: AuthenticatedRequest, res: Response, n
 
     // For 1-on-1 chats, check if a conversation already exists between these two users
     if (allUserIds.length === 2) {
-      const existing = await db
-        .select({ convId: chatConversationParticipants.conversationId })
+      // Find conversations where userA is a participant
+      const convsA = await db
+        .select({ conversationId: chatConversationParticipants.conversationId })
         .from(chatConversationParticipants)
-        .where(
-          and(
-            eq(chatConversationParticipants.userId, allUserIds[0]),
-            inArray(chatConversationParticipants.conversationId,
-              db.select({ id: chatConversationParticipants.conversationId })
-                .from(chatConversationParticipants)
-                .where(eq(chatConversationParticipants.userId, allUserIds[1]))
-                .as('sub')
+        .where(eq(chatConversationParticipants.userId, allUserIds[0]));
+
+      if (convsA.length > 0) {
+        const idsA = convsA.map(c => c.conversationId);
+        // Of those, find ones where userB is also a participant
+        const convsB = await db
+          .select({ conversationId: chatConversationParticipants.conversationId })
+          .from(chatConversationParticipants)
+          .where(
+            and(
+              eq(chatConversationParticipants.userId, allUserIds[1]),
+              inArray(chatConversationParticipants.conversationId, idsA)
             )
           )
-        )
-        .limit(1);
-
-      // Actually, let me use a simpler approach: find convs where both users are participants
-      const subQuery = db
-        .select({ conversationId: chatConversationParticipants.conversationId })
-        .from(chatConversationParticipants)
-        .where(eq(chatConversationParticipants.userId, allUserIds[1]));
-
-      const matches = await db
-        .select({ conversationId: chatConversationParticipants.conversationId })
-        .from(chatConversationParticipants)
-        .where(
-          and(
-            eq(chatConversationParticipants.userId, allUserIds[0]),
-            inArray(chatConversationParticipants.conversationId, subQuery)
-          )
-        )
-        .limit(1);
-
-      if (matches.length > 0) {
-        const [conv] = await db
-          .select()
-          .from(chatConversations)
-          .where(eq(chatConversations.id, matches[0].conversationId))
           .limit(1);
-        return res.json({ success: true, data: conv });
+
+        if (convsB.length > 0) {
+          const [conv] = await db
+            .select()
+            .from(chatConversations)
+            .where(eq(chatConversations.id, convsB[0].conversationId))
+            .limit(1);
+          return res.json({ success: true, data: conv });
+        }
       }
     }
 
