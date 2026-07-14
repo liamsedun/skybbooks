@@ -2443,6 +2443,7 @@ function ReportTable({ data, reportType, compareEnabled, onAccountClick, showZer
     const investingItems = investing.items || [];
     const financingItems = financing.items || [];
     const cb = cf.cashBreakdown || {};
+    const migrationWarning = cf.migrationWarning;
 
     function fmtCf(val: number): string {
       const abs = Math.abs(val / 100);
@@ -2474,6 +2475,12 @@ function ReportTable({ data, reportType, compareEnabled, onAccountClick, showZer
 
     return (
       <div className="space-y-4">
+        {migrationWarning && (
+          <div className="bg-amber-50 border border-amber-200/80 rounded-xl px-4 py-3 text-sm text-amber-800 flex items-start gap-2">
+            <AlertCircle size={16} className="mt-0.5 shrink-0 text-amber-500" />
+            <span>{migrationWarning}</span>
+          </div>
+        )}
         <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">

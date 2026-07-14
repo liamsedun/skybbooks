@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { journalsApi, accountantApi, printWindow, orgApi } from '../../lib/api';
 import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
 import { PageLoader } from '../../components/ui/PageLoader';
-import { Plus, X, Loader2, AlertCircle, CheckCircle2, Eye, Download, Upload, Printer, ExternalLink, ArrowLeft, RotateCcw, Trash2, Pencil } from 'lucide-react';
+import { Plus, X, Loader2, AlertCircle, CheckCircle2, Eye, Download, Upload, Printer, ExternalLink, ArrowLeft, RotateCcw, Trash2, Pencil, FileText } from 'lucide-react';
 import { exportToCsv } from '../../lib/csvTemplates';
 
 function fmtNaira(v: number): string {
@@ -357,6 +357,14 @@ function JournalDetailView({ journalId, onBack, onEdit }: { journalId: string; o
     },
   });
 
+  const tagMutation = useMutation({
+    mutationFn: (toOpening: boolean) => journalsApi.tagJournal(journalId, toOpening),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['journal', journalId] });
+      queryClient.invalidateQueries({ queryKey: ['journals'] });
+    },
+  });
+
   if (isLoading) return <PageLoader message="Loading journal entry..." />;
   if (!entry) return <div className="text-center py-20 text-slate-400">Journal entry not found.</div>;
 
@@ -550,6 +558,24 @@ function JournalDetailView({ journalId, onBack, onEdit }: { journalId: string; o
       {/* Action buttons */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
+          {!entry.isReversed && (entry.source === 'manual' || entry.source === 'opening_balance') && (
+            <>
+              {entry.source === 'manual' && (
+                <button
+                  onClick={() => { if (confirm('Tag this entry as an opening/migration balance entry? This affects how Cash Flow Statement classifies it.')) tagMutation.mutate(true); }}
+                  disabled={tagMutation.isPending}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200/80 rounded-xl transition-all duration-200 disabled:opacity-50"
+                >{tagMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />} Tag as Opening Balance</button>
+              )}
+              {entry.source === 'opening_balance' && (
+                <button
+                  onClick={() => { if (confirm('Remove the opening-balance tag from this entry?')) tagMutation.mutate(false); }}
+                  disabled={tagMutation.isPending}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200/80 rounded-xl transition-all duration-200 disabled:opacity-50"
+                >{tagMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />} Remove Opening Balance Tag</button>
+              )}
+            </>
+          )}
           {!entry.isReversed && entry.source === 'manual' && (
             <>
               <button
@@ -595,6 +621,7 @@ function JournalForm({ editId, onDone }: { editId?: string | null; onDone: () =>
   const [description, setDescription] = useState('');
   const [reference, setReference] = useState('');
   const [lines, setLines] = useState([{ accountId: '', debitAmount: 0, creditAmount: 0, description: '' }]);
+  const [isOpeningBalance, setIsOpeningBalance] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loaded, setLoaded] = useState(false);
@@ -654,6 +681,7 @@ function JournalForm({ editId, onDone }: { editId?: string | null; onDone: () =>
       date,
       description: description || null,
       reference: reference || null,
+      isOpeningBalance,
       lines: lines.map(l => ({
         accountId: l.accountId,
         debitAmount: Math.round(Number(l.debitAmount || 0) * 100),
@@ -704,6 +732,16 @@ function JournalForm({ editId, onDone }: { editId?: string | null; onDone: () =>
         <input value={description} onChange={e => setDescription(e.target.value)}
           placeholder="Brief description of this journal entry..."
           className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-shadow" />
+      </div>
+
+      {/* Opening balance checkbox */}
+      <div className="px-6 py-3 border-b border-slate-100 flex items-center gap-3">
+        <input type="checkbox" id="isOpeningBalance" checked={isOpeningBalance} onChange={e => setIsOpeningBalance(e.target.checked)}
+          className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+        <label htmlFor="isOpeningBalance" className="text-sm text-slate-700 cursor-pointer">
+          This is an opening/migration balance entry <span className="text-slate-400 font-normal">(from previous accounting system)</span>
+        </label>
+        <span className="text-[11px] text-slate-400 ml-1">— Affects how Cash Flow Statement classifies this entry.</span>
       </div>
 
       {/* Journal lines table */}

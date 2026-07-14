@@ -2182,6 +2182,9 @@ export async function getCashFlowStatement(
       creditAmount: journalLines.creditAmount,
       currency: journalLines.currency,
       fxRate: journalLines.fxRate,
+      source: journalEntries.source,
+      entryNumber: journalEntries.entryNumber,
+      entryDate: journalEntries.date,
     })
     .from(journalLines)
     .innerJoin(journalEntries, eq(journalLines.entryId, journalEntries.id))
@@ -2198,6 +2201,15 @@ export async function getCashFlowStatement(
   for (const line of rawLines) {
     if (!linesByEntry.has(line.entryId)) linesByEntry.set(line.entryId, []);
     linesByEntry.get(line.entryId)!.push(line);
+  }
+
+  // Build a filtered copy that excludes opening-balance and opening-stock entries
+  // so those entries don't get misclassified as investing/financing/tax activity.
+  const linesByEntryForClassification = new Map<string, typeof rawLines>();
+  for (const [eid, ls] of linesByEntry) {
+    const src = ls[0]?.source;
+    if (src === 'opening_balance' || src === 'opening_stock') continue;
+    linesByEntryForClassification.set(eid, ls);
   }
 
   // Compute net movement per account (dr - cr for all accounts, positive = debit-heavy)
@@ -2336,7 +2348,7 @@ export async function getCashFlowStatement(
   let investingTotal = 0;
 
   // Track PP&E purchases and disposals via journal-entry-level matching
-  for (const [entryId, lines] of linesByEntry) {
+  for (const [entryId, lines] of linesByEntryForClassification) {
     const cashLine = lines.find(l => {
       const a = accountById.get(l.accountId);
       return a && isCashCode(a.code);
@@ -2378,7 +2390,7 @@ export async function getCashFlowStatement(
   const financingItems: { name: string; amount: number }[] = [];
   let financingTotal = 0;
 
-  for (const [entryId, lines] of linesByEntry) {
+  for (const [entryId, lines] of linesByEntryForClassification) {
     const cashLine = lines.find(l => {
       const a = accountById.get(l.accountId);
       return a && isCashCode(a.code);
@@ -2429,7 +2441,7 @@ export async function getCashFlowStatement(
 
   // ── 6. Tax paid, Interest paid/received ──
   let incomeTaxPaid = 0, interestPaid = 0, interestReceived = 0;
-  for (const [entryId, lines] of linesByEntry) {
+  for (const [entryId, lines] of linesByEntryForClassification) {
     const cashLine = lines.find(l => {
       const a = accountById.get(l.accountId);
       return a && isCashCode(a.code);
@@ -2467,6 +2479,42 @@ export async function getCashFlowStatement(
   }
 
   const netCashFromOperating = cashGeneratedFromOperations + incomeTaxPaid + interestPaid + interestReceived;
+
+  // ── Migration adjustment: net cash effect of excluded opening-balance entries ──
+  let migrationCashBank = 0, migrationTermDeposit = 0, migrationTermLoan = 0;
+  const migrationEntryNumbers: string[] = [];
+  const migrationEntryDates: string[] = [];
+  for (const [eid, ls] of linesByEntry) {
+    const src = ls[0]?.source;
+    if (src !== 'opening_balance' && src !== 'opening_stock') continue;
+    migrationEntryNumbers.push(ls[0]?.entryNumber || eid);
+    migrationEntryDates.push(ls[0]?.entryDate ? new Date(ls[0].entryDate).toISOString().split('T')[0] : '');
+    for (const line of ls) {
+      const a = accountById.get(line.accountId);
+      if (!a) continue;
+      const fxRateVal = line.fxRate ? Number(line.fxRate) : 1;
+      const amt = line.currency && line.currency !== 'NGN'
+        ? toNgn(line.debitAmount - line.creditAmount, fxRateVal)
+        : (line.debitAmount || 0) - (line.creditAmount || 0);
+      if (amt === 0) continue;
+      const codeNum = parseInt(a.code, 10);
+      if (codeNum === 100600 || codeNum === 100601) {
+        migrationTermDeposit += amt;
+      } else if (isCashCode(a.code)) {
+        migrationCashBank += amt;
+      } else if (isFinancingLiabilityCode(a.code)) {
+        if (amt < 0) migrationTermLoan += Math.abs(amt);
+      }
+    }
+  }
+
+  const migrationWarning = migrationEntryNumbers.length > 0
+    ? `Your date range includes ${migrationEntryNumbers.length} balance-migration entr${migrationEntryNumbers.length === 1 ? 'y' : 'ies'} (${migrationEntryNumbers.join(', ')}) dated ${[...new Set(migrationEntryDates)].join(', ')}. We recommend setting the start date to the day after these entr${migrationEntryNumbers.length === 1 ? 'y' : 'ies'} so the${migrationEntryNumbers.length === 1 ? 'y' : 'ir'} balances are captured as opening cash rather than period activity.`
+    : null;
+
+  const migrationAdjustment = migrationCashBank !== 0 || migrationTermDeposit !== 0 || migrationTermLoan !== 0
+    ? { cashAndBankBalance: migrationCashBank, termDeposit: migrationTermDeposit, termLoan: migrationTermLoan }
+    : null;
 
   // ── 7. Opening and Closing Cash (single bulk query for all cash accounts) ──
   let openingCash = 0, closingCash = 0;
@@ -2508,15 +2556,14 @@ export async function getCashFlowStatement(
       if (isCashCode(a.code)) {
         const opening = openingCashMap.get(a.id) || 0;
         const closing = opening + (netByAccount.get(a.id) || 0);
-        if (opening > 0) openingCash += opening;
-        if (closing > 0) closingCash += closing;
+        openingCash += opening;
+        closingCash += closing;
         // Build cash breakdown
         const codeNum = parseInt(a.code, 10);
-        const posClosing = closing > 0 ? closing : 0;
         if (codeNum === 100600 || codeNum === 100601) {
-          termDeposit += posClosing;
+          termDeposit += closing;
         } else {
-          cashAndBankBalance += posClosing;
+          cashAndBankBalance += closing;
         }
       }
     }
@@ -2534,7 +2581,13 @@ export async function getCashFlowStatement(
   // Ledger cash balance for reconciliation (same as closingCash above)
   const ledgerCashBalance = closingCash;
 
-  const netChangeInCash = netCashFromOperating + investingTotal + financingTotal;
+  const migrationNetChange = migrationCashBank + migrationTermDeposit - migrationTermLoan;
+  const migrationItems: { name: string; amount: number }[] = [];
+  if (migrationCashBank !== 0) migrationItems.push({ name: 'Opening/Migration balance adjustment (cash & bank)', amount: migrationCashBank });
+  if (migrationTermDeposit !== 0) migrationItems.push({ name: 'Opening/Migration balance adjustment (term deposit)', amount: migrationTermDeposit });
+  if (migrationTermLoan !== 0) migrationItems.push({ name: 'Opening/Migration balance adjustment (term loan)', amount: -migrationTermLoan });
+
+  const netChangeInCash = netCashFromOperating + investingTotal + financingTotal + migrationNetChange;
   // Recompute closing cash as opening + net change
   const computedClosingCash = openingCash + netChangeInCash;
   const reconciliationDiff = computedClosingCash - ledgerCashBalance;
@@ -2618,6 +2671,9 @@ export async function getCashFlowStatement(
       closingCashPerStatement: computedClosingCash,
       reconciliationDiff: breakdownReconDiff,
     },
+    migrationWarning,
+    migrationAdjustment,
+    migrationAdjustmentItems: migrationItems.length > 0 ? migrationItems : undefined,
   };
 
   if (compareStartDate && compareEndDate) {

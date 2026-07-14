@@ -1,7 +1,7 @@
 import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { db, journalEntries, journalLines, accounts } from '../db/schema';
-import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
+import { authenticate, requireOrg, requireRole, AuthenticatedRequest } from '../middleware/auth';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
 import { reverseJournalEntry, updateJournalEntry } from '../services/ledger.service';
@@ -23,6 +23,7 @@ const journalEntrySchema = z.object({
   date: z.string().transform(v => new Date(v)),
   description: z.string().optional().nullable(),
   reference: z.string().optional().nullable(),
+  isOpeningBalance: z.boolean().optional().default(false),
   lines: z.array(journalLineSchema).min(2, 'Journal must have at least 2 lines'),
 });
 
@@ -132,7 +133,7 @@ router.post('/', async (req: AuthenticatedRequest, res: Response, next: NextFunc
           date: body.date,
           description: body.description,
           reference: body.reference,
-          source: 'manual',
+          source: body.isOpeningBalance ? 'opening_balance' : 'manual',
           createdBy: userId,
         })
         .returning();
@@ -352,6 +353,42 @@ router.post('/:id/reverse', async (req: AuthenticatedRequest, res: Response, nex
     createAuditLog({ orgId, userId, action: 'reverse', entityType: 'journal-entry', entityId: id, newValues: { reversedByEntryId: reversal?.id }, oldValues: { isReversed: false }, ...extractReqMeta(req) });
     return res.status(200).json({ message: 'Entry reversed successfully.', reversal });
   } catch (err) { return next(err); }
+});
+
+// PATCH /journals/:id/tag — re-tag a manual journal entry as opening_balance or back to manual
+router.patch('/:id/tag', requireRole('owner', 'accountant'), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const userId = req.user!.userId!;
+    const { id } = req.params;
+    const { isOpeningBalance } = z.object({ isOpeningBalance: z.boolean() }).parse(req.body);
+
+    const [entry] = await db
+      .select()
+      .from(journalEntries)
+      .where(and(eq(journalEntries.id, id), eq(journalEntries.orgId, orgId)))
+      .limit(1);
+    if (!entry) throw new AppError('Journal entry not found.', 404);
+    if (entry.source !== 'manual' && entry.source !== 'opening_balance') {
+      throw new AppError('Only manual journal entries can be re-tagged.', 400);
+    }
+
+    const newSource = isOpeningBalance ? 'opening_balance' : 'manual';
+    if (entry.source === newSource) {
+      return res.json({ success: true, source: newSource, unchanged: true });
+    }
+
+    await db
+      .update(journalEntries)
+      .set({ source: newSource })
+      .where(eq(journalEntries.id, id));
+
+    createAuditLog({ orgId, userId, action: 'update', entityType: 'journal-entry', entityId: id, oldValues: { source: entry.source }, newValues: { source: newSource }, ...extractReqMeta(req) });
+    return res.json({ success: true, source: newSource, unchanged: false });
+  } catch (err) {
+    if (err instanceof z.ZodError) return next(new AppError(err.issues[0]?.message || 'Validation failed', 400));
+    return next(err);
+  }
 });
 
 export default router;

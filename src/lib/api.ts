@@ -834,6 +834,10 @@ export const journalsApi = {
     const res = await api.put(`/journals/${id}`, data);
     return res.data;
   },
+  tagJournal: async (id: string, isOpeningBalance: boolean) => {
+    const res = await api.patch(`/journals/${id}/tag`, { isOpeningBalance });
+    return res.data;
+  },
 };
 
 // 7c. Budgets Endpoints
