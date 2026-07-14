@@ -1005,6 +1005,9 @@ export const customReportsApi = {
   getIntangibleAssetAmortization: async () => {
     const res = await api.get('/custom-reports/intangible-asset-amortization'); return res.data;
   },
+  getChangesInEquity: async (params?: { startDate?: string; endDate?: string }) => {
+    const res = await api.get('/custom-reports/changes-in-equity', { params }); return res.data;
+  },
 };
 
 export const reportsApi = {

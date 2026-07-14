@@ -9,6 +9,7 @@ import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/au
 import { AppError } from '../lib/errors';
 import { db, accounts, journalEntries, journalLines, contacts, invoices, invoiceLines, bills, billLines, paymentsReceived, paymentAllocations, paymentsMade, paymentMadeAllocations, items, inventoryLots, fixedAssets, depreciationEntries, bankAccounts, expenses, employees, payrollRuns, payrollLines, budgets, budgetLines } from '../db/schema';
 import { eq, and, asc, desc, sql, lte, gte, inArray } from 'drizzle-orm';
+import { getStatementOfChangesInEquity } from '../services/ledger.service';
 
 const router = Router();
 
@@ -1361,6 +1362,20 @@ router.get('/intangible-asset-amortization', async (req: AuthenticatedRequest, r
       data: [],
       note: 'Intangible assets module is not yet implemented. No intangible_assets table exists in the schema.'
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// =========================================================================
+// 27. GET /changes-in-equity — Statement of Changes in Equity (SOCIE)
+// =========================================================================
+router.get('/changes-in-equity', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { startDate, endDate } = dateRangeOptionalSchema.parse(req.query);
+    const orgId = req.user!.orgId!;
+    const data = await getStatementOfChangesInEquity(orgId, endDate);
+    return res.status(200).json({ success: true, data });
   } catch (error) {
     next(error);
   }

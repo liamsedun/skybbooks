@@ -64,6 +64,31 @@ const REPORTS: Record<string, { id: string; label: string; needsDates: boolean; 
     { id: 'capital-accounts-summary', label: 'Capital Accounts Summary', needsDates: false, apiFn: 'getCapitalAccountsSummary', icon: PieChart, desc: 'Equity accounts with current balances', transform: (d) => ({ headers: ['Code', 'Account', 'Type', 'Sub Type', 'Balance'], rows: d.map((r: any) => [r.code, r.name, r.type, r.subType || '-', fmtNaira(r.balance)]) }) },
     { id: 'actual-vs-budget', label: 'Actual vs Budget', needsDates: true, apiFn: 'getActualVsBudget', icon: Target, desc: 'Budget performance with variance analysis', transform: (d) => ({ headers: ['Budget', 'Fiscal Year', 'Account', 'Period', 'Budget', 'Actual', 'Variance', 'Var %'], rows: d.map((r: any) => [r.budgetName, r.fiscalYear, `${r.accountCode} - ${r.accountName}`, r.period, fmtNaira(r.budgetAmount), fmtNaira(r.actualAmount), fmtNaira(r.variance), pct(r.variancePct)]) }) },
     { id: 'expense-claims-summary', label: 'Expense Claims Summary', needsDates: true, apiFn: 'getExpenseClaimsSummary', icon: Receipt, desc: 'Expense transactions with vendor & account details', transform: (d) => ({ headers: ['Date', 'Expense #', 'Description', 'Account', 'Amount', 'VAT', 'Vendor'], rows: d.map((r: any) => [fmtDate(r.date), r.expenseNumber || '-', r.description || '-', `${r.accountCode} - ${r.accountName}`, fmtNaira(r.amount), fmtNaira(r.taxAmount), r.vendorName || '-']) }) },
+    { id: 'changes-in-equity', label: 'Changes in Equity', needsDates: true, apiFn: 'getChangesInEquity', icon: PieChart, desc: 'Statement of Changes in Equity — opening balance, profit for the year, other movements, closing balance', transform: (d) => {
+      const cy = d.currentYear;
+      if (!cy) return { headers: [], rows: [] };
+      const colKeys = cy.columns.map((c: any) => c.key);
+      const colLabels = cy.columns.map((c: any) => c.label);
+      const headers = ['', ...colLabels, 'Total'];
+      const rowTotal = (row: any) => {
+        let t = 0;
+        for (const k of colKeys) t += row.columns[k] || 0;
+        return t;
+      };
+      const rows = cy.rows.map((r: any) => [r.label, ...colKeys.map((k: string) => fmtNaira(r.columns[k] || 0)), fmtNaira(rowTotal(r))]);
+
+      if (d.priorYear) {
+        const py = d.priorYear;
+        rows.push(['']);
+        rows.push([`${py.yearLabel}`, ...colKeys.map(() => ''), '']);
+        for (const r of py.rows || []) {
+          const vals = colKeys.map((k: string) => fmtNaira(r.columns[k] || 0));
+          rows.push([r.label, ...vals, fmtNaira(rowTotal(r))]);
+        }
+      }
+
+      return { headers, rows };
+    } },
   ],
 };
 
