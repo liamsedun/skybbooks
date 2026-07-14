@@ -143,13 +143,13 @@ router.get('/inventory-summary', async (req: AuthenticatedRequest, res: Response
     for (const item of inventoryItems) {
       const [lotResult] = await db
         .select({
-          quantity: sql<string>`coalesce(sum(${inventoryLots.quantity}), '0')`,
+          quantity: sql<number>`coalesce(sum(${inventoryLots.quantity}), 0)`,
           avgCost: sql<number>`coalesce(avg(${inventoryLots.costPerUnit}), 0)`,
         })
         .from(inventoryLots)
         .where(eq(inventoryLots.itemId, item.id));
 
-      const quantity = parseFloat(lotResult?.quantity || '0');
+      const quantity = Number(lotResult?.quantity || 0);
       const avgCost = Number(lotResult?.avgCost || 0);
       const totalValue = Math.round(quantity * avgCost);
 
@@ -843,8 +843,8 @@ router.get('/payslip-summary', async (req: AuthenticatedRequest, res: Response, 
       .from(payrollRuns)
       .where(and(
         eq(payrollRuns.orgId, orgId),
-        gte(payrollRuns.periodStart, startDate),
-        lte(payrollRuns.periodStart, endDate)
+        gte(payrollRuns.payDate, startDate),
+        lte(payrollRuns.payDate, endDate)
       ));
 
     const runIds = runs.map(r => r.id);
@@ -908,8 +908,8 @@ router.get('/payslip-by-item', async (req: AuthenticatedRequest, res: Response, 
       .from(payrollRuns)
       .where(and(
         eq(payrollRuns.orgId, orgId),
-        gte(payrollRuns.periodStart, startDate),
-        lte(payrollRuns.periodStart, endDate)
+        gte(payrollRuns.payDate, startDate),
+        lte(payrollRuns.payDate, endDate)
       ));
 
     const runIds = runs.map(r => r.id);
@@ -1081,7 +1081,10 @@ router.get('/gl-summary', async (req: AuthenticatedRequest, res: Response, next:
 
       const totalDebits = Number(row?.debits || 0);
       const totalCredits = Number(row?.credits || 0);
-      const netBalance = totalCredits - totalDebits;
+      const isDebitNormal = ['asset', 'expense'].includes(acc.type);
+      const netBalance = isDebitNormal
+        ? (acc.openingBalance || 0) + totalDebits - totalCredits
+        : (acc.openingBalance || 0) + totalCredits - totalDebits;
 
       result.push({
         id: acc.id,
@@ -1142,7 +1145,7 @@ router.get('/gl-transactions', async (req: AuthenticatedRequest, res: Response, 
       .innerJoin(accounts, eq(journalLines.accountId, accounts.id))
       .where(and(...whereClauses))
       .orderBy(desc(journalEntries.date), asc(journalEntries.entryNumber))
-      .limit(500);
+      .limit(5000);
 
     return res.status(200).json({ success: true, data: lines });
   } catch (error) {
@@ -1196,7 +1199,7 @@ router.get('/tax-transactions', async (req: AuthenticatedRequest, res: Response,
         lte(journalEntries.date, endDate)
       ))
       .orderBy(desc(journalEntries.date), asc(journalEntries.entryNumber))
-      .limit(500);
+      .limit(5000);
 
     return res.status(200).json({ success: true, data: lines });
   } catch (error) {
