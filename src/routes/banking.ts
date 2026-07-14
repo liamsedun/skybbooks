@@ -684,6 +684,13 @@ function parseAmountStrict(raw: string): number | null {
   return isNaN(v) ? null : v * neg;
 }
 
+/** Parse an amount from a raw cell value (number or string) */
+function parseAmountRaw(raw: any): number | null {
+  if (raw == null || raw === '') return null;
+  if (typeof raw === 'number') return raw;
+  return parseAmountStrict(String(raw));
+}
+
 /** Parse tab-separated or space-aligned text lines into structured rows */
 function parseTabularText(text: string): { date: string; description: string; deposit: number; withdrawal: number; balance: number }[] {
   const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
@@ -833,48 +840,65 @@ router.post('/accounts/:id/upload-statement', (req: AuthenticatedRequest, res: R
         const sheetName = wb.SheetNames[0];
         if (!sheetName) throw new AppError('Excel file has no worksheets.', 400);
 
-        const allRows: string[][] = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, defval: '' })
-          .map((row: any) => (row as any[]).map((c: any) => String(c ?? '').trim()))
-          .filter((r: string[]) => r.some(v => v));
+        // Parse as raw values (keeps dates as serial numbers, numbers as numbers)
+        const rawRowsFromExcel: any[][] = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, defval: '' })
+          .filter((r: any) => (r as any[]).some(v => v != null && v !== ''));
 
-        if (allRows.length < 2) throw new AppError('Excel file appears empty.', 400);
+        if (rawRowsFromExcel.length < 2) throw new AppError('Excel file appears empty.', 400);
 
-        // Detect header
+        // Detect header using stringified first rows
         const headerWords = ['date', 'description', 'narration', 'amount', 'deposit', 'withdrawal', 'balance', 'credit', 'debit', 'transaction'];
-        const headerIdx = allRows.findIndex(r => headerWords.some(w => r.some(c => c.toLowerCase().includes(w))));
+        const headerIdx = rawRowsFromExcel.findIndex(r => headerWords.some(w => (r as any[]).some((c: any) => String(c ?? '').toLowerCase().includes(w))));
 
         let colMap: ReturnType<typeof detectCols>;
         if (headerIdx >= 0) {
-          colMap = detectCols(allRows[headerIdx]);
-          allRows.splice(0, headerIdx + 1);
+          const headerRow = (rawRowsFromExcel[headerIdx] as any[]).map((c: any) => String(c ?? '').trim());
+          colMap = detectCols(headerRow);
+          rawRowsFromExcel.splice(0, headerIdx + 1);
         } else {
           colMap = { dateIdx: 0, descIdx: 1, depositIdx: -1, withdrawalIdx: -1, balanceIdx: -1 };
         }
 
-        for (const cols of allRows) {
+        for (const cols of rawRowsFromExcel) {
+          const cell = (idx: number) => cols[idx] as any;
           if (cols.length < 3) continue;
-          const dateVal = parseDateStrict(cols[colMap.dateIdx]);
+
+          // Parse date: handle number (serial), Date object, or string
+          let dateVal: Date | null = null;
+          const rawDate = cell(colMap.dateIdx);
+          if (typeof rawDate === 'number' && rawDate > 1) {
+            // Excel serial date number
+            const parsed = XLSX.SSF?.parse_date_code?.(rawDate);
+            if (parsed) dateVal = new Date(parsed.y, parsed.m - 1, parsed.d);
+          } else if (rawDate instanceof Date && !isNaN(rawDate.getTime())) {
+            dateVal = rawDate;
+          } else if (rawDate) {
+            dateVal = parseDateStrict(String(rawDate).trim());
+          }
           if (!dateVal) continue;
 
-          const description = (colMap.descIdx >= 0 && cols[colMap.descIdx]) || 'Statement line';
+          const rawDesc = cell(colMap.descIdx);
+          const description = rawDesc ? String(rawDesc).trim() : 'Statement line';
 
           let deposit = 0, withdrawal = 0;
-          if (colMap.depositIdx >= 0 && cols[colMap.depositIdx]) {
-            deposit = parseAmountStrict(cols[colMap.depositIdx]) ?? 0;
+          if (colMap.depositIdx >= 0) {
+            const v = parseAmountRaw(cell(colMap.depositIdx));
+            if (v != null) deposit = v;
           }
-          if (colMap.withdrawalIdx >= 0 && cols[colMap.withdrawalIdx]) {
-            withdrawal = parseAmountStrict(cols[colMap.withdrawalIdx]) ?? 0;
+          if (colMap.withdrawalIdx >= 0) {
+            const v = parseAmountRaw(cell(colMap.withdrawalIdx));
+            if (v != null) withdrawal = v;
           }
           if (colMap.depositIdx < 0 && colMap.withdrawalIdx < 0) {
-            const amt = parseAmountStrict(cols[2]) ?? 0;
+            const amt = parseAmountRaw(cell(2)) ?? 0;
             if (amt > 0) deposit = amt;
             else withdrawal = Math.abs(amt);
           }
 
           if (deposit === 0 && withdrawal === 0) continue;
 
-          const balanceVal = colMap.balanceIdx >= 0 && cols[colMap.balanceIdx]
-            ? (parseAmountStrict(cols[colMap.balanceIdx]) ?? null)
+          const balanceVal = colMap.balanceIdx >= 0
+            ? (parseAmountRaw(cell(colMap.balanceIdx)) ?? null)
             : null;
 
           rawRows.push({ date: dateVal, description, deposit, withdrawal, balance: balanceVal });
