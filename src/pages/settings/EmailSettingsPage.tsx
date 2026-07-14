@@ -230,6 +230,7 @@ export default function EmailSettingsPage() {
               value={form.username}
               onChange={e => update('username', e.target.value)}
               placeholder="olalekan.edun"
+              autoComplete="username"
               className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300"
             />
           </div>
@@ -240,6 +241,7 @@ export default function EmailSettingsPage() {
               value={form.email}
               onChange={e => update('email', e.target.value)}
               placeholder="olalekan.edun@gmail.com"
+              autoComplete="email"
               className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300"
             />
           </div>

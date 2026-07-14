@@ -2,6 +2,7 @@ import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { eq, sql } from 'drizzle-orm';
 import nodemailer from 'nodemailer';
+import dns from 'dns';
 import { db, emailSettings, users } from '../db/schema';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
 import { AppError } from '../lib/errors';
@@ -115,11 +116,21 @@ router.post('/test', async (req: AuthenticatedRequest, res: Response, next: Next
     const orgId = req.user!.orgId!;
     const body = testSchema.parse(req.body);
 
+    // Resolve hostname to IPv4 to avoid ENETUNREACH on IPv6-only hosts
+    let host = body.hostname;
+    try {
+      const addresses = await new Promise<string[]>((resolve, reject) =>
+        dns.resolve4(body.hostname, (err, addr) => err ? reject(err) : resolve(addr))
+      );
+      if (addresses.length > 0) host = addresses[0];
+    } catch {
+      // fall back to hostname if DNS resolution fails
+    }
+
     const transporter = nodemailer.createTransport({
-      host: body.hostname,
+      host,
       port: body.port,
       secure: body.port === 465,
-      family: 4,
       auth: body.username || body.email
         ? { user: body.username || body.email!, pass: body.password || '' }
         : undefined,
