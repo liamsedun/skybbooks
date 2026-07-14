@@ -890,11 +890,11 @@ router.post('/accounts/:id/upload-statement', (req: AuthenticatedRequest, res: R
           let deposit = 0, withdrawal = 0;
           if (colMap.depositIdx >= 0) {
             const v = parseAmountRaw(cell(colMap.depositIdx));
-            if (v != null) deposit = v;
+            if (v != null) deposit = v > 0 ? v : 0;
           }
           if (colMap.withdrawalIdx >= 0) {
             const v = parseAmountRaw(cell(colMap.withdrawalIdx));
-            if (v != null) withdrawal = v;
+            if (v != null) withdrawal = Math.abs(v);
           }
           if (colMap.depositIdx < 0 && colMap.withdrawalIdx < 0) {
             const amt = parseAmountRaw(cell(2)) ?? 0;
