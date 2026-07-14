@@ -9,10 +9,12 @@ import {
   employees,
   payrollRuns,
   payrollLines,
-  accounts
+  accounts,
+  journalLines,
+  journalEntries
 } from '../db/schema';
 import { AppError } from '../lib/errors';
-import { createJournalEntry, reverseJournalEntry } from './ledger.service';
+import { createJournalEntry } from './ledger.service';
 
 export interface TaxBandBreakdown {
   bandName: string;
@@ -613,10 +615,12 @@ export async function unapprovePayroll(runId: string, userId: string): Promise<a
       throw new AppError('Only approved payroll runs can be unapproved.', 400);
     }
     if (!run.journalEntryId) {
-      throw new AppError('No journal entry found to reverse.', 400);
+      throw new AppError('No journal entry found to unapprove.', 400);
     }
 
-    await reverseJournalEntry(run.journalEntryId, new Date(), userId);
+    // Delete the journal entry and its lines entirely (clean removal)
+    await tx.delete(journalLines).where(eq(journalLines.entryId, run.journalEntryId));
+    await tx.delete(journalEntries).where(eq(journalEntries.id, run.journalEntryId));
 
     const [updatedRun] = await tx
       .update(payrollRuns)
