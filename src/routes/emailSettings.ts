@@ -119,6 +119,7 @@ router.post('/test', async (req: AuthenticatedRequest, res: Response, next: Next
       host: body.hostname,
       port: body.port,
       secure: body.port === 465,
+      family: 4,
       auth: body.username || body.email
         ? { user: body.username || body.email!, pass: body.password || '' }
         : undefined,
