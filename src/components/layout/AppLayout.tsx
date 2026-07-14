@@ -14,6 +14,7 @@ import {
   DollarSign,
   Briefcase,
   History,
+  MessageCircle,
   TrendingUp,
   Settings,
   Menu,
@@ -134,6 +135,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
   const pathMap: Record<string, string> = useMemo(() => ({
     'dashboard': '/dashboard',
     'ai_insights': '/ai/insights',
+    'chat': '/chat',
     'customers': '/sales/customers',
     'quotes': '/sales/quotes',
     'sales_orders': '/sales/sales-orders',
@@ -207,6 +209,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
       items: [
         { name: 'Dashboard', id: 'dashboard', icon: LayoutDashboard },
         { name: 'SMART CFO Insights', id: 'ai_insights', icon: Sparkles },
+        { name: 'Team Chat', id: 'chat', icon: MessageCircle },
       ],
     },
     {

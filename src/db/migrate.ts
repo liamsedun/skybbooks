@@ -957,6 +957,21 @@ export async function runMigration() {
       console.error('[Migration] Payroll reversal cleanup error (non-fatal):', cleanupErr);
     }
 
+    // ── Chat Messages Table ──
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS chat_messages (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        user_id uuid REFERENCES users(id) NOT NULL,
+        message text NOT NULL,
+        created_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS idx_chat_org_created ON chat_messages (org_id, created_at DESC)
+    `);
+    console.log('[Migration] Created chat_messages table.');
+
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema setup:', err);

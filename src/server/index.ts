@@ -11,6 +11,8 @@ import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import winston from 'winston';
 import { createServer as createViteServer } from 'vite';
+import http from 'http';
+import { Server as SocketIOServer } from 'socket.io';
 
 import authRouter from '../routes/auth';
 import organisationsRouter from '../routes/organisations';
@@ -34,6 +36,7 @@ import projectsRouter from '../routes/projects';
 import vatRouter from '../routes/vat';
 import taxRouter from '../routes/tax';
 import legacyRouter from '../routes/legacy';
+import chatRouter from '../routes/chat';
 
 import { runMigration } from '../db/migrate';
 import { fetchLatestRates } from '../services/cbn.service';
@@ -148,6 +151,7 @@ async function startServer() {
   app.use('/api/vat', vatRouter);
   app.use('/api/tax', taxRouter);
   app.use('/api/legacy', legacyRouter);
+  app.use('/api/chat', chatRouter);
 
   app.get('/api/health', (req, res) => {
     res.json({ status: 'healthy', timestamp: new Date().toISOString() });
@@ -189,7 +193,75 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
+  // Socket.IO for real-time chat
+  const httpServer = http.createServer(app);
+  const io = new SocketIOServer(httpServer, {
+    cors: {
+      origin: allowedOrigins,
+      credentials: true,
+    },
+  });
+
+  io.use(async (socket, next) => {
+    try {
+      const token = socket.handshake.auth.token || socket.handshake.query.token;
+      if (!token) return next(new Error('Authentication required'));
+      const { verifyAccessToken } = await import('../lib/tokens');
+      const payload = verifyAccessToken(token as string);
+      (socket as any).user = payload;
+      next();
+    } catch (err) {
+      next(new Error('Invalid token'));
+    }
+  });
+
+  io.on('connection', (socket) => {
+    const user = (socket as any).user;
+    if (!user?.orgId) {
+      socket.disconnect();
+      return;
+    }
+    const room = `org:${user.orgId}`;
+    socket.join(room);
+    logger.info(`[Chat] User ${user.userId} joined org room ${room}`);
+
+    socket.on('chat:send', async (data: { message: string }) => {
+      if (!data.message?.trim()) return;
+      try {
+        const { db, chatMessages } = await import('../db/schema');
+        const [msg] = await db.insert(chatMessages).values({
+          orgId: user.orgId,
+          userId: user.userId,
+          message: data.message.trim(),
+        }).returning();
+
+        const { db: db2, users: usersTbl } = await import('../db/schema');
+        const { eq } = await import('drizzle-orm');
+        const [sender] = await db2
+          .select({ fullName: usersTbl.fullName })
+          .from(usersTbl)
+          .where(eq(usersTbl.id, user.userId))
+          .limit(1);
+
+        io.to(room).emit('chat:message', {
+          id: msg.id,
+          message: msg.message,
+          userId: msg.userId,
+          createdAt: msg.createdAt,
+          userName: sender?.fullName || 'Unknown',
+        });
+      } catch (err) {
+        logger.error('[Chat] Error saving message:', err);
+        socket.emit('chat:error', { error: 'Failed to send message' });
+      }
+    });
+
+    socket.on('disconnect', () => {
+      logger.info(`[Chat] User ${user.userId} left org room ${room}`);
+    });
+  });
+
+  httpServer.listen(PORT, '0.0.0.0', () => {
     logger.info(`FinanceOS core server running on port ${PORT}`);
   });
 }

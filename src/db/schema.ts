@@ -1215,6 +1215,16 @@ export const auditLog = pgTable('audit_log', {
   userIdx: index('idx_audit_log_user').on(table.orgId, table.userId),
 }));
 
+export const chatMessages = pgTable('chat_messages', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  message: text('message').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+}, (table) => ({
+  orgCreatedIdx: index('idx_chat_org_created').on(table.orgId, table.createdAt),
+}));
+
 export const currencyRates = pgTable('currency_rates', {
   id: uuid('id').defaultRandom().primaryKey(),
   orgId: uuid('org_id').references(() => organisations.id).notNull(),
@@ -1857,6 +1867,17 @@ export const auditLogRelations = relations(auditLog, ({ one }) => ({
   })
 }));
 
+export const chatMessagesRelations = relations(chatMessages, ({ one }) => ({
+  organisation: one(organisations, {
+    fields: [chatMessages.orgId],
+    references: [organisations.id]
+  }),
+  user: one(users, {
+    fields: [chatMessages.userId],
+    references: [users.id]
+  })
+}));
+
 export const currencyRatesRelations = relations(currencyRates, ({ one }) => ({
   organisation: one(organisations, {
     fields: [currencyRates.orgId],
@@ -1913,7 +1934,8 @@ export const db = drizzle(pool, {
     documents,
     budgets,
     budgetLines,
-  auditLog,
+    auditLog,
+    chatMessages,
     currencyRates,
     closedPeriods,
     vatPeriods,
@@ -1964,6 +1986,7 @@ export const db = drizzle(pool, {
     budgetsRelations,
     budgetLinesRelations,
     auditLogRelations,
+    chatMessagesRelations,
     currencyRatesRelations,
     closedPeriodsRelations,
     taxConfigurationsRelations,
@@ -2018,6 +2041,7 @@ export const schema = {
   budgets,
   budgetLines,
   auditLog,
+  chatMessages,
   currencyRates,
   closedPeriods,
   taxConfigurations,

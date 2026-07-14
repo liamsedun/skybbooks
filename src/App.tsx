@@ -69,7 +69,8 @@ import {
   TaxComputationPage,
   LegacyMigrationPage,
   InvitesSettingsPage,
-  IntegrationsSettingsPage
+  IntegrationsSettingsPage,
+  ChatPage
 } from './pages/ModulePlaceholders';
 import { SettingsLayout } from './components/settings/SettingsLayout';
 import { TaxConfigurationPage } from './pages/settings/TaxConfigurationPage';
@@ -287,6 +288,9 @@ function AppRoutes() {
           <Route path="/inventory/items" element={<InventoryPage />} />
           <Route path="/inventory/items/new" element={<InventoryPage />} />
           <Route path="/inventory/adjustments" element={<InventoryAdjustmentsPage />} />
+
+          {/* Chat module routing */}
+          <Route path="/chat" element={<ChatPage />} />
 
           {/* Banking module routing */}
           <Route path="/banking" element={<BankAccountsWrapper />} />
