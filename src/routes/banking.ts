@@ -826,20 +826,16 @@ router.post('/accounts/:id/upload-statement', (req: AuthenticatedRequest, res: R
         }
       }
 
-      // 2. Excel (.xlsx, .xls)
+      // 2. Excel (.xlsx, .xls) — uses SheetJS (xlsx) which handles both formats
       else if (['xlsx', 'xls'].includes(ext) || file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || file.mimetype === 'application/vnd.ms-excel') {
-        const ExcelJS = await import('exceljs');
-        const wb = new ExcelJS.Workbook();
-        await wb.xlsx.load(file.buffer);
-        const ws = wb.worksheets[0];
-        if (!ws) throw new AppError('Excel file has no worksheets.', 400);
+        const XLSX = await import('xlsx');
+        const wb = XLSX.read(file.buffer, { type: 'buffer' });
+        const sheetName = wb.SheetNames[0];
+        if (!sheetName) throw new AppError('Excel file has no worksheets.', 400);
 
-        const allRows: string[][] = [];
-        ws.eachRow({ includeEmpty: false }, (row: any) => {
-          const vals: string[] = [];
-          row.eachCell((cell: any) => vals.push(cell.text?.trim() ?? ''));
-          if (vals.some(v => v)) allRows.push(vals);
-        });
+        const allRows: string[][] = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, defval: '' })
+          .map((row: any) => (row as any[]).map((c: any) => String(c ?? '').trim()))
+          .filter((r: string[]) => r.some(v => v));
 
         if (allRows.length < 2) throw new AppError('Excel file appears empty.', 400);
 
