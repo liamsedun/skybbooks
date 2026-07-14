@@ -5,7 +5,7 @@ import { MessageCircle, Minus, X, Send, ChevronDown, ChevronUp } from 'lucide-re
 
 export default function ChatWidget() {
   const {
-    connected, onlineUserIds, orgUsers, conversations,
+    connected, onlineUserIds, orgUsers, usersError, conversations,
     activeConvId, messages, unreadTotal,
     chatOpen, chatMinimized,
     setActiveConvId, sendMessage, toggleChat, setChatMinimized, startConversation,
@@ -113,7 +113,11 @@ export default function ChatWidget() {
             <>
               {view === 'users' ? (
                 <div className="flex-1 overflow-y-auto">
-                  {orgUsers.length === 0 ? (
+                  {usersError ? (
+                    <div className="text-center py-8 px-4">
+                      <p className="text-xs text-rose-500">{usersError}</p>
+                    </div>
+                  ) : orgUsers.length === 0 ? (
                     <div className="text-center py-8 px-4">
                       <p className="text-xs text-slate-400">Loading users...</p>
                     </div>

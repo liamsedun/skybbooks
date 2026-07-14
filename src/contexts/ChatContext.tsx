@@ -12,6 +12,7 @@ interface ChatContextType {
   connected: boolean;
   onlineUserIds: Set<string>;
   orgUsers: UserInfo[];
+  usersError: string | null;
   conversations: any[];
   activeConvId: string | null;
   messages: any[];
@@ -33,6 +34,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [connected, setConnected] = useState(false);
   const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
   const [orgUsers, setOrgUsers] = useState<UserInfo[]>([]);
+  const [usersError, setUsersError] = useState<string | null>(null);
   const [conversations, setConversations] = useState<any[]>([]);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [messages, setMessages] = useState<any[]>([]);
@@ -51,8 +53,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       const res = await orgApi.getUsers();
       const list = Array.isArray(res) ? res : (res?.users || res?.data || []);
       setOrgUsers(list.filter((u: any) => u.id !== user.id));
+      setUsersError(null);
     } catch (err: any) {
       console.warn('[ChatContext] Failed to load org users:', err?.message || err);
+      setUsersError(err?.response?.status === 401 ? 'Session expired. Please refresh.' : 'Failed to load users.');
     }
   }, [user?.orgId, user?.id]);
 
@@ -153,7 +157,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   return (
     <ChatContext.Provider value={{
-      connected, onlineUserIds, orgUsers, conversations,
+      connected, onlineUserIds, orgUsers, usersError, conversations,
       activeConvId, messages, unreadTotal,
       chatOpen, chatMinimized,
       setActiveConvId, sendMessage, toggleChat, setChatMinimized, startConversation,
