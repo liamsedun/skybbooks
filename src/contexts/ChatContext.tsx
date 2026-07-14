@@ -58,7 +58,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       console.warn('[ChatContext] Failed to load org users:', err?.message || err);
       setUsersError(err?.response?.status === 401 ? 'Session expired. Please refresh.' : 'Failed to load users.');
     }
-  }, [user?.orgId, user?.id]);
+  }, [user?.organisationId, user?.id]);
 
   useEffect(() => { loadUsers(); }, [loadUsers]);
 
@@ -77,7 +77,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   // Socket connection — register all event handlers here
   useEffect(() => {
     const token = localStorage.getItem('accessToken');
-    if (!token || !user?.orgId) return;
+    if (!token || !user?.organisationId) return;
 
     const socket = io(SOCKET_URL, {
       auth: { token },
@@ -111,7 +111,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       socketRef.current = null;
       setConnected(false);
     };
-  }, [user?.orgId, refreshConversations]);
+  }, [user?.organisationId, refreshConversations]);
 
   // Load messages when active conversation changes
   useEffect(() => {
