@@ -76,19 +76,43 @@ export function PayrollRunsPage() {
   const approveMutation = useMutation({
     mutationFn: (id: string) => api.post(`/payroll/runs/${id}/approve`).then(r => r.data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['payroll-runs'] }); setActionMsg({ type: 'success', text: 'Payroll run approved successfully.' }); setTimeout(() => setActionMsg(null), 4000); },
-    onError: (e: any) => setActionMsg({ type: 'error', text: e?.response?.data?.error || e?.message || 'Approval failed. Check that all required ledger accounts exist.' }),
+    onError: (e: any) => {
+      const status = e?.response?.status;
+      const msg = e?.response?.data?.error || e?.message || 'Approval failed.';
+      if (status === 401 || e?.name === 'Cancel' || msg.includes('Authentication') || msg.includes('session')) {
+        setActionMsg({ type: 'error', text: 'Session expired. Please refresh the page or log in again.' });
+      } else {
+        setActionMsg({ type: 'error', text: msg.includes('not found') ? `${msg} Try seeding the Chart of Accounts in Settings > Accounting.` : msg });
+      }
+    },
   });
 
   const payMutation = useMutation({
     mutationFn: (id: string) => api.post(`/payroll/runs/${id}/pay`).then(r => r.data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['payroll-runs'] }); setActionMsg({ type: 'success', text: 'Payroll run paid successfully.' }); setTimeout(() => setActionMsg(null), 4000); },
-    onError: (e: any) => setActionMsg({ type: 'error', text: e?.response?.data?.error || e?.message || 'Payment failed.' }),
+    onError: (e: any) => {
+      const status = e?.response?.status;
+      const msg = e?.response?.data?.error || e?.message || 'Payment failed.';
+      if (status === 401 || e?.name === 'Cancel' || msg.includes('Authentication') || msg.includes('session')) {
+        setActionMsg({ type: 'error', text: 'Session expired. Please refresh the page or log in again.' });
+      } else {
+        setActionMsg({ type: 'error', text: msg });
+      }
+    },
   });
 
   const unapproveMutation = useMutation({
     mutationFn: (id: string) => api.post(`/payroll/runs/${id}/unapprove`).then(r => r.data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['payroll-runs'] }); setActionMsg({ type: 'success', text: 'Payroll run unapproved and journals reversed.' }); setTimeout(() => setActionMsg(null), 4000); },
-    onError: (e: any) => setActionMsg({ type: 'error', text: e?.response?.data?.error || e?.message || 'Unapproval failed.' }),
+    onError: (e: any) => {
+      const status = e?.response?.status;
+      const msg = e?.response?.data?.error || e?.message || 'Unapproval failed.';
+      if (status === 401 || e?.name === 'Cancel' || msg.includes('Authentication') || msg.includes('session')) {
+        setActionMsg({ type: 'error', text: 'Session expired. Please refresh the page or log in again.' });
+      } else {
+        setActionMsg({ type: 'error', text: msg });
+      }
+    },
   });
 
   const deleteRunMutation = useMutation({
