@@ -1215,14 +1215,34 @@ export const auditLog = pgTable('audit_log', {
   userIdx: index('idx_audit_log_user').on(table.orgId, table.userId),
 }));
 
+export const chatConversations = pgTable('chat_conversations', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  title: text('title'),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+}, (table) => ({
+  convOrgIdx: index('idx_conv_org').on(table.orgId),
+}));
+
+export const chatConversationParticipants = pgTable('chat_conversation_participants', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  conversationId: uuid('conversation_id').references(() => chatConversations.id).notNull(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+}, (table) => ({
+  convPartConvIdx: index('idx_conv_part_conv').on(table.conversationId),
+  convPartUserIdx: index('idx_conv_part_user').on(table.userId),
+  convPartUnique: index('idx_conv_part_unique').on(table.conversationId, table.userId),
+}));
+
 export const chatMessages = pgTable('chat_messages', {
   id: uuid('id').defaultRandom().primaryKey(),
   orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  conversationId: uuid('conversation_id').references(() => chatConversations.id).notNull(),
   userId: uuid('user_id').references(() => users.id).notNull(),
   message: text('message').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull()
 }, (table) => ({
-  orgCreatedIdx: index('idx_chat_org_created').on(table.orgId, table.createdAt),
+  msgConvIdx: index('idx_chat_msg_conv').on(table.conversationId, table.createdAt),
 }));
 
 export const currencyRates = pgTable('currency_rates', {
@@ -1867,15 +1887,39 @@ export const auditLogRelations = relations(auditLog, ({ one }) => ({
   })
 }));
 
+export const chatConversationsRelations = relations(chatConversations, ({ one, many }) => ({
+  organisation: one(organisations, {
+    fields: [chatConversations.orgId],
+    references: [organisations.id]
+  }),
+  participants: many(chatConversationParticipants),
+  messages: many(chatMessages),
+}));
+
+export const chatConversationParticipantsRelations = relations(chatConversationParticipants, ({ one }) => ({
+  conversation: one(chatConversations, {
+    fields: [chatConversationParticipants.conversationId],
+    references: [chatConversations.id]
+  }),
+  user: one(users, {
+    fields: [chatConversationParticipants.userId],
+    references: [users.id]
+  }),
+}));
+
 export const chatMessagesRelations = relations(chatMessages, ({ one }) => ({
   organisation: one(organisations, {
     fields: [chatMessages.orgId],
     references: [organisations.id]
   }),
+  conversation: one(chatConversations, {
+    fields: [chatMessages.conversationId],
+    references: [chatConversations.id]
+  }),
   user: one(users, {
     fields: [chatMessages.userId],
     references: [users.id]
-  })
+  }),
 }));
 
 export const currencyRatesRelations = relations(currencyRates, ({ one }) => ({
@@ -1935,6 +1979,8 @@ export const db = drizzle(pool, {
     budgets,
     budgetLines,
     auditLog,
+    chatConversations,
+    chatConversationParticipants,
     chatMessages,
     currencyRates,
     closedPeriods,
@@ -1986,6 +2032,8 @@ export const db = drizzle(pool, {
     budgetsRelations,
     budgetLinesRelations,
     auditLogRelations,
+    chatConversationsRelations,
+    chatConversationParticipantsRelations,
     chatMessagesRelations,
     currencyRatesRelations,
     closedPeriodsRelations,
@@ -2041,6 +2089,8 @@ export const schema = {
   budgets,
   budgetLines,
   auditLog,
+  chatConversations,
+  chatConversationParticipants,
   chatMessages,
   currencyRates,
   closedPeriods,

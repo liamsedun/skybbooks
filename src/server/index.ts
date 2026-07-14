@@ -221,35 +221,60 @@ async function startServer() {
       socket.disconnect();
       return;
     }
-    const room = `org:${user.orgId}`;
-    socket.join(room);
-    logger.info(`[Chat] User ${user.userId} joined org room ${room}`);
+    const orgRoom = `org:${user.orgId}`;
+    socket.join(orgRoom);
+    logger.info(`[Chat] User ${user.userId} connected`);
 
-    socket.on('chat:send', async (data: { message: string }) => {
-      if (!data.message?.trim()) return;
+    // Subscribe to conversation rooms
+    socket.on('chat:join', (convIds: string[]) => {
+      for (const cid of convIds) {
+        socket.join(`conv:${cid}`);
+      }
+    });
+
+    socket.on('chat:send', async (data: { conversationId: string; message: string }) => {
+      if (!data.message?.trim() || !data.conversationId) return;
       try {
-        const { db, chatMessages } = await import('../db/schema');
+        const { db, chatMessages, chatConversationParticipants, users: usersTbl } = await import('../db/schema');
+        const { eq, and } = await import('drizzle-orm');
+
+        // Verify user is a participant of this conversation
+        const [part] = await db
+          .select()
+          .from(chatConversationParticipants)
+          .where(and(
+            eq(chatConversationParticipants.conversationId, data.conversationId),
+            eq(chatConversationParticipants.userId, user.userId)
+          ))
+          .limit(1);
+        if (!part) {
+          socket.emit('chat:error', { error: 'Not a participant' });
+          return;
+        }
+
         const [msg] = await db.insert(chatMessages).values({
           orgId: user.orgId,
+          conversationId: data.conversationId,
           userId: user.userId,
           message: data.message.trim(),
         }).returning();
 
-        const { db: db2, users: usersTbl } = await import('../db/schema');
-        const { eq } = await import('drizzle-orm');
-        const [sender] = await db2
+        const [sender] = await db
           .select({ fullName: usersTbl.fullName })
           .from(usersTbl)
           .where(eq(usersTbl.id, user.userId))
           .limit(1);
 
-        io.to(room).emit('chat:message', {
+        const payload = {
           id: msg.id,
+          conversationId: msg.conversationId,
           message: msg.message,
           userId: msg.userId,
           createdAt: msg.createdAt,
           userName: sender?.fullName || 'Unknown',
-        });
+        };
+
+        io.to(`conv:${data.conversationId}`).emit('chat:message', payload);
       } catch (err) {
         logger.error('[Chat] Error saving message:', err);
         socket.emit('chat:error', { error: 'Failed to send message' });
@@ -257,7 +282,7 @@ async function startServer() {
     });
 
     socket.on('disconnect', () => {
-      logger.info(`[Chat] User ${user.userId} left org room ${room}`);
+      logger.info(`[Chat] User ${user.userId} disconnected`);
     });
   });
 

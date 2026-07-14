@@ -957,20 +957,33 @@ export async function runMigration() {
       console.error('[Migration] Payroll reversal cleanup error (non-fatal):', cleanupErr);
     }
 
-    // ── Chat Messages Table ──
+    // ── Chat Conversations & Messages Tables ──
     await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS chat_messages (
+      CREATE TABLE IF NOT EXISTS chat_conversations (
         id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
         org_id uuid REFERENCES organisations(id) NOT NULL,
-        user_id uuid REFERENCES users(id) NOT NULL,
-        message text NOT NULL,
+        title text,
         created_at timestamp DEFAULT now() NOT NULL
       )
     `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_conv_org ON chat_conversations (org_id)`);
+
     await db.execute(sql`
-      CREATE INDEX IF NOT EXISTS idx_chat_org_created ON chat_messages (org_id, created_at DESC)
+      CREATE TABLE IF NOT EXISTS chat_conversation_participants (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        conversation_id uuid REFERENCES chat_conversations(id) NOT NULL,
+        user_id uuid REFERENCES users(id) NOT NULL
+      )
     `);
-    console.log('[Migration] Created chat_messages table.');
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_conv_part_conv ON chat_conversation_participants (conversation_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_conv_part_user ON chat_conversation_participants (user_id)`);
+    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_conv_part_unique ON chat_conversation_participants (conversation_id, user_id)`);
+
+    // Add conversation_id to chat_messages if the column does not exist yet
+    await db.execute(sql`ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS conversation_id uuid REFERENCES chat_conversations(id)`);
+    await db.execute(sql`DROP INDEX IF EXISTS idx_chat_org_created`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_chat_msg_conv ON chat_messages (conversation_id, created_at DESC)`);
+    console.log('[Migration] Created chat conversations and updated messages table.');
 
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {

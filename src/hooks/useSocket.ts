@@ -1,8 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 
 const API_URL = (import.meta as any).env.VITE_API_URL || '';
-// In dev, Vite proxies /api to the Express server, so socket.io connects to the same origin.
 const SOCKET_URL = (import.meta as any).env.VITE_SOCKET_URL || API_URL.replace('/api', '') || '';
 
 export function useSocket() {
@@ -30,5 +29,11 @@ export function useSocket() {
     };
   }, []);
 
-  return { socket: socketRef.current, connected };
+  const joinConversations = useCallback((convIds: string[]) => {
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('chat:join', convIds);
+    }
+  }, []);
+
+  return { socket: socketRef.current, connected, joinConversations };
 }
