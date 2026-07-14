@@ -1226,4 +1226,11 @@ export function apiDownload(url: string, filename: string) {
   document.body.removeChild(a);
 }
 
+export const emailSettingsApi = {
+  get: () => api.get('/email-settings'),
+  save: (data: any) => api.post('/email-settings', data),
+  test: (data: any) => api.post('/email-settings/test', data),
+  reset: () => api.delete('/email-settings'),
+};
+
 

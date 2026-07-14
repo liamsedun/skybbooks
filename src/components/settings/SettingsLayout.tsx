@@ -7,6 +7,7 @@ import {
   Package, BarChart2, FileText, FileClock, Repeat, ReceiptText, Banknote,
   FileCheck, Truck, ClipboardList, ArrowLeftRight, Wallet, PuzzleIcon,
   ChevronDown, Search, Menu, X, ShoppingCart, Receipt, HelpCircle, ArrowLeft,
+  Send,
 } from 'lucide-react';
 
 type NavItem = { label: string; path: string; icon: React.ComponentType<{ className?: string }> };
@@ -50,6 +51,7 @@ const NAV: NavGroup[] = [
       { label: 'Transaction Number Series', path: '/settings/txn-numbering', icon: Hash },
       { label: 'PDF Templates', path: '/settings/pdf-templates', icon: LayoutTemplate },
       { label: 'Email Notifications', path: '/settings/email-notifications', icon: Mail },
+      { label: 'Email SMTP', path: '/settings/email-settings', icon: Send },
       { label: 'Reporting Tags', path: '/settings/reporting-tags', icon: Tag },
       { label: 'Web Tabs', path: '/settings/web-tabs', icon: Layers },
     ],

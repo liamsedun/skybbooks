@@ -93,6 +93,8 @@ import {
   TaxesPage,
 } from './pages/settings/SettingsPages';
 
+import EmailSettingsPage from './pages/settings/EmailSettingsPage';
+
 import { useAuth } from './hooks/useAuth';
 import { EmployeesPage as EmployeesPageReal } from './pages/payroll/EmployeesPage';
 import { PayrollRunsPage } from './pages/payroll/PayrollRunsPage';
@@ -353,6 +355,7 @@ function AppRoutes() {
             <Route path="txn-numbering" element={<TxnNumberingPage />} />
             <Route path="pdf-templates" element={<PdfTemplatesPage />} />
             <Route path="email-notifications" element={<EmailNotificationsPage />} />
+            <Route path="email-settings" element={<EmailSettingsPage />} />
             <Route path="reporting-tags" element={<ReportingTagsPage />} />
             <Route path="web-tabs" element={<WebTabsPage />} />
             <Route path="workflow-rules" element={<WorkflowRulesPage />} />

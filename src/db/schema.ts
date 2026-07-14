@@ -1254,6 +1254,24 @@ export const chatReadMarkers = pgTable('chat_read_markers', {
   readUnique: index('idx_chat_read_unique').on(table.conversationId, table.userId),
 }));
 
+export const emailSettings = pgTable('email_settings', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull().unique(),
+  protocol: text('protocol').default('smtp').notNull(),
+  hostname: text('hostname'),
+  port: integer('port').default(587),
+  username: text('username'),
+  email: text('email'),
+  password: text('password'),
+  sendCopyTo: text('send_copy_to'),
+  replyTo: text('reply_to'),
+  useDifferentReplyTo: boolean('use_different_reply_to').default(false).notNull(),
+  doNotVerifyTls: boolean('do_not_verify_tls').default(false).notNull(),
+  updatedBy: uuid('updated_by').references(() => users.id),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
 export const currencyRates = pgTable('currency_rates', {
   id: uuid('id').defaultRandom().primaryKey(),
   orgId: uuid('org_id').references(() => organisations.id).notNull(),
@@ -2123,6 +2141,7 @@ export const schema = {
   taxComputations,
   legacyIncomeStatements,
   legacyCashFlowStatements,
-  legacyStatementsOfChangesInEquity
+  legacyStatementsOfChangesInEquity,
+  emailSettings
 };
 

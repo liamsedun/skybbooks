@@ -995,6 +995,28 @@ export async function runMigration() {
     await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_chat_read_unique ON chat_read_markers (conversation_id, user_id)`);
     console.log('[Migration] Created chat conversations and updated messages table.');
 
+    // Email settings for org SMTP configuration
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS email_settings (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL UNIQUE,
+        protocol text DEFAULT 'smtp' NOT NULL,
+        hostname text,
+        port integer DEFAULT 587,
+        username text,
+        email text,
+        password text,
+        send_copy_to text,
+        reply_to text,
+        use_different_reply_to boolean DEFAULT false NOT NULL,
+        do_not_verify_tls boolean DEFAULT false NOT NULL,
+        updated_by uuid REFERENCES users(id),
+        updated_at timestamp DEFAULT now() NOT NULL,
+        created_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    console.log('[Migration] Created email_settings table.');
+
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema setup:', err);
