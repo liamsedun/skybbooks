@@ -131,6 +131,9 @@ router.post('/test', async (req: AuthenticatedRequest, res: Response, next: Next
       host,
       port: body.port,
       secure: body.port === 465,
+      connectionTimeout: 30000,   // 30s to establish TCP connection
+      greetingTimeout: 15000,     // 15s for SMTP greeting after connect
+      socketTimeout: 60000,       // 60s for overall send
       auth: body.username || body.email
         ? { user: body.username || body.email!, pass: body.password || '' }
         : undefined,
