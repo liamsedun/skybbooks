@@ -643,4 +643,30 @@ router.post('/runs/:runId/payslips/bulk-delete', async (req: AuthenticatedReques
   } catch (err) { return next(err); }
 });
 
+// One-time cleanup: delete old payroll reversal JE pairs that accumulated before the
+// unapprove change (original + reversal entries for previously unapproved runs).
+router.post('/cleanup-reversal-pairs', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const pairs = await db.execute(sql`
+      SELECT rev.id AS rev_id, orig.id AS orig_id
+      FROM journal_entries rev
+      JOIN journal_entries orig
+        ON orig.entry_number = COALESCE(rev.reference, substring(rev.description FROM 'Reversal of ([^ ]+)'))
+        AND rev.org_id = orig.org_id
+      WHERE rev.org_id = ${orgId}
+        AND rev.source = 'payroll'
+        AND rev.description LIKE 'Reversal of%'
+        AND orig.source = 'payroll'
+    `);
+    if (pairs.rows.length === 0) {
+      return res.json({ success: true, cleaned: 0, message: 'No reversal pairs found for this org.' });
+    }
+    const allIds: string[] = pairs.rows.flatMap((r: any) => [r.rev_id, r.orig_id]);
+    const lineDel = await db.execute(sql`DELETE FROM journal_lines WHERE entry_id = ANY(${allIds}::uuid[])`);
+    const entryDel = await db.execute(sql`DELETE FROM journal_entries WHERE id = ANY(${allIds}::uuid[])`);
+    res.json({ success: true, cleaned: pairs.rows.length, linesDeleted: lineDel.rowCount, entriesDeleted: entryDel.rowCount });
+  } catch (err) { return next(err); }
+});
+
 export default router;

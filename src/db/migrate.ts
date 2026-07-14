@@ -937,7 +937,9 @@ export async function runMigration() {
       const pairs = await db.execute(sql`
         SELECT rev.id AS rev_id, orig.id AS orig_id
         FROM journal_entries rev
-        JOIN journal_entries orig ON rev.reference = orig.entry_number AND rev.org_id = orig.org_id
+        JOIN journal_entries orig
+          ON orig.entry_number = COALESCE(rev.reference, substring(rev.description FROM 'Reversal of ([^ ]+)'))
+          AND rev.org_id = orig.org_id
         WHERE rev.source = 'payroll'
           AND rev.description LIKE 'Reversal of%'
           AND orig.source = 'payroll'
