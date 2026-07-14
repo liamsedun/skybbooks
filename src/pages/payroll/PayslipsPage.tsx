@@ -50,8 +50,8 @@ function buildPayslipHtml(line: any, run: any, employee: any, calc: any, org: an
     .page{max-width:820px;margin:0 auto;background:#fff;border-radius:20px;box-shadow:0 8px 40px rgba(0,0,0,0.06),0 1px 3px rgba(0,0,0,0.04);overflow:hidden}
     .header{background:#1e3a5f;padding:20px 36px 12px;display:flex;align-items:center;justify-content:space-between}
     .header-left{display:flex;align-items:center;gap:16px}
-    .header-logo{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#fff;overflow:hidden;flex-shrink:0}
-    .header-logo img{width:100%;height:100%;object-fit:cover;border-radius:10px}
+    .header-logo{width:56px;height:56px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#fff;overflow:hidden;flex-shrink:0;background:#fff;border:1px solid rgba(255,255,255,0.15);padding:4px}
+    .header-logo img{width:100%;height:100%;object-fit:contain;border-radius:8px}
     .header-logo svg{width:100%;height:100%;padding:7px}
     .header h1{color:#fff;font-size:16px;font-weight:700;letter-spacing:-0.01em}
     .header .sub{color:#a0b8d4;font-size:8px;margin-top:2px;line-height:1.5}
