@@ -76,11 +76,19 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   // Socket connection — register all event handlers here
   useEffect(() => {
-    const token = localStorage.getItem('accessToken');
-    if (!token || !user?.organisationId) return;
+    if (!user?.organisationId) return;
+    const initialToken = localStorage.getItem('accessToken');
+    if (!initialToken) return;
 
     const socket = io(SOCKET_URL, {
-      auth: { token },
+      // Passing auth as a callback (not a static object) means socket.io
+      // re-reads the CURRENT token from localStorage on every connection
+      // attempt, including automatic reconnects. Access tokens expire every
+      // 15 minutes and are silently refreshed by the axios interceptor —
+      // without this, a reconnect after expiry would keep sending the old,
+      // now-invalid token, causing this user to silently vanish from
+      // presence tracking while their REST-based chat actions kept working.
+      auth: (cb: any) => cb({ token: localStorage.getItem('accessToken') }),
       transports: ['websocket', 'polling'],
     });
 
@@ -119,11 +127,13 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     if (socketRef.current?.connected) {
       socketRef.current.emit('chat:join', [activeConvId]);
     }
-    api.post(`/chat/conversations/${activeConvId}/read`).catch(() => {});
+    api.post(`/chat/conversations/${activeConvId}/read`)
+      .then(() => refreshConversations())
+      .catch(() => {});
     api.get(`/chat/conversations/${activeConvId}/messages?limit=100`)
       .then(res => setMessages(res.data?.data || []))
       .catch(() => setMessages([]));
-  }, [activeConvId]);
+  }, [activeConvId, refreshConversations]);
 
   // Load conversations when chat opens
   useEffect(() => {
