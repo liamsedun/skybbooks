@@ -983,6 +983,16 @@ export async function runMigration() {
     await db.execute(sql`ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS conversation_id uuid REFERENCES chat_conversations(id)`);
     await db.execute(sql`DROP INDEX IF EXISTS idx_chat_org_created`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_chat_msg_conv ON chat_messages (conversation_id, created_at DESC)`);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS chat_read_markers (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        conversation_id uuid REFERENCES chat_conversations(id) NOT NULL,
+        user_id uuid REFERENCES users(id) NOT NULL,
+        last_read_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_chat_read_unique ON chat_read_markers (conversation_id, user_id)`);
     console.log('[Migration] Created chat conversations and updated messages table.');
 
     console.log('[Migration] Database is online. Migration/schema push complete!');

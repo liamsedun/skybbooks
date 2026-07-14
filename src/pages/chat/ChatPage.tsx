@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSocket } from '../../hooks/useSocket';
 import { api } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
-import { Send, MessageCircle, Loader, Plus, Users, ArrowLeft, Check, X } from 'lucide-react';
+import { Send, MessageCircle, Loader, Plus, Users, ArrowLeft, Check, X, Bell } from 'lucide-react';
 
 interface UserInfo {
   userId: string;
@@ -14,6 +14,7 @@ interface Conversation {
   title: string | null;
   participants: UserInfo[];
   lastMessage: { message: string; createdAt: string; userId: string; userName: string | null } | null;
+  unreadCount: number;
 }
 
 interface ChatMsg {
@@ -25,8 +26,14 @@ interface ChatMsg {
   userName: string | null;
 }
 
+interface ChatNotification {
+  conversationId: string;
+  userName: string;
+  message: string;
+}
+
 export default function ChatPage() {
-  const { socket, connected, joinConversations } = useSocket();
+  const { socket, connected, connectError, joinConversations } = useSocket();
   const { user } = useAuth();
   const [convs, setConvs] = useState<Conversation[]>([]);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
@@ -38,17 +45,19 @@ export default function ChatPage() {
   const [orgUsers, setOrgUsers] = useState<{ id: string; fullName: string }[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
+  const [totalUnread, setTotalUnread] = useState(0);
+  const [incomingToast, setIncomingToast] = useState<ChatNotification | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Fetch conversations
   const loadConvs = useCallback(async () => {
     try {
       const res = await api.get('/chat/conversations');
-      setConvs(res.data.data || []);
+      const data: Conversation[] = res.data.data || [];
+      setConvs(data);
+      setTotalUnread(data.reduce((s, c) => s + (c.unreadCount || 0), 0));
     } catch { /* ignore */ }
   }, []);
 
-  // Fetch org users for new chat modal
   const loadUsers = useCallback(async () => {
     try {
       const res = await api.get('/org/users');
@@ -58,16 +67,22 @@ export default function ChatPage() {
 
   useEffect(() => { loadConvs().finally(() => setLoading(false)); }, [loadConvs]);
 
-  // When active conversation changes, load messages & join socket room
+  // Mark conversation as read when opened
+  const markRead = useCallback(async (convId: string) => {
+    try { await api.post(`/chat/conversations/${convId}/read`); } catch { /* ignore */ }
+  }, []);
+
+  // When active conversation changes, load messages & join socket room & mark read
   useEffect(() => {
     if (!activeConvId) { setMessages([]); return; }
     setMsgLoading(true);
     joinConversations([activeConvId]);
+    markRead(activeConvId);
     api.get(`/chat/conversations/${activeConvId}/messages?limit=100`)
       .then(res => setMessages(res.data.data || []))
       .catch(() => setMessages([]))
       .finally(() => setMsgLoading(false));
-  }, [activeConvId, joinConversations]);
+  }, [activeConvId, joinConversations, markRead]);
 
   // Listen for new messages via socket
   useEffect(() => {
@@ -75,8 +90,8 @@ export default function ChatPage() {
     const handler = (msg: ChatMsg) => {
       if (msg.conversationId === activeConvId) {
         setMessages(prev => [...prev, msg]);
+        markRead(msg.conversationId);
       }
-      // Update conversation list last message
       setConvs(prev => prev.map(c =>
         c.id === msg.conversationId
           ? { ...c, lastMessage: { message: msg.message, createdAt: msg.createdAt, userId: msg.userId, userName: msg.userName } }
@@ -85,7 +100,23 @@ export default function ChatPage() {
     };
     socket.on('chat:message', handler);
     return () => { socket.off('chat:message', handler); };
-  }, [socket, activeConvId]);
+  }, [socket, activeConvId, markRead]);
+
+  // Listen for notifications (from other conversations)
+  useEffect(() => {
+    if (!socket) return;
+    const handler = (notif: ChatNotification) => {
+      setTotalUnread(prev => prev + 1);
+      if (notif.conversationId !== activeConvId) {
+        setIncomingToast(notif);
+        setTimeout(() => setIncomingToast(null), 5000);
+      }
+      // Refresh conversations to update unread counts
+      loadConvs();
+    };
+    socket.on('chat:notification', handler);
+    return () => { socket.off('chat:notification', handler); };
+  }, [socket, activeConvId, loadConvs]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -100,11 +131,12 @@ export default function ChatPage() {
 
   async function createConversation() {
     if (selectedUsers.length === 0) return;
-      setCreating(true);
+    setCreating(true);
     try {
       const res = await api.post('/chat/conversations', { participantIds: selectedUsers });
       const conv = res.data.data;
       setActiveConvId(conv.id);
+      joinConversations([conv.id]);
       setShowNewChat(false);
       setSelectedUsers([]);
       await loadConvs();
@@ -124,18 +156,40 @@ export default function ChatPage() {
   const currentUserId = user?.id || '';
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] max-w-6xl mx-auto bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
-      {/* Sidebar: conversation list */}
+    <div className="flex h-[calc(100vh-8rem)] max-w-6xl mx-auto bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden relative">
+      {/* Incoming message toast */}
+      {incomingToast && (
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-50 bg-indigo-600 text-white rounded-xl px-4 py-2.5 shadow-lg text-sm flex items-center gap-2 animate-slide-down">
+          <Bell className="w-4 h-4" />
+          <span className="font-medium">{incomingToast.userName}:</span>
+          <span className="truncate max-w-[200px]">{incomingToast.message}</span>
+          <button onClick={() => setIncomingToast(null)} className="p-0.5 hover:bg-indigo-500 rounded"><X className="w-3 h-3" /></button>
+        </div>
+      )}
+
+      {/* Sidebar */}
       <div className="w-72 flex-shrink-0 border-r border-slate-200/80 flex flex-col bg-slate-50/50">
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200/80">
           <div className="flex items-center gap-2">
             <MessageCircle className="w-4 h-4 text-slate-500" />
             <span className="text-sm font-bold text-slate-800">Chats</span>
+            {totalUnread > 0 && (
+              <span className="bg-red-500 text-white text-[9px] font-bold rounded-full h-4 min-w-[16px] flex items-center justify-center px-1">
+                {totalUnread > 99 ? '99+' : totalUnread}
+              </span>
+            )}
           </div>
           <button onClick={() => { setShowNewChat(true); loadUsers(); }} className="p-1.5 rounded-lg hover:bg-slate-200/60 text-slate-500 transition-colors" title="New Chat">
             <Plus className="w-4 h-4" />
           </button>
         </div>
+
+        {connectError && (
+          <div className="px-4 py-2 bg-amber-50 text-amber-700 text-[10px] border-b border-amber-200/60">
+            Socket: {connectError}
+          </div>
+        )}
+
         <div className="flex-1 overflow-y-auto">
           {loading ? (
             <div className="flex items-center justify-center py-12 text-slate-400"><Loader className="w-4 h-4 animate-spin mr-2" />Loading...</div>
@@ -150,9 +204,16 @@ export default function ChatPage() {
               <button
                 key={c.id}
                 onClick={() => setActiveConvId(c.id)}
-                className={`w-full text-left px-4 py-3 border-b border-slate-100 hover:bg-slate-100/60 transition-colors ${activeConvId === c.id ? 'bg-indigo-50 border-l-2 border-l-indigo-500' : ''}`}
+                className={`w-full text-left px-4 py-3 border-b border-slate-100 hover:bg-slate-100/60 transition-colors relative ${activeConvId === c.id ? 'bg-indigo-50 border-l-2 border-l-indigo-500' : ''}`}
               >
-                <p className="text-sm font-medium text-slate-800 truncate">{convDisplayName(c)}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium text-slate-800 truncate flex-1">{convDisplayName(c)}</p>
+                  {c.unreadCount > 0 && (
+                    <span className="bg-indigo-600 text-white text-[9px] font-bold rounded-full h-4 min-w-[16px] flex items-center justify-center px-1">
+                      {c.unreadCount > 99 ? '99+' : c.unreadCount}
+                    </span>
+                  )}
+                </div>
                 {c.lastMessage && (
                   <p className="text-[11px] text-slate-400 mt-0.5 truncate">
                     {c.lastMessage.userName}: {c.lastMessage.message}
@@ -168,7 +229,7 @@ export default function ChatPage() {
         </div>
       </div>
 
-      {/* Main: messages area */}
+      {/* Messages area */}
       <div className="flex-1 flex flex-col">
         {!activeConvId ? (
           <div className="flex items-center justify-center flex-1 text-slate-400">
@@ -179,16 +240,14 @@ export default function ChatPage() {
           </div>
         ) : (
           <>
-            {/* Header */}
             <div className="px-5 py-3 border-b border-slate-200/80 bg-white flex items-center gap-2">
               <button onClick={() => setActiveConvId(null)} className="p-1 -ml-1 rounded-lg hover:bg-slate-100 text-slate-400 lg:hidden"><ArrowLeft className="w-4 h-4" /></button>
               <Users className="w-4 h-4 text-slate-500" />
               <span className="text-sm font-bold text-slate-800 truncate">
-                {convDisplayName(convs.find(c => c.id === activeConvId) || { participants: [], title: null, id: '', lastMessage: null })}
+                {convDisplayName(convs.find(c => c.id === activeConvId) || { participants: [], title: null, id: '', lastMessage: null, unreadCount: 0 })}
               </span>
             </div>
 
-            {/* Messages */}
             <div className="flex-1 overflow-y-auto bg-slate-50/30 px-5 py-4 space-y-3">
               {msgLoading ? (
                 <div className="flex items-center justify-center py-16 text-slate-400"><Loader className="w-4 h-4 animate-spin mr-2" />Loading...</div>
@@ -222,7 +281,6 @@ export default function ChatPage() {
               <div ref={bottomRef} />
             </div>
 
-            {/* Input */}
             <div className="bg-white border-t border-slate-200/80 p-4">
               <div className="flex items-center gap-3">
                 <input
@@ -237,6 +295,7 @@ export default function ChatPage() {
                   onClick={send}
                   disabled={!input.trim() || !connected}
                   className="bg-indigo-600 text-white rounded-xl px-4 py-2.5 text-sm font-medium hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                  title={!connected ? 'Connecting...' : 'Send'}
                 >
                   <Send className="w-4 h-4" />
                   Send

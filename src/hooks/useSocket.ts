@@ -7,18 +7,23 @@ const SOCKET_URL = (import.meta as any).env.VITE_SOCKET_URL || API_URL.replace('
 export function useSocket() {
   const socketRef = useRef<Socket | null>(null);
   const [connected, setConnected] = useState(false);
+  const [connectError, setConnectError] = useState<string | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem('accessToken');
-    if (!token) return;
+    if (!token) { setConnectError('No auth token'); return; }
 
     const socket = io(SOCKET_URL, {
       auth: { token },
       transports: ['websocket', 'polling'],
     });
 
-    socket.on('connect', () => setConnected(true));
+    socket.on('connect', () => { setConnected(true); setConnectError(null); });
     socket.on('disconnect', () => setConnected(false));
+    socket.on('connect_error', (err) => {
+      console.error('[Socket] connect_error:', err.message);
+      setConnectError(err.message);
+    });
 
     socketRef.current = socket;
 
@@ -26,6 +31,7 @@ export function useSocket() {
       socket.disconnect();
       socketRef.current = null;
       setConnected(false);
+      setConnectError(null);
     };
   }, []);
 
@@ -35,5 +41,5 @@ export function useSocket() {
     }
   }, []);
 
-  return { socket: socketRef.current, connected, joinConversations };
+  return { socket: socketRef.current, connected, connectError, joinConversations };
 }

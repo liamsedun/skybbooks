@@ -283,7 +283,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
   const handleStatementUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUploadAccountId || !statementFile) {
-      setUploadError('Please select a valid CSV or PDF bank statement file first.');
+      setUploadError('Please select a CSV, Excel, PDF, or Word bank statement file first.');
       return;
     }
 
@@ -776,7 +776,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
             {/* Form */}
             <form onSubmit={handleStatementUploadSubmit} className="p-5 space-y-4">
               <p className="text-xs text-slate-500 leading-relaxed">
-                Provide a digital <b>.CSV</b> or <b>.PDF</b> copy of your corporate bank statement to instantly load transactions into your SkyBooks accounting ledger.
+                Provide a digital <b>.CSV</b>, <b>.PDF</b>, <b>.XLSX</b>, <b>.XLS</b>, or <b>.DOCX</b> copy of your corporate bank statement to instantly load transactions into your SkyBooks accounting ledger.
               </p>
 
               {/* Drag & Drop Canvas */}
@@ -800,7 +800,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                   type="file"
                   id="statement-file-input"
                   className="hidden"
-                  accept=".csv,.pdf"
+                  accept=".csv,.pdf,.xlsx,.xls,.docx"
                   onChange={handleStatementFileChange}
                 />
                 
@@ -816,7 +816,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                   ) : (
                     <div>
                       <p className="text-xs font-bold text-slate-700">Drag statement file here, or click to browse</p>
-                      <p className="text-[10px] text-slate-400 mt-1 uppercase">Supports CSV & PDF (up to 10MB)</p>
+                      <p className="text-[10px] text-slate-400 mt-1 uppercase">Supports CSV, PDF, Excel &amp; Word (up to 50MB)</p>
                     </div>
                   )}
                 </label>

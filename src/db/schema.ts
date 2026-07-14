@@ -1245,6 +1245,15 @@ export const chatMessages = pgTable('chat_messages', {
   msgConvIdx: index('idx_chat_msg_conv').on(table.conversationId, table.createdAt),
 }));
 
+export const chatReadMarkers = pgTable('chat_read_markers', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  conversationId: uuid('conversation_id').references(() => chatConversations.id).notNull(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  lastReadAt: timestamp('last_read_at').defaultNow().notNull(),
+}, (table) => ({
+  readUnique: index('idx_chat_read_unique').on(table.conversationId, table.userId),
+}));
+
 export const currencyRates = pgTable('currency_rates', {
   id: uuid('id').defaultRandom().primaryKey(),
   orgId: uuid('org_id').references(() => organisations.id).notNull(),
@@ -1907,6 +1916,17 @@ export const chatConversationParticipantsRelations = relations(chatConversationP
   }),
 }));
 
+export const chatReadMarkersRelations = relations(chatReadMarkers, ({ one }) => ({
+  conversation: one(chatConversations, {
+    fields: [chatReadMarkers.conversationId],
+    references: [chatConversations.id]
+  }),
+  user: one(users, {
+    fields: [chatReadMarkers.userId],
+    references: [users.id]
+  }),
+}));
+
 export const chatMessagesRelations = relations(chatMessages, ({ one }) => ({
   organisation: one(organisations, {
     fields: [chatMessages.orgId],
@@ -1982,6 +2002,7 @@ export const db = drizzle(pool, {
     chatConversations,
     chatConversationParticipants,
     chatMessages,
+    chatReadMarkers,
     currencyRates,
     closedPeriods,
     vatPeriods,
@@ -2035,6 +2056,7 @@ export const db = drizzle(pool, {
     chatConversationsRelations,
     chatConversationParticipantsRelations,
     chatMessagesRelations,
+    chatReadMarkersRelations,
     currencyRatesRelations,
     closedPeriodsRelations,
     taxConfigurationsRelations,
@@ -2092,6 +2114,7 @@ export const schema = {
   chatConversations,
   chatConversationParticipants,
   chatMessages,
+  chatReadMarkers,
   currencyRates,
   closedPeriods,
   taxConfigurations,

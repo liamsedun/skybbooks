@@ -1,20 +1,19 @@
 import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { db, chatConversations, chatConversationParticipants, chatMessages, users } from '../db/schema';
+import { db, chatConversations, chatConversationParticipants, chatMessages, chatReadMarkers, users } from '../db/schema';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
-import { desc, eq, and, inArray, sql } from 'drizzle-orm';
+import { eq, and, inArray, sql, desc } from 'drizzle-orm';
 
 const router = Router();
 router.use(authenticate);
 router.use(requireOrg);
 
-// ── List conversations for the current user ──
+// ── List conversations for the current user (with unread count) ──
 router.get('/conversations', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const orgId = req.user!.orgId!;
     const userId = req.user!.userId;
 
-    // Find conversation IDs the user belongs to
     const myParts = await db
       .select({ conversationId: chatConversationParticipants.conversationId })
       .from(chatConversationParticipants)
@@ -24,7 +23,7 @@ router.get('/conversations', async (req: AuthenticatedRequest, res: Response, ne
 
     const convIds = myParts.map(p => p.conversationId);
 
-    // Build a map of conversation → participants
+    // Participants
     const allParts = await db
       .select({
         conversationId: chatConversationParticipants.conversationId,
@@ -41,7 +40,7 @@ router.get('/conversations', async (req: AuthenticatedRequest, res: Response, ne
       partsByConv.get(p.conversationId)!.push({ userId: p.userId, userName: p.userName });
     }
 
-    // Get last message per conversation
+    // Last message per conversation
     const lastMsgs = await db
       .select({
         conversationId: chatMessages.conversationId,
@@ -52,36 +51,57 @@ router.get('/conversations', async (req: AuthenticatedRequest, res: Response, ne
       })
       .from(chatMessages)
       .leftJoin(users, eq(chatMessages.userId, users.id))
-      .where(
-        inArray(
-          chatMessages.conversationId,
-          convIds.map(id => id)
-        )
-      )
+      .where(inArray(chatMessages.conversationId, convIds))
       .orderBy(desc(chatMessages.createdAt))
       .limit(convIds.length * 10);
 
-    // Pick the latest message per conversation
     const lastMsgByConv = new Map<string, any>();
     for (const m of lastMsgs) {
-      if (!lastMsgByConv.has(m.conversationId)) {
-        lastMsgByConv.set(m.conversationId, m);
-      }
+      if (!lastMsgByConv.has(m.conversationId)) lastMsgByConv.set(m.conversationId, m);
+    }
+
+    // Batch unread count via single query
+    const unreadRows = await db.execute(sql`
+      SELECT
+        m.conversation_id,
+        COUNT(*)::int AS cnt
+      FROM chat_messages m
+      LEFT JOIN chat_read_markers r
+        ON r.conversation_id = m.conversation_id AND r.user_id = ${userId}
+      WHERE m.conversation_id = ANY(${convIds}::uuid[])
+        AND (r.last_read_at IS NULL OR m.created_at > r.last_read_at)
+      GROUP BY m.conversation_id
+    `);
+
+    const unreadCounts = new Map<string, number>();
+    for (const row of unreadRows.rows || []) {
+      unreadCounts.set(row.conversation_id, Number(row.cnt || 0));
+    }
+    // Ensure every conversation has an entry
+    for (const cid of convIds) {
+      if (!unreadCounts.has(cid)) unreadCounts.set(cid, 0);
     }
 
     const convRows = await db
       .select()
       .from(chatConversations)
-      .where(inArray(chatConversations.id, convIds))
-      .orderBy(desc(chatConversations.createdAt));
+      .where(inArray(chatConversations.id, convIds));
 
-    const data = convRows.map(c => ({
-      id: c.id,
-      title: c.title,
-      createdAt: c.createdAt,
-      participants: partsByConv.get(c.id) || [],
-      lastMessage: lastMsgByConv.get(c.id) || null,
-    }));
+    // Sort by most recent last message, then by creation date
+    const data = convRows
+      .map(c => ({
+        id: c.id,
+        title: c.title,
+        createdAt: c.createdAt,
+        participants: partsByConv.get(c.id) || [],
+        lastMessage: lastMsgByConv.get(c.id) || null,
+        unreadCount: unreadCounts.get(c.id) || 0,
+      }))
+      .sort((a, b) => {
+        const aTime = a.lastMessage ? new Date(a.lastMessage.createdAt).getTime() : new Date(a.createdAt).getTime();
+        const bTime = b.lastMessage ? new Date(b.lastMessage.createdAt).getTime() : new Date(b.createdAt).getTime();
+        return bTime - aTime;
+      });
 
     return res.json({ success: true, data });
   } catch (err) {
@@ -100,13 +120,9 @@ router.post('/conversations', async (req: AuthenticatedRequest, res: Response, n
     const orgId = req.user!.orgId!;
     const userId = req.user!.userId;
     const { participantIds, title } = createConvSchema.parse(req.body);
-
-    // Always include the creator
     const allUserIds = [...new Set([userId, ...participantIds])];
 
-    // For 1-on-1 chats, check if a conversation already exists between these two users
     if (allUserIds.length === 2) {
-      // Find conversations where userA is a participant
       const convsA = await db
         .select({ conversationId: chatConversationParticipants.conversationId })
         .from(chatConversationParticipants)
@@ -114,7 +130,6 @@ router.post('/conversations', async (req: AuthenticatedRequest, res: Response, n
 
       if (convsA.length > 0) {
         const idsA = convsA.map(c => c.conversationId);
-        // Of those, find ones where userB is also a participant
         const convsB = await db
           .select({ conversationId: chatConversationParticipants.conversationId })
           .from(chatConversationParticipants)
@@ -149,6 +164,25 @@ router.post('/conversations', async (req: AuthenticatedRequest, res: Response, n
   }
 });
 
+// ── Mark conversation as read ──
+router.post('/conversations/:id/read', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId;
+    const convId = req.params.id;
+
+    await db.execute(sql`
+      INSERT INTO chat_read_markers (conversation_id, user_id, last_read_at)
+      VALUES (${convId}, ${userId}, NOW())
+      ON CONFLICT (conversation_id, user_id)
+      DO UPDATE SET last_read_at = NOW()
+    `);
+
+    return res.json({ success: true });
+  } catch (err) {
+    return next(err);
+  }
+});
+
 // ── Get messages for a conversation ──
 const messagesSchema = z.object({
   limit: z.coerce.number().min(1).max(200).default(50),
@@ -160,7 +194,6 @@ router.get('/conversations/:id/messages', async (req: AuthenticatedRequest, res:
     const userId = req.user!.userId;
     const convId = req.params.id;
 
-    // Verify user is a participant
     const [part] = await db
       .select()
       .from(chatConversationParticipants)

@@ -660,9 +660,9 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
                       />
                     </div>
 
-                    {/* Upper date/amount info */}
+                    {/* Upper date/amount/balance info */}
                     <div className="flex items-start justify-between gap-2 pl-5">
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <p className={`font-sans font-semibold text-xs tracking-tight leading-snug truncate ${isSelected ? 'text-white' : 'text-slate-800'}`}>
                           {txn.description}
                         </p>
@@ -671,17 +671,29 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
                         </p>
                       </div>
 
-                      <div className="text-right shrink-0">
-                        <span className={`font-mono font-bold text-xs ${
-                          isDebit
-                            ? isSelected ? 'text-rose-300' : 'text-rose-600 bg-rose-50 px-2 py-0.5 rounded'
-                            : isSelected ? 'text-emerald-300' : 'text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded'
-                        }`}>
-                          {isDebit ? '-' : '+'}{formatNaira(txn.amount)}
-                        </span>
-                        <span className={`block text-[8px] font-extrabold uppercase mt-0.5 ${isSelected ? 'text-slate-400' : 'text-slate-400'}`}>
-                          {isDebit ? 'Disbursement' : 'Deposit Outflow'}
-                        </span>
+                      <div className="text-right shrink-0 flex items-center gap-3">
+                        <div>
+                          <span className={`font-mono font-bold text-xs ${
+                            isDebit
+                              ? isSelected ? 'text-rose-300' : 'text-rose-600 bg-rose-50 px-2 py-0.5 rounded'
+                              : isSelected ? 'text-emerald-300' : 'text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded'
+                          }`}>
+                            {isDebit ? '-' : '+'}{formatNaira(txn.amount)}
+                          </span>
+                          <span className={`block text-[8px] font-extrabold uppercase mt-0.5 text-right ${isSelected ? 'text-slate-400' : 'text-slate-400'}`}>
+                            {isDebit ? 'Withdrawal' : 'Deposit'}
+                          </span>
+                        </div>
+                        {txn.balanceAfter != null && (
+                          <div className="pl-2 border-l border-slate-200/60">
+                            <span className={`font-mono font-bold text-xs ${isSelected ? 'text-slate-300' : 'text-slate-700'}`}>
+                              {formatNaira(txn.balanceAfter)}
+                            </span>
+                            <span className={`block text-[8px] font-extrabold uppercase mt-0.5 text-right ${isSelected ? 'text-slate-500' : 'text-slate-400'}`}>
+                              Balance
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
 

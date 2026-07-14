@@ -43,6 +43,7 @@ import { Footer } from './Footer';
 import { SkyhouseLogo } from '../ui/SkyhouseLogo';
 import { usePlatformBranding } from '../../hooks/usePlatformBranding';
 import { useNotifications } from '../../hooks/useNotifications';
+import { api } from '../../lib/api';
 
 interface AppLayoutProps {
   currentView?: string;
@@ -90,6 +91,23 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
   const { role, hasModuleAccess } = usePermissions();
   const { developerLogoUrl } = usePlatformBranding();
   const { notifications, unreadCount } = useNotifications();
+  const [chatUnread, setChatUnread] = useState(0);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    const poll = () => {
+      api.get('/chat/conversations').then(res => {
+        if (cancelled) return;
+        const convs = res.data.data || [];
+        setChatUnread(convs.reduce((s: number, c: any) => s + (c.unreadCount || 0), 0));
+      }).catch(() => {});
+    };
+    poll();
+    const interval = setInterval(poll, 60_000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, []);
+
+  const totalUnread = unreadCount + chatUnread;
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -583,9 +601,9 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
                 className="p-1.5 md:p-2 border border-slate-150 rounded-xl hover:bg-slate-50 hover:text-primary transition relative outline-none cursor-pointer"
               >
                 <Bell className="w-4 h-4 md:w-4.5 md:h-4.5 text-slate-500" />
-                {unreadCount > 0 && (
+                {totalUnread > 0 && (
                   <span className="absolute -top-0.5 -right-0.5 md:-top-1 md:-right-1 bg-red-500 text-white border-2 border-white rounded-full h-3.5 w-3.5 md:h-4.5 md:w-4.5 text-[7px] md:text-[8px] font-bold flex items-center justify-center">
-                    {unreadCount > 9 ? '9+' : unreadCount}
+                    {totalUnread > 9 ? '9+' : totalUnread}
                   </span>
                 )}
               </button>

@@ -627,18 +627,124 @@ router.post('/accounts/:id/sync', async (req: AuthenticatedRequest, res: Respons
   }
 });
 
-// Configure Multer for processing statements (up to 10MB)
+// Configure Multer for processing statements (up to 50MB for large multi-page files)
 const statementStorage = multer.memoryStorage();
 const uploadStatement = multer({
   storage: statementStorage,
-  limits: { fileSize: 10 * 1024 * 1024 }
+  limits: { fileSize: 50 * 1024 * 1024 }
 }).single('file');
 
-// POST upload manual bank statements with .csv or .pdf and parse transactions
+// ── Helpers ──
+
+/** Detect column indices from a header row using flexible matching */
+function detectCols(headers: string[]): { dateIdx: number; descIdx: number; depositIdx: number; withdrawalIdx: number; balanceIdx: number } {
+  const h = headers.map(h => h.toLowerCase().trim().replace(/[^a-z0-9]/g, ''));
+  const find = (keywords: string[], fallback: number) => {
+    const idx = h.findIndex(s => keywords.some(k => s.includes(k)));
+    return idx >= 0 ? idx : fallback;
+  };
+  return {
+    dateIdx:      find(['date', 'posting', 'value', 'transdate', 'txndate', 'tran date'], 0),
+    descIdx:      find(['description', 'narration', 'details', 'transaction', 'particulars', 'remark', 'reference', 'narrative'], 1),
+    depositIdx:   find(['deposit', 'credit', 'inflow', 'amountcr', 'cr', 'receipt'], -1),
+    withdrawalIdx: find(['withdrawal', 'debit', 'outflow', 'amountdr', 'dr', 'payment'], -1),
+    balanceIdx:   find(['balance', 'running', 'ledger', 'available', 'closing', 'new balance'], -1),
+  };
+}
+
+/** Try to parse a date from various formats */
+function parseDateStrict(raw: string): Date | null {
+  if (!raw?.trim()) return null;
+  const s = raw.trim();
+  // Try ISO first
+  let d = new Date(s);
+  if (!isNaN(d.getTime())) return d;
+  // DD/MM/YYYY or DD-MM-YYYY
+  const dm = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (dm) {
+    d = new Date(+dm[3], +dm[2] - 1, +dm[1]);
+    if (!isNaN(d.getTime())) return d;
+  }
+  // MM/DD/YYYY or MM-DD-YYYY
+  const mm = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (mm) {
+    d = new Date(+mm[3], +mm[1] - 1, +mm[2]);
+    if (!isNaN(d.getTime())) return d;
+  }
+  return null;
+}
+
+/** Parse a single numeric amount, handling parentheses for negatives */
+function parseAmountStrict(raw: string): number | null {
+  if (!raw?.trim()) return 0;
+  const s = raw.trim().replace(/[^0-9.\-()]/g, '');
+  if (!s) return 0;
+  const neg = s.includes('(') && s.includes(')') ? -1 : 1;
+  const v = parseFloat(s.replace(/[()]/g, ''));
+  return isNaN(v) ? null : v * neg;
+}
+
+/** Parse tab-separated or space-aligned text lines into structured rows */
+function parseTabularText(text: string): { date: string; description: string; deposit: number; withdrawal: number; balance: number }[] {
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const results: { date: string; description: string; deposit: number; withdrawal: number; balance: number }[] = [];
+
+  for (const line of lines) {
+    // Try pipe-delimited
+    if (line.includes('|')) {
+      const cols = line.split('|').map(c => c.trim()).filter(Boolean);
+      if (cols.length >= 3) {
+        const dateVal = parseDateStrict(cols[0]);
+        if (!dateVal) continue;
+        const rawDesc = cols.slice(1, -2).join(' ') || cols[1];
+        const amt = parseAmountStrict(cols[cols.length - 2]) ?? 0;
+        const bal = parseAmountStrict(cols[cols.length - 1]) ?? 0;
+        results.push({
+          date: dateVal.toISOString(),
+          description: rawDesc,
+          deposit: amt > 0 ? amt : 0,
+          withdrawal: amt < 0 ? Math.abs(amt) : 0,
+          balance: bal,
+        });
+        continue;
+      }
+    }
+
+    // Try whitespace-delimited with date at start
+    const dateMatch = line.match(/^(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/);
+    if (!dateMatch) continue;
+    const dateVal = parseDateStrict(dateMatch[1]);
+    if (!dateVal) continue;
+
+    // Extract amount and balance from end of line
+    const parts = line.split(/\s{2,}|\t+/);
+    if (parts.length >= 3) {
+      const lastNum = parseAmountStrict(parts[parts.length - 1]) ?? 0;
+      const secondLastNum = parseAmountStrict(parts[parts.length - 2]) ?? 0;
+      const desc = parts.slice(1, -2).join(' ') || parts[1] || '';
+      let deposit = 0, withdrawal = 0;
+      if (secondLastNum >= 0 && lastNum >= 0) {
+        // Both positive — deposit is the change amount
+        deposit = Math.abs(secondLastNum - (parseAmountStrict(parts[parts.length - 3]) ?? 0));
+        withdrawal = 0;
+      }
+      results.push({
+        date: dateVal.toISOString(),
+        description: desc,
+        deposit,
+        withdrawal,
+        balance: lastNum,
+      });
+    }
+  }
+  return results;
+}
+
+// POST upload manual bank statements — supports CSV, Excel, PDF, Word (up to 50MB)
 router.post('/accounts/:id/upload-statement', (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   uploadStatement(req, res, async (err) => {
     if (err) {
-      return next(new AppError(`File upload limit exceeded: ${err.message}`, 400));
+      return next(new AppError(`File upload error: ${err.message}`, 400));
     }
 
     try {
@@ -647,7 +753,7 @@ router.post('/accounts/:id/upload-statement', (req: AuthenticatedRequest, res: R
       const file = req.file;
 
       if (!file) {
-        throw new AppError('Statement file is required. Please upload a valid CSV or PDF document.', 400);
+        throw new AppError('Statement file is required. Please upload a CSV, Excel, PDF, or Word document.', 400);
       }
 
       const [ba] = await db
@@ -660,152 +766,328 @@ router.post('/accounts/:id/upload-statement', (req: AuthenticatedRequest, res: R
         throw new AppError('Bank account not found.', 404);
       }
 
-      let parsedTxns: any[] = [];
+      const rawRows: { date: Date; description: string; deposit: number; withdrawal: number; balance: number | null }[] = [];
       const fileName = file.originalname.toLowerCase();
+      const ext = fileName.split('.').pop() || '';
 
-      // 1. Process CSV Files
-      if (fileName.endsWith('.csv') || file.mimetype === 'text/csv' || file.mimetype === 'application/vnd.ms-excel') {
+      // ── Parse file content ──
+
+      // 1. CSV
+      if (ext === 'csv' || file.mimetype === 'text/csv' || file.mimetype === 'application/vnd.ms-excel') {
         const csvText = file.buffer.toString('utf-8');
-        const lines = csvText.split(/\r?\n/);
-        
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          
-          // Skip header lines
-          if (line.toLowerCase().includes('date') || line.toLowerCase().includes('narration') || line.toLowerCase().includes('balance')) {
-            continue;
-          }
+        let lines = csvText.split(/\r?\n/).map(l => l.trim()).filter(l => l);
+        if (lines.length < 2) throw new AppError('CSV file appears empty.', 400);
 
+        // Detect header row
+        const headerWords = ['date', 'description', 'narration', 'amount', 'deposit', 'withdrawal', 'balance', 'credit', 'debit', 'transaction', 'details'];
+        const headerIdx = lines.findIndex(l => headerWords.some(w => l.toLowerCase().includes(w)));
+
+        let colMap: ReturnType<typeof detectCols>;
+        if (headerIdx >= 0) {
+          const hCols = lines[headerIdx].split(',').map(c => c.replace(/^["']|["']$/g, '').trim());
+          colMap = detectCols(hCols);
+          lines.splice(0, headerIdx + 1); // remove header rows
+        } else {
+          colMap = { dateIdx: 0, descIdx: 1, depositIdx: -1, withdrawalIdx: -1, balanceIdx: -1 };
+        }
+
+        for (const line of lines) {
           const cols = line.split(',').map(c => c.replace(/^["']|["']$/g, '').trim());
           if (cols.length < 3) continue;
 
-          // Expect: Date, Narration, Amount, [Balance]
-          const rawDate = cols[0];
-          const narration = cols[1];
-          const rawAmount = cols[2];
-          const rawBalance = cols[3];
+          // Check if first column looks like a date
+          const dateVal = parseDateStrict(cols[colMap.dateIdx]);
+          if (!dateVal) continue;
 
-          const dateVal = new Date(rawDate);
-          if (isNaN(dateVal.getTime())) continue; // invalid date row
+          const description = (colMap.descIdx >= 0 && cols[colMap.descIdx]) || 'Statement line';
 
-          const amountVal = parseFloat(rawAmount);
-          if (isNaN(amountVal)) continue;
+          // Determine amount: use Deposit/Withdrawal columns if available, otherwise try a single Amount column
+          let deposit = 0, withdrawal = 0;
+          if (colMap.depositIdx >= 0 && cols[colMap.depositIdx]) {
+            deposit = parseAmountStrict(cols[colMap.depositIdx]) ?? 0;
+          }
+          if (colMap.withdrawalIdx >= 0 && cols[colMap.withdrawalIdx]) {
+            withdrawal = parseAmountStrict(cols[colMap.withdrawalIdx]) ?? 0;
+          }
+          if (colMap.depositIdx < 0 && colMap.withdrawalIdx < 0) {
+            // Try a single amount column at index 2
+            const amt = parseAmountStrict(cols[2]) ?? 0;
+            if (amt > 0) deposit = amt;
+            else withdrawal = Math.abs(amt);
+          }
 
-          parsedTxns.push({
+          if (deposit === 0 && withdrawal === 0) continue;
+
+          const balanceVal = colMap.balanceIdx >= 0 && cols[colMap.balanceIdx]
+            ? (parseAmountStrict(cols[colMap.balanceIdx]) ?? null)
+            : null;
+
+          rawRows.push({ date: dateVal, description, deposit, withdrawal, balance: balanceVal });
+        }
+      }
+
+      // 2. Excel (.xlsx, .xls)
+      else if (['xlsx', 'xls'].includes(ext) || file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || file.mimetype === 'application/vnd.ms-excel') {
+        const ExcelJS = await import('exceljs');
+        const wb = new ExcelJS.Workbook();
+        await wb.xlsx.load(file.buffer);
+        const ws = wb.worksheets[0];
+        if (!ws) throw new AppError('Excel file has no worksheets.', 400);
+
+        const allRows: string[][] = [];
+        ws.eachRow({ includeEmpty: false }, (row: any) => {
+          const vals: string[] = [];
+          row.eachCell((cell: any) => vals.push(cell.text?.trim() ?? ''));
+          if (vals.some(v => v)) allRows.push(vals);
+        });
+
+        if (allRows.length < 2) throw new AppError('Excel file appears empty.', 400);
+
+        // Detect header
+        const headerWords = ['date', 'description', 'narration', 'amount', 'deposit', 'withdrawal', 'balance', 'credit', 'debit', 'transaction'];
+        const headerIdx = allRows.findIndex(r => headerWords.some(w => r.some(c => c.toLowerCase().includes(w))));
+
+        let colMap: ReturnType<typeof detectCols>;
+        if (headerIdx >= 0) {
+          colMap = detectCols(allRows[headerIdx]);
+          allRows.splice(0, headerIdx + 1);
+        } else {
+          colMap = { dateIdx: 0, descIdx: 1, depositIdx: -1, withdrawalIdx: -1, balanceIdx: -1 };
+        }
+
+        for (const cols of allRows) {
+          if (cols.length < 3) continue;
+          const dateVal = parseDateStrict(cols[colMap.dateIdx]);
+          if (!dateVal) continue;
+
+          const description = (colMap.descIdx >= 0 && cols[colMap.descIdx]) || 'Statement line';
+
+          let deposit = 0, withdrawal = 0;
+          if (colMap.depositIdx >= 0 && cols[colMap.depositIdx]) {
+            deposit = parseAmountStrict(cols[colMap.depositIdx]) ?? 0;
+          }
+          if (colMap.withdrawalIdx >= 0 && cols[colMap.withdrawalIdx]) {
+            withdrawal = parseAmountStrict(cols[colMap.withdrawalIdx]) ?? 0;
+          }
+          if (colMap.depositIdx < 0 && colMap.withdrawalIdx < 0) {
+            const amt = parseAmountStrict(cols[2]) ?? 0;
+            if (amt > 0) deposit = amt;
+            else withdrawal = Math.abs(amt);
+          }
+
+          if (deposit === 0 && withdrawal === 0) continue;
+
+          const balanceVal = colMap.balanceIdx >= 0 && cols[colMap.balanceIdx]
+            ? (parseAmountStrict(cols[colMap.balanceIdx]) ?? null)
+            : null;
+
+          rawRows.push({ date: dateVal, description, deposit, withdrawal, balance: balanceVal });
+        }
+      }
+
+      // 3. Word (.docx)
+      else if (ext === 'docx' || file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+        const mammoth = await import('mammoth');
+        const result = await mammoth.extractRawText({ buffer: file.buffer });
+        const text = result.value;
+        if (!text.trim()) throw new AppError('Word document appears empty or unreadable.', 400);
+
+        // Try structured table extraction first
+        const tableResult = await mammoth.convertToHtml({ buffer: file.buffer });
+        const html = tableResult.value;
+
+        // Extract HTML tables
+        const tableRegex = /<table[^>]*>[\s\S]*?<\/table>/gi;
+        let tableMatch: RegExpExecArray | null;
+        let foundTableRows = false;
+
+        while ((tableMatch = tableRegex.exec(html)) !== null) {
+          const trRegex = /<tr[^>]*>[\s\S]*?<\/tr>/gi;
+          let trMatch: RegExpExecArray | null;
+          while ((trMatch = trRegex.exec(tableMatch[0])) !== null) {
+            const tdRegex = /<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi;
+            const cells: string[] = [];
+            let tdMatch: RegExpExecArray | null;
+            while ((tdMatch = tdRegex.exec(trMatch[0])) !== null) {
+              cells.push(tdMatch[1].replace(/<[^>]+>/g, '').trim());
+            }
+            if (cells.length >= 3) {
+              const dateVal = parseDateStrict(cells[0]);
+              if (!dateVal) continue;
+              const amt1 = parseAmountStrict(cells[cells.length - 2]) ?? 0;
+              const amt2 = parseAmountStrict(cells[cells.length - 1]) ?? 0;
+              const desc = cells.slice(1, -2).join(' ') || cells[1] || '';
+              rawRows.push({
+                date: dateVal,
+                description: desc,
+                deposit: amt1 > 0 ? amt1 : (amt2 > 0 ? 0 : 0),
+                withdrawal: amt1 < 0 ? Math.abs(amt1) : (amt2 < 0 ? Math.abs(amt2) : 0),
+                balance: null,
+              });
+              foundTableRows = true;
+            }
+          }
+        }
+
+        if (foundTableRows && rawRows.length > 0) {
+          // Tables worked; skip to write
+        } else {
+          // Fall back to raw text line-by-line parsing
+          const tabular = parseTabularText(text);
+          for (const row of tabular) {
+            const d = new Date(row.date);
+            rawRows.push({
+              date: d,
+              description: row.description,
+              deposit: row.deposit,
+              withdrawal: row.withdrawal,
+              balance: row.balance || null,
+            });
+          }
+        }
+      }
+
+      // 4. PDF
+      else if (ext === 'pdf' || file.mimetype === 'application/pdf') {
+        // Use pdfjs-dist to extract text from every page (no page limit)
+        const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
+        const doc = await pdfjsLib.getDocument({ data: new Uint8Array(file.buffer) }).promise;
+
+        let fullText = '';
+        for (let i = 1; i <= doc.numPages; i++) {
+          const page = await doc.getPage(i);
+          const content = await page.getTextContent();
+          for (const item of content.items as any[]) {
+            fullText += (item.str || '') + ' ';
+          }
+          fullText += '\n';
+        }
+
+        // Try structured table extraction via regex
+        // Bank statements often have lines starting with a date
+        const lines = fullText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+        const dateLike = /^(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/;
+
+        for (const line of lines) {
+          const dm = line.match(dateLike);
+          if (!dm) continue;
+          const dateVal = parseDateStrict(dm[1]);
+          if (!dateVal) continue;
+
+          // Extract numbers from the line
+          const numbers = line.match(/\d[\d,]*\.?\d*/g);
+          if (!numbers || numbers.length < 2) continue;
+
+          // Last two numbers are typically amount and balance, or just amount
+          const lastNum = parseFloat(numbers[numbers.length - 1].replace(/,/g, ''));
+          const secondLastNum = parseFloat(numbers[numbers.length - 2].replace(/,/g, ''));
+
+          // Determine which is amount and which is balance based on size
+          // Amount is usually the smaller non-zero, balance is the larger
+          const amt = Math.abs(lastNum - secondLastNum) > Math.min(lastNum, secondLastNum)
+            ? Math.min(lastNum, secondLastNum)
+            : Math.abs(lastNum - secondLastNum);
+
+          const balanceVal = Math.max(lastNum, secondLastNum);
+
+          // Reconstruct description (everything between date and the numbers)
+          const dateEnd = line.indexOf(dm[1]) + dm[1].length;
+          const descText = line.slice(dateEnd).replace(/\d[\d,]*\.?\d*/g, '').trim() || 'Statement line';
+
+          rawRows.push({
             date: dateVal,
-            description: narration || 'CSV Transactions Upload Line',
-            amountKobo: Math.round(Math.abs(amountVal) * 100),
-            type: amountVal >= 0 ? 'credit' : 'debit',
-            balanceKobo: rawBalance ? Math.round(parseFloat(rawBalance) * 100) : null
+            description: descText,
+            deposit: lastNum >= 0 && secondLastNum >= 0 ? Math.abs(lastNum - secondLastNum) : Math.abs(amt),
+            withdrawal: lastNum < 0 || secondLastNum < 0 ? Math.abs(lastNum < 0 ? lastNum : secondLastNum) : 0,
+            balance: balanceVal,
           });
         }
-      } 
-      // 2. Process PDF Files (Gemini Intelligent Extraction)
-      else if (fileName.endsWith('.pdf') || file.mimetype === 'application/pdf') {
-        const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-        if (GEMINI_API_KEY && GEMINI_API_KEY !== 'test') {
-          try {
-            // Import SDK dynamically as per guidelines
-            const { GoogleGenAI } = await import('@google/genai');
-            const ai = new GoogleGenAI({
-              apiKey: GEMINI_API_KEY,
-              httpOptions: { headers: { 'User-Agent': 'aistudio-build' } }
-            });
-
-            const prompt = `Extract all individual bank transactions from this bank statement document.
-Return ONLY valid JSON matching this schema:
+        // If pdfjs extracted nothing meaningful, try Gemini as fallback
+        if (rawRows.length === 0) {
+          const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+          if (GEMINI_API_KEY && GEMINI_API_KEY !== 'test') {
+            try {
+              const { GoogleGenAI } = await import('@google/genai');
+              const ai = new GoogleGenAI({
+                apiKey: GEMINI_API_KEY,
+                httpOptions: { headers: { 'User-Agent': 'aistudio-build' } }
+              });
+              const prompt = `Extract all transactions from this bank statement PDF. Return ONLY valid JSON:
 {
   "transactions": [
     {
       "date": "YYYY-MM-DD",
-      "description": "narration or description of payment",
-      "amount": number (positive for credits, negative for debits),
-      "balance": number (optional, final ledger balance after item)
+      "description": "transaction details",
+      "deposit": number (credit amount or 0),
+      "withdrawal": number (debit amount or 0),
+      "balance": number (running balance after transaction or 0)
     }
   ]
 }`;
-
-            const response = await ai.models.generateContent({
-              model: 'gemini-3.5-flash',
-              contents: [
-                {
-                  inlineData: {
-                    data: file.buffer.toString('base64'),
-                    mimeType: 'application/pdf'
-                  }
-                },
-                prompt
-              ]
-            });
-
-            const resText = response.text || '';
-            // Snip JSON blocks if present
-            const jsonText = resText.match(/\{[\s\S]*\}/)?.[0] || resText;
-            const parsedJson = JSON.parse(jsonText);
-            
-            if (parsedJson?.transactions && Array.isArray(parsedJson.transactions)) {
-              for (const tx of parsedJson.transactions) {
-                const amountVal = Number(tx.amount || 0);
-                const dateVal = tx.date ? new Date(tx.date) : new Date();
-
-                parsedTxns.push({
-                  date: dateVal,
-                  description: tx.description || 'Document Statement Line',
-                  amountKobo: Math.round(Math.abs(amountVal) * 100),
-                  type: amountVal >= 0 ? 'credit' : 'debit',
-                  balanceKobo: tx.balance ? Math.round(Number(tx.balance) * 100) : null
-                });
+              const response = await ai.models.generateContent({
+                model: 'gemini-3.5-flash',
+                contents: [{ inlineData: { data: file.buffer.toString('base64'), mimeType: 'application/pdf' } }, prompt]
+              });
+              const jsonText = (response.text || '').match(/\{[\s\S]*\}/)?.[0] || '';
+              const parsed = JSON.parse(jsonText);
+              if (parsed?.transactions) {
+                for (const tx of parsed.transactions) {
+                  const d = tx.date ? new Date(tx.date) : null;
+                  if (!d || isNaN(d.getTime())) continue;
+                  rawRows.push({
+                    date: d,
+                    description: tx.description || '',
+                    deposit: Math.abs(Number(tx.deposit) || 0),
+                    withdrawal: Math.abs(Number(tx.withdrawal) || 0),
+                    balance: Number(tx.balance) || null,
+                  });
+                }
               }
-            }
-          } catch (gemError) {
-            console.error('Gemini statement extractor error, falling back:', gemError);
-            // Fall back to robust mock generator beneath
-            parsedTxns = generateMockStatementLines();
+            } catch { /* Gemini fallback failed — will return error */ }
           }
-        } else {
-          // Robust demo mode extractor
-          parsedTxns = generateMockStatementLines();
         }
       } else {
-        throw new AppError('Unsupported format. Only .CSV and .PDF statements can be parsed.', 400);
+        throw new AppError(`Unsupported file format (.${ext}). Please upload CSV, Excel (.xlsx/.xls), PDF, or Word (.docx).`, 400);
       }
 
-      // If no lines parsed and we parsed nothing, generate realistic mock statement transactions
-      if (parsedTxns.length === 0) {
-        parsedTxns = generateMockStatementLines();
+      // ── Guard: require at least one parsed row ──
+      if (rawRows.length === 0) {
+        throw new AppError('Could not parse any transactions from the file. Check that the file contains a table with date, amount, and description columns.', 400);
       }
 
-      // 3. Write parsed lines to database
+      // ── Write to bank_transactions ──
       let insertedCount = 0;
+      const ts = Date.now();
+      for (const row of rawRows) {
+        const amountKobo = Math.round(Math.max(row.deposit, row.withdrawal) * 100);
+        const txnType = row.withdrawal > 0 ? 'debit' : 'credit';
+        const monoTxId = `uploaded_stmt_${ts}_${Math.random().toString(36).substring(2, 6)}_${insertedCount}`;
 
-      for (const tx of parsedTxns) {
-        // Double check matching duplicate preventing key values
-        const randomHash = Math.random().toString(36).substring(2, 6);
-        const monoTxId = `uploaded_stmt_${Date.now()}_${randomHash}_${insertedCount}`;
-
-        // Insert bank transaction
         await db.insert(bankTransactions).values({
           bankAccountId: ba.id,
-          orgId: orgId,
-          date: tx.date,
-          description: tx.description,
-          amount: tx.amountKobo,
-          type: tx.type,
-          balanceAfter: tx.balanceKobo || (ba.currentBalance || 0) + (tx.type === 'credit' ? tx.amountKobo : -tx.amountKobo),
+          orgId,
+          date: row.date,
+          description: row.description || 'Statement line',
+          amount: amountKobo,
+          type: txnType,
+          balanceAfter: row.balance !== null ? Math.round(row.balance * 100) : null,
           reference: `STMT-${Math.floor(100000 + Math.random() * 900000)}`,
           status: 'unreconciled',
-          monoTransactionId: monoTxId
+          monoTransactionId: monoTxId,
         });
-
         insertedCount++;
       }
 
-      await createAuditLog({ orgId, userId: req.user!.userId, action: 'upload', entityType: 'bank-account', entityId: id, newValues: { statementUploaded: true }, ...extractReqMeta(req) });
+      await createAuditLog({
+        orgId, userId: req.user!.userId, action: 'upload', entityType: 'bank-account', entityId: id,
+        newValues: { statementUploaded: true, transactionsParsed: insertedCount },
+        ...extractReqMeta(req)
+      });
 
       return res.status(200).json({
         success: true,
-        message: `Successfully processed statement! Extracted and wrote ${insertedCount} transactions to SkyBooks ledger.`,
+        message: `Successfully processed statement! Extracted ${insertedCount} transactions.`,
         transactionsParsed: insertedCount,
       });
 

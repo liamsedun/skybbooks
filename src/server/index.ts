@@ -275,6 +275,13 @@ async function startServer() {
         };
 
         io.to(`conv:${data.conversationId}`).emit('chat:message', payload);
+
+        // Emit notification to the org room so non-active viewers see the badge
+        io.to(orgRoom).emit('chat:notification', {
+          conversationId: payload.conversationId,
+          userName: payload.userName,
+          message: payload.message,
+        });
       } catch (err) {
         logger.error('[Chat] Error saving message:', err);
         socket.emit('chat:error', { error: 'Failed to send message' });
