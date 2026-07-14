@@ -61,20 +61,43 @@ router.get('/conversations', async (req: AuthenticatedRequest, res: Response, ne
     }
 
     // Batch unread count via single query
-    const unreadRows = await db.execute(sql`
-      SELECT
-        m.conversation_id,
-        COUNT(*)::int AS cnt
-      FROM chat_messages m
-      LEFT JOIN chat_read_markers r
-        ON r.conversation_id = m.conversation_id AND r.user_id = ${userId}
-      WHERE m.conversation_id = ANY(${convIds}::uuid[])
-        AND (r.last_read_at IS NULL OR m.created_at > r.last_read_at)
-      GROUP BY m.conversation_id
-    `);
+    let unreadRows: any = { rows: [] };
+    if (convIds.length > 0) {
+      try {
+        const unreadSql = sql`
+          SELECT
+            m.conversation_id,
+            COUNT(*)::int AS cnt
+          FROM chat_messages m
+          LEFT JOIN chat_read_markers r
+            ON r.conversation_id = m.conversation_id AND r.user_id = ${userId}
+          WHERE m.conversation_id = ANY(${convIds}::uuid[])
+            AND (r.last_read_at IS NULL OR m.created_at > r.last_read_at)
+          GROUP BY m.conversation_id
+        `;
+        unreadRows = await db.execute(unreadSql);
+      } catch (e) {
+        console.error('[Chat] Batch unread query failed, falling back to per-conversation:', e);
+        // Fallback: query per conversation
+        const markers = await db
+          .select()
+          .from(chatReadMarkers)
+          .where(eq(chatReadMarkers.userId, userId));
+        const readMap = new Map<string, Date>();
+        for (const m of markers) readMap.set(m.conversationId, m.lastReadAt);
+        const results = await Promise.all(convIds.map(async (cid) => {
+          const lastRead = readMap.get(cid);
+          const [row] = lastRead
+            ? await db.select({ cnt: sql<number>`count(*)::int` }).from(chatMessages).where(and(eq(chatMessages.conversationId, cid), sql`created_at > ${lastRead}`))
+            : await db.select({ cnt: sql<number>`count(*)::int` }).from(chatMessages).where(eq(chatMessages.conversationId, cid));
+          return { conversation_id: cid, cnt: Number(row?.cnt || 0) };
+        }));
+        unreadRows = { rows: results };
+      }
+    }
 
     const unreadCounts = new Map<string, number>();
-    for (const row of unreadRows.rows || []) {
+    for (const row of (unreadRows as any).rows || []) {
       unreadCounts.set(row.conversation_id, Number(row.cnt || 0));
     }
     // Ensure every conversation has an entry
