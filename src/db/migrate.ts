@@ -946,8 +946,9 @@ export async function runMigration() {
       `);
       if (pairs.rows.length > 0) {
         const allIds = pairs.rows.flatMap((r: any) => [r.rev_id, r.orig_id]);
-        const lineDel = await db.execute(sql`DELETE FROM journal_lines WHERE entry_id = ANY(${allIds}::uuid[])`);
-        const entryDel = await db.execute(sql`DELETE FROM journal_entries WHERE id = ANY(${allIds}::uuid[])`);
+        const idsParam = sql.join(allIds.map((id: string) => sql`${id}::uuid`), sql`, `);
+        const lineDel = await db.execute(sql`DELETE FROM journal_lines WHERE entry_id IN (${idsParam})`);
+        const entryDel = await db.execute(sql`DELETE FROM journal_entries WHERE id IN (${idsParam})`);
         console.log(`[Migration] Cleaned up ${pairs.rows.length} payroll reversal pair(s): ${lineDel.rowCount} line(s), ${entryDel.rowCount} entry(ies) deleted.`);
       } else {
         console.log('[Migration] No old payroll reversal pairs found.');
