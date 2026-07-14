@@ -619,14 +619,19 @@ export async function unapprovePayroll(runId: string, userId: string): Promise<a
     }
 
     // Delete the journal entry and its lines entirely (clean removal)
+    // Must nullify the run's FK first to avoid FK violation
+    await tx.update(payrollRuns)
+      .set({ status: 'draft', journalEntryId: null })
+      .where(eq(payrollRuns.id, runId));
+
     await tx.delete(journalLines).where(eq(journalLines.entryId, run.journalEntryId));
     await tx.delete(journalEntries).where(eq(journalEntries.id, run.journalEntryId));
 
     const [updatedRun] = await tx
-      .update(payrollRuns)
-      .set({ status: 'draft', journalEntryId: null })
+      .select()
+      .from(payrollRuns)
       .where(eq(payrollRuns.id, runId))
-      .returning();
+      .limit(1);
 
     return { run: updatedRun };
   });
