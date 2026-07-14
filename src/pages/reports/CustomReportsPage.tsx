@@ -1,5 +1,5 @@
-import React, { useState, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { BarChart3, TrendingUp, Users, Building2, Package, Wrench, DollarSign, Landmark, BookOpen, FileText, ChevronDown, Download, Loader2, Search, Calendar, ExternalLink, ArrowRight, Filter, ChevronRight, PieChart, Receipt, Banknote, Target, Sparkles } from 'lucide-react';
 import { customReportsApi } from '../../lib/api';
 import { exportToCsv } from '../../lib/csvTemplates';
@@ -128,8 +128,9 @@ function getSourceLink(source: string, sourceId: string): { path: string; label:
 
 export function CustomReportsPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { startDate, endDate, setStartDate, setEndDate } = useDateRange();
-  const [activeReport, setActiveReport] = useState<string | null>(null);
+  const [activeReport, setActiveReport] = useState<string | null>(() => searchParams.get('report') || null);
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['customers', 'suppliers', 'tax']));
@@ -170,6 +171,14 @@ export function CustomReportsPage() {
     const link = getSourceLink(source || '', sourceId || '');
     if (link) navigate(link.path);
   };
+
+  const autoFetched = useRef(false);
+  useEffect(() => {
+    if (activeReport && !autoFetched.current) {
+      autoFetched.current = true;
+      fetchReport(activeReport);
+    }
+  }, [activeReport, fetchReport]);
 
   const renderTable = useCallback((reportId: string) => {
     if (loading) return <div className="flex items-center justify-center py-24"><div className="flex flex-col items-center gap-3"><Loader2 className="w-8 h-8 animate-spin text-indigo-600" /><span className="text-sm text-slate-400">Loading report data...</span></div></div>;
