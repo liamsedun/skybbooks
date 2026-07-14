@@ -1844,7 +1844,15 @@ export async function getStatementOfChangesInEquity(
 
   function fyStart(anchor: Date): Date {
     const y = anchor.getFullYear();
-    return fyStr ? new Date(`${fyStr} ${y}`) : new Date(`${y}-01-01`);
+    if (fyStr) {
+      const parts = fyStr.split('-');
+      if (parts.length >= 2) {
+        const month = parts[parts.length - 2].padStart(2, '0');
+        const day = parts[parts.length - 1].padStart(2, '0');
+        return new Date(`${y}-${month}-${day}`);
+      }
+    }
+    return new Date(`${y}-01-01`);
   }
 
   const currentYearStart = fyStart(yearEndDate);

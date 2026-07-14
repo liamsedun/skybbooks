@@ -568,7 +568,8 @@ router.get(
         const buffer = await generateStatementOfChangesInEquityPDF(orgId, asOfDate, compareAsOf);
         return sendFileBuffer(res, buffer, 'application/pdf', 'statement_of_changes_in_equity.pdf', true);
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error('[SOCIE] Error:', error?.message, error?.stack, error?.cause);
       next(error);
     }
   }
