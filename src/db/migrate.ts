@@ -931,9 +931,32 @@ export async function runMigration() {
     `);
     console.log('[Migration] Added live_gl_start_fiscal_year and legacy_system_name columns to organisations.');
 
+    // Clean up old payroll reversal entry pairs (original + reversal) that accumulated
+    // before unapprove was changed to hard-delete JEs instead of creating reversals.
+    try {
+      const pairs = await db.execute(sql`
+        SELECT rev.id AS rev_id, orig.id AS orig_id
+        FROM journal_entries rev
+        JOIN journal_entries orig ON rev.reference = orig.entry_number AND rev.org_id = orig.org_id
+        WHERE rev.source = 'payroll'
+          AND rev.description LIKE 'Reversal of%'
+          AND orig.source = 'payroll'
+      `);
+      if (pairs.rows.length > 0) {
+        const allIds = pairs.rows.flatMap((r: any) => [r.rev_id, r.orig_id]);
+        const lineDel = await db.execute(sql`DELETE FROM journal_lines WHERE entry_id = ANY(${allIds}::uuid[])`);
+        const entryDel = await db.execute(sql`DELETE FROM journal_entries WHERE id = ANY(${allIds}::uuid[])`);
+        console.log(`[Migration] Cleaned up ${pairs.rows.length} payroll reversal pair(s): ${lineDel.rowCount} line(s), ${entryDel.rowCount} entry(ies) deleted.`);
+      } else {
+        console.log('[Migration] No old payroll reversal pairs found.');
+      }
+    } catch (cleanupErr) {
+      console.error('[Migration] Payroll reversal cleanup error (non-fatal):', cleanupErr);
+    }
+
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
-    console.error('[Migration] Failed to connect or run schema push:', err);
+    console.error('[Migration] Failed to connect or run schema setup:', err);
   } finally {
     await pool.end();
   }
