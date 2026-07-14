@@ -24,6 +24,8 @@ export default function EmailSettingsPage() {
 
   const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
 
+  const isHttp = form.protocol === 'http';
+
   useEffect(() => {
     emailSettingsApi.get()
       .then(res => {
@@ -69,14 +71,18 @@ export default function EmailSettingsPage() {
     setTesting(true);
     setMessage(null);
     try {
-      const res = await emailSettingsApi.test({
-        hostname: form.hostname,
-        port: form.port,
-        username: form.username,
-        password: form.password,
+      const payload: any = {
+        protocol: form.protocol,
         email: form.email,
-        doNotVerifyTls: form.doNotVerifyTls,
-      });
+      };
+      if (form.protocol === 'smtp') {
+        payload.hostname = form.hostname;
+        payload.port = form.port;
+        payload.username = form.username;
+        payload.password = form.password;
+        payload.doNotVerifyTls = form.doNotVerifyTls;
+      }
+      const res = await emailSettingsApi.test(payload);
       setMessage({ type: 'success', text: res.data.message || 'Test email sent!' });
     } catch (err: any) {
       console.error('[TestEmail]', err?.response?.data || err?.message || err);
@@ -117,7 +123,7 @@ export default function EmailSettingsPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-lg font-extrabold text-slate-900">Email Settings</h1>
-          <p className="text-xs text-slate-400 mt-0.5">Configure your SMTP server to send emails from SkyBooks</p>
+          <p className="text-xs text-slate-400 mt-0.5">Configure how SkyBooks sends emails on your behalf</p>
         </div>
         <button
           onClick={() => setShowHelp(!showHelp)}
@@ -130,44 +136,20 @@ export default function EmailSettingsPage() {
       {/* Help documentation */}
       {showHelp && (
         <div className="mb-6 bg-blue-50 border border-blue-200/60 rounded-2xl p-5 text-xs text-slate-700 space-y-3 max-h-96 overflow-y-auto">
-          <h3 className="font-extrabold text-sm text-blue-900">SMTP Setup Guide</h3>
-          <p>The SMTP server form connects SkyBooks to your email provider's outgoing mail server. SMTP (Simple Mail Transfer Protocol) is the standard technology used for sending emails across the internet.</p>
-          <p>You'll need to obtain SMTP server details from your email provider to complete this setup.</p>
+          <h3 className="font-extrabold text-sm text-blue-900">Email Setup Guide</h3>
+          <p>SkyBooks supports two protocols for sending emails:</p>
 
-          <h4 className="font-bold text-blue-800 mt-3">Protocol</h4>
-          <p>Supports two protocols: <strong>HTTP</strong> and <strong>SMTP</strong>. SMTP is recommended for most setups.</p>
+          <h4 className="font-bold text-blue-800 mt-3">HTTP (Built-in) — Recommended</h4>
+          <p>No configuration needed. Emails are sent through SkyBooks' built-in email service using Resend. Your recipients will see emails from <strong>"Your Org via SkyBooks"</strong> and replies will come to the email address you set below.</p>
+          <p>This works on all hosting providers since it uses HTTPS (port 443), never blocked.</p>
 
-          <h4 className="font-bold text-blue-800">SMTP Server</h4>
-          <p>Enter the hostname of your SMTP server. Examples: <code className="bg-blue-100 px-1 rounded">smtp.gmail.com</code>, <code className="bg-blue-100 px-1 rounded">smtp.mail.yahoo.com</code>, <code className="bg-blue-100 px-1 rounded">smtp.office365.com</code>.</p>
+          <h4 className="font-bold text-blue-800">SMTP (Custom Server)</h4>
+          <p>Use your own SMTP server (e.g. Gmail, Outlook). You'll need to enter your server hostname, port, and credentials. Note: some cloud hosts block outbound SMTP ports (25, 465, 587) on free tiers.</p>
 
-          <h4 className="font-bold text-blue-800">Port</h4>
-          <p>Port 465 (SSL) or 587 (TLS) are recommended for secure connections. Port 25 is unencrypted.</p>
-
-          <h4 className="font-bold text-blue-800">SMTP Credentials</h4>
-          <p><strong>Username</strong> is the name you use to log in with your email provider. <strong>Email address</strong> is the sending address. <strong>Password</strong> — some providers require app-specific passwords (see below).</p>
-
-          <h4 className="font-bold text-blue-800">Gmail Users</h4>
-          <ol className="list-decimal pl-4 space-y-1">
-            <li>Enable 2-step verification in your Google account settings</li>
-            <li>Generate an app-specific password (Google Account → Security → App passwords)</li>
-            <li>Use this app-specific password instead of your regular Gmail password</li>
-            <li>Set SMTP server to <code className="bg-blue-100 px-1 rounded">smtp.gmail.com</code> and port 587 with TLS</li>
-          </ol>
-
-          <h4 className="font-bold text-blue-800">Yahoo Mail Users</h4>
-          <ol className="list-decimal pl-4 space-y-1">
-            <li>Go to Yahoo Account Security (<code className="bg-blue-100 px-1 rounded">https://login.yahoo.com/account/security</code>)</li>
-            <li>Click 'Generate app password' under 'Account Security'</li>
-            <li>Select 'Other app' and enter 'SkyBooks' as the app name</li>
-            <li>Use the generated password with <code className="bg-blue-100 px-1 rounded">smtp.mail.yahoo.com</code> on port 587 or 465</li>
-          </ol>
-
-          <h4 className="font-bold text-blue-800">Troubleshooting</h4>
+          <h4 className="font-bold text-blue-800">Setup Tips</h4>
           <ul className="list-disc pl-4 space-y-1">
-            <li>Double-check your SMTP server address, port number, and authentication settings</li>
-            <li>Verify your username and password are correct (some providers require app-specific passwords)</li>
-            <li>Ensure your firewall or antivirus isn't blocking the SMTP connection</li>
-            <li>Test the same settings in another email client like Outlook or Thunderbird to isolate the issue</li>
+            <li><strong>Email address</strong> is used as the Reply-To for HTTP mode and as the sender for SMTP mode</li>
+            <li><strong>Send a copy</strong> archives all outgoing org emails to a secondary address</li>
           </ul>
         </div>
       )}
@@ -176,98 +158,149 @@ export default function EmailSettingsPage() {
         {/* Protocol */}
         <div className="p-5">
           <label className="block text-xs font-bold text-slate-700 mb-1">Protocol</label>
-          <select
-            value={form.protocol}
-            onChange={e => update('protocol', e.target.value)}
-            className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300"
-          >
-            <option value="smtp">SMTP</option>
-            <option value="http">HTTP</option>
-          </select>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => update('protocol', 'http')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all ${
+                isHttp
+                  ? 'bg-indigo-600 text-white border-indigo-600'
+                  : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+              }`}
+            >
+              HTTP (Built-in)
+            </button>
+            <button
+              type="button"
+              onClick={() => update('protocol', 'smtp')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all ${
+                !isHttp
+                  ? 'bg-indigo-600 text-white border-indigo-600'
+                  : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+              }`}
+            >
+              SMTP (Custom Server)
+            </button>
+          </div>
+          {isHttp && (
+            <p className="text-[10px] text-emerald-600 mt-1.5 font-semibold">
+              Emails sent via SkyBooks built-in service — no setup required.
+            </p>
+          )}
         </div>
 
-        {/* SMTP Server */}
-        <div className="p-5 space-y-4">
-          <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">SMTP Server</h3>
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Hostname</label>
-            <input
-              type="text"
-              value={form.hostname}
-              onChange={e => update('hostname', e.target.value)}
-              placeholder="smtp.gmail.com"
-              className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Port</label>
-            <div className="flex gap-2">
-              {portOptions.map(opt => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => update('port', opt.value)}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all ${
-                    form.port === opt.value
-                      ? 'bg-indigo-600 text-white border-indigo-600'
-                      : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
+        {/* SMTP-only sections */}
+        {!isHttp && (
+          <>
+            <div className="p-5 space-y-4">
+              <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">SMTP Server</h3>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Hostname</label>
+                <input
+                  type="text"
+                  value={form.hostname}
+                  onChange={e => update('hostname', e.target.value)}
+                  placeholder="smtp.gmail.com"
+                  className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Port</label>
+                <div className="flex gap-2">
+                  {portOptions.map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => update('port', opt.value)}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all ${
+                        form.port === opt.value
+                          ? 'bg-indigo-600 text-white border-indigo-600'
+                          : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
 
-        {/* SMTP Credentials */}
+            <div className="p-5 space-y-4">
+              <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">SMTP Credentials</h3>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Username</label>
+                <input
+                  type="text"
+                  value={form.username}
+                  onChange={e => update('username', e.target.value)}
+                  placeholder="olalekan.edun"
+                  autoComplete="username"
+                  className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Password</label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={form.password}
+                    onChange={e => update('password', e.target.value)}
+                    placeholder="Enter SMTP password"
+                    autoComplete="current-password"
+                    className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.doNotVerifyTls}
+                    onChange={e => update('doNotVerifyTls', e.target.checked)}
+                    className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <div>
+                    <span className="text-xs font-semibold text-slate-700">Do not verify TLS certificate</span>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Only enable if using self-signed certificates on your own mail server</p>
+                  </div>
+                </label>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Email address (shared — used as Reply-To for HTTP, sender for SMTP) */}
         <div className="p-5 space-y-4">
-          <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">SMTP Credentials</h3>
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Username</label>
-            <input
-              type="text"
-              value={form.username}
-              onChange={e => update('username', e.target.value)}
-              placeholder="olalekan.edun"
-              autoComplete="username"
-              className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300"
-            />
-          </div>
+          <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">
+            {isHttp ? 'Reply-To Email' : 'Sender Email'}
+          </h3>
+          <p className="text-[10px] text-slate-400 -mt-2">
+            {isHttp
+              ? 'Replies from your recipients will go to this address. Emails are sent from the SkyBooks platform address.'
+              : 'This address will appear as the sender of outgoing emails.'}
+          </p>
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1">Email address</label>
             <input
               type="email"
               value={form.email}
               onChange={e => update('email', e.target.value)}
-              placeholder="olalekan.edun@gmail.com"
+              placeholder="you@example.com"
               autoComplete="email"
               className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300"
             />
           </div>
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Password</label>
-            <div className="relative">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={form.password}
-                onChange={e => update('password', e.target.value)}
-                placeholder="Enter SMTP password"
-                autoComplete="current-password"
-                className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 pr-10"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-              >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-          </div>
         </div>
 
-        {/* Additional Options */}
+        {/* Additional Options (shared) */}
         <div className="p-5 space-y-4">
           <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">Additional Options</h3>
 
@@ -307,23 +340,6 @@ export default function EmailSettingsPage() {
           )}
         </div>
 
-        {/* Security */}
-        <div className="p-5">
-          <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider mb-3">Security</h3>
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={form.doNotVerifyTls}
-              onChange={e => update('doNotVerifyTls', e.target.checked)}
-              className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-            />
-            <div>
-              <span className="text-xs font-semibold text-slate-700">Do not verify TLS certificate</span>
-              <p className="text-[10px] text-slate-400 mt-0.5">Only enable if using self-signed certificates on your own mail server</p>
-            </div>
-          </label>
-        </div>
-
         {/* Message */}
         {message && (
           <div className={`px-5 pb-2 ${message.type === 'success' ? 'text-emerald-700' : message.type === 'error' ? 'text-rose-700' : 'text-blue-700'}`}>
@@ -354,11 +370,11 @@ export default function EmailSettingsPage() {
             <button
               type="button"
               onClick={handleTest}
-              disabled={testing || !form.hostname || !form.email}
+              disabled={testing || !form.email || (!isHttp && !form.hostname)}
               className="px-4 py-2.5 text-xs font-bold text-indigo-600 border border-indigo-200 rounded-xl hover:bg-indigo-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
             >
               {testing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-              Test Email Settings
+              {isHttp ? 'Send Test via Resend' : 'Test Email Settings'}
             </button>
 
             <button
