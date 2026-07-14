@@ -89,7 +89,7 @@ const listTransactionsQuerySchema = z.object({
   status: z.enum(['reconciled', 'unreconciled', 'all']).default('all'),
   type: z.enum(['debit', 'credit', 'all']).default('all'),
   search: z.string().optional(),
-  limit: z.string().optional().transform((val) => val ? Math.min(parseInt(val), 100) : 50),
+  limit: z.string().optional().transform((val) => val ? Math.min(parseInt(val), 3000) : 100),
   offset: z.string().optional().transform((val) => val ? parseInt(val) : 0)
 });
 
