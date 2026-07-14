@@ -1066,6 +1066,11 @@ export const reportsApi = {
     const res = await api.get('/reports/dashboard-summary', { params });
     return res.data;
   },
+  getStatementOfChangesInEquity: async (params: { asOfDate: string; compareAsOf?: string; format?: 'json' | 'pdf' | 'excel' }) => {
+    const isBinary = params.format === 'pdf' || params.format === 'excel';
+    const res = await api.get('/reports/statement-of-changes-in-equity', { params, responseType: isBinary ? 'blob' : undefined });
+    return res.data;
+  },
 };
 
 // 9a. Legacy / Migration Endpoints

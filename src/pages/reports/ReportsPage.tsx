@@ -54,7 +54,7 @@ function getAccountModuleLink(code: string, accountId?: string): { path: string;
   return null;
 }
 
-type ReportType = 'trial-balance' | 'income-statement' | 'balance-sheet' | 'cash-flow' | 'aged-receivables' | 'aged-payables';
+type ReportType = 'trial-balance' | 'income-statement' | 'balance-sheet' | 'cash-flow' | 'aged-receivables' | 'aged-payables' | 'statement-of-changes-in-equity';
 
 interface ReportPageProps {
   reportType: ReportType;
@@ -511,6 +511,9 @@ export function BalanceSheetPage() {
 }
 export function CashFlowPage() {
   return <ReportShell reportType="cash-flow" title="Cash Flow Statement" />;
+}
+export function StatementOfChangesInEquityPage() {
+  return <ReportShell reportType="statement-of-changes-in-equity" title="Statement of Changes in Equity" />;
 }
 export function AgedReceivablesPage() {
   return <ReportShell reportType="aged-receivables" title="Aged Receivables" />;
@@ -1508,8 +1511,10 @@ function ReportShell({ reportType, title }: ReportPageProps) {
   const [cfShowCodes, setCfShowCodes] = useState(() => localStorage.getItem('cf_showCodes') === 'true');
 
   const isBalanceSheet = reportType === 'balance-sheet';
+  const isSocie = reportType === 'statement-of-changes-in-equity';
   const isAgedReport = reportType === 'aged-receivables' || reportType === 'aged-payables';
   const isComparativeReport = !isAgedReport;
+  const isAsOfDateReport = isBalanceSheet || isSocie;
 
   const defaultCompare = getDefaultCompareDates(sDate, eDate);
   const defaultBSCompare = getDefaultCompareAsOf(asOfDate);
@@ -1536,10 +1541,12 @@ function ReportShell({ reportType, title }: ReportPageProps) {
   const { data, isLoading, error } = useQuery({
     queryKey: ['report', reportType, sDate, eDate, asOfDate, compareEnabled, compareSDate, compareEDate, compareAsOf],
     queryFn: async () => {
-      if (isBalanceSheet) {
+      if (isBalanceSheet || isSocie) {
         const params: any = { asOfDate, format: 'json' };
         if (compareEnabled) params.compareAsOf = compareAsOf;
-        const res = await reportsApi.getBalanceSheet(params);
+        const res = isBalanceSheet
+          ? await reportsApi.getBalanceSheet(params)
+          : await reportsApi.getStatementOfChangesInEquity(params);
         return res.data || res;
       }
       if (isAgedReport) {
@@ -1692,6 +1699,20 @@ function ReportShell({ reportType, title }: ReportPageProps) {
         if (reportType === 'aged-receivables' || reportType === 'aged-payables') {
           headers = ['Name', 'Current', '1-30 Days', '31-60 Days', '61-90 Days', '90+ Days', 'Total'];
           csvRows = rows.map((r: any) => [r.name || r.customerName || r.vendorName || '', (r.current/100).toFixed(2), (r.days1to30/100).toFixed(2), (r.days31to60/100).toFixed(2), (r.days61to90/100).toFixed(2), (r.days90Plus/100).toFixed(2), (r.total/100).toFixed(2)]);
+        } else if (reportType === 'statement-of-changes-in-equity') {
+          const socie = data?.data || data || {};
+          const cy = socie.currentYear;
+          if (!cy) { headers = []; csvRows = []; return; }
+          const colKeys = cy.columns.map((c: any) => c.key);
+          const colLabels = cy.columns.map((c: any) => c.label);
+          headers = ['', ...colLabels, 'Total'];
+          const rowTotal = (row: any) => colKeys.reduce((t: number, k: string) => t + (row.columns[k] || 0), 0);
+          csvRows = cy.rows.map((r: any) => [r.label, ...colKeys.map((k: string) => ((r.columns[k] || 0) / 100).toFixed(2)), (rowTotal(r) / 100).toFixed(2)]);
+          if (socie.priorYear) {
+            csvRows.push(['']);
+            csvRows.push([`${socie.priorYear.yearLabel}`, ...colKeys.map(() => ''), '']);
+            socie.priorYear.rows.forEach((r: any) => csvRows.push([r.label, ...colKeys.map((k: string) => ((r.columns[k] || 0) / 100).toFixed(2)), (rowTotal(r) / 100).toFixed(2)]));
+          }
         } else if (reportType === 'cash-flow') {
           const cf = data?.data || data || {};
           headers = ['Line Item', 'Amount'];
@@ -1962,6 +1983,36 @@ function ReportShell({ reportType, title }: ReportPageProps) {
             </table>`,
             `Period: ${sDate} - ${eDate}`
           );
+        } else if (reportType === 'statement-of-changes-in-equity') {
+          const socie = data?.data || data || {};
+          const cy = socie.currentYear;
+          const fmtPdf = (v: number) => v < 0 ? `(₦${(Math.abs(v)/100).toLocaleString()})` : `₦${(v/100).toLocaleString()}`;
+          let pdfSocieHtml = '';
+          if (cy) {
+            const colKeys = cy.columns.map((c: any) => c.key);
+            const colLabels = cy.columns.map((c: any) => c.label);
+            const rowTotal = (row: any) => colKeys.reduce((t: number, k: string) => t + (row.columns[k] || 0), 0);
+            const th = `<th style="padding:6px 10px;font-size:10px;font-weight:600;color:#64748b;text-align:left;text-transform:uppercase"></th>${colLabels.map((l: string) => `<th style="padding:6px 10px;font-size:10px;font-weight:600;color:#64748b;text-align:right;text-transform:uppercase">${l}</th>`).join('')}<th style="padding:6px 10px;font-size:10px;font-weight:600;color:#64748b;text-align:right;text-transform:uppercase">Total</th>`;
+            const tr = cy.rows.map((r: any) => `<tr style="border-top:1px solid #f1f5f9"><td style="padding:5px 10px;font-size:11px">${r.label}</td>${colKeys.map((k: string) => `<td style="padding:5px 10px;font-size:11px;text-align:right;font-family:monospace">${fmtPdf(r.columns[k] || 0)}</td>`).join('')}<td style="padding:5px 10px;font-size:11px;text-align:right;font-weight:600;font-family:monospace">${fmtPdf(rowTotal(r))}</td></tr>`).join('');
+            pdfSocieHtml = `<table style="width:100%;border-collapse:collapse"><thead><tr style="background:#f8fafc">${th}</tr></thead><tbody>${tr}</tbody></table>`;
+            if (socie.priorYear) {
+              const pyTr = socie.priorYear.rows.map((r: any) => `<tr style="border-top:1px solid #f1f5f9"><td style="padding:5px 10px;font-size:11px">${r.label}</td>${colKeys.map((k: string) => `<td style="padding:5px 10px;font-size:11px;text-align:right;font-family:monospace">${fmtPdf(r.columns[k] || 0)}</td>`).join('')}<td style="padding:5px 10px;font-size:11px;text-align:right;font-weight:600;font-family:monospace">${fmtPdf(rowTotal(r))}</td></tr>`).join('');
+              pdfSocieHtml += `<br/><div style="background:#fffbeb;padding:6px 10px;font-size:11px;font-weight:700;color:#92400e">Prior Year — ${socie.priorYear.yearLabel}</div><table style="width:100%;border-collapse:collapse"><thead><tr style="background:#f8fafc">${th}</tr></thead><tbody>${pyTr}</tbody></table>`;
+            }
+          }
+          const orgSocie = (orgData as any)?.data || orgData || {};
+          printWindow('Statement of Changes in Equity',
+            `<div style="text-align:center;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #e2e8f0">
+              ${orgSocie.logoUrl ? `<img src="${orgSocie.logoUrl}" style="max-height:60px;max-width:200px;object-fit:contain" />` : ''}
+              <h1 style="margin:4px 0;font-size:18px;color:#0f172a">${orgSocie.name || ''}</h1>
+              ${orgSocie.address ? `<p style="margin:0;font-size:11px;color:#475569">${orgSocie.address}</p>` : ''}
+              <p style="margin:2px 0;font-size:11px;color:#64748b">${[orgSocie.phone, orgSocie.email, orgSocie.website].filter(Boolean).join(' | ')}</p>
+            </div>
+            <h2 style="font-size:16px;color:#0f172a;margin:0 0 8px">Statement of Changes in Equity</h2>
+            <p style="font-size:11px;color:#64748b;margin:0 0 12px">As of ${asOfDate} &bull; Generated: ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+            ${pdfSocieHtml}`,
+            `As of ${asOfDate}`
+          );
         } else if (reportType === 'aged-receivables' || reportType === 'aged-payables') {
           const label = reportType === 'aged-receivables' ? 'Customer' : 'Vendor';
           const title = reportType === 'aged-receivables' ? 'Aged Receivables' : 'Aged Payables';
@@ -2069,6 +2120,15 @@ function ReportShell({ reportType, title }: ReportPageProps) {
         console.error('Excel export failed:', err);
         alert('Failed to export Excel. Please try again.');
       });
+    } else if (reportType === 'statement-of-changes-in-equity') {
+      const socieParams: any = { asOfDate, format };
+      if (compareEnabled) socieParams.compareAsOf = compareAsOf;
+      reportsApi.getStatementOfChangesInEquity(socieParams).then((blob: any) => {
+        downloadBlob(blob, `statement_of_changes_in_equity_${new Date().toISOString().split('T')[0]}.${format}`);
+      }).catch((err: any) => {
+        console.error(`${format} export failed:`, err);
+        alert('Failed to export. Please try again.');
+      });
     } else {
       apiDownload(`/reports/${reportType}?format=${format}&startDate=${sDate}&endDate=${eDate}`, `${reportType}_${new Date().toISOString().split('T')[0]}.${format}`);
     }
@@ -2141,16 +2201,18 @@ function ReportShell({ reportType, title }: ReportPageProps) {
       <div className="flex gap-4 items-center bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5">
         {isAgedReport ? (
           <p className="text-sm text-slate-500">Aging as of {fmtDate(new Date().toISOString())}</p>
-        ) : isBalanceSheet ? (
+        ) : isAsOfDateReport ? (
           <>
           <div className="flex items-center gap-2">
             <label className="text-sm font-medium text-slate-600">As of:</label>
             <input type="date" value={asOfDate} onChange={e => setAsOfDate(e.target.value)} className="border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
           </div>
+          {isBalanceSheet && (
           <div className="flex items-center gap-2 ml-auto">
             <button onClick={() => { setShowZero(!showZero); localStorage.setItem('bs_showZero', String(!showZero)); }} className={`text-xs font-semibold px-3 py-1.5 rounded-xl border transition-all ${showZero ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-slate-100 border-slate-200 text-slate-500'}`}>{showZero ? 'Hide Zero Accounts' : 'Show Zero Accounts'}</button>
             <button onClick={() => { setShowCodes(!showCodes); localStorage.setItem('bs_showCodes', String(!showCodes)); }} className={`text-xs font-semibold px-3 py-1.5 rounded-xl border transition-all ${showCodes ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-slate-100 border-slate-200 text-slate-500'}`}>{showCodes ? 'Hide Codes' : 'Show Codes'}</button>
           </div>
+          )}
           </>
         ) : (
           <>
@@ -2187,7 +2249,7 @@ function ReportShell({ reportType, title }: ReportPageProps) {
             </label>
             {compareEnabled && (
               <>
-                {isBalanceSheet ? (
+                {isAsOfDateReport ? (
                   <div className="flex items-center gap-2">
                     <label className="text-xs font-medium text-slate-500">Prior as of:</label>
                     <input type="date" value={compareAsOf} onChange={e => setCompareAsOf(e.target.value)} className="border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
@@ -2419,6 +2481,75 @@ function ReportTable({ data, reportType, compareEnabled, onAccountClick, showZer
             </tfoot>
             )}
           </table>
+        </div>
+      </div>
+    );
+  }
+
+  if (reportType === 'statement-of-changes-in-equity') {
+    const socie = data?.data || data || {};
+    const cy = socie.currentYear;
+    const py = socie.priorYear;
+    if (!cy) return <div className="text-center py-12 text-slate-400">No equity data available.</div>;
+
+    const colKeys = cy.columns.map((c: any) => c.key);
+    const colLabels = cy.columns.map((c: any) => c.label);
+    const rowTotal = (row: any) => colKeys.reduce((t: number, k: string) => t + (row.columns[k] || 0), 0);
+    const fmt = (v: number) => `₦${(v / 100).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+    function renderRows(rows: any[]) {
+      return rows.map((r: any, i: number) => (
+        <tr key={i} className="border-t border-slate-100 hover:bg-slate-50/50 transition-colors">
+          <td className="px-4 py-3 text-sm font-medium text-slate-800">{r.label}</td>
+          {colKeys.map((k: string) => (
+            <td key={k} className="px-4 py-3 text-right font-mono text-sm text-slate-700">{fmt(r.columns[k] || 0)}</td>
+          ))}
+          <td className="px-4 py-3 text-right font-mono text-sm font-bold text-slate-900">{fmt(rowTotal(r))}</td>
+        </tr>
+      ));
+    }
+
+    return (
+      <div className="space-y-6">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+              <tr>
+                <th className="text-left px-4 py-3" />
+                {colLabels.map((l: string) => <th key={l} className="text-right px-4 py-3">{l}</th>)}
+                <th className="text-right px-4 py-3">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {renderRows(cy.rows)}
+            </tbody>
+          </table>
+        </div>
+
+        {py && (
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+            <div className="px-4 py-2 bg-amber-50 text-amber-800 text-xs font-bold uppercase tracking-wider border-b border-amber-200/60">Prior Year — {py.yearLabel}</div>
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                <tr>
+                  <th className="text-left px-4 py-3" />
+                  {colLabels.map((l: string) => <th key={l} className="text-right px-4 py-3">{l}</th>)}
+                  <th className="text-right px-4 py-3">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {renderRows(py.rows || [])}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <div className="text-xs text-slate-400 flex items-center gap-4 px-1">
+          <span>Opening Equity: {fmt(socie.crossCheck?.openingEquity || 0)}</span>
+          <span>Profit: {fmt(socie.crossCheck?.profitForYear || 0)}</span>
+          <span>Other Movements: {fmt(socie.crossCheck?.otherMovements || 0)}</span>
+          <span>Closing Equity: {fmt(socie.crossCheck?.closingEquity || 0)}</span>
+          {socie.crossCheck?.reconciled === false && <span className="text-amber-600 font-semibold">Variance: {fmt(socie.crossCheck?.variance || 0)}</span>}
         </div>
       </div>
     );

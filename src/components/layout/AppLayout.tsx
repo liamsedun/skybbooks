@@ -171,7 +171,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     'rep_income_statement': '/reports/income-statement',
     'rep_balance_sheet': '/reports/balance-sheet',
     'rep_cash_flow': '/reports/cash-flow',
-    'rep_changes_in_equity': '/reports/custom?report=changes-in-equity',
+    'rep_changes_in_equity': '/reports/statement-of-changes-in-equity',
     'rep_general_ledger': '/reports/general-ledger',
     'rep_vat_return': '/reports/vat-return',
     'rep_aged_receivables': '/reports/aged-receivables',

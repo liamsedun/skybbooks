@@ -51,6 +51,7 @@ import {
   IncomeStatementPage,
   BalanceSheetPage,
   CashFlowPage,
+  StatementOfChangesInEquityPage,
   GeneralLedgerPage,
   VATReturnPage,
   AgedReceivablesPage,
@@ -315,6 +316,7 @@ function AppRoutes() {
           <Route path="/reports/income-statement" element={<IncomeStatementPage />} />
           <Route path="/reports/balance-sheet" element={<BalanceSheetPage />} />
           <Route path="/reports/cash-flow" element={<CashFlowPage />} />
+          <Route path="/reports/statement-of-changes-in-equity" element={<StatementOfChangesInEquityPage />} />
           <Route path="/reports/general-ledger" element={<GeneralLedgerPage />} />
           <Route path="/reports/vat-return" element={<VATReturnPage />} />
           <Route path="/reports/aged-receivables" element={<AgedReceivablesPage />} />
