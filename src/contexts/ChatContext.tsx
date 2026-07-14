@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState, useCallback, ReactNode } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { api } from '../lib/api';
+import { api, orgApi } from '../lib/api';
 import { useAuth } from '../hooks/useAuth';
 
 const API_URL = (import.meta as any).env.VITE_API_URL || '';
@@ -68,10 +68,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   // Load org users
   useEffect(() => {
     if (!user?.orgId) return;
-    api.get('/org/users').then(res => {
-      const users = Array.isArray(res.data) ? res.data : (res.data?.users || res.data?.data || []);
-      setOrgUsers(users.filter((u: any) => u.id !== user.id));
-    }).catch(() => {});
+    orgApi.getUsers().then(res => {
+      const list = Array.isArray(res) ? res : (res?.users || res?.data || []);
+      setOrgUsers(list.filter((u: any) => u.id !== user.id));
+    }).catch((err: any) => {
+      console.warn('[ChatContext] Failed to load org users:', err?.message || err);
+    });
   }, [user?.orgId, user?.id]);
 
   // Socket connection
