@@ -170,7 +170,13 @@ async function startServer() {
     const pgErr = err.cause?.message || err.cause?.detail || err.cause;
     const message = err.message || 'An unexpected error occurred.';
     const detail = pgErr ? `${message}: ${pgErr}` : message;
-    logger.error(`[ERROR] ${status} ${req.method} ${req.url}`, err);
+
+    if (status === 401 && err.errorCode === 'TOKEN_EXPIRED') {
+      logger.debug(`Access token expired (expected) — ${req.method} ${req.url}`);
+    } else {
+      logger.error(`[ERROR] ${status} ${req.method} ${req.url}`, err);
+    }
+
     res.status(status).json({ error: detail, status });
   });
 

@@ -5,6 +5,7 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { verifyAccessToken, TokenPayload } from '../lib/tokens';
+import { TokenExpiredError, JsonWebTokenError } from 'jsonwebtoken';
 import { AppError } from '../lib/errors';
 
 /**
@@ -47,6 +48,12 @@ export function authenticate(
     req.user = decoded;
     return next();
   } catch (error) {
+    if (error instanceof TokenExpiredError) {
+      return next(new AppError('Access token has expired', 401, 'TOKEN_EXPIRED'));
+    }
+    if (error instanceof JsonWebTokenError) {
+      return next(new AppError(`Invalid token: ${error.message}`, 401, 'TOKEN_INVALID'));
+    }
     const message = error instanceof Error ? error.message : 'Invalid token';
     return next(new AppError(`Authentication failed: ${message}`, 401));
   }

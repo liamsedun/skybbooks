@@ -244,12 +244,14 @@ router.post('/refresh', async (req: AuthenticatedRequest, res: Response, next: N
 
     const session = sessionList[0];
     if (!session) {
+      console.warn(`[Auth] Refresh failed: session not found for userId=${payload.userId}`);
       throw new AppError('Refresh token is invalid or session has expired.', 401);
     }
 
     if (session.expiresAt < new Date()) {
       // Clean up expired session
       await db.delete(sessions).where(eq(sessions.id, session.id));
+      console.info(`[Auth] Refresh: session expired for userId=${payload.userId}`);
       throw new AppError('Refresh token session has expired.', 401);
     }
 
@@ -262,6 +264,7 @@ router.post('/refresh', async (req: AuthenticatedRequest, res: Response, next: N
 
     const user = freshUserList[0];
     if (!user || !user.isActive) {
+      console.warn(`[Auth] Refresh failed: user account inactive or not found for userId=${payload.userId}`);
       throw new AppError('User account is invalid or inactive.', 401);
     }
 
@@ -289,6 +292,8 @@ router.post('/refresh', async (req: AuthenticatedRequest, res: Response, next: N
       userAgent: req.headers['user-agent'] || null
     });
 
+    console.info(`[Auth] Token refreshed successfully for userId=${user.id}`);
+
     return res.status(200).json({
       accessToken: newAccessToken,
       refreshToken: newRefreshToken
@@ -299,6 +304,7 @@ router.post('/refresh', async (req: AuthenticatedRequest, res: Response, next: N
     }
     // Token verification errors
     if (error instanceof Error && (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError')) {
+      console.warn(`[Auth] Refresh failed: verifyRefreshToken threw ${error.name}`);
       return next(new AppError('Invalid or expired refresh token.', 401));
     }
     return next(error);
