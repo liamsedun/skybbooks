@@ -210,7 +210,7 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
       queryClient.invalidateQueries({ queryKey: ['unmatchedJournalLines', selectedBankAccountId] });
     },
     onError: (err: any) => {
-      alert(`Quick-Create failed: ${err.response?.data?.message || err.message}`);
+      alert(`Quick-Create failed: ${err.response?.data?.message || err.response?.data?.error || err.message}`);
     }
   });
 
@@ -230,7 +230,7 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
       }
     },
     onError: (err: any) => {
-      alert(`Batch Quick-Create failed: ${err.response?.data?.message || err.message}`);
+      alert(`Batch Quick-Create failed: ${err.response?.data?.message || err.response?.data?.error || err.message}`);
     }
   });
 
@@ -1084,9 +1084,9 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
                     </label>
                     <AccountSearchSelect
                       accounts={
-                        quickCreateForm.type === 'expense' ? glAccounts.filter((acc: any) => acc.type === 'expense') :
-                        quickCreateForm.type === 'payment_made' ? glAccounts.filter((acc: any) => acc.type === 'liability') :
-                        quickCreateForm.type === 'payment_received' ? glAccounts.filter((acc: any) => acc.type === 'revenue' || acc.type === 'asset') :
+                        quickCreateForm.type === 'expense' ? glAccounts.filter((acc: any) => acc.type === 'expense' || acc.type === 'liability') :
+                        quickCreateForm.type === 'payment_made' ? glAccounts.filter((acc: any) => acc.type === 'liability' || acc.type === 'expense') :
+                        quickCreateForm.type === 'payment_received' ? glAccounts.filter((acc: any) => acc.type === 'revenue' || acc.type === 'asset' || acc.type === 'income') :
                         quickCreateForm.type === 'transfer' ? glAccounts.filter((acc: any) => acc.type === 'asset' || acc.code?.startsWith('10')) :
                         []
                       }

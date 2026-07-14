@@ -563,35 +563,36 @@ export async function createTransactionFromBankFeed(
       return { success: true, paymentId: newPayRec.id, entryId: entry.id };
 
     } else if (input.type === 'payment_made') {
-      // Retrieve sequential code
       const [countResult] = await tx
         .select({ count: sql<number>`count(*)` })
         .from(paymentsMade)
         .where(eq(paymentsMade.orgId, bt.orgId));
-      
+
       const count = Number(countResult?.count || 0) + 1;
       const paymentNumber = `PAY-MADE-${String(count).padStart(6, '0')}`;
 
-      if (!input.contactId) {
-        throw new AppError('Contact ID is strictly required to post Vendor payments made.', 400);
-      }
+      let paymentMadeId: string | null = null;
 
-      const [newPayMade] = await tx
-        .insert(paymentsMade)
-        .values({
-          orgId: bt.orgId,
-          paymentNumber,
-          vendorId: input.contactId,
-          date: bt.date,
-          amount: bt.amount,
-          currency: 'NGN',
-          paymentMethod: 'bank_transfer',
-          reference: bt.reference || null,
-          accountId: ba.accountId, // Local cash account dispersing funds
-          notes: input.description,
-          createdBy: runByUserId!
-        })
-        .returning();
+      if (input.contactId) {
+        const [newPayMade] = await tx
+          .insert(paymentsMade)
+          .values({
+            orgId: bt.orgId,
+            paymentNumber,
+            vendorId: input.contactId,
+            date: bt.date,
+            amount: bt.amount,
+            currency: 'NGN',
+            paymentMethod: 'bank_transfer',
+            reference: bt.reference || null,
+            accountId: ba.accountId,
+            notes: input.description,
+            createdBy: runByUserId!
+          })
+          .returning();
+
+        paymentMadeId = newPayMade.id;
+      }
 
       // Debit Liabilities Category / Accounts Payable (input.accountId), Credit Cash (ba.accountId)
       journalParams = {
@@ -600,7 +601,7 @@ export async function createTransactionFromBankFeed(
         description: input.description || `Payment Made - Bank Feed match`,
         reference: bt.reference || undefined,
         source: 'bank_feed' as const,
-        sourceId: newPayMade.id,
+        sourceId: paymentMadeId || bt.id,
         createdBy: runByUserId!,
         lines: [
           {
@@ -618,13 +619,13 @@ export async function createTransactionFromBankFeed(
 
       const entry = await createJournalEntry(journalParams, tx);
 
-      // Back-reference Payment Made table with generated ledger entry ID
-      await tx
-        .update(paymentsMade)
-        .set({ journalEntryId: entry.id })
-        .where(eq(paymentsMade.id, newPayMade.id));
+      if (paymentMadeId) {
+        await tx
+          .update(paymentsMade)
+          .set({ journalEntryId: entry.id })
+          .where(eq(paymentsMade.id, paymentMadeId));
+      }
 
-      // Handle bill allocations if provided
       if (input.allocations && input.allocations.length > 0) {
         for (const alloc of input.allocations) {
           const [bl] = await tx
@@ -646,13 +647,15 @@ export async function createTransactionFromBankFeed(
               status: nextStatus
             })
             .where(eq(bills.id, bl.id));
-          await tx
-            .insert(paymentMadeAllocations)
-            .values({
-              paymentId: newPayMade.id,
-              billId: bl.id,
-              amount: alloc.amount
-            });
+          if (paymentMadeId) {
+            await tx
+              .insert(paymentMadeAllocations)
+              .values({
+                paymentId: paymentMadeId,
+                billId: bl.id,
+                amount: alloc.amount
+              });
+          }
         }
       }
 
@@ -669,7 +672,7 @@ export async function createTransactionFromBankFeed(
         })
         .where(eq(bankTransactions.id, bt.id));
 
-      return { success: true, paymentId: newPayMade.id, entryId: entry.id };
+      return { success: true, paymentId: paymentMadeId, entryId: entry.id };
 
     } else if (input.type === 'transfer') {
       const [targetBa] = await tx
