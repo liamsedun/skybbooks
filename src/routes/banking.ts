@@ -776,6 +776,7 @@ router.post('/accounts/:id/upload-statement', (req: AuthenticatedRequest, res: R
       const rawRows: { date: Date; description: string; deposit: number; withdrawal: number; balance: number | null }[] = [];
       const fileName = file.originalname.toLowerCase();
       const ext = fileName.split('.').pop() || '';
+      let diagnosticSample = '';
 
       // ── Parse file content ──
 
@@ -846,6 +847,8 @@ router.post('/accounts/:id/upload-statement', (req: AuthenticatedRequest, res: R
 
         if (rawRowsFromExcel.length < 2) throw new AppError('Excel file appears empty.', 400);
 
+        diagnosticSample = `rows=${rawRowsFromExcel.length}, first=${JSON.stringify(rawRowsFromExcel[0])}, second=${JSON.stringify(rawRowsFromExcel[1] || '')}`;
+
         // Detect header using stringified first rows
         const headerWords = ['date', 'description', 'narration', 'amount', 'deposit', 'withdrawal', 'balance', 'credit', 'debit', 'transaction'];
         const headerIdx = rawRowsFromExcel.findIndex(r => headerWords.some(w => (r as any[]).some((c: any) => String(c ?? '').toLowerCase().includes(w))));
@@ -854,10 +857,14 @@ router.post('/accounts/:id/upload-statement', (req: AuthenticatedRequest, res: R
         if (headerIdx >= 0) {
           const headerRow = (rawRowsFromExcel[headerIdx] as any[]).map((c: any) => String(c ?? '').trim());
           colMap = detectCols(headerRow);
+          diagnosticSample += `, headerFound=true, colMap=${JSON.stringify(colMap)}, headerRow=${JSON.stringify(headerRow)}`;
           rawRowsFromExcel.splice(0, headerIdx + 1);
         } else {
           colMap = { dateIdx: 0, descIdx: 1, depositIdx: -1, withdrawalIdx: -1, balanceIdx: -1 };
+          diagnosticSample += ', headerFound=false, using fallback colMap';
         }
+
+        diagnosticSample += `, firstDataRow=${JSON.stringify(rawRowsFromExcel[0] || '')}`;
 
         for (const cols of rawRowsFromExcel) {
           const cell = (idx: number) => cols[idx] as any;
@@ -1073,7 +1080,7 @@ router.post('/accounts/:id/upload-statement', (req: AuthenticatedRequest, res: R
 
       // ── Guard: require at least one parsed row ──
       if (rawRows.length === 0) {
-        throw new AppError('Could not parse any transactions from the file. Check that the file contains a table with date, amount, and description columns.', 400);
+        throw new AppError('Could not parse any transactions from the file. Check that the file contains a table with date, amount, and description columns.' + (diagnosticSample ? ` Diagnostic: ${diagnosticSample}` : ''), 400);
       }
 
       // ── Write to bank_transactions ──
