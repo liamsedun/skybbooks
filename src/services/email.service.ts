@@ -9,6 +9,8 @@ interface SendEmailOptions {
   subject: string;
   html: string;
   text?: string;
+  /** Override the From display name. For org emails defaults to "${orgName} via SkyBooks". For platform emails like invites, pass "SkyBooks". */
+  fromName?: string;
 }
 
 /**
@@ -24,6 +26,8 @@ interface SendEmailOptions {
  *
  * If no emailSettings row exists, defaults to HTTP (Resend) so email works
  * out of the box with zero setup.
+ *
+ * If the org has configured sendCopyTo, a BCC copy is sent to that address.
  */
 export async function sendOrgEmail(
   orgId: string,
@@ -38,6 +42,7 @@ export async function sendOrgEmail(
     .limit(1);
 
   const orgName = org?.name || 'SkyBooks User';
+  const displayName = options.fromName || `${orgName} via SkyBooks`;
 
   const [settings] = await db
     .select()
@@ -46,19 +51,19 @@ export async function sendOrgEmail(
     .limit(1);
 
   const protocol = settings?.protocol || 'http';
+  const bcc = settings?.sendCopyTo || undefined;
 
   if (protocol === 'http') {
-    return sendViaResend(orgId, orgName, settings, { to, subject, html, text });
+    return sendViaResend(displayName, settings, { to, subject, html, text, bcc });
   }
 
-  return sendViaSmtp(orgId, settings, { to, subject, html, text });
+  return sendViaSmtp(settings, { to, subject, html, text, bcc });
 }
 
 async function sendViaResend(
-  orgId: string,
-  orgName: string,
+  displayName: string,
   settings: any,
-  options: SendEmailOptions
+  options: SendEmailOptions & { bcc?: string }
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   const apiKey = process.env.RESEND_API_KEY;
   const fromEmail = process.env.FROM_EMAIL || 'delivered@resend.dev';
@@ -74,9 +79,10 @@ async function sendViaResend(
   try {
     const resend = new Resend(apiKey);
     const result = await resend.emails.send({
-      from: `${orgName} via SkyBooks <${fromEmail}>`,
-      to,
+      from: `${displayName} <${fromEmail}>`,
+      to: options.to,
       replyTo,
+      bcc: options.bcc,
       subject: options.subject,
       html: options.html,
       ...(options.text && { text: options.text }),
@@ -89,9 +95,8 @@ async function sendViaResend(
 }
 
 async function sendViaSmtp(
-  orgId: string,
   settings: any,
-  options: SendEmailOptions
+  options: SendEmailOptions & { bcc?: string }
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   if (!settings || !settings.hostname || !settings.email) {
     return { success: false, error: 'SMTP settings incomplete (hostname and email required).' };
@@ -124,6 +129,7 @@ async function sendViaSmtp(
     const info = await transporter.sendMail({
       from: settings.email,
       to: options.to,
+      bcc: options.bcc,
       subject: options.subject,
       html: options.html,
       ...(options.text && { text: options.text }),

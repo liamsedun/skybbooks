@@ -10,7 +10,7 @@ export default function EmailSettingsPage() {
   const [showHelp, setShowHelp] = useState(false);
 
   const [form, setForm] = useState({
-    protocol: 'smtp',
+    protocol: 'http',
     hostname: '',
     port: 587,
     username: '',
@@ -32,7 +32,7 @@ export default function EmailSettingsPage() {
         const d = res.data.data;
         if (d) {
           setForm({
-            protocol: d.protocol || 'smtp',
+            protocol: d.protocol || 'http',
             hostname: d.hostname || '',
             port: d.port || 587,
             username: d.username || '',
@@ -97,7 +97,7 @@ export default function EmailSettingsPage() {
     setMessage(null);
     try {
       await emailSettingsApi.reset();
-      setForm({ protocol: 'smtp', hostname: '', port: 587, username: '', email: '', password: '', sendCopyTo: '', replyTo: '', useDifferentReplyTo: false, doNotVerifyTls: false });
+      setForm({ protocol: 'http', hostname: '', port: 587, username: '', email: '', password: '', sendCopyTo: '', replyTo: '', useDifferentReplyTo: false, doNotVerifyTls: false });
       setMessage({ type: 'info', text: 'Email settings reset.' });
     } catch {
       setMessage({ type: 'error', text: 'Failed to reset settings.' });
