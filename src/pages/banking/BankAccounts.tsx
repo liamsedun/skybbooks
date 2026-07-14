@@ -305,7 +305,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
         setUploadSuccess(null);
       }, 3000);
     } catch (err: any) {
-      setUploadError(err.response?.data?.message || err.message || 'Statement parsing failed.');
+      setUploadError(err.response?.data?.message || err.response?.data?.error || err.message || 'Statement parsing failed.');
     } finally {
       setIsUploading(false);
     }
