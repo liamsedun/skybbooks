@@ -644,11 +644,11 @@ function detectCols(headers: string[]): { dateIdx: number; descIdx: number; depo
     return idx >= 0 ? idx : fallback;
   };
   return {
-    dateIdx:      find(['date', 'posting', 'value', 'transdate', 'txndate', 'tran date'], 0),
+    dateIdx:      find(['date', 'posting', 'value', 'transdate', 'txndate', 'trandate'], 0),
     descIdx:      find(['description', 'narration', 'details', 'transaction', 'particulars', 'remark', 'reference', 'narrative'], 1),
-    depositIdx:   find(['deposit', 'credit', 'inflow', 'amountcr', 'cr', 'receipt'], -1),
-    withdrawalIdx: find(['withdrawal', 'debit', 'outflow', 'amountdr', 'dr', 'payment'], -1),
-    balanceIdx:   find(['balance', 'running', 'ledger', 'available', 'closing', 'new balance'], -1),
+    depositIdx:   find(['deposit', 'credit', 'inflow', 'receipt'], -1),
+    withdrawalIdx: find(['withdrawal', 'debit', 'outflow', 'payment'], -1),
+    balanceIdx:   find(['balance', 'running', 'ledger', 'available', 'closing', 'newbalance'], -1),
   };
 }
 
