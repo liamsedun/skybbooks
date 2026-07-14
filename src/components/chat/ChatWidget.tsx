@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useChat } from '../../contexts/ChatContext';
 import { useAuth } from '../../hooks/useAuth';
-import { MessageCircle, Minus, X, Send, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import { MessageCircle, Minus, X, Send, ChevronDown, ChevronUp } from 'lucide-react';
 
 export default function ChatWidget() {
   const {
@@ -30,7 +30,7 @@ export default function ChatWidget() {
 
   function findConvWithUser(targetUserId: string) {
     const existing = conversations.find(c => {
-      const ids = c.participants.map(p => p.userId);
+      const ids = c.participants.map((p: any) => p.userId);
       return ids.length === 2 && ids.includes(targetUserId) && ids.includes(user?.id || '');
     });
     if (existing) {
@@ -42,7 +42,7 @@ export default function ChatWidget() {
 
   function getUnreadForUser(targetUserId: string): number {
     return conversations
-      .filter(c => c.participants.some(p => p.userId === targetUserId))
+      .filter(c => c.participants.some((p: any) => p.userId === targetUserId))
       .reduce((sum, c) => sum + (c.unreadCount || 0), 0);
   }
 
@@ -52,7 +52,7 @@ export default function ChatWidget() {
   }
 
   const currentConv = conversations.find(c => c.id === activeConvId);
-  const otherParticipant = currentConv?.participants.find(p => p.userId !== user?.id);
+  const otherParticipant = currentConv?.participants.find((p: any) => p.userId !== user?.id);
 
   return (
     <>
@@ -112,10 +112,11 @@ export default function ChatWidget() {
           {!chatMinimized && (
             <>
               {view === 'users' ? (
-                /* User list */
                 <div className="flex-1 overflow-y-auto">
                   {orgUsers.length === 0 ? (
-                    <div className="text-center py-8 text-xs text-slate-400">No other users in this org</div>
+                    <div className="text-center py-8 px-4">
+                      <p className="text-xs text-slate-400">Loading users...</p>
+                    </div>
                   ) : (
                     <div className="py-1">
                       {orgUsers.map(u => {
@@ -151,13 +152,12 @@ export default function ChatWidget() {
                   )}
                 </div>
               ) : (
-                /* Chat view */
                 <>
                   <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2 bg-slate-50/30">
                     {messages.length === 0 ? (
                       <div className="text-center py-8 text-xs text-slate-400">No messages yet</div>
                     ) : (
-                      messages.map(msg => {
+                      messages.map((msg: any) => {
                         const isMine = msg.userId === user?.id;
                         return (
                           <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>

@@ -6,40 +6,15 @@ import { useAuth } from '../hooks/useAuth';
 const API_URL = (import.meta as any).env.VITE_API_URL || '';
 const SOCKET_URL = (import.meta as any).env.VITE_SOCKET_URL || API_URL.replace('/api', '') || '';
 
-interface UserInfo {
-  id: string;
-  fullName: string;
-}
-
-interface Participant {
-  userId: string;
-  userName: string | null;
-}
-
-interface Conversation {
-  id: string;
-  title: string | null;
-  participants: Participant[];
-  lastMessage: { message: string; createdAt: string; userId: string; userName: string | null } | null;
-  unreadCount: number;
-}
-
-interface ChatMsg {
-  id: string;
-  conversationId: string;
-  message: string;
-  userId: string;
-  createdAt: string;
-  userName: string | null;
-}
+interface UserInfo { id: string; fullName: string; }
 
 interface ChatContextType {
   connected: boolean;
   onlineUserIds: Set<string>;
   orgUsers: UserInfo[];
-  conversations: Conversation[];
+  conversations: any[];
   activeConvId: string | null;
-  messages: ChatMsg[];
+  messages: any[];
   unreadTotal: number;
   chatOpen: boolean;
   chatMinimized: boolean;
@@ -58,25 +33,44 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [connected, setConnected] = useState(false);
   const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
   const [orgUsers, setOrgUsers] = useState<UserInfo[]>([]);
-  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [conversations, setConversations] = useState<any[]>([]);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<ChatMsg[]>([]);
+  const [messages, setMessages] = useState<any[]>([]);
   const [unreadTotal, setUnreadTotal] = useState(0);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMinimized, setChatMinimized] = useState(false);
 
+  // Keep activeConvId in a ref for socket handlers
+  const activeConvRef = useRef(activeConvId);
+  activeConvRef.current = activeConvId;
+
   // Load org users
-  useEffect(() => {
+  const loadUsers = useCallback(async () => {
     if (!user?.orgId) return;
-    orgApi.getUsers().then(res => {
+    try {
+      const res = await orgApi.getUsers();
       const list = Array.isArray(res) ? res : (res?.users || res?.data || []);
       setOrgUsers(list.filter((u: any) => u.id !== user.id));
-    }).catch((err: any) => {
+    } catch (err: any) {
       console.warn('[ChatContext] Failed to load org users:', err?.message || err);
-    });
+    }
   }, [user?.orgId, user?.id]);
 
-  // Socket connection
+  useEffect(() => { loadUsers(); }, [loadUsers]);
+
+  // Fetch conversations
+  const refreshConversations = useCallback(async () => {
+    try {
+      const res = await api.get('/chat/conversations');
+      const data = res.data?.data || [];
+      setConversations(data);
+      setUnreadTotal(data.reduce((s: number, c: any) => s + (c.unreadCount || 0), 0));
+    } catch (err: any) {
+      console.warn('[ChatContext] Failed to load conversations:', err?.response?.status, err?.message);
+    }
+  }, []);
+
+  // Socket connection — register all event handlers here
   useEffect(() => {
     const token = localStorage.getItem('accessToken');
     if (!token || !user?.orgId) return;
@@ -89,83 +83,48 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     socket.on('connect', () => setConnected(true));
     socket.on('disconnect', () => setConnected(false));
 
-    // Presence updates
     socket.on('presence:update', (data: { onlineUserIds: string[] }) => {
       setOnlineUserIds(new Set(data.onlineUserIds || []));
     });
 
+    socket.on('chat:message', (msg: any) => {
+      if (msg.conversationId === activeConvRef.current) {
+        setMessages((prev: any[]) => [...prev, msg]);
+        api.post(`/chat/conversations/${msg.conversationId}/read`).catch(() => {});
+      }
+      refreshConversations();
+    });
+
+    socket.on('chat:notification', () => {
+      refreshConversations();
+    });
+
     socketRef.current = socket;
+    refreshConversations();
 
     return () => {
       socket.disconnect();
       socketRef.current = null;
       setConnected(false);
     };
-  }, [user?.orgId]);
+  }, [user?.orgId, refreshConversations]);
 
-  // Listen for new messages
+  // Load messages when active conversation changes
   useEffect(() => {
-    const socket = socketRef.current;
-    if (!socket) return;
-
-    const handler = (msg: ChatMsg) => {
-      if (msg.conversationId === activeConvId) {
-        setMessages(prev => [...prev, msg]);
-        markRead(msg.conversationId);
-      }
-      // Update conversation list + unread
-      refreshConversations();
-    };
-    socket.on('chat:message', handler);
-    return () => { socket.off('chat:message', handler); };
+    if (!activeConvId) { setMessages([]); return; }
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('chat:join', [activeConvId]);
+    }
+    api.post(`/chat/conversations/${activeConvId}/read`).catch(() => {});
+    api.get(`/chat/conversations/${activeConvId}/messages?limit=100`)
+      .then(res => setMessages(res.data?.data || []))
+      .catch(() => setMessages([]));
   }, [activeConvId]);
-
-  // Notification handler for unread badge
-  useEffect(() => {
-    const socket = socketRef.current;
-    if (!socket) return;
-
-    const handler = () => {
-      refreshConversations();
-    };
-    socket.on('chat:notification', handler);
-    return () => { socket.off('chat:notification', handler); };
-  }, []);
-
-  // Refresh conversations
-  const refreshConversations = useCallback(async () => {
-    try {
-      const res = await api.get('/chat/conversations');
-      const data: Conversation[] = res.data.data || [];
-      setConversations(data);
-      setUnreadTotal(data.reduce((s, c) => s + (c.unreadCount || 0), 0));
-    } catch {}
-  }, []);
 
   // Load conversations when chat opens
   useEffect(() => {
     if (chatOpen) refreshConversations();
   }, [chatOpen, refreshConversations]);
-
-  // Load messages when active conversation changes
-  useEffect(() => {
-    if (!activeConvId) { setMessages([]); return; }
-    joinConversations([activeConvId]);
-    markRead(activeConvId);
-    api.get(`/chat/conversations/${activeConvId}/messages?limit=100`)
-      .then(res => setMessages(res.data.data || []))
-      .catch(() => setMessages([]));
-  }, [activeConvId]);
-
-  function joinConversations(convIds: string[]) {
-    if (socketRef.current?.connected) {
-      socketRef.current.emit('chat:join', convIds);
-    }
-  }
-
-  async function markRead(convId: string) {
-    try { await api.post(`/chat/conversations/${convId}/read`); } catch {}
-  }
 
   function sendMessage(text: string) {
     if (!text.trim() || !socketRef.current?.connected || !activeConvId) return;
@@ -180,7 +139,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   async function startConversation(targetUserId: string) {
     try {
       const res = await api.post('/chat/conversations', { participantIds: [targetUserId] });
-      const conv = res.data.data;
+      const conv = res.data?.data;
       setActiveConvId(conv.id);
       if (socketRef.current?.connected) {
         socketRef.current.emit('chat:join', [conv.id]);
@@ -194,20 +153,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   return (
     <ChatContext.Provider value={{
-      connected,
-      onlineUserIds,
-      orgUsers,
-      conversations,
-      activeConvId,
-      messages,
-      unreadTotal,
-      chatOpen,
-      chatMinimized,
-      setActiveConvId,
-      sendMessage,
-      toggleChat,
-      setChatMinimized,
-      startConversation,
+      connected, onlineUserIds, orgUsers, conversations,
+      activeConvId, messages, unreadTotal,
+      chatOpen, chatMinimized,
+      setActiveConvId, sendMessage, toggleChat, setChatMinimized, startConversation,
     }}>
       {children}
     </ChatContext.Provider>
