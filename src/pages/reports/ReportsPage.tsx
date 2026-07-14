@@ -2511,7 +2511,7 @@ function ReportTable({ data, reportType, compareEnabled, onAccountClick, showZer
 
     return (
       <div className="space-y-6">
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
               <tr>
@@ -2527,7 +2527,7 @@ function ReportTable({ data, reportType, compareEnabled, onAccountClick, showZer
         </div>
 
         {py && (
-          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-x-auto">
             <div className="px-4 py-2 bg-amber-50 text-amber-800 text-xs font-bold uppercase tracking-wider border-b border-amber-200/60">Prior Year — {py.yearLabel}</div>
             <table className="w-full text-sm">
               <thead className="bg-slate-50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
