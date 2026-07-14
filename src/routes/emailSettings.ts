@@ -137,6 +137,15 @@ router.post('/test', async (req: AuthenticatedRequest, res: Response, next: Next
 
     return res.json({ success: true, message: 'Test email sent successfully!', messageId: info.messageId });
   } catch (err: any) {
+    // Log the full error for debugging
+    console.error('[EmailSettings] Test failed:', err?.message || err, err?.issues ? JSON.stringify(err.issues) : '');
+
+    // Handle Zod validation errors explicitly
+    if (err?.issues) {
+      const details = err.issues.map((i: any) => `${i.path.join('.')}: ${i.message}`).join('; ');
+      return res.status(400).json({ success: false, message: `Validation error: ${details}` });
+    }
+
     const message = err?.response?.includes('Application-specific password required')
       ? 'Gmail requires an app-specific password. Enable 2-step verification and generate an app password.'
       : err?.message || 'Failed to send test email. Check your SMTP settings.';

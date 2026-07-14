@@ -79,7 +79,8 @@ export default function EmailSettingsPage() {
       });
       setMessage({ type: 'success', text: res.data.message || 'Test email sent!' });
     } catch (err: any) {
-      setMessage({ type: 'error', text: err?.response?.data?.message || 'Test failed.' });
+      console.error('[TestEmail]', err?.response?.data || err?.message || err);
+      setMessage({ type: 'error', text: err?.response?.data?.message || err?.message || 'Test failed.' });
     } finally {
       setTesting(false);
     }
@@ -250,6 +251,7 @@ export default function EmailSettingsPage() {
                 value={form.password}
                 onChange={e => update('password', e.target.value)}
                 placeholder="Enter SMTP password"
+                autoComplete="current-password"
                 className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 pr-10"
               />
               <button
