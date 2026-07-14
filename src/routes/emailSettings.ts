@@ -18,7 +18,7 @@ const updateSchema = z.object({
   port: z.coerce.number().int().min(1).max(65535).optional(),
   username: z.string().optional(),
   email: z.string().email().optional().or(z.literal('')),
-  password: z.string().optional(),
+  password: z.string().optional().transform(v => v?.replace(/\s+/g, '')),
   sendCopyTo: z.string().email().optional().or(z.literal('')),
   replyTo: z.string().email().optional().or(z.literal('')),
   useDifferentReplyTo: z.boolean().optional(),
@@ -29,7 +29,7 @@ const testSchema = z.object({
   hostname: z.string().min(1, 'SMTP hostname is required'),
   port: z.coerce.number().int().min(1).max(65535),
   username: z.string().optional(),
-  password: z.string().optional(),
+  password: z.string().optional().transform(v => v?.replace(/\s+/g, '')),
   email: z.string().email('Sender email is required'),
   doNotVerifyTls: z.boolean().optional(),
 });
