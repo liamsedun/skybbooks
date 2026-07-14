@@ -44,6 +44,8 @@ import { SkyhouseLogo } from '../ui/SkyhouseLogo';
 import { usePlatformBranding } from '../../hooks/usePlatformBranding';
 import { useNotifications } from '../../hooks/useNotifications';
 import { api } from '../../lib/api';
+import { useChat } from '../../contexts/ChatContext';
+import ChatWidget from '../chat/ChatWidget';
 
 interface AppLayoutProps {
   currentView?: string;
@@ -91,21 +93,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
   const { role, hasModuleAccess } = usePermissions();
   const { developerLogoUrl } = usePlatformBranding();
   const { notifications, unreadCount } = useNotifications();
-  const [chatUnread, setChatUnread] = useState(0);
-
-  React.useEffect(() => {
-    let cancelled = false;
-    const poll = () => {
-      api.get('/chat/conversations').then(res => {
-        if (cancelled) return;
-        const convs = res.data.data || [];
-        setChatUnread(convs.reduce((s: number, c: any) => s + (c.unreadCount || 0), 0));
-      }).catch(() => {});
-    };
-    poll();
-    const interval = setInterval(poll, 60_000);
-    return () => { cancelled = true; clearInterval(interval); };
-  }, []);
+  const { unreadTotal: chatUnread, toggleChat } = useChat();
 
   const totalUnread = unreadCount + chatUnread;
   const navigate = useNavigate();
@@ -364,6 +352,11 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
   };
 
   const handleLinkClick = (id: string) => {
+    if (id === 'chat') {
+      toggleChat();
+      setIsMobileOpen(false);
+      return;
+    }
     if (onViewChange) {
       onViewChange(id);
     }
@@ -695,6 +688,8 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
         
         <Footer />
       </div>
+
+      <ChatWidget />
     </div>
   );
 }

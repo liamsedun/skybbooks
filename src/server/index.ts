@@ -217,6 +217,9 @@ async function startServer() {
     }
   });
 
+  // Track presence: orgId → Map<userId, Set<socketId>>
+  const presence = new Map<string, Map<string, Set<string>>>();
+
   io.on('connection', (socket) => {
     const user = (socket as any).user;
     if (!user?.orgId) {
@@ -226,6 +229,15 @@ async function startServer() {
     const orgRoom = `org:${user.orgId}`;
     socket.join(orgRoom);
     logger.info(`[Chat] User ${user.userId} connected`);
+
+    // ── Presence tracking ──
+    if (!presence.has(user.orgId)) presence.set(user.orgId, new Map());
+    const orgPresence = presence.get(user.orgId)!;
+    if (!orgPresence.has(user.userId)) orgPresence.set(user.userId, new Set());
+    orgPresence.get(user.userId)!.add(socket.id);
+    // Broadcast updated online users to org
+    const onlineIds = Array.from(orgPresence.keys()).filter(uid => (orgPresence.get(uid)?.size || 0) > 0);
+    io.to(orgRoom).emit('presence:update', { onlineUserIds: onlineIds });
 
     // Subscribe to conversation rooms
     socket.on('chat:join', (convIds: string[]) => {
@@ -292,6 +304,19 @@ async function startServer() {
 
     socket.on('disconnect', () => {
       logger.info(`[Chat] User ${user.userId} disconnected`);
+      // Update presence
+      const orgPresence2 = presence.get(user.orgId);
+      if (orgPresence2) {
+        const sockets = orgPresence2.get(user.userId);
+        if (sockets) {
+          sockets.delete(socket.id);
+          if (sockets.size === 0) {
+            orgPresence2.delete(user.userId);
+          }
+        }
+        const onlineIds2 = Array.from(orgPresence2.keys()).filter(uid => (orgPresence2.get(uid)?.size || 0) > 0);
+        io.to(orgRoom).emit('presence:update', { onlineUserIds: onlineIds2 });
+      }
     });
   });
 

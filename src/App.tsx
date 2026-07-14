@@ -8,6 +8,8 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate, useParams, Outlet 
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './lib/api';
 
+import { ChatProvider } from './contexts/ChatContext';
+
 // Layout & Custom Pages
 import AppLayout from './components/layout/AppLayout';
 import { Dashboard } from './pages/Dashboard';
@@ -69,8 +71,7 @@ import {
   TaxComputationPage,
   LegacyMigrationPage,
   InvitesSettingsPage,
-  IntegrationsSettingsPage,
-  ChatPage
+  IntegrationsSettingsPage
 } from './pages/ModulePlaceholders';
 import { SettingsLayout } from './components/settings/SettingsLayout';
 import { TaxConfigurationPage } from './pages/settings/TaxConfigurationPage';
@@ -291,9 +292,6 @@ function AppRoutes() {
           <Route path="/inventory/items/new" element={<InventoryPage />} />
           <Route path="/inventory/adjustments" element={<InventoryAdjustmentsPage />} />
 
-          {/* Chat module routing */}
-          <Route path="/chat" element={<ChatPage />} />
-
           {/* Banking module routing */}
           <Route path="/banking" element={<BankAccountsWrapper />} />
           <Route path="/banking/reconciliation/:accountId" element={<ReconciliationWrapper />} />
@@ -405,7 +403,9 @@ function AppRoutes() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AppRoutes />
+      <ChatProvider>
+        <AppRoutes />
+      </ChatProvider>
     </QueryClientProvider>
   );
 }
