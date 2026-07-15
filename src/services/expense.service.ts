@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { eq, and, sql, gte, lte, getTableColumns } from 'drizzle-orm';
+import { eq, and, sql, gte, lte, gt, getTableColumns } from 'drizzle-orm';
 import {
   db,
   accounts,
@@ -215,9 +215,18 @@ export async function listExpenses(orgId: string, filters?: { startDate?: Date; 
   if (filters?.startDate) conditions.push(gte(expenses.date, filters.startDate));
   if (filters?.endDate) conditions.push(lte(expenses.date, filters.endDate));
   return await db
-    .select({ ...expenseCols, journalEntryNumber: journalEntries.entryNumber })
+    .select({
+      ...expenseCols,
+      journalEntryNumber: journalEntries.entryNumber,
+      creditAccountName: accounts.name,
+    })
     .from(expenses)
     .leftJoin(journalEntries, eq(expenses.journalEntryId, journalEntries.id))
+    .leftJoin(journalLines, and(
+      eq(journalLines.journalEntryId, journalEntries.id),
+      gt(journalLines.credit, 0)
+    ))
+    .leftJoin(accounts, eq(journalLines.accountId, accounts.id))
     .where(and(...conditions))
     .orderBy(sql`${expenses.date} desc`);
 }

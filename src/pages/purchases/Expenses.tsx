@@ -26,6 +26,7 @@ interface Expense {
   customerId?: string | null;
   journalEntryId?: string | null;
   journalEntryNumber?: string | null;
+  creditAccountName?: string | null;
 }
 
 function formatNaira(kobo: number) {
@@ -57,7 +58,7 @@ const EMPTY_FORM: FormState = {
 };
 
 function exportCSV(expenses: Expense[], vendorMap: Map<string,string>, accountMap: Map<string,string>) {
-  const headers = ['Ref #','Date','Description','Account','Vendor','Method','Amount (₦)','VAT (₦)','Billable'];
+  const headers = ['Ref #','Date','Description','Account','Vendor','Method','Bank/Cash','Amount (₦)','VAT (₦)','Billable'];
   const rows = expenses.map(e => [
     e.expenseNumber,
     fmtDate(e.date),
@@ -65,6 +66,7 @@ function exportCSV(expenses: Expense[], vendorMap: Map<string,string>, accountMa
     accountMap.get(e.accountId) || '',
     e.vendorId ? (vendorMap.get(e.vendorId) || '') : '',
     e.paymentMethod?.replace('_',' '),
+    e.creditAccountName || '',
     (e.amount / 100).toFixed(2),
     (e.taxAmount / 100).toFixed(2),
     e.isBillable ? 'Yes' : 'No',
@@ -86,6 +88,7 @@ function exportPDF(expenses: Expense[], vendorMap: Map<string,string>, accountMa
       <td>${accountMap.get(e.accountId) || '—'}</td>
       <td>${e.vendorId ? (vendorMap.get(e.vendorId) || '—') : '—'}</td>
       <td>${e.paymentMethod?.replace('_',' ')}</td>
+      <td>${e.creditAccountName || '—'}</td>
       <td style="text-align:right">${formatNaira(e.amount)}</td>
     </tr>`).join('');
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Expenses Report</title>
@@ -110,9 +113,9 @@ function exportPDF(expenses: Expense[], vendorMap: Map<string,string>, accountMa
     <div style="text-align:right"><div class="title">Expenses Report</div><div class="date">Generated: ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}</div></div>
   </div>
   <table>
-    <thead><tr><th>Ref #</th><th>Date</th><th>Description</th><th>Account</th><th>Vendor</th><th>Method</th><th style="text-align:right">Amount</th></tr></thead>
+    <thead><tr><th>Ref #</th><th>Date</th><th>Description</th><th>Account</th><th>Vendor</th><th>Method</th><th>Bank/Cash</th><th style="text-align:right">Amount</th></tr></thead>
     <tbody>${rows}</tbody>
-    <tfoot><tr class="total-row"><td colspan="6"><strong>Total (${expenses.length} records)</strong></td><td style="text-align:right">${formatNaira(total)}</td></tr></tfoot>
+    <tfoot><tr class="total-row"><td colspan="7"><strong>Total (${expenses.length} records)</strong></td><td style="text-align:right">${formatNaira(total)}</td></tr></tfoot>
   </table>
   <div class="footer">SkyBooks By Skyhouse Accountants &amp; Technologies (Olalekan Williams Edun) &bull; Confidential</div>
   </body></html>`;
@@ -333,8 +336,9 @@ export function ExpensesPage() {
                 <th className="px-3 py-3 text-left">Description</th>
                 <th className="px-3 py-3 text-left">Account</th>
                 <th className="px-3 py-3 text-left">Vendor</th>
-                <th className="px-3 py-3 text-left">Method</th>
-                <th className="px-3 py-3 text-right">Amount</th>
+    <th className="px-3 py-3 text-left">Method</th>
+    <th className="px-3 py-3 text-left">Bank/Cash</th>
+    <th className="px-3 py-3 text-right">Amount</th>
                 <th className="px-3 py-3 text-center">Ledger</th>
                 <th className="px-3 py-3 text-center w-24">Actions</th>
               </tr>
@@ -350,6 +354,7 @@ export function ExpensesPage() {
                   <td className="py-3 px-2">
                     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border border-slate-100/50 bg-slate-100 text-slate-600 capitalize">{exp.paymentMethod?.replace('_', ' ')}</span>
                   </td>
+                  <td className="py-3 px-2 text-xs text-slate-500 max-w-[140px] truncate">{exp.creditAccountName || '—'}</td>
                   <td className="py-3 px-2 text-right font-mono text-slate-900 font-medium">{formatNaira(exp.amount)}</td>
                   <td className="py-3 px-2">
                     {exp.journalEntryId ? (
@@ -392,7 +397,7 @@ export function ExpensesPage() {
             </tbody>
             <tfoot>
               <tr className="bg-slate-50 border-t-2 border-slate-200">
-                <td colSpan={6} className="px-3 py-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total ({filtered.length} records)</td>
+                <td colSpan={7} className="px-3 py-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total ({filtered.length} records)</td>
                 <td className="px-3 py-3 text-right font-mono font-bold text-slate-900">{formatNaira(totalExpenses)}</td>
                 <td></td>
               </tr>
