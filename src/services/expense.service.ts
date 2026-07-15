@@ -224,7 +224,7 @@ export async function listExpenses(orgId: string, filters?: { startDate?: Date; 
     .leftJoin(journalEntries, eq(expenses.journalEntryId, journalEntries.id))
     .leftJoin(journalLines, and(
       eq(journalLines.journalEntryId, journalEntries.id),
-      gt(journalLines.credit, 0)
+      gt(journalLines.creditAmount, 0)
     ))
     .leftJoin(accounts, eq(journalLines.accountId, accounts.id))
     .where(and(...conditions))
