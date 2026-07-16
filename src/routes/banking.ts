@@ -6,7 +6,7 @@
 import { Router, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { z } from 'zod';
-import { eq, and, desc, or, like, sql } from 'drizzle-orm';
+import { eq, and, desc, or, like, sql, inArray } from 'drizzle-orm';
 import { getTrialBalance } from '../services/ledger.service';
 import {
   db,
@@ -29,7 +29,7 @@ import {
   payrollRuns,
   users
 } from '../db/schema';
-import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
+import { authenticate, requireOrg, requireRole, AuthenticatedRequest } from '../middleware/auth';
 import { AppError } from '../lib/errors';
 import {
   initiateFlutterwaveConnect,
@@ -530,6 +530,94 @@ router.delete('/accounts/:id/clear-imported-statements', async (req: Authenticat
       success: true,
       message: `Cleared ${result.length} imported statement transaction(s). Balance reset to 0.`,
       clearedCount: result.length
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /accounts/reset-account — TEMPORARY: delete all data for a bank account and reset to opening balance
+router.post('/accounts/reset-account', requireRole('admin'), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { bankAccountId } = req.body;
+    if (!bankAccountId) throw new AppError('bankAccountId is required.', 400);
+
+    const [ba] = await db
+      .select()
+      .from(bankAccounts)
+      .where(and(eq(bankAccounts.id, bankAccountId), eq(bankAccounts.orgId, orgId)))
+      .limit(1);
+    if (!ba) throw new AppError('Bank account not found.', 404);
+
+    const glAccountId = ba.accountId;
+    const results: any = {};
+
+    // 1. Delete all bank transactions for this account
+    const deletedTxns = await db
+      .delete(bankTransactions)
+      .where(and(eq(bankTransactions.bankAccountId, bankAccountId), eq(bankTransactions.orgId, orgId)))
+      .returning({ id: bankTransactions.id });
+    results.deletedTransactions = deletedTxns.length;
+
+    // 2. Find all journal lines that credit this GL account (filter by org via journal entries)
+    const creditLines = await db
+      .select({ entryId: journalLines.entryId })
+      .from(journalLines)
+      .innerJoin(journalEntries, eq(journalLines.entryId, journalEntries.id))
+      .where(and(eq(journalLines.accountId, glAccountId), eq(journalEntries.orgId, orgId)))
+      .groupBy(journalLines.entryId);
+    const entryIds = creditLines.map(r => r.entryId);
+
+    if (entryIds.length > 0) {
+      // 3. Find expenses linked to these entries
+      const linkedExpenses = await db
+        .select({ id: expenses.id, journalEntryId: expenses.journalEntryId })
+        .from(expenses)
+        .where(inArray(expenses.journalEntryId, entryIds));
+      results.foundExpenses = linkedExpenses.length;
+
+      // 4. Delete expenses (their journal entries are reversed by deleteExpense service)
+      const { deleteExpense } = await import('../services/expense.service');
+      for (const exp of linkedExpenses) {
+        try {
+          await deleteExpense(exp.id, req.user!.userId, orgId);
+        } catch (e: any) {
+          console.warn(`Failed to delete expense ${exp.id}: ${e.message}`);
+        }
+      }
+
+      // 5. For remaining journal entries (opening balance, manual JEs), zero out the lines for this account
+      const remainingEntryIds = entryIds.filter(eid => !linkedExpenses.some(e => e.journalEntryId === eid));
+      if (remainingEntryIds.length > 0) {
+        // Delete lines belonging to this account (org filter not needed — entryId scope is enough)
+        await db
+          .delete(journalLines)
+          .where(and(
+            eq(journalLines.accountId, glAccountId),
+            inArray(journalLines.entryId, remainingEntryIds)
+          ));
+        results.clearedOtherJournalLines = remainingEntryIds.length;
+      }
+    }
+
+    // 6. Reset bank account current balance to opening balance
+    await db
+      .update(bankAccounts)
+      .set({ currentBalance: ba.openingBalance })
+      .where(eq(bankAccounts.id, bankAccountId));
+
+    await createAuditLog({
+      orgId, userId: req.user!.userId, action: 'delete',
+      entityType: 'bank-account', entityId: bankAccountId,
+      newValues: { reset: true, ...results },
+      ...extractReqMeta(req)
+    });
+
+    return res.json({
+      success: true,
+      message: 'Bank account reset complete.',
+      results,
     });
   } catch (err) {
     next(err);
