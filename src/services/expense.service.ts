@@ -223,7 +223,7 @@ export async function listExpenses(orgId: string, filters?: { startDate?: Date; 
     .from(expenses)
     .leftJoin(journalEntries, eq(expenses.journalEntryId, journalEntries.id))
     .leftJoin(journalLines, and(
-      eq(journalLines.journalEntryId, journalEntries.id),
+      eq(journalLines.entryId, journalEntries.id),
       gt(journalLines.creditAmount, 0)
     ))
     .leftJoin(accounts, eq(journalLines.accountId, accounts.id))
