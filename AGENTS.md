@@ -180,3 +180,21 @@ Maintain and enhance accounting features: fix kobo/naira display, parent-child a
 - `src/pages/revenue/RevenueRecognitionReport.tsx`: Historical recognition entries with summary cards and date filtering
 - `src/server/index.ts`: Mounted `/api/revenue` routes
 - `src/lib/api.ts`: `revenueApi` with 16 methods for IFRS 15 endpoints
+
+### IFRS 16 Lease Accounting — Completed Items
+- **Schema tables**: `leases` (org FK, lessor, asset category, ROU/liability/interest account FKs, commencement/end dates, term, payment amount, PV, IBR, initial direct costs, status), `lease_payment_schedules` (lease FK, period number, due date, payment/interest/principal amounts, outstanding balance, is_paid, JE FK), `lease_journal_entries` (lease FK, period number, JE FK, entry type, description); added `lease` to `journal_source` enum; added all relations (`leasesRelations`, `leasePaymentSchedulesRelations`, `leaseJournalEntriesRelations`)
+- **Migration (`migrate.ts`)**: Creates all 3 IFRS 16 tables with indexes, seeds ROU asset accounts (201100 Buildings, 201101 Accum Depr Buildings, 201200 Motor Vehicles, 201201 Accum Depr Vehicles), lease liability accounts (304000 Current, 401000 Non-current), interest expense account (910300), depreciation expense account (810900), adds `lease` to `journal_source` enum
+- **`src/services/lease.service.ts`**: Full IFRS 16 engine — `createLease` (generates lease number, PV calculation, amortisation schedule with actuarial method), `getLeases/getLease` (with schedule), `updateLease`, `postCommencementEntry` (DR ROU Asset, CR Lease Liability via `postToGL()`), `processLeasePayment` (DR Interest + DR Lease Liability, CR Bank for one period), `batchProcessPayments` (process all unpaid), `postLeaseDepreciation` (DR Depreciation Expense, CR Accum Depr), `batchPostDepreciation` (auto-all periods not yet posted), `modifyLease` (re-measures liability/ROU asset with gain/loss, regenerates schedule), `terminateLease` (derecognises ROU asset & liability through clearing account, recognises gain/loss), `getLeaseReport` (summary cards + per-lease detail with net book value, outstanding liability, total paid/interest)
+- **`src/routes/leases.ts`**: 12 RESTful endpoints under `/api/leases/` — lease CRUD (GET list/single, POST create, PUT update), `POST /:id/commencement`, `POST /:id/payments`, `POST /:id/payments/batch`, `POST /:id/depreciation`, `POST /:id/depreciation/batch`, `POST /:id/modify`, `POST /:id/terminate`, `GET /report`; all with Zod validation and audit logging
+- **`src/lib/api.ts`**: `leaseApi` with 12 methods — `listLeases/getLease/createLease/updateLease`, `postCommencement/processPayment/batchProcessPayments`, `postDepreciation/batchPostDepreciation`, `modifyLease/terminateLease`, `getLeaseReport`
+- **`src/server/index.ts`**: Mounted `/api/leases` routes
+- **Leases page** (`src/pages/accountant/LeasesPage.tsx`): Full CRUD list view with summary cards (total leases, active, ROU assets, outstanding liability, monthly payments), status badges, create/edit form with account mapping via `AccountSearchSelect`, detail view with payment schedule table and per-period Pay/Depr buttons, batch process all payments/depreciation, modify modal (adjust payment/term/rate with description), terminate modal with termination date, journal posting buttons (Commencement JE, Process All Payments, Post All Depreciation)
+- **Routing/sidebar**: Route at `/accountant/leases` in `App.tsx`; sidebar nav item "Lease Accounting" with Briefcase icon under ACCOUNTANT group in `AppLayout.tsx`
+
+### Next Steps
+1. (Done) Report mappings UI at `/reports/mappings`
+2. (Done) Notes to Financial Statements UI at `/reports/notes`
+3. (Done) Notes included in PDF/Excel exports for BS, PL, CF
+4. (Done) Consolidated reports endpoint (`GET /reports/consolidated`)
+5. (Done) IFRS 15 Revenue Recognition: schema, service, routes, API client, migration, frontend (RevenueContractsPage + RevenueRecognitionReport), sidebar nav, App.tsx routing
+6. (Done) IFRS 16 Lease Accounting: schema, service, routes, API client, migration, frontend (LeasesPage with full CRUD, schedule, payments, depreciation, modify/terminate), sidebar nav, App.tsx routing

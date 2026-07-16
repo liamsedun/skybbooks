@@ -1304,6 +1304,58 @@ export const revenueApi = {
   },
 };
 
+// 9. IFRS 16 Lease Accounting Endpoints
+export const leaseApi = {
+  listLeases: async (): Promise<any[]> => {
+    const res = await api.get('/leases');
+    return res.data;
+  },
+  getLease: async (id: string): Promise<any> => {
+    const res = await api.get(`/leases/${id}`);
+    return res.data;
+  },
+  createLease: async (data: any): Promise<any> => {
+    const res = await api.post('/leases', data);
+    return res.data;
+  },
+  updateLease: async (id: string, data: any): Promise<any> => {
+    const res = await api.put(`/leases/${id}`, data);
+    return res.data;
+  },
+  postCommencement: async (id: string): Promise<any> => {
+    const res = await api.post(`/leases/${id}/commencement`);
+    return res.data;
+  },
+  processPayment: async (id: string, periodNumber: number, paymentDate?: string): Promise<any> => {
+    const res = await api.post(`/leases/${id}/payments`, { periodNumber, paymentDate });
+    return res.data;
+  },
+  batchProcessPayments: async (id: string, upToPeriod?: number): Promise<any> => {
+    const res = await api.post(`/leases/${id}/payments/batch`, { upToPeriod });
+    return res.data;
+  },
+  postDepreciation: async (id: string, periodNumber: number): Promise<any> => {
+    const res = await api.post(`/leases/${id}/depreciation`, { periodNumber });
+    return res.data;
+  },
+  batchPostDepreciation: async (id: string, upToPeriod?: number): Promise<any> => {
+    const res = await api.post(`/leases/${id}/depreciation/batch`, { upToPeriod });
+    return res.data;
+  },
+  modifyLease: async (id: string, data: any): Promise<any> => {
+    const res = await api.post(`/leases/${id}/modify`, data);
+    return res.data;
+  },
+  terminateLease: async (id: string, terminationDate: string): Promise<any> => {
+    const res = await api.post(`/leases/${id}/terminate`, { terminationDate });
+    return res.data;
+  },
+  getLeaseReport: async (): Promise<any> => {
+    const res = await api.get('/leases/report');
+    return res.data;
+  },
+};
+
 export function downloadBlob(blob: Blob, filename: string) {
   try {
     const url = URL.createObjectURL(blob);

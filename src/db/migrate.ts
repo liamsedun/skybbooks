@@ -1336,6 +1336,139 @@ export async function runMigration() {
     await db.execute(sql`ALTER TYPE journal_source ADD VALUE IF NOT EXISTS 'revenue_recognition'`);
     console.log('[Migration] Created IFRS 15 revenue recognition tables and seeded contract asset account.');
 
+    // ── IFRS 16 Lease Accounting ──
+    await db.execute(sql`ALTER TYPE journal_source ADD VALUE IF NOT EXISTS 'lease'`);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS leases (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        lease_number text NOT NULL,
+        description text,
+        lessor_name text NOT NULL,
+        asset_category text NOT NULL,
+        rou_asset_account_id uuid REFERENCES accounts(id) NOT NULL,
+        accum_depreciation_account_id uuid REFERENCES accounts(id) NOT NULL,
+        depreciation_expense_account_id uuid REFERENCES accounts(id) NOT NULL,
+        lease_liability_account_id uuid REFERENCES accounts(id),
+        current_liability_account_id uuid REFERENCES accounts(id),
+        interest_expense_account_id uuid REFERENCES accounts(id),
+        bank_account_id uuid REFERENCES accounts(id),
+        commencement_date timestamp NOT NULL,
+        end_date timestamp NOT NULL,
+        lease_term_months integer NOT NULL,
+        payment_amount bigint NOT NULL,
+        lease_payment_frequency text DEFAULT 'monthly' NOT NULL,
+        total_payments integer NOT NULL,
+        incremental_borrowing_rate numeric(5,2) NOT NULL,
+        present_value bigint NOT NULL,
+        rou_asset_initial bigint NOT NULL,
+        initial_direct_costs bigint DEFAULT 0 NOT NULL,
+        depreciation_method text DEFAULT 'straight_line' NOT NULL,
+        residual_value bigint DEFAULT 0 NOT NULL,
+        status text DEFAULT 'draft' NOT NULL,
+        notes text,
+        created_by uuid REFERENCES users(id) NOT NULL,
+        created_at timestamp DEFAULT now() NOT NULL,
+        updated_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_leases_org ON leases (org_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_leases_status ON leases (status)`);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS lease_payment_schedules (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        lease_id uuid REFERENCES leases(id) NOT NULL,
+        period_number integer NOT NULL,
+        due_date timestamp NOT NULL,
+        payment_amount bigint NOT NULL,
+        interest_amount bigint DEFAULT 0 NOT NULL,
+        principal_amount bigint DEFAULT 0 NOT NULL,
+        outstanding_balance bigint NOT NULL,
+        is_paid boolean DEFAULT false NOT NULL,
+        journal_entry_id uuid REFERENCES journal_entries(id),
+        created_at timestamp DEFAULT now() NOT NULL,
+        updated_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_lease_sched_lease ON lease_payment_schedules (lease_id)`);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS lease_journal_entries (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        lease_id uuid REFERENCES leases(id) NOT NULL,
+        period_number integer NOT NULL,
+        journal_entry_id uuid REFERENCES journal_entries(id) NOT NULL,
+        entry_type text NOT NULL,
+        description text,
+        created_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_lease_je_lease ON lease_journal_entries (lease_id)`);
+
+    // Seed lease liability accounts (current and non-current) if not already present
+    await db.execute(sql`
+      INSERT INTO accounts (id, org_id, code, name, type, sub_type, description, is_system, is_active, system_account_role)
+      SELECT gen_random_uuid(), o.id, '304000', 'Lease Liabilities – Current', 'liability', 'Current Liabilities',
+             'IFRS 16 – Current portion of lease liabilities due within 12 months.', true, true, 'none'
+      FROM organisations o
+      WHERE NOT EXISTS (SELECT 1 FROM accounts a WHERE a.org_id = o.id AND a.code = '304000')
+    `);
+    await db.execute(sql`
+      INSERT INTO accounts (id, org_id, code, name, type, sub_type, description, is_system, is_active, system_account_role)
+      SELECT gen_random_uuid(), o.id, '401000', 'Lease Liabilities – Non-current', 'liability', 'Non-current Liabilities',
+             'IFRS 16 – Non-current portion of lease liabilities due beyond 12 months.', true, true, 'none'
+      FROM organisations o
+      WHERE NOT EXISTS (SELECT 1 FROM accounts a WHERE a.org_id = o.id AND a.code = '401000')
+    `);
+    // Seed interest expense account
+    await db.execute(sql`
+      INSERT INTO accounts (id, org_id, code, name, type, sub_type, description, is_system, is_active, system_account_role)
+      SELECT gen_random_uuid(), o.id, '910300', 'Interest Expense – Lease Liabilities', 'expense', 'Finance Costs',
+             'IFRS 16 – Interest expense on lease liabilities (unwinding of discount).', true, true, 'none'
+      FROM organisations o
+      WHERE NOT EXISTS (SELECT 1 FROM accounts a WHERE a.org_id = o.id AND a.code = '910300')
+    `);
+    // Seed ROU asset and depreciation accounts
+    await db.execute(sql`
+      INSERT INTO accounts (id, org_id, code, name, type, sub_type, description, is_system, is_active, system_account_role)
+      SELECT gen_random_uuid(), o.id, '201100', 'ROU – Buildings', 'asset', 'Property, Plant & Equipment',
+             'IFRS 16 – Right-of-use asset for building leases.', true, true, 'none'
+      FROM organisations o
+      WHERE NOT EXISTS (SELECT 1 FROM accounts a WHERE a.org_id = o.id AND a.code = '201100')
+    `);
+    await db.execute(sql`
+      INSERT INTO accounts (id, org_id, code, name, type, sub_type, description, is_system, is_active, system_account_role)
+      SELECT gen_random_uuid(), o.id, '201101', 'Accum. Depr. – ROU Buildings', 'asset', 'Property, Plant & Equipment',
+             'IFRS 16 – Accumulated depreciation on right-of-use building assets.', true, true, 'none'
+      FROM organisations o
+      WHERE NOT EXISTS (SELECT 1 FROM accounts a WHERE a.org_id = o.id AND a.code = '201101')
+    `);
+    await db.execute(sql`
+      INSERT INTO accounts (id, org_id, code, name, type, sub_type, description, is_system, is_active, system_account_role)
+      SELECT gen_random_uuid(), o.id, '201200', 'ROU – Motor Vehicles', 'asset', 'Property, Plant & Equipment',
+             'IFRS 16 – Right-of-use asset for motor vehicle leases.', true, true, 'none'
+      FROM organisations o
+      WHERE NOT EXISTS (SELECT 1 FROM accounts a WHERE a.org_id = o.id AND a.code = '201200')
+    `);
+    await db.execute(sql`
+      INSERT INTO accounts (id, org_id, code, name, type, sub_type, description, is_system, is_active, system_account_role)
+      SELECT gen_random_uuid(), o.id, '201201', 'Accum. Depr. – ROU Vehicles', 'asset', 'Property, Plant & Equipment',
+             'IFRS 16 – Accumulated depreciation on right-of-use vehicle assets.', true, true, 'none'
+      FROM organisations o
+      WHERE NOT EXISTS (SELECT 1 FROM accounts a WHERE a.org_id = o.id AND a.code = '201201')
+    `);
+    await db.execute(sql`
+      INSERT INTO accounts (id, org_id, code, name, type, sub_type, description, is_system, is_active, system_account_role)
+      SELECT gen_random_uuid(), o.id, '810900', 'Depreciation – ROU Assets', 'expense', 'Depreciation & Amortisation',
+             'IFRS 16 – Depreciation expense on right-of-use assets.', true, true, 'none'
+      FROM organisations o
+      WHERE NOT EXISTS (SELECT 1 FROM accounts a WHERE a.org_id = o.id AND a.code = '810900')
+    `);
+
+    console.log('[Migration] Created IFRS 16 lease accounting tables and seeded default accounts.');
+
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema setup:', err);

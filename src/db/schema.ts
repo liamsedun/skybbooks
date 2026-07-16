@@ -52,7 +52,8 @@ export const journalSourceEnum = pgEnum('journal_source', [
   'loan',
   'owner_capital',
   'owner_drawings',
-  'revenue_recognition'
+  'revenue_recognition',
+  'lease'
 ]);
 
 export const journalStatusEnum = pgEnum('journal_status', [
@@ -205,7 +206,10 @@ export const bankTxnStatusEnum = pgEnum('bank_txn_status', [
 export const paymentFrequencyEnum = pgEnum('payment_frequency', [
   'monthly',
   'weekly',
-  'biweekly'
+  'biweekly',
+  'quarterly',
+  'semi_annual',
+  'annual'
 ]);
 
 export const payrollRunStatusEnum = pgEnum('payroll_run_status', [
@@ -1449,6 +1453,74 @@ export const revenueRecognitionEntries = pgTable('revenue_recognition_entries', 
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
+// ── IFRS 16 Lease Accounting ──
+
+export const leaseStatusEnum = pgEnum('lease_status', [
+  'draft',
+  'active',
+  'modified',
+  'terminated',
+  'expired'
+]);
+
+export const leases = pgTable('leases', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  leaseNumber: text('lease_number').notNull(),
+  description: text('description'),
+  lessorName: text('lessor_name').notNull(),
+  assetCategory: text('asset_category').notNull(), // buildings, motor_vehicles, equipment, other
+  rouAssetAccountId: uuid('rou_asset_account_id').references(() => accounts.id).notNull(),
+  accumDepreciationAccountId: uuid('accum_depreciation_account_id').references(() => accounts.id).notNull(),
+  depreciationExpenseAccountId: uuid('depreciation_expense_account_id').references(() => accounts.id).notNull(),
+  leaseLiabilityAccountId: uuid('lease_liability_account_id').references(() => accounts.id),
+  currentLiabilityAccountId: uuid('current_liability_account_id').references(() => accounts.id),
+  interestExpenseAccountId: uuid('interest_expense_account_id').references(() => accounts.id),
+  bankAccountId: uuid('bank_account_id').references(() => accounts.id),
+  commencementDate: timestamp('commencement_date').notNull(),
+  endDate: timestamp('end_date').notNull(),
+  leaseTermMonths: integer('lease_term_months').notNull(),
+  paymentAmount: bigint('payment_amount', { mode: 'number' }).notNull(),
+  paymentFrequency: paymentFrequencyEnum('payment_frequency').default('monthly').notNull(),
+  totalPayments: integer('total_payments').notNull(),
+  incrementalBorrowingRate: numeric('incremental_borrowing_rate', { precision: 5, scale: 2 }).notNull(), // percentage e.g. 12.00
+  presentValue: bigint('present_value', { mode: 'number' }).notNull(),
+  rouAssetInitial: bigint('rou_asset_initial', { mode: 'number' }).notNull(), // initial recognition amount
+  initialDirectCosts: bigint('initial_direct_costs', { mode: 'number' }).default(0).notNull(),
+  depreciationMethod: depreciationMethodEnum('depreciation_method').default('straight_line').notNull(),
+  residualValue: bigint('residual_value', { mode: 'number' }).default(0).notNull(),
+  status: leaseStatusEnum('status').default('draft').notNull(),
+  notes: text('notes'),
+  createdBy: uuid('created_by').references(() => users.id).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+});
+
+export const leasePaymentSchedules = pgTable('lease_payment_schedules', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  leaseId: uuid('lease_id').references(() => leases.id).notNull(),
+  periodNumber: integer('period_number').notNull(),
+  dueDate: timestamp('due_date').notNull(),
+  paymentAmount: bigint('payment_amount', { mode: 'number' }).notNull(),
+  interestAmount: bigint('interest_amount', { mode: 'number' }).default(0).notNull(),
+  principalAmount: bigint('principal_amount', { mode: 'number' }).default(0).notNull(),
+  outstandingBalance: bigint('outstanding_balance', { mode: 'number' }).notNull(),
+  isPaid: boolean('is_paid').default(false).notNull(),
+  journalEntryId: uuid('journal_entry_id').references(() => journalEntries.id),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+});
+
+export const leaseJournalEntries = pgTable('lease_journal_entries', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  leaseId: uuid('lease_id').references(() => leases.id).notNull(),
+  periodNumber: integer('period_number').notNull(),
+  journalEntryId: uuid('journal_entry_id').references(() => journalEntries.id).notNull(),
+  entryType: text('entry_type').notNull(), // 'commencement', 'payment', 'depreciation', 'modification', 'termination', 'year_end_reclassification'
+  description: text('description'),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
 // ==========================================
 // 3. RELATIONS DEFINITIONS
 // ==========================================
@@ -2214,6 +2286,59 @@ export const revenueRecognitionEntriesRelations = relations(revenueRecognitionEn
   }),
 }));
 
+// ── IFRS 16 Lease Accounting Relations ──
+
+export const leasesRelations = relations(leases, ({ one, many }) => ({
+  organisation: one(organisations, {
+    fields: [leases.orgId],
+    references: [organisations.id]
+  }),
+  creator: one(users, {
+    fields: [leases.createdBy],
+    references: [users.id]
+  }),
+  rouAssetAccount: one(accounts, {
+    fields: [leases.rouAssetAccountId],
+    references: [accounts.id]
+  }),
+  accumDepreciationAccount: one(accounts, {
+    fields: [leases.accumDepreciationAccountId],
+    references: [accounts.id]
+  }),
+  depreciationExpenseAccount: one(accounts, {
+    fields: [leases.depreciationExpenseAccountId],
+    references: [accounts.id]
+  }),
+  leaseLiabilityAccount: one(accounts, {
+    fields: [leases.leaseLiabilityAccountId],
+    references: [accounts.id]
+  }),
+  paymentSchedules: many(leasePaymentSchedules),
+  journalEntries: many(leaseJournalEntries),
+}));
+
+export const leasePaymentSchedulesRelations = relations(leasePaymentSchedules, ({ one }) => ({
+  lease: one(leases, {
+    fields: [leasePaymentSchedules.leaseId],
+    references: [leases.id]
+  }),
+  journalEntry: one(journalEntries, {
+    fields: [leasePaymentSchedules.journalEntryId],
+    references: [journalEntries.id]
+  }),
+}));
+
+export const leaseJournalEntriesRelations = relations(leaseJournalEntries, ({ one }) => ({
+  lease: one(leases, {
+    fields: [leaseJournalEntries.leaseId],
+    references: [leases.id]
+  }),
+  journalEntry: one(journalEntries, {
+    fields: [leaseJournalEntries.journalEntryId],
+    references: [journalEntries.id]
+  }),
+}));
+
 // ==========================================
 // 4. DATABASE INITIALIZATION & INSTANCE
 // ==========================================
@@ -2334,6 +2459,9 @@ export const db = drizzle(pool, {
     performanceObligationsRelations,
     revenueSchedulesRelations,
     revenueRecognitionEntriesRelations,
+    leasesRelations,
+    leasePaymentSchedulesRelations,
+    leaseJournalEntriesRelations,
   }
 });
 
@@ -2403,5 +2531,8 @@ export const schema = {
   performanceObligations,
   revenueSchedules,
   revenueRecognitionEntries,
+  leases,
+  leasePaymentSchedules,
+  leaseJournalEntries,
 };
 
