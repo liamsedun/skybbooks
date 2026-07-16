@@ -47,7 +47,8 @@ router.get('/return', async (req: AuthenticatedRequest, res: Response, next: Nex
         eq(journalLines.accountId, outputVatAcct.id),
         eq(journalEntries.orgId, orgId),
         sql`${journalEntries.date} >= ${startDate}::date`,
-        sql`${journalEntries.date} <= ${endDate}::date`
+        sql`${journalEntries.date} <= ${endDate}::date`,
+        sql`${journalEntries.status} NOT IN ('draft', 'pending_review', 'cancelled', 'reversed')`
       ));
 
     // Input VAT = sum(debit) - sum(credit) on 101600 for period
@@ -61,7 +62,8 @@ router.get('/return', async (req: AuthenticatedRequest, res: Response, next: Nex
         eq(journalLines.accountId, inputVatAcct.id),
         eq(journalEntries.orgId, orgId),
         sql`${journalEntries.date} >= ${startDate}::date`,
-        sql`${journalEntries.date} <= ${endDate}::date`
+        sql`${journalEntries.date} <= ${endDate}::date`,
+        sql`${journalEntries.status} NOT IN ('draft', 'pending_review', 'cancelled', 'reversed')`
       ));
 
     // Also get standard-rated sales revenue lines (output VAT related)
@@ -77,7 +79,8 @@ router.get('/return', async (req: AuthenticatedRequest, res: Response, next: Nex
         sql`${journalLines.creditAmount} > 0`,
         eq(journalEntries.orgId, orgId),
         sql`${journalEntries.date} >= ${startDate}::date`,
-        sql`${journalEntries.date} <= ${endDate}::date`
+        sql`${journalEntries.date} <= ${endDate}::date`,
+        sql`${journalEntries.status} NOT IN ('draft', 'pending_review', 'cancelled', 'reversed')`
       ));
 
     // Get input VAT lines (debits on 101600)
@@ -93,7 +96,8 @@ router.get('/return', async (req: AuthenticatedRequest, res: Response, next: Nex
         sql`${journalLines.debitAmount} > 0`,
         eq(journalEntries.orgId, orgId),
         sql`${journalEntries.date} >= ${startDate}::date`,
-        sql`${journalEntries.date} <= ${endDate}::date`
+        sql`${journalEntries.date} <= ${endDate}::date`,
+        sql`${journalEntries.status} NOT IN ('draft', 'pending_review', 'cancelled', 'reversed')`
       ));
 
     const totalOutputVat = Number(outputResult?.totalVat || 0);

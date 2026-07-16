@@ -557,7 +557,8 @@ router.get('/tax-summary', async (req: AuthenticatedRequest, res: Response, next
           eq(journalLines.accountId, vatPayableAccount.id),
           eq(journalEntries.orgId, orgId),
           gte(journalEntries.date, startDate),
-          lte(journalEntries.date, endDate)
+          lte(journalEntries.date, endDate),
+          sql`${journalEntries.status} NOT IN ('draft', 'pending_review', 'cancelled', 'reversed')`
         ));
       totalOutputVat = Number(row?.total || 0);
     }
@@ -572,7 +573,8 @@ router.get('/tax-summary', async (req: AuthenticatedRequest, res: Response, next
           eq(journalLines.accountId, vatReceivableAccount.id),
           eq(journalEntries.orgId, orgId),
           gte(journalEntries.date, startDate),
-          lte(journalEntries.date, endDate)
+          lte(journalEntries.date, endDate),
+          sql`${journalEntries.status} NOT IN ('draft', 'pending_review', 'cancelled', 'reversed')`
         ));
       totalInputVat = Number(row?.total || 0);
     }
@@ -587,7 +589,8 @@ router.get('/tax-summary', async (req: AuthenticatedRequest, res: Response, next
           eq(journalLines.accountId, whtReceivableAccount.id),
           eq(journalEntries.orgId, orgId),
           gte(journalEntries.date, startDate),
-          lte(journalEntries.date, endDate)
+          lte(journalEntries.date, endDate),
+          sql`${journalEntries.status} NOT IN ('draft', 'pending_review', 'cancelled', 'reversed')`
         ));
       totalWhtDeducted = Number(row?.total || 0);
     }
@@ -602,7 +605,8 @@ router.get('/tax-summary', async (req: AuthenticatedRequest, res: Response, next
           eq(journalLines.accountId, whtPayableAccount.id),
           eq(journalEntries.orgId, orgId),
           gte(journalEntries.date, startDate),
-          lte(journalEntries.date, endDate)
+          lte(journalEntries.date, endDate),
+          sql`${journalEntries.status} NOT IN ('draft', 'pending_review', 'cancelled', 'reversed')`
         ));
       totalWhtPayable = Number(row?.total || 0);
     }
@@ -617,7 +621,8 @@ router.get('/tax-summary', async (req: AuthenticatedRequest, res: Response, next
           eq(journalLines.accountId, payePayableAccount.id),
           eq(journalEntries.orgId, orgId),
           gte(journalEntries.date, startDate),
-          lte(journalEntries.date, endDate)
+          lte(journalEntries.date, endDate),
+          sql`${journalEntries.status} NOT IN ('draft', 'pending_review', 'cancelled', 'reversed')`
         ));
       totalPayeCollected = Number(row?.total || 0);
     }
@@ -755,7 +760,8 @@ router.get('/cash-equivalents', async (req: AuthenticatedRequest, res: Response,
         .where(and(
           eq(journalLines.accountId, da.id),
           eq(journalEntries.orgId, orgId),
-          lte(journalEntries.date, asOfDate)
+          lte(journalEntries.date, asOfDate),
+          sql`${journalEntries.status} NOT IN ('draft', 'pending_review', 'cancelled', 'reversed')`
         ));
       depositTotal += Number(row?.debits || 0) - Number(row?.credits || 0);
     }
@@ -808,7 +814,8 @@ router.get('/capital-accounts-summary', async (req: AuthenticatedRequest, res: R
         .innerJoin(journalEntries, eq(journalLines.entryId, journalEntries.id))
         .where(and(
           eq(journalLines.accountId, acc.id),
-          eq(journalEntries.orgId, orgId)
+          eq(journalEntries.orgId, orgId),
+          sql`${journalEntries.status} NOT IN ('draft', 'pending_review', 'cancelled', 'reversed')`
         ));
 
       const totalCredits = Number(row?.credits || 0) + Number(acc.openingBalance > 0 ? acc.openingBalance : 0);
@@ -1014,7 +1021,8 @@ router.get('/actual-vs-budget', async (req: AuthenticatedRequest, res: Response,
             eq(journalLines.accountId, bl.accountId),
             eq(journalEntries.orgId, orgId),
             gte(journalEntries.date, startDate),
-            lte(journalEntries.date, endDate)
+            lte(journalEntries.date, endDate),
+            sql`${journalEntries.status} NOT IN ('draft', 'pending_review', 'cancelled', 'reversed')`
           ));
 
         const actualNet = Number(actualRow?.credits || 0) - Number(actualRow?.debits || 0);
@@ -1073,12 +1081,13 @@ router.get('/gl-summary', async (req: AuthenticatedRequest, res: Response, next:
         })
         .from(journalLines)
         .innerJoin(journalEntries, eq(journalLines.entryId, journalEntries.id))
-        .where(and(
-          eq(journalLines.accountId, acc.id),
-          eq(journalEntries.orgId, orgId),
-          gte(journalEntries.date, startDate),
-          lte(journalEntries.date, endDate)
-        ));
+         .where(and(
+           eq(journalLines.accountId, acc.id),
+           eq(journalEntries.orgId, orgId),
+           gte(journalEntries.date, startDate),
+           lte(journalEntries.date, endDate),
+           sql`${journalEntries.status} NOT IN ('draft', 'pending_review', 'cancelled', 'reversed')`
+         ));
 
       const totalDebits = Number(row?.debits || 0);
       const totalCredits = Number(row?.credits || 0);
@@ -1124,6 +1133,7 @@ router.get('/gl-transactions', async (req: AuthenticatedRequest, res: Response, 
       eq(journalEntries.orgId, orgId),
       gte(journalEntries.date, startDate),
       lte(journalEntries.date, endDate),
+      sql`${journalEntries.status} NOT IN ('draft', 'pending_review', 'cancelled', 'reversed')`,
     ];
     if (accountId) {
       whereClauses.push(eq(journalLines.accountId, accountId));
@@ -1197,7 +1207,8 @@ router.get('/tax-transactions', async (req: AuthenticatedRequest, res: Response,
         eq(journalEntries.orgId, orgId),
         inArray(journalLines.accountId, taxAccountIds),
         gte(journalEntries.date, startDate),
-        lte(journalEntries.date, endDate)
+        lte(journalEntries.date, endDate),
+        sql`${journalEntries.status} NOT IN ('draft', 'pending_review', 'cancelled', 'reversed')`
       ))
       .orderBy(desc(journalEntries.date), asc(journalEntries.entryNumber))
       .limit(5000);

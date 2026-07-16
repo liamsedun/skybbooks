@@ -1158,6 +1158,25 @@ export async function runMigration() {
     await db.execute(sql`ALTER TYPE journal_source ADD VALUE IF NOT EXISTS 'owner_drawings'`);
     console.log('[Migration] Added loan, owner_capital, owner_drawings to journal_source enum.');
 
+    // ── Journal Status Workflow ──
+    await db.execute(sql`
+      DO $$ BEGIN
+        CREATE TYPE journal_status AS ENUM (
+          'draft', 'pending_review', 'approved', 'posted', 'locked', 'reversed', 'cancelled'
+        );
+      EXCEPTION
+        WHEN duplicate_object THEN NULL;
+      END $$;
+    `);
+    await db.execute(sql`ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS status journal_status DEFAULT 'posted' NOT NULL`);
+    await db.execute(sql`ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS approved_by uuid REFERENCES users(id)`);
+    await db.execute(sql`ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS posted_by uuid REFERENCES users(id)`);
+    await db.execute(sql`ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS locked_by uuid REFERENCES users(id)`);
+    await db.execute(sql`ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS cancelled_by uuid REFERENCES users(id)`);
+    // Backfill: mark reversed entries with status='reversed' where is_reversed=true
+    await db.execute(sql`UPDATE journal_entries SET status = 'reversed' WHERE is_reversed = true AND status = 'posted'`);
+    console.log('[Migration] Added journal_status enum, status column, and approver/post/lock/cancel-by columns.');
+
     console.log('[Migration] Created accounting_rules table.');
 
     console.log('[Migration] Database is online. Migration/schema push complete!');

@@ -1373,7 +1373,8 @@ router.get('/accounts/:id/transactions', async (req: AuthenticatedRequest, res: 
           .where(
             and(
               eq(journalLines.accountId, ba.accountId),
-              eq(journalEntries.orgId, orgId)
+              eq(journalEntries.orgId, orgId),
+              sql`${journalEntries.status} NOT IN ('draft', 'pending_review', 'cancelled', 'reversed')`
             )
           )
           .limit(10);
@@ -1575,7 +1576,8 @@ router.get('/accounts/:id/unmatched-journal-lines', async (req: AuthenticatedReq
       .where(
         and(
           eq(journalLines.accountId, ba.accountId),
-          eq(journalEntries.orgId, orgId)
+          eq(journalEntries.orgId, orgId),
+          sql`${journalEntries.status} NOT IN ('draft', 'pending_review', 'cancelled', 'reversed')`
         )
       )
       .orderBy(desc(journalEntries.date))

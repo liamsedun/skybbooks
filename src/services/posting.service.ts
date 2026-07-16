@@ -24,6 +24,7 @@ export type PostToGLParams = {
   lines: JournalLineInput[];
   currency?: string;
   fxRate?: number;
+  status?: 'draft' | 'pending_review' | 'approved' | 'posted' | 'locked';
 };
 
 /**
@@ -656,7 +657,7 @@ export async function postToGL(
   params: PostToGLParams,
   tx?: any
 ): Promise<any> {
-  const { orgId, date, description, reference, source, sourceId, projectId, createdBy, lines, currency, fxRate } = params;
+  const { orgId, date, description, reference, source, sourceId, projectId, createdBy, lines, currency, fxRate, status } = params;
 
   // 1. Check for duplicate posting (same source + sourceId)
   await checkDuplicate(orgId, source, sourceId, tx);
@@ -691,6 +692,7 @@ export async function postToGL(
       lines: resolvedLines,
       currency,
       fxRate,
+      status,
     },
     tx
   );

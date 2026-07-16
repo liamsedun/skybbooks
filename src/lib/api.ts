@@ -838,6 +838,26 @@ export const journalsApi = {
     const res = await api.patch(`/journals/${id}/tag`, { isOpeningBalance });
     return res.data;
   },
+  submitReview: async (id: string) => {
+    const res = await api.post(`/journals/${id}/submit-review`);
+    return res.data;
+  },
+  approveJournal: async (id: string) => {
+    const res = await api.post(`/journals/${id}/approve`);
+    return res.data;
+  },
+  postJournal: async (id: string) => {
+    const res = await api.post(`/journals/${id}/post`);
+    return res.data;
+  },
+  lockJournal: async (id: string) => {
+    const res = await api.post(`/journals/${id}/lock`);
+    return res.data;
+  },
+  cancelJournal: async (id: string) => {
+    const res = await api.post(`/journals/${id}/cancel`);
+    return res.data;
+  },
 };
 
 // 7c. Budgets Endpoints

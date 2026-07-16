@@ -575,7 +575,8 @@ router.get(
             eq(journalLines.accountId, accountId),
             eq(journalEntries.orgId, orgId),
             gte(journalEntries.date, startDate),
-            lte(journalEntries.date, endDate)
+            lte(journalEntries.date, endDate),
+            sql`${journalEntries.status} NOT IN ('draft', 'pending_review', 'cancelled', 'reversed')`
           ))
           .orderBy(journalEntries.date, journalEntries.entryNumber);
 
@@ -729,7 +730,8 @@ router.get('/dashboard-summary', async (req: AuthenticatedRequest, res: Response
           eq(accounts.orgId, orgId),
           eq(accounts.type, 'revenue'),
           gte(journalEntries.date, startDate),
-          lte(journalEntries.date, endDate)
+          lte(journalEntries.date, endDate),
+          sql`${journalEntries.status} NOT IN ('draft', 'pending_review', 'cancelled', 'reversed')`
         )
       );
     const totalRevenue = Number(revResult?.total || 0);
@@ -745,7 +747,8 @@ router.get('/dashboard-summary', async (req: AuthenticatedRequest, res: Response
           eq(accounts.orgId, orgId),
           eq(accounts.type, 'expense'),
           gte(journalEntries.date, startDate),
-          lte(journalEntries.date, endDate)
+          lte(journalEntries.date, endDate),
+          sql`${journalEntries.status} NOT IN ('draft', 'pending_review', 'cancelled', 'reversed')`
         )
       );
     const totalExpenses = Number(expResult?.total || 0);
@@ -771,7 +774,8 @@ router.get('/dashboard-summary', async (req: AuthenticatedRequest, res: Response
           and(
             eq(journalLines.accountId, arAccount.id),
             eq(journalEntries.orgId, orgId),
-            lte(journalEntries.date, endDate)
+            lte(journalEntries.date, endDate),
+            sql`${journalEntries.status} NOT IN ('draft', 'pending_review', 'cancelled', 'reversed')`
           )
         );
       totalReceivables = Number(arResult?.debits || 0) - Number(arResult?.credits || 0);
@@ -797,7 +801,8 @@ router.get('/dashboard-summary', async (req: AuthenticatedRequest, res: Response
           and(
             eq(journalLines.accountId, apAccount.id),
             eq(journalEntries.orgId, orgId),
-            lte(journalEntries.date, endDate)
+            lte(journalEntries.date, endDate),
+            sql`${journalEntries.status} NOT IN ('draft', 'pending_review', 'cancelled', 'reversed')`
           )
         );
       totalPayables = Number(apResult?.credits || 0) - Number(apResult?.debits || 0);
@@ -890,6 +895,7 @@ router.get('/project-income-expense', async (req: AuthenticatedRequest, res: Res
     }
     if (startDate && typeof startDate === 'string') whereClauses.push(gte(journalEntries.date, new Date(startDate)));
     if (endDate && typeof endDate === 'string') whereClauses.push(lte(journalEntries.date, new Date(endDate)));
+    whereClauses.push(sql`${journalEntries.status} NOT IN ('draft', 'pending_review', 'cancelled', 'reversed')`);
 
     const rows = await db
       .select({
@@ -970,6 +976,7 @@ router.get('/project-income-expense', async (req: AuthenticatedRequest, res: Res
               OR (${journalEntries.source} = 'payment' AND ${journalEntries.sourceId} IN (SELECT id FROM payments_made WHERE project_id = ${projectId}::uuid))
               OR (${journalEntries.source} = 'invoice' AND ${journalEntries.sourceId} IN (SELECT id FROM invoices WHERE project_id = ${projectId}::uuid))
             )`,
+            sql`${journalEntries.status} NOT IN ('draft', 'pending_review', 'cancelled', 'reversed')`,
           ));
         whtDeducted = Number(whtResult?.totalWht || 0);
       }
@@ -1000,7 +1007,7 @@ router.get('/project-summary', async (req: AuthenticatedRequest, res: Response, 
       .from(projects)
       .where(eq(projects.orgId, orgId));
 
-    const dateWhere: any[] = [eq(journalEntries.orgId, orgId)];
+    const dateWhere: any[] = [eq(journalEntries.orgId, orgId), sql`${journalEntries.status} NOT IN ('draft', 'pending_review', 'cancelled', 'reversed')`];
     if (startDate && typeof startDate === 'string') dateWhere.push(gte(journalEntries.date, new Date(startDate)));
     if (endDate && typeof endDate === 'string') dateWhere.push(lte(journalEntries.date, new Date(endDate)));
 
@@ -1062,6 +1069,7 @@ router.get('/project-summary', async (req: AuthenticatedRequest, res: Response, 
               OR (${journalEntries.source} = 'payment' AND ${journalEntries.sourceId} IN (SELECT id FROM payments_made WHERE project_id = ${p.id}::uuid))
               OR (${journalEntries.source} = 'invoice' AND ${journalEntries.sourceId} IN (SELECT id FROM invoices WHERE project_id = ${p.id}::uuid))
             )`,
+            sql`${journalEntries.status} NOT IN ('draft', 'pending_review', 'cancelled', 'reversed')`,
           ));
         whtDeducted = Number(whtRow?.total || 0);
       }

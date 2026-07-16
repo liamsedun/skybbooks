@@ -53,7 +53,10 @@ router.get('/accounts', async (req: AuthenticatedRequest, res: Response, next: N
       })
       .from(journalLines)
       .innerJoin(journalEntries, eq(journalEntries.id, journalLines.entryId))
-      .where(eq(journalEntries.orgId, orgId))
+      .where(and(
+        eq(journalEntries.orgId, orgId),
+        sql`${journalEntries.status} NOT IN ('draft', 'pending_review', 'cancelled', 'reversed')`
+      ))
       .groupBy(journalLines.accountId);
 
     const balanceMap = new Map<string, { debits: number; credits: number }>();

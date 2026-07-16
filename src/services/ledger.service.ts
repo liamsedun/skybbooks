@@ -34,6 +34,7 @@ export type CreateJournalEntryInput = {
   lines: JournalLineInput[];
   currency?: string;
   fxRate?: number;
+  status?: 'draft' | 'pending_review' | 'approved' | 'posted' | 'locked';
 };
 
 export type TrialBalanceRow = {
@@ -90,13 +91,15 @@ export async function createJournalEntry(
 ): Promise<any> {
   const client = tx || db;
 
-  // 0. Reject if date falls in closed period
-  const periodCheck = await isDateInClosedPeriod(input.orgId, input.date);
-  if (periodCheck.isClosed) {
-    throw new AppError(
-      `Cannot post to a closed accounting period. Period ending ${periodCheck.periodEnd?.toISOString().split('T')[0]} was closed on ${periodCheck.closedAt?.toISOString().split('T')[0]}.`,
-      403
-    );
+  // 0. Reject if date falls in closed period (only for posted entries)
+  if (!input.status || input.status === 'posted') {
+    const periodCheck = await isDateInClosedPeriod(input.orgId, input.date);
+    if (periodCheck.isClosed) {
+      throw new AppError(
+        `Cannot post to a closed accounting period. Period ending ${periodCheck.periodEnd?.toISOString().split('T')[0]} was closed on ${periodCheck.closedAt?.toISOString().split('T')[0]}.`,
+        403
+      );
+    }
   }
 
   // 0a. Prevent duplicate posting (same source + sourceId, non-reversed)
@@ -252,6 +255,7 @@ export async function createJournalEntry(
         source: input.source,
         sourceId: input.sourceId || null,
         projectId: input.projectId || null,
+        status: input.status || 'posted',
         createdBy: input.createdBy,
         isReversed: false
       })
@@ -343,7 +347,7 @@ export async function reverseJournalEntry(
     if (!entry) {
       throw new AppError('Journal entry could not be found.', 404);
     }
-    if (entry.isReversed) {
+    if (entry.isReversed || entry.status === 'reversed') {
       throw new AppError('This journal entry has already been reversed.', 400);
     }
 
@@ -384,6 +388,7 @@ export async function reverseJournalEntry(
       .update(journalEntries)
       .set({
         isReversed: true,
+        status: 'reversed',
         reversedById: createdBy
       })
       .where(eq(journalEntries.id, entry.id));
@@ -418,7 +423,11 @@ export async function getAccountBalance(
   }
 
   // 2. Fetch individual journal lines with their currency and fxRate
-  const conditions = [eq(journalLines.accountId, accountId)];
+  // Only include posted/approved/locked entries (exclude draft, pending_review, cancelled, reversed)
+  const conditions = [
+    eq(journalLines.accountId, accountId),
+    sql`${journalEntries.status} NOT IN ('draft', 'pending_review', 'cancelled', 'reversed')`
+  ];
   if (asOfDate) {
     conditions.push(lte(journalEntries.date, asOfDate));
   }
@@ -493,7 +502,10 @@ export async function getTrialBalance(
     })
     .from(journalLines)
     .innerJoin(journalEntries, eq(journalLines.entryId, journalEntries.id))
-    .where(eq(journalEntries.orgId, orgId));
+    .where(and(
+      eq(journalEntries.orgId, orgId),
+      sql`${journalEntries.status} NOT IN ('draft', 'pending_review', 'cancelled', 'reversed')`
+    ));
 
   const resultList: TrialBalanceRow[] = [];
 
@@ -822,7 +834,8 @@ async function computePnL(
       and(
         eq(journalEntries.orgId, orgId),
         gte(journalEntries.date, startDate),
-        lte(journalEntries.date, endDate)
+        lte(journalEntries.date, endDate),
+        sql`${journalEntries.status} NOT IN ('draft', 'pending_review', 'cancelled', 'reversed')`
       )
     );
 
@@ -1890,6 +1903,7 @@ export async function getStatementOfChangesInEquity(
           eq(accounts.type, 'equity'),
           gte(journalEntries.date, yearStart),
           lte(journalEntries.date, yearEnd),
+          sql`${journalEntries.status} NOT IN ('draft', 'pending_review', 'cancelled', 'reversed')`
         )
       );
 
@@ -2197,7 +2211,8 @@ export async function getCashFlowStatement(
       and(
         eq(journalEntries.orgId, orgId),
         gte(journalEntries.date, startDate),
-        lte(journalEntries.date, endDate)
+        lte(journalEntries.date, endDate),
+        sql`${journalEntries.status} NOT IN ('draft', 'pending_review', 'cancelled', 'reversed')`
       )
     );
     
@@ -2542,6 +2557,7 @@ export async function getCashFlowStatement(
           eq(journalEntries.orgId, orgId),
           lte(journalEntries.date, new Date(startDate.getTime() - 1)),
           inArray(journalLines.accountId, cashAccountIds),
+          sql`${journalEntries.status} NOT IN ('draft', 'pending_review', 'cancelled', 'reversed')`
         )
       );
     const openingCashMap = new Map<string, number>();
@@ -2735,7 +2751,7 @@ export async function getAccountLedger(
 
   if (!account) throw new AppError('Account not found.', 404);
 
-  // Get total count for pagination
+  // Get total count for pagination (only posted entries)
   const [countResult] = await db
     .select({ count: sql<number>`count(*)` })
     .from(journalLines)
@@ -2745,14 +2761,15 @@ export async function getAccountLedger(
         eq(journalLines.accountId, accountId),
         eq(journalEntries.orgId, orgId),
         gte(journalEntries.date, startDate),
-        lte(journalEntries.date, endDate)
+        lte(journalEntries.date, endDate),
+        sql`${journalEntries.status} NOT IN ('draft', 'pending_review', 'cancelled', 'reversed')`
       )
     );
 
   const total = Number(countResult?.count || 0);
   const offset = (page - 1) * limit;
 
-  // Fetch lines with entry metadata
+  // Fetch lines with entry metadata (only posted entries)
   const rawLines = await db
     .select({
       id: journalLines.id,
@@ -2773,7 +2790,8 @@ export async function getAccountLedger(
         eq(journalLines.accountId, accountId),
         eq(journalEntries.orgId, orgId),
         gte(journalEntries.date, startDate),
-        lte(journalEntries.date, endDate)
+        lte(journalEntries.date, endDate),
+        sql`${journalEntries.status} NOT IN ('draft', 'pending_review', 'cancelled', 'reversed')`
       )
     )
     .orderBy(journalEntries.date, asc(journalEntries.entryNumber))
@@ -2786,7 +2804,7 @@ export async function getAccountLedger(
     (account.name.toLowerCase().includes('accumulated depreciation') ||
      account.name.toLowerCase().includes('allowance'));
 
-  // Fetch all lines before startDate to compute opening balance
+  // Fetch all lines before startDate to compute opening balance (only posted entries)
   const [beforeResult] = await db
     .select({
       debits: sql<number>`coalesce(sum(${journalLines.debitAmount}), 0)`,
@@ -2798,7 +2816,8 @@ export async function getAccountLedger(
       and(
         eq(journalLines.accountId, accountId),
         eq(journalEntries.orgId, orgId),
-        lte(journalEntries.date, new Date(startDate.getTime() - 1))
+        lte(journalEntries.date, new Date(startDate.getTime() - 1)),
+        sql`${journalEntries.status} NOT IN ('draft', 'pending_review', 'cancelled', 'reversed')`
       )
     );
 

@@ -54,6 +54,16 @@ export const journalSourceEnum = pgEnum('journal_source', [
   'owner_drawings'
 ]);
 
+export const journalStatusEnum = pgEnum('journal_status', [
+  'draft',
+  'pending_review',
+  'approved',
+  'posted',
+  'locked',
+  'reversed',
+  'cancelled'
+]);
+
 export const contactTypeEnum = pgEnum('contact_type', ['customer', 'vendor', 'both']);
 
 export const vatTreatmentEnum = pgEnum('vat_treatment', [
@@ -332,7 +342,12 @@ export const journalEntries = pgTable('journal_entries', {
   source: journalSourceEnum('source').default('manual').notNull(),
   sourceId: uuid('source_id'),
   projectId: uuid('project_id').references(() => projects.id),
+  status: journalStatusEnum('status').default('posted').notNull(),
   createdBy: uuid('created_by').references(() => users.id).notNull(),
+  approvedBy: uuid('approved_by').references(() => users.id),
+  postedBy: uuid('posted_by').references(() => users.id),
+  lockedBy: uuid('locked_by').references(() => users.id),
+  cancelledBy: uuid('cancelled_by').references(() => users.id),
   isReversed: boolean('is_reversed').default(false).notNull(),
   reversedById: uuid('reversed_by_id').references(() => users.id),
   createdAt: timestamp('created_at').defaultNow().notNull()

@@ -55,6 +55,28 @@ Maintain and enhance accounting features: fix kobo/naira display, parent-child a
 ### Blocked
 - (none)
 
+### Journal Status Workflow — Completed Items
+- **Schema**: `journalStatusEnum` with 7 statuses (draft, pending_review, approved, posted, locked, reversed, cancelled); `status`/`approvedBy`/`postedBy`/`lockedBy`/`cancelledBy` columns on `journalEntries`
+- **Migration**: Creates enum, adds columns, backfills reversed entries to `'reversed'`
+- **Status transition routes** (journals.ts): `submit-review` (draft→pending), `approve` (pending→approved, accountant/owner), `post` (approved→posted, accountant/owner, also drafts), `lock` (posted→locked, owner only), `cancel` (draft/pending→cancelled)
+- **Validation engine** (posting.service.ts): `validateAccounts()`, `validateCurrencyConsistency()`, `validateEntryNumber()`, `validateJournal()` master aggregator
+- **`postToGL()`**: Added `status` to `PostToGLParams` type, passes through to `createJournalEntry()`
+- **`createJournalEntry()`**: Accepts optional `status` field, defaults to `'posted'`
+- **`reverseJournalEntry()`**: Sets `status = 'reversed'` alongside `isReversed = true`
+- **GL query filtering**: `getAccountBalance()`, `computePnL()`, `getCashFlowStatement()`, `getTrialBalance()`, `getStatementOfChangesInEquity()`, account activity, and all SOCIE direct equity queries exclude `draft`/`pending_review`/`cancelled`/`reversed` entries
+- **Tax/CIT query filtering**: `getGrossTurnover()`, `getAccountingPBT()`, `getAccountBalanceForPeriod()` in `tax.service.ts` now exclude non-posted entries
+- **VAT return filtering**: All 4 VAT computation queries in `vat.ts` now exclude non-posted entries
+- **Dashboard/Project report filtering**: All revenue/expense/AR/AP/WHT queries in `reports.ts` now exclude non-posted entries
+- **Custom report filtering**: All 11 custom report queries (tax summary, cash equivalents, capital accounts, actual-vs-budget, GL summary, GL transactions, tax transactions) in `customReports.ts` now exclude non-posted entries
+- **Excel/PDF export filtering**: GL Excel export queries in `excel.service.ts` now exclude non-posted entries
+- **Chart of Accounts balance filtering**: Backend balance query in `accountant.ts` now excludes non-posted entries
+- **Auto-match filtering**: Bank reconciliation auto-match query in `reconciliation.service.ts` now excludes non-posted entries
+- **Banking GL queries**: Candidate matching and ledger lines queries in `banking.ts` now exclude non-posted entries
+- **`POST /journals`**: Accepts `status` field (`draft`|`posted`); checks closed periods only for posted entries
+- **`PUT /journals/:id`**: Only allows editing draft/pending_review entries
+- **`POST /journals/:id/reverse`**: Blocks locked/cancelled/draft/pending entries
+- **Frontend (JournalsPage.tsx)**: Status badges with color coding, status filter dropdown, transition buttons (Submit Review, Approve, Post, Lock, Cancel, Reverse) in detail view, Draft/Post selector in create form
+
 ## Key Decisions
 - Parent-child rollup done post-hoc after individual account balances are computed (backend for Trial Balance, `useMemo` for Chart of Accounts frontend)
 - Parents identified by which account IDs are referenced as `parentId` by other accounts
@@ -74,6 +96,7 @@ Maintain and enhance accounting features: fix kobo/naira display, parent-child a
 3. Test multi-currency transaction flow end-to-end
 4. Investigate Purchase Order unit price bug: AMC Tier 2 item shows extra zero (2,500,000 instead of 250,000) — likely a data issue with the item's stored `purchasePrice` value rather than a code bug
 5. Verify bank reconciliation flow still works after bankMap removal — bank feed transactions are imported as 'unreconciled' and matched against GL-based JEs; clearing account (207000) shows the difference
+6. Test journal status workflow end-to-end: create draft → submit for review → approve → post → lock/reverse/cancel
 
 ## Critical Context
 - `TrialBalanceRow` type no longer includes `parentId` after revert (field removed from backend type and response)

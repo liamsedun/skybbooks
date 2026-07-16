@@ -19,6 +19,25 @@ function fmtDate(d: string): string {
   return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+const STATUS_STYLE: Record<string, { bg: string; text: string; border: string; label: string }> = {
+  draft: { bg: 'bg-slate-100', text: 'text-slate-600', border: 'border-slate-200/60', label: 'Draft' },
+  pending_review: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200/60', label: 'Pending Review' },
+  approved: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200/60', label: 'Approved' },
+  posted: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200/60', label: 'Posted' },
+  locked: { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200/60', label: 'Locked' },
+  reversed: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200/60', label: 'Reversed' },
+  cancelled: { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200/60', label: 'Cancelled' },
+};
+
+function StatusBadge({ status }: { status: string }) {
+  const s = STATUS_STYLE[status] || { bg: 'bg-slate-100', text: 'text-slate-600', border: 'border-slate-200/60', label: status };
+  return (
+    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${s.bg} ${s.text} ${s.border}`}>
+      {s.label}
+    </span>
+  );
+}
+
 function sourceDocLink(source: string, sourceId?: string): string | null {
   if (!sourceId) return null;
   switch (source) {
@@ -51,7 +70,7 @@ export function JournalsPage() {
   const [dateTo, setDateTo] = useState('');
   const [dateFromInput, setDateFromInput] = useState('');
   const [dateToInput, setDateToInput] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'balanced' | 'unbalanced'>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
 
   const { data: journals, isLoading } = useQuery({
     queryKey: ['journals', dateFrom, dateTo, accountIdParam],
@@ -68,13 +87,7 @@ export function JournalsPage() {
         const source = (e.source || '').toLowerCase();
         if (!entryNum.includes(q) && !desc.includes(q) && !source.includes(q)) return false;
       }
-      if (statusFilter !== 'all') {
-        const tDebits = Number(e.totalDebits || 0);
-        const tCredits = Number(e.totalCredits || 0);
-        const balanced = tDebits === tCredits;
-        if (statusFilter === 'balanced' && !balanced) return false;
-        if (statusFilter === 'unbalanced' && balanced) return false;
-      }
+      if (statusFilter !== 'all' && e.status !== statusFilter) return false;
       return true;
     });
   }, [journals, search, statusFilter]);
@@ -267,8 +280,13 @@ export function JournalsPage() {
               <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as any)}
                 className="px-2 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow bg-white">
                 <option value="all">All</option>
-                <option value="balanced">Balanced</option>
-                <option value="unbalanced">Unbalanced</option>
+                <option value="draft">Draft</option>
+                <option value="pending_review">Pending Review</option>
+                <option value="approved">Approved</option>
+                <option value="posted">Posted</option>
+                <option value="locked">Locked</option>
+                <option value="reversed">Reversed</option>
+                <option value="cancelled">Cancelled</option>
               </select>
             </div>
             {(search || dateFrom || dateTo || statusFilter !== 'all') && (
@@ -293,7 +311,7 @@ export function JournalsPage() {
               {filteredJournals.map((entry: any) => {
                 const tDebits = Number(entry.totalDebits || 0);
                 const tCredits = Number(entry.totalCredits || 0);
-                const balanced = tDebits === tCredits;
+                const entryStatus = entry.status || 'posted';
                 return (
                 <tr key={entry.id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-50">
                   <td className="px-4 py-3 font-mono font-medium text-slate-800">{entry.entryNumber}</td>
@@ -302,9 +320,7 @@ export function JournalsPage() {
                   <td className="px-4 py-3 text-right font-mono font-medium tabular-nums text-slate-800">{tDebits > 0 ? fmtNaira(tDebits) : '—'}</td>
                   <td className="px-4 py-3 text-right font-mono font-medium tabular-nums text-slate-800">{tCredits > 0 ? fmtNaira(tCredits) : '—'}</td>
                   <td className="px-4 py-3 text-center">
-                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${balanced ? 'border border-emerald-200/50 bg-emerald-50 text-emerald-700' : 'border border-red-200/50 bg-red-50 text-red-700'}`}>
-                      {balanced ? 'Balanced' : 'Unbalanced'}
-                    </span>
+                    <StatusBadge status={entryStatus} />
                   </td>
                   <td className="px-4 py-3 text-right">
                     <button onClick={() => setViewId(entry.id)} className="text-blue-600 hover:text-blue-800"><Eye className="w-4 h-4" /></button>
@@ -359,6 +375,46 @@ function JournalDetailView({ journalId, onBack, onEdit }: { journalId: string; o
 
   const tagMutation = useMutation({
     mutationFn: (toOpening: boolean) => journalsApi.tagJournal(journalId, toOpening),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['journal', journalId] });
+      queryClient.invalidateQueries({ queryKey: ['journals'] });
+    },
+  });
+
+  const submitReviewMutation = useMutation({
+    mutationFn: () => journalsApi.submitReview(journalId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['journal', journalId] });
+      queryClient.invalidateQueries({ queryKey: ['journals'] });
+    },
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: () => journalsApi.approveJournal(journalId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['journal', journalId] });
+      queryClient.invalidateQueries({ queryKey: ['journals'] });
+    },
+  });
+
+  const postMutation = useMutation({
+    mutationFn: () => journalsApi.postJournal(journalId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['journal', journalId] });
+      queryClient.invalidateQueries({ queryKey: ['journals'] });
+    },
+  });
+
+  const lockMutation = useMutation({
+    mutationFn: () => journalsApi.lockJournal(journalId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['journal', journalId] });
+      queryClient.invalidateQueries({ queryKey: ['journals'] });
+    },
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: () => journalsApi.cancelJournal(journalId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['journal', journalId] });
       queryClient.invalidateQueries({ queryKey: ['journals'] });
@@ -454,11 +510,7 @@ function JournalDetailView({ journalId, onBack, onEdit }: { journalId: string; o
           <div>
             <div className="flex items-center gap-3 mb-1">
               <h2 className="text-xl font-bold text-slate-900 font-mono">{entry.entryNumber}</h2>
-              {entry.isReversed && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border border-red-200/50 bg-red-50 text-red-700">
-                  <RotateCcw className="w-3 h-3" /> Reversed
-                </span>
-              )}
+              <StatusBadge status={entry.status || 'posted'} />
             </div>
             <p className="text-sm text-slate-500">{entry.description || 'No description'}</p>
           </div>
@@ -556,51 +608,84 @@ function JournalDetailView({ journalId, onBack, onEdit }: { journalId: string; o
       </div>
 
       {/* Action buttons */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          {!entry.isReversed && (entry.source === 'manual' || entry.source === 'opening_balance') && (
+      <div className="space-y-3">
+        {/* Status transition buttons */}
+        <div className="flex items-center gap-3 flex-wrap">
+          {entry.status === 'draft' && (
             <>
-              {entry.source === 'manual' && (
-                <button
-                  onClick={() => { if (confirm('Tag this entry as an opening/migration balance entry? This affects how Cash Flow Statement classifies it.')) tagMutation.mutate(true); }}
-                  disabled={tagMutation.isPending}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200/80 rounded-xl transition-all duration-200 disabled:opacity-50"
-                >{tagMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />} Tag as Opening Balance</button>
-              )}
-              {entry.source === 'opening_balance' && (
-                <button
-                  onClick={() => { if (confirm('Remove the opening-balance tag from this entry?')) tagMutation.mutate(false); }}
-                  disabled={tagMutation.isPending}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200/80 rounded-xl transition-all duration-200 disabled:opacity-50"
-                >{tagMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />} Remove Opening Balance Tag</button>
-              )}
+              <button onClick={() => submitReviewMutation.mutate()} disabled={submitReviewMutation.isPending}
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200/80 rounded-xl transition-all duration-200 disabled:opacity-50">
+                <Loader2 className={`w-4 h-4 ${submitReviewMutation.isPending ? 'animate-spin' : 'hidden'}`} /> Submit for Review
+              </button>
+              <button onClick={() => { if (confirm('Cancel this draft entry?')) cancelMutation.mutate(); }} disabled={cancelMutation.isPending}
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200/80 rounded-xl transition-all duration-200 disabled:opacity-50">
+                Cancel
+              </button>
             </>
           )}
-          {!entry.isReversed && entry.source === 'manual' && (
+          {entry.status === 'pending_review' && (
             <>
-              <button
-                onClick={() => onEdit?.(journalId)}
-                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 rounded-xl transition-all duration-200"
-              ><Pencil className="w-4 h-4" /> Edit</button>
-              <button
-                onClick={handleReverse}
-                disabled={reverseMutation.isPending}
-                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200/80 rounded-xl transition-all duration-200 disabled:opacity-50"
-              >{reverseMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />} Reverse Entry</button>
+              <button onClick={() => approveMutation.mutate()} disabled={approveMutation.isPending}
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200/80 rounded-xl transition-all duration-200 disabled:opacity-50">
+                <CheckCircle2 className="w-4 h-4" /> Approve
+              </button>
+              <button onClick={() => { if (confirm('Cancel this pending entry?')) cancelMutation.mutate(); }} disabled={cancelMutation.isPending}
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200/80 rounded-xl transition-all duration-200 disabled:opacity-50">
+                Cancel
+              </button>
             </>
+          )}
+          {entry.status === 'approved' && (
+            <button onClick={() => postMutation.mutate()} disabled={postMutation.isPending}
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 rounded-xl transition-all duration-200 disabled:opacity-50">
+              <Loader2 className={`w-4 h-4 ${postMutation.isPending ? 'animate-spin' : 'hidden'}`} /> Post to GL
+            </button>
+          )}
+          {entry.status === 'posted' && (
+            <>
+              <button onClick={() => { if (confirm('Lock this posted entry? This prevents reversal.')) lockMutation.mutate(); }} disabled={lockMutation.isPending}
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200/80 rounded-xl transition-all duration-200 disabled:opacity-50">
+                <Loader2 className={`w-4 h-4 ${lockMutation.isPending ? 'animate-spin' : 'hidden'}`} /> Lock
+              </button>
+              <button onClick={handleReverse} disabled={reverseMutation.isPending}
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200/80 rounded-xl transition-all duration-200 disabled:opacity-50">
+                {reverseMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />} Reverse
+              </button>
+            </>
+          )}
+          {entry.status === 'draft' && entry.source === 'manual' && (
+            <button onClick={() => onEdit?.(journalId)}
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 rounded-xl transition-all duration-200">
+              <Pencil className="w-4 h-4" /> Edit
+            </button>
+          )}
+          {(entry.source === 'manual' || entry.source === 'opening_balance') && entry.status !== 'reversed' && entry.status !== 'cancelled' && (
+            entry.source === 'manual' ? (
+              <button onClick={() => { if (confirm('Tag this entry as an opening/migration balance entry?')) tagMutation.mutate(true); }} disabled={tagMutation.isPending}
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200/80 rounded-xl transition-all duration-200 disabled:opacity-50">
+                <FileText className="w-4 h-4" /> Tag as Opening
+              </button>
+            ) : (
+              <button onClick={() => { if (confirm('Remove the opening-balance tag?')) tagMutation.mutate(false); }} disabled={tagMutation.isPending}
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200/80 rounded-xl transition-all duration-200 disabled:opacity-50">
+                <X className="w-4 h-4" /> Remove OB Tag
+              </button>
+            )
           )}
         </div>
-        <div className="flex items-center gap-3">
-          <button onClick={handlePrintPdf} className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-all duration-200">
-            <Printer className="w-4 h-4" /> Print / PDF
-          </button>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button onClick={handlePrintPdf} className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-all duration-200">
+              <Printer className="w-4 h-4" /> Print / PDF
+            </button>
+          </div>
           <button onClick={onBack} className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all duration-200">
-            Close
+            <ArrowLeft className="w-4 h-4" /> Back
           </button>
         </div>
       </div>
 
-      {/* Reversal error */}
+      {/* Transition mutation errors/success */}
       {reverseMutation.isError && (
         <div className="flex items-center gap-2 p-3 bg-red-50 text-red-700 rounded-xl text-sm border border-red-200/80">
           <AlertCircle className="w-4 h-4 shrink-0" /> {(reverseMutation.error as any)?.response?.data?.error || (reverseMutation.error as any)?.message || 'Reverse failed.'}
@@ -609,6 +694,56 @@ function JournalDetailView({ journalId, onBack, onEdit }: { journalId: string; o
       {reverseMutation.isSuccess && (
         <div className="flex items-center gap-2 p-3 bg-emerald-50 text-emerald-700 rounded-xl text-sm border border-emerald-200/80">
           <CheckCircle2 className="w-4 h-4 shrink-0" /> Entry reversed successfully.
+        </div>
+      )}
+      {submitReviewMutation.isError && (
+        <div className="flex items-center gap-2 p-3 bg-red-50 text-red-700 rounded-xl text-sm border border-red-200/80">
+          <AlertCircle className="w-4 h-4 shrink-0" /> {(submitReviewMutation.error as any)?.response?.data?.error || (submitReviewMutation.error as any)?.message || 'Submit failed.'}
+        </div>
+      )}
+      {submitReviewMutation.isSuccess && (
+        <div className="flex items-center gap-2 p-3 bg-emerald-50 text-emerald-700 rounded-xl text-sm border border-emerald-200/80">
+          <CheckCircle2 className="w-4 h-4 shrink-0" /> Submitted for review.
+        </div>
+      )}
+      {approveMutation.isError && (
+        <div className="flex items-center gap-2 p-3 bg-red-50 text-red-700 rounded-xl text-sm border border-red-200/80">
+          <AlertCircle className="w-4 h-4 shrink-0" /> {(approveMutation.error as any)?.response?.data?.error || (approveMutation.error as any)?.message || 'Approval failed.'}
+        </div>
+      )}
+      {approveMutation.isSuccess && (
+        <div className="flex items-center gap-2 p-3 bg-emerald-50 text-emerald-700 rounded-xl text-sm border border-emerald-200/80">
+          <CheckCircle2 className="w-4 h-4 shrink-0" /> Entry approved.
+        </div>
+      )}
+      {postMutation.isError && (
+        <div className="flex items-center gap-2 p-3 bg-red-50 text-red-700 rounded-xl text-sm border border-red-200/80">
+          <AlertCircle className="w-4 h-4 shrink-0" /> {(postMutation.error as any)?.response?.data?.error || (postMutation.error as any)?.message || 'Posting failed.'}
+        </div>
+      )}
+      {postMutation.isSuccess && (
+        <div className="flex items-center gap-2 p-3 bg-emerald-50 text-emerald-700 rounded-xl text-sm border border-emerald-200/80">
+          <CheckCircle2 className="w-4 h-4 shrink-0" /> Entry posted to GL.
+        </div>
+      )}
+      {lockMutation.isError && (
+        <div className="flex items-center gap-2 p-3 bg-red-50 text-red-700 rounded-xl text-sm border border-red-200/80">
+          <AlertCircle className="w-4 h-4 shrink-0" /> {(lockMutation.error as any)?.response?.data?.error || (lockMutation.error as any)?.message || 'Lock failed.'}
+        </div>
+      )}
+      {lockMutation.isSuccess && (
+        <div className="flex items-center gap-2 p-3 bg-emerald-50 text-emerald-700 rounded-xl text-sm border border-emerald-200/80">
+          <CheckCircle2 className="w-4 h-4 shrink-0" /> Entry locked.
+        </div>
+      )}
+      {cancelMutation.isError && (
+        <div className="flex items-center gap-2 p-3 bg-red-50 text-red-700 rounded-xl text-sm border border-red-200/80">
+          <AlertCircle className="w-4 h-4 shrink-0" /> {(cancelMutation.error as any)?.response?.data?.error || (cancelMutation.error as any)?.message || 'Cancel failed.'}
+        </div>
+      )}
+      {cancelMutation.isSuccess && (
+        <div className="flex items-center gap-2 p-3 bg-emerald-50 text-emerald-700 rounded-xl text-sm border border-emerald-200/80">
+          <CheckCircle2 className="w-4 h-4 shrink-0" /> Entry cancelled.
         </div>
       )}
     </div>
@@ -622,6 +757,7 @@ function JournalForm({ editId, onDone }: { editId?: string | null; onDone: () =>
   const [reference, setReference] = useState('');
   const [lines, setLines] = useState([{ accountId: '', debitAmount: 0, creditAmount: 0, description: '' }]);
   const [isOpeningBalance, setIsOpeningBalance] = useState(false);
+  const [journalStatus, setJournalStatus] = useState<'draft' | 'posted'>('posted');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loaded, setLoaded] = useState(false);
@@ -682,6 +818,7 @@ function JournalForm({ editId, onDone }: { editId?: string | null; onDone: () =>
       description: description || null,
       reference: reference || null,
       isOpeningBalance,
+      status: journalStatus,
       lines: lines.map(l => ({
         accountId: l.accountId,
         debitAmount: Math.round(Number(l.debitAmount || 0) * 100),
@@ -717,7 +854,19 @@ function JournalForm({ editId, onDone }: { editId?: string | null; onDone: () =>
             <input value={reference} onChange={e => setReference(e.target.value)}
               className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-shadow" />
           </div>
-          <div className="flex items-end justify-end pb-1">
+          <div className="flex items-end justify-end gap-3 pb-1">
+            <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200/60">
+              <label className="flex items-center gap-1 cursor-pointer">
+                <input type="radio" name="journalStatus" value="draft" checked={journalStatus === 'draft'} onChange={() => setJournalStatus('draft')}
+                  className="w-3.5 h-3.5 text-slate-600 focus:ring-slate-500" />
+                <span className="text-xs font-medium text-slate-600">Draft</span>
+              </label>
+              <label className="flex items-center gap-1 cursor-pointer">
+                <input type="radio" name="journalStatus" value="posted" checked={journalStatus === 'posted'} onChange={() => setJournalStatus('posted')}
+                  className="w-3.5 h-3.5 text-indigo-600 focus:ring-indigo-500" />
+                <span className="text-xs font-medium text-indigo-600">Post</span>
+              </label>
+            </div>
             <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ${isBalanced ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
               {isBalanced ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
               {isBalanced ? 'Balanced' : 'Out of Balance'}
@@ -821,7 +970,7 @@ function JournalForm({ editId, onDone }: { editId?: string | null; onDone: () =>
         <button type="submit" disabled={mutation.isPending}
           className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors inline-flex items-center gap-2">
           {mutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-          {isEdit ? 'Update Journal Entry' : 'Create Journal Entry'}
+          {isEdit ? 'Update' : journalStatus === 'draft' ? 'Save as Draft' : 'Post Entry'}
         </button>
       </div>
     </form>

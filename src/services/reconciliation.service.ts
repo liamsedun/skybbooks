@@ -180,7 +180,8 @@ export async function autoMatchTransactions(bankAccountId: string): Promise<{
       .where(
         and(
           eq(journalLines.accountId, ba.accountId),
-          eq(journalEntries.orgId, ba.orgId)
+          eq(journalEntries.orgId, ba.orgId),
+          sql`${journalEntries.status} NOT IN ('draft', 'pending_review', 'cancelled', 'reversed')`
         )
       );
 

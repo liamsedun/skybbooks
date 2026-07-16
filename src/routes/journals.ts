@@ -4,7 +4,7 @@ import { db, journalEntries, journalLines, accounts } from '../db/schema';
 import { authenticate, requireOrg, requireRole, AuthenticatedRequest } from '../middleware/auth';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
-import { reverseJournalEntry, updateJournalEntry } from '../services/ledger.service';
+import { reverseJournalEntry, updateJournalEntry, isDateInClosedPeriod } from '../services/ledger.service';
 import { createAuditLog, extractReqMeta } from '../services/audit.service';
 
 const router = Router();
@@ -24,13 +24,14 @@ const journalEntrySchema = z.object({
   description: z.string().optional().nullable(),
   reference: z.string().optional().nullable(),
   isOpeningBalance: z.boolean().optional().default(false),
+  status: z.enum(['draft', 'posted']).optional().default('posted'),
   lines: z.array(journalLineSchema).min(2, 'Journal must have at least 2 lines'),
 });
 
 router.get('/', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const orgId = req.user!.orgId!;
-    const { from, to, accountId } = req.query;
+    const { from, to, accountId, status } = req.query;
 
     // Helper: convert amount to NGN if currency is foreign
     function ngExpr(col: string): string {
@@ -40,7 +41,7 @@ router.get('/', async (req: AuthenticatedRequest, res: Response, next: NextFunct
     let query = sql`SELECT
         je.id, je.org_id AS "orgId", je.entry_number AS "entryNumber",
         je.description, je.source, je.source_id AS "sourceId",
-        je.reference, je.date, je.is_reversed AS "isReversed",
+        je.reference, je.date, je.status, je.is_reversed AS "isReversed",
         je.created_by AS "createdBy", je.created_at AS "createdAt",
         COALESCE(t.td, 0) AS "totalDebits", COALESCE(t.tc, 0) AS "totalCredits"
       FROM journal_entries je
@@ -59,6 +60,9 @@ router.get('/', async (req: AuthenticatedRequest, res: Response, next: NextFunct
     }
     if (accountId && typeof accountId === 'string' && accountId.trim()) {
       query = sql`${query} AND EXISTS (SELECT 1 FROM journal_lines jl2 WHERE jl2.entry_id = je.id AND jl2.account_id = ${accountId}::uuid)`;
+    }
+    if (status && typeof status === 'string' && status.trim()) {
+      query = sql`${query} AND je.status = ${status}::journal_status`;
     }
     query = sql`${query} ORDER BY je.date DESC`;
 
@@ -124,6 +128,17 @@ router.post('/', async (req: AuthenticatedRequest, res: Response, next: NextFunc
       throw new AppError('Total debits must equal total credits.', 400);
     }
 
+    // Check closed period only for posted entries (drafts can be saved anytime)
+    if (body.status === 'posted') {
+      const periodCheck = await isDateInClosedPeriod(orgId, body.date);
+      if (periodCheck.isClosed) {
+        throw new AppError(
+          `Cannot post to a closed accounting period. Period ending ${periodCheck.periodEnd?.toISOString().split('T')[0]} was closed on ${periodCheck.closedAt?.toISOString().split('T')[0]}.`,
+          403
+        );
+      }
+    }
+
     const result = await db.transaction(async (tx) => {
       const [entry] = await tx
         .insert(journalEntries)
@@ -134,6 +149,7 @@ router.post('/', async (req: AuthenticatedRequest, res: Response, next: NextFunc
           description: body.description,
           reference: body.reference,
           source: body.isOpeningBalance ? 'opening_balance' : 'manual',
+          status: body.status,
           createdBy: userId,
         })
         .returning();
@@ -312,7 +328,9 @@ router.put('/:id', async (req: AuthenticatedRequest, res: Response, next: NextFu
       .limit(1);
     if (!entry) throw new AppError('Journal entry not found.', 404);
     if (entry.source !== 'manual') throw new AppError('Only manual journal entries can be edited.', 400);
-    if (entry.isReversed) throw new AppError('Cannot edit a reversed entry.', 400);
+    if (entry.status !== 'draft' && entry.status !== 'pending_review') {
+      throw new AppError(`Cannot edit a ${entry.status} journal entry. Only draft and pending review entries can be edited.`, 400);
+    }
 
     const body = journalEntrySchema.parse(req.body);
     const oldValues = {
@@ -346,7 +364,12 @@ router.post('/:id/reverse', async (req: AuthenticatedRequest, res: Response, nex
       .limit(1);
     if (!entry) throw new AppError('Journal entry not found.', 404);
     if (entry.source !== 'manual') throw new AppError('Only manual journal entries can be reversed here.', 400);
-    if (entry.isReversed) throw new AppError('This entry has already been reversed.', 400);
+    if (entry.status === 'reversed') throw new AppError('This entry has already been reversed.', 400);
+    if (entry.status === 'locked') throw new AppError('Locked entries cannot be reversed.', 400);
+    if (entry.status === 'cancelled') throw new AppError('Cancelled entries cannot be reversed.', 400);
+    if (entry.status === 'draft' || entry.status === 'pending_review') {
+      throw new AppError('Draft and pending review entries should be cancelled, not reversed.', 400);
+    }
 
     const reversal = await reverseJournalEntry(id, new Date(), userId);
 
@@ -389,6 +412,150 @@ router.patch('/:id/tag', requireRole('owner', 'accountant'), async (req: Authent
     if (err instanceof z.ZodError) return next(new AppError(err.issues[0]?.message || 'Validation failed', 400));
     return next(err);
   }
+});
+
+// ── Journal Status Transitions ──
+
+/**
+ * POST /journals/:id/submit-review — draft → pending_review
+ */
+router.post('/:id/submit-review', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const userId = req.user!.userId;
+    const { id } = req.params;
+
+    const [entry] = await db
+      .select()
+      .from(journalEntries)
+      .where(and(eq(journalEntries.id, id), eq(journalEntries.orgId, orgId)))
+      .limit(1);
+    if (!entry) throw new AppError('Journal entry not found.', 404);
+    if (entry.status !== 'draft') throw new AppError('Only draft entries can be submitted for review.', 400);
+
+    await db.update(journalEntries)
+      .set({ status: 'pending_review' })
+      .where(eq(journalEntries.id, id));
+
+    createAuditLog({ orgId, userId, action: 'submit-review', entityType: 'journal-entry', entityId: id, oldValues: { status: 'draft' }, newValues: { status: 'pending_review' }, ...extractReqMeta(req) });
+    return res.json({ success: true, status: 'pending_review' });
+  } catch (err) { return next(err); }
+});
+
+/**
+ * POST /journals/:id/approve — pending_review → approved (accountant/owner only)
+ */
+router.post('/:id/approve', requireRole('owner', 'accountant'), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const userId = req.user!.userId;
+    const { id } = req.params;
+
+    const [entry] = await db
+      .select()
+      .from(journalEntries)
+      .where(and(eq(journalEntries.id, id), eq(journalEntries.orgId, orgId)))
+      .limit(1);
+    if (!entry) throw new AppError('Journal entry not found.', 404);
+    if (entry.status !== 'pending_review') throw new AppError('Only entries pending review can be approved.', 400);
+
+    await db.update(journalEntries)
+      .set({ status: 'approved', approvedBy: userId })
+      .where(eq(journalEntries.id, id));
+
+    createAuditLog({ orgId, userId, action: 'approve', entityType: 'journal-entry', entityId: id, oldValues: { status: 'pending_review' }, newValues: { status: 'approved', approvedBy: userId }, ...extractReqMeta(req) });
+    return res.json({ success: true, status: 'approved' });
+  } catch (err) { return next(err); }
+});
+
+/**
+ * POST /journals/:id/post — approved → posted (accountant/owner only)
+ * Once posted, entry affects the GL and cannot be edited.
+ */
+router.post('/:id/post', requireRole('owner', 'accountant'), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const userId = req.user!.userId;
+    const { id } = req.params;
+
+    const [entry] = await db
+      .select()
+      .from(journalEntries)
+      .where(and(eq(journalEntries.id, id), eq(journalEntries.orgId, orgId)))
+      .limit(1);
+    if (!entry) throw new AppError('Journal entry not found.', 404);
+    if (entry.status !== 'approved' && entry.status !== 'draft') {
+      throw new AppError('Only approved or draft entries can be posted.', 400);
+    }
+
+    // If posting directly from draft, also mark as approved by the poster
+    const updates: any = { status: 'posted', postedBy: userId };
+    if (entry.status === 'draft') {
+      updates.approvedBy = userId;
+    }
+
+    await db.update(journalEntries)
+      .set(updates)
+      .where(eq(journalEntries.id, id));
+
+    createAuditLog({ orgId, userId, action: 'post', entityType: 'journal-entry', entityId: id, oldValues: { status: entry.status }, newValues: { status: 'posted', postedBy: userId }, ...extractReqMeta(req) });
+    return res.json({ success: true, status: 'posted' });
+  } catch (err) { return next(err); }
+});
+
+/**
+ * POST /journals/:id/lock — posted → locked (owner only)
+ * Locked entries cannot be reversed.
+ */
+router.post('/:id/lock', requireRole('owner'), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const userId = req.user!.userId;
+    const { id } = req.params;
+
+    const [entry] = await db
+      .select()
+      .from(journalEntries)
+      .where(and(eq(journalEntries.id, id), eq(journalEntries.orgId, orgId)))
+      .limit(1);
+    if (!entry) throw new AppError('Journal entry not found.', 404);
+    if (entry.status !== 'posted') throw new AppError('Only posted entries can be locked.', 400);
+
+    await db.update(journalEntries)
+      .set({ status: 'locked', lockedBy: userId })
+      .where(eq(journalEntries.id, id));
+
+    createAuditLog({ orgId, userId, action: 'lock', entityType: 'journal-entry', entityId: id, oldValues: { status: 'posted' }, newValues: { status: 'locked', lockedBy: userId }, ...extractReqMeta(req) });
+    return res.json({ success: true, status: 'locked' });
+  } catch (err) { return next(err); }
+});
+
+/**
+ * POST /journals/:id/cancel — draft|pending_review → cancelled
+ */
+router.post('/:id/cancel', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const userId = req.user!.userId;
+    const { id } = req.params;
+
+    const [entry] = await db
+      .select()
+      .from(journalEntries)
+      .where(and(eq(journalEntries.id, id), eq(journalEntries.orgId, orgId)))
+      .limit(1);
+    if (!entry) throw new AppError('Journal entry not found.', 404);
+    if (entry.status !== 'draft' && entry.status !== 'pending_review') {
+      throw new AppError('Only draft or pending review entries can be cancelled. Posted entries must be reversed.', 400);
+    }
+
+    await db.update(journalEntries)
+      .set({ status: 'cancelled', cancelledBy: userId })
+      .where(eq(journalEntries.id, id));
+
+    createAuditLog({ orgId, userId, action: 'cancel', entityType: 'journal-entry', entityId: id, oldValues: { status: entry.status }, newValues: { status: 'cancelled', cancelledBy: userId }, ...extractReqMeta(req) });
+    return res.json({ success: true, status: 'cancelled' });
+  } catch (err) { return next(err); }
 });
 
 export default router;

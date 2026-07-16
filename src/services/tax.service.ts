@@ -40,7 +40,8 @@ export async function getGrossTurnover(orgId: string, startDate: Date, endDate: 
       eq(journalEntries.orgId, orgId),
       eq(accounts.type, 'revenue'),
       gte(journalEntries.date, startDate),
-      lte(journalEntries.date, endDate)
+      lte(journalEntries.date, endDate),
+      sql`${journalEntries.status} NOT IN ('draft', 'pending_review', 'cancelled', 'reversed')`
     ));
   return result?.total || 0;
 }
@@ -58,7 +59,8 @@ export async function getAccountingPBT(orgId: string, startDate: Date, endDate: 
       eq(journalEntries.orgId, orgId),
       eq(accounts.type, 'expense'),
       gte(journalEntries.date, startDate),
-      lte(journalEntries.date, endDate)
+      lte(journalEntries.date, endDate),
+      sql`${journalEntries.status} NOT IN ('draft', 'pending_review', 'cancelled', 'reversed')`
     ));
   return rev - (expResult?.total || 0);
 }
@@ -75,7 +77,8 @@ export async function getAccountBalanceForPeriod(orgId: string, accountCode: str
       eq(journalEntries.orgId, orgId),
       eq(accounts.code, accountCode),
       gte(journalEntries.date, startDate),
-      lte(journalEntries.date, endDate)
+      lte(journalEntries.date, endDate),
+      sql`${journalEntries.status} NOT IN ('draft', 'pending_review', 'cancelled', 'reversed')`
     ));
   return result?.balance || 0;
 }

@@ -477,6 +477,7 @@ export async function exportGeneralLedger(
       and(
         eq(journalEntries.orgId, orgId),
         eq(journalLines.accountId, accountId),
+        sql`${journalEntries.status} NOT IN ('draft', 'pending_review', 'cancelled', 'reversed')`,
         sql`${journalEntries.date} < ${startDate}`
       )
     );
@@ -496,6 +497,7 @@ export async function exportGeneralLedger(
       and(
         eq(journalEntries.orgId, orgId),
         eq(journalLines.accountId, accountId),
+        sql`${journalEntries.status} NOT IN ('draft', 'pending_review', 'cancelled', 'reversed')`,
         gte(journalEntries.date, startDate),
         lte(journalEntries.date, endDate)
       )
