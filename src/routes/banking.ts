@@ -540,14 +540,23 @@ router.delete('/accounts/:id/clear-imported-statements', async (req: Authenticat
 router.post('/accounts/reset-account', requireRole('admin'), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const orgId = req.user!.orgId!;
-    const { bankAccountId } = req.body;
-    if (!bankAccountId) throw new AppError('bankAccountId is required.', 400);
-
-    const [ba] = await db
-      .select()
-      .from(bankAccounts)
-      .where(and(eq(bankAccounts.id, bankAccountId), eq(bankAccounts.orgId, orgId)))
-      .limit(1);
+    const { bankAccountId, accountNamePattern } = req.body;
+    let ba: any;
+    if (bankAccountId) {
+      [ba] = await db
+        .select()
+        .from(bankAccounts)
+        .where(and(eq(bankAccounts.id, bankAccountId), eq(bankAccounts.orgId, orgId)))
+        .limit(1);
+    } else if (accountNamePattern) {
+      [ba] = await db
+        .select()
+        .from(bankAccounts)
+        .where(and(like(bankAccounts.name, `%${accountNamePattern}%`), eq(bankAccounts.orgId, orgId)))
+        .limit(1);
+    } else {
+      throw new AppError('Provide bankAccountId or accountNamePattern.', 400);
+    }
     if (!ba) throw new AppError('Bank account not found.', 404);
 
     const glAccountId = ba.accountId;
