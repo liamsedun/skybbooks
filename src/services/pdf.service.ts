@@ -32,6 +32,7 @@ import {
 } from '../db/schema';
 import { AppError } from '../lib/errors';
 import { getTrialBalance, getProfitAndLoss, getBalanceSheet, getCashFlowStatement, getStatementOfChangesInEquity } from './ledger.service';
+import { getNotes } from './notes.service';
 import { getInvoiceAgingReport } from './invoice.service';
 import { getBillAgingReport } from './bill.service';
 
@@ -1596,6 +1597,29 @@ export async function generateIncomeStatementPDF(orgId: string, startDate: Date,
       doc.fontSize(8).font('Helvetica-Oblique').fillColor('#64748b');
       doc.text(`Effective Tax Rate: ${etr}%  (Tax Expense ÷ Profit Before Tax)`, 40, y + 4);
     }
+
+    // Append notes
+    const incomeNotes = await getNotes(orgId, 'income_statement');
+    if (incomeNotes.length > 0) {
+      y = Math.max(y, doc.y) + 20;
+      doc.addPage();
+      y = 40;
+      doc.fontSize(11).font('Helvetica-Bold').fillColor('#111827').text('Notes to the Financial Statements', 40, y);
+      y += 24;
+      for (const note of incomeNotes) {
+        if (y > 720) { doc.addPage(); y = 40; }
+        doc.fontSize(10).font('Helvetica-Bold').fillColor('#1e3a8a').text(`${note.noteNumber}. ${note.title}`, 40, y);
+        y += 16;
+        doc.fontSize(8).font('Helvetica').fillColor('#374151');
+        const lines = (note.content || '').split('\n');
+        for (const line of lines) {
+          if (y > 740) { doc.addPage(); y = 40; }
+          doc.text(line, 40, y, { width: 515 });
+          y += 11;
+        }
+        y += 12;
+      }
+    }
   });
 }
 
@@ -1646,6 +1670,29 @@ export async function generateBalanceSheetPDF(orgId: string, asOfDate: Date): Pr
     doc.fillColor('#0f294a').fontSize(10).font('Helvetica-Bold');
     doc.text('TOTAL LIABILITIES AND EQUITY', 50, y + 7);
     doc.text(formatNaira(bs.liabilitiesAndEquity), 400, y + 7, { align: 'right', width: 140 });
+
+    // Append notes
+    const balanceNotes = await getNotes(orgId, 'balance_sheet');
+    if (balanceNotes.length > 0) {
+      y += 20;
+      doc.addPage();
+      y = 40;
+      doc.fontSize(11).font('Helvetica-Bold').fillColor('#111827').text('Notes to the Financial Statements', 40, y);
+      y += 24;
+      for (const note of balanceNotes) {
+        if (y > 720) { doc.addPage(); y = 40; }
+        doc.fontSize(10).font('Helvetica-Bold').fillColor('#1e3a8a').text(`${note.noteNumber}. ${note.title}`, 40, y);
+        y += 16;
+        doc.fontSize(8).font('Helvetica').fillColor('#374151');
+        const lines = (note.content || '').split('\n');
+        for (const line of lines) {
+          if (y > 740) { doc.addPage(); y = 40; }
+          doc.text(line, 40, y, { width: 515 });
+          y += 11;
+        }
+        y += 12;
+      }
+    }
   });
 }
 
@@ -1719,6 +1766,29 @@ export async function generateCashFlowPDF(orgId: string, startDate: Date, endDat
     doc.text(`Opening Cash Balance (${formatShortDate(startDate)}): ${formatNaira(cf.openingCash)}`, 50, y + 18);
     doc.text(`Net Periodic Change in Cash resources: ${formatNaira(cf.netChangeInCash)}`, 50, y + 29);
     doc.font('Helvetica-Bold').fillColor('#0f172a').text(`Closing Cash Balance (${formatShortDate(endDate)}): ${formatNaira(cf.closingCash)}`, 50, y + 40);
+
+    // Append notes
+    const cashNotes = await getNotes(orgId, 'cash_flow');
+    if (cashNotes.length > 0) {
+      y += 20;
+      doc.addPage();
+      y = 40;
+      doc.fontSize(11).font('Helvetica-Bold').fillColor('#111827').text('Notes to the Financial Statements', 40, y);
+      y += 24;
+      for (const note of cashNotes) {
+        if (y > 720) { doc.addPage(); y = 40; }
+        doc.fontSize(10).font('Helvetica-Bold').fillColor('#1e3a8a').text(`${note.noteNumber}. ${note.title}`, 40, y);
+        y += 16;
+        doc.fontSize(8).font('Helvetica').fillColor('#374151');
+        const lines = (note.content || '').split('\n');
+        for (const line of lines) {
+          if (y > 740) { doc.addPage(); y = 40; }
+          doc.text(line, 40, y, { width: 515 });
+          y += 11;
+        }
+        y += 12;
+      }
+    }
   });
 }
 

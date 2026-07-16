@@ -75,6 +75,8 @@ import {
 } from './pages/ModulePlaceholders';
 import { SettingsLayout } from './components/settings/SettingsLayout';
 import { TaxConfigurationPage } from './pages/settings/TaxConfigurationPage';
+import { NotesPage } from './pages/reports/NotesPage';
+import { MappingsPage } from './pages/reports/MappingsPage';
 import {
   OrganisationProfilePage, BrandingPage, CustomDomainPage, LocationsPage,
   UsersPage, RolesPage, UserPreferencesPage,
@@ -333,6 +335,8 @@ function AppRoutes() {
           <Route path="/reports/tax-computation" element={<TaxComputationPage />} />
           <Route path="/reports/custom" element={<CustomReportsPage />} />
           <Route path="/reports/legacy" element={<LegacyMigrationPage />} />
+          <Route path="/reports/notes" element={<NotesPage />} />
+          <Route path="/reports/mappings" element={<MappingsPage />} />
 
           {/* System metadata & account preferences */}
           <Route path="/settings" element={<SettingsLayout />}>

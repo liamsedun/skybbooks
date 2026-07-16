@@ -1086,9 +1086,48 @@ export const reportsApi = {
     const res = await api.get('/reports/dashboard-summary', { params });
     return res.data;
   },
-  getStatementOfChangesInEquity: async (params: { asOfDate: string; compareAsOf?: string; format?: 'json' | 'pdf' | 'excel' }) => {
+   getStatementOfChangesInEquity: async (params: { asOfDate: string; compareAsOf?: string; format?: 'json' | 'pdf' | 'excel' }) => {
     const isBinary = params.format === 'pdf' || params.format === 'excel';
     const res = await api.get('/reports/statement-of-changes-in-equity', { params, responseType: isBinary ? 'blob' : undefined });
+    return res.data;
+  },
+  // Report Section Mappings
+  getMappings: async (params?: { reportType?: string }) => {
+    const res = await api.get('/reports/mappings', { params });
+    return res.data;
+  },
+  saveMappings: async (data: { mappings: any[] }) => {
+    const res = await api.put('/reports/mappings', data);
+    return res.data;
+  },
+  applyMappings: async (data: { reportType: string; reportData: any }) => {
+    const res = await api.post('/reports/mappings/apply', data);
+    return res.data;
+  },
+  // Financial Notes
+  getNotes: async (params?: { sourceReport?: string }) => {
+    const res = await api.get('/reports/notes', { params });
+    return res.data;
+  },
+  saveNote: async (data: any) => {
+    const res = await api.post('/reports/notes', data);
+    return res.data;
+  },
+  updateNote: async (id: string, data: any) => {
+    const res = await api.put(`/reports/notes/${id}`, data);
+    return res.data;
+  },
+  deleteNote: async (id: string) => {
+    const res = await api.delete(`/reports/notes/${id}`);
+    return res.data;
+  },
+  generateNotes: async (data: { reportDate: string; regenerate?: boolean }) => {
+    const res = await api.post('/reports/notes/generate', data);
+    return res.data;
+  },
+  // Consolidated Reports
+  getConsolidated: async (params: { reportType: string; orgIds: string; startDate?: string; endDate?: string; asOfDate?: string }) => {
+    const res = await api.get('/reports/consolidated', { params });
     return res.data;
   },
 };

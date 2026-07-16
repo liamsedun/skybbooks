@@ -1179,6 +1179,48 @@ export async function runMigration() {
 
     console.log('[Migration] Created accounting_rules table.');
 
+    // ── Report Section Mappings Table ──
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS report_section_mappings (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        report_type text NOT NULL,
+        section_key text NOT NULL,
+        label text NOT NULL,
+        account_code text,
+        account_prefix text,
+        sign_multiplier integer DEFAULT 1 NOT NULL,
+        include_sub_accounts boolean DEFAULT true NOT NULL,
+        sort_order integer DEFAULT 0 NOT NULL,
+        is_active boolean DEFAULT true NOT NULL,
+        created_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_report_mappings_org ON report_section_mappings (org_id, report_type)`);
+    console.log('[Migration] Created report_section_mappings table.');
+
+    // ── Financial Notes Table ──
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS financial_notes (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        note_number text NOT NULL,
+        title text NOT NULL,
+        content text,
+        auto_generated boolean DEFAULT true NOT NULL,
+        source_report text,
+        report_date timestamp,
+        note_data jsonb,
+        sort_order integer DEFAULT 0 NOT NULL,
+        created_by uuid REFERENCES users(id),
+        updated_by uuid REFERENCES users(id),
+        created_at timestamp DEFAULT now() NOT NULL,
+        updated_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_financial_notes_org ON financial_notes (org_id, note_number)`);
+    console.log('[Migration] Created financial_notes table.');
+
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema setup:', err);

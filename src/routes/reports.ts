@@ -30,8 +30,23 @@ import {
   exportAgedReceivables,
   exportAgedPayables,
   exportBalanceSheet,
-  exportCashFlow
+  exportCashFlow,
+  exportStatementOfChangesInEquity
 } from '../services/excel.service';
+import {
+  getMappings,
+  saveMappings,
+  applyMappingsToReport,
+  mappingSchema
+} from '../services/mapping.service';
+import {
+  getNotes,
+  saveNote,
+  deleteNote,
+  generateDefaultNotes,
+  regenerateNotes,
+  noteSchema
+} from '../services/notes.service';
 import {
   generateTrialBalancePDF,
   generateIncomeStatementPDF,
@@ -522,7 +537,8 @@ router.get(
       }
 
       if (format === 'excel') {
-        return res.status(501).json({ success: false, error: 'Excel export not yet implemented for SOCIE.' });
+        const buffer = await exportStatementOfChangesInEquity(orgId, asOfDate, compareAsOf);
+        return sendFileBuffer(res, buffer, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'statement_of_changes_in_equity.xlsx');
       }
 
       if (format === 'pdf') {
@@ -1092,5 +1108,289 @@ router.get('/project-summary', async (req: AuthenticatedRequest, res: Response, 
     next(err);
   }
 });
+
+// =========================================================================
+// 11. CONSOLIDATED REPORTS (Multi-Entity Aggregation)
+// =========================================================================
+
+const consolidatedQuerySchema = z.object({
+  reportType: z.enum(['balance_sheet', 'income_statement', 'cash_flow']),
+  orgIds: z.string().min(1, 'At least one orgId is required'), // comma-separated UUIDs
+  startDate: z.string().optional().transform((val) => val ? new Date(val) : undefined),
+  endDate: z.string().optional().transform((val) => val ? new Date(val) : undefined),
+  asOfDate: z.string().optional().transform((val) => val ? new Date(val) : undefined),
+});
+
+router.get(
+  '/consolidated',
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+      const { reportType, orgIds, startDate, endDate, asOfDate } = consolidatedQuerySchema.parse(req.query);
+      const orgIdList = orgIds.split(',').map((s: string) => s.trim());
+
+      // Verify all orgs exist
+      const orgRows = await db
+        .select({ id: organisations.id, name: organisations.name })
+        .from(organisations)
+        .where(sql`${organisations.id} = ANY(${orgIdList}::uuid[])`);
+
+      if (orgRows.length !== orgIdList.length) {
+        throw new AppError('One or more organisation IDs were not found.', 400);
+      }
+
+      const orgNames = Object.fromEntries(orgRows.map((r: any) => [r.id, r.name]));
+
+      // Fetch report data for each org
+      const allResults: any[] = [];
+      for (const oid of orgIdList) {
+        try {
+          let data: any;
+          if (reportType === 'balance_sheet') {
+            data = await getBalanceSheet(oid, asOfDate || new Date());
+          } else if (reportType === 'income_statement') {
+            data = await getProfitAndLoss(oid, startDate || new Date(new Date().getFullYear(), 0, 1), endDate || new Date());
+          } else if (reportType === 'cash_flow') {
+            data = await getCashFlowStatement(oid, startDate || new Date(new Date().getFullYear(), 0, 1), endDate || new Date());
+          }
+          allResults.push({ orgId: oid, orgName: orgNames[oid], data });
+        } catch (err) {
+          allResults.push({ orgId: oid, orgName: orgNames[oid], data: null, error: 'Failed to load report data' });
+        }
+      }
+
+      // Aggregate numeric values (simple sum)
+      function aggregateNested(obj: any, key: string): number {
+        return allResults.reduce((sum: number, r: any) => {
+          if (!r.data) return sum;
+          // Navigate to the key in nested structure
+          if (key.includes('.')) {
+            const parts = key.split('.');
+            let val: any = r.data;
+            for (const p of parts) {
+              if (val == null) return sum;
+              val = val[p];
+            }
+            return sum + (typeof val === 'number' ? val : 0);
+          }
+          if (reportType === 'balance_sheet' || reportType === 'income_statement') {
+            // For BS, keys are like totalAssets, currentAssets.total, etc.
+            if (key.includes('.')) {
+              const parts = key.split('.');
+              let val: any = r.data;
+              for (const p of parts) {
+                if (val == null) return sum;
+                val = val[p];
+              }
+              return sum + (typeof val === 'number' ? val : 0);
+            }
+            return sum + (typeof r.data[key] === 'number' ? r.data[key] : 0);
+          }
+          if (reportType === 'cash_flow') {
+            // For CF, aggregate key metrics
+            if (key === 'operatingActivities.total') return sum + (r.data.operatingActivities?.total || 0);
+            if (key === 'investingActivities.total') return sum + (r.data.investingActivities?.total || 0);
+            if (key === 'financingActivities.total') return sum + (r.data.financingActivities?.total || 0);
+            if (key === 'netChangeInCash') return sum + (r.data.netChangeInCash || 0);
+            if (key === 'openingCash') return sum + (r.data.openingCash || 0);
+            if (key === 'closingCash') return sum + (r.data.closingCash || 0);
+            return sum;
+          }
+          return sum;
+        }, 0);
+      }
+
+      // Build consolidated result based on report type
+      let consolidated: any;
+
+      if (reportType === 'balance_sheet') {
+        consolidated = {
+          totalAssets: aggregateNested({}, 'totalAssets'),
+          totalLiabilities: aggregateNested({}, 'totalLiabilities'),
+          totalEquity: aggregateNested({}, 'totalEquity'),
+          liabilitiesAndEquity: aggregateNested({}, 'liabilitiesAndEquity'),
+          currentAssets: { total: aggregateNested({}, 'currentAssets.total'), subSections: [] },
+          nonCurrentAssets: { total: aggregateNested({}, 'nonCurrentAssets.total'), subSections: [] },
+          currentLiabilities: { total: aggregateNested({}, 'currentLiabilities.total'), subSections: [] },
+          nonCurrentLiabilities: { total: aggregateNested({}, 'nonCurrentLiabilities.total'), subSections: [] },
+          equity: { total: aggregateNested({}, 'equity.total'), subSections: [] },
+        };
+      } else if (reportType === 'income_statement') {
+        consolidated = {
+          totalRevenue: aggregateNested({}, 'totalRevenue'),
+          grossProfit: aggregateNested({}, 'grossProfit'),
+          totalOperatingExpenses: aggregateNested({}, 'totalOperatingExpenses'),
+          operatingProfit: aggregateNested({}, 'operatingProfit'),
+          profitBeforeTax: aggregateNested({}, 'profitBeforeTax'),
+          netProfit: aggregateNested({}, 'netProfit'),
+        };
+      } else if (reportType === 'cash_flow') {
+        consolidated = {
+          operatingActivities: { total: aggregateNested({}, 'operatingActivities.total') },
+          investingActivities: { total: aggregateNested({}, 'investingActivities.total') },
+          financingActivities: { total: aggregateNested({}, 'financingActivities.total') },
+          netChangeInCash: aggregateNested({}, 'netChangeInCash'),
+          openingCash: aggregateNested({}, 'openingCash'),
+          closingCash: aggregateNested({}, 'closingCash'),
+        };
+      }
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          entities: orgRows.map((r: any) => ({ id: r.id, name: r.name })),
+          reportType,
+          consolidated,
+          details: allResults,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// =========================================================================
+// 12. REPORT SECTION MAPPINGS (Dynamic Account-to-Line-Item)
+// =========================================================================
+
+const bulkMappingsSchema = z.object({
+  mappings: z.array(mappingSchema),
+});
+
+router.get(
+  '/mappings',
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+      const orgId = req.user!.orgId!;
+      const reportType = req.query.reportType as string | undefined;
+      const data = await getMappings(orgId, reportType);
+      return res.status(200).json({ success: true, data });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.put(
+  '/mappings',
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+      const orgId = req.user!.orgId!;
+      const { mappings } = bulkMappingsSchema.parse(req.body);
+      const data = await saveMappings(orgId, mappings);
+      createAuditLog({ orgId, userId: req.user!.userId, action: 'update', entityType: 'report-mapping', newValues: { count: mappings.length }, ...extractReqMeta(req) });
+      return res.status(200).json({ success: true, data });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Apply mappings to a report
+router.post(
+  '/mappings/apply',
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+      const orgId = req.user!.orgId!;
+      const { reportType, reportData } = z.object({
+        reportType: z.enum(['balance_sheet', 'income_statement', 'cash_flow']),
+        reportData: z.any(),
+      }).parse(req.body);
+
+      const mapped = await applyMappingsToReport(orgId, reportType, reportData);
+      return res.status(200).json({ success: true, data: mapped });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// =========================================================================
+// 13. FINANCIAL NOTES (IFRS Disclosure Notes)
+// =========================================================================
+
+router.get(
+  '/notes',
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+      const orgId = req.user!.orgId!;
+      const sourceReport = req.query.sourceReport as string | undefined;
+      const data = await getNotes(orgId, sourceReport);
+      return res.status(200).json({ success: true, data });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post(
+  '/notes',
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+      const orgId = req.user!.orgId!;
+      const userId = req.user!.userId;
+      const body = noteSchema.parse(req.body);
+      const data = await saveNote(orgId, userId, body);
+      createAuditLog({ orgId, userId, action: 'create', entityType: 'financial-note', newValues: { noteNumber: body.noteNumber, title: body.title }, ...extractReqMeta(req) });
+      return res.status(200).json({ success: true, data });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.put(
+  '/notes/:id',
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+      const orgId = req.user!.orgId!;
+      const userId = req.user!.userId;
+      const noteId = req.params.id;
+      const body = noteSchema.parse(req.body);
+      const data = await saveNote(orgId, userId, body, noteId);
+      createAuditLog({ orgId, userId, action: 'update', entityType: 'financial-note', newValues: { noteNumber: body.noteNumber, title: body.title }, ...extractReqMeta(req) });
+      return res.status(200).json({ success: true, data });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.delete(
+  '/notes/:id',
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+      const orgId = req.user!.orgId!;
+      await deleteNote(orgId, req.params.id);
+      createAuditLog({ orgId, userId: req.user!.userId, action: 'delete', entityType: 'financial-note', newValues: { noteId: req.params.id }, ...extractReqMeta(req) });
+      return res.status(200).json({ success: true, message: 'Note deleted' });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post(
+  '/notes/generate',
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+      const orgId = req.user!.orgId!;
+      const userId = req.user!.userId;
+      const { reportDate, regenerate } = z.object({
+        reportDate: z.string().transform((val) => new Date(val)),
+        regenerate: z.boolean().default(false),
+      }).parse(req.body);
+
+      const notes = regenerate
+        ? await regenerateNotes(orgId, reportDate, userId)
+        : await generateDefaultNotes(orgId, reportDate, userId);
+
+      createAuditLog({ orgId, userId, action: regenerate ? 'update' : 'create', entityType: 'financial-notes', newValues: { count: notes.length, reportDate: reportDate.toISOString() }, ...extractReqMeta(req) });
+      return res.status(200).json({ success: true, data: notes });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 export default router;

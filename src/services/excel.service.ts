@@ -20,16 +20,51 @@ import {
   getTrialBalance,
   getProfitAndLoss,
   getBalanceSheet,
-  getCashFlowStatement
+  getCashFlowStatement,
+  getStatementOfChangesInEquity
 } from './ledger.service';
 import { getInvoiceAgingReport } from './invoice.service';
 import { getBillAgingReport } from './bill.service';
+import { getNotes } from './notes.service';
 import { AppError } from '../lib/errors';
 
 // Helper to write workbook to buffer
 async function writeWorkbookToBuffer(workbook: ExcelJS.Workbook): Promise<Buffer> {
   const arrayBuffer = await workbook.xlsx.writeBuffer();
   return Buffer.from(arrayBuffer);
+}
+
+// Helper to add notes worksheet to Excel workbook
+async function addNotesSheet(workbook: ExcelJS.Workbook, orgId: string, sourceReport: string): Promise<void> {
+  const notes = await getNotes(orgId, sourceReport);
+  if (notes.length === 0) return;
+
+  const ws = workbook.addWorksheet('Notes to Financial Statements');
+
+  ws.mergeCells('A1:B1');
+  ws.getCell('A1').value = 'Notes to the Financial Statements';
+  ws.getCell('A1').font = { name: 'Arial', bold: true, size: 12 };
+
+  ws.addRow([]);
+
+  const hRow = ws.addRow(['Note', 'Content']);
+  hRow.height = 22;
+  hRow.eachCell((cell) => {
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: PRIMARY_HEX } };
+    cell.font = { name: 'Arial', bold: true, size: 10, color: { argb: 'FFFFFF' } };
+  });
+
+  for (const note of notes) {
+    ws.addRow([`${note.noteNumber}. ${note.title}`, '']);
+    const content = (note.content || '').replace(/\*\*/g, '').replace(/\n/g, ' ');
+    ws.addRow(['', content]);
+    ws.addRow([]);
+  }
+
+  ws.columns = [
+    { width: 35 },
+    { width: 120 },
+  ];
 }
 
 // Global Excel styles
@@ -436,6 +471,8 @@ export async function exportIncomeStatement(
     { width: 18 },
     { width: 15 }
   ];
+
+  await addNotesSheet(workbook, orgId, 'income_statement');
 
   return writeWorkbookToBuffer(workbook);
 }
@@ -934,7 +971,7 @@ export async function exportAgedPayables(orgId: string): Promise<Buffer> {
 }
 
 // =========================================================================
-// 7. EXPORT BALANCE SHEET
+// 7. EXPORT BALANCE SHEET (formerly 7, now 7)
 // =========================================================================
 export async function exportBalanceSheet(orgId: string, asOfDate: Date): Promise<Buffer> {
   const [org] = await db
@@ -1064,6 +1101,94 @@ export async function exportBalanceSheet(orgId: string, asOfDate: Date): Promise
     { width: 55 },
     { width: 20 },
     { width: 22 }
+  ];
+
+  await addNotesSheet(workbook, orgId, 'balance_sheet');
+
+  return writeWorkbookToBuffer(workbook);
+}
+
+// =========================================================================
+// 9. EXPORT STATEMENT OF CHANGES IN EQUITY
+// =========================================================================
+export async function exportStatementOfChangesInEquity(
+  orgId: string,
+  asOfDate: Date,
+  compareAsOfDate?: Date
+): Promise<Buffer> {
+  const [org] = await db
+    .select()
+    .from(organisations)
+    .where(eq(organisations.id, orgId))
+    .limit(1);
+
+  if (!org) throw new AppError('Organisation not found.', 404);
+
+  const socie = await getStatementOfChangesInEquity(orgId, asOfDate, compareAsOfDate);
+  const current = socie.currentYear;
+
+  const workbook = new ExcelJS.Workbook();
+  const ws = workbook.addWorksheet('SOCIE');
+
+  ws.mergeCells('A1:D1');
+  ws.getCell('A1').value = org.name.toUpperCase();
+  ws.getCell('A1').font = { name: 'Arial', bold: true, size: 13 };
+
+  ws.mergeCells('A2:D2');
+  ws.getCell('A2').value = 'STATEMENT OF CHANGES IN EQUITY';
+  ws.getCell('A2').font = { name: 'Arial', bold: true, size: 10, color: { argb: '7C3AED' } };
+
+  ws.mergeCells('A3:D3');
+  ws.getCell('A3').value = `As of Date: ${asOfDate.toLocaleDateString('en-GB')}`;
+  ws.getCell('A3').font = { name: 'Arial', italic: true, size: 9 };
+
+  ws.addRow([]);
+
+  const columns = current.columns || [];
+  const headers = ['Description', ...columns.map((c: any) => c.label || c.key), 'Total'];
+  const hRow = ws.addRow(headers);
+  hRow.height = 24;
+  hRow.eachCell((cell, idx) => {
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '7C3AED' } };
+    cell.font = { name: 'Arial', bold: true, size: 10, color: { argb: 'FFFFFF' } };
+    cell.alignment = { vertical: 'middle', horizontal: idx === 1 ? 'left' : 'right' };
+  });
+
+  const numF = '₦#,##0.00;(₦#,##0.00);"-"';
+
+  (current.rows || []).forEach((row: any) => {
+    const total = columns.reduce((s: number, c: any) => s + (row.columns[c.key] || 0), 0);
+    const vals = [row.label];
+    for (const c of columns) vals.push((row.columns[c.key] || 0) / 100);
+    vals.push(total / 100);
+    const r = ws.addRow(vals);
+    for (let i = 2; i <= columns.length + 1; i++) {
+      r.getCell(i).numFmt = numF;
+      r.getCell(i).alignment = { horizontal: 'right' };
+    }
+  });
+
+  const closingRow = current.rows?.[current.rows.length - 1];
+  if (closingRow) {
+    const totalsRow = ws.addRow(['Closing Balance']);
+    let grandTotal = 0;
+    for (let i = 0; i < columns.length; i++) {
+      const val = (closingRow.columns[columns[i].key] || 0) / 100;
+      grandTotal += (closingRow.columns[columns[i].key] || 0);
+      totalsRow.getCell(i + 2).value = val;
+      totalsRow.getCell(i + 2).numFmt = numF;
+      totalsRow.getCell(i + 2).alignment = { horizontal: 'right' };
+    }
+    totalsRow.getCell(columns.length + 2).value = grandTotal / 100;
+    totalsRow.getCell(columns.length + 2).numFmt = numF;
+    totalsRow.getCell(columns.length + 2).alignment = { horizontal: 'right' };
+    totalsRow.eachCell((cell) => { cell.font = { name: 'Arial', bold: true, size: 10 }; });
+  }
+
+  ws.columns = [
+    { width: 40 },
+    ...columns.map(() => ({ width: 20 })),
+    { width: 22 },
   ];
 
   return writeWorkbookToBuffer(workbook);
@@ -1218,6 +1343,8 @@ export async function exportCashFlow(
     { width: 62 },
     { width: 25 }
   ];
+
+  await addNotesSheet(workbook, orgId, 'cash_flow');
 
   return writeWorkbookToBuffer(workbook);
 }
