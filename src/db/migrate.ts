@@ -1045,10 +1045,11 @@ export async function runMigration() {
             else { jeLines.push({ account_id: l.accountId, debit_amount: 0, credit_amount: Math.abs(l.balance) }); totalCredits += Math.abs(l.balance); }
           }
           // Balance with retained earnings
-          const [reRow] = await db.execute(sql`
+          const reResult = await db.execute(sql`
             SELECT id FROM accounts WHERE org_id = ${orgId}::uuid AND system_account_role = 'retained_earnings' LIMIT 1
           `);
-          if (reRow) {
+          const reRow = (reResult.rows?.[0] || {}) as any;
+          if (reRow.id) {
             const diff = totalDebits - totalCredits;
             if (diff > 0) jeLines.push({ account_id: reRow.id, debit_amount: 0, credit_amount: diff });
             else if (diff < 0) jeLines.push({ account_id: reRow.id, debit_amount: Math.abs(diff), credit_amount: 0 });
@@ -1057,7 +1058,8 @@ export async function runMigration() {
               INSERT INTO journal_entries (org_id, entry_number, date, description, source, created_by)
               VALUES (${orgId}::uuid, ${entryNum}, '1970-01-01', 'Legacy opening balance migration', 'opening_balance', (SELECT id FROM users WHERE org_id = ${orgId}::uuid LIMIT 1))
             `);
-            const [jeRow] = await db.execute(sql`SELECT LASTVAL() AS id`);
+            const jeResult = await db.execute(sql`SELECT LASTVAL() AS id`);
+            const jeRow = jeResult.rows?.[0];
             const jeId = jeRow?.id;
             if (jeId) {
               for (const jl of jeLines) {
@@ -1081,15 +1083,18 @@ export async function runMigration() {
     `);
     for (const row of (orgsWithContactBal.rows || [])) {
       const orgId = row.org_id;
-      const [arAcct] = await db.execute(sql`
+      const arResult = await db.execute(sql`
         SELECT id FROM accounts WHERE org_id = ${orgId}::uuid AND system_account_role = 'accounts_receivable' LIMIT 1
       `);
-      const [apAcct] = await db.execute(sql`
+      const arAcct = arResult.rows?.[0];
+      const apResult = await db.execute(sql`
         SELECT id FROM accounts WHERE org_id = ${orgId}::uuid AND system_account_role = 'accounts_payable' LIMIT 1
       `);
-      const [reAcct] = await db.execute(sql`
+      const apAcct = apResult.rows?.[0];
+      const reResult2 = await db.execute(sql`
         SELECT id FROM accounts WHERE org_id = ${orgId}::uuid AND system_account_role = 'retained_earnings' LIMIT 1
       `);
+      const reAcct = reResult2.rows?.[0];
       if (!arAcct || !apAcct || !reAcct) continue;
 
       const contactsWithBal = await db.execute(sql`
@@ -1110,7 +1115,8 @@ export async function runMigration() {
             INSERT INTO journal_entries (org_id, entry_number, date, description, source, source_id, created_by)
             VALUES (${orgId}::uuid, ${entryNum}, '1970-01-01', 'Legacy customer opening balance', 'opening_balance', ${c.id}::uuid, (SELECT id FROM users WHERE org_id = ${orgId}::uuid LIMIT 1))
           `);
-          const [jeRow] = await db.execute(sql`SELECT LASTVAL() AS id`);
+          const jeResult2 = await db.execute(sql`SELECT LASTVAL() AS id`);
+          const jeRow = jeResult2.rows?.[0];
           if (jeRow?.id) {
             await db.execute(sql`INSERT INTO journal_lines (entry_id, account_id, debit_amount, credit_amount) VALUES (${jeRow.id}::uuid, ${arAcct.id}::uuid, ${bal}, 0)`);
             await db.execute(sql`INSERT INTO journal_lines (entry_id, account_id, debit_amount, credit_amount) VALUES (${jeRow.id}::uuid, ${reAcct.id}::uuid, 0, ${bal})`);
@@ -1122,7 +1128,8 @@ export async function runMigration() {
             INSERT INTO journal_entries (org_id, entry_number, date, description, source, source_id, created_by)
             VALUES (${orgId}::uuid, ${entryNum}, '1970-01-01', 'Legacy vendor opening balance', 'opening_balance', ${c.id}::uuid, (SELECT id FROM users WHERE org_id = ${orgId}::uuid LIMIT 1))
           `);
-          const [jeRow] = await db.execute(sql`SELECT LASTVAL() AS id`);
+          const jeResult3 = await db.execute(sql`SELECT LASTVAL() AS id`);
+          const jeRow = jeResult3.rows?.[0];
           if (jeRow?.id) {
             await db.execute(sql`INSERT INTO journal_lines (entry_id, account_id, debit_amount, credit_amount) VALUES (${jeRow.id}::uuid, ${apAcct.id}::uuid, 0, ${bal})`);
             await db.execute(sql`INSERT INTO journal_lines (entry_id, account_id, debit_amount, credit_amount) VALUES (${jeRow.id}::uuid, ${reAcct.id}::uuid, ${bal}, 0)`);

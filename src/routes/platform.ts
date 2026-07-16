@@ -7,7 +7,7 @@ const router = Router();
 
 router.get('/branding', async (_req, res: Response, next: NextFunction) => {
   try {
-    if (!DEVELOPER_ORG_ID || DEVELOPER_ORG_ID === 'your-org-id-here') {
+    if (!DEVELOPER_ORG_ID || (DEVELOPER_ORG_ID as string) === 'your-org-id-here') {
       return res.status(200).json({ developerLogoUrl: null });
     }
     const [org] = await db

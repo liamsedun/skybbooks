@@ -537,6 +537,7 @@ export async function getTrialBalance(
       accountCode: acct.code,
       accountName: acct.name,
       accountType: acct.type,
+      parentId: null,
       openingDebit: isDebitBook ? (opened > 0 ? opened : 0) : (opened < 0 ? Math.abs(opened) : 0),
       openingCredit: isDebitBook ? (opened < 0 ? Math.abs(opened) : 0) : (opened > 0 ? opened : 0),
       periodDebit: periodDebits,

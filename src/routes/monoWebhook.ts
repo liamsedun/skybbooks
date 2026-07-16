@@ -87,7 +87,7 @@ router.post(
               const [orgUser] = await db
                 .select({ id: users.id })
                 .from(users)
-                .where(eq(users.orgId, ba.orgId))
+                .where(eq(users.organisationId, ba.orgId))
                 .limit(1);
               if (orgUser) {
                 createAuditLog({ orgId: ba.orgId, userId: orgUser.id, action: 'update', entityType: 'bank-account', entityId: ba.id, newValues: { monoAccountStatus: updates.monoAccountStatus }, ...extractReqMeta(req) });

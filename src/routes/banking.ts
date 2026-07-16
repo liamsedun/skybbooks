@@ -216,7 +216,7 @@ router.post('/accounts', async (req: AuthenticatedRequest, res: Response, next: 
 
     const [newBa] = await db
       .insert(bankAccounts)
-      .values(insertData)
+      .values(insertData as any)
       .returning();
 
     // Create JE for initial balance if non-zero
@@ -1009,8 +1009,8 @@ router.post('/accounts/:id/upload-statement', (req: AuthenticatedRequest, res: R
         if (!sheetName) throw new AppError('Excel file has no worksheets.', 400);
 
         // Parse as raw values (keeps dates as serial numbers, numbers as numbers)
-        const rawRowsFromExcel: any[][] = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, defval: '' })
-          .filter((r: any) => (r as any[]).some(v => v != null && v !== ''));
+        const rawUnfiltered: any[][] = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, defval: '' }) as any[][];
+        const rawRowsFromExcel = rawUnfiltered.filter((r: any) => (r as any[]).some(v => v != null && v !== ''));
 
         if (rawRowsFromExcel.length < 2) throw new AppError('Excel file appears empty.', 400);
 
@@ -1632,7 +1632,7 @@ router.get('/accounts/:id/payments', async (req: AuthenticatedRequest, res: Resp
           AND je.date >= ${ba.openingBalanceDate}::date
           AND je.date < ${from}::date
       `);
-      const preRow = preResult.rows ? preResult.rows[0] : preResult[0];
+      const preRow = preResult.rows ? (preResult.rows as unknown as any[])[0] : (preResult as any)[0];
       openingBalance += Number(preRow?.balance || 0);
     } else if (from && !ba.openingBalanceDate) {
       // No opening balance date — use full ledger history before from
@@ -1647,7 +1647,7 @@ router.get('/accounts/:id/payments', async (req: AuthenticatedRequest, res: Resp
           AND je.is_reversed = false
           AND je.date < ${from}::date
       `);
-      const preRow = preResult.rows ? preResult.rows[0] : preResult[0];
+      const preRow = preResult.rows ? (preResult.rows as unknown as any[])[0] : (preResult as any)[0];
       openingBalance = Number(preRow?.balance || 0);
     }
 
@@ -1735,7 +1735,7 @@ router.get('/accounts/:id/payments', async (req: AuthenticatedRequest, res: Resp
             .from(invoices)
             .leftJoin(contacts, eq(invoices.customerId, contacts.id))
             .leftJoin(sql`invoice_lines inv_lines`, eq(sql`inv_lines.invoice_id`, invoices.id))
-            .where(eq(invoices.id, row.source_id))
+            .where(eq(invoices.id, row.source_id as string))
             .groupBy(invoices.id, contacts.name)
             .limit(1);
           if (inv) { txnType = 'Receipt'; txnNumber = inv.number; contactName = inv.contact || ''; docRef = inv.lineItems || ''; sourceDocType = 'invoice'; }
@@ -1747,14 +1747,14 @@ router.get('/accounts/:id/payments', async (req: AuthenticatedRequest, res: Resp
             .select({ number: paymentsReceived.paymentNumber, contact: contacts.name })
             .from(paymentsReceived)
             .leftJoin(contacts, eq(paymentsReceived.customerId, contacts.id))
-            .where(eq(paymentsReceived.id, row.source_id))
+            .where(eq(paymentsReceived.id, row.source_id as string))
             .limit(1);
           if (pmtRec) { txnType = 'Receipt'; txnNumber = pmtRec.number; contactName = pmtRec.contact || ''; sourceDocType = 'receipt'; break; }
           const [pmtMade] = await db
             .select({ number: paymentsMade.paymentNumber, contact: contacts.name })
             .from(paymentsMade)
             .leftJoin(contacts, eq(paymentsMade.vendorId, contacts.id))
-            .where(eq(paymentsMade.id, row.source_id))
+            .where(eq(paymentsMade.id, row.source_id as string))
             .limit(1);
           if (pmtMade) { txnType = 'Payment'; txnNumber = pmtMade.number; contactName = pmtMade.contact || ''; sourceDocType = 'payment'; }
           break;
@@ -1766,7 +1766,7 @@ router.get('/accounts/:id/payments', async (req: AuthenticatedRequest, res: Resp
           const [exp] = await db
             .select({ number: expenses.expenseNumber })
             .from(expenses)
-            .where(eq(expenses.id, row.source_id))
+            .where(eq(expenses.id, row.source_id as string))
             .limit(1);
           if (exp) { txnType = 'Expense'; txnNumber = exp.number; sourceDocType = 'expense'; }
           break;
@@ -1775,7 +1775,7 @@ router.get('/accounts/:id/payments', async (req: AuthenticatedRequest, res: Resp
           const [pr] = await db
             .select({ runNumber: payrollRuns.runNumber })
             .from(payrollRuns)
-            .where(eq(payrollRuns.id, row.source_id))
+            .where(eq(payrollRuns.id, row.source_id as string))
             .limit(1);
           if (pr) { txnType = 'Payroll'; txnNumber = pr.runNumber; sourceDocType = 'payroll'; }
           break;
@@ -1784,14 +1784,14 @@ router.get('/accounts/:id/payments', async (req: AuthenticatedRequest, res: Resp
           const [tf] = await db
             .select({ transferNumber: bankTransfers.transferNumber })
             .from(bankTransfers)
-            .where(eq(bankTransfers.id, row.source_id))
+            .where(eq(bankTransfers.id, row.source_id as string))
             .limit(1);
           if (tf) { txnType = 'Transfer'; txnNumber = tf.transferNumber; sourceDocType = 'transfer'; }
           break;
         }
       }
 
-      const amount = Number(row.debit_amount || 0) - Number(row.credit_amount || 0);
+      const amount = Number((row as any).debit_amount || 0) - Number((row as any).credit_amount || 0);
       enriched.push({
         id: row.id,
         date: row.date,
@@ -1802,7 +1802,7 @@ router.get('/accounts/:id/payments', async (req: AuthenticatedRequest, res: Resp
         description: row.line_desc || docRef,
         // Debit positive = money in, Credit positive = money out (for asset account)
         amount: amount > 0 ? amount : -Number(row.credit_amount || 0),
-        isDebit: row.debit_amount > 0,
+        isDebit: (row as any).debit_amount > 0,
         sourceDocType,
         sourceDocId
       });

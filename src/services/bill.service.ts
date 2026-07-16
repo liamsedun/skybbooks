@@ -750,11 +750,11 @@ export async function listBills(
       .then(r => r[0]);
     if (apAccount) {
       const billIds = await db
-        .select({ billId: journalEntries.referenceId })
+        .select({ billId: journalEntries.sourceId })
         .from(journalEntries)
         .innerJoin(journalLines, eq(journalLines.entryId, journalEntries.id))
         .where(and(
-          eq(journalEntries.referenceType, 'bill'),
+          eq(journalEntries.source, 'bill'),
           eq(journalLines.accountId, apAccount.id),
           sql`${journalLines.creditAmount} > 0`
         ));

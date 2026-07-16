@@ -93,13 +93,13 @@ router.put('/configuration', async (req: AuthenticatedRequest, res: Response, ne
     if (existing.length > 0) {
       [result] = await db
         .update(taxConfigurations)
-        .set({ ...body, updatedAt: new Date() })
+        .set({ ...body, incorporationDate: body.incorporationDate ? new Date(body.incorporationDate) : null, pioneerStartDate: body.pioneerStartDate ? new Date(body.pioneerStartDate) : null, updatedAt: new Date() } as any)
         .where(and(eq(taxConfigurations.orgId, orgId), eq(taxConfigurations.taxYear, body.taxYear)))
         .returning();
     } else {
       [result] = await db
         .insert(taxConfigurations)
-        .values({ orgId, ...body })
+        .values({ orgId, ...body } as any)
         .returning();
     }
 

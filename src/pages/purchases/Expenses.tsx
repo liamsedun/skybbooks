@@ -43,7 +43,7 @@ type FormState = {
   customerId: string;
   paymentAccountId: string; onAccount: boolean;
   currency: string; fxRate: string | null;
-  projectId: string;
+  projectId?: string;
 };
 
 

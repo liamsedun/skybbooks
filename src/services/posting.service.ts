@@ -331,14 +331,14 @@ async function validateAccounts(
     .from(accounts)
     .where(and(inArray(accounts.id, allIds as any), eq(accounts.orgId, orgId)));
 
-  const acctMap = new Map(accts.map(a => [a.id, a]));
+  const acctMap = new Map(accts.map((a: any) => [a.id, a]));
   const errors: ValidationError[] = [];
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     if (!line.accountId) continue;
 
-    const acct = acctMap.get(line.accountId);
+    const acct = acctMap.get(line.accountId) as any;
     if (!acct) {
       errors.push({
         code: 'MISSING_ACCOUNT',

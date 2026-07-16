@@ -94,7 +94,9 @@ export async function createContract(orgId: string, userId: string, data: any): 
     createdBy: userId,
   }).returning();
 
-  await createAuditLog(orgId, userId, 'create', 'revenue_contract', contract.id, null, contract, extractReqMeta({} as any));
+  await createAuditLog({ orgId, userId, action: 'create', entityType: 'revenue_contract',       entityId: contract.id,
+      oldValues: {},
+      newValues: contract, ...extractReqMeta({} as any) });
   return contract;
 }
 
@@ -109,7 +111,7 @@ export async function updateContract(orgId: string, userId: string, contractId: 
     .where(and(eq(revenueContracts.id, contractId), eq(revenueContracts.orgId, orgId)))
     .returning();
 
-  await createAuditLog(orgId, userId, 'update', 'revenue_contract', contractId, existing, updated, extractReqMeta({} as any));
+  await createAuditLog({ orgId, userId, action: 'update', entityType: 'revenue_contract', entityId: contractId, oldValues: existing, newValues: updated, ...extractReqMeta({} as any) });
   return updated;
 }
 
@@ -130,7 +132,7 @@ export async function deleteContract(orgId: string, userId: string, contractId: 
   await db.delete(performanceObligations).where(eq(performanceObligations.contractId, contractId));
   await db.delete(revenueContracts).where(and(eq(revenueContracts.id, contractId), eq(revenueContracts.orgId, orgId)));
 
-  await createAuditLog(orgId, userId, 'delete', 'revenue_contract', contractId, existing, null, extractReqMeta({} as any));
+  await createAuditLog({ orgId, userId, action: 'delete', entityType: 'revenue_contract', entityId: contractId, oldValues: existing, newValues: {}, ...extractReqMeta({} as any) });
 }
 
 // ── Performance Obligations ──
@@ -173,14 +175,14 @@ export async function createObligation(orgId: string, userId: string, data: any)
     endDate: parsed.endDate || contract.endDate,
     deferredRevenueAccountId: parsed.deferredRevenueAccountId || null,
     contractAssetAccountId: parsed.contractAssetAccountId || null,
-  }).returning();
+  } as any).returning();
 
   // Auto-generate schedule if straight-line or milestone
   if (parsed.recognitionMethod !== 'custom') {
     await generateSchedule(orgId, userId, obligation.id, parsed);
   }
 
-  await createAuditLog(orgId, userId, 'create', 'performance_obligation', obligation.id, null, obligation, extractReqMeta({} as any));
+  await createAuditLog({ orgId, userId, action: 'create', entityType: 'performance_obligation', entityId: obligation.id, oldValues: {}, newValues: obligation, ...extractReqMeta({} as any) });
   return obligation;
 }
 
@@ -191,11 +193,11 @@ export async function updateObligation(orgId: string, userId: string, obligation
   const parsed = obligationSchema.partial().parse(data);
 
   const [updated] = await db.update(performanceObligations)
-    .set({ ...parsed, updatedAt: new Date() })
+    .set({ ...parsed, updatedAt: new Date() } as any)
     .where(eq(performanceObligations.id, obligationId))
     .returning();
 
-  await createAuditLog(orgId, userId, 'update', 'performance_obligation', obligationId, existing, updated, extractReqMeta({} as any));
+  await createAuditLog({ orgId, userId, action: 'update', entityType: 'performance_obligation', entityId: obligationId, oldValues: existing, newValues: updated, ...extractReqMeta({} as any) });
   return updated;
 }
 
@@ -207,7 +209,7 @@ export async function deleteObligation(orgId: string, userId: string, obligation
   await db.delete(revenueRecognitionEntries).where(eq(revenueRecognitionEntries.obligationId, obligationId));
   await db.delete(performanceObligations).where(eq(performanceObligations.id, obligationId));
 
-  await createAuditLog(orgId, userId, 'delete', 'performance_obligation', obligationId, existing, null, extractReqMeta({} as any));
+  await createAuditLog({ orgId, userId, action: 'delete', entityType: 'performance_obligation', entityId: obligationId, oldValues: existing, newValues: {}, ...extractReqMeta({} as any) });
 }
 
 // ── Schedules ──
@@ -460,7 +462,7 @@ export async function recognizeRevenue(
   }
 
   const meta = req ? extractReqMeta(req) : { ipAddress: null, userAgent: null };
-  await createAuditLog(orgId, userId, 'create', 'revenue_recognition', recognitionEntry.id, null, recognitionEntry, meta);
+  await createAuditLog({ orgId, userId, action: 'create', entityType: 'revenue_recognition', entityId: recognitionEntry.id, oldValues: {}, newValues: recognitionEntry, ...meta });
 
   return { recognitionEntry, journalEntry };
 }
@@ -519,7 +521,7 @@ export async function getRecognitionReport(orgId: string, startDate?: Date, endD
     .orderBy(desc(revenueRecognitionEntries.recognizedDate));
 
   if (startDate && endDate) {
-    query.where(and(
+    (query as any).where(and(
       sql`${revenueRecognitionEntries.recognizedDate} >= ${startDate}`,
       sql`${revenueRecognitionEntries.recognizedDate} <= ${endDate}`
     ));

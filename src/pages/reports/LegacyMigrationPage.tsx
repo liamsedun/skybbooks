@@ -869,7 +869,7 @@ export function LegacyMigrationPage() {
             </select>
           </div>
           <div className="flex items-center gap-2">
-            {tab !== 'settings' && (
+            {(tab as string) !== 'settings' && (
               <div className="flex items-center gap-1 mr-2">
                 <button onClick={handlePdf} title="Download as PDF"
                   className="px-2.5 py-1.5 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">

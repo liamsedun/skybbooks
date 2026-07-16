@@ -311,7 +311,7 @@ export function PostingRulesPage() {
                       )}
                     </td>
                     <td className="px-4 py-2.5 text-sm text-slate-600 font-mono">
-                      {accountLabel(r.accountId)}
+                      {accountLabel(r.accountId ?? null)}
                     </td>
                     <td className="px-4 py-2.5 text-sm text-slate-500">{r.priority}</td>
                     {isAdmin && (

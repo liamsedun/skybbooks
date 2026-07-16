@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fixedAssetsApi, accountantApi, printWindow, apiDownload } from '../../lib/api';
 import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
 import { PageLoader } from '../../components/ui/PageLoader';
-import { Plus, X, Loader2, Trash2, Eye, Download, Upload, FileText, Printer } from 'lucide-react';
+import { Plus, X, Loader2, Trash2, Eye, Download, Upload, FileText, Printer, AlertCircle } from 'lucide-react';
 import { downloadCsv } from '../../lib/csvTemplates';
 
 function fmtNaira(v: number): string {
@@ -144,7 +144,7 @@ export function FixedAssetsPage() {
                   if (!groups[cat]) groups[cat] = [];
                   groups[cat].push(a);
                 }
-                const rows: JSX.Element[] = [];
+                const rows: React.ReactNode[] = [];
                 for (const [cat, items] of Object.entries(groups)) {
                   const catCost = items.reduce((s, a) => s + a.purchaseCost, 0);
                   const catDepr = items.reduce((s, a) => s + a.accumulatedDepreciation, 0);

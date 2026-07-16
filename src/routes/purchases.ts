@@ -858,8 +858,8 @@ router.post('/vendors', async (req: AuthenticatedRequest, res: Response, next: N
 
     // Strip balance from body — opening balance goes through JE, not stored in contacts.balance
     const openingBalance = body.balance || 0;
-    const vendorBody = { ...body };
-    delete vendorBody.balance;
+    const vendorBody = { ...body } as any;
+    vendorBody.balance = undefined;
 
     const [vendor] = await db
       .insert(contacts)

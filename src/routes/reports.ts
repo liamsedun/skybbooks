@@ -7,7 +7,7 @@ import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
 import { AppError } from '../lib/errors';
-import { db, accounts, journalEntries, journalLines, fixedAssets, bankAccounts, contacts, invoices, bills, projects, paymentsReceived } from '../db/schema';
+import { db, accounts, journalEntries, journalLines, fixedAssets, bankAccounts, contacts, invoices, bills, projects, paymentsReceived, organisations } from '../db/schema';
 import { eq, and, asc, sql, lte, gte } from 'drizzle-orm';
 import { createAuditLog, extractReqMeta } from '../services/audit.service';
 import {

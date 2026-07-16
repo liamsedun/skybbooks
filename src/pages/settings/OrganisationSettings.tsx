@@ -306,7 +306,7 @@ export function OrganisationSettingsPage() {
   const { user } = useAuth();
   const [form, setForm] = useState<OrgFormState>({
     name: '', address: '', phone: '', email: '',
-    fiscalYearStart: '', vatNumber: '', rcNumber: '',
+    fiscalYearStart: '', vatNumber: '', rcNumber: '', website: '',
   });
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);

@@ -1020,7 +1020,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
                       ]);
                       if (rows.length === 0) return;
                       const csv = [['Date','Transaction','Account','Description','Amount (₦)','Balance (₦)'], ...rows]
-                        .map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+                        .map(r => r.map((v: any) => `"${v}"`).join(',')).join('\n');
                       const blob = new Blob([csv], { type: 'text/csv' });
                       const url = URL.createObjectURL(blob);
                       const a = document.createElement('a'); a.href = url;

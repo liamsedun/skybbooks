@@ -1179,7 +1179,7 @@ router.get('/tax-transactions', async (req: AuthenticatedRequest, res: Response,
       .from(accounts)
       .where(and(
         eq(accounts.orgId, orgId),
-        inArray(accounts.systemAccountRole, taxRoles)
+        inArray(accounts.systemAccountRole, taxRoles as any)
       ));
 
     const taxAccountIds = taxAccounts.map(a => a.id);

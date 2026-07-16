@@ -15,7 +15,7 @@ import { CsvImportModal } from '../../components/ui/CsvImportModal';
 import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
 import { CurrencySelector } from '../../components/ui/CurrencySelector';
 
-interface Vendor { id: string; name: string; }
+interface Vendor { id: string; name: string; email?: string; phone?: string; }
 interface Account { id: string; code: string; name: string; type: string; }
 interface Item { id: string; name: string; purchasePrice: number | null; }
 interface BillLine {

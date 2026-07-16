@@ -266,7 +266,7 @@ router.get('/settings', async (req: AuthenticatedRequest, res: Response, next: N
 // 4. PATCH /org/settings — Update org settings (merge partial JSON)
 // ==========================================
 const updateSettingsSchema = z.object({
-  settings: z.record(z.any())
+  settings: z.record(z.string(), z.any())
 });
 
 router.patch('/settings', requireRole('owner', 'accountant'), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
@@ -484,7 +484,7 @@ router.patch('/users/:userId', requireRole('owner'), async (req: AuthenticatedRe
       .set({
         ...(body.fullName !== undefined && { fullName: body.fullName }),
         ...(body.email !== undefined && { email: body.email.toLowerCase() }),
-        ...(body.role !== undefined && { role: body.role }),
+        ...(body.role !== undefined && { role: body.role as any }),
         ...(body.isActive !== undefined && { isActive: body.isActive })
       })
       .where(eq(users.id, userId))
@@ -568,7 +568,7 @@ router.post('/invite', requireRole('owner', 'admin'), async (req: AuthenticatedR
             Hi <strong>${name}</strong>,
           </p>
           <p style="color: #374151; font-size: 14px; line-height: 1.6;">
-            <strong>${req.user?.fullName || 'An admin'}</strong> has invited you to join
+            <strong>${(req.user as any)?.fullName || 'An admin'}</strong> has invited you to join
             <strong>${org.name}</strong> on SkyBooks as a
             <strong>${role.charAt(0).toUpperCase() + role.slice(1)}</strong>.
           </p>
@@ -674,7 +674,7 @@ router.post('/users/manual', requireRole('owner', 'admin'), async (req: Authenti
       role,
       organisationId: orgId,
       isActive: true,
-    }).returning();
+    } as any).returning();
 
     if (!created) throw new AppError('Failed to create user.', 500);
 

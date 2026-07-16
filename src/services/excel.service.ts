@@ -1020,9 +1020,9 @@ export async function exportBalanceSheet(orgId: string, asOfDate: Date): Promise
   }
 
   function styleRow(r: any, font?: any, fill?: any, border?: any) {
-    if (font) r.eachCell((c) => { c.font = font; });
-    if (fill) r.eachCell((c) => { c.fill = fill; });
-    if (border) r.eachCell((c) => { c.border = border; });
+    if (font) r.eachCell((c: any) => { c.font = font; });
+    if (fill) r.eachCell((c: any) => { c.fill = fill; });
+    if (border) r.eachCell((c: any) => { c.border = border; });
   }
 
   function writeSubSection(label: string, total: number, items: any[]) {

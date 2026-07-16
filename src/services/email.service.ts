@@ -87,7 +87,7 @@ async function sendViaResend(
       html: options.html,
       ...(options.text && { text: options.text }),
     });
-    return { success: true, messageId: result?.id };
+    return { success: true, messageId: (result as any)?.id };
   } catch (err: any) {
     console.error('[EmailService] Resend failed:', err?.message || err);
     return { success: false, error: err?.message || 'Resend email failed.' };

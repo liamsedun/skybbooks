@@ -2891,9 +2891,9 @@ function buildPnLRows(current: any, prior: any | null): any[] {
     for (const a of currAccounts) {
       const code = a.code || a.accountId;
       const priorBal = priorMap.get(code) || 0;
-      secCurrTotal += a.balance;
-      secPriorTotal += priorBal;
-      secRows.push({ accountId: a.accountId, name: a.name, code: a.code, currentBalance: a.balance, priorBalance: priorBal, variance: a.balance - priorBal, isRevenue });
+      secCurrTotal += (a.balance as number);
+      secPriorTotal += (priorBal as number);
+      secRows.push({ accountId: a.accountId, name: a.name, code: a.code, currentBalance: a.balance, priorBalance: priorBal, variance: a.balance - (priorBal as number), isRevenue });
     }
     for (const a of priorAccounts) {
       const code = a.code || a.accountId;
@@ -2955,9 +2955,9 @@ function buildPnLRows(current: any, prior: any | null): any[] {
     for (const a of currAccounts) {
       const code = a.code || a.accountId;
       const priorBal = priorMap.get(code) || 0;
-      secCurr += a.balance;
-      secPrior += priorBal;
-      children.push({ accountId: a.accountId, name: a.name, code: a.code, currentBalance: a.balance, priorBalance: priorBal, variance: a.balance - priorBal, isRevenue: false });
+      secCurr += (a.balance as number);
+      secPrior += (priorBal as number);
+      children.push({ accountId: a.accountId, name: a.name, code: a.code, currentBalance: a.balance, priorBalance: priorBal, variance: (a.balance as number) - (priorBal as number), isRevenue: false });
     }
     for (const a of priorAccounts) {
       const code = a.code || a.accountId;
@@ -3891,10 +3891,10 @@ function ComparativeCashFlowTable({ current, prior, priorLegacy, priorEmpty, onA
           {sectionHeader('A. Operating Activities', 'bg-emerald-50', 'text-emerald-800')}
           {cfRow('Net Profit for the Period', current.netIncome || 0, priorData.netIncome || 0)}
           {(currOp.adjustments?.length > 0 || priorOp.adjustments?.length > 0) && subSectionHeader('Adjustments for Non-Cash Items')}
-          {(currOp.adjustments || []).map((a: any) => cfRow(a.name, a.amount, priorAdjMap.get(a.name) || 0, 'pl-14'))}
+          {(currOp.adjustments || []).map((a: any) => cfRow(a.name, a.amount, (priorAdjMap.get(a.name) || 0) as number, 'pl-14'))}
           {cfRow('Total Adjustments for Non-Cash Items', currOp.adjustmentsTotal || 0, priorOp.adjustmentsTotal || 0, 'pl-10', true)}
           {(currOp.workingCapitalChanges?.length > 0 || priorOp.workingCapitalChanges?.length > 0) && subSectionHeader('Changes in Working Capital')}
-          {(currOp.workingCapitalChanges || []).map((w: any) => cfRow(w.name, w.amount, priorWcMap.get(w.name) || 0, 'pl-14'))}
+          {(currOp.workingCapitalChanges || []).map((w: any) => cfRow(w.name, w.amount, (priorWcMap.get(w.name) || 0) as number, 'pl-14'))}
           {cfRow('Total Changes in Working Capital', currOp.workingCapitalTotal || 0, priorOp.workingCapitalTotal || 0, 'pl-10', true)}
           {cfRow('Cash Generated from Operations', currOp.cashGeneratedFromOperations || 0, priorOp.cashGeneratedFromOperations || 0, 'pl-8', true)}
           {Math.abs(currOp.incomeTaxPaid || 0) > 0.01 && cfRow('Income Tax Paid', currOp.incomeTaxPaid || 0, priorOp.incomeTaxPaid || 0)}
@@ -3908,7 +3908,7 @@ function ComparativeCashFlowTable({ current, prior, priorLegacy, priorEmpty, onA
             <td className="px-3 py-2.5 text-right">{(priorOp.total || 0) !== 0 ? `${((((currOp.total || 0) - (priorOp.total || 0)) / (priorOp.total || 0)) * 100).toFixed(1)}%` : '—'}</td>
           </tr>
           {sectionHeader('B. Investing Activities', 'bg-blue-50', 'text-blue-800')}
-          {(currInv.items?.length > 0 || priorInv.items?.length > 0) && (currInv.items || []).map((iv: any) => cfRow(iv.name, iv.amount, priorInvMap.get(iv.name) || 0))}
+          {(currInv.items?.length > 0 || priorInv.items?.length > 0) && (currInv.items || []).map((iv: any) => cfRow(iv.name, iv.amount, (priorInvMap.get(iv.name) || 0) as number))}
           {(currInv.items?.length === 0 && priorInv.items?.length === 0) && <tr className="border-t border-slate-100"><td colSpan={5} className="px-3 py-2.5 pl-8 text-slate-400 italic">No investing activity in either period</td></tr>}
           <tr className="border-t-2 border-blue-200 bg-blue-50/50 font-bold">
             <td className="px-3 py-2.5 pl-8 text-sm text-slate-900">NET CASH FROM INVESTING ACTIVITIES</td>
@@ -3918,7 +3918,7 @@ function ComparativeCashFlowTable({ current, prior, priorLegacy, priorEmpty, onA
             <td className="px-3 py-2.5 text-right">{(priorInv.total || 0) !== 0 ? `${((((currInv.total || 0) - (priorInv.total || 0)) / (priorInv.total || 0)) * 100).toFixed(1)}%` : '—'}</td>
           </tr>
           {sectionHeader('C. Financing Activities', 'bg-violet-50', 'text-violet-800')}
-          {(currFin.items?.length > 0 || priorFin.items?.length > 0) && (currFin.items || []).map((fn: any) => cfRow(fn.name, fn.amount, priorFinMap.get(fn.name) || 0))}
+          {(currFin.items?.length > 0 || priorFin.items?.length > 0) && (currFin.items || []).map((fn: any) => cfRow(fn.name, fn.amount, (priorFinMap.get(fn.name) || 0) as number))}
           {(currFin.items?.length === 0 && priorFin.items?.length === 0) && <tr className="border-t border-slate-100"><td colSpan={5} className="px-3 py-2.5 pl-8 text-slate-400 italic">No financing activity in either period</td></tr>}
           <tr className="border-t-2 border-violet-200 bg-violet-50/50 font-bold">
             <td className="px-3 py-2.5 pl-8 text-sm text-slate-900">NET CASH FROM FINANCING ACTIVITIES</td>

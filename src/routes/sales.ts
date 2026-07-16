@@ -5,7 +5,7 @@
 
 import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { db, contacts, invoices, invoiceLines, quotes, salesOrders, paymentsReceived, paymentAllocations, creditNotes, accounts, paymentsMade, paymentMadeAllocations, journalEntries, expenses } from '../db/schema';
+import { db, contacts, invoices, invoiceLines, quotes, salesOrders, paymentsReceived, paymentAllocations, creditNotes, accounts, paymentsMade, paymentMadeAllocations, journalEntries, journalLines, expenses } from '../db/schema';
 import { eq, and, desc, asc, sql, gte, lte, inArray, getTableColumns } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
@@ -723,7 +723,7 @@ router.post('/customers', async (req: AuthenticatedRequest, res: Response, next:
           });
         }
       }
-      createAuditLog({ orgId, userId, action: 'update', entityType: 'customer', entityId: existing.id, oldValues: { name: existing.name }, newValues: { name: body.name, ...body }, ...extractReqMeta(req) });
+      createAuditLog({ orgId, userId, action: 'update', entityType: 'customer', entityId: existing.id, oldValues: { name: existing.name }, newValues: { ...body }, ...extractReqMeta(req) });
       return res.status(200).json(updated);
     }
 

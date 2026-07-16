@@ -382,7 +382,7 @@ router.post('/items/record-opening-stock', async (req: AuthenticatedRequest, res
       }
     }
 
-    await createAuditLog({ orgId, userId, action: 'create', entityType: 'inventory-lot', entityId: lot.id, newValues: { itemId: body.itemId, quantity: body.quantity }, ...extractReqMeta(req) });
+    await createAuditLog({ orgId, userId, action: 'create', entityType: 'inventory-lot', entityId: lot.id, newValues: { itemId: req.body.itemId, quantity: req.body.quantity }, ...extractReqMeta(req) });
 
     return res.status(201).json({ message: 'Opening stock recorded.', lot });
   } catch (err) {
@@ -708,8 +708,8 @@ router.post('/adjustments', async (req: AuthenticatedRequest, res: Response, nex
 });
 
 // Helper: apply quantity adjustment to inventory
-async function applyQuantityAdjustment(adj: any, items: any[], orgId: string, userId: string) {
-  for (const it of items) {
+async function applyQuantityAdjustment(adj: any, adjItems: any[], orgId: string, userId: string) {
+  for (const it of adjItems) {
     const qtyAdj = Number(it.quantityAdjusted);
     if (qtyAdj === 0) continue;
 
@@ -718,7 +718,8 @@ async function applyQuantityAdjustment(adj: any, items: any[], orgId: string, us
       .from(items)
       .where(eq(items.id, it.itemId))
       .limit(1);
-    if (!item || !item.trackInventory || !item.inventoryAccountId) continue;
+    const itemAny = item as any;
+    if (!itemAny || !itemAny.trackInventory || !itemAny.inventoryAccountId) continue;
 
     if (qtyAdj > 0) {
       // Increase: add to most recent lot or create new
@@ -791,14 +792,14 @@ async function applyQuantityAdjustment(adj: any, items: any[], orgId: string, us
         await postToGL({
           orgId,
           date: adj.date,
-          description: `Inventory adjustment (qty) — ${item.name} (${qtyAdj > 0 ? '+' : ''}${qtyAdj})`,
+          description: `Inventory adjustment (qty) — ${itemAny.name} (${qtyAdj > 0 ? '+' : ''}${qtyAdj})`,
           reference: adj.reference,
           source: 'inventory_adjustment',
           sourceId: adj.id,
           createdBy: userId,
           lines: [
-            { accountId: item.inventoryAccountId, debit: valueChange, description: `Inventory adj — ${item.name}` },
-            { accountId: adj.accountId, credit: valueChange, description: `Inventory adj offset — ${item.name}` },
+            { accountId: itemAny.inventoryAccountId, debit: valueChange, description: `Inventory adj — ${itemAny.name}` },
+            { accountId: adj.accountId, credit: valueChange, description: `Inventory adj offset — ${itemAny.name}` },
           ],
         });
       } else {
@@ -806,14 +807,14 @@ async function applyQuantityAdjustment(adj: any, items: any[], orgId: string, us
         await postToGL({
           orgId,
           date: adj.date,
-          description: `Inventory adjustment (qty) — ${item.name} (${qtyAdj})`,
+          description: `Inventory adjustment (qty) — ${itemAny.name} (${qtyAdj})`,
           reference: adj.reference,
           source: 'inventory_adjustment',
           sourceId: adj.id,
           createdBy: userId,
           lines: [
-            { accountId: adj.accountId, debit: absVal, description: `Inventory adj loss — ${item.name}` },
-            { accountId: item.inventoryAccountId, credit: absVal, description: `Inventory adj — ${item.name}` },
+            { accountId: adj.accountId, debit: absVal, description: `Inventory adj loss — ${itemAny.name}` },
+            { accountId: itemAny.inventoryAccountId, credit: absVal, description: `Inventory adj — ${itemAny.name}` },
           ],
         });
       }
@@ -822,8 +823,8 @@ async function applyQuantityAdjustment(adj: any, items: any[], orgId: string, us
 }
 
 // Helper: apply value adjustment to inventory
-async function applyValueAdjustment(adj: any, items: any[], orgId: string, userId: string) {
-  for (const it of items) {
+async function applyValueAdjustment(adj: any, adjItems: any[], orgId: string, userId: string) {
+  for (const it of adjItems) {
     const oldCost = it.currentUnitCost || 0;
     const newCost = it.newUnitCost ?? oldCost;
     if (newCost === oldCost) continue;
@@ -833,7 +834,8 @@ async function applyValueAdjustment(adj: any, items: any[], orgId: string, userI
       .from(items)
       .where(eq(items.id, it.itemId))
       .limit(1);
-    if (!item || !item.trackInventory || !item.inventoryAccountId) continue;
+    const itemAny = item as any;
+    if (!itemAny || !itemAny.trackInventory || !itemAny.inventoryAccountId) continue;
 
     // Update cost per unit on all active lots for this item
     await db
@@ -862,14 +864,14 @@ async function applyValueAdjustment(adj: any, items: any[], orgId: string, userI
         await postToGL({
           orgId,
           date: adj.date,
-          description: `Inventory value adjustment — ${item.name} (${(oldCost / 100).toLocaleString()} → ${(newCost / 100).toLocaleString()})`,
+          description: `Inventory value adjustment — ${itemAny.name} (${(oldCost / 100).toLocaleString()} → ${(newCost / 100).toLocaleString()})`,
           reference: adj.reference,
           source: 'inventory_adjustment',
           sourceId: adj.id,
           createdBy: userId,
           lines: [
-            { accountId: item.inventoryAccountId, debit: valueDiff, description: `Value adj — ${item.name}` },
-            { accountId: adj.accountId, credit: valueDiff, description: `Value adj offset — ${item.name}` },
+            { accountId: itemAny.inventoryAccountId, debit: valueDiff, description: `Value adj — ${itemAny.name}` },
+            { accountId: adj.accountId, credit: valueDiff, description: `Value adj offset — ${itemAny.name}` },
           ],
         });
       } else {
@@ -877,14 +879,14 @@ async function applyValueAdjustment(adj: any, items: any[], orgId: string, userI
         await postToGL({
           orgId,
           date: adj.date,
-          description: `Inventory value adjustment — ${item.name} (${(oldCost / 100).toLocaleString()} → ${(newCost / 100).toLocaleString()})`,
+          description: `Inventory value adjustment — ${itemAny.name} (${(oldCost / 100).toLocaleString()} → ${(newCost / 100).toLocaleString()})`,
           reference: adj.reference,
           source: 'inventory_adjustment',
           sourceId: adj.id,
           createdBy: userId,
           lines: [
-            { accountId: adj.accountId, debit: absVal, description: `Value adj loss — ${item.name}` },
-            { accountId: item.inventoryAccountId, credit: absVal, description: `Value adj — ${item.name}` },
+            { accountId: adj.accountId, debit: absVal, description: `Value adj loss — ${itemAny.name}` },
+            { accountId: itemAny.inventoryAccountId, credit: absVal, description: `Value adj — ${itemAny.name}` },
           ],
         });
       }

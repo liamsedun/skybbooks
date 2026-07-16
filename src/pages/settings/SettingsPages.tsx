@@ -1870,7 +1870,7 @@ function RoleEditorModal({ role, form, setForm, onClose, isNew, saveSettings }: 
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-8 pb-8 overflow-y-auto">
-      <div className="fixed inset-0 bg-black/40" onClick={handleDone} />
+      <div className="fixed inset-0 bg-black/40" onClick={() => handleDone()} />
       <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-5xl mx-4 overflow-hidden z-10 max-h-[calc(100vh-4rem)] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 shrink-0">
@@ -1878,7 +1878,7 @@ function RoleEditorModal({ role, form, setForm, onClose, isNew, saveSettings }: 
             <h2 className="text-base font-semibold text-slate-900">{isNew ? 'New Role' : `Edit Role: ${roleName.replace(/_/g, ' ')}`}</h2>
             <p className="text-xs text-slate-500">Define granular permissions for this role</p>
           </div>
-          <button onClick={handleDone} className="text-slate-400 hover:text-slate-600 transition"><X size={18} /></button>
+          <button onClick={() => handleDone()} className="text-slate-400 hover:text-slate-600 transition"><X size={18} /></button>
         </div>
 
         {/* Tabs */}
@@ -1957,7 +1957,7 @@ function RoleEditorModal({ role, form, setForm, onClose, isNew, saveSettings }: 
                                 <td className="px-3 py-2 text-slate-700 border border-slate-200 font-medium">{sub.label}</td>
                                 {cols.map(c => (
                                   <td key={c} className="text-center px-3 py-2 border border-slate-200">
-                                    <input type="checkbox" checked={getVal([section.name, sub.key, c])} onChange={e => updateLocal([section.name, sub.key, c], e.target.checked)}
+                                     <input type="checkbox" checked={!!getVal([section.name, sub.key, c])} onChange={e => updateLocal([section.name, sub.key, c], e.target.checked)}
                                       className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
                                   </td>
                                 ))}
@@ -1965,107 +1965,107 @@ function RoleEditorModal({ role, form, setForm, onClose, isNew, saveSettings }: 
                             </tbody>
                           </table>
                         </div>
-                        {(sub.more || []).filter(m => m.label).map(m => (
-                          <label key={m.key} className="flex items-start gap-2 mt-2 cursor-pointer">
-                            <input type="checkbox" checked={getVal([section.name, sub.key, m.key])} onChange={e => updateLocal([section.name, sub.key, m.key], e.target.checked)}
-                              className="mt-0.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
-                            <span className="text-xs text-slate-500">{m.label}</span>
-                          </label>
-                        ))}
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })()
-          )}
+                                  {(sub.more || []).filter(m => m.label).map(m => (
+                                          <label key={m.key} className="flex items-start gap-2 mt-2 cursor-pointer">
+                                            <input type="checkbox" checked={!!getVal([section.name, sub.key, m.key])} onChange={e => updateLocal([section.name, sub.key, m.key], e.target.checked)}
+                                              className="mt-0.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                                            <span className="text-xs text-slate-500">{m.label}</span>
+                                          </label>
+                                        ))}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            })()
+                          )}
 
-          {activeTab === 'Documents' && (
-            <div className="space-y-3">
-              {DOCUMENT_PERMS.map(d => (
-                <label key={d.key} className="flex items-center gap-3 cursor-pointer">
-                  <input type="checkbox" checked={getVal(['Documents', d.key])} onChange={e => updateLocal(['Documents', d.key], e.target.checked)}
-                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
-                  <span className="text-sm text-slate-700">{d.label}</span>
-                </label>
-              ))}
-            </div>
-          )}
+                          {activeTab === 'Documents' && (
+                            <div className="space-y-3">
+                              {DOCUMENT_PERMS.map(d => (
+                                <label key={d.key} className="flex items-center gap-3 cursor-pointer">
+                                  <input type="checkbox" checked={!!getVal(['Documents', d.key])} onChange={e => updateLocal(['Documents', d.key], e.target.checked)}
+                                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                                  <span className="text-sm text-slate-700">{d.label}</span>
+                                </label>
+                              ))}
+                            </div>
+                          )}
 
-          {activeTab === 'Settings' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {SETTINGS_TOGGLES.map(s => (
-                <label key={s.key} className="flex items-center gap-3 cursor-pointer p-3 border border-slate-100 rounded-lg hover:bg-slate-50">
-                  <input type="checkbox" checked={getVal(['Settings', s.key])} onChange={e => updateLocal(['Settings', s.key], e.target.checked)}
-                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
-                  <span className="text-xs text-slate-700">{s.label}</span>
-                </label>
-              ))}
-            </div>
-          )}
+                          {activeTab === 'Settings' && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                              {SETTINGS_TOGGLES.map(s => (
+                                <label key={s.key} className="flex items-center gap-3 cursor-pointer p-3 border border-slate-100 rounded-lg hover:bg-slate-50">
+                                  <input type="checkbox" checked={!!getVal(['Settings', s.key])} onChange={e => updateLocal(['Settings', s.key], e.target.checked)}
+                                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                                  <span className="text-xs text-slate-700">{s.label}</span>
+                                </label>
+                              ))}
+                            </div>
+                          )}
 
-          {activeTab === 'Dashboard' && (
-            <div className="space-y-4">
-              <label className="flex items-center gap-3 cursor-pointer p-3 border border-slate-100 rounded-lg hover:bg-slate-50">
-                <input type="checkbox" checked={getVal(['Dashboard', 'enableFullAccessAllReports'])} onChange={e => updateLocal(['Dashboard', 'enableFullAccessAllReports'], e.target.checked)}
-                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
-                <div>
-                  <p className="text-sm font-medium text-slate-700">Enable full access for all reports</p>
-                  <p className="text-xs text-slate-400">When new reports are introduced, you will have to edit the role and provide access to them.</p>
-                </div>
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {DASHBOARD_WIDGETS.map(d => (
-                  <label key={d.key} className="flex items-center gap-3 cursor-pointer p-3 border border-slate-100 rounded-lg hover:bg-slate-50">
-                    <input type="checkbox" checked={getVal(['Dashboard', d.key])} onChange={e => updateLocal(['Dashboard', d.key], e.target.checked)}
-                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
-                    <span className="text-xs text-slate-700">{d.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
+                          {activeTab === 'Dashboard' && (
+                            <div className="space-y-4">
+                              <label className="flex items-center gap-3 cursor-pointer p-3 border border-slate-100 rounded-lg hover:bg-slate-50">
+                                <input type="checkbox" checked={!!getVal(['Dashboard', 'enableFullAccessAllReports'])} onChange={e => updateLocal(['Dashboard', 'enableFullAccessAllReports'], e.target.checked)}
+                                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                                <div>
+                                  <p className="text-sm font-medium text-slate-700">Enable full access for all reports</p>
+                                  <p className="text-xs text-slate-400">When new reports are introduced, you will have to edit the role and provide access to them.</p>
+                                </div>
+                              </label>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                {DASHBOARD_WIDGETS.map(d => (
+                                  <label key={d.key} className="flex items-center gap-3 cursor-pointer p-3 border border-slate-100 rounded-lg hover:bg-slate-50">
+                                    <input type="checkbox" checked={!!getVal(['Dashboard', d.key])} onChange={e => updateLocal(['Dashboard', d.key], e.target.checked)}
+                                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                                    <span className="text-xs text-slate-700">{d.label}</span>
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                          )}
 
-          {activeTab === 'Reports' && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between gap-4">
-                <input type="text" value={reportSearch} onChange={e => setReportSearch(e.target.value)}
-                  placeholder="Search reports..." className="flex-1 px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 max-w-xs" />
-                <div className="flex items-center gap-3">
-                  <button onClick={() => setAllReports(true)} className="text-xs text-indigo-600 hover:underline">Select All</button>
-                  <button onClick={() => setAllReports(false)} className="text-xs text-slate-500 hover:underline">Clear All</button>
-                </div>
-              </div>
-              <div className="overflow-x-auto border border-slate-200 rounded-lg">
-                <table className="w-full text-xs border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50 sticky top-0">
-                      <th className="text-left px-3 py-2 font-medium text-slate-600 border-b border-slate-200">Report Groups</th>
-                      {REPORT_COLUMNS.map(c => (
-                        <th key={c} className="text-center px-3 py-2 font-medium text-slate-600 border-b border-slate-200 whitespace-nowrap">{REPORT_COL_LABELS[c]}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {ALL_REPORTS.filter(r => !reportSearch || r.toLowerCase().includes(reportSearch.toLowerCase())).map(r => {
-                      const key = r.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
-                      return (
-                        <tr key={key} className="hover:bg-slate-50">
-                          <td className="px-3 py-2 text-slate-700 border-b border-slate-100 whitespace-nowrap">{r}</td>
-                          {REPORT_COLUMNS.map(c => (
-                            <td key={c} className="text-center px-3 py-2 border-b border-slate-100">
-                              <input type="checkbox" checked={getVal(['Reports', key, c])} onChange={e => updateLocal(['Reports', key, c], e.target.checked)}
-                                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
-                            </td>
-                          ))}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+                          {activeTab === 'Reports' && (
+                            <div className="space-y-4">
+                              <div className="flex items-center justify-between gap-4">
+                                <input type="text" value={reportSearch} onChange={e => setReportSearch(e.target.value)}
+                                  placeholder="Search reports..." className="flex-1 px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 max-w-xs" />
+                                <div className="flex items-center gap-3">
+                                  <button onClick={() => setAllReports(true)} className="text-xs text-indigo-600 hover:underline">Select All</button>
+                                  <button onClick={() => setAllReports(false)} className="text-xs text-slate-500 hover:underline">Clear All</button>
+                                </div>
+                              </div>
+                              <div className="overflow-x-auto border border-slate-200 rounded-lg">
+                                <table className="w-full text-xs border-collapse">
+                                  <thead>
+                                    <tr className="bg-slate-50 sticky top-0">
+                                      <th className="text-left px-3 py-2 font-medium text-slate-600 border-b border-slate-200">Report Groups</th>
+                                      {REPORT_COLUMNS.map(c => (
+                                        <th key={c} className="text-center px-3 py-2 font-medium text-slate-600 border-b border-slate-200 whitespace-nowrap">{REPORT_COL_LABELS[c]}</th>
+                                      ))}
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {ALL_REPORTS.filter(r => !reportSearch || r.toLowerCase().includes(reportSearch.toLowerCase())).map(r => {
+                                      const key = r.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+                                      return (
+                                        <tr key={key} className="hover:bg-slate-50">
+                                          <td className="px-3 py-2 text-slate-700 border-b border-slate-100 whitespace-nowrap">{r}</td>
+                                          {REPORT_COLUMNS.map(c => (
+                                            <td key={c} className="text-center px-3 py-2 border-b border-slate-100">
+                                              <input type="checkbox" checked={!!getVal(['Reports', key, c])} onChange={e => updateLocal(['Reports', key, c], e.target.checked)}
+                                                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                                            </td>
+                                          ))}
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          )}
         </div>
 
         {/* Footer */}
@@ -2511,7 +2511,7 @@ export function GeneralPage() {
 
       <Section title="Organization Address Format">
         <p className="text-xs text-slate-500 mb-2">Displayed in PDF only</p>
-        <textarea value={form.addressFormat || ''} onChange={field('addressFormat')} rows={8}
+        <textarea value={form.addressFormat || ''} onChange={(e: any) => field('addressFormat')(e)} rows={8}
           className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-mono text-xs"
           placeholder={`\${ORGANIZATION.COMPANYID_LABEL} \${ORGANIZATION.COMPANYID_VALUE}\n\${ORGANIZATION.COMPANYTAXID_LABEL} \${ORGANIZATION.COMPANYTAXID_VALUE}\n\${ORGANIZATION.STREET_ADDRESS_1}\n\${ORGANIZATION.STREET_ADDRESS_2}\n\${ORGANIZATION.CITY} \${ORGANIZATION.STATE} \${ORGANIZATION.POSTAL_CODE}\n\${ORGANIZATION.COUNTRY}\n\${ORGANIZATION.PHONE}\n\${ORGANIZATION.EMAIL}\n\${ORGANIZATION.WEBSITE}`} />
         <div className="flex items-center gap-2 mt-2">
@@ -2655,7 +2655,7 @@ export function CurrenciesPage() {
   function addCustomCurrency() {
     if (!newCurrency.code.trim() || !newCurrency.name.trim()) return;
     const code = newCurrency.code.trim().toUpperCase();
-    if (ALL_CURRENCIES.some(c => c.code === code) || customCurrencies.some(c => c.code === code)) return;
+    if (ALL_CURRENCIES.some((c: any) => c.code === code) || customCurrencies.some((c: any) => c.code === code)) return;
     const updated = [...customCurrencies, { ...newCurrency, code }];
     setForm((p: any) => ({ ...p, customCurrencies: updated, activeCurrencies: [...(p.activeCurrencies || []), code] }));
     setNewCurrencyOpen(false);
@@ -2664,7 +2664,7 @@ export function CurrenciesPage() {
 
   function getAllCurrencies() {
     const all = [...ALL_CURRENCIES];
-    customCurrencies.forEach(cc => { if (!all.some(c => c.code === cc.code)) all.push(cc); });
+    customCurrencies.forEach((cc: any) => { if (!all.some((c: any) => c.code === cc.code)) all.push(cc); });
     return all.sort((a, b) => a.code.localeCompare(b.code));
   }
 
@@ -3469,7 +3469,7 @@ export function CustomerPortalPage() {
       <Section title="Banner Message">
         <textarea
           value={form.bannerMessage || ''}
-          onChange={field('bannerMessage')}
+          onChange={(e: any) => field('bannerMessage')(e)}
           placeholder="This message will be displayed right on top of the 'Home' page of the portal."
           className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-white text-slate-800 placeholder-slate-400 min-h-[80px] resize-y"
         />
@@ -3603,7 +3603,7 @@ export function VendorPortalPage() {
       <Section title="Banner Message">
         <textarea
           value={form.bannerMessage || ''}
-          onChange={field('bannerMessage')}
+          onChange={(e: any) => field('bannerMessage')(e)}
           placeholder="This message will be displayed right on top of the 'Home' page of the portal."
           className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-white text-slate-800 placeholder-slate-400 min-h-[80px] resize-y"
         />
@@ -4422,7 +4422,7 @@ export function WorkflowRulesPage() {
             <span className="text-[10px] font-semibold text-slate-400 uppercase">Module :</span>
             <select value={moduleFilter} onChange={e => setModuleFilter(e.target.value)} className="text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white">
               <option value="">All</option>
-              {modules.map(m => <option key={m} value={m}>{m}</option>)}
+              {modules.map((m: any) => <option key={m} value={m}>{m}</option>)}
             </select>
           </div>
           <div className="flex items-center gap-2">
@@ -4505,7 +4505,7 @@ export function WorkflowActionsPage() {
             <span className="text-[10px] font-semibold text-slate-400 uppercase">Module :</span>
             <select value={moduleFilter} onChange={e => setModuleFilter(e.target.value)} className="text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white">
               <option value="">All</option>
-              {modules.map(m => <option key={m} value={m}>{m}</option>)}
+              {modules.map((m: any) => <option key={m} value={m}>{m}</option>)}
             </select>
           </div>
           <div className="overflow-x-auto -mx-6 px-6">
@@ -4627,7 +4627,7 @@ export function WorkflowLogsPage() {
               <span className="text-[10px] font-semibold text-slate-400 uppercase">Modules :</span>
               <select value={modulesFilter} onChange={e => setModulesFilter(e.target.value)} className="text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white">
                 <option value="">All</option>
-                {logEntities.map(e => <option key={e} value={e}>{e}</option>)}
+                {logEntities.map((e: any) => <option key={e} value={e}>{e}</option>)}
               </select>
             </div>
             <div className="flex items-center gap-2">
@@ -4930,7 +4930,7 @@ const dataTypeOptions = [
 ];
 
 export function AccountantSettingsPage() {
-  const { form, field, toggle, handleSave, isPending, saved, error, setForm, settings } = useSettingsForm('accountant', {
+  const { form, field, toggle, handleSave, isPending, saved, error, setForm } = useSettingsForm('accountant', {
     makeAccountCodeMandatory: false, currencyGainLoss: 'sameAccount', exchangeAdjustmentAccount: '',
     allow13thMonth: false, recurringJournalState: 'draft',
     journalApprovalType: 'noApproval',

@@ -90,7 +90,7 @@ router.post('/close', async (req: AuthenticatedRequest, res: Response, next: Nex
       })
       .returning();
 
-    createAuditLog({ orgId, userId, action: 'close', entityType: 'accounting-period', newValues: { periodStart: body.periodStart, periodEnd: body.periodEnd }, ...extractReqMeta(req) });
+    createAuditLog({ orgId, userId, action: 'close', entityType: 'accounting-period', newValues: { periodStart: req.body.periodStart, periodEnd: req.body.periodEnd }, ...extractReqMeta(req) });
     return res.status(201).json({ success: true, data: record });
   } catch (err) {
     next(err);

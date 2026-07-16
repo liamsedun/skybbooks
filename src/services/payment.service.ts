@@ -424,6 +424,7 @@ export async function updatePaymentReceived(paymentId: string, orgId: string, in
     const date = input.date ? new Date(input.date) : existing.date;
     const allocations = category === 'sales_invoice' ? (input.allocations || []) : [];
 
+    const whtAmount = Number(input.whtAmount || 0);
     if (category === 'sales_invoice') {
       let allocatedSum = 0;
       for (const alloc of allocations) allocatedSum += Number(alloc.amount || 0);
@@ -487,7 +488,6 @@ export async function updatePaymentReceived(paymentId: string, orgId: string, in
     }
 
     // 6. Re-post journal entry
-    const whtAmount = Number(input.whtAmount || 0);
     const creditAccountId = category === 'sales_invoice'
       ? await resolveAccountsReceivable(orgId, tx)
       : updated.incomeAccountId;

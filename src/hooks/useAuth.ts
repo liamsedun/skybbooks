@@ -15,6 +15,7 @@ export interface User {
   isActive: boolean;
   lastLogin?: string;
   createdAt: string;
+  avatarUrl?: string;
 }
 
 export interface Organisation {

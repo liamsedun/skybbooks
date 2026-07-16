@@ -975,7 +975,7 @@ export function PaymentsReceivedPage() {
                                   <Download size={14} />
                                 </button>
                               ) : (
-                                <button onClick={() => { if (org) printPaymentDetail(p, org); }}
+                                <button onClick={() => { if (org) printPaymentDetail(p as PaymentDetail, org); }}
                                   className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200" title="Print payment detail">
                                   <Download size={14} />
                                 </button>
@@ -1024,7 +1024,7 @@ export function PaymentsReceivedPage() {
                         <Download size={16} />
                       </button>
                     ) : (
-                      <button onClick={() => { if (selectedPayment && org) printPaymentDetail(selectedPayment, org); }}
+                      <button onClick={() => { if (selectedPayment && org) printPaymentDetail(selectedPayment as PaymentDetail, org); }}
                         className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50" title="Print payment detail">
                         <Download size={16} />
                       </button>
