@@ -596,17 +596,61 @@ router.post('/accounts/reset-account', async (req: AuthenticatedRequest, res: Re
         }
       }
 
-      // 5. For remaining journal entries (opening balance, manual JEs), zero out the lines for this account
-      const remainingEntryIds = entryIds.filter(eid => !linkedExpenses.some(e => e.journalEntryId === eid));
+      // 5. Re-query remaining journal lines for this account (includes reversal entries created in step 4)
+      const remainingLines = await db
+        .select({ entryId: journalLines.entryId })
+        .from(journalLines)
+        .innerJoin(journalEntries, eq(journalLines.entryId, journalEntries.id))
+        .where(and(eq(journalLines.accountId, glAccountId), eq(journalEntries.orgId, orgId)))
+        .groupBy(journalLines.entryId);
+      const remainingEntryIds = remainingLines.map(r => r.entryId);
+
       if (remainingEntryIds.length > 0) {
-        // Delete lines belonging to this account (org filter not needed — entryId scope is enough)
-        await db
-          .delete(journalLines)
-          .where(and(
-            eq(journalLines.accountId, glAccountId),
-            inArray(journalLines.entryId, remainingEntryIds)
-          ));
-        results.clearedOtherJournalLines = remainingEntryIds.length;
+        // For each remaining entry, check if it's a "safe" reversal that can be fully deleted
+        const entries = await db
+          .select()
+          .from(journalEntries)
+          .where(inArray(journalEntries.id, remainingEntryIds));
+
+        for (const entry of entries) {
+          // Get all lines for this entry
+          const allEntryLines = await db
+            .select()
+            .from(journalLines)
+            .where(eq(journalLines.entryId, entry.id));
+
+          const linesForThisAccount = allEntryLines.filter(l => l.accountId === glAccountId);
+
+          if (linesForThisAccount.length === 0) continue;
+
+          // Check if entry only affects this bank GL account (plus expense accounts from reversals)
+          const hasOtherAccounts = allEntryLines.some(l => l.accountId !== glAccountId);
+          const isPureReversal = allEntryLines.length > 0 && (
+            entry.description?.toLowerCase().includes('reversal') ||
+            allEntryLines.some(l => l.description?.toLowerCase().includes('reversal'))
+          );
+
+          if (isPureReversal) {
+            // Safe to delete the entire reversal entry (expenses already deleted)
+            await db.delete(journalLines).where(eq(journalLines.entryId, entry.id));
+            await db.delete(journalEntries).where(eq(journalEntries.id, entry.id));
+            results.deletedReversalEntries = (results.deletedReversalEntries || 0) + 1;
+          } else if (!hasOtherAccounts) {
+            // Entry only references this bank account — safe to delete entirely
+            await db.delete(journalLines).where(eq(journalLines.entryId, entry.id));
+            await db.delete(journalEntries).where(eq(journalEntries.id, entry.id));
+            results.deletedStandaloneEntries = (results.deletedStandaloneEntries || 0) + 1;
+          } else {
+            // Mixed entry (e.g., opening balance) — only remove lines for this account
+            await db
+              .delete(journalLines)
+              .where(and(
+                eq(journalLines.accountId, glAccountId),
+                eq(journalLines.entryId, entry.id)
+              ));
+            results.clearedMixedEntryLines = (results.clearedMixedEntryLines || 0) + 1;
+          }
+        }
       }
     }
 
