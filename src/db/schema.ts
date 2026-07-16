@@ -48,7 +48,10 @@ export const journalSourceEnum = pgEnum('journal_source', [
   'transfer',
   'vat_settlement',
   'tax_provision',
-  'inventory_adjustment'
+  'inventory_adjustment',
+  'loan',
+  'owner_capital',
+  'owner_drawings'
 ]);
 
 export const contactTypeEnum = pgEnum('contact_type', ['customer', 'vendor', 'both']);

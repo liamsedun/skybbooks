@@ -151,6 +151,33 @@ export const POSTING_TEMPLATES: PostingTemplate[] = [
     ],
   },
   {
+    source: 'loan',
+    name: 'Loan (Borrowing)',
+    description: 'DR Bank, CR Loan Payable',
+    lines: [
+      { side: 'debit', accountRole: 'bank', description: 'Loan proceeds received' },
+      { side: 'credit', accountRole: 'none', description: 'Loan payable (liability to lender)' },
+    ],
+  },
+  {
+    source: 'owner_capital',
+    name: 'Owner Capital Contribution',
+    description: 'DR Bank, CR Share Capital / Owners Equity',
+    lines: [
+      { side: 'debit', accountRole: 'bank', description: 'Capital contribution amount' },
+      { side: 'credit', accountRole: 'retained_earnings', description: 'Equity increase from owner capital' },
+    ],
+  },
+  {
+    source: 'owner_drawings',
+    name: 'Owner Drawings',
+    description: 'DR Drawings / Retained Earnings, CR Bank',
+    lines: [
+      { side: 'debit', accountRole: 'retained_earnings', description: 'Drawings reduction of equity' },
+      { side: 'credit', accountRole: 'bank', description: 'Cash withdrawn by owner' },
+    ],
+  },
+  {
     source: 'manual',
     name: 'Manual Journal',
     description: 'User-defined DR/CR lines',

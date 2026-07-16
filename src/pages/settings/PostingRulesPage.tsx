@@ -21,6 +21,9 @@ const SOURCE_OPTIONS = [
   { value: 'transfer', label: 'Bank Transfer' },
   { value: 'vat_settlement', label: 'VAT Settlement' },
   { value: 'tax_provision', label: 'Tax Provision' },
+  { value: 'loan', label: 'Loan (Borrowing)' },
+  { value: 'owner_capital', label: 'Owner Capital Contribution' },
+  { value: 'owner_drawings', label: 'Owner Drawings' },
   { value: 'manual', label: 'Manual Journal' },
 ];
 

@@ -1153,6 +1153,11 @@ export async function runMigration() {
     await db.execute(sql`ALTER TYPE journal_source ADD VALUE IF NOT EXISTS 'inventory_adjustment'`);
     console.log('[Migration] Added inventory_adjustment to journal_source enum.');
 
+    await db.execute(sql`ALTER TYPE journal_source ADD VALUE IF NOT EXISTS 'loan'`);
+    await db.execute(sql`ALTER TYPE journal_source ADD VALUE IF NOT EXISTS 'owner_capital'`);
+    await db.execute(sql`ALTER TYPE journal_source ADD VALUE IF NOT EXISTS 'owner_drawings'`);
+    console.log('[Migration] Added loan, owner_capital, owner_drawings to journal_source enum.');
+
     console.log('[Migration] Created accounting_rules table.');
 
     console.log('[Migration] Database is online. Migration/schema push complete!');
