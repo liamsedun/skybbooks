@@ -1221,6 +1221,121 @@ export async function runMigration() {
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_financial_notes_org ON financial_notes (org_id, note_number)`);
     console.log('[Migration] Created financial_notes table.');
 
+    // ── IFRS 15 Revenue Recognition ──
+    await db.execute(sql`
+      DO $$ BEGIN
+        CREATE TYPE contract_status AS ENUM ('draft', 'active', 'completed', 'cancelled', 'modified');
+      EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+    `);
+    await db.execute(sql`
+      DO $$ BEGIN
+        CREATE TYPE obligation_timing AS ENUM ('point_in_time', 'over_time');
+      EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+    `);
+    await db.execute(sql`
+      DO $$ BEGIN
+        CREATE TYPE recognition_method AS ENUM ('straight_line', 'milestone', 'percentage_of_completion', 'custom');
+      EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+    `);
+    await db.execute(sql`
+      DO $$ BEGIN
+        CREATE TYPE schedule_status AS ENUM ('pending', 'recognized', 'skipped');
+      EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+    `);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS revenue_contracts (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        contract_number text NOT NULL,
+        customer_id uuid REFERENCES contacts(id) NOT NULL,
+        project_id uuid REFERENCES projects(id),
+        description text,
+        status contract_status DEFAULT 'draft' NOT NULL,
+        total_contract_value bigint DEFAULT 0 NOT NULL,
+        start_date timestamp NOT NULL,
+        end_date timestamp,
+        billing_frequency text,
+        payment_terms integer,
+        currency text DEFAULT 'NGN' NOT NULL,
+        notes text,
+        created_by uuid REFERENCES users(id) NOT NULL,
+        created_at timestamp DEFAULT now() NOT NULL,
+        updated_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_rev_contracts_org ON revenue_contracts (org_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_rev_contracts_customer ON revenue_contracts (org_id, customer_id)`);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS performance_obligations (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        contract_id uuid REFERENCES revenue_contracts(id) NOT NULL,
+        description text NOT NULL,
+        timing obligation_timing NOT NULL,
+        amount bigint DEFAULT 0 NOT NULL,
+        recognized_amount bigint DEFAULT 0 NOT NULL,
+        remaining_amount bigint DEFAULT 0 NOT NULL,
+        recognition_method recognition_method DEFAULT 'straight_line' NOT NULL,
+        revenue_account_id uuid REFERENCES accounts(id) NOT NULL,
+        deferred_revenue_account_id uuid REFERENCES accounts(id),
+        contract_asset_account_id uuid REFERENCES accounts(id),
+        start_date timestamp,
+        end_date timestamp,
+        milestone_criteria text,
+        completion_percentage numeric,
+        sort_order integer DEFAULT 0 NOT NULL,
+        status contract_status DEFAULT 'draft' NOT NULL,
+        created_at timestamp DEFAULT now() NOT NULL,
+        updated_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_perf_obligations_contract ON performance_obligations (contract_id)`);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS revenue_schedules (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        obligation_id uuid REFERENCES performance_obligations(id) NOT NULL,
+        scheduled_date timestamp NOT NULL,
+        amount bigint DEFAULT 0 NOT NULL,
+        recognized_amount bigint DEFAULT 0 NOT NULL,
+        status schedule_status DEFAULT 'pending' NOT NULL,
+        description text,
+        sort_order integer DEFAULT 0 NOT NULL,
+        created_at timestamp DEFAULT now() NOT NULL,
+        updated_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_rev_schedules_obligation ON revenue_schedules (obligation_id)`);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS revenue_recognition_entries (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        schedule_id uuid REFERENCES revenue_schedules(id) NOT NULL,
+        obligation_id uuid REFERENCES performance_obligations(id) NOT NULL,
+        journal_entry_id uuid REFERENCES journal_entries(id),
+        amount bigint NOT NULL,
+        recognized_date timestamp NOT NULL,
+        method recognition_method NOT NULL,
+        description text,
+        created_by uuid REFERENCES users(id) NOT NULL,
+        created_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_rev_recog_schedule ON revenue_recognition_entries (schedule_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_rev_recog_obligation ON revenue_recognition_entries (obligation_id)`);
+
+    // Seed 101050 Unbilled Receivables / Contract Assets account for each org
+    await db.execute(sql`
+      INSERT INTO accounts (id, org_id, code, name, type, sub_type, description, is_system, is_active, system_account_role)
+      SELECT gen_random_uuid(), o.id, '101050', 'Unbilled Receivables / Contract Assets', 'asset', 'Current Assets',
+             'IFRS 15 – Revenue recognized but not yet invoiced. Right to consideration subject to conditions (contract asset).', true, true, 'none'
+      FROM organisations o
+      WHERE NOT EXISTS (SELECT 1 FROM accounts a WHERE a.org_id = o.id AND a.code = '101050')
+    `);
+    await db.execute(sql`ALTER TYPE journal_source ADD VALUE IF NOT EXISTS 'revenue_recognition'`);
+    console.log('[Migration] Created IFRS 15 revenue recognition tables and seeded contract asset account.');
+
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema setup:', err);

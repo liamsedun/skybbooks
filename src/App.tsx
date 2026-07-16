@@ -77,6 +77,8 @@ import { SettingsLayout } from './components/settings/SettingsLayout';
 import { TaxConfigurationPage } from './pages/settings/TaxConfigurationPage';
 import { NotesPage } from './pages/reports/NotesPage';
 import { MappingsPage } from './pages/reports/MappingsPage';
+import { RevenueContractsPage } from './pages/revenue/RevenueContractsPage';
+import { RevenueRecognitionReport } from './pages/revenue/RevenueRecognitionReport';
 import {
   OrganisationProfilePage, BrandingPage, CustomDomainPage, LocationsPage,
   UsersPage, RolesPage, UserPreferencesPage,
@@ -337,6 +339,8 @@ function AppRoutes() {
           <Route path="/reports/legacy" element={<LegacyMigrationPage />} />
           <Route path="/reports/notes" element={<NotesPage />} />
           <Route path="/reports/mappings" element={<MappingsPage />} />
+          <Route path="/revenue/contracts" element={<RevenueContractsPage />} />
+          <Route path="/revenue/recognition-report" element={<RevenueRecognitionReport />} />
 
           {/* System metadata & account preferences */}
           <Route path="/settings" element={<SettingsLayout />}>

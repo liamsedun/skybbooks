@@ -10,6 +10,7 @@ const ACCOUNT_SEEDS: { code: string; name: string; type: 'asset' | 'liability' |
   { code: '100400', name: 'Petty Cash', type: 'asset', subType: 'Current Assets', description: 'IAS 7 – Imprest system petty cash fund.' },
   { code: '100500', name: 'Short-term Bank Deposits (<3 months)', type: 'asset', subType: 'Current Assets', description: 'IAS 7 – Treasury bills, fixed deposits ≤ 90 days. WHT deducted at source.' },
   { code: '101000', name: 'Trade & Other Receivables', type: 'asset', subType: 'Current Assets', description: 'IFRS 9 / IAS 32 – Amounts due from customers. Expected Credit Loss (ECL) model applies.' },
+  { code: '101050', name: 'Unbilled Receivables / Contract Assets', type: 'asset', subType: 'Current Assets', description: 'IFRS 15 – Revenue recognized but not yet invoiced. Right to consideration subject to conditions (contract asset).' },
   { code: '101100', name: 'Trade Receivables', type: 'asset', subType: 'Current Assets', description: 'IFRS 15 / IFRS 9 – Invoiced revenue not yet collected. Stage 1–3 impairment per IFRS 9.', systemAccountRole: 'accounts_receivable' },
   { code: '101200', name: 'Allowance for Impairment (contra)', type: 'asset', subType: 'Current Assets', description: 'IFRS 9 – ECL provision against trade receivables. 12-month or lifetime ECL.' },
   { code: '101300', name: 'Staff Advances & Loans', type: 'asset', subType: 'Current Assets', description: 'IAS 19 / IFRS 9 – Advances to employees. PAYE implications on benefit element.' },

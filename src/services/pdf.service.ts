@@ -51,7 +51,7 @@ function formatShortDate(date: Date | string | null | undefined): string {
 }
 
 // Utility to wrap PDF document generation in a promise returning a Buffer
-function generatePDFBuffer(builder: (doc: any) => void): Promise<Buffer> {
+function generatePDFBuffer(builder: (doc: any) => void | Promise<void>): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ margin: 40, size: 'A4' });
     const chunks: Buffer[] = [];
@@ -59,8 +59,12 @@ function generatePDFBuffer(builder: (doc: any) => void): Promise<Buffer> {
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', (err) => reject(err));
     try {
-      builder(doc);
-      doc.end();
+      const result = builder(doc);
+      if (result instanceof Promise) {
+        result.then(() => doc.end()).catch(reject);
+      } else {
+        doc.end();
+      }
     } catch (err) {
       reject(err);
     }
@@ -1489,7 +1493,7 @@ export async function generateIncomeStatementPDF(orgId: string, startDate: Date,
     return y;
   }
 
-  return generatePDFBuffer((doc) => {
+  return generatePDFBuffer(async (doc) => {
     drawReportHeader(doc, 'INCOME STATEMENT', `Period: ${formatShortDate(startDate)} - ${formatShortDate(endDate)}`, org?.name || 'FinanceOS Unit', org, brandColor);
     let y = 110;
     doc.fontSize(10).font('Helvetica-Bold').fillColor('#111827');
@@ -1631,9 +1635,9 @@ export async function generateBalanceSheetPDF(orgId: string, asOfDate: Date): Pr
   const orgSettings = typeof org?.settings === 'string' ? JSON.parse(org.settings) : (org?.settings || {});
   const brandColor = orgSettings.branding?.primaryColor || '#1e3a8a';
 
-  return generatePDFBuffer((doc) => {
+  return generatePDFBuffer(async (doc) => {
     drawReportHeader(doc, 'BALANCE SHEET', `As of: ${formatShortDate(asOfDate)}`, org?.name || 'FinanceOS Unit', org, brandColor);
-    
+
     let y = 110;
 
     const sections = [
@@ -1704,7 +1708,7 @@ export async function generateCashFlowPDF(orgId: string, startDate: Date, endDat
   const orgSettings = typeof org?.settings === 'string' ? JSON.parse(org.settings) : (org?.settings || {});
   const brandColor = orgSettings.branding?.primaryColor || '#0f766e';
 
-  return generatePDFBuffer((doc) => {
+  return generatePDFBuffer(async (doc) => {
     drawReportHeader(doc, 'STATEMENT OF CASH FLOWS', `Period: ${formatShortDate(startDate)} - ${formatShortDate(endDate)}`, org?.name || 'FinanceOS Unit', org, brandColor);
     
     let y = 110;

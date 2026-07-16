@@ -189,6 +189,8 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     'rep_tax_computation': '/reports/tax-computation',
     'rep_projects': '/reports/projects',
     'rep_legacy': '/reports/legacy',
+    'revenue_contracts': '/revenue/contracts',
+    'rep_revenue_recognition': '/revenue/recognition-report',
     'set_organisation': '/settings/organisation',
     'set_invites': '/settings/invites',
     'set_roles': '/settings/roles',
@@ -284,6 +286,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
         { name: 'Budgets', id: 'budgets', icon: TrendingUp },
         { name: 'Fixed Assets', id: 'fixed_assets', icon: Building },
         { name: 'Depreciation', id: 'depreciation', icon: TrendingDown },
+        { name: 'Revenue Contracts', id: 'revenue_contracts', icon: FileText },
       ],
     },
     {
@@ -303,6 +306,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
         { name: 'Tax Computation', id: 'rep_tax_computation', icon: ReceiptText },
         { name: 'Project Report', id: 'rep_projects', icon: Briefcase },
         { name: 'Legacy Migration', id: 'rep_legacy', icon: History },
+        { name: 'Revenue Recognition', id: 'rep_revenue_recognition', icon: DollarSign },
       ],
     },
     {

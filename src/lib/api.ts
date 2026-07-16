@@ -1228,6 +1228,82 @@ export const vatApi = {
   },
 };
 
+// 11. IFRS 15 Revenue Recognition Endpoints
+export const revenueApi = {
+  listContracts: async () => {
+    const res = await api.get('/revenue/contracts');
+    return res.data;
+  },
+  getContract: async (id: string) => {
+    const res = await api.get(`/revenue/contracts/${id}`);
+    return res.data;
+  },
+  createContract: async (data: any) => {
+    const res = await api.post('/revenue/contracts', data);
+    return res.data;
+  },
+  updateContract: async (id: string, data: any) => {
+    const res = await api.put(`/revenue/contracts/${id}`, data);
+    return res.data;
+  },
+  deleteContract: async (id: string) => {
+    const res = await api.delete(`/revenue/contracts/${id}`);
+    return res.data;
+  },
+  // Obligations
+  getObligations: async (contractId: string) => {
+    const res = await api.get(`/revenue/contracts/${contractId}/obligations`);
+    return res.data;
+  },
+  getObligation: async (id: string) => {
+    const res = await api.get(`/revenue/obligations/${id}`);
+    return res.data;
+  },
+  createObligation: async (data: any) => {
+    const res = await api.post('/revenue/obligations', data);
+    return res.data;
+  },
+  updateObligation: async (id: string, data: any) => {
+    const res = await api.put(`/revenue/obligations/${id}`, data);
+    return res.data;
+  },
+  deleteObligation: async (id: string) => {
+    const res = await api.delete(`/revenue/obligations/${id}`);
+    return res.data;
+  },
+  // Schedules
+  getSchedules: async (obligationId: string) => {
+    const res = await api.get(`/revenue/obligations/${obligationId}/schedules`);
+    return res.data;
+  },
+  addManualSchedule: async (obligationId: string, data: any) => {
+    const res = await api.post(`/revenue/obligations/${obligationId}/schedules`, data);
+    return res.data;
+  },
+  generateSchedule: async (obligationId: string, data: any) => {
+    const res = await api.post(`/revenue/obligations/${obligationId}/generate-schedule`, data);
+    return res.data;
+  },
+  // Recognition
+  recognizeSchedule: async (scheduleId: string, data?: any) => {
+    const res = await api.post(`/revenue/recognize/${scheduleId}`, data || {});
+    return res.data;
+  },
+  recognizeAll: async (data?: any) => {
+    const res = await api.post('/revenue/recognize-all', data || {});
+    return res.data;
+  },
+  // Reports
+  getRecognitionReport: async (params?: { startDate?: string; endDate?: string }) => {
+    const res = await api.get('/revenue/recognition-report', { params });
+    return res.data;
+  },
+  getDeferredSummary: async (params?: { asOfDate?: string }) => {
+    const res = await api.get('/revenue/deferred-summary', { params });
+    return res.data;
+  },
+};
+
 export function downloadBlob(blob: Blob, filename: string) {
   try {
     const url = URL.createObjectURL(blob);

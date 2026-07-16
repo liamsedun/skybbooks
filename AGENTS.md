@@ -72,6 +72,20 @@ Maintain and enhance accounting features: fix kobo/naira display, parent-child a
 - **Financial Notes frontend page**: `NotesPage.tsx` at `/reports/notes` with filterable note list, inline editing, raw/formatted toggle, and "Generate Notes" button
 - **Report Mappings frontend page**: `MappingsPage.tsx` at `/reports/mappings` with per-report-type mapping table, add/remove/save mappings
 
+### IFRS 15 Revenue Recognition — Completed Items
+- **Schema (`schema.ts`)**: Added 4 new tables — `revenueContracts` (org FK, customer FK, contract number, status, total value, start/end dates, billing frequency, currency, notes), `performanceObligations` (contract FK, description, timing [point_in_time/over_time], amount, recognized/remaining amounts, recognition method, revenue/deferred/contract asset account FKs, milestone criteria, completion %), `revenueSchedules` (obligation FK, scheduled date, amount, recognized amount, status [pending/recognized/skipped]), `revenueRecognitionEntries` (schedule FK, obligation FK, JE FK, amount, recognized date, method, description); 4 new enums: `contract_status`, `obligation_timing`, `recognition_method`, `schedule_status`
+- **Relations**: Added Drizzle ORM relations linking contracts→obligations→schedules→recognition entries with proper FKs to accounts, contacts, users, journal entries
+- **Seed accounts**: Added `101050 Unbilled Receivables / Contract Assets` to `ACCOUNT_SEEDS` (current asset, IFRS 15 contract asset role)
+- **Migration (`migrate.ts`)**: Creates all 4 enums, 4 tables with indexes, seeds 101050 account per org, adds `revenue_recognition` to `journal_source` enum
+- **`src/services/revenue.service.ts`**: Full IFRS 15 engine — `getContracts/getContract/createContract/updateContract/deleteContract` (contract CRUD with audit logging), `getObligations/getObligation/createObligation/updateObligation/deleteObligation` (performance obligation CRUD), `generateSchedule/addManualSchedule` (schedule generation: straight-line monthly amortization, milestone-based from JSON criteria, percentage-of-completion), `recognizeRevenue` (creates JE via `postToGL()`: point-in-time DR Receivables/Contract Asset + CR Revenue, over-time DR Deferred Revenue + CR Revenue; updates schedule status, obligation amounts, contract completion), `recognizeAllPending` (batch recognition for past-due schedules), `getRecognitionReport` (full recognition history with contract/obligation/schedule join), `getDeferredRevenueSummary` (pending recognition totals)
+- **`src/routes/revenue.ts`**: 14 RESTful endpoints under `/api/revenue/` — contract CRUD (5), obligation CRUD (5), schedule list/add/generate (3), recognition single/all (2), reports (2)
+- **`src/lib/api.ts`**: `revenueApi` with 16 methods — `listContracts/getContract/createContract/updateContract/deleteContract`, `getObligations/getObligation/createObligation/updateObligation/deleteObligation`, `getSchedules/addManualSchedule/generateSchedule`, `recognizeSchedule/recognizeAll`, `getRecognitionReport/getDeferredSummary`
+- **`src/server/index.ts`**: Mounted `/api/revenue` routes
+- **Revenue Contracts page** (`src/pages/revenue/RevenueContractsPage.tsx`): Full CRUD list view with status badges, value/date columns, delete confirmation; inline create/edit form with contract number/value/dates/billing frequency; detail view with performance obligation management (add obligation form with description/amount/timing/method/dates), obligation status cards showing amounts/recognized/remaining, expandable schedule tables per obligation with Recognize button per schedule + batch Recognize All, schedule status indicators (checkmark/x/clock)
+- **Revenue Recognition Report** (`src/pages/revenue/RevenueRecognitionReport.tsx`): Summary cards (total recognized, pending recognition with count, entry count), date filter controls, full historical table with Date/Contract/Obligation/Method/Amount/Description columns, total footer
+- **Sidebar navigation**: Added "Revenue Contracts" under ACCOUNTANT group (maps to `/revenue/contracts`), "Revenue Recognition" under REPORTS group (maps to `/revenue/recognition-report`)
+- **App.tsx routing**: Routes for `/revenue/contracts` and `/revenue/recognition-report`
+
 ### Journal Status Workflow — Completed Items
 - **Schema**: `journalStatusEnum` with 7 statuses (draft, pending_review, approved, posted, locked, reversed, cancelled); `status`/`approvedBy`/`postedBy`/`lockedBy`/`cancelledBy` columns on `journalEntries`
 - **Migration**: Creates enum, adds columns, backfills reversed entries to `'reversed'`
@@ -106,6 +120,8 @@ Maintain and enhance accounting features: fix kobo/naira display, parent-child a
 - CurrencySelector fetches rates via `bankingApi.getCurrencyRates()` and auto-fills fxRate on currency change; rate field editable for manual override
 - `fxRate` sent as `number | undefined` in payloads; `populateFxRate()` on backend handles null/undefined by looking up latest rate
 - Audit logs are immutable append-only; corrections must deep-link to entity edit/reversal rather than modifying logs directly
+- Revenue recognition JE wiring: point-in-time obligations DR Receivables/Contract Asset, CR Revenue; over-time obligations DR Deferred Revenue, CR Revenue; always uses `postToGL()` central posting engine for consistency with existing posting rules
+- Straight-line schedule generation divides equally across months between start/end dates; last month absorbs rounding remainder
 
 ## Next Steps
 1. Push to origin/main and verify Render auto-deploy completes
@@ -118,6 +134,7 @@ Maintain and enhance accounting features: fix kobo/naira display, parent-child a
 8. (Done) Notes to Financial Statements UI at `/reports/notes`
 9. (Done) Notes included in PDF/Excel exports for BS, PL, CF
 10. (Done) Consolidated reports endpoint (`GET /reports/consolidated`)
+11. (Done) IFRS 15 Revenue Recognition: schema, service, routes, API client, migration, frontend (RevenueContractsPage + RevenueRecognitionReport), sidebar nav, App.tsx routing
 
 ## Critical Context
 - `TrialBalanceRow` type no longer includes `parentId` after revert (field removed from backend type and response)
@@ -157,3 +174,9 @@ Maintain and enhance accounting features: fix kobo/naira display, parent-child a
 - `src/services/excel.service.ts`: `exportStatementOfChangesInEquity()` SOCIE Excel export addition
 - `src/pages/reports/NotesPage.tsx`: Notes to Financial Statements frontend page at `/reports/notes`
 - `src/pages/reports/MappingsPage.tsx`: Report section mapping management page at `/reports/mappings`
+- `src/services/revenue.service.ts`: IFRS 15 revenue recognition engine — contract CRUD, obligation CRUD, schedule generation (straight-line/milestone/PoC), revenue recognition JE posting, deferred revenue summary, recognition report
+- `src/routes/revenue.ts`: 14 RESTful endpoints under `/api/revenue/` for IFRS 15
+- `src/pages/revenue/RevenueContractsPage.tsx`: Revenue contracts CRUD with obligations, schedules, and recognition controls
+- `src/pages/revenue/RevenueRecognitionReport.tsx`: Historical recognition entries with summary cards and date filtering
+- `src/server/index.ts`: Mounted `/api/revenue` routes
+- `src/lib/api.ts`: `revenueApi` with 16 methods for IFRS 15 endpoints

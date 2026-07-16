@@ -51,7 +51,8 @@ export const journalSourceEnum = pgEnum('journal_source', [
   'inventory_adjustment',
   'loan',
   'owner_capital',
-  'owner_drawings'
+  'owner_drawings',
+  'revenue_recognition'
 ]);
 
 export const journalStatusEnum = pgEnum('journal_status', [
@@ -1352,6 +1353,102 @@ export const currencyRates = pgTable('currency_rates', {
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
+// ── IFRS 15 Revenue Recognition ──
+
+export const contractStatusEnum = pgEnum('contract_status', [
+  'draft',
+  'active',
+  'completed',
+  'cancelled',
+  'modified',
+]);
+
+export const obligationTimingEnum = pgEnum('obligation_timing', [
+  'point_in_time',
+  'over_time',
+]);
+
+export const recognitionMethodEnum = pgEnum('recognition_method', [
+  'straight_line',
+  'milestone',
+  'percentage_of_completion',
+  'custom',
+]);
+
+export const scheduleStatusEnum = pgEnum('schedule_status', [
+  'pending',
+  'recognized',
+  'skipped',
+]);
+
+export const revenueContracts = pgTable('revenue_contracts', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  contractNumber: text('contract_number').notNull(),
+  customerId: uuid('customer_id').references(() => contacts.id).notNull(),
+  projectId: uuid('project_id').references(() => projects.id),
+  description: text('description'),
+  status: contractStatusEnum('status').default('draft').notNull(),
+  totalContractValue: bigint('total_contract_value', { mode: 'number' }).default(0).notNull(),
+  startDate: timestamp('start_date').notNull(),
+  endDate: timestamp('end_date'),
+  billingFrequency: text('billing_frequency'), // monthly, quarterly, annual, milestone
+  paymentTerms: integer('payment_terms'),
+  currency: text('currency').default('NGN').notNull(),
+  notes: text('notes'),
+  createdBy: uuid('created_by').references(() => users.id).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+});
+
+export const performanceObligations = pgTable('performance_obligations', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  contractId: uuid('contract_id').references(() => revenueContracts.id).notNull(),
+  description: text('description').notNull(),
+  timing: obligationTimingEnum('timing').notNull(),
+  amount: bigint('amount', { mode: 'number' }).default(0).notNull(),
+  recognizedAmount: bigint('recognized_amount', { mode: 'number' }).default(0).notNull(),
+  remainingAmount: bigint('remaining_amount', { mode: 'number' }).default(0).notNull(),
+  recognitionMethod: recognitionMethodEnum('recognition_method').default('straight_line').notNull(),
+  revenueAccountId: uuid('revenue_account_id').references(() => accounts.id).notNull(),
+  deferredRevenueAccountId: uuid('deferred_revenue_account_id').references(() => accounts.id),
+  contractAssetAccountId: uuid('contract_asset_account_id').references(() => accounts.id),
+  startDate: timestamp('start_date'),
+  endDate: timestamp('end_date'),
+  milestoneCriteria: text('milestone_criteria'),
+  completionPercentage: numeric('completion_percentage'),
+  sortOrder: integer('sort_order').default(0).notNull(),
+  status: contractStatusEnum('status').default('draft').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+});
+
+export const revenueSchedules = pgTable('revenue_schedules', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  obligationId: uuid('obligation_id').references(() => performanceObligations.id).notNull(),
+  scheduledDate: timestamp('scheduled_date').notNull(),
+  amount: bigint('amount', { mode: 'number' }).default(0).notNull(),
+  recognizedAmount: bigint('recognized_amount', { mode: 'number' }).default(0).notNull(),
+  status: scheduleStatusEnum('status').default('pending').notNull(),
+  description: text('description'),
+  sortOrder: integer('sort_order').default(0).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+});
+
+export const revenueRecognitionEntries = pgTable('revenue_recognition_entries', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  scheduleId: uuid('schedule_id').references(() => revenueSchedules.id).notNull(),
+  obligationId: uuid('obligation_id').references(() => performanceObligations.id).notNull(),
+  journalEntryId: uuid('journal_entry_id').references(() => journalEntries.id),
+  amount: bigint('amount', { mode: 'number' }).notNull(),
+  recognizedDate: timestamp('recognized_date').notNull(),
+  method: recognitionMethodEnum('method').notNull(),
+  description: text('description'),
+  createdBy: uuid('created_by').references(() => users.id).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
 // ==========================================
 // 3. RELATIONS DEFINITIONS
 // ==========================================
@@ -2047,6 +2144,76 @@ export const currencyRatesRelations = relations(currencyRates, ({ one }) => ({
   })
 }));
 
+// ── IFRS 15 Revenue Recognition Relations ──
+
+export const revenueContractsRelations = relations(revenueContracts, ({ one, many }) => ({
+  organisation: one(organisations, {
+    fields: [revenueContracts.orgId],
+    references: [organisations.id]
+  }),
+  customer: one(contacts, {
+    fields: [revenueContracts.customerId],
+    references: [contacts.id]
+  }),
+  project: one(projects, {
+    fields: [revenueContracts.projectId],
+    references: [projects.id]
+  }),
+  creator: one(users, {
+    fields: [revenueContracts.createdBy],
+    references: [users.id]
+  }),
+  performanceObligations: many(performanceObligations),
+}));
+
+export const performanceObligationsRelations = relations(performanceObligations, ({ one, many }) => ({
+  contract: one(revenueContracts, {
+    fields: [performanceObligations.contractId],
+    references: [revenueContracts.id]
+  }),
+  revenueAccount: one(accounts, {
+    fields: [performanceObligations.revenueAccountId],
+    references: [accounts.id]
+  }),
+  deferredRevenueAccount: one(accounts, {
+    fields: [performanceObligations.deferredRevenueAccountId],
+    references: [accounts.id]
+  }),
+  contractAssetAccount: one(accounts, {
+    fields: [performanceObligations.contractAssetAccountId],
+    references: [accounts.id]
+  }),
+  schedules: many(revenueSchedules),
+  recognitionEntries: many(revenueRecognitionEntries),
+}));
+
+export const revenueSchedulesRelations = relations(revenueSchedules, ({ one, many }) => ({
+  obligation: one(performanceObligations, {
+    fields: [revenueSchedules.obligationId],
+    references: [performanceObligations.id]
+  }),
+  recognitionEntries: many(revenueRecognitionEntries),
+}));
+
+export const revenueRecognitionEntriesRelations = relations(revenueRecognitionEntries, ({ one }) => ({
+  schedule: one(revenueSchedules, {
+    fields: [revenueRecognitionEntries.scheduleId],
+    references: [revenueSchedules.id]
+  }),
+  obligation: one(performanceObligations, {
+    fields: [revenueRecognitionEntries.obligationId],
+    references: [performanceObligations.id]
+  }),
+  journalEntry: one(journalEntries, {
+    fields: [revenueRecognitionEntries.journalEntryId],
+    references: [journalEntries.id]
+  }),
+  creator: one(users, {
+    fields: [revenueRecognitionEntries.createdBy],
+    references: [users.id]
+  }),
+}));
+
 // ==========================================
 // 4. DATABASE INITIALIZATION & INSTANCE
 // ==========================================
@@ -2162,7 +2329,11 @@ export const db = drizzle(pool, {
     taxConfigurationsRelations,
     capitalAllowanceScheduleRelations,
     taxLossesRelations,
-    taxComputationsRelations
+    taxComputationsRelations,
+    revenueContractsRelations,
+    performanceObligationsRelations,
+    revenueSchedulesRelations,
+    revenueRecognitionEntriesRelations,
   }
 });
 
@@ -2227,6 +2398,10 @@ export const schema = {
   legacyStatementsOfChangesInEquity,
   emailSettings,
   reportSectionMappings,
-  financialNotes
+  financialNotes,
+  revenueContracts,
+  performanceObligations,
+  revenueSchedules,
+  revenueRecognitionEntries,
 };
 
