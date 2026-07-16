@@ -53,7 +53,8 @@ export const journalSourceEnum = pgEnum('journal_source', [
   'owner_capital',
   'owner_drawings',
   'revenue_recognition',
-  'lease'
+  'lease',
+  'ecl_provision'
 ]);
 
 export const journalStatusEnum = pgEnum('journal_status', [
@@ -106,6 +107,7 @@ export const systemAccountRoleEnum = pgEnum('system_account_role', [
   'wht_receivable',
   'wht_payable',
   'none',
+  'allowance_for_doubtful_debts',
 ]);
 
 export const itemTypeEnum = pgEnum('item_type', ['product', 'service']);
@@ -1521,6 +1523,38 @@ export const leaseJournalEntries = pgTable('lease_journal_entries', {
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
+// ── IFRS 9 Expected Credit Loss ──
+
+export const eclParameters = pgTable('ecl_parameters', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  bucketLabel: text('bucket_label').notNull(), // 'current', '1-30', '31-60', '61-90', '90+'
+  minDays: integer('min_days').default(0).notNull(),
+  maxDays: integer('max_days').default(0).notNull(),
+  lossRate: numeric('loss_rate', { precision: 6, scale: 4 }).notNull(), // e.g. 0.0100 for 1%
+  stage: text('stage').default('1').notNull(), // '1', '2', '3'
+  sortOrder: integer('sort_order').default(0).notNull(),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const eclComputations = pgTable('ecl_computations', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  computationDate: timestamp('computation_date').notNull(),
+  asOfDate: timestamp('as_of_date').notNull(),
+  totalReceivables: bigint('total_receivables', { mode: 'number' }).default(0).notNull(),
+  totalProvision: bigint('total_provision', { mode: 'number' }).default(0).notNull(),
+  previousProvision: bigint('previous_provision', { mode: 'number' }).default(0).notNull(),
+  adjustmentAmount: bigint('adjustment_amount', { mode: 'number' }).default(0).notNull(), // positive = additional charge, negative = reversal
+  journalEntryId: uuid('journal_entry_id').references(() => journalEntries.id),
+  details: jsonb('details'), // array of per-bucket and per-customer breakdown
+  status: text('status').default('computed').notNull(), // 'computed', 'posted'
+  createdBy: uuid('created_by').references(() => users.id).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
 // ==========================================
 // 3. RELATIONS DEFINITIONS
 // ==========================================
@@ -2339,6 +2373,30 @@ export const leaseJournalEntriesRelations = relations(leaseJournalEntries, ({ on
   }),
 }));
 
+// ── IFRS 9 ECL Relations ──
+
+export const eclParametersRelations = relations(eclParameters, ({ one }) => ({
+  organisation: one(organisations, {
+    fields: [eclParameters.orgId],
+    references: [organisations.id]
+  }),
+}));
+
+export const eclComputationsRelations = relations(eclComputations, ({ one }) => ({
+  organisation: one(organisations, {
+    fields: [eclComputations.orgId],
+    references: [organisations.id]
+  }),
+  creator: one(users, {
+    fields: [eclComputations.createdBy],
+    references: [users.id]
+  }),
+  journalEntry: one(journalEntries, {
+    fields: [eclComputations.journalEntryId],
+    references: [journalEntries.id]
+  }),
+}));
+
 // ==========================================
 // 4. DATABASE INITIALIZATION & INSTANCE
 // ==========================================
@@ -2462,6 +2520,8 @@ export const db = drizzle(pool, {
     leasesRelations,
     leasePaymentSchedulesRelations,
     leaseJournalEntriesRelations,
+    eclParametersRelations,
+    eclComputationsRelations,
   }
 });
 
@@ -2534,5 +2594,7 @@ export const schema = {
   leases,
   leasePaymentSchedules,
   leaseJournalEntries,
+  eclParameters,
+  eclComputations,
 };
 

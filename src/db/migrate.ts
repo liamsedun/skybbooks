@@ -1476,6 +1476,70 @@ export async function runMigration() {
 
     console.log('[Migration] Created IFRS 16 lease accounting tables and seeded default accounts.');
 
+    // ── IFRS 9 Expected Credit Loss ──
+
+    await db.execute(sql`ALTER TYPE journal_source ADD VALUE IF NOT EXISTS 'ecl_provision'`);
+    await db.execute(sql`ALTER TYPE system_account_role ADD VALUE IF NOT EXISTS 'allowance_for_doubtful_debts'`);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS ecl_parameters (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        bucket_label text NOT NULL,
+        min_days integer DEFAULT 0 NOT NULL,
+        max_days integer DEFAULT 0 NOT NULL,
+        loss_rate numeric(6,4) NOT NULL,
+        stage text DEFAULT '1' NOT NULL,
+        sort_order integer DEFAULT 0 NOT NULL,
+        is_active boolean DEFAULT true NOT NULL,
+        created_at timestamp DEFAULT now() NOT NULL,
+        updated_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_ecl_params_org ON ecl_parameters (org_id)`);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS ecl_computations (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        computation_date timestamp NOT NULL,
+        as_of_date timestamp NOT NULL,
+        total_receivables bigint DEFAULT 0 NOT NULL,
+        total_provision bigint DEFAULT 0 NOT NULL,
+        previous_provision bigint DEFAULT 0 NOT NULL,
+        adjustment_amount bigint DEFAULT 0 NOT NULL,
+        journal_entry_id uuid REFERENCES journal_entries(id),
+        details jsonb,
+        status text DEFAULT 'computed' NOT NULL,
+        created_by uuid REFERENCES users(id) NOT NULL,
+        created_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_ecl_computations_org ON ecl_computations (org_id)`);
+
+    // Seed default ECL parameters for each org (standard provision matrix rates)
+    const orgsForEcl = await db.execute(sql`SELECT id FROM organisations`);
+    const orgRows = (orgsForEcl as any).rows || [];
+    for (const org of orgRows) {
+      const existingParams = await db.execute(sql`SELECT id FROM ecl_parameters WHERE org_id = ${org.id}::uuid LIMIT 1`);
+      if (!((existingParams as any).rows?.length)) {
+        const defaultBuckets = [
+          { label: 'current', min: -9999, max: 0, rate: 0.0050, stage: '1', sort: 1 },    // 0.5% - not yet due
+          { label: '1-30', min: 1, max: 30, rate: 0.0100, stage: '1', sort: 2 },           // 1% - 1-30 days overdue
+          { label: '31-60', min: 31, max: 60, rate: 0.0250, stage: '2', sort: 3 },         // 2.5% - 31-60 days
+          { label: '61-90', min: 61, max: 90, rate: 0.0500, stage: '2', sort: 4 },         // 5% - 61-90 days
+          { label: '90+', min: 91, max: 999999, rate: 0.1500, stage: '3', sort: 5 },       // 15% - over 90 days
+        ];
+        for (const b of defaultBuckets) {
+          await db.execute(sql`
+            INSERT INTO ecl_parameters (org_id, bucket_label, min_days, max_days, loss_rate, stage, sort_order)
+            VALUES (${org.id}::uuid, ${b.label}, ${b.min}, ${b.max}, ${b.rate}, ${b.stage}, ${b.sort})
+          `);
+        }
+      }
+    }
+
+    console.log('[Migration] Created IFRS 9 ECL tables and seeded default provision matrix.');
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema setup:', err);

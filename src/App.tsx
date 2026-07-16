@@ -49,6 +49,7 @@ import {
   FixedAssetsPage,
   DepreciationPage,
   LeasesPage,
+  EclPage,
 
   TrialBalancePage,
   IncomeStatementPage,
@@ -321,6 +322,7 @@ function AppRoutes() {
           <Route path="/accountant/fixed-assets" element={<FixedAssetsPage />} />
           <Route path="/accountant/fixed-assets/depreciation" element={<DepreciationPage />} />
           <Route path="/accountant/leases" element={<LeasesPage />} />
+          <Route path="/accountant/ecl" element={<EclPage />} />
 
           {/* Financial statements & analytics reports */}
           <Route path="/reports/trial-balance" element={<TrialBalancePage />} />

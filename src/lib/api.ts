@@ -1439,4 +1439,32 @@ export const postingRulesApi = {
   deactivate: (id: string) => api.delete(`/accountant/posting-rules/${id}`),
 };
 
+// 11. IFRS 9 Expected Credit Loss Endpoints
+export const eclApi = {
+  getParameters: async (): Promise<any[]> => {
+    const res = await api.get('/ecl/parameters');
+    return res.data;
+  },
+  saveParameters: async (data: any[]): Promise<any[]> => {
+    const res = await api.put('/ecl/parameters', data);
+    return res.data;
+  },
+  compute: async (asOfDate?: string): Promise<any> => {
+    const res = await api.get('/ecl/compute', { params: { asOfDate } });
+    return res.data;
+  },
+  postProvision: async (asOfDate?: string): Promise<any> => {
+    const res = await api.post('/ecl/post', { asOfDate });
+    return res.data;
+  },
+  getHistory: async (): Promise<any[]> => {
+    const res = await api.get('/ecl/history');
+    return res.data;
+  },
+  getHistoryDetail: async (id: string): Promise<any> => {
+    const res = await api.get(`/ecl/history/${id}`);
+    return res.data;
+  },
+};
+
 

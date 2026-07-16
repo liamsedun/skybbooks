@@ -34,7 +34,8 @@ import {
   Package,
   ArrowRightLeft,
   TrendingDown,
-  ReceiptText
+  ReceiptText,
+  AlertTriangle
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -191,6 +192,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     'rep_projects': '/reports/projects',
     'rep_legacy': '/reports/legacy',
     'revenue_contracts': '/revenue/contracts',
+    'ecl': '/accountant/ecl',
     'rep_revenue_recognition': '/revenue/recognition-report',
     'set_organisation': '/settings/organisation',
     'set_invites': '/settings/invites',
@@ -289,6 +291,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
         { name: 'Depreciation', id: 'depreciation', icon: TrendingDown },
         { name: 'Lease Accounting', id: 'leases', icon: Briefcase },
         { name: 'Revenue Contracts', id: 'revenue_contracts', icon: FileText },
+        { name: 'ECL (IFRS 9)', id: 'ecl', icon: AlertTriangle },
       ],
     },
     {

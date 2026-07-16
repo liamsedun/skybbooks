@@ -40,6 +40,7 @@ import chatRouter from '../routes/chat';
 import emailSettingsRouter from '../routes/emailSettings';
 import revenueRouter from '../routes/revenue';
 import leasesRouter from '../routes/leases';
+import eclRouter from '../routes/ecl';
 
 import { runMigration } from '../db/migrate';
 import { fetchLatestRates } from '../services/cbn.service';
@@ -158,6 +159,7 @@ async function startServer() {
   app.use('/api/email-settings', emailSettingsRouter);
   app.use('/api/revenue', revenueRouter);
   app.use('/api/leases', leasesRouter);
+  app.use('/api/ecl', eclRouter);
 
   app.get('/api/health', (req, res) => {
     res.json({ status: 'healthy', timestamp: new Date().toISOString() });

@@ -671,6 +671,7 @@ export { BudgetsPage } from './accountant/BudgetsPage';
 export { FixedAssetsPage } from './accountant/FixedAssetsPage';
 export { DepreciationPage } from './accountant/DepreciationPage';
 export { LeasesPage } from './accountant/LeasesPage';
+export { EclPage } from './accountant/EclPage';
 export { TrialBalancePage, IncomeStatementPage, BalanceSheetPage, CashFlowPage, GeneralLedgerPage, VATReturnPage, AgedReceivablesPage, AgedPayablesPage, ProjectsReportPage, TaxComputationPage, StatementOfChangesInEquityPage } from './reports/ReportsPage';
 export { CurrencyRatesPage } from './banking/CurrencyRatesPage';
 export { AuditLogsPage } from './reports/AuditLogsPage';
