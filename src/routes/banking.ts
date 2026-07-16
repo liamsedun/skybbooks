@@ -29,7 +29,7 @@ import {
   payrollRuns,
   users
 } from '../db/schema';
-import { authenticate, requireOrg, requireRole, AuthenticatedRequest } from '../middleware/auth';
+import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
 import { AppError } from '../lib/errors';
 import {
   initiateFlutterwaveConnect,
@@ -537,7 +537,7 @@ router.delete('/accounts/:id/clear-imported-statements', async (req: Authenticat
 });
 
 // POST /accounts/reset-account — TEMPORARY: delete all data for a bank account and reset to opening balance
-router.post('/accounts/reset-account', requireRole('admin'), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+router.post('/accounts/reset-account', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const orgId = req.user!.orgId!;
     const { bankAccountId, accountNamePattern } = req.body;
