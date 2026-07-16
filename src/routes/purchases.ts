@@ -34,6 +34,7 @@ import {
   getBillAgingReport
 } from '../services/bill.service';
 import { createAuditLog, extractReqMeta } from '../services/audit.service';
+import { createJournalEntry } from '../services/ledger.service';
 import {
   recordPaymentMade,
   updatePaymentMade,
@@ -811,9 +812,24 @@ router.post('/vendors/import-csv', async (req: AuthenticatedRequest, res: Respon
       try {
         const [vendor] = await db.insert(contacts).values({
           orgId, name, email, phone, address, city, state, country,
-          taxPin, paymentTerms, currency, notes, balance,
+          taxPin, paymentTerms, currency, notes,
           type: 'vendor', isActive: true
         }).returning();
+        // Create JE for opening balance instead of storing in contacts.balance
+        if (balance > 0) {
+          const [apAcct] = await db.select().from(accounts).where(and(eq(accounts.orgId, orgId), eq(accounts.systemAccountRole, 'accounts_payable'))).limit(1);
+          const [reAcct] = await db.select().from(accounts).where(and(eq(accounts.orgId, orgId), eq(accounts.systemAccountRole, 'retained_earnings'))).limit(1);
+          if (apAcct && reAcct) {
+            await createJournalEntry({
+              orgId, date: new Date(), description: `Opening balance — ${vendor.name}`,
+              source: 'opening_balance', sourceId: vendor.id, createdBy: userId,
+              lines: [
+                { accountId: apAcct.id, debit: 0, credit: balance, description: `Vendor opening balance — ${vendor.name}` },
+                { accountId: reAcct.id, debit: balance, credit: 0, description: 'Contra — opening balance' },
+              ],
+            });
+          }
+        }
         created.push(vendor);
       } catch (err: any) {
         errors.push(`Row ${i + 2}: ${err?.message || 'Database error'}`);
@@ -838,15 +854,35 @@ router.post('/vendors', async (req: AuthenticatedRequest, res: Response, next: N
     const userId = req.user!.userId;
     const body = createVendorSchema.parse(req.body);
 
+    // Strip balance from body — opening balance goes through JE, not stored in contacts.balance
+    const openingBalance = body.balance || 0;
+    const vendorBody = { ...body };
+    delete vendorBody.balance;
+
     const [vendor] = await db
       .insert(contacts)
       .values({
-        ...body,
+        ...vendorBody,
         orgId,
         type: 'vendor',
         isActive: true
       })
       .returning();
+
+    if (openingBalance > 0) {
+      const [apAccount] = await db.select().from(accounts).where(and(eq(accounts.orgId, orgId), eq(accounts.systemAccountRole, 'accounts_payable'))).limit(1);
+      const [reAccount] = await db.select().from(accounts).where(and(eq(accounts.orgId, orgId), eq(accounts.systemAccountRole, 'retained_earnings'))).limit(1);
+      if (apAccount && reAccount) {
+        await createJournalEntry({
+          orgId, date: new Date(), description: `Opening balance — ${vendor.name}`,
+          source: 'opening_balance', sourceId: vendor.id, createdBy: userId,
+          lines: [
+            { accountId: apAccount.id, debit: 0, credit: openingBalance, description: `Vendor opening balance — ${vendor.name}` },
+            { accountId: reAccount.id, debit: openingBalance, credit: 0, description: 'Contra — opening balance' },
+          ],
+        });
+      }
+    }
 
     createAuditLog({ orgId, userId, action: 'create', entityType: 'vendor', entityId: vendor.id, newValues: { name: vendor.name, email: vendor.email }, ...extractReqMeta(req) });
     return res.status(201).json(vendor);

@@ -42,6 +42,7 @@ import {
   generateInvoiceFromTemplate
 } from '../services/recurring.service';
 import { createAuditLog, extractReqMeta } from '../services/audit.service';
+import { createJournalEntry } from '../services/ledger.service';
 
 const router = Router();
 
@@ -702,11 +703,25 @@ router.post('/customers', async (req: AuthenticatedRequest, res: Response, next:
           taxPin: body.taxPin ?? existing.taxPin,
           paymentTerms: body.paymentTerms ?? existing.paymentTerms,
           creditLimit: body.creditLimit ?? existing.creditLimit,
-          balance: sql`${contacts.balance} + ${body.balance || 0}`,
           notes: body.notes ?? existing.notes
         })
         .where(eq(contacts.id, existing.id))
         .returning();
+      // Create JE for opening balance delta instead of updating contacts.balance directly
+      if (body.balance && body.balance > 0) {
+        const [arAccount] = await db.select().from(accounts).where(and(eq(accounts.orgId, orgId), eq(accounts.systemAccountRole, 'accounts_receivable'))).limit(1);
+        const [reAccount] = await db.select().from(accounts).where(and(eq(accounts.orgId, orgId), eq(accounts.systemAccountRole, 'retained_earnings'))).limit(1);
+        if (arAccount && reAccount) {
+          await createJournalEntry({
+            orgId, date: new Date(), description: `Opening balance — ${existing.name}`,
+            source: 'opening_balance', sourceId: existing.id, createdBy: userId,
+            lines: [
+              { accountId: arAccount.id, debit: body.balance, credit: 0, description: `Customer opening balance — ${existing.name}` },
+              { accountId: reAccount.id, debit: 0, credit: body.balance, description: 'Contra — opening balance' },
+            ],
+          });
+        }
+      }
       createAuditLog({ orgId, userId, action: 'update', entityType: 'customer', entityId: existing.id, oldValues: { name: existing.name }, newValues: { name: body.name, ...body }, ...extractReqMeta(req) });
       return res.status(200).json(updated);
     }
@@ -729,6 +744,22 @@ router.post('/customers', async (req: AuthenticatedRequest, res: Response, next:
         customerCode
       })
       .returning();
+
+    // If opening balance provided, create a JE instead of storing directly in contacts.balance
+    if (body.balance && body.balance > 0) {
+      const [arAccount] = await db.select().from(accounts).where(and(eq(accounts.orgId, orgId), eq(accounts.systemAccountRole, 'accounts_receivable'))).limit(1);
+      const [reAccount] = await db.select().from(accounts).where(and(eq(accounts.orgId, orgId), eq(accounts.systemAccountRole, 'retained_earnings'))).limit(1);
+      if (arAccount && reAccount) {
+        await createJournalEntry({
+          orgId, date: new Date(), description: `Opening balance — ${customer.name}`,
+          source: 'opening_balance', sourceId: customer.id, createdBy: userId,
+          lines: [
+            { accountId: arAccount.id, debit: body.balance, credit: 0, description: `Customer opening balance — ${customer.name}` },
+            { accountId: reAccount.id, debit: 0, credit: body.balance, description: 'Contra — opening balance' },
+          ],
+        });
+      }
+    }
 
     createAuditLog({ orgId, userId, action: 'create', entityType: 'customer', entityId: customer.id, newValues: { name: customer.name, customerCode: customer.customerCode, email: customer.email }, ...extractReqMeta(req) });
     return res.status(201).json(customer);

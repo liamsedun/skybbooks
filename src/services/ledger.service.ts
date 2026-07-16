@@ -4,7 +4,7 @@
  */
 
 import { eq, and, lte, gte, sql, asc, inArray } from 'drizzle-orm';
-import { db, accounts, journalEntries, journalLines, bankAccounts, fixedAssets, contacts, inventoryLots, inventoryTransactions, closedPeriods, invoices, paymentsReceived, bills, organisations, legacyIncomeStatements, legacyCashFlowStatements, legacyStatementsOfChangesInEquity } from '../db/schema';
+import { db, accounts, journalEntries, journalLines, inventoryLots, inventoryTransactions, closedPeriods, invoices, paymentsReceived, bills, organisations, legacyIncomeStatements, legacyCashFlowStatements, legacyStatementsOfChangesInEquity } from '../db/schema';
 import { AppError } from '../lib/errors';
 import { toNgn, getRateForDate } from './currency.service';
 
@@ -204,24 +204,6 @@ export async function createJournalEntry(
         throw new AppError('Failed to record journal line item.', 500);
       }
       createdLines.push(newLine);
-
-      // Cache side-effects: update linked balance in bank accounts if asset bank ledger modified
-      const bankAccList = await dbClient
-        .select()
-        .from(bankAccounts)
-        .where(eq(bankAccounts.accountId, line.accountId));
-
-      for (const bankAcc of bankAccList) {
-        const balanceDelta = (line.debit || 0) - (line.credit || 0);
-        if (balanceDelta !== 0) {
-          await dbClient
-            .update(bankAccounts)
-            .set({
-              currentBalance: sql`${bankAccounts.currentBalance} + ${balanceDelta}`
-            })
-            .where(eq(bankAccounts.id, bankAcc.id));
-        }
-      }
     }
 
     return {
@@ -416,35 +398,6 @@ export async function getTrialBalance(
     .innerJoin(journalEntries, eq(journalLines.entryId, journalEntries.id))
     .where(eq(journalEntries.orgId, orgId));
 
-  // 3. Load module balances
-  const [faByAccount, customerBal, vendorBal] = await Promise.all([
-    db.select({
-      accountId: fixedAssets.accountId,
-      totalCost: sql<number>`coalesce(sum(${fixedAssets.purchaseCost}), 0)`,
-      totalDepr: sql<number>`coalesce(sum(${fixedAssets.accumulatedDepreciation}), 0)`
-    }).from(fixedAssets).where(and(eq(fixedAssets.orgId, orgId), eq(fixedAssets.status, 'active'))).groupBy(fixedAssets.accountId),
-    db.select({ totalBalance: sql<number>`coalesce(sum(${contacts.balance}), 0)` })
-      .from(contacts).where(and(eq(contacts.orgId, orgId), eq(contacts.type, 'customer'))),
-    db.select({ totalBalance: sql<number>`coalesce(sum(${contacts.balance}), 0)` })
-      .from(contacts).where(and(eq(contacts.orgId, orgId), eq(contacts.type, 'vendor'))),
-  ]);
-
-  const faMap = new Map<string, { totalCost: number; totalDepr: number }>();
-  for (const r of faByAccount) faMap.set(r.accountId, r);
-
-  const customerOB = Number(customerBal[0]?.totalBalance || 0);
-  const vendorOB = Number(vendorBal[0]?.totalBalance || 0);
-  // Inventory valuation: use forward approach from immutable transactions (same as Income Statement)
-  const openingInventoryValue = await getInventoryValueAsOf(orgId, new Date(startDate.getTime() - 86400000));
-  const closingInventoryValue = await getInventoryValueAsOf(orgId, endDate);
-
-  // Identify single AR, AP, and Inventory accounts
-  const arAccount = orgAccounts.find(a => a.systemAccountRole === 'accounts_receivable')
-    || orgAccounts.find(a => a.type === 'asset' && (a.name.toLowerCase().includes('receivable') || a.code.startsWith('12')));
-  const apAccount = orgAccounts.find(a => a.systemAccountRole === 'accounts_payable')
-    || orgAccounts.find(a => a.type === 'liability' && (a.name.toLowerCase().includes('creditor') || a.name.toLowerCase().includes('payable')));
-  const invAccount = orgAccounts.find(a => a.code.startsWith('102') && !a.name.toLowerCase().includes('contra'));
-
   const resultList: TrialBalanceRow[] = [];
 
   for (const acct of orgAccounts) {
@@ -465,59 +418,6 @@ export async function getTrialBalance(
       const cred = line.currency && line.currency !== 'NGN' ? toNgn(line.creditAmount, line.fxRate) : line.creditAmount;
       if (lineDate < startDate) { openingDebits += deb; openingCredits += cred; }
       else if (lineDate >= startDate && lineDate <= endDate) { periodDebits += deb; periodCredits += cred; }
-    }
-
-    // Incorporate opening balance set via Edit Opening Balances (accounts.opening_balance)
-    if (acct.openingBalance !== 0) {
-      const ob = acct.openingBalance;
-      if (isDebitBook) {
-        if (ob > 0) openingDebits += ob;
-        else openingCredits += Math.abs(ob);
-      } else {
-        if (ob > 0) openingCredits += ob;
-        else openingDebits += Math.abs(ob);
-      }
-    }
-
-    // Fixed assets: if this account is linked to fixed assets, force its balance to match
-    const faData = faMap.get(acct.id);
-    if (faData && acctType === 'asset') {
-      const jeBalance = (openingDebits + periodDebits) - (openingCredits + periodCredits);
-      const trueBalance = faData.totalCost - faData.totalDepr;
-      const diff = trueBalance - jeBalance;
-      if (diff > 0) { periodDebits += diff; }
-      else if (diff < 0) { periodCredits += Math.abs(diff); }
-    }
-
-    // Inventory: force opening balance to opening stock valuation, closing to current lots
-    if (invAccount && acct.id === invAccount.id) {
-      const jeOpening = openingDebits - openingCredits;
-      const openDiff = openingInventoryValue - jeOpening;
-      if (openDiff > 0) openingDebits += openDiff;
-      else if (openDiff < 0) openingCredits += Math.abs(openDiff);
-      const jeTotal = (openingDebits + periodDebits) - (openingCredits + periodCredits);
-      const closeDiff = closingInventoryValue - jeTotal;
-      if (closeDiff > 0) periodDebits += closeDiff;
-      else if (closeDiff < 0) periodCredits += Math.abs(closeDiff);
-    }
-
-    // Opening Stock expense account (700100): override JE balance with computed opening inventory value (matching Income Statement)
-    const isOpeningStockAccount = acctType === 'expense' && acct.code === '700100';
-    if (isOpeningStockAccount) {
-      const jeOpening = openingDebits - openingCredits;
-      const openDiff = openingInventoryValue - jeOpening;
-      if (openDiff > 0) openingDebits += openDiff;
-      else if (openDiff < 0) openingCredits += Math.abs(openDiff);
-    }
-
-    // Customer opening balance → single AR account only
-    if (customerOB > 0 && arAccount && acct.id === arAccount.id) {
-      openingDebits += customerOB;
-    }
-
-    // Vendor opening balance → single AP account only
-    if (vendorOB > 0 && apAccount && acct.id === apAccount.id) {
-      openingCredits += vendorOB;
     }
 
     const opened = isDebitBook ? openingDebits - openingCredits : openingCredits - openingDebits;
