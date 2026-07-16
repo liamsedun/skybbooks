@@ -218,6 +218,37 @@ router.post('/accounts', async (req: AuthenticatedRequest, res: Response, next: 
       .values(insertData)
       .returning();
 
+    // Create JE for initial balance if non-zero
+    if (body.currentBalance && body.currentBalance !== 0) {
+      const [clearing] = await db
+        .select()
+        .from(accounts)
+        .where(and(eq(accounts.orgId, orgId), eq(accounts.code, '207000')))
+        .limit(1);
+      if (clearing) {
+        const delta = body.currentBalance;
+        if (delta > 0) {
+          await createJournalEntry({
+            orgId, date: new Date(), description: `Opening balance — ${newBa.name}`,
+            source: 'opening_balance', sourceId: newBa.id, createdBy: req.user!.userId,
+            lines: [
+              { accountId: body.accountId, debit: delta, credit: 0, description: 'Bank account opening balance' },
+              { accountId: clearing.id, debit: 0, credit: delta, description: 'Contra to clearing' },
+            ],
+          });
+        } else {
+          await createJournalEntry({
+            orgId, date: new Date(), description: `Opening balance — ${newBa.name}`,
+            source: 'opening_balance', sourceId: newBa.id, createdBy: req.user!.userId,
+            lines: [
+              { accountId: body.accountId, debit: 0, credit: Math.abs(delta), description: 'Bank account opening balance' },
+              { accountId: clearing.id, debit: Math.abs(delta), credit: 0, description: 'Contra to clearing' },
+            ],
+          });
+        }
+      }
+    }
+
     await createAuditLog({ orgId, userId: req.user!.userId, action: 'create', entityType: 'bank-account', entityId: newBa.id, newValues: { name: body.name, accountNumber: body.accountNumber }, ...extractReqMeta(req) });
 
     return res.status(201).json(newBa);
@@ -378,11 +409,11 @@ router.patch('/accounts/:id/balance', async (req: AuthenticatedRequest, res: Res
       });
     }
 
-    // Also set openingBalanceDate on first-time setup
+    // Set openingBalanceDate on first-time setup (balance comes from the JE, not this field)
     if (!ba.openingBalanceDate) {
       await db
         .update(bankAccounts)
-        .set({ openingBalance: currentBalance, openingBalanceDate: new Date() })
+        .set({ openingBalanceDate: new Date() })
         .where(eq(bankAccounts.id, id));
     }
 
@@ -518,17 +549,11 @@ router.delete('/accounts/:id/clear-imported-statements', async (req: Authenticat
       )
       .returning({ id: bankTransactions.id });
 
-    // Reset balance to 0 so user can set a fresh opening balance
-    await db
-      .update(bankAccounts)
-      .set({ currentBalance: 0, openingBalance: 0 })
-      .where(eq(bankAccounts.id, id));
-
     await createAuditLog({ orgId, userId: req.user!.userId, action: 'delete', entityType: 'bank-transaction', entityId: id, newValues: { cleared: true }, ...extractReqMeta(req) });
 
     return res.status(200).json({
       success: true,
-      message: `Cleared ${result.length} imported statement transaction(s). Balance reset to 0.`,
+      message: `Cleared ${result.length} imported statement transaction(s).`,
       clearedCount: result.length
     });
   } catch (err) {

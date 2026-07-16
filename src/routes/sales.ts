@@ -913,8 +913,20 @@ router.get('/customers/:id/statement', async (req: AuthenticatedRequest, res: Re
     // Sort chronologically ascending
     transactionsList.sort((a, b) => a.date.getTime() - b.date.getTime());
 
-    // Prepend opening balance from contacts.balance
-    const openingBalance = customer.balance || 0;
+    // Compute opening balance: prefer JE-based OB, fall back to legacy contacts.balance
+    const [obJE] = await db
+      .select({ lines: sql<string>`json_agg(json_build_object('debit', jl.debit_amount, 'credit', jl.credit_amount))` })
+      .from(journalEntries)
+      .innerJoin(journalLines, eq(journalLines.entryId, journalEntries.id))
+      .where(and(eq(journalEntries.orgId, orgId), eq(journalEntries.source, 'opening_balance'), eq(journalEntries.sourceId, id)))
+      .groupBy(journalEntries.id)
+      .limit(1);
+    let openingBalance = 0;
+    if (obJE) {
+      const lines = JSON.parse(obJE.lines);
+      openingBalance = lines.reduce((s: number, l: any) => s + (l.debit || 0) - (l.credit || 0), 0);
+    }
+    if (!openingBalance) openingBalance = customer.balance || 0;
     transactionsList.unshift({
       id: 'opening',
       date: new Date(0),

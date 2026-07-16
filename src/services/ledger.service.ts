@@ -4,7 +4,7 @@
  */
 
 import { eq, and, lte, gte, sql, asc, inArray } from 'drizzle-orm';
-import { db, accounts, journalEntries, journalLines, inventoryLots, inventoryTransactions, closedPeriods, invoices, paymentsReceived, bills, organisations, legacyIncomeStatements, legacyCashFlowStatements, legacyStatementsOfChangesInEquity } from '../db/schema';
+import { db, accounts, journalEntries, journalLines, bankAccounts, inventoryLots, inventoryTransactions, closedPeriods, invoices, paymentsReceived, bills, organisations, legacyIncomeStatements, legacyCashFlowStatements, legacyStatementsOfChangesInEquity } from '../db/schema';
 import { AppError } from '../lib/errors';
 import { toNgn, getRateForDate } from './currency.service';
 
@@ -204,6 +204,24 @@ export async function createJournalEntry(
         throw new AppError('Failed to record journal line item.', 500);
       }
       createdLines.push(newLine);
+
+      // Keep bank account currentBalance in sync with GL (incremental update derived from JE delta)
+      const bankAccList = await dbClient
+        .select()
+        .from(bankAccounts)
+        .where(eq(bankAccounts.accountId, line.accountId));
+
+      for (const bankAcc of bankAccList) {
+        const balanceDelta = (line.debit || 0) - (line.credit || 0);
+        if (balanceDelta !== 0) {
+          await dbClient
+            .update(bankAccounts)
+            .set({
+              currentBalance: sql`${bankAccounts.currentBalance} + ${balanceDelta}`
+            })
+            .where(eq(bankAccounts.id, bankAcc.id));
+        }
+      }
     }
 
     return {

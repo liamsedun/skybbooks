@@ -16,6 +16,7 @@ import {
   getBalanceSheet,
   getCashFlowStatement,
   getStatementOfChangesInEquity,
+  createJournalEntry,
   TrialBalanceRow
 } from '../services/ledger.service';
 import { getInvoiceAgingReport } from '../services/invoice.service';
@@ -249,44 +250,15 @@ router.post(
         );
       }
 
-      await db.transaction(async (tx) => {
-        // Update accounts.opening_balance
-        for (const line of journalLinesInput) {
-          const net = line.debit - line.credit;
-          const acct = orgAccounts.find(a => a.id === line.accountId);
-          if (acct) {
-            await tx
-              .update(accounts)
-              .set({ openingBalance: sql`${accounts.openingBalance} + ${net}` })
-              .where(eq(accounts.id, line.accountId));
-          }
-        }
-
-        // Create journal entry with lines
-        const [countResult] = await tx
-          .select({ count: sql<number>`count(*)` })
-          .from(journalEntries)
-          .where(eq(journalEntries.orgId, orgId));
-        const count = Number(countResult?.count || 0) + 1;
-        const entryNumber = `OB-${String(count).padStart(6, '0')}`;
-
-        const [entry] = await tx.insert(journalEntries).values({
-          orgId,
-          entryNumber,
-          date: new Date('1970-01-01'),
-          description: 'Opening balance import',
-          source: 'opening_balance',
-          createdBy: userId
-        }).returning();
-
-        await tx.insert(journalLines).values(
-          journalLinesInput.map(l => ({
-            entryId: entry.id,
-            accountId: l.accountId,
-            debitAmount: l.debit,
-            creditAmount: l.credit,
-          }))
-        );
+      await createJournalEntry({
+        orgId, date: new Date('1970-01-01'),
+        description: 'Opening balance import',
+        source: 'opening_balance', createdBy: userId,
+        lines: journalLinesInput.map(l => ({
+          accountId: l.accountId,
+          debit: l.debit,
+          credit: l.credit,
+        })),
       });
 
       createAuditLog({ orgId, userId, action: 'import', entityType: 'opening-balance', newValues: { count: journalLinesInput.length }, ...extractReqMeta(req) });
@@ -347,39 +319,15 @@ router.post(
         );
       }
 
-      await db.transaction(async (tx) => {
-        for (const line of journalLinesInput) {
-          const net = line.debit - line.credit;
-          await tx
-            .update(accounts)
-            .set({ openingBalance: sql`${accounts.openingBalance} + ${net}` })
-            .where(eq(accounts.id, line.accountId));
-        }
-
-        const [countResult] = await tx
-          .select({ count: sql<number>`count(*)` })
-          .from(journalEntries)
-          .where(eq(journalEntries.orgId, orgId));
-        const count = Number(countResult?.count || 0) + 1;
-        const entryNumber = `OB-${String(count).padStart(6, '0')}`;
-
-        const [entry] = await tx.insert(journalEntries).values({
-          orgId,
-          entryNumber,
-          date: new Date('1970-01-01'),
-          description: 'Opening balance import',
-          source: 'opening_balance',
-          createdBy: userId
-        }).returning();
-
-        await tx.insert(journalLines).values(
-          journalLinesInput.map(l => ({
-            entryId: entry.id,
-            accountId: l.accountId,
-            debitAmount: l.debit,
-            creditAmount: l.credit,
-          }))
-        );
+      await createJournalEntry({
+        orgId, date: new Date('1970-01-01'),
+        description: 'Opening balance import',
+        source: 'opening_balance', createdBy: userId,
+        lines: journalLinesInput.map(l => ({
+          accountId: l.accountId,
+          debit: l.debit,
+          credit: l.credit,
+        })),
       });
 
       createAuditLog({ orgId, userId, action: 'create', entityType: 'opening-balance', newValues: { count: journalLinesInput.length }, ...extractReqMeta(req) });
@@ -417,20 +365,32 @@ router.post(
       const errors: string[] = [];
       let updated = 0;
 
+      const jeLines: { accountId: string; debit: number; credit: number }[] = [];
       for (const item of lines) {
         const account = accountMap.get(item.accountCode);
         if (!account) { errors.push(`Account code "${item.accountCode}" not found`); continue; }
-
         const newBalance = Math.round(item.openingBalance * 100);
-        await db
-          .update(accounts)
-          .set({ openingBalance: newBalance })
-          .where(eq(accounts.id, account.id));
+        if (newBalance !== 0) {
+          jeLines.push({
+            accountId: account.id,
+            debit: newBalance > 0 ? newBalance : 0,
+            credit: newBalance < 0 ? Math.abs(newBalance) : 0,
+          });
+        }
         updated++;
       }
 
       if (errors.length > 0) {
         return res.status(400).json({ success: false, message: 'Some accounts could not be updated', errors, updated });
+      }
+
+      if (jeLines.length > 0) {
+        await createJournalEntry({
+          orgId, date: new Date('1970-01-01'),
+          description: 'Opening balance set',
+          source: 'opening_balance', createdBy: req.user!.userId,
+          lines: jeLines,
+        });
       }
 
       createAuditLog({ orgId, userId: req.user!.userId, action: 'update', entityType: 'opening-balance', newValues: { count: updated }, ...extractReqMeta(req) });

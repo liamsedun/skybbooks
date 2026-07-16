@@ -1017,6 +1017,122 @@ export async function runMigration() {
     `);
     console.log('[Migration] Created email_settings table.');
 
+    // ── GL Legacy Data Migration ──
+    // Convert any remaining accounts.opening_balance values to JEs
+    const orgsWithOB = await db.execute(sql`
+      SELECT DISTINCT org_id FROM accounts WHERE opening_balance != 0 AND org_id IS NOT NULL
+    `);
+    for (const row of (orgsWithOB.rows || [])) {
+      const orgId = row.org_id;
+      const existingJE = await db.execute(sql`
+        SELECT id FROM journal_entries WHERE org_id = ${orgId}::uuid AND source = 'opening_balance' LIMIT 1
+      `);
+      if ((existingJE.rows || []).length === 0) {
+        // Create a consolidated JE for all opening balances
+        const obAccounts = await db.execute(sql`
+          SELECT id, opening_balance FROM accounts WHERE org_id = ${orgId}::uuid AND opening_balance != 0
+        `);
+        if ((obAccounts.rows || []).length > 0) {
+          // We can't call createJournalEntry here (service dependency), so use raw SQL
+          const lines = (obAccounts.rows || []).map((a: any) => ({
+            accountId: a.id,
+            balance: Number(a.opening_balance),
+          }));
+          let totalDebits = 0, totalCredits = 0;
+          const jeLines: { account_id: string; debit_amount: number; credit_amount: number }[] = [];
+          for (const l of lines) {
+            if (l.balance > 0) { jeLines.push({ account_id: l.accountId, debit_amount: l.balance, credit_amount: 0 }); totalDebits += l.balance; }
+            else { jeLines.push({ account_id: l.accountId, debit_amount: 0, credit_amount: Math.abs(l.balance) }); totalCredits += Math.abs(l.balance); }
+          }
+          // Balance with retained earnings
+          const [reRow] = await db.execute(sql`
+            SELECT id FROM accounts WHERE org_id = ${orgId}::uuid AND system_account_role = 'retained_earnings' LIMIT 1
+          `);
+          if (reRow) {
+            const diff = totalDebits - totalCredits;
+            if (diff > 0) jeLines.push({ account_id: reRow.id, debit_amount: 0, credit_amount: diff });
+            else if (diff < 0) jeLines.push({ account_id: reRow.id, debit_amount: Math.abs(diff), credit_amount: 0 });
+            const entryNum = `MIG-OB-${Date.now()}`;
+            await db.execute(sql`
+              INSERT INTO journal_entries (org_id, entry_number, date, description, source, created_by)
+              VALUES (${orgId}::uuid, ${entryNum}, '1970-01-01', 'Legacy opening balance migration', 'opening_balance', (SELECT id FROM users WHERE org_id = ${orgId}::uuid LIMIT 1))
+            `);
+            const [jeRow] = await db.execute(sql`SELECT LASTVAL() AS id`);
+            const jeId = jeRow?.id;
+            if (jeId) {
+              for (const jl of jeLines) {
+                await db.execute(sql`
+                  INSERT INTO journal_lines (entry_id, account_id, debit_amount, credit_amount)
+                  VALUES (${jeId}::uuid, ${jl.account_id}::uuid, ${jl.debit_amount}, ${jl.credit_amount})
+                `);
+              }
+              // Zero out the migrated opening balances
+              await db.execute(sql`UPDATE accounts SET opening_balance = 0 WHERE org_id = ${orgId}::uuid AND opening_balance != 0`);
+              console.log(`[Migration] Converted ${jeLines.length} legacy opening balance lines to JE for org ${orgId}`);
+            }
+          }
+        }
+      }
+    }
+
+    // Convert legacy contacts.balance values to JEs (customer AR / vendor AP)
+    const orgsWithContactBal = await db.execute(sql`
+      SELECT DISTINCT org_id FROM contacts WHERE balance != 0 AND org_id IS NOT NULL
+    `);
+    for (const row of (orgsWithContactBal.rows || [])) {
+      const orgId = row.org_id;
+      const [arAcct] = await db.execute(sql`
+        SELECT id FROM accounts WHERE org_id = ${orgId}::uuid AND system_account_role = 'accounts_receivable' LIMIT 1
+      `);
+      const [apAcct] = await db.execute(sql`
+        SELECT id FROM accounts WHERE org_id = ${orgId}::uuid AND system_account_role = 'accounts_payable' LIMIT 1
+      `);
+      const [reAcct] = await db.execute(sql`
+        SELECT id FROM accounts WHERE org_id = ${orgId}::uuid AND system_account_role = 'retained_earnings' LIMIT 1
+      `);
+      if (!arAcct || !apAcct || !reAcct) continue;
+
+      const contactsWithBal = await db.execute(sql`
+        SELECT id, balance, type FROM contacts WHERE org_id = ${orgId}::uuid AND balance != 0
+      `);
+      for (const c of (contactsWithBal.rows || [])) {
+        // Skip if an opening balance JE already exists for this contact
+        const existingJE = await db.execute(sql`
+          SELECT id FROM journal_entries WHERE org_id = ${orgId}::uuid AND source = 'opening_balance' AND source_id = ${c.id}::uuid LIMIT 1
+        `);
+        if ((existingJE.rows || []).length > 0) continue;
+
+        const bal = Number(c.balance);
+        if (bal === 0) continue;
+        const entryNum = `MIG-OB-${Date.now()}-${String(Math.random()).slice(2, 8)}`;
+        if (c.type === 'customer' && bal > 0) {
+          await db.execute(sql`
+            INSERT INTO journal_entries (org_id, entry_number, date, description, source, source_id, created_by)
+            VALUES (${orgId}::uuid, ${entryNum}, '1970-01-01', 'Legacy customer opening balance', 'opening_balance', ${c.id}::uuid, (SELECT id FROM users WHERE org_id = ${orgId}::uuid LIMIT 1))
+          `);
+          const [jeRow] = await db.execute(sql`SELECT LASTVAL() AS id`);
+          if (jeRow?.id) {
+            await db.execute(sql`INSERT INTO journal_lines (entry_id, account_id, debit_amount, credit_amount) VALUES (${jeRow.id}::uuid, ${arAcct.id}::uuid, ${bal}, 0)`);
+            await db.execute(sql`INSERT INTO journal_lines (entry_id, account_id, debit_amount, credit_amount) VALUES (${jeRow.id}::uuid, ${reAcct.id}::uuid, 0, ${bal})`);
+            await db.execute(sql`UPDATE contacts SET balance = 0 WHERE id = ${c.id}::uuid`);
+            console.log(`[Migration] Converted customer ${c.id} opening balance of ${bal} kobo to JE`);
+          }
+        } else if (c.type === 'vendor' && bal > 0) {
+          await db.execute(sql`
+            INSERT INTO journal_entries (org_id, entry_number, date, description, source, source_id, created_by)
+            VALUES (${orgId}::uuid, ${entryNum}, '1970-01-01', 'Legacy vendor opening balance', 'opening_balance', ${c.id}::uuid, (SELECT id FROM users WHERE org_id = ${orgId}::uuid LIMIT 1))
+          `);
+          const [jeRow] = await db.execute(sql`SELECT LASTVAL() AS id`);
+          if (jeRow?.id) {
+            await db.execute(sql`INSERT INTO journal_lines (entry_id, account_id, debit_amount, credit_amount) VALUES (${jeRow.id}::uuid, ${apAcct.id}::uuid, 0, ${bal})`);
+            await db.execute(sql`INSERT INTO journal_lines (entry_id, account_id, debit_amount, credit_amount) VALUES (${jeRow.id}::uuid, ${reAcct.id}::uuid, ${bal}, 0)`);
+            await db.execute(sql`UPDATE contacts SET balance = 0 WHERE id = ${c.id}::uuid`);
+            console.log(`[Migration] Converted vendor ${c.id} opening balance of ${bal} kobo to JE`);
+          }
+        }
+      }
+    }
+
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema setup:', err);
