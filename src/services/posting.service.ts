@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, inArray, sql } from 'drizzle-orm';
 import { db, accounts, journalEntries, accountingRules } from '../db/schema';
 import { AppError } from '../lib/errors';
 import { createJournalEntry, type CreateJournalEntryInput, type JournalLineInput } from './ledger.service';
@@ -204,6 +204,18 @@ export type AccountingRule = {
   isActive: boolean;
 };
 
+export type ValidationError = {
+  code: string;
+  message: string;
+  lineIndex?: number;
+  accountId?: string;
+};
+
+export type ValidationResult = {
+  valid: boolean;
+  errors: ValidationError[];
+};
+
 // ==========================================
 // 2. DUPLICATE POSTING PREVENTION
 // ==========================================
@@ -285,7 +297,182 @@ function validateBalanced(lines: JournalLineInput[]): void {
 }
 
 // ==========================================
-// 4. ACCOUNT RESOLUTION
+// 4. ACCOUNT & LINE VALIDATION ENGINE
+// ==========================================
+
+// Tax account roles — accounts with these roles must be liability (payable) or asset (receivable)
+const TAX_ROLES = ['vat_payable', 'vat_receivable', 'wht_payable', 'wht_receivable', 'paye_payable', 'pension_payable'];
+
+/**
+ * Validates that all resolved account IDs exist, are active, and belong to this org.
+ */
+async function validateAccounts(
+  orgId: string,
+  lines: JournalLineInput[],
+  tx?: any
+): Promise<ValidationResult> {
+  const client = tx || db;
+  const allIds = [...new Set(lines.map(l => l.accountId).filter(Boolean))];
+  if (allIds.length === 0) {
+    return { valid: false, errors: [{ code: 'NO_ACCOUNTS', message: 'No valid account IDs in journal lines.' }] };
+  }
+
+  const accts = await client
+    .select({
+      id: accounts.id,
+      code: accounts.code,
+      name: accounts.name,
+      isActive: accounts.isActive,
+      orgId: accounts.orgId,
+      type: accounts.type,
+      systemAccountRole: accounts.systemAccountRole,
+    })
+    .from(accounts)
+    .where(and(inArray(accounts.id, allIds as any), eq(accounts.orgId, orgId)));
+
+  const acctMap = new Map(accts.map(a => [a.id, a]));
+  const errors: ValidationError[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line.accountId) continue;
+
+    const acct = acctMap.get(line.accountId);
+    if (!acct) {
+      errors.push({
+        code: 'MISSING_ACCOUNT',
+        message: `Line ${i + 1}: Account "${line.accountId}" does not exist or does not belong to this organisation.`,
+        lineIndex: i,
+        accountId: line.accountId,
+      });
+      continue;
+    }
+    if (!acct.isActive) {
+      errors.push({
+        code: 'INACTIVE_ACCOUNT',
+        message: `Line ${i + 1}: Account ${acct.code} "${acct.name}" is deactivated and cannot be posted to. Re-activate it in Chart of Accounts first.`,
+        lineIndex: i,
+        accountId: line.accountId,
+      });
+    }
+    // Tax account type validation
+    if (acct.systemAccountRole && TAX_ROLES.includes(acct.systemAccountRole)) {
+      if (acct.type !== 'liability' && acct.type !== 'asset') {
+        errors.push({
+          code: 'INVALID_TAX_ACCOUNT_TYPE',
+          message: `Line ${i + 1}: Account ${acct.code} "${acct.name}" has role "${acct.systemAccountRole}" but type is "${acct.type}". Tax accounts must be Asset (receivable) or Liability (payable).`,
+          lineIndex: i,
+          accountId: line.accountId,
+        });
+      }
+    }
+  }
+
+  return { valid: errors.length === 0, errors };
+}
+
+/**
+ * Validates currency consistency across all journal lines.
+ * All lines must either match the entry currency or be 'NGN' (base).
+ */
+function validateCurrencyConsistency(
+  lines: JournalLineInput[],
+  entryCurrency?: string
+): ValidationResult {
+  const errors: ValidationError[] = [];
+  const target = (entryCurrency || 'NGN').toUpperCase();
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const lc = (line.currency || 'NGN').toUpperCase();
+    if (lc !== target && lc !== 'NGN') {
+      // Multi-currency lines are allowed if they have an fxRate
+      if (!line.fxRate && lc !== 'NGN') {
+        errors.push({
+          code: 'CURRENCY_MISMATCH_NO_RATE',
+          message: `Line ${i + 1}: Currency "${lc}" differs from entry currency "${target}" and no fxRate is set. Provide an fxRate for conversion or unify currencies.`,
+          lineIndex: i,
+        });
+      }
+    }
+  }
+
+  return { valid: errors.length === 0, errors };
+}
+
+/**
+ * Checks for duplicate journal entry numbers (reference number collision).
+ * Guards against the edge case where a manually-specified reference collides.
+ */
+async function validateEntryNumber(
+  orgId: string,
+  reference: string | undefined,
+  tx?: any
+): Promise<ValidationResult> {
+  if (!reference) return { valid: true, errors: [] };
+
+  const client = tx || db;
+  const [existing] = await client
+    .select({ id: journalEntries.id })
+    .from(journalEntries)
+    .where(
+      and(
+        eq(journalEntries.orgId, orgId),
+        eq(journalEntries.reference, reference),
+        eq(journalEntries.isReversed, false)
+      )
+    )
+    .limit(1);
+
+  if (existing) {
+    return {
+      valid: false,
+      errors: [{
+        code: 'DUPLICATE_JOURNAL_NUMBER',
+        message: `A journal entry with reference "${reference}" already exists (JE: ${existing.id}). Each journal must have a unique reference number.`,
+      }],
+    };
+  }
+
+  return { valid: true, errors: [] };
+}
+
+/**
+ * Master journal validator — runs all checks and returns consolidated errors.
+ */
+export async function validateJournal(
+  orgId: string,
+  lines: JournalLineInput[],
+  currency?: string,
+  reference?: string,
+  tx?: any
+): Promise<ValidationResult> {
+  const allErrors: ValidationError[] = [];
+
+  // 1. Balance check
+  try {
+    validateBalanced(lines);
+  } catch (e: any) {
+    allErrors.push({ code: 'UNBALANCED', message: e.message || 'Journal is unbalanced.' });
+  }
+
+  // 2. Account existence + active + org membership + tax type
+  const acctResult = await validateAccounts(orgId, lines, tx);
+  allErrors.push(...acctResult.errors);
+
+  // 3. Currency consistency
+  const currResult = validateCurrencyConsistency(lines, currency);
+  allErrors.push(...currResult.errors);
+
+  // 4. Entry number uniqueness
+  const numResult = await validateEntryNumber(orgId, reference, tx);
+  allErrors.push(...numResult.errors);
+
+  return { valid: allErrors.length === 0, errors: allErrors };
+}
+
+// ==========================================
+// 5. ACCOUNT RESOLUTION
 // ==========================================
 
 /**
@@ -374,7 +561,7 @@ export async function resolveAccounts(
 }
 
 // ==========================================
-// 5. CONFIGURABLE POSTING RULES
+// 6. CONFIGURABLE POSTING RULES
 // ==========================================
 
 /**
@@ -447,17 +634,21 @@ export async function setPostingRule(
 }
 
 // ==========================================
-// 6. CORE POSTING ENGINE
+// 7. CORE POSTING ENGINE
 // ==========================================
 
 /**
  * Central posting engine — the single entry point for all journal creation.
  *
- * Features:
- * - Duplicate posting prevention (checks source + sourceId)
- * - Balance validation
- * - Account role resolution (configurable rules → system roles)
- * - Transaction rollback on failure
+ * Validation pipeline (strict double-entry):
+ * 1. Duplicate posting check (source + sourceId)
+ * 2. Balance check (total DR must equal total CR)
+ * 3. Account role resolution (configurable rules → system roles → error)
+ * 4. Account validation (existence, active state, org membership, tax types)
+ * 5. Currency consistency (all lines must match entry currency or have fxRate)
+ * 6. Entry number uniqueness (no duplicate reference numbers)
+ * 7. Closed period check (via createJournalEntry)
+ * 8. Journal creation (with DB transaction rollback)
  *
  * ALL modules must call this function instead of createJournalEntry() directly.
  */
@@ -467,17 +658,26 @@ export async function postToGL(
 ): Promise<any> {
   const { orgId, date, description, reference, source, sourceId, projectId, createdBy, lines, currency, fxRate } = params;
 
-  // 1. Check for duplicate posting (inside or outside transaction)
+  // 1. Check for duplicate posting (same source + sourceId)
   await checkDuplicate(orgId, source, sourceId, tx);
 
-  // 2. Validate balance
+  // 2. Quick balance validation (pre-resolution)
   validateBalanced(lines);
 
   // 3. Resolve account roles to real account IDs
   const resolvedLines = await resolveAccounts(orgId, lines, source, tx);
 
-  // 4. Check closed period (handled inside createJournalEntry)
-  // 5. Create the journal entry
+  // 4. Run full validation engine on resolved lines
+  const vResult = await validateJournal(orgId, resolvedLines, currency, reference, tx);
+  if (!vResult.valid) {
+    const details = vResult.errors.map(e => `[${e.code}] ${e.message}`).join('\n');
+    throw new AppError(
+      `Journal entry validation failed with ${vResult.errors.length} error(s):\n${details}`,
+      400
+    );
+  }
+
+  // 5. Create the journal entry (which also checks closed periods)
   return await createJournalEntry(
     {
       orgId,
