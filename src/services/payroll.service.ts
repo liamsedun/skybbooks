@@ -14,7 +14,7 @@ import {
   journalEntries
 } from '../db/schema';
 import { AppError } from '../lib/errors';
-import { createJournalEntry } from './ledger.service';
+import { postToGL } from './posting.service';
 
 export interface TaxBandBreakdown {
   bandName: string;
@@ -574,7 +574,7 @@ export async function approvePayroll(runId: string, approverId: string): Promise
     }
 
     // 5. Submit balanced Bookkeeping Entry
-    const journal = await createJournalEntry({
+    const journal = await postToGL({
       orgId: run.orgId,
       date: new Date(run.payDate),
       description: `Double-entry distribution clearing for Payroll Run ${run.runNumber}`,

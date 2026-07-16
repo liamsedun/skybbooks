@@ -45,6 +45,7 @@ import {
 } from '../services/reconciliation.service';
 import { fetchLatestRates } from '../services/cbn.service';
 import { createJournalEntry, reverseJournalEntry } from '../services/ledger.service';
+import { postToGL } from '../services/posting.service';
 import { createAuditLog, extractReqMeta } from '../services/audit.service';
 
 const router = Router();
@@ -228,7 +229,7 @@ router.post('/accounts', async (req: AuthenticatedRequest, res: Response, next: 
       if (clearing) {
         const delta = body.currentBalance;
         if (delta > 0) {
-          await createJournalEntry({
+          await postToGL({
             orgId, date: new Date(), description: `Opening balance — ${newBa.name}`,
             source: 'opening_balance', sourceId: newBa.id, createdBy: req.user!.userId,
             lines: [
@@ -237,7 +238,7 @@ router.post('/accounts', async (req: AuthenticatedRequest, res: Response, next: 
             ],
           });
         } else {
-          await createJournalEntry({
+          await postToGL({
             orgId, date: new Date(), description: `Opening balance — ${newBa.name}`,
             source: 'opening_balance', sourceId: newBa.id, createdBy: req.user!.userId,
             lines: [
@@ -382,7 +383,7 @@ router.patch('/accounts/:id/balance', async (req: AuthenticatedRequest, res: Res
       : `Balance adjustment — ${ba.name}`;
 
     if (delta > 0) {
-      await createJournalEntry({
+      await postToGL({
         orgId,
         date: new Date(),
         description,
@@ -395,7 +396,7 @@ router.patch('/accounts/:id/balance', async (req: AuthenticatedRequest, res: Res
         currency: 'NGN',
       });
     } else {
-      await createJournalEntry({
+      await postToGL({
         orgId,
         date: new Date(),
         description,
@@ -478,7 +479,7 @@ router.post('/accounts/import-opening-balances', async (req: AuthenticatedReques
     const delta = balanceKobo - ba.currentBalance;
     if (delta !== 0) {
       if (delta > 0) {
-        await createJournalEntry({
+        await postToGL({
           orgId,
           date: new Date(),
           description: `Opening balance import — ${ba.name}`,
@@ -491,7 +492,7 @@ router.post('/accounts/import-opening-balances', async (req: AuthenticatedReques
           currency: 'NGN',
         });
       } else {
-        await createJournalEntry({
+        await postToGL({
           orgId,
           date: new Date(),
           description: `Opening balance import — ${ba.name}`,

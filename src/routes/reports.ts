@@ -19,6 +19,7 @@ import {
   createJournalEntry,
   TrialBalanceRow
 } from '../services/ledger.service';
+import { postToGL } from '../services/posting.service';
 import { getInvoiceAgingReport } from '../services/invoice.service';
 import { getBillAgingReport } from '../services/bill.service';
 import {
@@ -250,7 +251,7 @@ router.post(
         );
       }
 
-      await createJournalEntry({
+      await postToGL({
         orgId, date: new Date('1970-01-01'),
         description: 'Opening balance import',
         source: 'opening_balance', createdBy: userId,
@@ -319,7 +320,7 @@ router.post(
         );
       }
 
-      await createJournalEntry({
+      await postToGL({
         orgId, date: new Date('1970-01-01'),
         description: 'Opening balance import',
         source: 'opening_balance', createdBy: userId,
@@ -385,7 +386,7 @@ router.post(
       }
 
       if (jeLines.length > 0) {
-        await createJournalEntry({
+        await postToGL({
           orgId, date: new Date('1970-01-01'),
           description: 'Opening balance set',
           source: 'opening_balance', createdBy: req.user!.userId,

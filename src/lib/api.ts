@@ -1233,4 +1233,23 @@ export const emailSettingsApi = {
   reset: () => api.delete('/email-settings'),
 };
 
+export const postingRulesApi = {
+  list: async (source?: string) => {
+    const res = await api.get('/accountant/posting-rules', { params: source ? { source } : {} });
+    return res.data;
+  },
+  create: async (data: {
+    name: string;
+    source: string;
+    eventType?: string;
+    accountRole?: string;
+    accountId?: string;
+    priority?: number;
+  }) => {
+    const res = await api.post('/accountant/posting-rules', data);
+    return res.data;
+  },
+  deactivate: (id: string) => api.delete(`/accountant/posting-rules/${id}`),
+};
+
 

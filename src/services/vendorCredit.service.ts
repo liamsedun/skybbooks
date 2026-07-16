@@ -8,7 +8,8 @@ import {
   journalEntries
 } from '../db/schema';
 import { AppError } from '../lib/errors';
-import { createJournalEntry, reverseJournalEntry } from './ledger.service';
+import { reverseJournalEntry } from './ledger.service';
+import { postToGL } from './posting.service';
 import { populateFxRate } from './currency.service';
 import { getOrgSettings } from './settings.service';
 
@@ -139,7 +140,7 @@ export async function createVendorCredit(input: any, createdBy: string): Promise
       });
     }
 
-    const journalEntry = await createJournalEntry({
+    const journalEntry = await postToGL({
       orgId,
       date: credit.date,
       description: `Journal posting of Vendor Credit ${vcNumber}`,
@@ -250,7 +251,7 @@ export async function applyVendorCredit(cnId: string, billId: string, amount: nu
 
     const apAccountId = await resolveAccountsPayable(credit.orgId, tx);
 
-    await createJournalEntry({
+    await postToGL({
       orgId: credit.orgId,
       date: new Date(),
       description: `Offset application: Vendor Credit ${credit.vcNumber} to Bill ${bill.billNumber}`,

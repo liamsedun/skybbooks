@@ -13,7 +13,8 @@ import {
   journalLines
 } from '../db/schema';
 import { AppError } from '../lib/errors';
-import { createJournalEntry, reverseJournalEntry, isDateInClosedPeriod } from './ledger.service';
+import { reverseJournalEntry, isDateInClosedPeriod } from './ledger.service';
+import { postToGL } from './posting.service';
 import { getOrgSettings } from './settings.service';
 import { populateFxRate } from './currency.service';
 import Tesseract from 'tesseract.js';
@@ -184,7 +185,7 @@ export async function createExpense(input: any, createdBy: string): Promise<any>
         : `Bank/Cash credit disbursement for expense ${expenseNumber}`
     });
 
-    const journalEntry = await createJournalEntry({
+    const journalEntry = await postToGL({
       orgId,
       date: expense.date,
       description: `Bookkeeping entry for expense ${expenseNumber}`,
@@ -318,7 +319,7 @@ export async function updateExpense(expenseId: string, input: any, userId: strin
         : `Bank/Cash credit disbursement for expense ${expense.expenseNumber} (modified)`
     });
 
-    const journalEntry = await createJournalEntry({
+    const journalEntry = await postToGL({
       orgId: expense.orgId,
       date: updatedExpense.date,
       description: `Bookkeeping entry for expense ${expense.expenseNumber} (modified)`,

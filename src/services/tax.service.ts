@@ -1,6 +1,6 @@
 import { eq, and, sql, gte, lte } from 'drizzle-orm';
 import { db, accounts, journalEntries, journalLines, taxConfigurations, capitalAllowanceSchedule, taxLosses, taxComputations, organisations } from '../db/schema';
-import { createJournalEntry } from './ledger.service';
+import { postToGL } from './posting.service';
 
 const SMALL_THRESHOLD_KOBO = 2_500_000_000;     // ₦25,000,000
 const MEDIUM_THRESHOLD_KOBO = 10_000_000_000;   // ₦100,000,000
@@ -363,7 +363,7 @@ export async function postTaxJournalEntries(
     }
   }
 
-  const je = await createJournalEntry({
+  const je = await postToGL({
     orgId,
     date,
     description: `Tax Computation — ${taxYear} — Auto-posted`,

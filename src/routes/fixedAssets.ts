@@ -5,6 +5,7 @@ import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/au
 import { eq, and, asc, desc, sql } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
 import { createJournalEntry, updateJournalEntry } from '../services/ledger.service';
+import { postToGL } from '../services/posting.service';
 import { createAuditLog, extractReqMeta } from '../services/audit.service';
 
 const router = Router();
@@ -422,7 +423,7 @@ router.post('/run-depreciation', async (req: AuthenticatedRequest, res: Response
     }
 
     // Create consolidated journal entry for all depreciation
-    const journalEntry = await createJournalEntry({
+    const journalEntry = await postToGL({
       orgId,
       date: periodDate,
       description: `Monthly depreciation - ${periodDate.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}`,

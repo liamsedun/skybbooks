@@ -12,7 +12,8 @@ import {
   journalEntries
 } from '../db/schema';
 import { AppError } from '../lib/errors';
-import { createJournalEntry, reverseJournalEntry } from './ledger.service';
+import { reverseJournalEntry } from './ledger.service';
+import { postToGL } from './posting.service';
 import { populateFxRate } from './currency.service';
 import { getOrgSettings } from './settings.service';
 
@@ -160,7 +161,7 @@ export async function createCreditNote(input: any, createdBy: string): Promise<a
       description: `AR offset application for credit note ${cnNumber}`
     });
 
-    const journalEntry = await createJournalEntry({
+    const journalEntry = await postToGL({
       orgId,
       date: creditNote.date,
       description: `Journal posting of Credit Note ${cnNumber}`,
@@ -245,7 +246,7 @@ export async function applyCreditNote(cnId: string, invoiceId: string, amount: n
     // CR Accounts Receivable (invoice offset allocation)
     const arAccountId = await resolveAccountsReceivable(creditNote.orgId, tx);
 
-    await createJournalEntry({
+    await postToGL({
       orgId: creditNote.orgId,
       date: new Date(),
       description: `Cross-link offset application: Credit Note ${creditNote.cnNumber} to Invoice ${invoice.invoiceNumber}`,

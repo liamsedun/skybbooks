@@ -17,7 +17,8 @@ import {
   journalLines
 } from '../db/schema';
 import { AppError } from '../lib/errors';
-import { createJournalEntry, reverseJournalEntry } from './ledger.service';
+import { reverseJournalEntry } from './ledger.service';
+import { postToGL } from './posting.service';
 import { populateFxRate } from './currency.service';
 import { getOrgSettings } from './settings.service';
 
@@ -284,7 +285,7 @@ export async function recordPaymentReceived(input: any, createdBy: string): Prom
       );
     }
 
-    await createJournalEntry({
+    await postToGL({
       orgId,
       date: payment.date,
       description: category === 'sales_invoice'
@@ -514,7 +515,7 @@ export async function updatePaymentReceived(paymentId: string, orgId: string, in
       );
     }
 
-    await createJournalEntry({
+    await postToGL({
       orgId,
       date: updated.date,
       description: category === 'sales_invoice'
@@ -815,7 +816,7 @@ export async function recordPaymentMade(input: any, createdBy: string): Promise<
       );
     }
 
-    const journalEntry = await createJournalEntry({
+    const journalEntry = await postToGL({
       orgId,
       date: payment.date,
       description: `Journal posting of Outbound Supplier Payment ${payment.paymentNumber}`,

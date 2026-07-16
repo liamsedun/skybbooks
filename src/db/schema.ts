@@ -47,7 +47,8 @@ export const journalSourceEnum = pgEnum('journal_source', [
   'opening_stock',
   'transfer',
   'vat_settlement',
-  'tax_provision'
+  'tax_provision',
+  'inventory_adjustment'
 ]);
 
 export const contactTypeEnum = pgEnum('contact_type', ['customer', 'vendor', 'both']);
@@ -1161,6 +1162,23 @@ export const depreciationEntries = pgTable('depreciation_entries', {
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
+// --- Accounting Posting Rules ---
+
+export const accountingRules = pgTable('accounting_rules', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  name: text('name').notNull(),
+  source: text('source').notNull(),
+  eventType: text('event_type'),
+  accountRole: text('account_role'),
+  accountId: uuid('account_id').references(() => accounts.id),
+  priority: integer('priority').default(0).notNull(),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+}, (table) => ({
+  rulesOrgSourceIdx: index('idx_rules_org_source').on(table.orgId, table.source),
+}));
+
 // --- Documents & Config ---
 
 export const documents = pgTable('documents', {
@@ -1903,6 +1921,17 @@ export const budgetLinesRelations = relations(budgetLines, ({ one }) => ({
   })
 }));
 
+export const accountingRulesRelations = relations(accountingRules, ({ one }) => ({
+  organisation: one(organisations, {
+    fields: [accountingRules.orgId],
+    references: [organisations.id]
+  }),
+  account: one(accounts, {
+    fields: [accountingRules.accountId],
+    references: [accounts.id]
+  })
+}));
+
 export const auditLogRelations = relations(auditLog, ({ one }) => ({
   organisation: one(organisations, {
     fields: [auditLog.orgId],
@@ -2017,6 +2046,7 @@ export const db = drizzle(pool, {
     budgets,
     budgetLines,
     auditLog,
+    accountingRules,
     chatConversations,
     chatConversationParticipants,
     chatMessages,
@@ -2071,6 +2101,7 @@ export const db = drizzle(pool, {
     budgetsRelations,
     budgetLinesRelations,
     auditLogRelations,
+    accountingRulesRelations,
     chatConversationsRelations,
     chatConversationParticipantsRelations,
     chatMessagesRelations,
@@ -2129,6 +2160,7 @@ export const schema = {
   budgets,
   budgetLines,
   auditLog,
+  accountingRules,
   chatConversations,
   chatConversationParticipants,
   chatMessages,

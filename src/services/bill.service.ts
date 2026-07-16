@@ -17,7 +17,8 @@ import {
   inventoryTransactions
 } from '../db/schema';
 import { AppError } from '../lib/errors';
-import { createJournalEntry, reverseJournalEntry, isDateInClosedPeriod } from './ledger.service';
+import { reverseJournalEntry, isDateInClosedPeriod } from './ledger.service';
+import { postToGL } from './posting.service';
 import { populateFxRate } from './currency.service';
 import { getOrgSettings } from './settings.service';
 
@@ -158,7 +159,7 @@ async function createBillJournalEntry(billId: string, orgId: string, userId: str
   }
 
   // Create general balanced journal entry
-  const journalEntry = await createJournalEntry({
+  const journalEntry = await postToGL({
     orgId,
     date: bill.date,
     description: `Journal posting of Bill ${bill.billNumber}`,

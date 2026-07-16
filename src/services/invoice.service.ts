@@ -19,6 +19,7 @@ import {
 } from '../db/schema';
 import { AppError } from '../lib/errors';
 import { createJournalEntry, reverseJournalEntry, isDateInClosedPeriod } from './ledger.service';
+import { postToGL } from './posting.service';
 import { populateFxRate } from './currency.service';
 import { getOrgSettings } from './settings.service';
 
@@ -283,8 +284,8 @@ async function createInvoiceJournalEntry(invoiceId: string, orgId: string, userI
     });
   }
 
-  // Create general balanced journal entry
-  const journalEntry = await createJournalEntry({
+  // Create general balanced journal entry via central posting engine
+  const journalEntry = await postToGL({
     orgId,
     date: invoice.date,
     description: `Journal posting of Invoice ${invoice.invoiceNumber}`,

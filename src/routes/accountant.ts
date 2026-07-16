@@ -4,13 +4,14 @@
  */
 import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { db, accounts, journalEntries, journalLines, bankAccounts, fixedAssets, inventoryLots } from '../db/schema';
+import { db, accounts, journalEntries, journalLines, bankAccounts, fixedAssets, inventoryLots, accountingRules } from '../db/schema';
 import { authenticate, requireOrg, requireRole, AuthenticatedRequest } from '../middleware/auth';
 import { eq, and, asc, sql } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
 import { seedAccounts } from '../db/seedAccounts';
 import { postOpeningBalances, getAccountLedger, getInventoryValueAsOf } from '../services/ledger.service';
 import { createAuditLog, extractReqMeta } from '../services/audit.service';
+import { getPostingRules, setPostingRule } from '../services/posting.service';
 
 const router = Router();
 router.use(authenticate);
@@ -495,6 +496,58 @@ router.get('/budgets/pdf', async (req: AuthenticatedRequest, res: Response, next
     const { generateBudgetsPDF } = await import('../services/pdf.service');
     const buffer = await generateBudgetsPDF(req.user!.orgId!);
     return sendPdf(res, buffer, 'budgets.pdf');
+  } catch (err) { return next(err); }
+});
+
+// ── Accounting Posting Rules ──
+
+/**
+ * GET /api/accountant/posting-rules
+ * Returns all active posting rules for the org, optionally filtered by source.
+ */
+router.get('/posting-rules', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const source = req.query.source as string | undefined;
+    const rules = await getPostingRules(req.user!.orgId!, source);
+    res.json({ rules });
+  } catch (err) { return next(err); }
+});
+
+/**
+ * POST /api/accountant/posting-rules
+ * Create a new posting rule.
+ */
+const postingRuleSchema = z.object({
+  name: z.string().min(1),
+  source: z.string().min(1),
+  eventType: z.string().optional(),
+  accountRole: z.string().optional(),
+  accountId: z.string().uuid().optional(),
+  priority: z.number().optional(),
+});
+
+router.post('/posting-rules', requireRole('admin'), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const body = postingRuleSchema.parse(req.body);
+    const rule = await setPostingRule(req.user!.orgId!, body);
+    res.status(201).json({ rule });
+  } catch (err) { return next(err); }
+});
+
+/**
+ * DELETE /api/accountant/posting-rules/:id
+ * Deactivate a posting rule.
+ */
+router.delete('/posting-rules/:id', requireRole('admin'), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    await db.update(accountingRules)
+      .set({ isActive: false })
+      .where(and(
+        eq(accountingRules.id, id),
+        eq(accountingRules.orgId, req.user!.orgId!)
+      ));
+    res.json({ message: 'Posting rule deactivated.' });
   } catch (err) { return next(err); }
 });
 

@@ -1133,6 +1133,28 @@ export async function runMigration() {
       }
     }
 
+    // ── Accounting Posting Rules Table ──
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS accounting_rules (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        name text NOT NULL,
+        source text NOT NULL,
+        event_type text,
+        account_role text,
+        account_id uuid REFERENCES accounts(id),
+        priority integer DEFAULT 0 NOT NULL,
+        is_active boolean DEFAULT true NOT NULL,
+        created_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_rules_org_source ON accounting_rules (org_id, source)`);
+    // Add inventory_adjustment to journal_source enum
+    await db.execute(sql`ALTER TYPE journal_source ADD VALUE IF NOT EXISTS 'inventory_adjustment'`);
+    console.log('[Migration] Added inventory_adjustment to journal_source enum.');
+
+    console.log('[Migration] Created accounting_rules table.');
+
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema setup:', err);

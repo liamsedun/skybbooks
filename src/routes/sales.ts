@@ -43,6 +43,7 @@ import {
 } from '../services/recurring.service';
 import { createAuditLog, extractReqMeta } from '../services/audit.service';
 import { createJournalEntry } from '../services/ledger.service';
+import { postToGL } from '../services/posting.service';
 
 const router = Router();
 
@@ -712,7 +713,7 @@ router.post('/customers', async (req: AuthenticatedRequest, res: Response, next:
         const [arAccount] = await db.select().from(accounts).where(and(eq(accounts.orgId, orgId), eq(accounts.systemAccountRole, 'accounts_receivable'))).limit(1);
         const [reAccount] = await db.select().from(accounts).where(and(eq(accounts.orgId, orgId), eq(accounts.systemAccountRole, 'retained_earnings'))).limit(1);
         if (arAccount && reAccount) {
-          await createJournalEntry({
+          await postToGL({
             orgId, date: new Date(), description: `Opening balance — ${existing.name}`,
             source: 'opening_balance', sourceId: existing.id, createdBy: userId,
             lines: [
@@ -750,7 +751,7 @@ router.post('/customers', async (req: AuthenticatedRequest, res: Response, next:
       const [arAccount] = await db.select().from(accounts).where(and(eq(accounts.orgId, orgId), eq(accounts.systemAccountRole, 'accounts_receivable'))).limit(1);
       const [reAccount] = await db.select().from(accounts).where(and(eq(accounts.orgId, orgId), eq(accounts.systemAccountRole, 'retained_earnings'))).limit(1);
       if (arAccount && reAccount) {
-        await createJournalEntry({
+        await postToGL({
           orgId, date: new Date(), description: `Opening balance — ${customer.name}`,
           source: 'opening_balance', sourceId: customer.id, createdBy: userId,
           lines: [

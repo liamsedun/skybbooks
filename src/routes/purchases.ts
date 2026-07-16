@@ -36,6 +36,7 @@ import {
 } from '../services/bill.service';
 import { createAuditLog, extractReqMeta } from '../services/audit.service';
 import { createJournalEntry } from '../services/ledger.service';
+import { postToGL } from '../services/posting.service';
 import {
   recordPaymentMade,
   updatePaymentMade,
@@ -821,7 +822,7 @@ router.post('/vendors/import-csv', async (req: AuthenticatedRequest, res: Respon
           const [apAcct] = await db.select().from(accounts).where(and(eq(accounts.orgId, orgId), eq(accounts.systemAccountRole, 'accounts_payable'))).limit(1);
           const [reAcct] = await db.select().from(accounts).where(and(eq(accounts.orgId, orgId), eq(accounts.systemAccountRole, 'retained_earnings'))).limit(1);
           if (apAcct && reAcct) {
-            await createJournalEntry({
+            await postToGL({
               orgId, date: new Date(), description: `Opening balance — ${vendor.name}`,
               source: 'opening_balance', sourceId: vendor.id, createdBy: userId,
               lines: [
@@ -874,7 +875,7 @@ router.post('/vendors', async (req: AuthenticatedRequest, res: Response, next: N
       const [apAccount] = await db.select().from(accounts).where(and(eq(accounts.orgId, orgId), eq(accounts.systemAccountRole, 'accounts_payable'))).limit(1);
       const [reAccount] = await db.select().from(accounts).where(and(eq(accounts.orgId, orgId), eq(accounts.systemAccountRole, 'retained_earnings'))).limit(1);
       if (apAccount && reAccount) {
-        await createJournalEntry({
+        await postToGL({
           orgId, date: new Date(), description: `Opening balance — ${vendor.name}`,
           source: 'opening_balance', sourceId: vendor.id, createdBy: userId,
           lines: [

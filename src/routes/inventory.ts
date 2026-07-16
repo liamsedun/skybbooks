@@ -11,6 +11,7 @@ import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/au
 import { eq, and, lte, sql, inArray, desc } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
 import { createJournalEntry } from '../services/ledger.service';
+import { postToGL } from '../services/posting.service';
 import { createAuditLog, extractReqMeta } from '../services/audit.service';
 
 // Helper: auto-create opening stock lot when item has trackInventory + purchasePrice + numeric unit
@@ -60,7 +61,7 @@ async function autoCreateOpeningStock(item: any, orgId: string, userId: string) 
     .where(and(eq(accounts.orgId, orgId), eq(accounts.systemAccountRole, 'retained_earnings')))
     .limit(1);
   if (reAcct) {
-    await createJournalEntry({
+    await postToGL({
       orgId,
       date: new Date(),
       description: `Opening stock — ${item.name} (${qty} units @ ₦${(purchasePrice / 100).toLocaleString()})`,
@@ -288,7 +289,7 @@ router.post('/items/import-opening-stock', async (req: AuthenticatedRequest, res
         .where(and(eq(accounts.orgId, orgId), eq(accounts.systemAccountRole, 'retained_earnings')))
         .limit(1);
       if (reAcct) {
-        await createJournalEntry({
+        await postToGL({
           orgId,
           date: new Date(),
           description: `Opening stock — ${item.name} (${qty} units @ ₦${(cost / 100).toLocaleString()})`,
@@ -365,7 +366,7 @@ router.post('/items/record-opening-stock', async (req: AuthenticatedRequest, res
         .where(and(eq(accounts.orgId, orgId), eq(accounts.systemAccountRole, 'retained_earnings')))
         .limit(1);
       if (reAcct) {
-        await createJournalEntry({
+        await postToGL({
           orgId,
           date: new Date(),
           description: `Opening stock — ${item.name} (${qty} units @ ₦${(cost / 100).toLocaleString()})`,
@@ -787,7 +788,7 @@ async function applyQuantityAdjustment(adj: any, items: any[], orgId: string, us
     const valueChange = Math.round(qtyAdj * cost);
     if (valueChange !== 0 && adj.accountId) {
       if (valueChange > 0) {
-        await createJournalEntry({
+        await postToGL({
           orgId,
           date: adj.date,
           description: `Inventory adjustment (qty) — ${item.name} (${qtyAdj > 0 ? '+' : ''}${qtyAdj})`,
@@ -802,7 +803,7 @@ async function applyQuantityAdjustment(adj: any, items: any[], orgId: string, us
         });
       } else {
         const absVal = Math.abs(valueChange);
-        await createJournalEntry({
+        await postToGL({
           orgId,
           date: adj.date,
           description: `Inventory adjustment (qty) — ${item.name} (${qtyAdj})`,
@@ -858,7 +859,7 @@ async function applyValueAdjustment(adj: any, items: any[], orgId: string, userI
     // Journal entry for value change
     if (valueDiff !== 0 && adj.accountId) {
       if (valueDiff > 0) {
-        await createJournalEntry({
+        await postToGL({
           orgId,
           date: adj.date,
           description: `Inventory value adjustment — ${item.name} (${(oldCost / 100).toLocaleString()} → ${(newCost / 100).toLocaleString()})`,
@@ -873,7 +874,7 @@ async function applyValueAdjustment(adj: any, items: any[], orgId: string, userI
         });
       } else {
         const absVal = Math.abs(valueDiff);
-        await createJournalEntry({
+        await postToGL({
           orgId,
           date: adj.date,
           description: `Inventory value adjustment — ${item.name} (${(oldCost / 100).toLocaleString()} → ${(newCost / 100).toLocaleString()})`,

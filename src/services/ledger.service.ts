@@ -4,7 +4,7 @@
  */
 
 import { eq, and, lte, gte, sql, asc, inArray } from 'drizzle-orm';
-import { db, accounts, journalEntries, journalLines, bankAccounts, inventoryLots, inventoryTransactions, closedPeriods, invoices, paymentsReceived, bills, organisations, legacyIncomeStatements, legacyCashFlowStatements, legacyStatementsOfChangesInEquity } from '../db/schema';
+import { db, accounts, journalEntries, journalLines, bankAccounts, inventoryLots, inventoryTransactions, closedPeriods, invoices, paymentsReceived, bills, organisations, legacyIncomeStatements, legacyCashFlowStatements, legacyStatementsOfChangesInEquity, accountingRules } from '../db/schema';
 import { AppError } from '../lib/errors';
 import { toNgn, getRateForDate } from './currency.service';
 
@@ -14,6 +14,7 @@ import { toNgn, getRateForDate } from './currency.service';
 
 export type JournalLineInput = {
   accountId: string;
+  accountRole?: string; // resolved at runtime via system_account_role or accounting_rules
   debit?: number;    // in kobo, integer
   credit?: number;   // in kobo, integer
   description?: string;
@@ -26,7 +27,7 @@ export type CreateJournalEntryInput = {
   date: Date;
   description: string;
   reference?: string;
-  source: 'manual' | 'invoice' | 'bill' | 'payment' | 'payroll' | 'bank_feed' | 'opening_balance' | 'opening_stock' | 'transfer' | 'vat_settlement';
+  source: 'manual' | 'invoice' | 'bill' | 'payment' | 'payroll' | 'bank_feed' | 'opening_balance' | 'opening_stock' | 'transfer' | 'vat_settlement' | 'tax_provision' | 'inventory_adjustment';
   sourceId?: string;
   projectId?: string;
   createdBy: string;
@@ -97,6 +98,84 @@ export async function createJournalEntry(
       403
     );
   }
+
+  // 0a. Prevent duplicate posting (same source + sourceId, non-reversed)
+  if (input.sourceId) {
+    const [dup] = await client
+      .select({ id: journalEntries.id })
+      .from(journalEntries)
+      .where(
+        and(
+          eq(journalEntries.orgId, input.orgId),
+          eq(journalEntries.source, input.source),
+          eq(journalEntries.sourceId, input.sourceId),
+          eq(journalEntries.isReversed, false)
+        )
+      )
+      .limit(1);
+    if (dup) {
+      throw new AppError(
+        `Journal entry already exists for ${input.source} ${input.sourceId} (JE: ${dup.id}).`,
+        409
+      );
+    }
+  }
+
+  // 0b. Resolve account roles to real account IDs
+  const resolvedLines: JournalLineInput[] = [];
+  for (const line of input.lines) {
+    if ((line as any).accountRole) {
+      const role = (line as any).accountRole as string;
+      // Check configurable posting rules first
+      const [rule] = await client
+        .select()
+        .from(accountingRules)
+        .where(
+          and(
+            eq(accountingRules.orgId, input.orgId),
+            eq(accountingRules.accountRole, role),
+            eq(accountingRules.source, input.source),
+            eq(accountingRules.isActive, true)
+          )
+        )
+        .orderBy(accountingRules.priority)
+        .limit(1);
+      let realId: string | null = rule?.accountId || null;
+      if (!realId) {
+        // Fall back to system_account_role
+        const [acct] = await client
+          .select({ id: accounts.id })
+          .from(accounts)
+          .where(
+            and(
+              eq(accounts.orgId, input.orgId),
+              eq(accounts.systemAccountRole, role as any),
+              eq(accounts.isActive, true)
+            )
+          )
+          .limit(1);
+        realId = acct?.id || null;
+      }
+      if (!realId) {
+        throw new AppError(
+          `No account found for role "${role}" in this organisation. Please configure one in Chart of Accounts or Accounting Rules.`,
+          400
+        );
+      }
+      resolvedLines.push({
+        accountId: realId,
+        debit: line.debit,
+        credit: line.credit,
+        description: line.description,
+        currency: line.currency,
+        fxRate: line.fxRate,
+      });
+    } else {
+      resolvedLines.push(line);
+    }
+  }
+  // Replace input lines with resolved lines
+  input = { ...input, lines: resolvedLines };
 
   // 1. Validate line inputs
   if (!input.lines || input.lines.length < 2) {

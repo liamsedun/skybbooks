@@ -18,6 +18,7 @@ import {
   getPayrollSummary
 } from '../services/payroll.service';
 import { createJournalEntry } from '../services/ledger.service';
+import { postToGL } from '../services/posting.service';
 import { createAuditLog, extractReqMeta } from '../services/audit.service';
 
 const router = Router();
@@ -408,7 +409,7 @@ router.post('/runs/:id/pay', async (req: AuthenticatedRequest, res: Response, ne
 
       const totalNet = lines.reduce((sum, l) => sum + l.netPay, 0);
 
-      await createJournalEntry({
+      await postToGL({
         orgId,
         date: new Date(),
         description: `Salary accrual settlement — Payroll Run ${run.runNumber}`,

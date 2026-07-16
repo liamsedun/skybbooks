@@ -7,7 +7,7 @@ import {
   Package, BarChart2, FileText, FileClock, Repeat, ReceiptText, Banknote,
   FileCheck, Truck, ClipboardList, ArrowLeftRight, Wallet, PuzzleIcon,
   ChevronDown, Search, Menu, X, ShoppingCart, Receipt, HelpCircle, ArrowLeft,
-  Send,
+  Send, GitPullRequestArrow,
 } from 'lucide-react';
 
 type NavItem = { label: string; path: string; icon: React.ComponentType<{ className?: string }> };
@@ -41,6 +41,7 @@ const NAV: NavGroup[] = [
       { label: 'Reminders', path: '/settings/reminders', icon: Bell },
       { label: 'Taxes (VAT)', path: '/settings/taxes', icon: Receipt },
       { label: 'Tax Configuration', path: '/settings/tax', icon: FileText },
+      { label: 'Posting Rules', path: '/settings/posting-rules', icon: GitPullRequestArrow },
       { label: 'Customer Portal', path: '/settings/customer-portal', icon: Store },
       { label: 'Vendor Portal', path: '/settings/vendor-portal', icon: Boxes },
     ],

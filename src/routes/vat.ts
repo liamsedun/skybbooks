@@ -5,6 +5,7 @@ import { db, accounts, journalEntries, journalLines, vatPeriods, vatReturnLines,
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
 import { AppError } from '../lib/errors';
 import { createJournalEntry } from '../services/ledger.service';
+import { postToGL } from '../services/posting.service';
 import { createAuditLog, extractReqMeta } from '../services/audit.service';
 
 const router = Router();
@@ -184,7 +185,7 @@ router.post('/settle', async (req: AuthenticatedRequest, res: Response, next: Ne
       );
     }
 
-    const je = await createJournalEntry({
+    const je = await postToGL({
       orgId,
       date: new Date(),
       description: `VAT Settlement — ${periodLabel}`,
