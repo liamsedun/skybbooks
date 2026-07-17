@@ -53,6 +53,13 @@ const thirtyDaysOut = new Date(Date.now() + 30 * 86400000).toISOString().split('
 function formatNaira(kobo: number) {
   return `\u20a6${(kobo / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
 }
+function fmtDual(cents: number, currency?: string, fxRate?: number | string | null): string {
+  const ngn = formatNaira(cents);
+  if (!currency || currency === 'NGN' || !fxRate || Number(fxRate) <= 1) return ngn;
+  const original = (cents / 100) / Number(fxRate);
+  const cur = original.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return `${currency} ${cur}  \u2022  ${ngn}`;
+}
 function fmtDate(d: string | null) {
   if (!d) return '\u2014';
   return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -575,8 +582,8 @@ function BillList() {
                       <tr>
                         <td colSpan={8} className="px-3 py-4 bg-slate-50/80 border-b border-slate-100">
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-                            <div><span className="text-slate-400 uppercase font-semibold tracking-wide">Subtotal</span><p className="font-semibold mt-1">{formatNaira(bill.subtotal)}</p></div>
-                            <div><span className="text-slate-400 uppercase font-semibold tracking-wide">VAT</span><p className="font-semibold mt-1">{formatNaira(bill.taxAmount)}</p></div>
+                            <div><span className="text-slate-400 uppercase font-semibold tracking-wide">Subtotal</span><p className="font-semibold mt-1">{fmtDual(bill.subtotal, bill.currency, bill.fxRate)}</p></div>
+                            <div><span className="text-slate-400 uppercase font-semibold tracking-wide">VAT</span><p className="font-semibold mt-1">{fmtDual(bill.taxAmount, bill.currency, bill.fxRate)}</p></div>
                             <div><span className="text-slate-400 uppercase font-semibold tracking-wide">Amount Paid</span><p className="font-semibold mt-1 text-green-600">{formatNaira(bill.amountPaid)}</p></div>
                             <div><span className="text-slate-400 uppercase font-semibold tracking-wide">Currency</span><p className="font-semibold mt-1">{bill.currency}</p></div>
                           </div>
@@ -1100,7 +1107,7 @@ function BillDetail({ id, onBack }: { id: string; onBack: () => void }) {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
           <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Total</p>
-          <p className="text-lg font-bold mt-1 text-slate-900">{formatNaira(bill.total)}</p>
+          <p className="text-lg font-bold mt-1 text-slate-900">{fmtDual(bill.total, bill.currency, bill.fxRate)}</p>
         </div>
         <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
           <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Amount Paid</p>
@@ -1108,7 +1115,7 @@ function BillDetail({ id, onBack }: { id: string; onBack: () => void }) {
         </div>
         <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
           <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Balance Due</p>
-          <p className="text-lg font-bold mt-1 text-blue-600">{formatNaira(bill.balanceDue)}</p>
+          <p className="text-lg font-bold mt-1 text-blue-600">{fmtDual(bill.balanceDue, bill.currency, bill.fxRate)}</p>
         </div>
         <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
           <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Due Date</p>
@@ -1128,6 +1135,7 @@ function BillDetail({ id, onBack }: { id: string; onBack: () => void }) {
             <div><span className="text-slate-400 text-xs block">Due Date</span><span className="font-medium">{fmtDate(bill.dueDate)}</span></div>
             <div><span className="text-slate-400 text-xs block">Status</span><span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${STATUS_STYLES[bill.status] || 'bg-slate-100 text-slate-600 border-slate-200'}`}>{bill.status}</span></div>
             <div><span className="text-slate-400 text-xs block">Currency</span><span className="font-medium">{bill.currency}</span></div>
+            {bill.currency && bill.currency !== 'NGN' && bill.fxRate && <div><span className="text-slate-400 text-xs block">FX Rate</span><span className="font-medium">1 {bill.currency} = {formatNaira(Math.round(100 * Number(bill.fxRate)))}</span></div>}
             {bill.notes && <div><span className="text-slate-400 text-xs block">Notes</span><span className="font-medium italic">{bill.notes}</span></div>}
           </div>
         </div>
@@ -1159,9 +1167,9 @@ function BillDetail({ id, onBack }: { id: string; onBack: () => void }) {
                       <td className="px-3 py-3 text-slate-700 font-medium">{items.find(it => it.id === line.itemId)?.name || '—'}</td>
                       <td className="px-3 py-3 text-slate-500">{line.description || '—'}</td>
                       <td className="px-3 py-3 text-right text-slate-700 font-medium">{line.quantity}</td>
-                      <td className="px-3 py-3 text-right text-slate-700">{formatNaira(line.unitPrice)}</td>
+                      <td className="px-3 py-3 text-right text-slate-700">{fmtDual(line.unitPrice, bill.currency, bill.fxRate)}</td>
                       <td className="px-3 py-3 text-right text-slate-700">{line.taxRate}%</td>
-                      <td className="px-3 py-3 text-right font-semibold text-slate-900">{formatNaira(Math.round(lineTotal))}</td>
+                      <td className="px-3 py-3 text-right font-semibold text-slate-900">{fmtDual(Math.round(lineTotal), bill.currency, bill.fxRate)}</td>
                     </tr>
                   );
                 })}
@@ -1169,15 +1177,15 @@ function BillDetail({ id, onBack }: { id: string; onBack: () => void }) {
               <tfoot>
                 <tr className="bg-slate-50 border-t border-slate-200/80 text-sm font-semibold">
                   <td colSpan={5} className="px-3 py-3 text-slate-600 text-right">Subtotal</td>
-                  <td className="px-3 py-3 text-right text-slate-700">{formatNaira(bill.subtotal)}</td>
+                  <td className="px-3 py-3 text-right text-slate-700">{fmtDual(bill.subtotal, bill.currency, bill.fxRate)}</td>
                 </tr>
                 <tr className="bg-slate-50 text-sm">
                   <td colSpan={5} className="px-3 py-3 text-slate-600 text-right">VAT</td>
-                  <td className="px-3 py-3 text-right text-slate-700">{formatNaira(bill.taxAmount)}</td>
+                  <td className="px-3 py-3 text-right text-slate-700">{fmtDual(bill.taxAmount, bill.currency, bill.fxRate)}</td>
                 </tr>
                 <tr className="bg-slate-50 border-t border-slate-200/80 text-sm font-bold">
                   <td colSpan={5} className="px-3 py-3 text-slate-900 text-right">Total</td>
-                  <td className="px-3 py-3 text-right text-slate-900">{formatNaira(bill.total)}</td>
+                  <td className="px-3 py-3 text-right text-slate-900">{fmtDual(bill.total, bill.currency, bill.fxRate)}</td>
                 </tr>
               </tfoot>
             </table>

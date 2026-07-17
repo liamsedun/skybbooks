@@ -30,7 +30,14 @@ interface Expense {
 }
 
 function formatNaira(kobo: number) {
-  return `₦${(kobo / 100).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `\u20a6${(kobo / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
+}
+function fmtDual(cents: number, currency?: string, fxRate?: number | string | null): string {
+  const ngn = formatNaira(cents);
+  if (!currency || currency === 'NGN' || !fxRate || Number(fxRate) <= 1) return ngn;
+  const original = (cents / 100) / Number(fxRate);
+  const cur = original.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return `${currency} ${cur}  \u2022  ${ngn}`;
 }
 function fmtDate(d: string) { return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }); }
 
@@ -473,7 +480,13 @@ export function ExpensesPage() {
                   </div>
                   <div className="text-right">
                     <p className="text-xs text-slate-400 uppercase tracking-wide mb-0.5">Total Amount</p>
-                    <p className="text-xl font-bold text-slate-900">{formatNaira(viewingExpense.amount)}</p>
+                    <p className="text-xl font-bold text-slate-900">{fmtDual(viewingExpense.amount, viewingExpense.currency, viewingExpense.fxRate)}</p>
+                    {viewingExpense.currency && viewingExpense.currency !== 'NGN' && (
+                      <div className="flex items-center justify-end gap-1 mt-1">
+                        <span className="text-[10px] font-medium text-indigo-600 border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 rounded">{viewingExpense.currency}</span>
+                        {viewingExpense.fxRate && <span className="text-[10px] text-slate-400">Rate: {Number(viewingExpense.fxRate).toFixed(4)}</span>}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -508,17 +521,17 @@ export function ExpensesPage() {
                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Financial Summary</p>
                 <div className="flex items-center justify-between py-2 border-b border-slate-50">
                   <span className="text-sm text-slate-600">Subtotal</span>
-                  <span className="text-sm font-mono font-medium text-slate-800">{formatNaira(viewingExpense.amount - viewingExpense.taxAmount)}</span>
+                  <span className="text-sm font-mono font-medium text-slate-800">{fmtDual(viewingExpense.amount - viewingExpense.taxAmount, viewingExpense.currency, viewingExpense.fxRate)}</span>
                 </div>
                 {viewingExpense.taxAmount > 0 && (
                   <div className="flex items-center justify-between py-2 border-b border-slate-50">
                     <span className="text-sm text-slate-600">VAT (7.5%)</span>
-                    <span className="text-sm font-mono text-slate-600">{formatNaira(viewingExpense.taxAmount)}</span>
+                    <span className="text-sm font-mono text-slate-600">{fmtDual(viewingExpense.taxAmount, viewingExpense.currency, viewingExpense.fxRate)}</span>
                   </div>
                 )}
                 <div className="flex items-center justify-between py-2">
                   <span className="text-sm font-semibold text-slate-700">Total</span>
-                  <span className="text-base font-bold font-mono text-slate-900">{formatNaira(viewingExpense.amount)}</span>
+                  <span className="text-base font-bold font-mono text-slate-900">{fmtDual(viewingExpense.amount, viewingExpense.currency, viewingExpense.fxRate)}</span>
                 </div>
               </div>
 

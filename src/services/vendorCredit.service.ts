@@ -324,6 +324,8 @@ export async function listVendorCredits(orgId: string): Promise<any[]> {
       tax: vendorCredits.tax,
       total: vendorCredits.total,
       remainingCredit: vendorCredits.remainingCredit,
+      currency: vendorCredits.currency,
+      fxRate: vendorCredits.fxRate,
       notes: vendorCredits.notes,
       journalEntryId: vendorCredits.journalEntryId,
       createdBy: vendorCredits.createdBy,

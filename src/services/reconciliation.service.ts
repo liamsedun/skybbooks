@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { sql, eq, and, desc, asc, inArray, lte, gte, or, not } from 'drizzle-orm';
+import { sql, eq, and, desc, asc, inArray, lte, gte, or, not, isNotNull } from 'drizzle-orm';
 import {
   db,
   bankAccounts,
@@ -553,7 +553,8 @@ export async function getBankReconciliationStatement(
   const outstandingPayments = unreconciledItems.filter(t => t.type === 'debit').reduce((s, t) => s + t.amount, 0);
 
   const glBalance = await getAccountBalance(ba.accountId, asOfDate);
-  const statementClosingBalance = ba.currentBalance;
+  const latestTxn = allTxns.find(t => t.balanceAfter != null);
+  const statementClosingBalance = latestTxn?.balanceAfter ?? ba.currentBalance;
   const adjustedBankBalance = statementClosingBalance + outstandingDeposits - outstandingPayments;
   const isReconciled = adjustedBankBalance === glBalance;
   const difference = glBalance - adjustedBankBalance;

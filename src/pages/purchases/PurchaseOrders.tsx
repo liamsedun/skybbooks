@@ -30,7 +30,14 @@ const EMPTY_LINE: POLine = { itemId: null, description: '', quantity: 1, unitPri
 const today = new Date().toISOString().split('T')[0];
 
 function formatNaira(kobo: number) {
-  return `₦${(kobo / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
+  return `\u20a6${(kobo / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
+}
+function fmtDual(cents: number, currency?: string, fxRate?: number | string | null): string {
+  const ngn = formatNaira(cents);
+  if (!currency || currency === 'NGN' || !fxRate || Number(fxRate) <= 1) return ngn;
+  const original = (cents / 100) / Number(fxRate);
+  const cur = original.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return `${currency} ${cur}  \u2022  ${ngn}`;
 }
 function fmtDate(d: string | null) {
   if (!d) return '—';
@@ -445,6 +452,13 @@ export function PurchaseOrdersPage() {
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Status</p>
                   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${STATUS_STYLES[viewingPo.status] || 'bg-slate-100 text-slate-500'}`}>{viewingPo.status}</span>
                 </div>
+                {viewingPo.currency && viewingPo.currency !== 'NGN' && (
+                  <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Currency</p>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold text-indigo-600 bg-indigo-50 border border-indigo-200">{viewingPo.currency}</span>
+                    {viewingPo.fxRate && <p className="text-[10px] text-slate-500 mt-1">Rate: {Number(viewingPo.fxRate).toFixed(4)}</p>}
+                  </div>
+                )}
               </div>
 
               {viewingPo.lines && viewingPo.lines.length > 0 && (
@@ -470,9 +484,9 @@ export function PurchaseOrdersPage() {
                             <tr key={idx} className="hover:bg-slate-50">
                               <td className="py-2.5 pl-4 pr-2 text-xs font-medium text-slate-700">{line.description || '—'}</td>
                               <td className="py-2.5 px-2 text-xs text-center text-slate-700">{line.quantity}</td>
-                              <td className="py-2.5 px-2 text-xs text-right font-mono text-slate-700">{formatNaira(line.unitPrice)}</td>
+                              <td className="py-2.5 px-2 text-xs text-right font-mono text-slate-700">{fmtDual(line.unitPrice, viewingPo.currency, viewingPo.fxRate)}</td>
                               <td className="py-2.5 px-2 text-xs text-center text-slate-500">{line.taxRate}%</td>
-                              <td className="py-2.5 pl-2 pr-4 text-xs text-right font-mono font-medium text-slate-900">{formatNaira(total)}</td>
+                              <td className="py-2.5 pl-2 pr-4 text-xs text-right font-mono font-medium text-slate-900">{fmtDual(total, viewingPo.currency, viewingPo.fxRate)}</td>
                             </tr>
                           );
                         })}
@@ -486,15 +500,15 @@ export function PurchaseOrdersPage() {
                 <div className="w-64 bg-slate-50 rounded-xl p-4 border border-slate-100 space-y-1.5">
                   <div className="flex justify-between text-xs text-slate-500">
                     <span>Subtotal</span>
-                    <span className="font-mono">{formatNaira(viewingPo.subtotal)}</span>
+                    <span className="font-mono">{fmtDual(viewingPo.subtotal, viewingPo.currency, viewingPo.fxRate)}</span>
                   </div>
                   <div className="flex justify-between text-xs text-slate-500">
                     <span>VAT</span>
-                    <span className="font-mono">{formatNaira(viewingPo.tax)}</span>
+                    <span className="font-mono">{fmtDual(viewingPo.tax, viewingPo.currency, viewingPo.fxRate)}</span>
                   </div>
                   <div className="flex justify-between text-sm font-bold text-slate-900 pt-1.5 border-t border-slate-200">
                     <span>Total</span>
-                    <span className="font-mono">{formatNaira(viewingPo.total)}</span>
+                    <span className="font-mono">{fmtDual(viewingPo.total, viewingPo.currency, viewingPo.fxRate)}</span>
                   </div>
                 </div>
               </div>
@@ -591,9 +605,9 @@ export function PurchaseOrdersPage() {
                           {line.itemId && <p className="text-xs text-slate-400 mt-0.5 font-mono">SKU: {line.itemId?.substring(0, 8).toUpperCase()}</p>}
                         </td>
                         <td className="py-3 px-2 text-center text-slate-600">{line.quantity}</td>
-                        <td className="py-3 px-2 text-right text-slate-600 font-mono">{formatNaira(line.unitPrice)}</td>
-                        <td className="py-3 px-2 text-center text-slate-500 text-xs">{line.taxRate > 0 ? `${line.taxRate}%` : '—'}</td>
-                        <td className="py-3 pl-2 pr-3 text-right font-semibold text-slate-900 font-mono">{formatNaira(total)}</td>
+                        <td className="py-3 px-2 text-right text-slate-600 font-mono">{fmtDual(line.unitPrice, viewingPo.currency, viewingPo.fxRate)}</td>
+                        <td className="py-3 px-2 text-center text-slate-500 text-xs">{line.taxRate > 0 ? `${line.taxRate}%` : '\u2014'}</td>
+                        <td className="py-3 pl-2 pr-3 text-right font-semibold text-slate-900 font-mono">{fmtDual(total, viewingPo.currency, viewingPo.fxRate)}</td>
                       </tr>
                     );
                   })}
@@ -606,15 +620,15 @@ export function PurchaseOrdersPage() {
               <div className="w-64 border-t border-slate-200 pt-2 space-y-1">
                 <div className="flex justify-between text-xs text-slate-500">
                   <span>Subtotal</span>
-                  <span className="font-mono">{formatNaira(viewingPo.subtotal)}</span>
+                  <span className="font-mono">{fmtDual(viewingPo.subtotal, viewingPo.currency, viewingPo.fxRate)}</span>
                 </div>
                 <div className="flex justify-between text-xs text-slate-500">
                   <span>VAT</span>
-                  <span className="font-mono">{formatNaira(viewingPo.tax)}</span>
+                  <span className="font-mono">{fmtDual(viewingPo.tax, viewingPo.currency, viewingPo.fxRate)}</span>
                 </div>
                 <div className="flex justify-between text-sm font-bold text-slate-900 border-t border-slate-200 pt-1">
                   <span>Total</span>
-                  <span className="font-mono">{formatNaira(viewingPo.total)}</span>
+                  <span className="font-mono">{fmtDual(viewingPo.total, viewingPo.currency, viewingPo.fxRate)}</span>
                 </div>
               </div>
             </div>

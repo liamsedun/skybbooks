@@ -24,6 +24,14 @@ import {
 } from 'lucide-react';
 import { salesApi, orgApi } from '../../lib/api';
 import { useCurrency } from '../../hooks/useCurrency';
+
+function fmtDual(cents: number, currency?: string, fxRate?: number | string | null): string {
+  const ngn = `${currency === 'NGN' ? '₦' : 'NGN '}${(cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  if (!currency || currency === 'NGN' || !fxRate || Number(fxRate) <= 1) return ngn;
+  const original = (cents / 100) / Number(fxRate);
+  const cur = original.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return `${currency} ${cur}  •  ${ngn}`;
+}
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { RecordPaymentDrawer } from '../../components/sales/RecordPaymentDrawer';
 import { useAuth } from '../../hooks/useAuth';
@@ -419,6 +427,18 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
                       <span className="text-slate-400 w-24 sm:w-auto">Terms</span>
                       <span className="font-medium text-slate-700">Net {invoiceData.paymentTerms || 30}</span>
                     </div>
+                    {invoiceData.currency && invoiceData.currency !== 'NGN' && (
+                      <div className="flex sm:justify-end gap-2">
+                        <span className="text-slate-400 w-24 sm:w-auto">Currency</span>
+                        <span className="font-medium text-indigo-600">{invoiceData.currency}</span>
+                      </div>
+                    )}
+                    {invoiceData.currency && invoiceData.currency !== 'NGN' && invoiceData.fxRate && (
+                      <div className="flex sm:justify-end gap-2">
+                        <span className="text-slate-400 w-24 sm:w-auto">FX Rate</span>
+                        <span className="font-medium text-slate-700">1 {invoiceData.currency} = {formatNaira(Math.round(100 * Number(invoiceData.fxRate)))}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -459,7 +479,7 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
                             )}
                           </td>
                           <td className="py-4 px-2 text-center text-slate-600">{q}</td>
-                          <td className="py-4 px-2 text-right text-slate-600 font-mono">{formatNaira(pr)}</td>
+                          <td className="py-4 px-2 text-right text-slate-600 font-mono">{fmtDual(pr, invoiceData.currency, invoiceData.fxRate)}</td>
                           <td className="py-4 px-2 text-center">
                             {d > 0 ? (
                               <span className="inline-flex items-center gap-0.5 text-violet-600 font-medium text-xs">
@@ -468,7 +488,7 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
                             ) : <span className="text-slate-300">&mdash;</span>}
                           </td>
                           <td className="py-4 px-2 text-center text-slate-500 text-xs">{t > 0 ? `${t}%` : <span className="text-slate-300">&mdash;</span>}</td>
-                          <td className="py-4 pl-2 pr-3 text-right font-semibold text-slate-900 font-mono">{formatNaira(net)}</td>
+                          <td className="py-4 pl-2 pr-3 text-right font-semibold text-slate-900 font-mono">{fmtDual(net, invoiceData.currency, invoiceData.fxRate)}</td>
                         </tr>
                       );
                     })}
@@ -512,7 +532,7 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
                 <div className="shrink-0 w-full sm:w-[300px] space-y-2">
                   <div className="flex justify-between text-sm text-slate-500 pb-2">
                     <span>Subtotal</span>
-                    <span className="font-medium text-slate-700 font-mono">{formatNaira(computedPricing.subtotalKobo)}</span>
+                    <span className="font-medium text-slate-700 font-mono">{fmtDual(computedPricing.subtotalKobo, invoiceData.currency, invoiceData.fxRate)}</span>
                   </div>
                   {computedPricing.discountKobo > 0 && (
                     <div className="flex justify-between text-sm text-violet-600 pb-2">
@@ -522,11 +542,11 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
                   )}
                   <div className="flex justify-between text-sm text-slate-500 pb-2">
                     <span>VAT (7.5%)</span>
-                    <span className="font-medium text-slate-700 font-mono">{formatNaira(computedPricing.vatKobo)}</span>
+                    <span className="font-medium text-slate-700 font-mono">{fmtDual(computedPricing.vatKobo, invoiceData.currency, invoiceData.fxRate)}</span>
                   </div>
                   <div className="flex justify-between py-3 border-t border-slate-200">
                     <span className="text-base font-bold text-slate-800">Total</span>
-                    <span className="text-base font-black text-slate-900 font-mono">{formatNaira(computedPricing.totalKobo)}</span>
+                    <span className="text-base font-black text-slate-900 font-mono">{fmtDual(computedPricing.totalKobo, invoiceData.currency, invoiceData.fxRate)}</span>
                   </div>
                   {(invoiceData.payments?.length > 0) && (
                     <div className="space-y-1 pt-1 pb-2">
@@ -547,7 +567,7 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
                     isPaid ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'
                   }`}>
                     <span className={`text-sm font-bold ${isPaid ? 'text-emerald-700' : 'text-rose-700'}`}>Balance Due</span>
-                    <span className={`text-lg font-black font-mono ${isPaid ? 'text-emerald-700' : 'text-rose-700'}`}>{formatNaira(invoiceData.balanceDue ?? 0)}</span>
+                    <span className={`text-lg font-black font-mono ${isPaid ? 'text-emerald-700' : 'text-rose-700'}`}>{fmtDual(invoiceData.balanceDue ?? 0, invoiceData.currency, invoiceData.fxRate)}</span>
                   </div>
                 </div>
 

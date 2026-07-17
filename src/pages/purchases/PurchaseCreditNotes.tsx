@@ -22,6 +22,8 @@ interface VendorCredit {
   tax: number;
   total: number;
   remainingCredit: number;
+  currency: string;
+  fxRate?: string | number | null;
   notes: string | null;
   journalEntryId: string | null;
   createdAt: string;
@@ -46,6 +48,13 @@ const STATUS_META: Record<string, { label: string; className: string }> = {
 
 function formatNaira(kobo: number): string {
   return `₦${(kobo / 100).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+function fmtDual(cents: number, currency?: string, fxRate?: number | string | null): string {
+  const ngn = formatNaira(cents);
+  if (!currency || currency === 'NGN' || !fxRate || Number(fxRate) <= 1) return ngn;
+  const original = (cents / 100) / Number(fxRate);
+  const cur = original.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return `${currency} ${cur}  \u2022  ${ngn}`;
 }
 
 function fmtDate(d: string | null): string {
@@ -663,25 +672,31 @@ function DetailPanel({
                 </div>
               </div>
 
+              {note.currency && note.currency !== 'NGN' && (
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold text-indigo-600 bg-indigo-50 border border-indigo-200">{note.currency}</span>
+                  {note.fxRate && <span className="text-slate-400">Rate: {Number(note.fxRate).toFixed(4)}</span>}
+                </div>
+              )}
               <div className="grid grid-cols-3 gap-3 text-sm">
                 <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm p-3">
                   <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Subtotal</p>
-                  <p className="font-mono font-semibold text-slate-800">{formatNaira(note.subtotal)}</p>
+                  <p className="font-mono font-semibold text-slate-800">{fmtDual(note.subtotal, note.currency, note.fxRate)}</p>
                 </div>
                 <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm p-3">
                   <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">VAT</p>
-                  <p className="font-mono font-semibold text-slate-800">{formatNaira(note.tax)}</p>
+                  <p className="font-mono font-semibold text-slate-800">{fmtDual(note.tax, note.currency, note.fxRate)}</p>
                 </div>
                 <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm p-3">
                   <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Total</p>
-                  <p className="font-mono font-semibold text-slate-900">{formatNaira(note.total)}</p>
+                  <p className="font-mono font-semibold text-slate-900">{fmtDual(note.total, note.currency, note.fxRate)}</p>
                 </div>
               </div>
 
               <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
                 <div>
                   <p className="text-[11px] font-semibold text-amber-700 uppercase tracking-wider">Remaining Credit</p>
-                  <p className="text-lg font-bold text-amber-700 font-mono">{formatNaira(note.remainingCredit)}</p>
+                  <p className="text-lg font-bold text-amber-700 font-mono">{fmtDual(note.remainingCredit, note.currency, note.fxRate)}</p>
                 </div>
                 {canApply && !showApplyForm && (
                   <button

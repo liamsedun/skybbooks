@@ -75,6 +75,13 @@ function exportPaymentsPDF(payments: Payment[], vendorMap: Map<string,string>, t
 function formatNaira(kobo: number) {
   return `₦${(kobo / 100).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
+function fmtDual(cents: number, currency?: string, fxRate?: number | string | null): string {
+  const ngn = formatNaira(cents);
+  if (!currency || currency === 'NGN' || !fxRate || Number(fxRate) <= 1) return ngn;
+  const original = (cents / 100) / Number(fxRate);
+  const cur = original.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return `${currency} ${cur}  \u2022  ${ngn}`;
+}
 function fmtDate(d: string) { return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }); }
 
 export function PaymentsMadePage() {
@@ -659,7 +666,7 @@ export function PaymentsMadePage() {
                       )}
                       <div>
                         <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">Currency</p>
-                        <p className="font-semibold text-slate-800 mt-0.5">{paymentDetail.currency || 'NGN'}</p>
+                        <p className="font-semibold text-slate-800 mt-0.5">{paymentDetail.currency || 'NGN'}{paymentDetail.currency && paymentDetail.currency !== 'NGN' && paymentDetail.fxRate ? <span className="text-[11px] text-slate-400 ml-2">Rate: {Number(paymentDetail.fxRate).toFixed(4)}</span> : ''}</p>
                       </div>
                     </div>
 
@@ -682,7 +689,7 @@ export function PaymentsMadePage() {
                                   <td className="px-3 py-2 font-mono font-medium text-slate-800">
                                     {billNumberMap.get(alloc.billId) || alloc.billId.substring(0, 8) + '...'}
                                   </td>
-                                  <td className="px-3 py-2 text-right font-mono font-semibold text-rose-700">{formatNaira(alloc.amount)}</td>
+                                  <td className="px-3 py-2 text-right font-mono font-semibold text-rose-700">{fmtDual(alloc.amount, paymentDetail.currency, paymentDetail.fxRate)}</td>
                                   <td className="px-3 py-2">
                                     <button onClick={() => setViewBillId(alloc.billId)}
                                       className="text-indigo-600 hover:text-indigo-800 underline font-medium whitespace-nowrap">
@@ -703,17 +710,17 @@ export function PaymentsMadePage() {
                         <tbody className="divide-y divide-slate-100">
                           <tr>
                             <td className="px-3 py-2 text-slate-500">Total Bills Credited</td>
-                            <td className="px-3 py-2 text-right font-mono font-semibold text-slate-800">{formatNaira(paymentDetail.totalAllocated || paymentDetail.amount)}</td>
+                            <td className="px-3 py-2 text-right font-mono font-semibold text-slate-800">{fmtDual(paymentDetail.totalAllocated || paymentDetail.amount, paymentDetail.currency, paymentDetail.fxRate)}</td>
                           </tr>
                           {(paymentDetail.whtAmount || 0) > 0 && (
                             <tr>
                               <td className="px-3 py-2 text-slate-500">Less: WHT Withheld</td>
-                              <td className="px-3 py-2 text-right font-mono font-medium text-amber-600">−{formatNaira(paymentDetail.whtAmount!)}</td>
+                              <td className="px-3 py-2 text-right font-mono font-medium text-amber-600">−{fmtDual(paymentDetail.whtAmount!, paymentDetail.currency, paymentDetail.fxRate)}</td>
                             </tr>
                           )}
                           <tr className="bg-slate-50">
                             <td className="px-3 py-2.5 text-sm font-semibold text-slate-700">Net Paid to Vendor</td>
-                            <td className="px-3 py-2.5 text-right text-base font-black text-rose-700 font-mono">{formatNaira(paymentDetail.amount)}</td>
+                            <td className="px-3 py-2.5 text-right text-base font-black text-rose-700 font-mono">{fmtDual(paymentDetail.amount, paymentDetail.currency, paymentDetail.fxRate)}</td>
                           </tr>
                         </tbody>
                       </table>

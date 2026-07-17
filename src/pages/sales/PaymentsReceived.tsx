@@ -27,6 +27,7 @@ interface Payment {
   date: string;
   amount: number;
   currency: string;
+  fxRate?: string | number | null;
   paymentMethod: string;
   reference: string | null;
   accountId: string;
@@ -172,6 +173,13 @@ const EMPTY_ADD_FORM: AddFormState = {
 
 function formatNaira(kobo: number): string {
   return `₦${(kobo / 100).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+function fmtDual(cents: number, currency?: string, fxRate?: number | string | null): string {
+  const ngn = formatNaira(cents);
+  if (!currency || currency === 'NGN' || !fxRate || Number(fxRate) <= 1) return ngn;
+  const original = (cents / 100) / Number(fxRate);
+  const cur = original.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return `${currency} ${cur}  \u2022  ${ngn}`;
 }
 
 function fmtDate(d: string): string {
@@ -1631,10 +1639,10 @@ function ReceiptModal({ paymentId, onClose, customerMap, org }: {
                   ) : (
                     <div className="flex flex-col items-center justify-center">
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Amount Received</p>
-                      <p className="text-3xl font-black text-emerald-700 font-mono tracking-tight">{formatNaira(payment.amount)}</p>
+                      <p className="text-3xl font-black text-emerald-700 font-mono tracking-tight">{fmtDual(payment.amount, payment.currency, payment.fxRate)}</p>
                     </div>
                   )}
-                  <p className="text-[11px] text-slate-400 text-center mt-1">{payment.currency}</p>
+                  <p className="text-[11px] text-slate-400 text-center mt-1">{payment.currency}{payment.currency !== 'NGN' && payment.fxRate ? ` \u00b7 Rate: ${Number(payment.fxRate).toFixed(4)}` : ''}</p>
                 </div>
 
                 {payment.notes && (
