@@ -13,6 +13,7 @@ import { AppError } from '../lib/errors';
 import { createJournalEntry } from '../services/ledger.service';
 import { postToGL } from '../services/posting.service';
 import { createAuditLog, extractReqMeta } from '../services/audit.service';
+import * as invService from '../services/inventory.service';
 
 // Helper: auto-create opening stock lot when item has trackInventory + purchasePrice + numeric unit
 async function autoCreateOpeningStock(item: any, orgId: string, userId: string) {
@@ -1071,6 +1072,137 @@ router.post('/adjustments/:id/upload', upload.array('files', 5), async (req: Aut
     await createAuditLog({ orgId, userId, action: 'upload', entityType: 'inventory-adjustment', entityId: id, newValues: { filesUploaded: true }, ...extractReqMeta(req) });
 
     return res.status(201).json({ files: results });
+  } catch (err) { return next(err); }
+});
+
+// ==============================
+// INVENTORY TRANSFERS
+// ==============================
+
+router.get('/transfers', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try { return res.json(await invService.getTransfers(req.user!.orgId!)); } catch (err) { return next(err); }
+});
+
+router.get('/transfers/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try { return res.json(await invService.getTransferItems(req.user!.orgId!, req.params.id)); } catch (err) { return next(err); }
+});
+
+router.post('/transfers', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const transfer = await invService.createTransfer(req.user!.orgId!, req.user!.userId!, req.body, extractReqMeta(req));
+    return res.status(201).json(transfer);
+  } catch (err) { return next(err); }
+});
+
+// ==============================
+// STOCK COUNTS
+// ==============================
+
+router.get('/stock-counts', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try { return res.json(await invService.getStockCounts(req.user!.orgId!)); } catch (err) { return next(err); }
+});
+
+router.get('/stock-counts/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try { return res.json(await invService.getStockCountItems(req.user!.orgId!, req.params.id)); } catch (err) { return next(err); }
+});
+
+router.post('/stock-counts', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const count = await invService.createStockCount(req.user!.orgId!, req.user!.userId!, req.body, extractReqMeta(req));
+    return res.status(201).json(count);
+  } catch (err) { return next(err); }
+});
+
+router.post('/stock-counts/:id/apply', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const result = await invService.applyStockCount(req.user!.orgId!, req.user!.userId!, req.params.id, extractReqMeta(req));
+    return res.json(result);
+  } catch (err) { return next(err); }
+});
+
+// ==============================
+// WRITE-OFFS
+// ==============================
+
+router.get('/writeoffs', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try { return res.json(await invService.getWriteoffs(req.user!.orgId!)); } catch (err) { return next(err); }
+});
+
+router.get('/writeoffs/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try { return res.json(await invService.getWriteoffItems(req.user!.orgId!, req.params.id)); } catch (err) { return next(err); }
+});
+
+router.post('/writeoffs', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const wo = await invService.createWriteoff(req.user!.orgId!, req.user!.userId!, req.body, extractReqMeta(req));
+    return res.status(201).json(wo);
+  } catch (err) { return next(err); }
+});
+
+router.post('/writeoffs/:id/post', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const result = await invService.postWriteoff(req.user!.orgId!, req.user!.userId!, req.params.id, extractReqMeta(req));
+    return res.json(result);
+  } catch (err) { return next(err); }
+});
+
+// ==============================
+// LANDED COSTS
+// ==============================
+
+router.get('/landed-costs', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try { return res.json(await invService.getLandedCosts(req.user!.orgId!)); } catch (err) { return next(err); }
+});
+
+router.get('/landed-costs/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try { return res.json(await invService.getLandedCostAllocations(req.user!.orgId!, req.params.id)); } catch (err) { return next(err); }
+});
+
+router.post('/landed-costs', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const lc = await invService.createLandedCost(req.user!.orgId!, req.user!.userId!, req.body, extractReqMeta(req));
+    return res.status(201).json(lc);
+  } catch (err) { return next(err); }
+});
+
+router.post('/landed-costs/:id/allocate', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const result = await invService.allocateLandedCost(req.user!.orgId!, req.user!.userId!, req.params.id, extractReqMeta(req));
+    return res.json(result);
+  } catch (err) { return next(err); }
+});
+
+// ==============================
+// VALUATION REPORTS
+// ==============================
+
+router.get('/valuation', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const result = await invService.getInventoryValuation(req.user!.orgId!, req.query.asOfDate as string);
+    return res.json(result);
+  } catch (err) { return next(err); }
+});
+
+router.get('/aging', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const result = await invService.getInventoryAging(req.user!.orgId!);
+    return res.json(result);
+  } catch (err) { return next(err); }
+});
+
+router.get('/turnover', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { fromDate, toDate } = req.query;
+    if (!fromDate || !toDate) throw new AppError('fromDate and toDate required.', 400);
+    const result = await invService.getInventoryTurnover(req.user!.orgId!, fromDate as string, toDate as string);
+    return res.json(result);
+  } catch (err) { return next(err); }
+});
+
+router.get('/stock-status', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const result = await invService.getStockStatusSummary(req.user!.orgId!);
+    return res.json(result);
   } catch (err) { return next(err); }
 });
 

@@ -1749,6 +1749,188 @@ export async function runMigration() {
     }
     console.log('[Migration] Seeded default asset classes for existing organisations.');
 
+    // -------------------------------------------------------------------------
+    // Inventory Accounting Enhancement — Tables & Columns
+    // -------------------------------------------------------------------------
+
+    // Add costing_method enum
+    await db.execute(sql`
+      DO $$ BEGIN
+        CREATE TYPE costing_method AS ENUM ('fifo', 'weighted_average', 'specific_identification');
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$;
+    `);
+
+    // Add stock_count_status, writeoff_status, landed_cost_status, landed_cost_alloc_method enums
+    await db.execute(sql`
+      DO $$ BEGIN
+        CREATE TYPE stock_count_status AS ENUM ('draft', 'completed');
+      EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+    `);
+    await db.execute(sql`
+      DO $$ BEGIN
+        CREATE TYPE writeoff_status AS ENUM ('draft', 'posted');
+      EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+    `);
+    await db.execute(sql`
+      DO $$ BEGIN
+        CREATE TYPE landed_cost_status AS ENUM ('draft', 'allocated');
+      EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+    `);
+    await db.execute(sql`
+      DO $$ BEGIN
+        CREATE TYPE landed_cost_alloc_method AS ENUM ('by_value', 'by_quantity', 'by_weight', 'by_volume');
+      EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+    `);
+
+    // Add columns to items
+    const itemCols = [
+      'ADD COLUMN IF NOT EXISTS costing_method costing_method DEFAULT \'fifo\'',
+      'ADD COLUMN IF NOT EXISTS cogs_account_id uuid REFERENCES accounts(id)',
+      'ADD COLUMN IF NOT EXISTS average_cost bigint',
+      'ADD COLUMN IF NOT EXISTS last_purchase_price bigint',
+      'ADD COLUMN IF NOT EXISTS reorder_quantity integer',
+      'ADD COLUMN IF NOT EXISTS min_stock_level integer',
+      'ADD COLUMN IF NOT EXISTS max_stock_level integer',
+      'ADD COLUMN IF NOT EXISTS location text',
+    ];
+    for (const col of itemCols) {
+      await db.execute(sql`ALTER TABLE items ${sql.raw(col)}`);
+    }
+
+    // Inventory Transfers
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS inventory_transfers (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        reference text NOT NULL,
+        date timestamp NOT NULL,
+        from_location text NOT NULL,
+        to_location text NOT NULL,
+        description text,
+        transfer_cost bigint DEFAULT 0 NOT NULL,
+        status text DEFAULT 'draft' NOT NULL,
+        created_by uuid REFERENCES users(id) NOT NULL,
+        created_at timestamp DEFAULT now() NOT NULL,
+        updated_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_inventory_transfers_org ON inventory_transfers (org_id)`);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS inventory_transfer_items (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        transfer_id uuid REFERENCES inventory_transfers(id) NOT NULL,
+        item_id uuid REFERENCES items(id) NOT NULL,
+        lot_id uuid REFERENCES inventory_lots(id),
+        quantity numeric NOT NULL,
+        unit_cost bigint,
+        created_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_inventory_transfer_items_transfer ON inventory_transfer_items (transfer_id)`);
+
+    // Stock Counts
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS inventory_stock_counts (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        reference text NOT NULL,
+        date timestamp NOT NULL,
+        location text,
+        description text,
+        status stock_count_status DEFAULT 'draft' NOT NULL,
+        created_by uuid REFERENCES users(id) NOT NULL,
+        created_at timestamp DEFAULT now() NOT NULL,
+        updated_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_inventory_stock_counts_org ON inventory_stock_counts (org_id)`);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS inventory_stock_count_items (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        count_id uuid REFERENCES inventory_stock_counts(id) NOT NULL,
+        item_id uuid REFERENCES items(id) NOT NULL,
+        lot_id uuid REFERENCES inventory_lots(id),
+        expected_quantity numeric NOT NULL,
+        actual_quantity numeric NOT NULL,
+        variance numeric NOT NULL,
+        unit_cost bigint,
+        variance_value bigint,
+        created_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_inventory_stock_count_items_count ON inventory_stock_count_items (count_id)`);
+
+    // Write-offs
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS inventory_writeoffs (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        reference text NOT NULL,
+        date timestamp NOT NULL,
+        reason text NOT NULL,
+        description text,
+        location text,
+        account_id uuid REFERENCES accounts(id),
+        status writeoff_status DEFAULT 'draft' NOT NULL,
+        created_by uuid REFERENCES users(id) NOT NULL,
+        created_at timestamp DEFAULT now() NOT NULL,
+        updated_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_inventory_writeoffs_org ON inventory_writeoffs (org_id)`);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS inventory_writeoff_items (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        writeoff_id uuid REFERENCES inventory_writeoffs(id) NOT NULL,
+        item_id uuid REFERENCES items(id) NOT NULL,
+        lot_id uuid REFERENCES inventory_lots(id),
+        quantity numeric NOT NULL,
+        unit_cost bigint,
+        total_cost bigint,
+        created_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_inventory_writeoff_items_writeoff ON inventory_writeoff_items (writeoff_id)`);
+
+    // Landed Costs
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS landed_costs (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        reference text NOT NULL,
+        date timestamp NOT NULL,
+        vendor text,
+        description text,
+        total_amount bigint NOT NULL,
+        allocation_method landed_cost_alloc_method DEFAULT 'by_value' NOT NULL,
+        bill_id uuid REFERENCES bills(id),
+        status landed_cost_status DEFAULT 'draft' NOT NULL,
+        created_by uuid REFERENCES users(id) NOT NULL,
+        created_at timestamp DEFAULT now() NOT NULL,
+        updated_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_landed_costs_org ON landed_costs (org_id)`);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS landed_cost_allocations (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        landed_cost_id uuid REFERENCES landed_costs(id) NOT NULL,
+        item_id uuid REFERENCES items(id) NOT NULL,
+        bill_line_id uuid REFERENCES bill_lines(id),
+        lot_id uuid REFERENCES inventory_lots(id),
+        allocated_amount bigint NOT NULL,
+        created_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_landed_cost_allocations_cost ON landed_cost_allocations (landed_cost_id)`);
+
+    console.log('[Migration] Inventory Enhancement tables and columns created.');
+
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema setup:', err);

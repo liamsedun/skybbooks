@@ -123,6 +123,13 @@ export const inventoryTxnTypeEnum = pgEnum('inventory_txn_type', [
 export const adjustmentModeEnum = pgEnum('adjustment_mode', ['quantity', 'value']);
 export const adjustmentStatusEnum = pgEnum('adjustment_status', ['draft', 'adjusted']);
 
+export const costingMethodEnum = pgEnum('costing_method', ['fifo', 'weighted_average', 'specific_identification']);
+
+export const stockCountStatusEnum = pgEnum('stock_count_status', ['draft', 'completed']);
+export const writeoffStatusEnum = pgEnum('writeoff_status', ['draft', 'posted']);
+export const landedCostStatusEnum = pgEnum('landed_cost_status', ['draft', 'allocated']);
+export const landedCostAllocMethodEnum = pgEnum('landed_cost_alloc_method', ['by_value', 'by_quantity', 'by_weight', 'by_volume']);
+
 export const quoteStatusEnum = pgEnum('quote_status', [
   'draft',
   'sent',
@@ -417,8 +424,16 @@ export const items = pgTable('items', {
   salesAccountId: uuid('sales_account_id').references(() => accounts.id),
   purchaseAccountId: uuid('purchase_account_id').references(() => accounts.id),
   inventoryAccountId: uuid('inventory_account_id').references(() => accounts.id),
+  cogsAccountId: uuid('cogs_account_id').references(() => accounts.id),
+  costingMethod: costingMethodEnum('costing_method').default('fifo').notNull(),
+  averageCost: bigint('average_cost', { mode: 'number' }),
+  lastPurchasePrice: bigint('last_purchase_price', { mode: 'number' }),
   trackInventory: boolean('track_inventory').default(false).notNull(),
   reorderPoint: integer('reorder_point'),
+  reorderQuantity: integer('reorder_quantity'),
+  minStockLevel: integer('min_stock_level'),
+  maxStockLevel: integer('max_stock_level'),
+  location: text('location'),
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
@@ -473,6 +488,109 @@ export const inventoryAdjustmentItems = pgTable('inventory_adjustment_items', {
   quantityAdjusted: numeric('quantity_adjusted').notNull(),
   currentUnitCost: bigint('current_unit_cost', { mode: 'number' }),
   newUnitCost: bigint('new_unit_cost', { mode: 'number' }),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+export const inventoryTransfers = pgTable('inventory_transfers', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  reference: text('reference').notNull(),
+  date: timestamp('date').notNull(),
+  fromLocation: text('from_location').notNull(),
+  toLocation: text('to_location').notNull(),
+  description: text('description'),
+  transferCost: bigint('transfer_cost', { mode: 'number' }).default(0).notNull(),
+  status: text('status').default('draft').notNull(),
+  createdBy: uuid('created_by').references(() => users.id).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+});
+
+export const inventoryTransferItems = pgTable('inventory_transfer_items', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  transferId: uuid('transfer_id').references(() => inventoryTransfers.id).notNull(),
+  itemId: uuid('item_id').references(() => items.id).notNull(),
+  lotId: uuid('lot_id').references(() => inventoryLots.id),
+  quantity: numeric('quantity').notNull(),
+  unitCost: bigint('unit_cost', { mode: 'number' }),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+export const inventoryStockCounts = pgTable('inventory_stock_counts', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  reference: text('reference').notNull(),
+  date: timestamp('date').notNull(),
+  location: text('location'),
+  description: text('description'),
+  status: stockCountStatusEnum('status').default('draft').notNull(),
+  createdBy: uuid('created_by').references(() => users.id).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+});
+
+export const inventoryStockCountItems = pgTable('inventory_stock_count_items', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  countId: uuid('count_id').references(() => inventoryStockCounts.id).notNull(),
+  itemId: uuid('item_id').references(() => items.id).notNull(),
+  lotId: uuid('lot_id').references(() => inventoryLots.id),
+  expectedQuantity: numeric('expected_quantity').notNull(),
+  actualQuantity: numeric('actual_quantity').notNull(),
+  variance: numeric('variance').notNull(),
+  unitCost: bigint('unit_cost', { mode: 'number' }),
+  varianceValue: bigint('variance_value', { mode: 'number' }),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+export const inventoryWriteoffs = pgTable('inventory_writeoffs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  reference: text('reference').notNull(),
+  date: timestamp('date').notNull(),
+  reason: text('reason').notNull(),
+  description: text('description'),
+  location: text('location'),
+  accountId: uuid('account_id').references(() => accounts.id),
+  status: writeoffStatusEnum('status').default('draft').notNull(),
+  createdBy: uuid('created_by').references(() => users.id).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+});
+
+export const inventoryWriteoffItems = pgTable('inventory_writeoff_items', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  writeoffId: uuid('writeoff_id').references(() => inventoryWriteoffs.id).notNull(),
+  itemId: uuid('item_id').references(() => items.id).notNull(),
+  lotId: uuid('lot_id').references(() => inventoryLots.id),
+  quantity: numeric('quantity').notNull(),
+  unitCost: bigint('unit_cost', { mode: 'number' }),
+  totalCost: bigint('total_cost', { mode: 'number' }),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+export const landedCosts = pgTable('landed_costs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  reference: text('reference').notNull(),
+  date: timestamp('date').notNull(),
+  vendor: text('vendor'),
+  description: text('description'),
+  totalAmount: bigint('total_amount', { mode: 'number' }).notNull(),
+  allocationMethod: landedCostAllocMethodEnum('allocation_method').default('by_value').notNull(),
+  billId: uuid('bill_id').references(() => bills.id),
+  status: landedCostStatusEnum('status').default('draft').notNull(),
+  createdBy: uuid('created_by').references(() => users.id).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+});
+
+export const landedCostAllocations = pgTable('landed_cost_allocations', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  landedCostId: uuid('landed_cost_id').references(() => landedCosts.id).notNull(),
+  itemId: uuid('item_id').references(() => items.id).notNull(),
+  billLineId: uuid('bill_line_id').references(() => billLines.id),
+  lotId: uuid('lot_id').references(() => inventoryLots.id),
+  allocatedAmount: bigint('allocated_amount', { mode: 'number' }).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
@@ -1839,6 +1957,14 @@ export const itemsRelations = relations(items, ({ one, many }) => ({
   }),
   inventoryLots: many(inventoryLots),
   inventoryTransactions: many(inventoryTransactions),
+  inventoryTransfers: many(inventoryTransfers),
+  inventoryTransferItems: many(inventoryTransferItems),
+  inventoryStockCounts: many(inventoryStockCounts),
+  inventoryStockCountItems: many(inventoryStockCountItems),
+  inventoryWriteoffs: many(inventoryWriteoffs),
+  inventoryWriteoffItems: many(inventoryWriteoffItems),
+  landedCosts: many(landedCosts),
+  landedCostAllocations: many(landedCostAllocations),
   invoiceLines: many(invoiceLines),
   billLines: many(billLines)
 }));
@@ -1866,6 +1992,126 @@ export const inventoryTransactionsRelations = relations(inventoryTransactions, (
   }),
   lot: one(inventoryLots, {
     fields: [inventoryTransactions.lotId],
+    references: [inventoryLots.id]
+  })
+}));
+
+export const inventoryTransfersRelations = relations(inventoryTransfers, ({ one, many }) => ({
+  organisation: one(organisations, {
+    fields: [inventoryTransfers.orgId],
+    references: [organisations.id]
+  }),
+  items: many(inventoryTransferItems),
+  createdByUser: one(users, {
+    fields: [inventoryTransfers.createdBy],
+    references: [users.id]
+  })
+}));
+
+export const inventoryTransferItemsRelations = relations(inventoryTransferItems, ({ one }) => ({
+  transfer: one(inventoryTransfers, {
+    fields: [inventoryTransferItems.transferId],
+    references: [inventoryTransfers.id]
+  }),
+  item: one(items, {
+    fields: [inventoryTransferItems.itemId],
+    references: [items.id]
+  }),
+  lot: one(inventoryLots, {
+    fields: [inventoryTransferItems.lotId],
+    references: [inventoryLots.id]
+  })
+}));
+
+export const inventoryStockCountsRelations = relations(inventoryStockCounts, ({ one, many }) => ({
+  organisation: one(organisations, {
+    fields: [inventoryStockCounts.orgId],
+    references: [organisations.id]
+  }),
+  items: many(inventoryStockCountItems),
+  createdByUser: one(users, {
+    fields: [inventoryStockCounts.createdBy],
+    references: [users.id]
+  })
+}));
+
+export const inventoryStockCountItemsRelations = relations(inventoryStockCountItems, ({ one }) => ({
+  count: one(inventoryStockCounts, {
+    fields: [inventoryStockCountItems.countId],
+    references: [inventoryStockCounts.id]
+  }),
+  item: one(items, {
+    fields: [inventoryStockCountItems.itemId],
+    references: [items.id]
+  }),
+  lot: one(inventoryLots, {
+    fields: [inventoryStockCountItems.lotId],
+    references: [inventoryLots.id]
+  })
+}));
+
+export const inventoryWriteoffsRelations = relations(inventoryWriteoffs, ({ one, many }) => ({
+  organisation: one(organisations, {
+    fields: [inventoryWriteoffs.orgId],
+    references: [organisations.id]
+  }),
+  items: many(inventoryWriteoffItems),
+  account: one(accounts, {
+    fields: [inventoryWriteoffs.accountId],
+    references: [accounts.id]
+  }),
+  createdByUser: one(users, {
+    fields: [inventoryWriteoffs.createdBy],
+    references: [users.id]
+  })
+}));
+
+export const inventoryWriteoffItemsRelations = relations(inventoryWriteoffItems, ({ one }) => ({
+  writeoff: one(inventoryWriteoffs, {
+    fields: [inventoryWriteoffItems.writeoffId],
+    references: [inventoryWriteoffs.id]
+  }),
+  item: one(items, {
+    fields: [inventoryWriteoffItems.itemId],
+    references: [items.id]
+  }),
+  lot: one(inventoryLots, {
+    fields: [inventoryWriteoffItems.lotId],
+    references: [inventoryLots.id]
+  })
+}));
+
+export const landedCostsRelations = relations(landedCosts, ({ one, many }) => ({
+  organisation: one(organisations, {
+    fields: [landedCosts.orgId],
+    references: [organisations.id]
+  }),
+  bill: one(bills, {
+    fields: [landedCosts.billId],
+    references: [bills.id]
+  }),
+  allocations: many(landedCostAllocations),
+  createdByUser: one(users, {
+    fields: [landedCosts.createdBy],
+    references: [users.id]
+  })
+}));
+
+export const landedCostAllocationsRelations = relations(landedCostAllocations, ({ one }) => ({
+  landedCost: one(landedCosts, {
+    fields: [landedCostAllocations.landedCostId],
+    references: [landedCosts.id]
+  }),
+  item: one(items, {
+    fields: [landedCostAllocations.itemId],
+    references: [items.id]
+  }),
+  billLine: one(billLines, {
+    fields: [landedCostAllocations.billLineId],
+    references: [billLines.id]
+  }),
+  lot: one(inventoryLots, {
+    fields: [landedCostAllocations.lotId],
     references: [inventoryLots.id]
   })
 }));
@@ -2708,10 +2954,18 @@ export const db = drizzle(pool, {
     journalLines,
     contacts,
     items,
+    inventoryAdjustmentItems,
+    inventoryAdjustments,
     inventoryLots,
-  inventoryTransactions,
-  inventoryAdjustmentItems,
-  inventoryAdjustments,
+    inventoryStockCountItems,
+    inventoryStockCounts,
+    inventoryTransactions,
+    inventoryTransferItems,
+    inventoryTransfers,
+    inventoryWriteoffItems,
+    inventoryWriteoffs,
+    landedCostAllocations,
+    landedCosts,
     quotes,
     salesOrders,
     recurringInvoices,
@@ -2773,7 +3027,15 @@ export const db = drizzle(pool, {
     contactsRelations,
     itemsRelations,
     inventoryLotsRelations,
+    inventoryStockCountItemsRelations,
+    inventoryStockCountsRelations,
     inventoryTransactionsRelations,
+    inventoryTransferItemsRelations,
+    inventoryTransfersRelations,
+    inventoryWriteoffItemsRelations,
+    inventoryWriteoffsRelations,
+    landedCostAllocationsRelations,
+    landedCostsRelations,
     quotesRelations,
     salesOrdersRelations,
     recurringInvoicesRelations,
@@ -2846,7 +3108,15 @@ export const schema = {
   contacts,
   items,
   inventoryLots,
+  inventoryStockCountItems,
+  inventoryStockCounts,
   inventoryTransactions,
+  inventoryTransferItems,
+  inventoryTransfers,
+  inventoryWriteoffItems,
+  inventoryWriteoffs,
+  landedCostAllocations,
+  landedCosts,
   quotes,
   salesOrders,
   recurringInvoices,

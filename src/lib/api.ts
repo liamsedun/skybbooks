@@ -1477,4 +1477,64 @@ export const eclApi = {
   },
 };
 
+export const inventoryApi = {
+  getTransfers: async (): Promise<any[]> => {
+    const res = await api.get('/inventory/transfers'); return res.data;
+  },
+  getTransferById: async (id: string): Promise<any> => {
+    const res = await api.get(`/inventory/transfers/${id}`); return res.data;
+  },
+  createTransfer: async (data: any): Promise<any> => {
+    const res = await api.post('/inventory/transfers', data); return res.data;
+  },
+  getStockCounts: async (): Promise<any[]> => {
+    const res = await api.get('/inventory/stock-counts'); return res.data;
+  },
+  getStockCountById: async (id: string): Promise<any> => {
+    const res = await api.get(`/inventory/stock-counts/${id}`); return res.data;
+  },
+  createStockCount: async (data: any): Promise<any> => {
+    const res = await api.post('/inventory/stock-counts', data); return res.data;
+  },
+  applyStockCount: async (id: string): Promise<any> => {
+    const res = await api.post(`/inventory/stock-counts/${id}/apply`); return res.data;
+  },
+  getWriteoffs: async (): Promise<any[]> => {
+    const res = await api.get('/inventory/writeoffs'); return res.data;
+  },
+  getWriteoffById: async (id: string): Promise<any> => {
+    const res = await api.get(`/inventory/writeoffs/${id}`); return res.data;
+  },
+  createWriteoff: async (data: any): Promise<any> => {
+    const res = await api.post('/inventory/writeoffs', data); return res.data;
+  },
+  postWriteoff: async (id: string): Promise<any> => {
+    const res = await api.post(`/inventory/writeoffs/${id}/post`); return res.data;
+  },
+  getLandedCosts: async (): Promise<any[]> => {
+    const res = await api.get('/inventory/landed-costs'); return res.data;
+  },
+  getLandedCostById: async (id: string): Promise<any> => {
+    const res = await api.get(`/inventory/landed-costs/${id}`); return res.data;
+  },
+  createLandedCost: async (data: any): Promise<any> => {
+    const res = await api.post('/inventory/landed-costs', data); return res.data;
+  },
+  allocateLandedCost: async (id: string): Promise<any> => {
+    const res = await api.post(`/inventory/landed-costs/${id}/allocate`); return res.data;
+  },
+  getValuation: async (asOfDate?: string): Promise<any[]> => {
+    const res = await api.get('/inventory/valuation', { params: { asOfDate } }); return res.data;
+  },
+  getAging: async (): Promise<any[]> => {
+    const res = await api.get('/inventory/aging'); return res.data;
+  },
+  getTurnover: async (fromDate: string, toDate: string): Promise<any> => {
+    const res = await api.get('/inventory/turnover', { params: { fromDate, toDate } }); return res.data;
+  },
+  getStockStatus: async (): Promise<any[]> => {
+    const res = await api.get('/inventory/stock-status'); return res.data;
+  },
+};
+
 

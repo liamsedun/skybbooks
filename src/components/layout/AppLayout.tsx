@@ -160,6 +160,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     'purchase_credit_notes': '/purchases/credit-notes',
     'items': '/inventory/items',
     'inventory_adjustments': '/inventory/adjustments',
+    'inventory_management': '/inventory/management',
     'employees': '/payroll/employees',
     'payroll_runs': '/payroll/runs',
     'paye_schedules': '/payroll/paye-schedules',
@@ -259,6 +260,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
       items: [
         { name: 'Items & Services', id: 'items', icon: Package },
         { name: 'Inventory Adjustments', id: 'inventory_adjustments', icon: ArrowRightLeft },
+        { name: 'Inventory Management', id: 'inventory_management', icon: Package },
       ],
     },
     {
