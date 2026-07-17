@@ -44,6 +44,9 @@ import eclRouter from '../routes/ecl';
 import approvalRouter from '../routes/approval';
 import assistantRouter from '../routes/assistant';
 import ocrRouter from '../routes/ocr';
+import groupsRouter from '../routes/groups';
+import intercompanyRouter from '../routes/intercompany';
+import consolidationRouter from '../routes/consolidation';
 
 import { runMigration } from '../db/migrate';
 import { fetchLatestRates } from '../services/cbn.service';
@@ -167,6 +170,9 @@ async function startServer() {
   app.use('/api/approval', approvalRouter);
   app.use('/api/assistant', assistantRouter);
   app.use('/api/ocr', ocrRouter);
+  app.use('/api/groups', groupsRouter);
+  app.use('/api/intercompany', intercompanyRouter);
+  app.use('/api/reports/consolidation', consolidationRouter);
 
   app.get('/api/health', (req, res) => {
     res.json({ status: 'healthy', timestamp: new Date().toISOString() });

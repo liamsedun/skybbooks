@@ -116,6 +116,11 @@ export const bankConnectionStatusEnum = pgEnum('bank_connection_status', ['activ
 export const paymentGatewayEnum = pgEnum('payment_gateway', ['paystack', 'flutterwave', 'moniepoint']);
 export const gatewayTxnStatusEnum = pgEnum('gateway_txn_status', ['pending', 'success', 'failed', 'settled', 'partial_refund', 'full_refund']);
 
+export const consolidationMethodEnum = pgEnum('consolidation_method', ['full', 'equity', 'proportionate']);
+export const intercompanyTxnTypeEnum = pgEnum('intercompany_txn_type', ['loan', 'goods', 'service', 'royalty', 'dividend', 'management_fee', 'other']);
+export const intercompanyTxnStatusEnum = pgEnum('intercompany_txn_status', ['pending', 'matched', 'settled', 'eliminated']);
+export const eliminationMethodEnum = pgEnum('elimination_method', ['auto', 'manual']);
+
 export const itemTypeEnum = pgEnum('item_type', ['product', 'service']);
 
 export const inventoryTxnTypeEnum = pgEnum('inventory_txn_type', [
@@ -344,6 +349,100 @@ export const sessions = pgTable('sessions', {
   expiresAt: timestamp('expires_at').notNull(),
   ipAddress: text('ip_address'),
   userAgent: text('user_agent'),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+// --- Multi-company / Group structure ---
+
+export const groups = pgTable('groups', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: text('name').notNull(),
+  baseCurrency: text('base_currency').default('NGN').notNull(),
+  parentGroupId: uuid('parent_group_id'),
+  settings: jsonb('settings').default({}).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+export const groupMembers = pgTable('group_members', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  groupId: uuid('group_id').references(() => groups.id).notNull(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  ownershipPercentage: numeric('ownership_percentage', { precision: 5, scale: 2 }).default('100').notNull(),
+  consolidationMethod: consolidationMethodEnum('consolidation_method').default('full').notNull(),
+  isParent: boolean('is_parent').default(false).notNull(),
+  startDate: timestamp('start_date'),
+  endDate: timestamp('end_date'),
+  settings: jsonb('settings').default({}).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+export const userOrganisationAccess = pgTable('user_organisation_access', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  role: userRoleEnum('role').default('staff').notNull(),
+  isDefault: boolean('is_default').default(false).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+export const intercompanyTransactions = pgTable('intercompany_transactions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  groupId: uuid('group_id').references(() => groups.id).notNull(),
+  fromOrgId: uuid('from_org_id').references(() => organisations.id).notNull(),
+  toOrgId: uuid('to_org_id').references(() => organisations.id).notNull(),
+  transactionType: intercompanyTxnTypeEnum('transaction_type').notNull(),
+  status: intercompanyTxnStatusEnum('status').default('pending').notNull(),
+  reference: text('reference'),
+  description: text('description').notNull(),
+  amount: bigint('amount', { mode: 'number' }).notNull(),
+  currency: text('currency').default('NGN').notNull(),
+  fxRate: numeric('fx_rate', { precision: 18, scale: 8 }),
+  date: timestamp('date').notNull(),
+  dueDate: timestamp('due_date'),
+  settledAmount: bigint('settled_amount', { mode: 'number' }),
+  settledDate: timestamp('settled_date'),
+  fromJournalEntryId: uuid('from_journal_entry_id').references(() => journalEntries.id),
+  toJournalEntryId: uuid('to_journal_entry_id').references(() => journalEntries.id),
+  createdBy: uuid('created_by').references(() => users.id),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+export const intercompanyEliminations = pgTable('intercompany_eliminations', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  groupId: uuid('group_id').references(() => groups.id).notNull(),
+  consolidationRunId: uuid('consolidation_run_id'),
+  transactionId: uuid('transaction_id').references(() => intercompanyTransactions.id),
+  eliminationMethod: eliminationMethodEnum('elimination_method').default('auto').notNull(),
+  description: text('description').notNull(),
+  fromOrgId: uuid('from_org_id').references(() => organisations.id).notNull(),
+  toOrgId: uuid('to_org_id').references(() => organisations.id).notNull(),
+  accountCode: varchar('account_code', { length: 20 }),
+  amount: bigint('amount', { mode: 'number' }).notNull(),
+  currency: text('currency').default('NGN').notNull(),
+  fxRate: numeric('fx_rate', { precision: 18, scale: 8 }),
+  journalEntryId: uuid('journal_entry_id').references(() => journalEntries.id),
+  createdBy: uuid('created_by').references(() => users.id),
+  periodStart: timestamp('period_start').notNull(),
+  periodEnd: timestamp('period_end').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+export const groupConsolidationRuns = pgTable('group_consolidation_runs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  groupId: uuid('group_id').references(() => groups.id).notNull(),
+  reportType: text('report_type').notNull(),
+  periodStart: timestamp('period_start').notNull(),
+  periodEnd: timestamp('period_end').notNull(),
+  asOfDate: timestamp('as_of_date'),
+  status: text('status').default('completed').notNull(),
+  includesEliminations: boolean('includes_eliminations').default(true).notNull(),
+  includesNci: boolean('includes_nci').default(true).notNull(),
+  currencyTranslationMethod: text('currency_translation_method').default('closing_rate'),
+  totalOrgs: integer('total_orgs').default(0).notNull(),
+  resultData: jsonb('result_data'),
+  errorMessage: text('error_message'),
+  createdBy: uuid('created_by').references(() => users.id),
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
@@ -2136,7 +2235,13 @@ export const organisationsRelations = relations(organisations, ({ many }) => ({
   ocrDocuments: many(ocrDocuments),
   budgets: many(budgets),
   auditLog: many(auditLog),
-  currencyRates: many(currencyRates)
+  currencyRates: many(currencyRates),
+  groupMemberships: many(groupMembers, { relationName: 'orgGroupMembers' }),
+  intercompanyFromTxns: many(intercompanyTransactions, { relationName: 'icFromOrg' }),
+  intercompanyToTxns: many(intercompanyTransactions, { relationName: 'icToOrg' }),
+  eliminationsFrom: many(intercompanyEliminations, { relationName: 'elimFromOrg' }),
+  eliminationsTo: many(intercompanyEliminations, { relationName: 'elimToOrg' }),
+  userAccess: many(userOrganisationAccess)
 }));
 
 export const usersRelations = relations(users, ({ one, many }) => ({
@@ -2161,7 +2266,11 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   payrollProcessed: many(payrollRuns),
   documentsUploaded: many(documents),
   budgetsCreated: many(budgets),
-  actionsPerformed: many(auditLog)
+  actionsPerformed: many(auditLog),
+  organisationAccess: many(userOrganisationAccess),
+  intercompanyTxnsCreated: many(intercompanyTransactions, { relationName: 'icCreatedBy' }),
+  eliminationsCreated: many(intercompanyEliminations, { relationName: 'elimCreatedBy' }),
+  consolidationsCreated: many(groupConsolidationRuns, { relationName: 'consolCreatedBy' })
 }));
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({
@@ -3280,6 +3389,115 @@ export const eclComputationsRelations = relations(eclComputations, ({ one }) => 
   }),
 }));
 
+// --- Multi-company / Group Relations ---
+
+export const groupsRelations = relations(groups, ({ many }) => ({
+  members: many(groupMembers),
+  intercompanyTransactions: many(intercompanyTransactions),
+  eliminations: many(intercompanyEliminations),
+  consolidationRuns: many(groupConsolidationRuns)
+}));
+
+export const groupMembersRelations = relations(groupMembers, ({ one }) => ({
+  group: one(groups, {
+    fields: [groupMembers.groupId],
+    references: [groups.id]
+  }),
+  organisation: one(organisations, {
+    fields: [groupMembers.orgId],
+    references: [organisations.id],
+    relationName: 'orgGroupMembers'
+  })
+}));
+
+export const userOrganisationAccessRelations = relations(userOrganisationAccess, ({ one }) => ({
+  user: one(users, {
+    fields: [userOrganisationAccess.userId],
+    references: [users.id]
+  }),
+  organisation: one(organisations, {
+    fields: [userOrganisationAccess.orgId],
+    references: [organisations.id]
+  })
+}));
+
+export const intercompanyTransactionsRelations = relations(intercompanyTransactions, ({ one }) => ({
+  group: one(groups, {
+    fields: [intercompanyTransactions.groupId],
+    references: [groups.id]
+  }),
+  fromOrganisation: one(organisations, {
+    fields: [intercompanyTransactions.fromOrgId],
+    references: [organisations.id],
+    relationName: 'icFromOrg'
+  }),
+  toOrganisation: one(organisations, {
+    fields: [intercompanyTransactions.toOrgId],
+    references: [organisations.id],
+    relationName: 'icToOrg'
+  }),
+  fromJournalEntry: one(journalEntries, {
+    fields: [intercompanyTransactions.fromJournalEntryId],
+    references: [journalEntries.id]
+  }),
+  toJournalEntry: one(journalEntries, {
+    fields: [intercompanyTransactions.toJournalEntryId],
+    references: [journalEntries.id]
+  }),
+  creator: one(users, {
+    fields: [intercompanyTransactions.createdBy],
+    references: [users.id],
+    relationName: 'icCreatedBy'
+  })
+}));
+
+export const intercompanyEliminationsRelations = relations(intercompanyEliminations, ({ one }) => ({
+  group: one(groups, {
+    fields: [intercompanyEliminations.groupId],
+    references: [groups.id]
+  }),
+  consolidationRun: one(groupConsolidationRuns, {
+    fields: [intercompanyEliminations.consolidationRunId],
+    references: [groupConsolidationRuns.id]
+  }),
+  transaction: one(intercompanyTransactions, {
+    fields: [intercompanyEliminations.transactionId],
+    references: [intercompanyTransactions.id]
+  }),
+  fromOrganisation: one(organisations, {
+    fields: [intercompanyEliminations.fromOrgId],
+    references: [organisations.id],
+    relationName: 'elimFromOrg'
+  }),
+  toOrganisation: one(organisations, {
+    fields: [intercompanyEliminations.toOrgId],
+    references: [organisations.id],
+    relationName: 'elimToOrg'
+  }),
+  journalEntry: one(journalEntries, {
+    fields: [intercompanyEliminations.journalEntryId],
+    references: [journalEntries.id]
+  }),
+  creator: one(users, {
+    fields: [intercompanyEliminations.createdBy],
+    references: [users.id],
+    relationName: 'elimCreatedBy'
+  })
+}));
+
+export const groupConsolidationRunsRelations = relations(groupConsolidationRuns, ({ one, many }) => ({
+  group: one(groups, {
+    fields: [groupConsolidationRuns.groupId],
+    references: [groups.id]
+  }),
+  creator: one(users, {
+    fields: [groupConsolidationRuns.createdBy],
+    references: [users.id],
+    relationName: 'consolCreatedBy'
+  }),
+  eliminations: many(intercompanyEliminations)
+}));
+
 // ==========================================
 // 4. DATABASE INITIALIZATION & INSTANCE
 // ==========================================
@@ -3363,6 +3581,12 @@ export const db = drizzle(pool, {
     legacyIncomeStatements,
     legacyCashFlowStatements,
     legacyStatementsOfChangesInEquity,
+    groups,
+    groupMembers,
+    userOrganisationAccess,
+    intercompanyTransactions,
+    intercompanyEliminations,
+    groupConsolidationRuns,
 
     // Relations
     organisationsRelations,
@@ -3439,6 +3663,12 @@ export const db = drizzle(pool, {
     leaseJournalEntriesRelations,
     eclParametersRelations,
     eclComputationsRelations,
+    groupsRelations,
+    groupMembersRelations,
+    userOrganisationAccessRelations,
+    intercompanyTransactionsRelations,
+    intercompanyEliminationsRelations,
+    groupConsolidationRunsRelations,
   }
 });
 
@@ -3532,5 +3762,11 @@ export const schema = {
   approvalWorkflows,
   approvalHistory,
   ocrDocuments,
+  groups,
+  groupMembers,
+  userOrganisationAccess,
+  intercompanyTransactions,
+  intercompanyEliminations,
+  groupConsolidationRuns,
 };
 

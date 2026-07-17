@@ -2419,6 +2419,155 @@ export async function runMigration() {
 
     console.log('[Migration] OCR Document Processing tables created.');
 
+    // ===== MULTI-COMPANY / GROUP STRUCTURE =====
+    await db.execute(sql`
+      DO $$ BEGIN
+        CREATE TYPE consolidation_method AS ENUM ('full', 'equity', 'proportionate');
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$;
+    `);
+    await db.execute(sql`
+      DO $$ BEGIN
+        CREATE TYPE intercompany_txn_type AS ENUM ('loan', 'goods', 'service', 'royalty', 'dividend', 'management_fee', 'other');
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$;
+    `);
+    await db.execute(sql`
+      DO $$ BEGIN
+        CREATE TYPE intercompany_txn_status AS ENUM ('pending', 'matched', 'settled', 'eliminated');
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$;
+    `);
+    await db.execute(sql`
+      DO $$ BEGIN
+        CREATE TYPE elimination_method AS ENUM ('auto', 'manual');
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$;
+    `);
+
+    // Groups table — top-level group entity for consolidation
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS groups (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        name text NOT NULL,
+        base_currency text DEFAULT 'NGN' NOT NULL,
+        parent_group_id uuid,
+        settings jsonb DEFAULT '{}'::jsonb NOT NULL,
+        created_at timestamp DEFAULT now() NOT NULL
+      );
+    `);
+
+    // Group members — orgs belonging to a group with ownership % and consolidation method
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS group_members (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        group_id uuid REFERENCES groups(id) NOT NULL,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        ownership_percentage numeric(5,2) DEFAULT 100 NOT NULL,
+        consolidation_method consolidation_method DEFAULT 'full' NOT NULL,
+        is_parent boolean DEFAULT false NOT NULL,
+        start_date timestamp,
+        end_date timestamp,
+        settings jsonb DEFAULT '{}'::jsonb NOT NULL,
+        created_at timestamp DEFAULT now() NOT NULL
+      );
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_group_members_group ON group_members(group_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_group_members_org ON group_members(org_id)`);
+
+    // User organisation access — multi-org membership junction table
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS user_organisation_access (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        user_id uuid REFERENCES users(id) NOT NULL,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        role user_role DEFAULT 'staff' NOT NULL,
+        is_default boolean DEFAULT false NOT NULL,
+        created_at timestamp DEFAULT now() NOT NULL
+      );
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_uoa_user ON user_organisation_access(user_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_uoa_org ON user_organisation_access(org_id)`);
+
+    // Intercompany transactions — transactions between entities in a group
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS intercompany_transactions (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        group_id uuid REFERENCES groups(id) NOT NULL,
+        from_org_id uuid REFERENCES organisations(id) NOT NULL,
+        to_org_id uuid REFERENCES organisations(id) NOT NULL,
+        transaction_type intercompany_txn_type NOT NULL,
+        status intercompany_txn_status DEFAULT 'pending' NOT NULL,
+        reference text,
+        description text NOT NULL,
+        amount bigint NOT NULL,
+        currency text DEFAULT 'NGN' NOT NULL,
+        fx_rate numeric(18,8),
+        date timestamp NOT NULL,
+        due_date timestamp,
+        settled_amount bigint,
+        settled_date timestamp,
+        from_journal_entry_id uuid REFERENCES journal_entries(id),
+        to_journal_entry_id uuid REFERENCES journal_entries(id),
+        created_by uuid REFERENCES users(id),
+        notes text,
+        created_at timestamp DEFAULT now() NOT NULL
+      );
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_ic_txn_group ON intercompany_transactions(group_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_ic_txn_from ON intercompany_transactions(from_org_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_ic_txn_to ON intercompany_transactions(to_org_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_ic_txn_status ON intercompany_transactions(status)`);
+
+    // Intercompany eliminations — elimination entries for consolidation
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS intercompany_eliminations (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        group_id uuid REFERENCES groups(id) NOT NULL,
+        consolidation_run_id uuid,
+        transaction_id uuid REFERENCES intercompany_transactions(id),
+        elimination_method elimination_method DEFAULT 'auto' NOT NULL,
+        description text NOT NULL,
+        from_org_id uuid REFERENCES organisations(id) NOT NULL,
+        to_org_id uuid REFERENCES organisations(id) NOT NULL,
+        account_code varchar(20),
+        amount bigint NOT NULL,
+        currency text DEFAULT 'NGN' NOT NULL,
+        fx_rate numeric(18,8),
+        journal_entry_id uuid REFERENCES journal_entries(id),
+        created_by uuid REFERENCES users(id),
+        period_start timestamp NOT NULL,
+        period_end timestamp NOT NULL,
+        created_at timestamp DEFAULT now() NOT NULL
+      );
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_ic_elim_group ON intercompany_eliminations(group_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_ic_elim_run ON intercompany_eliminations(consolidation_run_id)`);
+
+    // Group consolidation runs — history of consolidation runs
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS group_consolidation_runs (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        group_id uuid REFERENCES groups(id) NOT NULL,
+        report_type text NOT NULL,
+        period_start timestamp NOT NULL,
+        period_end timestamp NOT NULL,
+        as_of_date timestamp,
+        status text DEFAULT 'completed' NOT NULL,
+        includes_eliminations boolean DEFAULT true NOT NULL,
+        includes_nci boolean DEFAULT true NOT NULL,
+        currency_translation_method text DEFAULT 'closing_rate',
+        total_orgs integer DEFAULT 0 NOT NULL,
+        result_data jsonb,
+        error_message text,
+        created_by uuid REFERENCES users(id),
+        created_at timestamp DEFAULT now() NOT NULL
+      );
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_consol_runs_group ON group_consolidation_runs(group_id)`);
+
+    console.log('[Migration] Multi-company / Group structure tables created.');
+
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema setup:', err);

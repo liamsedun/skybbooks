@@ -3,41 +3,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
-  Search,
-  ChevronDown,
-  LayoutDashboard,
-  Users,
-  FileCode,
-  FileText,
-  DollarSign,
-  Briefcase,
-  History,
-  MessageCircle,
-  TrendingUp,
-  Settings,
-  Menu,
-  X,
-  Building,
-  Bell,
-  ArrowRight,
-  LogOut,
-  User,
-  Shield,
-  CreditCard,
-  FileBarChart,
-  HelpCircle,
-  FileInput,
-  BookOpen,
-  Sparkles,
-  Package,
-  ArrowRightLeft,
-  TrendingDown,
-  ReceiptText,
-  AlertTriangle,
-  Bot,
-  Wifi
+  Search, ChevronDown, LayoutDashboard, Users, FileCode, FileText,
+  DollarSign, Briefcase, History, MessageCircle, TrendingUp, Settings,
+  Menu, X, Building, Bell, ArrowRight, LogOut, User, Shield, CreditCard,
+  FileBarChart, HelpCircle, FileInput, BookOpen, Sparkles, Package,
+  ArrowRightLeft, TrendingDown, ReceiptText, AlertTriangle, Bot, Wifi,
+  Moon, Sun, Star, Zap, ChevronRight, PanelLeftClose, PanelLeft,
+  CircleUser, Command, Plus, LayoutList, Home, Landmark
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -45,9 +19,14 @@ import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { Footer } from './Footer';
 import { usePlatformBranding } from '../../hooks/usePlatformBranding';
 import { useNotifications } from '../../hooks/useNotifications';
+import { useTheme } from '../../context/ThemeContext';
+import { useFavorites } from '../../hooks/useFavorites';
+import { useRecentActivity } from '../../hooks/useRecentActivity';
 import { api } from '../../lib/api';
-import { useChat } from '../../contexts/ChatContext';
 import ChatWidget from '../chat/ChatWidget';
+import { CommandPalette } from './CommandPalette';
+import { QuickActionsBar } from './QuickActionsBar';
+import { Breadcrumbs } from './Breadcrumbs';
 
 interface AppLayoutProps {
   currentView?: string;
@@ -67,37 +46,16 @@ interface NavGroup {
   items: NavItem[];
 }
 
-function Tooltip({ children, label }: { children: React.ReactNode; label: string }) {
-  const [visible, setVisible] = useState(false);
-  let timer: ReturnType<typeof setTimeout> | null = null;
-
-  return (
-    <div
-      className="relative inline-flex"
-      onMouseEnter={() => { timer = setTimeout(() => setVisible(true), 400); }}
-      onMouseLeave={() => { if (timer) clearTimeout(timer); setVisible(false); }}
-    >
-      {children}
-      {visible && (
-        <span
-          className="absolute left-full ml-2.5 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-md text-xs whitespace-nowrap z-50 shadow-lg pointer-events-none"
-          style={{ backgroundColor: 'var(--color-ink-900)', color: 'white' }}
-        >
-          {label}
-        </span>
-      )}
-    </div>
-  );
-}
-
 export function AppLayout({ currentView, onViewChange, children }: AppLayoutProps) {
   const { user, organisation, logout } = useAuth();
   const { role, hasModuleAccess } = usePermissions();
   const { developerLogoUrl } = usePlatformBranding();
   const { notifications, unreadCount } = useNotifications();
-  const { unreadTotal: chatUnread, toggleChat } = useChat();
+  const { theme, toggleTheme } = useTheme();
+  const { favorites, toggleFavorite, isFavorite } = useFavorites();
+  const { addActivity } = useRecentActivity();
 
-  const totalUnread = unreadCount + chatUnread;
+  const totalUnread = unreadCount;
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -106,613 +64,558 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({
+    overview: false, sales: false, purchases: true, inventory: true,
+    payroll: true, banking: true, accountant: true, reports: true,
+  });
 
-  React.useEffect(() => {
-    const handleOutsideClick = (event: MouseEvent) => {
-      const clickedEl = event.target as HTMLElement;
-      
+  useEffect(() => {
+    const handleClick = (event: MouseEvent) => {
+      const el = event.target as HTMLElement;
       if (showUserMenu) {
-        const profileButton = document.getElementById('header-profile-button');
-        const profileDropdown = document.getElementById('header-profile-dropdown');
-        if (
-          profileButton && !profileButton.contains(clickedEl) &&
-          profileDropdown && !profileDropdown.contains(clickedEl)
-        ) {
-          setShowUserMenu(false);
-        }
+        const btn = document.getElementById('header-profile-button');
+        const dd = document.getElementById('header-profile-dropdown');
+        if (btn && !btn.contains(el) && dd && !dd.contains(el)) setShowUserMenu(false);
       }
-      
       if (showNotifications) {
-        const notifyButton = document.getElementById('header-notification-button');
-        const notifyPopup = document.getElementById('header-notifications-popup');
-        if (
-          notifyButton && !notifyButton.contains(clickedEl) &&
-          notifyPopup && !notifyPopup.contains(clickedEl)
-        ) {
-          setShowNotifications(false);
-        }
+        const btn = document.getElementById('header-notification-button');
+        const pop = document.getElementById('header-notifications-popup');
+        if (btn && !btn.contains(el) && pop && !pop.contains(el)) setShowNotifications(false);
       }
     };
-
-    document.addEventListener('click', handleOutsideClick);
-    return () => {
-      document.removeEventListener('click', handleOutsideClick);
-    };
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
   }, [showUserMenu, showNotifications]);
 
   const pathMap: Record<string, string> = useMemo(() => ({
-    'dashboard': '/dashboard',
-    'ai_insights': '/ai/insights',
-    'ai_assistant': '/ai/assistant',
-    'chat': '/chat',
-    'customers': '/sales/customers',
-    'quotes': '/sales/quotes',
-    'sales_orders': '/sales/sales-orders',
-    'invoices': '/sales/invoices',
-    'receipts': '/sales/receipts',
-    'recurring_invoices': '/sales/recurring-invoices',
-    'payments_received': '/sales/payments',
-    'credit_notes': '/sales/credit-notes',
-    'vendors': '/purchases/vendors',
-    'expenses': '/purchases/expenses',
-    'recurring_expenses': '/purchases/recurring-expenses',
-    'purchase_orders': '/purchases/purchase-orders',
-    'bills': '/purchases/bills',
-    'payments_made': '/purchases/payments-made',
-    'purchase_credit_notes': '/purchases/credit-notes',
-    'items': '/inventory/items',
-    'inventory_adjustments': '/inventory/adjustments',
-    'inventory_management': '/inventory/management',
-    'employees': '/payroll/employees',
-    'payroll_runs': '/payroll/runs',
-    'paye_schedules': '/payroll/paye-schedules',
-    'pension_schedules': '/payroll/pension-schedules',
-    'payslips': '/payroll/payslips',
-    'bank_accounts': '/banking',
-    'bank_feed': '/banking/reconciliation/demo',
-    'bank_connections': '/banking/connections',
-    'payment_gateway': '/banking/payment-gateway',
-    'banking_rules': '/banking/rules',
-    'currency_rates': '/banking/currency-rates',
-    'bank_transfers': '/banking/transfers',
-    'projects': '/projects',
-    'chart_accounts': '/accountant/chart-of-accounts',
-    'manual_journals': '/accountant/journals',
-    'budgets': '/accountant/budgets',
-    'fixed_assets': '/accountant/fixed-assets',
-    'depreciation': '/accountant/fixed-assets/depreciation',
-    'leases': '/accountant/leases',
-    'ocr': '/accountant/ocr',
-    'rep_trial_balance': '/reports/trial-balance',
-    'rep_income_statement': '/reports/income-statement',
-    'rep_balance_sheet': '/reports/balance-sheet',
-    'rep_cash_flow': '/reports/cash-flow',
-    'rep_changes_in_equity': '/reports/statement-of-changes-in-equity',
-    'rep_general_ledger': '/reports/general-ledger',
-    'rep_vat_return': '/reports/vat-return',
-    'rep_aged_receivables': '/reports/aged-receivables',
-    'rep_aged_payables': '/reports/aged-payables',
-    'rep_audit_logs': '/reports/audit-logs',
-    'rep_custom': '/reports/custom',
-    'rep_tax_computation': '/reports/tax-computation',
-    'rep_tax_engine': '/reports/tax-engine',
-    'rep_projects': '/reports/projects',
-    'rep_legacy': '/reports/legacy',
-    'revenue_contracts': '/revenue/contracts',
-    'ecl': '/accountant/ecl',
-    'rep_revenue_recognition': '/revenue/recognition-report',
-    'set_organisation': '/settings/organisation',
-    'set_invites': '/settings/invites',
-    'set_roles': '/settings/roles',
-    'user_preferences': '/settings/user-preferences',
-    'set_integrations': '/settings/integrations',
+    dashboard: '/dashboard', ai_insights: '/ai/insights', ai_assistant: '/ai/assistant',
+    customers: '/sales/customers', quotes: '/sales/quotes', sales_orders: '/sales/sales-orders',
+    invoices: '/sales/invoices', receipts: '/sales/receipts', recurring_invoices: '/sales/recurring-invoices',
+    payments_received: '/sales/payments', credit_notes: '/sales/credit-notes',
+    vendors: '/purchases/vendors', expenses: '/purchases/expenses', recurring_expenses: '/purchases/recurring-expenses',
+    purchase_orders: '/purchases/purchase-orders', bills: '/purchases/bills',
+    payments_made: '/purchases/payments-made', purchase_credit_notes: '/purchases/credit-notes',
+    items: '/inventory/items', inventory_adjustments: '/inventory/adjustments', inventory_management: '/inventory/management',
+    employees: '/payroll/employees', payroll_runs: '/payroll/runs', paye_schedules: '/payroll/paye-schedules',
+    pension_schedules: '/payroll/pension-schedules', payslips: '/payroll/payslips',
+    bank_accounts: '/banking', bank_feed: '/banking/reconciliation/demo',
+    bank_connections: '/banking/connections', payment_gateway: '/banking/payment-gateway',
+    banking_rules: '/banking/rules', currency_rates: '/banking/currency-rates', bank_transfers: '/banking/transfers',
+    projects: '/projects', chart_accounts: '/accountant/chart-of-accounts', manual_journals: '/accountant/journals',
+    budgets: '/accountant/budgets', fixed_assets: '/accountant/fixed-assets', depreciation: '/accountant/fixed-assets/depreciation',
+    leases: '/accountant/leases', ocr: '/accountant/ocr', intercompany: '/accountant/intercompany',
+    ecl: '/accountant/ecl',
+    rep_trial_balance: '/reports/trial-balance', rep_income_statement: '/reports/income-statement',
+    rep_balance_sheet: '/reports/balance-sheet', rep_cash_flow: '/reports/cash-flow',
+    rep_changes_in_equity: '/reports/statement-of-changes-in-equity', rep_general_ledger: '/reports/general-ledger',
+    rep_vat_return: '/reports/vat-return', rep_aged_receivables: '/reports/aged-receivables',
+    rep_aged_payables: '/reports/aged-payables', rep_audit_logs: '/reports/audit-logs',
+    rep_custom: '/reports/custom', rep_tax_computation: '/reports/tax-computation',
+    rep_tax_engine: '/reports/tax-engine', rep_projects: '/reports/projects', rep_legacy: '/reports/legacy',
+    rep_consolidation: '/reports/consolidation',
+    revenue_contracts: '/revenue/contracts', rep_revenue_recognition: '/revenue/recognition-report',
+    set_organisation: '/settings/organisation', set_invites: '/settings/invites', set_roles: '/settings/roles',
+    user_preferences: '/settings/user-preferences', set_integrations: '/settings/integrations',
   }), []);
 
-  // Group collapse/expand state
-  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({
-    'OVERVIEW': false,
-    'SALES': false,
-    'PURCHASES': false,
-    'INVENTORY': false,
-    'PAYROLL': true,
-    'BANKING': true,
-    'ACCOUNTANT': true,
-    'REPORTS': true,
-    'SETTINGS': true,
-  });
-
   const navigation: NavGroup[] = useMemo(() => [
-    {
-      title: 'OVERVIEW',
-      items: [
-        { name: 'Dashboard', id: 'dashboard', icon: LayoutDashboard },
-        { name: 'SMART CFO Insights', id: 'ai_insights', icon: Sparkles },
-        { name: 'AI Assistant', id: 'ai_assistant', icon: Bot },
-        { name: 'Team Chat', id: 'chat', icon: MessageCircle },
-      ],
-    },
-    {
-      title: 'SALES',
-      items: [
-        { name: 'Customers', id: 'customers', icon: Users },
-        { name: 'Quotes & Quotes Sent', id: 'quotes', icon: FileCode },
-        { name: 'Sales Orders', id: 'sales_orders', icon: FileText },
-        { name: 'Invoices', id: 'invoices', icon: FileText },
-        { name: 'Receipts', id: 'receipts', icon: FileInput },
-        { name: 'Recurring Invoices', id: 'recurring_invoices', icon: History },
-        { name: 'Payments Received', id: 'payments_received', icon: DollarSign },
-        { name: 'Credit Notes', id: 'credit_notes', icon: FileText },
-      ],
-    },
-    {
-      title: 'PROJECTS',
-      items: [
-        { name: 'All Projects', id: 'projects', icon: Briefcase },
-      ],
-    },
-    {
-      title: 'PURCHASES',
-      items: [
-        { name: 'Vendors', id: 'vendors', icon: Users },
-        { name: 'Expenses', id: 'expenses', icon: DollarSign },
-        { name: 'Recurring Expenses', id: 'recurring_expenses', icon: History },
-        { name: 'Purchase Orders', id: 'purchase_orders', icon: FileText },
-        { name: 'Bills', id: 'bills', icon: FileText },
-        { name: 'Payments Made', id: 'payments_made', icon: DollarSign },
-        { name: 'Credit Notes', id: 'purchase_credit_notes', icon: FileText },
-      ],
-    },
-    {
-      title: 'INVENTORY',
-      items: [
-        { name: 'Items & Services', id: 'items', icon: Package },
-        { name: 'Inventory Adjustments', id: 'inventory_adjustments', icon: ArrowRightLeft },
-        { name: 'Inventory Management', id: 'inventory_management', icon: Package },
-      ],
-    },
-    {
-      title: 'PAYROLL',
-      items: [
-        { name: 'Employees', id: 'employees', icon: Users },
-        { name: 'Payroll Runs', id: 'payroll_runs', icon: Briefcase },
-        { name: 'PAYE Schedules', id: 'paye_schedules', icon: FileBarChart },
-        { name: 'Pension Schedules', id: 'pension_schedules', icon: FileBarChart },
-        { name: 'Payslips', id: 'payslips', icon: FileText },
-      ],
-    },
-    {
-      title: 'BANKING',
-      items: [
-        { name: 'Bank Accounts', id: 'bank_accounts', icon: CreditCard },
-        { name: 'Bank Feed Reconciler', id: 'bank_feed', icon: History },
-        { name: 'Connections', id: 'bank_connections', icon: Wifi },
-        { name: 'Payment Gateway', id: 'payment_gateway', icon: DollarSign },
-        { name: 'Rules', id: 'banking_rules', icon: Shield },
-        { name: 'Currency Rates', id: 'currency_rates', icon: TrendingUp },
-        { name: 'Transfers', id: 'bank_transfers', icon: ArrowRightLeft },
-      ],
-    },
-    {
-      title: 'ACCOUNTANT',
-      items: [
-        { name: 'Chart of Accounts', id: 'chart_accounts', icon: BookOpen },
-        { name: 'Manual Journals', id: 'manual_journals', icon: FileCode },
-        { name: 'Budgets', id: 'budgets', icon: TrendingUp },
-        { name: 'Fixed Assets', id: 'fixed_assets', icon: Building },
-        { name: 'Depreciation', id: 'depreciation', icon: TrendingDown },
-        { name: 'Lease Accounting', id: 'leases', icon: Briefcase },
-        { name: 'Revenue Contracts', id: 'revenue_contracts', icon: FileText },
-        { name: 'ECL (IFRS 9)', id: 'ecl', icon: AlertTriangle },
-        { name: 'OCR Processor', id: 'ocr', icon: FileText },
-      ],
-    },
-    {
-      title: 'REPORTS',
-      items: [
-        { name: 'Trial Balance', id: 'rep_trial_balance', icon: FileBarChart },
-        { name: 'Income Statement', id: 'rep_income_statement', icon: FileBarChart },
-        { name: 'Balance Sheet', id: 'rep_balance_sheet', icon: FileBarChart },
-        { name: 'Cash Flow Statement', id: 'rep_cash_flow', icon: FileBarChart },
-        { name: 'Changes in Equity', id: 'rep_changes_in_equity', icon: FileBarChart },
-        { name: 'General Ledger', id: 'rep_general_ledger', icon: FileBarChart },
-        { name: 'VAT Return', id: 'rep_vat_return', icon: FileBarChart },
-        { name: 'Aged Receivables', id: 'rep_aged_receivables', icon: FileBarChart },
-        { name: 'Aged Payables', id: 'rep_aged_payables', icon: FileBarChart },
-        { name: 'Audit Logs', id: 'rep_audit_logs', icon: History },
-        { name: 'Custom Reports', id: 'rep_custom', icon: FileCode },
-        { name: 'Tax Computation', id: 'rep_tax_computation', icon: ReceiptText },
-        { name: 'Tax Engine', id: 'rep_tax_engine', icon: Shield },
-        { name: 'Project Report', id: 'rep_projects', icon: Briefcase },
-        { name: 'Legacy Migration', id: 'rep_legacy', icon: History },
-        { name: 'Revenue Recognition', id: 'rep_revenue_recognition', icon: DollarSign },
-      ],
-    },
-    {
-    title: 'SETTINGS',
-    items: [
-      { name: 'Organisation Settings', id: 'set_organisation', icon: Settings },
-      { name: 'Users & Roles', id: 'set_roles', icon: Shield },
-    ],
-    },
+    { title: 'OVERVIEW', items: [
+      { name: 'Dashboard', id: 'dashboard', icon: LayoutDashboard },
+      { name: 'SMART CFO Insights', id: 'ai_insights', icon: Sparkles },
+      { name: 'AI Assistant', id: 'ai_assistant', icon: Bot },
+    ]},
+    { title: 'SALES', items: [
+      { name: 'Customers', id: 'customers', icon: Users },
+      { name: 'Quotes', id: 'quotes', icon: FileText },
+      { name: 'Sales Orders', id: 'sales_orders', icon: FileCode },
+      { name: 'Invoices', id: 'invoices', icon: ReceiptText },
+      { name: 'Receipts', id: 'receipts', icon: FileInput },
+      { name: 'Recurring Invoices', id: 'recurring_invoices', icon: History },
+      { name: 'Payments Received', id: 'payments_received', icon: DollarSign },
+      { name: 'Credit Notes', id: 'credit_notes', icon: FileText },
+    ]},
+    { title: 'PROJECTS', items: [
+      { name: 'All Projects', id: 'projects', icon: Briefcase },
+    ]},
+    { title: 'PURCHASES', items: [
+      { name: 'Vendors', id: 'vendors', icon: Building },
+      { name: 'Expenses', id: 'expenses', icon: CreditCard },
+      { name: 'Recurring Expenses', id: 'recurring_expenses', icon: History },
+      { name: 'Purchase Orders', id: 'purchase_orders', icon: FileCode },
+      { name: 'Bills', id: 'bills', icon: FileText },
+      { name: 'Payments Made', id: 'payments_made', icon: DollarSign },
+      { name: 'Credit Notes', id: 'purchase_credit_notes', icon: FileText },
+    ]},
+    { title: 'INVENTORY', items: [
+      { name: 'Items & Services', id: 'items', icon: Package },
+      { name: 'Inventory Adjustments', id: 'inventory_adjustments', icon: TrendingDown },
+      { name: 'Inventory Management', id: 'inventory_management', icon: LayoutList },
+    ]},
+    { title: 'PAYROLL', items: [
+      { name: 'Employees', id: 'employees', icon: Users },
+      { name: 'Payroll Runs', id: 'payroll_runs', icon: FileText },
+      { name: 'PAYE Schedules', id: 'paye_schedules', icon: FileCode },
+      { name: 'Pension Schedules', id: 'pension_schedules', icon: Shield },
+      { name: 'Payslips', id: 'payslips', icon: FileInput },
+    ]},
+    { title: 'BANKING', items: [
+      { name: 'Bank Accounts', id: 'bank_accounts', icon: Landmark },
+      { name: 'Bank Feed Reconciler', id: 'bank_feed', icon: ArrowRightLeft },
+      { name: 'Connections', id: 'bank_connections', icon: Wifi },
+      { name: 'Payment Gateway', id: 'payment_gateway', icon: CreditCard },
+      { name: 'Rules', id: 'banking_rules', icon: Shield },
+      { name: 'Currency Rates', id: 'currency_rates', icon: TrendingUp },
+      { name: 'Transfers', id: 'bank_transfers', icon: ArrowRightLeft },
+    ]},
+    { title: 'ACCOUNTANT', items: [
+      { name: 'Chart of Accounts', id: 'chart_accounts', icon: BookOpen },
+      { name: 'Manual Journals', id: 'manual_journals', icon: FileCode },
+      { name: 'Budgets', id: 'budgets', icon: TrendingUp },
+      { name: 'Fixed Assets', id: 'fixed_assets', icon: Building },
+      { name: 'Depreciation', id: 'depreciation', icon: TrendingDown },
+      { name: 'Lease Accounting', id: 'leases', icon: Briefcase },
+      { name: 'Revenue Contracts', id: 'revenue_contracts', icon: FileText },
+      { name: 'ECL (IFRS 9)', id: 'ecl', icon: AlertTriangle },
+      { name: 'OCR Processor', id: 'ocr', icon: FileText },
+      { name: 'Intercompany Txns', id: 'intercompany', icon: ArrowRightLeft },
+    ]},
+    { title: 'REPORTS', items: [
+      { name: 'Trial Balance', id: 'rep_trial_balance', icon: FileBarChart },
+      { name: 'Income Statement', id: 'rep_income_statement', icon: FileBarChart },
+      { name: 'Balance Sheet', id: 'rep_balance_sheet', icon: FileBarChart },
+      { name: 'Cash Flow Statement', id: 'rep_cash_flow', icon: FileBarChart },
+      { name: 'Changes in Equity', id: 'rep_changes_in_equity', icon: FileBarChart },
+      { name: 'General Ledger', id: 'rep_general_ledger', icon: BookOpen },
+      { name: 'VAT Return', id: 'rep_vat_return', icon: FileBarChart },
+      { name: 'Aged Receivables', id: 'rep_aged_receivables', icon: FileBarChart },
+      { name: 'Aged Payables', id: 'rep_aged_payables', icon: FileBarChart },
+      { name: 'Audit Logs', id: 'rep_audit_logs', icon: Shield },
+      { name: 'Custom Reports', id: 'rep_custom', icon: FileBarChart },
+      { name: 'Tax Computation', id: 'rep_tax_computation', icon: FileBarChart },
+      { name: 'Tax Engine', id: 'rep_tax_engine', icon: Shield },
+      { name: 'Project Report', id: 'rep_projects', icon: Briefcase },
+      { name: 'Legacy Migration', id: 'rep_legacy', icon: History },
+      { name: 'Consolidation', id: 'rep_consolidation', icon: Building },
+      { name: 'Revenue Recognition', id: 'rep_revenue_recognition', icon: FileBarChart },
+    ]},
   ], []);
 
-  // Filter navigation items matching query
   const filteredNavigation = useMemo(() => {
-    if (!searchQuery.trim()) return navigation;
-    const query = searchQuery.toLowerCase();
-
+    if (!searchQuery) return navigation;
+    const q = searchQuery.toLowerCase();
     return navigation
-      .map((group) => {
-        const matchingItems = group.items.filter((item) =>
-          item.name.toLowerCase().includes(query)
-        );
-        return {
-          ...group,
-          items: matchingItems,
-        };
-      })
-      .filter((group) => group.items.length > 0);
+      .map(group => ({
+        ...group,
+        items: group.items.filter(item =>
+          item.name.toLowerCase().includes(q) ||
+          item.id.toLowerCase().includes(q)
+        ),
+      }))
+      .filter(group => group.items.length > 0);
   }, [navigation, searchQuery]);
-
-  const toggleGroup = (title: string) => {
-    setCollapsedGroups((prev) => {
-      const isCurrentlyCollapsed = !!prev[title];
-      const next: Record<string, boolean> = {
-        'OVERVIEW': true,
-        'SALES': true,
-        'PURCHASES': true,
-        'INVENTORY': true,
-        'PAYROLL': true,
-        'BANKING': true,
-        'ACCOUNTANT': true,
-        'REPORTS': true,
-        'SETTINGS': true,
-      };
-      next[title] = !isCurrentlyCollapsed;
-      return next;
-    });
-  };
-
-  const handleLinkClick = (id: string) => {
-    if (id === 'chat') {
-      toggleChat();
-      setIsMobileOpen(false);
-      return;
-    }
-    if (onViewChange) {
-      onViewChange(id);
-    }
-    const targetPath = pathMap[id];
-    if (targetPath) {
-      navigate(targetPath);
-    }
-    setIsMobileOpen(false);
-  };
-
-  // Build current display company avatar letter
-  const orgInitials = organisation?.name?.charAt(0).toUpperCase() || 'F';
-  const userInitials = user?.fullName?.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase() || 'U';
-  const userAvatarUrl = (user as any)?.avatarUrl;
-
-  const formatRole = (roleStr: string) => {
-    if (!roleStr) return 'Employee';
-    return roleStr.charAt(0).toUpperCase() + roleStr.slice(1);
-  };
 
   const isSettingsPage = location.pathname.startsWith('/settings');
 
+  const activeNavId = useMemo(() => {
+    const path = location.pathname;
+    const entry = Object.entries(pathMap).find(([, p]) => path.startsWith(p));
+    return entry?.[0] || '';
+  }, [location.pathname, pathMap]);
+
+  const handleNavigation = useCallback((id: string) => {
+    const path = pathMap[id];
+    if (!path) return;
+    addActivity({ id, path, label: navigation.flatMap(g => g.items).find(i => i.id === id)?.name || id });
+    navigate(path);
+    setIsMobileOpen(false);
+    if (onViewChange) onViewChange(id);
+  }, [pathMap, navigate, onViewChange, addActivity, navigation]);
+
+  const isActive = (id: string) => {
+    if (activeNavId === id) return true;
+    const path = pathMap[id];
+    return path ? location.pathname.startsWith(path) : false;
+  };
+
+  const handleLogout = async () => { await logout(); navigate('/login'); };
+
+  const currentNavItem = useMemo(() =>
+    navigation.flatMap(g => g.items).find(i => i.id === activeNavId),
+    [navigation, activeNavId]
+  );
+
   return (
-    <div className="min-h-screen bg-slate-50 flex" id="finance-os-applet-shell">
-      
-      {/* 1. LEFT SIDEBAR — hidden on settings pages for full-width layout */}
-      {!isSettingsPage && (<aside 
+    <>
+      <CommandPalette />
+
+      {/* Mobile overlay */}
+      {isMobileOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-slate-900/40 backdrop-blur-sm lg:hidden"
+          onClick={() => setIsMobileOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside
         id="desktop-sidebar-pane"
-        className={`fixed top-0 bottom-0 left-0 z-40 ${sidebarCollapsed ? 'w-16' : 'w-60'} bg-surface border-r border-border-custom flex flex-col transition-all duration-300 lg:translate-x-0 ${
-          isMobileOpen ? 'translate-x-0' : '-translate-x-full'
-        } lg:static lg:h-screen shrink-0`}
+        className={`fixed top-0 left-0 z-40 h-screen flex flex-col bg-surface border-r border-border-custom transition-all duration-300 ease-in-out ${
+          sidebarCollapsed ? 'w-16' : 'w-60'
+        } ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
       >
-        {/* Brand visual header area */}
-        <div className={`h-16 border-b border-border-custom flex items-center ${sidebarCollapsed ? 'px-2 justify-between' : 'px-5 justify-between'}`}>
-          <div className={`flex items-center select-none ${sidebarCollapsed ? '' : 'space-x-2.5'}`}>
-            {developerLogoUrl ? (
-              <img src={developerLogoUrl} alt="" className="w-7 h-7 rounded object-contain shrink-0" />
-            ) : (
-              <img src="/images/skyhouse-logo.png" alt="SkyBooks" className={`${sidebarCollapsed ? 'w-5 h-5' : 'w-7 h-7'} rounded object-contain shrink-0`} />
-            )}
-            {!sidebarCollapsed && (
-              <div>
-                <h2 className="text-sm font-extrabold text-ink-900 uppercase tracking-[0.12em] leading-none">SkyBooks</h2>
-                <span className="text-[10px] text-ink-400 font-semibold tracking-widest font-mono uppercase mt-0.5 inline-block">Books Engine</span>
+        {/* Logo area */}
+        <div className={`flex items-center border-b border-border-custom shrink-0 ${
+          sidebarCollapsed ? 'h-14 justify-center px-2' : 'h-16 px-4'
+        }`}>
+          {sidebarCollapsed ? (
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white text-sm font-bold shrink-0">
+              S
+            </div>
+          ) : (
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              {developerLogoUrl ? (
+                <img src={developerLogoUrl} alt="Logo" className="h-8 w-8 rounded-lg object-contain" />
+              ) : (
+                <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white text-sm font-bold shrink-0">
+                  S
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-bold text-ink-900 truncate leading-tight">SkyBooks</div>
+                <div className="text-[10px] text-ink-400 font-medium truncate leading-tight">Books Engine</div>
               </div>
-            )}
-          </div>
-
-          {/* Close drawer icon on small viewports */}
-          <button 
-            onClick={() => setIsMobileOpen(false)}
-            className="lg:hidden p-1.5 hover:bg-surface-subtle text-ink-400 rounded-lg outline-none transition-colors duration-150"
-          >
-            <X className="w-5 h-5" />
-          </button>
-
-          {/* Collapse/expand toggle */}
+            </div>
+          )}
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className={`${sidebarCollapsed ? 'absolute -right-3 top-4 z-50 bg-white border border-border-custom shadow-sm rounded-full p-1' : 'p-1.5'} hover:bg-surface-subtle text-ink-400 rounded-lg outline-none transition-colors duration-150`}
-            title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            className={`hidden lg:flex items-center justify-center rounded-lg text-ink-400 hover:text-ink-600 hover:bg-surface-hover transition-colors ${
+              sidebarCollapsed ? 'absolute -right-3 top-5 w-6 h-6 bg-surface border border-border-custom rounded-full shadow-sm' : 'w-7 h-7'
+            }`}
           >
-            <ArrowRight className={`w-4 h-4 transition-transform duration-200 ${sidebarCollapsed ? 'rotate-180' : ''}`} />
+            <PanelLeftClose className={`w-4 h-4 transition-transform ${sidebarCollapsed ? 'rotate-180' : ''}`} />
+          </button>
+          <button
+            onClick={() => setIsMobileOpen(false)}
+            className="lg:hidden w-7 h-7 flex items-center justify-center rounded-lg text-ink-400 hover:bg-surface-hover"
+          >
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Dynamic Sidebar Search Engine */}
+        {/* Sidebar search */}
         {!sidebarCollapsed && (
-        <div className="p-3.5 border-b border-slate-50">
-          <div className="relative">
-            <Search className="w-4 h-4 text-ink-400 absolute left-3 top-2.5 pointer-events-none" />
-            <input
-              type="text"
-              id="sidebar-search-bar"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search functions & tags..."
-              className="w-full pl-9 pr-3 py-2 text-xs font-medium border border-border-custom rounded-xl outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all duration-150 bg-white text-ink-900 placeholder-ink-400"
-            />
+          <div className="px-3 pt-3 pb-1">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-400" />
+              <input
+                type="text"
+                placeholder="Search functions..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="w-full pl-8 pr-3 py-1.5 text-xs bg-surface-subtle border border-border-custom rounded-lg text-ink-900 placeholder:text-ink-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+              />
+            </div>
           </div>
-        </div>
         )}
 
-        {/* Scrollable Navigation section */}
-        <nav className={`flex-1 overflow-y-auto ${sidebarCollapsed ? 'p-2' : 'p-3'} space-y-3 sidebar-scrollbar`} id="sidebar-scrollable-links">
-          {filteredNavigation.map((group) => {
-            const isCollapsed = collapsedGroups[group.title] && !searchQuery;
+        {/* Nav items */}
+        <nav className="flex-1 overflow-y-auto sidebar-scrollbar px-2 py-2 space-y-0.5">
+          {filteredNavigation.map(group => {
+            const isCollapsed = collapsedGroups[group.title] !== false;
             return (
-              <div key={group.title} className="flex flex-col">
-                {/* Header Group toggler */}
+              <div key={group.title}>
                 {!sidebarCollapsed && (
-                <button
-                  onClick={() => toggleGroup(group.title)}
-                  className="px-2 py-1.5 flex items-center justify-between text-[11px] font-bold text-ink-400 tracking-[0.08em] font-sans select-none text-left w-full hover:text-ink-600 transition-all duration-150 rounded-lg hover:bg-surface-subtle group"
-                >
-                  <span>{group.title}</span>
-                  {!searchQuery && (
-                    <ChevronDown className={`w-3 h-3 transition-transform duration-200 text-ink-400 group-hover:text-ink-500 ${isCollapsed ? '-rotate-90' : ''}`} />
-                  )}
-                </button>
+                  <button
+                    onClick={() => setCollapsedGroups(prev => ({ ...prev, [group.title]: !isCollapsed }))}
+                    className="flex items-center justify-between w-full px-2 py-1.5 text-[10px] font-bold uppercase tracking-widest text-ink-400 hover:text-ink-600 transition-colors"
+                  >
+                    <span>{group.title}</span>
+                    <ChevronDown className={`w-3 h-3 transition-transform ${isCollapsed ? '' : 'rotate-180'}`} />
+                  </button>
                 )}
-
-                {/* Sub-items array */}
-                {(!isCollapsed || sidebarCollapsed) && (
-                  <div className={`flex flex-col ${sidebarCollapsed ? 'items-center space-y-1' : 'space-y-0.5 mt-0.5'}`}>
-                    {group.items.map((item) => {
-                      const targetPath = pathMap[item.id];
-                      const isActive = currentView 
-                        ? currentView === item.id 
-                        : (targetPath ? (location.pathname === targetPath || (targetPath !== '/dashboard' && location.pathname.startsWith(targetPath))) : false);
-                      const Icon = item.icon;
-
-                      const navButton = (
-                        <button
-                          key={item.id}
-                          id={`nav-link-${item.id}`}
-                          onClick={() => handleLinkClick(item.id)}
-                          className={`${sidebarCollapsed ? 'px-0 py-2 justify-center w-full' : 'w-full px-2.5 py-1.5'} flex items-center text-xs font-medium rounded-xl text-left transition-all duration-150 ease-out relative group ${
-                            isActive
-                              ? 'bg-primary-light text-primary font-semibold shadow-sm'
-                              : 'text-ink-600 hover:text-primary hover:bg-surface-subtle'
-                          }`}
-                        >
-                          <span className={`inline-flex items-center justify-center w-7 h-7 ${sidebarCollapsed ? '' : 'mr-2.5'} rounded-lg shrink-0 transition-all duration-150 ${
-                            isActive
-                              ? 'bg-primary text-white shadow-sm'
-                              : 'bg-transparent group-hover:bg-primary-light/50'
-                          }`}>
-                            <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-ink-400 group-hover:text-primary'}`} />
-                          </span>
-                          {!sidebarCollapsed && <span className="truncate">{item.name}</span>}
-                        </button>
-                      );
-
-                      return sidebarCollapsed ? (
-                        <Tooltip key={item.id} label={item.name}>{navButton}</Tooltip>
-                      ) : navButton;
-                    })}
-                  </div>
-                )}
+                {(!isCollapsed || sidebarCollapsed) && group.items.map(item => {
+                  const Icon = item.icon;
+                  const active = isActive(item.id);
+                  const fav = isFavorite(item.id);
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => handleNavigation(item.id)}
+                      className={`group relative w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-sm transition-all duration-150 ${
+                        active
+                          ? 'bg-primary-light text-primary font-semibold shadow-sm'
+                          : 'text-ink-600 hover:bg-surface-hover hover:text-ink-900'
+                      } ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
+                      title={sidebarCollapsed ? item.name : undefined}
+                    >
+                      <Icon className={`w-4.5 h-4.5 shrink-0 ${active ? 'text-primary' : 'text-ink-400 group-hover:text-ink-600'}`} />
+                      {!sidebarCollapsed && (
+                        <>
+                          <span className="truncate text-[13px]">{item.name}</span>
+                          {fav && <Star className="w-3 h-3 text-warning-custom ml-auto fill-warning-custom" />}
+                        </>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             );
           })}
         </nav>
 
-        {/* STICKY BOTTOM USER PROFILE SECTION */}
-        <div className={`${sidebarCollapsed ? 'p-2' : 'p-3'} border-t border-border-custom bg-white shadow-sm`} id="sidebar-sticky-footer">
-          <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'space-x-2.5'} p-2 rounded-xl bg-surface-subtle border border-border-custom/60`}>
-            <Tooltip label={user?.fullName || 'Active Controller'}>
-              <div className="w-8 h-8 rounded-lg bg-primary-light text-primary font-extrabold flex items-center justify-center text-xs shadow-sm select-none uppercase overflow-hidden shrink-0">
-                {userAvatarUrl ? <img src={userAvatarUrl} alt="" className="w-full h-full object-cover" /> : userInitials}
-              </div>
-            </Tooltip>
-            {!sidebarCollapsed && (
-              <>
-                <div className="flex-1 min-w-0 select-none">
-                  <h4 className="text-xs font-bold text-ink-900 truncate">{user?.fullName || 'Active Controller'}</h4>
-                  <p className="text-[10px] text-ink-400 font-semibold truncate mt-0.5">{formatRole(role)}</p>
-                </div>
-                <button 
-                  id="sidebar-btn-logout"
-                  title="Sign Out Session"
-                  onClick={logout}
-                  className="p-1.5 rounded-lg hover:bg-rose-50 text-ink-400 hover:text-rose-600 transition-all duration-150 outline-none"
-                >
-                  <LogOut className="w-4 h-4" />
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      </aside>)}
-
-      {/* Backdrop overlay for drawer when mobile menu is open */}
-      {!isSettingsPage && isMobileOpen && (
-        <div 
-          onClick={() => setIsMobileOpen(false)}
-          className="lg:hidden fixed inset-0 z-30 bg-slate-900/40 backdrop-blur-xs"
-        />
-      )}
-
-      {/* 2. MAIN CONTAINER AREA WITH TOP HEADER */}
-      <div className={`flex-1 flex flex-col min-w-0 overflow-y-auto ${isSettingsPage ? '' : 'lg:h-screen'}`} id="main-content-scroll-container">
-        {/* TOP HEADER */}
-        <header className={`h-14 md:h-16 px-4 md:px-6 bg-white border-b border-slate-100 flex items-center justify-between shrink-0 sticky top-0 z-20 ${isSettingsPage ? '' : ''}`}>
-          
-          {/* Hamburger toggle button on smaller screens — hidden on settings pages */}
-          {!isSettingsPage && (<button 
-            onClick={() => setIsMobileOpen(!isMobileOpen)}
-            className="lg:hidden p-2 border border-slate-200 hover:bg-slate-50 text-slate-500 rounded-xl outline-none mr-3 shrink-0 transition"
+        {/* Settings link */}
+        <div className="border-t border-border-custom p-2">
+          <button
+            onClick={() => handleNavigation('set_organisation')}
+            className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-sm transition-all duration-150 ${
+              location.pathname.startsWith('/settings')
+                ? 'bg-primary-light text-primary font-semibold shadow-sm'
+                : 'text-ink-600 hover:bg-surface-hover hover:text-ink-900'
+            } ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
           >
-            <Menu className="w-5 h-5" />
-          </button>)}
+            <Settings className="w-4.5 h-4.5 shrink-0 text-ink-400" />
+            {!sidebarCollapsed && <span className="truncate">Settings</span>}
+          </button>
+        </div>
 
-          {/* Org Display capsule with selector */}
-          <div className="flex items-center space-x-2.5 sm:space-x-3.5 select-none" id="org-display-bubble">
-            <div className="w-7 h-7 bg-primary-light text-primary rounded-lg flex items-center justify-center text-xs font-bold shadow-sm uppercase shrink-0 overflow-hidden">
-              {developerLogoUrl ? (
-                <img src={developerLogoUrl} alt="" className="w-full h-full object-contain" />
-              ) : (
-                <img src="/images/skyhouse-logo.png" alt="SkyBooks" className="w-full h-full object-contain" />
-              )}
-            </div>
-            <div>
-              <div className="hidden sm:block">
-                <span className="text-[9px] text-ink-400 font-bold uppercase tracking-wider block">Enterprise Account</span>
-                <h1 className="text-xs font-black text-ink-900 leading-tight uppercase tracking-wide">
-                  {organisation?.name || 'SkyBooks Client'}
-                </h1>
+        {/* User footer */}
+        {!sidebarCollapsed && (
+          <div className="border-t border-border-custom p-2.5">
+            <div className="flex items-center gap-2.5 px-2 py-1.5 rounded-xl bg-surface-subtle border border-border-custom/60">
+              <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-primary text-[11px] font-bold shrink-0">
+                {user?.fullName?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
               </div>
-              <div className="block sm:hidden">
-                <h1 className="text-xs font-black text-ink-900 leading-tight uppercase tracking-wide">
-                  {(organisation?.name || 'Skyhouse').trim().split(' ')[0]}
-                </h1>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-semibold text-ink-900 truncate leading-tight">
+                  {user?.fullName || user?.email}
+                </div>
+                <div className="text-[10px] text-ink-400 capitalize truncate leading-tight">{user?.role}</div>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="w-6 h-6 flex items-center justify-center rounded-md text-ink-400 hover:text-danger-custom hover:bg-danger-bg transition-colors"
+                title="Logout"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
+      </aside>
+
+      {/* Main content area */}
+      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${
+        sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-60'
+      }`}>
+        {/* Top header */}
+        <header className="sticky top-0 z-20 h-14 md:h-16 bg-surface border-b border-border-custom flex items-center gap-3 px-3 md:px-5">
+          {/* Mobile menu */}
+          <button
+            onClick={() => setIsMobileOpen(true)}
+            className="lg:hidden w-8 h-8 flex items-center justify-center rounded-lg text-ink-600 hover:bg-surface-hover"
+          >
+            <Menu className="w-4.5 h-4.5" />
+          </button>
+
+          {/* Org display */}
+          <div className="flex items-center gap-2 min-w-0 mr-auto">
+            {organisation?.logoUrl ? (
+              <img src={organisation.logoUrl} alt="" className="w-6 h-6 rounded-md object-contain hidden sm:block" />
+            ) : (
+              <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center text-primary text-[10px] font-bold hidden sm:block">
+                {organisation?.name?.charAt(0) || 'O'}
+              </div>
+            )}
+            <div className="min-w-0">
+              <div className="text-sm font-bold text-ink-900 truncate leading-tight">
+                {organisation?.name || 'SkyBooks'}
+              </div>
+              <div className="text-[10px] text-ink-400 hidden sm:block leading-tight">
+                <Breadcrumbs />
               </div>
             </div>
           </div>
 
-          {/* Header Action caps */}
-          <div className="flex items-center space-x-2.5 sm:space-x-4 ml-auto" id="header-right-actions">
-            
-            {/* Real-time UTC Live Status Clock — hidden on settings pages */}
-            {!isSettingsPage && (
-            <span className="hidden md:inline-flex items-center text-[11px] font-mono font-semibold text-slate-500 bg-slate-50 border border-slate-100 rounded-full px-3 py-1">
-              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-2 inline-block animate-pulse"></span>
-              Live Ledger Connected
-            </span>
-            )}
+          {/* Quick action buttons */}
+          <div className="hidden md:flex items-center gap-1">
+            <button
+              onClick={() => navigate('/sales/invoices/new')}
+              className="px-3 py-1.5 bg-primary text-white text-xs font-semibold rounded-lg hover:bg-primary-hover transition-colors flex items-center gap-1.5 shadow-sm"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              New Invoice
+            </button>
+            <button
+              onClick={() => navigate('/purchases/bills/new')}
+              className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-border-custom text-ink-600 hover:bg-surface-hover transition-colors flex items-center gap-1.5"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              New Bill
+            </button>
+          </div>
 
-            {/* Quick Audit Notifications */}
+          {/* Search trigger */}
+          <button
+            onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { metaKey: true, shiftKey: true, key: 'f' }))}
+            className="hidden sm:flex items-center gap-2 px-3 py-1.5 text-xs text-ink-400 bg-surface-subtle border border-border-custom rounded-lg hover:border-ink-300 transition-colors min-w-[160px]"
+          >
+            <Search className="w-3.5 h-3.5" />
+            <span>Search anything...</span>
+            <kbd className="ml-auto px-1.5 py-0.5 text-[10px] font-mono bg-surface border border-border-custom rounded text-ink-400">⌘K</kbd>
+          </button>
+
+          {/* Right side actions */}
+          <div className="flex items-center gap-1">
+            {/* Dark mode toggle */}
+            <button
+              onClick={toggleTheme}
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-ink-400 hover:text-ink-600 hover:bg-surface-hover transition-colors"
+              title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
+            >
+              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
+
+            {/* Notifications */}
             <div className="relative">
-              <button 
+              <button
                 id="header-notification-button"
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="p-1.5 md:p-2 border border-slate-150 rounded-xl hover:bg-slate-50 hover:text-primary transition relative outline-none cursor-pointer"
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-ink-400 hover:text-ink-600 hover:bg-surface-hover transition-colors relative"
               >
-                <Bell className="w-4 h-4 md:w-4.5 md:h-4.5 text-slate-500" />
+                <Bell className="w-4 h-4" />
                 {totalUnread > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 md:-top-1 md:-right-1 bg-red-500 text-white border-2 border-white rounded-full h-3.5 w-3.5 md:h-4.5 md:w-4.5 text-[7px] md:text-[8px] font-bold flex items-center justify-center">
-                    {totalUnread > 9 ? '9+' : totalUnread}
+                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-danger-custom text-white text-[9px] font-bold flex items-center justify-center shadow-sm">
+                    {totalUnread > 99 ? '99+' : totalUnread}
                   </span>
                 )}
               </button>
-
               {showNotifications && (
-                <div className="absolute right-0 mt-3.5 w-80 max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-xl border border-slate-100 z-50 p-4 space-y-1.5 text-[11px] font-medium" id="header-notifications-popup">
-                  <div className="font-extrabold text-ink-900 border-b border-slate-50 pb-2 mb-1 flex justify-between items-center text-xs">
-                    <span>Notifications</span>
-                    <span 
-                      onClick={() => setShowNotifications(false)}
-                      className="text-primary cursor-pointer font-bold hover:underline"
-                    >
-                      Dismiss
-                    </span>
+                <div
+                  id="header-notifications-popup"
+                  className="absolute right-0 top-full mt-2 w-80 max-w-[calc(100vw-2rem)] bg-surface rounded-2xl shadow-xl border border-border-custom overflow-hidden"
+                >
+                  <div className="px-4 py-3 border-b border-border-custom">
+                    <div className="text-sm font-bold text-ink-900">Notifications</div>
                   </div>
-                  {notifications.length === 0 ? (
-                    <div className="text-center py-6 text-slate-400">No notifications</div>
-                  ) : (
-                    notifications.map((n) => (
-                      <div
-                        key={n.id}
-                        onClick={() => { navigate(n.link); setShowNotifications(false); }}
-                        className={`flex items-start gap-2 p-2 rounded-lg border border-transparent transition cursor-pointer ${
-                          n.severity === 'error'
-                            ? 'hover:bg-red-50 hover:border-red-100 text-red-700'
-                            : n.severity === 'warning'
-                            ? 'hover:bg-amber-50 hover:border-amber-100 text-amber-700'
-                            : 'hover:bg-blue-50 hover:border-blue-100 text-slate-600'
-                        }`}
-                      >
-                        <span className="text-sm">{n.icon}</span>
-                        <span className="flex-1">{n.message}</span>
+                  <div className="max-h-80 overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <div className="px-4 py-8 text-center text-sm text-ink-400">
+                        <Bell className="w-8 h-8 mx-auto mb-2 text-ink-200" />
+                        No new notifications
                       </div>
-                    ))
-                  )}
+                    ) : (
+                      notifications.slice(0, 10).map((n, i) => (
+                        <div key={i} className="px-4 py-2.5 hover:bg-surface-hover transition-colors border-b border-border-custom/50 last:border-0">
+                          <div className="flex items-start gap-2.5">
+                            <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
+                              n.severity === 'error' ? 'bg-danger-custom' :
+                              n.severity === 'warning' ? 'bg-warning-custom' : 'bg-info-custom'
+                            }`} />
+                            <div className="min-w-0 flex-1">
+                              <div className="text-xs text-ink-900 line-clamp-2">{n.message}</div>
+                              {n.timestamp && (
+                                <div className="text-[10px] text-ink-400 mt-0.5">
+                                  {new Date(n.timestamp).toLocaleString()}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* User Profile dropdown wrapper */}
+            {/* User profile */}
             <div className="relative">
               <button
                 id="header-profile-button"
                 onClick={() => setShowUserMenu(!showUserMenu)}
-                className="flex items-center space-x-1.5 md:space-x-2 p-0.5 md:p-1 border border-slate-150 hover:bg-slate-50 rounded-xl transition cursor-pointer select-none outline-none"
+                className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold hover:bg-primary-light transition-colors"
               >
-                <div className="h-6 w-6 md:h-7 md:w-7 rounded-lg bg-primary text-white font-extrabold text-[10px] md:text-xs flex items-center justify-center shadow-3xs uppercase overflow-hidden">
-                  {userAvatarUrl ? <img src={userAvatarUrl} alt="" className="w-full h-full object-cover" /> : userInitials}
-                </div>
-                <ChevronDown className="w-3 h-3 md:w-3.5 md:h-3.5 text-slate-400" />
+                {user?.fullName?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
               </button>
-
               {showUserMenu && (
-                <div className="absolute right-0 mt-3.5 w-52 bg-white rounded-xl shadow-xl border border-slate-100 z-50 p-2 text-xs font-semibold text-ink-600" id="header-profile-dropdown">
-                  <div className="px-3 py-2 border-b border-slate-50 text-[10px] text-ink-400 uppercase font-bold tracking-widest leading-none mb-1">
-                    My Account
+                <div
+                  id="header-profile-dropdown"
+                  className="absolute right-0 top-full mt-2 w-56 bg-surface rounded-2xl shadow-xl border border-border-custom overflow-hidden"
+                >
+                  <div className="px-4 py-3 border-b border-border-custom">
+                    <div className="text-sm font-bold text-ink-900 truncate">{user?.fullName || user?.email}</div>
+                    <div className="text-[11px] text-ink-400 capitalize">{user?.role} · {organisation?.name}</div>
                   </div>
-                  <button 
-                    onClick={() => { setShowUserMenu(false); navigate('/settings/user-preferences'); }} 
-                    className="w-full px-3 py-1.5 hover:bg-slate-50 rounded-lg flex items-center text-left"
-                  >
-                    <User className="w-4 h-4 mr-2.5 text-ink-400" />
-                    User Settings
-                  </button>
-                  <button 
-                    onClick={() => handleLinkClick('set_organisation')}
-                    className="w-full px-3 py-1.5 hover:bg-slate-50 rounded-lg flex items-center text-left"
-                  >
-                    <Building className="w-4 h-4 mr-2.5 text-ink-400" />
-                    Organisation Setup
-                  </button>
-                  <button 
-                    onClick={logout}
-                    className="w-full px-3 py-1.5 hover:bg-rose-50 text-rose-600 rounded-lg flex items-center text-left mt-1.5 border-t border-slate-50 pt-2"
-                  >
-                    <LogOut className="w-4 h-4 mr-2.5 text-rose-500" />
-                    Log Out Session
-                  </button>
+                  <div className="p-1.5">
+                    <button
+                      onClick={() => { setShowUserMenu(false); navigate('/settings/user-preferences'); }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-ink-600 hover:bg-surface-hover hover:text-ink-900 transition-colors"
+                    >
+                      <User className="w-4 h-4" />
+                      User Preferences
+                    </button>
+                    <button
+                      onClick={() => { setShowUserMenu(false); navigate('/settings/organisation'); }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-ink-600 hover:bg-surface-hover hover:text-ink-900 transition-colors"
+                    >
+                      <Settings className="w-4 h-4" />
+                      Organisation Settings
+                    </button>
+                    <button
+                      onClick={() => setShowUserMenu(false)}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-ink-600 hover:bg-surface-hover hover:text-ink-900 transition-colors"
+                    >
+                      <HelpCircle className="w-4 h-4" />
+                      Help & Support
+                    </button>
+                    <hr className="my-1 border-border-custom" />
+                    <button
+                      onClick={handleLogout}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-danger-custom hover:bg-danger-bg transition-colors"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Log Out Session
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
           </div>
         </header>
 
-        {/* 3. SCROLLABLE SCREEN CONTENT AREA */}
-        <main className={`flex-1 p-4 sm:p-6 md:p-8 w-full mx-auto ${isSettingsPage ? '' : 'max-w-7xl'}`} id="shell-inner-viewport">
+        {/* Main content */}
+        <main className={`flex-1 ${isSettingsPage ? '' : 'p-4 sm:p-6 md:p-8 max-w-7xl mx-auto w-full'}`}>
+          {!isSettingsPage && (
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <Breadcrumbs />
+                {currentNavItem && (
+                  <h1 className="text-xl font-bold text-ink-900 mt-1">{currentNavItem.name}</h1>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {currentNavItem && (
+                  <button
+                    onClick={() => toggleFavorite({ id: currentNavItem.id, path: pathMap[currentNavItem.id] || '', label: currentNavItem.name })}
+                    className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${
+                      isFavorite(currentNavItem.id) ? 'text-warning-custom hover:text-warning-custom/80' : 'text-ink-400 hover:text-ink-600 hover:bg-surface-hover'
+                    }`}
+                    title={isFavorite(currentNavItem.id) ? 'Remove from favorites' : 'Add to favorites'}
+                  >
+                    <Star className={`w-4 h-4 ${isFavorite(currentNavItem.id) ? 'fill-warning-custom' : ''}`} />
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
           {children || <Outlet />}
         </main>
-        
-        <Footer />
+
+        {!isSettingsPage && <Footer />}
       </div>
 
+      <QuickActionsBar />
       <ChatWidget />
-    </div>
+    </>
   );
 }
-export default AppLayout;

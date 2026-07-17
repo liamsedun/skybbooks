@@ -9,9 +9,10 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './lib/api';
 
 import { ChatProvider } from './contexts/ChatContext';
+import { ThemeProvider } from './context/ThemeContext';
 
 // Layout & Custom Pages
-import AppLayout from './components/layout/AppLayout';
+import { AppLayout } from './components/layout/AppLayout';
 import { Dashboard } from './pages/Dashboard';
 import InsightsDashboard from './pages/ai/InsightsDashboard';
 import { AccountingAssistant } from './pages/ai/AccountingAssistant';
@@ -80,6 +81,9 @@ import {
   InvitesSettingsPage,
   IntegrationsSettingsPage
 } from './pages/ModulePlaceholders';
+import { GroupManagementPage } from './pages/settings/GroupManagementPage';
+import { IntercompanyTransactionsPage } from './pages/accountant/IntercompanyTransactionsPage';
+import { ConsolidationReportsPage } from './pages/reports/ConsolidationReportsPage';
 import { SettingsLayout } from './components/settings/SettingsLayout';
 import { TaxConfigurationPage } from './pages/settings/TaxConfigurationPage';
 import { NotesPage } from './pages/reports/NotesPage';
@@ -335,6 +339,7 @@ function AppRoutes() {
           <Route path="/accountant/leases" element={<LeasesPage />} />
           <Route path="/accountant/ecl" element={<EclPage />} />
           <Route path="/accountant/ocr" element={<OcrProcessingPage />} />
+          <Route path="/accountant/intercompany" element={<IntercompanyTransactionsPage />} />
 
           {/* Financial statements & analytics reports */}
           <Route path="/reports/trial-balance" element={<TrialBalancePage />} />
@@ -354,6 +359,7 @@ function AppRoutes() {
           <Route path="/reports/tax-engine" element={<TaxEnginePage />} />
           <Route path="/reports/custom" element={<CustomReportsPage />} />
           <Route path="/reports/legacy" element={<LegacyMigrationPage />} />
+          <Route path="/reports/consolidation" element={<ConsolidationReportsPage />} />
           <Route path="/reports/notes" element={<NotesPage />} />
           <Route path="/reports/mappings" element={<MappingsPage />} />
           <Route path="/revenue/contracts" element={<RevenueContractsPage />} />
@@ -390,6 +396,7 @@ function AppRoutes() {
             <Route path="tax" element={<TaxConfigurationPage />} />
             <Route path="posting-rules" element={<PostingRulesPage />} />
             <Route path="approval-workflows" element={<ApprovalWorkflowsPage />} />
+            <Route path="groups" element={<GroupManagementPage />} />
             <Route path="contacts" element={<ContactsSettingsPage />} />
             <Route path="items" element={<ItemsSettingsPage />} />
             <Route path="revenue-recognition" element={<RevenueRecognitionPage />} />
@@ -431,9 +438,11 @@ function AppRoutes() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ChatProvider>
-        <AppRoutes />
-      </ChatProvider>
+      <ThemeProvider>
+        <ChatProvider>
+          <AppRoutes />
+        </ChatProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }
