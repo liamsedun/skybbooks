@@ -19,6 +19,7 @@ import {
   verifyRefreshToken
 } from '../lib/tokens';
 import { authenticate, AuthenticatedRequest } from '../middleware/auth';
+import { createAuditLog, extractReqMeta } from '../services/audit.service';
 
 const router = Router();
 
@@ -210,6 +211,16 @@ router.post('/login', async (req: AuthenticatedRequest, res: Response, next: Nex
 
     const { passwordHash: _, ...userResponse } = user;
 
+    await createAuditLog({
+      orgId: user.organisationId!,
+      userId: user.id,
+      action: 'login',
+      entityType: 'session',
+      description: `User ${user.email} logged in`,
+      ipAddress: extractReqMeta(req).ipAddress,
+      userAgent: extractReqMeta(req).userAgent,
+    });
+
     return res.status(200).json({
       accessToken,
       refreshToken,
@@ -325,6 +336,18 @@ router.post('/logout', authenticate, async (req: AuthenticatedRequest, res: Resp
     } else if (req.user) {
       // Fallback: Clear all sessions of the authenticated user
       await db.delete(sessions).where(eq(sessions.userId, req.user.userId));
+    }
+
+    if (req.user) {
+      await createAuditLog({
+        orgId: req.user.orgId!,
+        userId: req.user.userId,
+        action: 'logout',
+        entityType: 'session',
+        description: `User logged out`,
+        ipAddress: extractReqMeta(req).ipAddress,
+        userAgent: extractReqMeta(req).userAgent,
+      });
     }
 
     return res.status(200).json({ message: 'Logged out successfully.' });

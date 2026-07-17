@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { auditLogApi, api, orgApi, printWindow } from '../../lib/api';
-import { Loader2, AlertCircle, Search, Download, RefreshCw, Shield, ShieldAlert, AlertTriangle, Info, History, ExternalLink, ChevronDown, ChevronUp, Eye, Edit3, Trash2, FileText } from 'lucide-react';
+import { Loader2, AlertCircle, Search, Download, RefreshCw, Shield, ShieldAlert, AlertTriangle, Info, History, ExternalLink, ChevronDown, ChevronUp, Eye, Edit3, Trash2, FileText, Fingerprint, Hash, Link2 } from 'lucide-react';
 import { exportToCsv } from '../../lib/csvTemplates';
 
 function fmtDate(d: string): string {
@@ -35,6 +35,7 @@ const ENTITY_ROUTES: Record<string, { path: string; label: (id: string) => strin
   'bank-account': { path: '/banking/accounts', label: () => 'View Account' },
   organisation: { path: '/settings', label: () => 'View Settings' },
   user: { path: '/settings/users', label: () => 'View User' },
+  session: { path: '', label: () => '' },
   'ai_service': { path: '', label: () => '' },
 };
 
@@ -42,11 +43,15 @@ const ACTION_STYLES: Record<string, { icon: any; color: string; bg: string; bord
   create: { icon: Edit3, color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200' },
   update: { icon: Edit3, color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200' },
   delete: { icon: Trash2, color: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200' },
+  login: { icon: Fingerprint, color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-200' },
+  logout: { icon: Fingerprint, color: 'text-slate-700', bg: 'bg-slate-100', border: 'border-slate-200' },
   AI_CALL: { icon: FileText, color: 'text-indigo-700', bg: 'bg-indigo-50', border: 'border-indigo-200' },
 };
 
 function getActionStyle(action: string) {
   const lower = action.toLowerCase();
+  if (lower === 'login') return ACTION_STYLES.login;
+  if (lower === 'logout') return ACTION_STYLES.logout;
   if (lower.startsWith('ai_')) return ACTION_STYLES.AI_CALL;
   if (lower.startsWith('create') || lower.includes('create')) return ACTION_STYLES.create;
   if (lower.startsWith('update') || lower.includes('update')) return ACTION_STYLES.update;
@@ -102,7 +107,6 @@ const THREAT_META: Record<string, { icon: any; color: string; bg: string; border
 
 function getSourceLinkForAlert(alert: Anomaly): { path: string; label: string } | null {
   const desc = (alert.description || '').toLowerCase();
-  const ref = alert.description || '';
   if (desc.includes('payment received') || desc.includes('ref-') || desc.includes('txn-')) {
     return { path: '/sales/payments', label: 'View Payments' };
   }
@@ -118,26 +122,38 @@ function getSourceLinkForAlert(alert: Anomaly): { path: string; label: string } 
   return null;
 }
 
+function HashBadge({ hash }: { hash?: string | null }) {
+  if (!hash) return null;
+  return (
+    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 rounded text-[9px] font-mono text-slate-500" title={`SHA-256: ${hash}`}>
+      <Hash className="w-2.5 h-2.5" />
+      {hash.substring(0, 12)}…
+    </span>
+  );
+}
+
 export function AuditLogsPage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState<'logs' | 'shield'>('logs');
   const [actionFilter, setActionFilter] = useState('');
   const [entityFilter, setEntityFilter] = useState('');
+  const [entityIdFilter, setEntityIdFilter] = useState('');
+  const [userIdFilter, setUserIdFilter] = useState('');
+  const [searchFilter, setSearchFilter] = useState('');
   const [limit] = useState(200);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [threatFilter, setThreatFilter] = useState<string>('all');
-  const [anomalies, setAnomalies] = useState<Anomaly[]>([]);
-  const [loadingAnomalies, setLoadingAnomalies] = useState(false);
-  const [anomaliesError, setAnomaliesError] = useState<string | null>(null);
-  const [rescanning, setRescanning] = useState(false);
+  const [chainStatus, setChainStatus] = useState<{ valid: boolean; checkedCount: number } | null>(null);
+  const [checkingChain, setCheckingChain] = useState(false);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['audit-logs', actionFilter || '', entityFilter || '', limit],
+    queryKey: ['audit-logs', actionFilter || '', entityFilter || '', entityIdFilter || '', userIdFilter || '', searchFilter || '', limit],
     queryFn: () => {
       const p: Record<string, any> = { limit };
       if (actionFilter) p.action = actionFilter;
       if (entityFilter) p.entityType = entityFilter;
+      if (entityIdFilter) p.entityId = entityIdFilter;
+      if (userIdFilter) p.userId = userIdFilter;
+      if (searchFilter) p.search = searchFilter;
       return auditLogApi.getLogs(p);
     },
     retry: 1,
@@ -145,12 +161,38 @@ export function AuditLogsPage() {
 
   const { data: orgData } = useQuery({ queryKey: ['org'], queryFn: orgApi.getOrg });
 
+  const { data: statsData } = useQuery({
+    queryKey: ['audit-stats'],
+    queryFn: auditLogApi.getLogStats,
+    retry: 1,
+  });
+
   const logs = Array.isArray(data?.data) ? data.data : [];
   const total = data?.total || 0;
   let queryError: string | null = null;
   try {
     queryError = error ? String((error as any)?.response?.data?.error || (error as any)?.message || 'Failed to load audit logs.') : null;
   } catch { queryError = 'Failed to load audit logs.'; }
+
+  const handleVerifyChain = async () => {
+    setCheckingChain(true);
+    try {
+      const res: any = await auditLogApi.verifyChain();
+      setChainStatus(res);
+    } catch {
+      setChainStatus({ valid: false, checkedCount: 0 });
+    } finally {
+      setCheckingChain(false);
+    }
+  };
+
+  // Shield tab state
+  const [searchTerm, setSearchTerm] = useState('');
+  const [threatFilter, setThreatFilter] = useState<string>('all');
+  const [anomalies, setAnomalies] = useState<Anomaly[]>([]);
+  const [loadingAnomalies, setLoadingAnomalies] = useState(false);
+  const [anomaliesError, setAnomaliesError] = useState<string | null>(null);
+  const [rescanning, setRescanning] = useState(false);
 
   const filteredAlerts = anomalies.filter(a => {
     if (threatFilter !== 'all' && a.severity !== threatFilter) return false;
@@ -235,8 +277,13 @@ export function AuditLogsPage() {
 
   function exportAuditLogsCSV() {
     const today = new Date().toISOString().split('T')[0];
-    const headers = ['Timestamp', 'Action', 'Entity Type', 'Entity ID', 'User', 'IP Address', 'User Agent'];
-    const rows = logs.map((l: any) => [l.createdAt ? new Date(l.createdAt).toLocaleString('en-GB') : '', l.action||'', l.entityType||'', l.entityId||'', l.user?.name||l.user?.email||'', l.ipAddress||'', l.userAgent||'']);
+    const headers = ['Timestamp', 'Action', 'Entity Type', 'Entity ID', 'User', 'Description', 'IP Address', 'User Agent', 'Correlation ID', 'Hash'];
+    const rows = logs.map((l: any) => [
+      l.createdAt ? new Date(l.createdAt).toLocaleString('en-GB') : '',
+      l.action||'', l.entityType||'', l.entityId||'',
+      l.user?.name||l.user?.email||'', l.description||'',
+      l.ipAddress||'', l.userAgent||'', l.correlationId||'', l.hash||''
+    ]);
     exportToCsv(`audit_logs_${today}.csv`, headers, rows);
   }
 
@@ -260,7 +307,7 @@ export function AuditLogsPage() {
 
       const list = data?.data || [];
       const rows = list.map((l: any) =>
-        `<tr><td style="padding:6px 10px;font-size:11px;border-bottom:1px solid #f1f5f9">${new Date(l.createdAt).toLocaleDateString('en-GB')}</td><td style="padding:6px 10px;font-size:11px;border-bottom:1px solid #f1f5f9"><span style="background:#f1f5f9;padding:2px 8px;border-radius:999px;font-size:10px">${l.action}</span></td><td style="padding:6px 10px;font-size:11px;border-bottom:1px solid #f1f5f9">${l.entityType}</td><td style="padding:6px 10px;font-size:11px;font-family:monospace;border-bottom:1px solid #f1f5f9">${l.entityId||'—'}</td><td style="padding:6px 10px;font-size:11px;border-bottom:1px solid #f1f5f9">${l.user?.name||l.user?.email||'—'}</td><td style="padding:6px 10px;font-size:11px;border-bottom:1px solid #f1f5f9">${l.ipAddress||'—'}</td><td style="padding:6px 10px;font-size:11px;color:#94a3b8;border-bottom:1px solid #f1f5f9">${l.userAgent ? l.userAgent.substring(0, 50) : '—'}</td></tr>`
+        `<tr><td style="padding:6px 10px;font-size:11px;border-bottom:1px solid #f1f5f9">${new Date(l.createdAt).toLocaleDateString('en-GB')}</td><td style="padding:6px 10px;font-size:11px;border-bottom:1px solid #f1f5f9"><span style="background:#f1f5f9;padding:2px 8px;border-radius:999px;font-size:10px">${l.action}</span></td><td style="padding:6px 10px;font-size:11px;border-bottom:1px solid #f1f5f9">${l.entityType}</td><td style="padding:6px 10px;font-size:11px;font-family:monospace;border-bottom:1px solid #f1f5f9">${l.entityId||'—'}</td><td style="padding:6px 10px;font-size:11px;border-bottom:1px solid #f1f5f9">${l.user?.name||l.user?.email||'—'}</td><td style="padding:6px 10px;font-size:11px;border-bottom:1px solid #f1f5f9">${l.description||'—'}</td><td style="padding:6px 10px;font-size:11px;border-bottom:1px solid #f1f5f9">${l.ipAddress||'—'}</td><td style="padding:6px 10px;font-size:11px;color:#94a3b8;border-bottom:1px solid #f1f5f9">${l.userAgent ? l.userAgent.substring(0, 50) : '—'}</td></tr>`
       ).join('');
       printWindow('Audit Logs',
         `<div style="text-align:center;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #e2e8f0">
@@ -278,10 +325,11 @@ export function AuditLogsPage() {
             <th style="padding:8px 10px;font-size:10px;font-weight:600;color:#64748b;text-align:left;text-transform:uppercase">Entity</th>
             <th style="padding:8px 10px;font-size:10px;font-weight:600;color:#64748b;text-align:left;text-transform:uppercase">Entity ID</th>
             <th style="padding:8px 10px;font-size:10px;font-weight:600;color:#64748b;text-align:left;text-transform:uppercase">User</th>
+            <th style="padding:8px 10px;font-size:10px;font-weight:600;color:#64748b;text-align:left;text-transform:uppercase">Description</th>
             <th style="padding:8px 10px;font-size:10px;font-weight:600;color:#64748b;text-align:left;text-transform:uppercase">IP Address</th>
             <th style="padding:8px 10px;font-size:10px;font-weight:600;color:#64748b;text-align:left;text-transform:uppercase">User Agent</th>
           </tr></thead>
-          <tbody>${rows||'<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:20px">No records</td></tr>'}</tbody>
+          <tbody>${rows||'<tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:20px">No records</td></tr>'}</tbody>
         </table>`,
         `${list.length} entries`
       );
@@ -306,21 +354,38 @@ export function AuditLogsPage() {
 
       {tab === 'logs' && (
         <>
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-slate-900">Audit Logs</h1>
+          <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold text-slate-900">Audit Logs</h1>
               {total > 0 && <span className="text-xs text-slate-400">{total} total entries</span>}
+              {statsData?.dateRange?.earliest && (
+                <span className="text-[10px] text-slate-400">From {fmtDateShort(statsData.dateRange.earliest)}</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={handleVerifyChain} disabled={checkingChain}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-all duration-200 disabled:opacity-50">
+                <Link2 className={`w-3.5 h-3.5 ${checkingChain ? 'animate-spin' : ''}`} /> {checkingChain ? 'Checking...' : 'Verify Chain'}
+              </button>
+              {chainStatus && (
+                <span className={`inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold rounded-xl ${chainStatus.valid ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+                  {chainStatus.valid ? '✓ Chain Intact' : '✗ Chain Broken'} ({chainStatus.checkedCount} entries)
+                </span>
+              )}
               <button onClick={exportAuditLogsCSV} className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-all duration-200"><Download className="w-3.5 h-3.5" /> CSV</button>
               <button onClick={handleDownloadPdf} className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200"><Download className="w-3.5 h-3.5" /> PDF</button>
             </div>
           </div>
 
-          <div className="flex gap-4 items-center bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5">
+          <div className="flex flex-wrap gap-3 items-center bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5">
             <div className="flex items-center gap-2">
               <Search className="w-4 h-4 text-slate-400" />
-              <input placeholder="Filter by action..." value={actionFilter} onChange={e => setActionFilter(e.target.value)} className="border border-slate-200 rounded-xl px-3 py-2.5 text-sm w-48 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+              <input placeholder="Filter by action..." value={actionFilter} onChange={e => { setActionFilter(e.target.value); }} className="border border-slate-200 rounded-xl px-3 py-2.5 text-sm w-40 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
             </div>
-            <input placeholder="Filter by entity..." value={entityFilter} onChange={e => setEntityFilter(e.target.value)} className="border border-slate-200 rounded-xl px-3 py-2.5 text-sm w-48 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+            <input placeholder="Entity type..." value={entityFilter} onChange={e => setEntityFilter(e.target.value)} className="border border-slate-200 rounded-xl px-3 py-2.5 text-sm w-36 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+            <input placeholder="Entity ID..." value={entityIdFilter} onChange={e => setEntityIdFilter(e.target.value)} className="border border-slate-200 rounded-xl px-3 py-2.5 text-sm w-36 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+            <input placeholder="User ID..." value={userIdFilter} onChange={e => setUserIdFilter(e.target.value)} className="border border-slate-200 rounded-xl px-3 py-2.5 text-sm w-36 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+            <input placeholder="Full-text search..." value={searchFilter} onChange={e => setSearchFilter(e.target.value)} className="border border-slate-200 rounded-xl px-3 py-2.5 text-sm flex-1 min-w-[120px] focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
           </div>
 
           {isLoading ? (
@@ -341,9 +406,11 @@ export function AuditLogsPage() {
                     <th className="text-left px-3 py-3">Timestamp</th>
                     <th className="text-left px-3 py-3">Action</th>
                     <th className="text-left px-3 py-3">Entity</th>
+                    <th className="text-left px-3 py-3">Description</th>
                     <th className="text-left px-3 py-3">Changes</th>
                     <th className="text-left px-3 py-3">User</th>
                     <th className="text-left px-3 py-3">Source</th>
+                    <th className="text-left px-3 py-3">Hash</th>
                     <th className="text-left px-3 py-3"></th>
                   </tr>
                 </thead>
@@ -373,6 +440,9 @@ export function AuditLogsPage() {
                             <span className="text-slate-400 text-[11px] font-mono">{log.entityId ? log.entityId.slice(0, 8) + '…' : '—'}</span>
                             )}
                           </td>
+                          <td className="px-3 py-3 text-xs text-slate-600 max-w-[180px] truncate" title={log.description || ''}>
+                            {log.description || <span className="text-slate-300 italic">—</span>}
+                          </td>
                           <td className="px-3 py-3">
                             {hasDiff ? (
                               <button onClick={() => setExpandedRow(isExpanded ? null : log.id)} className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-medium">
@@ -388,24 +458,41 @@ export function AuditLogsPage() {
                             <div>{log.ipAddress || '—'}</div>
                             {log.userAgent && <div className="text-[10px] text-slate-300 truncate max-w-[120px]" title={log.userAgent}>{log.userAgent.slice(0, 40)}…</div>}
                           </td>
+                          <td className="px-3 py-3"><HashBadge hash={log.hash} /></td>
                           <td className="px-3 py-3">
-                            {entityRoute?.path && log.entityId && (
-                              <Link to={`${entityRoute.path}/${log.entityId}`}
-                                className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 hover:underline whitespace-nowrap">
-                                <Eye className="w-3 h-3" /> View
-                              </Link>
-                            )}
+                            <div className="flex items-center gap-1">
+                              {entityRoute?.path && log.entityId && (
+                                <Link to={`${entityRoute.path}/${log.entityId}`}
+                                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 hover:underline whitespace-nowrap">
+                                  <Eye className="w-3 h-3" /> View
+                                </Link>
+                              )}
+                            </div>
                           </td>
                         </tr>
-                        {isExpanded && hasDiff && (
+                        {isExpanded && (
                           <tr className="bg-slate-50 border-t border-indigo-100">
-                            <td colSpan={7} className="px-3 py-4">
-                              <div className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">Field Changes</div>
-                              <DiffView oldValues={log.oldValues} newValues={log.newValues} />
-                              <div className="mt-2 pt-2 border-t border-slate-200 flex items-center gap-2 text-[11px] text-slate-500">
-                                <span className="text-red-600">◀ strikethrough</span> = old value
-                                <span className="text-emerald-600 ml-2">▶</span> = new value
-                              </div>
+                            <td colSpan={9} className="px-3 py-4 space-y-3">
+                              {hasDiff && (
+                                <div>
+                                  <div className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">Field Changes</div>
+                                  <DiffView oldValues={log.oldValues} newValues={log.newValues} />
+                                  <div className="mt-2 flex items-center gap-2 text-[11px] text-slate-500">
+                                    <span className="text-red-600">◀ strikethrough</span> = old value
+                                    <span className="text-emerald-600 ml-2">▶</span> = new value
+                                  </div>
+                                </div>
+                              )}
+                              {(log.correlationId || log.hash || log.previousHash) && (
+                                <div className="border-t border-slate-200 pt-2">
+                                  <div className="text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wider">Integrity Metadata</div>
+                                  <div className="grid grid-cols-3 gap-2 text-[10px] font-mono">
+                                    {log.correlationId && <div><span className="text-slate-400">Correlation:</span> <span className="text-slate-700">{log.correlationId}</span></div>}
+                                    {log.hash && <div><span className="text-slate-400">Hash:</span> <span className="text-slate-700">{log.hash}</span></div>}
+                                    {log.previousHash && <div><span className="text-slate-400">Prev Hash:</span> <span className="text-slate-700">{log.previousHash}</span></div>}
+                                  </div>
+                                </div>
+                              )}
                             </td>
                           </tr>
                         )}
@@ -413,7 +500,7 @@ export function AuditLogsPage() {
                     );
                   })}
                   {logs.length === 0 && (
-                    <tr><td colSpan={7} className="px-3 py-8 text-center text-slate-400">No audit log entries found.</td></tr>
+                    <tr><td colSpan={9} className="px-3 py-8 text-center text-slate-400">No audit log entries found.</td></tr>
                   )}
                 </tbody>
               </table>

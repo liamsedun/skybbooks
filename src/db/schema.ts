@@ -1632,16 +1632,22 @@ export const auditLog = pgTable('audit_log', {
   action: text('action').notNull(),
   entityType: text('entity_type').notNull(),
   entityId: uuid('entity_id'),
+  description: text('description'),
   oldValues: jsonb('old_values'),
   newValues: jsonb('new_values'),
   ipAddress: text('ip_address'),
   userAgent: text('user_agent'),
+  correlationId: uuid('correlation_id'),
+  hash: text('hash'),
+  previousHash: text('previous_hash'),
   createdAt: timestamp('created_at').defaultNow().notNull()
 }, (table) => ({
   orgCreatedIdx: index('idx_audit_log_org_created').on(table.orgId, table.createdAt),
   orgEntityIdx: index('idx_audit_log_org_entity').on(table.orgId, table.entityType, table.entityId),
   entityLookupIdx: index('idx_audit_log_entity_lookup').on(table.orgId, table.entityType, table.entityId, table.createdAt),
   userIdx: index('idx_audit_log_user').on(table.orgId, table.userId),
+  correlationIdx: index('idx_audit_log_correlation').on(table.orgId, table.correlationId),
+  hashIdx: index('idx_audit_log_hash').on(table.hash),
 }));
 
 export const chatConversations = pgTable('chat_conversations', {

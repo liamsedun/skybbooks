@@ -2167,6 +2167,52 @@ export async function runMigration() {
 
     console.log('[Migration] Smart Bank Reconciliation columns and table created.');
 
+    // ===== ENTERPRISE AUDIT TRAIL ENHANCEMENT MIGRATION =====
+
+    // Add new columns to audit_log
+    await db.execute(sql`
+      DO $$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='audit_log' AND column_name='description') THEN
+          ALTER TABLE audit_log ADD COLUMN description text;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='audit_log' AND column_name='correlation_id') THEN
+          ALTER TABLE audit_log ADD COLUMN correlation_id uuid;
+          CREATE INDEX IF NOT EXISTS idx_audit_log_correlation ON audit_log (org_id, correlation_id);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='audit_log' AND column_name='hash') THEN
+          ALTER TABLE audit_log ADD COLUMN hash text;
+          CREATE INDEX IF NOT EXISTS idx_audit_log_hash ON audit_log (hash);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='audit_log' AND column_name='previous_hash') THEN
+          ALTER TABLE audit_log ADD COLUMN previous_hash text;
+        END IF;
+      END $$;
+    `);
+
+    // Create immutable trigger function to prevent UPDATE/DELETE on audit_log
+    await db.execute(sql`
+      CREATE OR REPLACE FUNCTION prevent_audit_log_mutation()
+      RETURNS TRIGGER AS $$
+      BEGIN
+        IF TG_OP = 'DELETE' THEN
+          RAISE EXCEPTION 'Audit log records are immutable and cannot be deleted.';
+        ELSIF TG_OP = 'UPDATE' THEN
+          RAISE EXCEPTION 'Audit log records are immutable and cannot be modified.';
+        END IF;
+        RETURN NULL;
+      END;
+      $$ LANGUAGE plpgsql;
+    `);
+    // Drop trigger first to avoid duplicate errors on re-run, then recreate
+    await db.execute(sql`DROP TRIGGER IF EXISTS trg_prevent_audit_log_mutation ON audit_log;`);
+    await db.execute(sql`
+      CREATE TRIGGER trg_prevent_audit_log_mutation
+      BEFORE UPDATE OR DELETE ON audit_log
+      FOR EACH ROW EXECUTE FUNCTION prevent_audit_log_mutation();
+    `);
+
+    console.log('[Migration] Enterprise Audit Trail columns, indexes, and immutable trigger created.');
+
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema setup:', err);

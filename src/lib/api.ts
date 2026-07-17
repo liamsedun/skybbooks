@@ -973,6 +973,18 @@ export const auditLogApi = {
     const res = await api.get('/audit-log/pdf', { params, responseType: 'blob' });
     return res.data;
   },
+  getLogStats: async () => {
+    const res = await api.get('/audit-log/stats');
+    return res.data;
+  },
+  verifyChain: async () => {
+    const res = await api.get('/audit-log/verify');
+    return res.data;
+  },
+  getLogById: async (id: string) => {
+    const res = await api.get(`/audit-log/${id}`);
+    return res.data;
+  },
 };
 
 // 8. Reports Endpoints
