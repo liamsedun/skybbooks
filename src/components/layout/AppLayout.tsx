@@ -331,7 +331,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
         )}
 
         {/* Nav items */}
-        <nav className="flex-1 overflow-y-auto sidebar-scrollbar px-2 py-2 space-y-0.5">
+        <nav className="flex-1 overflow-y-auto sidebar-scrollbar px-2 py-1 space-y-0.5">
           {filteredNavigation.map(group => {
             const isCollapsed = collapsedGroups[group.title] !== false;
             return (
@@ -353,15 +353,15 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
                     <button
                       key={item.id}
                       onClick={() => handleNavigation(item.id)}
-                      className={`sidebar-nav-btn group relative w-full flex items-center gap-2.5 px-2.5 py-2 text-sm transition-all duration-150 ${
+                      className={`sidebar-nav-btn group relative w-full flex items-center gap-2 px-2.5 py-1 text-[13px] transition-all duration-150 ${
                         active ? 'active' : ''
                       } ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
                       title={sidebarCollapsed ? item.name : undefined}
                     >
-                      <Icon className={`w-4.5 h-4.5 shrink-0 sidebar-icon`} />
+                      <Icon className={`w-4 h-4 shrink-0 sidebar-icon`} />
                       {!sidebarCollapsed && (
                         <>
-                          <span className="truncate text-sm sidebar-text">{item.name}</span>
+                          <span className="truncate text-[13px] sidebar-text">{item.name}</span>
                           {fav && <Star className="w-3 h-3 sidebar-fav-star ml-auto" />}
                         </>
                       )}
@@ -377,11 +377,11 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
         <div className="sidebar-settings p-2">
           <button
             onClick={() => handleNavigation('set_organisation')}
-            className={`sidebar-nav-btn w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-sm transition-all duration-150 ${
+            className={`sidebar-nav-btn w-full flex items-center gap-2 px-2.5 py-1 rounded-xl text-[13px] transition-all duration-150 ${
               location.pathname.startsWith('/settings') ? 'active' : ''
             } ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
           >
-            <Settings className="w-4.5 h-4.5 shrink-0 sidebar-icon" />
+            <Settings className="w-4 h-4 shrink-0 sidebar-icon" />
             {!sidebarCollapsed && <span className="truncate sidebar-text">Settings</span>}
           </button>
         </div>
