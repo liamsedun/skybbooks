@@ -175,18 +175,16 @@ export function SettingsSidebar() {
       <div key={group.group} className="flex flex-col">
         <button
           onClick={() => toggle(group.group)}
-          className={`flex items-center justify-between w-full px-2.5 py-1.5 text-left rounded-lg transition-all duration-150 ${
-            isActive ? 'bg-primary-light/60' : 'hover:bg-surface-subtle'
+          className={`sidebar-nav-btn flex items-center justify-between w-full px-2.5 py-1.5 text-left rounded-lg transition-all duration-150 ${
+            isActive ? 'active' : ''
           }`}
         >
-          <span className={`text-[11px] font-bold tracking-[0.08em] uppercase ${
-            isActive ? 'text-primary' : 'text-ink-400'
-          }`}>
+          <span className={`text-[11px] font-bold tracking-[0.08em] uppercase sidebar-text-muted`}>
             {label}
           </span>
           {isOpen
-            ? <ChevronDown size={12} className="text-ink-400" />
-            : <ChevronDown size={12} className="text-ink-400 -rotate-90" />
+            ? <ChevronDown size={12} className="sidebar-text-muted" />
+            : <ChevronDown size={12} className="sidebar-text-muted -rotate-90" />
           }
         </button>
         {isOpen && (
@@ -197,10 +195,8 @@ export function SettingsSidebar() {
                 to={path}
                 onClick={() => setMobileOpen(false)}
                 className={({ isActive }) =>
-                  `flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl text-xs transition-all duration-150 ease-out group ${
-                    isActive
-                      ? 'bg-primary-light text-primary font-semibold shadow-sm'
-                      : 'text-ink-600 hover:text-primary hover:bg-surface-subtle'
+                  `sidebar-nav-btn flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl text-xs transition-all duration-150 ease-out group ${
+                    isActive ? 'active' : ''
                   }`
                 }
               >
@@ -208,12 +204,12 @@ export function SettingsSidebar() {
                   <>
                     <span className={`inline-flex items-center justify-center w-7 h-7 rounded-lg shrink-0 transition-all duration-150 ${
                       isActive
-                        ? 'bg-primary text-white shadow-sm'
-                        : 'bg-transparent group-hover:bg-primary-light/50'
+                        ? 'bg-white/20 text-white shadow-sm'
+                        : 'bg-transparent'
                     }`}>
-                      <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-ink-400 group-hover:text-primary'}`} />
+                      <Icon className={`w-3.5 h-3.5 sidebar-icon ${isActive ? '' : 'sidebar-text-muted'}`} />
                     </span>
-                    {label}
+                    <span className={`sidebar-text ${isActive ? 'font-semibold' : ''}`}>{label}</span>
                   </>
                 )}
               </NavLink>
@@ -225,20 +221,20 @@ export function SettingsSidebar() {
   }
 
   const sidebar = (
-    <nav className="w-56 shrink-0 self-start sticky top-6">
+    <nav className="w-56 shrink-0 self-start sticky top-6 sidebar-main rounded-xl overflow-hidden" style={{ border: '1px solid var(--sidebar-border)' }}>
       {/* Search */}
-      <div className="relative mb-3">
-        <Search className="w-3.5 h-3.5 text-ink-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+      <div className="relative mb-0 px-3 pt-3 pb-1 sidebar-search-wrapper" style={{ borderBottom: '1px solid var(--sidebar-border)' }}>
+        <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 sidebar-search-icon pointer-events-none" />
         <input
           type="text"
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
           placeholder="Find setting..."
-          className="w-full pl-9 pr-3 py-2 text-xs font-medium border border-border-custom rounded-xl outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all duration-150 bg-white text-ink-900 placeholder-ink-400"
+          className="w-full pl-8 pr-3 py-2 text-xs font-medium sidebar-search rounded-xl transition-all duration-150"
         />
       </div>
 
-      <div className="bg-white border border-border-custom rounded-xl overflow-hidden max-h-[calc(100vh-12rem)] overflow-y-auto sidebar-scrollbar">
+      <div className="max-h-[calc(100vh-12rem)] overflow-y-auto sidebar-scrollbar" style={{ background: 'transparent' }}>
         {filteredTopLevel.map(renderGroup)}
 
         {/* Consolidated Module Settings */}
@@ -246,27 +242,24 @@ export function SettingsSidebar() {
           <div className="flex flex-col">
             <button
               onClick={() => toggle('__module_settings')}
-              className={`flex items-center justify-between w-full px-2.5 py-1.5 text-left rounded-lg transition-all duration-150 hover:bg-surface-subtle ${
+              className={`flex items-center justify-between w-full px-2.5 py-1.5 text-left rounded-lg transition-all duration-150 ${
                 moduleSettingsGroups.some(g => g.items.some(i => i.path === currentPath))
-                  ? 'bg-primary-light/60' : ''
+                  ? 'sidebar-nav-btn active' : 'sidebar-nav-btn'
               }`}
             >
-              <span className={`text-[11px] font-bold tracking-[0.08em] uppercase ${
-                moduleSettingsGroups.some(g => g.items.some(i => i.path === currentPath))
-                  ? 'text-primary' : 'text-ink-400'
-              }`}>
+              <span className={`text-[11px] font-bold tracking-[0.08em] uppercase sidebar-text-muted`}>
                 Module Settings
               </span>
               {collapsed['__module_settings'] !== false
-                ? <ChevronDown size={12} className="text-ink-400" />
-                : <ChevronDown size={12} className="text-ink-400 -rotate-90" />
+                ? <ChevronDown size={12} className="sidebar-text-muted" />
+                : <ChevronDown size={12} className="sidebar-text-muted -rotate-90" />
               }
             </button>
             {(collapsed['__module_settings'] !== false) && (
               <div className="flex flex-col space-y-0.5 mt-0.5 ml-0.5">
                 {filteredModuleSubGroups.map(subGroup => (
                   <div key={subGroup.group} className="flex flex-col">
-                    <span className="px-2.5 py-1 text-[10px] font-semibold text-ink-400 tracking-wider uppercase">
+                    <span className="px-2.5 py-1 text-[10px] font-semibold sidebar-text-muted tracking-wider uppercase">
                       {groupLabel(subGroup.group)}
                     </span>
                     <div className="flex flex-col space-y-0.5">
@@ -276,10 +269,8 @@ export function SettingsSidebar() {
                           to={path}
                           onClick={() => setMobileOpen(false)}
                           className={({ isActive }) =>
-                            `flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl text-xs transition-all duration-150 ease-out group ${
-                              isActive
-                                ? 'bg-primary-light text-primary font-semibold shadow-sm'
-                                : 'text-ink-600 hover:text-primary hover:bg-surface-subtle'
+                            `sidebar-nav-btn flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl text-xs transition-all duration-150 ease-out group ${
+                              isActive ? 'active' : ''
                             }`
                           }
                         >
@@ -287,12 +278,12 @@ export function SettingsSidebar() {
                             <>
                               <span className={`inline-flex items-center justify-center w-7 h-7 rounded-lg shrink-0 transition-all duration-150 ${
                                 isActive
-                                  ? 'bg-primary text-white shadow-sm'
-                                  : 'bg-transparent group-hover:bg-primary-light/50'
+                                  ? 'bg-white/20 text-white shadow-sm'
+                                  : 'bg-transparent'
                               }`}>
-                                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-ink-400 group-hover:text-primary'}`} />
+                                <Icon className={`w-3.5 h-3.5 sidebar-icon ${isActive ? '' : 'sidebar-text-muted'}`} />
                               </span>
-                              {label}
+                              <span className={`sidebar-text ${isActive ? 'font-semibold' : ''}`}>{label}</span>
                             </>
                           )}
                         </NavLink>
@@ -315,7 +306,7 @@ export function SettingsSidebar() {
         })()}
 
         {filteredTopLevel.length === 0 && filteredModuleSubGroups.length === 0 && (
-          <div className="px-3 py-6 text-center text-xs text-ink-400">
+          <div className="px-3 py-6 text-center text-xs sidebar-text-muted">
             No settings match your search.
           </div>
         )}
@@ -328,11 +319,12 @@ export function SettingsSidebar() {
       {/* Mobile toggle — matches AppLayout drawer pattern */}
       <button
         onClick={() => setMobileOpen(!mobileOpen)}
-        className="lg:hidden flex items-center gap-2 px-3 py-2 text-xs font-medium text-ink-600 bg-white border border-border-custom rounded-xl transition-all duration-150 hover:bg-surface-subtle mb-4"
+        className="lg:hidden flex items-center gap-2 px-3 py-2 text-xs font-medium sidebar-main rounded-xl transition-all duration-150 mb-4 sidebar-separator"
+        style={{ border: '1px solid var(--sidebar-border)' }}
       >
-        {mobileOpen ? <X size={14} /> : <Menu size={14} />}
-        {activeGroupLabel ? groupLabel(activeGroupLabel) : 'Settings Menu'}
-        <ChevronDown size={12} className={`ml-auto transition-transform duration-200 ${mobileOpen ? 'rotate-180' : ''}`} />
+        {mobileOpen ? <X size={14} className="sidebar-icon" /> : <Menu size={14} className="sidebar-icon" />}
+        <span className="sidebar-text">{activeGroupLabel ? groupLabel(activeGroupLabel) : 'Settings Menu'}</span>
+        <ChevronDown size={12} className={`sidebar-text-muted ml-auto transition-transform duration-200 ${mobileOpen ? 'rotate-180' : ''}`} />
       </button>
       {mobileOpen && (
         <div className="lg:hidden mb-6">{sidebar}</div>

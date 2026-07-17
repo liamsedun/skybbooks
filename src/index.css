@@ -50,6 +50,116 @@
   --shadow-xl: 0 12px 40px rgba(15, 23, 42, 0.12);
 }
 
+/* ==========================================
+   Sidebar color system — constant across themes
+   ========================================== */
+:root, .dark {
+  --sidebar-bg: #082F49;
+  --sidebar-hover: #0C4A6E;
+  --sidebar-active: #075985;
+  --sidebar-text: #FFFFFF;
+  --sidebar-text-muted: rgba(255,255,255,0.7);
+  --sidebar-border: rgba(255,255,255,0.08);
+  --sidebar-accent: #38BDF8;
+}
+
+/* Sidebar root element */
+.sidebar-main {
+  background-color: var(--sidebar-bg);
+  color: var(--sidebar-text);
+  border-right: 1px solid var(--sidebar-border);
+}
+
+/* Sidebar header / footer borders */
+.sidebar-separator {
+  border-color: var(--sidebar-border);
+}
+
+/* Sidebar text variants */
+.sidebar-text { color: var(--sidebar-text); }
+.sidebar-text-muted { color: var(--sidebar-text-muted); }
+
+/* Sidebar search box */
+.sidebar-search-wrapper .sidebar-search-icon { color: var(--sidebar-text-muted); }
+.sidebar-search {
+  background-color: var(--sidebar-hover);
+  color: var(--sidebar-text);
+  border: none;
+}
+.sidebar-search::placeholder { color: var(--sidebar-text-muted); }
+.sidebar-search:focus {
+  border: 1px solid var(--sidebar-accent);
+  outline: none;
+}
+
+/* Sidebar group headings */
+.sidebar-group-header {
+  color: var(--sidebar-text-muted);
+}
+
+/* Sidebar nav items */
+.sidebar-nav-btn {
+  color: var(--sidebar-text);
+  transition: background-color 0.15s ease;
+}
+.sidebar-nav-btn:hover {
+  background-color: var(--sidebar-hover);
+}
+.sidebar-nav-btn.active {
+  background-color: var(--sidebar-active);
+  font-weight: 600;
+  border-left: 4px solid var(--sidebar-accent);
+  border-radius: 0 8px 8px 0;
+}
+.sidebar-nav-btn.active .sidebar-icon {
+  color: var(--sidebar-text);
+}
+
+/* Sidebar icons */
+.sidebar-icon { color: var(--sidebar-text); }
+
+/* Sidebar settings link area */
+.sidebar-settings {
+  border-top: 1px solid var(--sidebar-border);
+}
+
+/* Sidebar user profile */
+.sidebar-user-section {
+  border-top: 1px solid var(--sidebar-border);
+}
+.sidebar-user-card {
+  background: transparent;
+  border: none;
+}
+.sidebar-user-name { color: var(--sidebar-text); }
+.sidebar-user-role { color: var(--sidebar-text-muted); }
+
+/* Sidebar collapse / mobile buttons */
+.sidebar-icon-btn {
+  color: var(--sidebar-text);
+  opacity: 0.7;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+.sidebar-icon-btn:hover {
+  opacity: 1;
+  background-color: var(--sidebar-hover);
+}
+
+/* Sidebar scrollbar — thin, transparent track, semi-transparent thumb */
+.sidebar-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.20);
+  border-radius: 4px;
+}
+.sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.35);
+}
+
+/* Sidebar fav star — keep warning color visible on dark bg */
+.sidebar-fav-star {
+  color: #f59e0b;
+  fill: #f59e0b;
+}
+
 /* Dark mode theme overrides */
 .dark {
   --color-primary: #4caf50;
@@ -92,19 +202,12 @@
   --shadow-xl: 0 12px 40px rgba(0, 0, 0, 0.5);
 }
 
-/* Sidebar thin scrollbar */
+/* Sidebar thin scrollbar (track only — thumb defined above with sidebar variables) */
 .sidebar-scrollbar::-webkit-scrollbar {
   width: 4px;
 }
 .sidebar-scrollbar::-webkit-scrollbar-track {
   background: transparent;
-}
-.sidebar-scrollbar::-webkit-scrollbar-thumb {
-  background: var(--color-border-custom);
-  border-radius: 4px;
-}
-.sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: var(--color-ink-400);
 }
 
 /* Active nav pill glow pulse */

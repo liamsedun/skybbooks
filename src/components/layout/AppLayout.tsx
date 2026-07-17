@@ -259,12 +259,12 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
       {/* Sidebar */}
       <aside
         id="desktop-sidebar-pane"
-        className={`fixed top-0 left-0 z-40 h-screen flex flex-col bg-surface border-r border-border-custom transition-all duration-300 ease-in-out ${
+        className={`fixed top-0 left-0 z-40 h-screen flex flex-col sidebar-main transition-all duration-300 ease-in-out ${
           sidebarCollapsed ? 'w-16' : 'w-60'
         } ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
       >
         {/* Logo area */}
-        <div className={`flex items-center border-b border-border-custom shrink-0 ${
+        <div className={`flex items-center sidebar-separator shrink-0 ${
           sidebarCollapsed ? 'h-14 justify-center px-2' : 'h-16 px-4'
         }`}>
           {sidebarCollapsed ? (
@@ -281,22 +281,22 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
                 </div>
               )}
               <div className="min-w-0 flex-1">
-                <div className="text-sm font-bold text-ink-900 truncate leading-tight">SkyBooks</div>
-                <div className="text-[10px] text-ink-400 font-medium truncate leading-tight">Books Engine</div>
+                <div className="text-sm font-bold sidebar-text truncate leading-tight">SkyBooks</div>
+                <div className="text-[10px] sidebar-text-muted font-medium truncate leading-tight">Books Engine</div>
               </div>
             </div>
           )}
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className={`hidden lg:flex items-center justify-center rounded-lg text-ink-400 hover:text-ink-600 hover:bg-surface-hover transition-colors ${
-              sidebarCollapsed ? 'absolute -right-3 top-5 w-6 h-6 bg-surface border border-border-custom rounded-full shadow-sm' : 'w-7 h-7'
+            className={`hidden lg:flex items-center justify-center rounded-lg sidebar-icon-btn ${
+              sidebarCollapsed ? 'absolute -right-3 top-5 w-6 h-6 sidebar-main border sidebar-separator rounded-full shadow-sm' : 'w-7 h-7'
             }`}
           >
             <PanelLeftClose className={`w-4 h-4 transition-transform ${sidebarCollapsed ? 'rotate-180' : ''}`} />
           </button>
           <button
             onClick={() => setIsMobileOpen(false)}
-            className="lg:hidden w-7 h-7 flex items-center justify-center rounded-lg text-ink-400 hover:bg-surface-hover"
+            className="lg:hidden w-7 h-7 flex items-center justify-center rounded-lg sidebar-icon-btn"
           >
             <X className="w-4 h-4" />
           </button>
@@ -304,15 +304,15 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
 
         {/* Sidebar search */}
         {!sidebarCollapsed && (
-          <div className="px-3 pt-3 pb-1">
+          <div className="px-3 pt-3 pb-1 sidebar-search-wrapper">
             <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-400" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 sidebar-search-icon" />
               <input
                 type="text"
                 placeholder="Search functions..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 text-xs bg-surface-subtle border border-border-custom rounded-lg text-ink-900 placeholder:text-ink-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                className="w-full pl-8 pr-3 py-1.5 text-xs sidebar-search rounded-lg transition-all"
               />
             </div>
           </div>
@@ -327,7 +327,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
                 {!sidebarCollapsed && (
                   <button
                     onClick={() => setCollapsedGroups(prev => ({ ...prev, [group.title]: !isCollapsed }))}
-                    className="flex items-center justify-between w-full px-2 py-1.5 text-[10px] font-bold uppercase tracking-widest text-ink-400 hover:text-ink-600 transition-colors"
+                    className="flex items-center justify-between w-full px-2 py-1.5 text-[10px] font-bold uppercase tracking-widest sidebar-group-header transition-colors"
                   >
                     <span>{group.title}</span>
                     <ChevronDown className={`w-3 h-3 transition-transform ${isCollapsed ? '' : 'rotate-180'}`} />
@@ -341,18 +341,16 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
                     <button
                       key={item.id}
                       onClick={() => handleNavigation(item.id)}
-                      className={`group relative w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-sm transition-all duration-150 ${
-                        active
-                          ? 'bg-primary-light text-primary font-semibold shadow-sm'
-                          : 'text-ink-600 hover:bg-surface-hover hover:text-ink-900'
+                      className={`sidebar-nav-btn group relative w-full flex items-center gap-2.5 px-2.5 py-2 text-sm transition-all duration-150 ${
+                        active ? 'active' : ''
                       } ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
                       title={sidebarCollapsed ? item.name : undefined}
                     >
-                      <Icon className={`w-4.5 h-4.5 shrink-0 ${active ? 'text-primary' : 'text-ink-400 group-hover:text-ink-600'}`} />
+                      <Icon className={`w-4.5 h-4.5 shrink-0 sidebar-icon`} />
                       {!sidebarCollapsed && (
                         <>
-                          <span className="truncate text-[13px]">{item.name}</span>
-                          {fav && <Star className="w-3 h-3 text-warning-custom ml-auto fill-warning-custom" />}
+                          <span className="truncate text-[13px] sidebar-text">{item.name}</span>
+                          {fav && <Star className="w-3 h-3 sidebar-fav-star ml-auto" />}
                         </>
                       )}
                     </button>
@@ -364,36 +362,34 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
         </nav>
 
         {/* Settings link */}
-        <div className="border-t border-border-custom p-2">
+        <div className="sidebar-settings p-2">
           <button
             onClick={() => handleNavigation('set_organisation')}
-            className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-sm transition-all duration-150 ${
-              location.pathname.startsWith('/settings')
-                ? 'bg-primary-light text-primary font-semibold shadow-sm'
-                : 'text-ink-600 hover:bg-surface-hover hover:text-ink-900'
+            className={`sidebar-nav-btn w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-sm transition-all duration-150 ${
+              location.pathname.startsWith('/settings') ? 'active' : ''
             } ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
           >
-            <Settings className="w-4.5 h-4.5 shrink-0 text-ink-400" />
-            {!sidebarCollapsed && <span className="truncate">Settings</span>}
+            <Settings className="w-4.5 h-4.5 shrink-0 sidebar-icon" />
+            {!sidebarCollapsed && <span className="truncate sidebar-text">Settings</span>}
           </button>
         </div>
 
         {/* User footer */}
         {!sidebarCollapsed && (
-          <div className="border-t border-border-custom p-2.5">
-            <div className="flex items-center gap-2.5 px-2 py-1.5 rounded-xl bg-surface-subtle border border-border-custom/60">
-              <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-primary text-[11px] font-bold shrink-0">
+          <div className="sidebar-user-section p-2.5">
+            <div className="flex items-center gap-2.5 px-2 py-1.5 rounded-xl sidebar-user-card">
+              <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-white text-[11px] font-bold shrink-0">
                 {user?.fullName?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="text-xs font-semibold text-ink-900 truncate leading-tight">
+                <div className="text-xs font-semibold sidebar-user-name truncate leading-tight">
                   {user?.fullName || user?.email}
                 </div>
-                <div className="text-[10px] text-ink-400 capitalize truncate leading-tight">{user?.role}</div>
+                <div className="text-[10px] sidebar-user-role capitalize truncate leading-tight">{user?.role}</div>
               </div>
               <button
                 onClick={handleLogout}
-                className="w-6 h-6 flex items-center justify-center rounded-md text-ink-400 hover:text-danger-custom hover:bg-danger-bg transition-colors"
+                className="w-6 h-6 flex items-center justify-center rounded-md sidebar-icon-btn"
                 title="Logout"
               >
                 <LogOut className="w-3.5 h-3.5" />
