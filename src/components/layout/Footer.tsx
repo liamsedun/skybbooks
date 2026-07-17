@@ -5,7 +5,6 @@
 
 import React from 'react';
 import { Mail, Phone, Twitter, Linkedin, Facebook, Globe } from 'lucide-react';
-import { SkyhouseLogo } from '../ui/SkyhouseLogo';
 import { usePlatformBranding } from '../../hooks/usePlatformBranding';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -20,7 +19,7 @@ export function Footer() {
           {developerLogoUrl ? (
             <img src={developerLogoUrl} alt="Developer Logo" className="w-8 h-8 rounded-lg object-contain border border-slate-100 bg-white p-0.5 shrink-0" />
           ) : (
-            <SkyhouseLogo className="w-6 h-6 sm:w-8 sm:h-8 drop-shadow-sm shrink-0" />
+            <img src="/images/skyhouse-logo.png" alt="SkyBooks" className="w-8 h-8 rounded-lg object-contain border border-slate-100 bg-white p-0.5 shrink-0" />
           )}
           <div>
             <h4 className="text-xs sm:text-sm font-black text-slate-800 tracking-tight leading-none">SkyBooks</h4>

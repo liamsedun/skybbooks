@@ -61,26 +61,6 @@ function XGlyph({ className }: { className?: string }) {
   );
 }
 
-function SkyhouseMark({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 28 28" fill="none" className={className}>
-      <path
-        d="M5 13.5L14 6l9 7.5"
-        stroke="currentColor"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M8 12v9.5h12V12"
-        stroke="currentColor"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
 // Signature element: a skyline that reads equally as a bar chart —
 // the dual visual nods to "Sky[house]" and the ledgers the product runs on.
@@ -200,7 +180,7 @@ function AuthShell({ children }: { children: React.ReactNode }) {
           <div>
             <div className="flex items-center gap-2.5">
               <span className="w-9 h-9 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center overflow-hidden p-1.5">
-                {devLogo ? <img src={devLogo} alt="" className="w-full h-full object-contain" /> : <SkyhouseMark className="w-full h-full text-amber-300" />}
+                {devLogo ? <img src={devLogo} alt="" className="w-full h-full object-contain" /> : <img src="/images/skyhouse-logo.png" alt="SkyBooks" className="w-full h-full object-contain" />}
               </span>
               <div>
                 <h1 className="text-lg font-bold tracking-tight leading-none">SkyBooks</h1>
@@ -244,7 +224,7 @@ function AuthShell({ children }: { children: React.ReactNode }) {
           {/* Mobile-only compact header */}
           <div className="flex lg:hidden items-center gap-2.5 mb-8">
             <span className="w-8 h-8 rounded-lg bg-indigo-950 flex items-center justify-center overflow-hidden p-1.5">
-              {devLogo ? <img src={devLogo} alt="" className="w-full h-full object-contain" /> : <SkyhouseMark className="w-full h-full text-amber-300" />}
+              {devLogo ? <img src={devLogo} alt="" className="w-full h-full object-contain" /> : <img src="/images/skyhouse-logo.png" alt="SkyBooks" className="w-full h-full object-contain" />}
             </span>
             <h1 className="text-base font-bold text-slate-900 tracking-tight">SkyBooks</h1>
           </div>

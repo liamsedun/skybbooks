@@ -42,7 +42,6 @@ import { useAuth } from '../../hooks/useAuth';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { Footer } from './Footer';
-import { SkyhouseLogo } from '../ui/SkyhouseLogo';
 import { usePlatformBranding } from '../../hooks/usePlatformBranding';
 import { useNotifications } from '../../hooks/useNotifications';
 import { api } from '../../lib/api';
@@ -411,7 +410,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
             {developerLogoUrl ? (
               <img src={developerLogoUrl} alt="" className="w-7 h-7 rounded object-contain shrink-0" />
             ) : (
-              <SkyhouseLogo className={`${sidebarCollapsed ? 'w-5 h-5' : 'w-8 h-8'} drop-shadow-sm shrink-0`} />
+              <img src="/images/skyhouse-logo.png" alt="SkyBooks" className={`${sidebarCollapsed ? 'w-5 h-5' : 'w-7 h-7'} rounded object-contain shrink-0`} />
             )}
             {!sidebarCollapsed && (
               <div>
@@ -573,7 +572,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
               {developerLogoUrl ? (
                 <img src={developerLogoUrl} alt="" className="w-full h-full object-contain" />
               ) : (
-                orgInitials
+                <img src="/images/skyhouse-logo.png" alt="SkyBooks" className="w-full h-full object-contain" />
               )}
             </div>
             <div>
