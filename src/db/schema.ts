@@ -121,7 +121,7 @@ export const inventoryTxnTypeEnum = pgEnum('inventory_txn_type', [
 ]);
 
 export const adjustmentModeEnum = pgEnum('adjustment_mode', ['quantity', 'value']);
-export const adjustmentStatusEnum = pgEnum('adjustment_status', ['draft', 'adjusted']);
+export const adjustmentStatusEnum = pgEnum('adjustment_status', ['draft', 'pending_review', 'approved', 'posted', 'adjusted']);
 
 export const costingMethodEnum = pgEnum('costing_method', ['fifo', 'weighted_average', 'specific_identification']);
 
@@ -280,6 +280,19 @@ export const taxComputationStatusEnum = pgEnum('tax_computation_status', [
   'draft',
   'submitted',
   'assessed'
+]);
+
+export const approvalModuleEnum = pgEnum('approval_module', [
+  'bills', 'expenses', 'journals', 'payments_received', 'payments_made',
+  'purchase_orders', 'fixed_assets', 'inventory_adjustments'
+]);
+
+export const expenseStatusEnum = pgEnum('expense_status', [
+  'draft', 'pending_review', 'approved', 'posted', 'void'
+]);
+
+export const paymentStatusEnum = pgEnum('payment_status', [
+  'draft', 'pending_review', 'approved', 'posted', 'void'
 ]);
 
 // ==========================================
@@ -474,6 +487,8 @@ export const inventoryAdjustments = pgTable('inventory_adjustments', {
   location: text('location'),
   description: text('description'),
   status: adjustmentStatusEnum('status').default('draft').notNull(),
+  approvedBy: uuid('approved_by').references(() => users.id),
+  postedBy: uuid('posted_by').references(() => users.id),
   createdBy: uuid('created_by').references(() => users.id).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull()
@@ -713,6 +728,9 @@ export const paymentsReceived = pgTable('payments_received', {
   accountId: uuid('account_id').references(() => accounts.id).notNull(),
   incomeAccountId: uuid('income_account_id').references(() => accounts.id),
   journalEntryId: uuid('journal_entry_id').references(() => journalEntries.id),
+  status: paymentStatusEnum('status').default('posted').notNull(),
+  approvedBy: uuid('approved_by').references(() => users.id),
+  postedBy: uuid('posted_by').references(() => users.id),
   notes: text('notes'),
   createdBy: uuid('created_by').references(() => users.id).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull()
@@ -764,6 +782,8 @@ export const purchaseOrders = pgTable('purchase_orders', {
   total: bigint('total', { mode: 'number' }).default(0).notNull(),
   projectId: uuid('project_id').references(() => projects.id),
   notes: text('notes'),
+  approvedBy: uuid('approved_by').references(() => users.id),
+  postedBy: uuid('posted_by').references(() => users.id),
   createdBy: uuid('created_by').references(() => users.id).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
@@ -788,6 +808,8 @@ export const bills = pgTable('bills', {
   amountPaid: bigint('amount_paid', { mode: 'number' }).default(0).notNull(),
   balanceDue: bigint('balance_due', { mode: 'number' }).default(0).notNull(),
   journalEntryId: uuid('journal_entry_id').references(() => journalEntries.id),
+  approvedBy: uuid('approved_by').references(() => users.id),
+  postedBy: uuid('posted_by').references(() => users.id),
   createdBy: uuid('created_by').references(() => users.id).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
@@ -821,6 +843,9 @@ export const paymentsMade = pgTable('payments_made', {
   projectId: uuid('project_id').references(() => projects.id),
   accountId: uuid('account_id').references(() => accounts.id).notNull(),
   journalEntryId: uuid('journal_entry_id').references(() => journalEntries.id),
+  status: paymentStatusEnum('status').default('posted').notNull(),
+  approvedBy: uuid('approved_by').references(() => users.id),
+  postedBy: uuid('posted_by').references(() => users.id),
   notes: text('notes'),
   createdBy: uuid('created_by').references(() => users.id).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull()
@@ -881,6 +906,9 @@ export const expenses = pgTable('expenses', {
   customerId: uuid('customer_id').references(() => contacts.id),
   recurringId: uuid('recurring_id'),
   journalEntryId: uuid('journal_entry_id').references(() => journalEntries.id),
+  status: expenseStatusEnum('status').default('posted').notNull(),
+  approvedBy: uuid('approved_by').references(() => users.id),
+  postedBy: uuid('posted_by').references(() => users.id),
   createdBy: uuid('created_by').references(() => users.id).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
@@ -1457,6 +1485,8 @@ export const fixedAssets = pgTable('fixed_assets', {
   disposalAmount: bigint('disposal_amount', { mode: 'number' }),
   disposalAccountId: uuid('disposal_account_id').references(() => accounts.id),
   status: fixedAssetStatusEnum('status').default('active').notNull(),
+  approvedBy: uuid('approved_by').references(() => users.id),
+  postedBy: uuid('posted_by').references(() => users.id),
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
@@ -1648,6 +1678,45 @@ export const auditLog = pgTable('audit_log', {
   userIdx: index('idx_audit_log_user').on(table.orgId, table.userId),
   correlationIdx: index('idx_audit_log_correlation').on(table.orgId, table.correlationId),
   hashIdx: index('idx_audit_log_hash').on(table.hash),
+}));
+
+// --- Approval Workflow ---
+
+export const approvalWorkflows = pgTable('approval_workflows', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  module: approvalModuleEnum('module').notNull(),
+  level: integer('level').default(1).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+}, (table) => ({
+  workflowOrgModuleIdx: index('idx_workflow_org_module').on(table.orgId, table.module),
+  workflowOrgModuleUnique: index('idx_workflow_org_module_unique').on(table.orgId, table.module),
+}));
+
+export const approvalHistory = pgTable('approval_history', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  module: approvalModuleEnum('module').notNull(),
+  entityId: uuid('entity_id').notNull(),
+  action: text('action').notNull(),
+  performedBy: uuid('performed_by').references(() => users.id).notNull(),
+  comment: text('comment'),
+  oldStatus: text('old_status'),
+  newStatus: text('new_status'),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+}, (table) => ({
+  approvalHistoryOrgIdx: index('idx_approval_history_org').on(table.orgId, table.module, table.entityId),
+  approvalHistoryEntityIdx: index('idx_approval_history_entity').on(table.entityId),
+}));
+
+export const approvalWorkflowsRelations = relations(approvalWorkflows, ({ one }) => ({
+  org: one(organisations, { fields: [approvalWorkflows.orgId], references: [organisations.id] }),
+}));
+
+export const approvalHistoryRelations = relations(approvalHistory, ({ one }) => ({
+  org: one(organisations, { fields: [approvalHistory.orgId], references: [organisations.id] }),
+  performer: one(users, { fields: [approvalHistory.performedBy], references: [users.id] }),
 }));
 
 export const chatConversations = pgTable('chat_conversations', {
@@ -3333,7 +3402,9 @@ export const schema = {
   leases,
   leasePaymentSchedules,
   leaseJournalEntries,
-  eclParameters,
+   eclParameters,
   eclComputations,
+  approvalWorkflows,
+  approvalHistory,
 };
 

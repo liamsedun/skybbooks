@@ -42,6 +42,7 @@ import {
   generateInvoiceFromTemplate
 } from '../services/recurring.service';
 import { createAuditLog, extractReqMeta } from '../services/audit.service';
+import { validateAndExecuteTransition } from '../services/approval.service';
 import { createJournalEntry } from '../services/ledger.service';
 import { postToGL } from '../services/posting.service';
 
@@ -523,6 +524,72 @@ router.delete('/payments/:id', async (req: AuthenticatedRequest, res: Response, 
   } catch (err) {
     return next(err);
   }
+});
+
+router.post('/payments/:id/submit-review', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId; const orgId = req.user!.orgId!; const userRole = req.user!.role; const { id } = req.params;
+    const [pmt] = await db.select().from(paymentsReceived).where(and(eq(paymentsReceived.id, id), eq(paymentsReceived.orgId, orgId))).limit(1);
+    if (!pmt) throw new AppError('Payment not found.', 404);
+    const { newStatus } = await validateAndExecuteTransition(orgId, 'payments_received', id, pmt.status, 'submit', userId, userRole);
+    await db.update(paymentsReceived).set({ status: newStatus as any }).where(eq(paymentsReceived.id, id));
+    createAuditLog({ orgId, userId, action: 'submit_review', entityType: 'payment', entityId: id, newValues: { status: newStatus }, ...extractReqMeta(req) });
+    return res.status(200).json({ ...pmt, status: newStatus });
+  } catch (err) { next(err); }
+});
+
+router.post('/payments/:id/approve', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId; const orgId = req.user!.orgId!; const userRole = req.user!.role; const { id } = req.params;
+    const [pmt] = await db.select().from(paymentsReceived).where(and(eq(paymentsReceived.id, id), eq(paymentsReceived.orgId, orgId))).limit(1);
+    if (!pmt) throw new AppError('Payment not found.', 404);
+    const { newStatus } = await validateAndExecuteTransition(orgId, 'payments_received', id, pmt.status, 'approve', userId, userRole);
+    await db.update(paymentsReceived).set({ status: newStatus as any, approvedBy: userId }).where(eq(paymentsReceived.id, id));
+    createAuditLog({ orgId, userId, action: 'approve', entityType: 'payment', entityId: id, newValues: { status: newStatus }, ...extractReqMeta(req) });
+    return res.status(200).json({ ...pmt, status: newStatus });
+  } catch (err) { next(err); }
+});
+
+router.post('/payments/:id/reject', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId; const orgId = req.user!.orgId!; const userRole = req.user!.role; const { id } = req.params;
+    const [pmt] = await db.select().from(paymentsReceived).where(and(eq(paymentsReceived.id, id), eq(paymentsReceived.orgId, orgId))).limit(1);
+    if (!pmt) throw new AppError('Payment not found.', 404);
+    const { newStatus } = await validateAndExecuteTransition(orgId, 'payments_received', id, pmt.status, 'reject', userId, userRole);
+    await db.update(paymentsReceived).set({ status: newStatus as any }).where(eq(paymentsReceived.id, id));
+    createAuditLog({ orgId, userId, action: 'reject', entityType: 'payment', entityId: id, newValues: { status: newStatus }, ...extractReqMeta(req) });
+    return res.status(200).json({ ...pmt, status: newStatus });
+  } catch (err) { next(err); }
+});
+
+router.post('/payments/:id/recall', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId; const orgId = req.user!.orgId!; const userRole = req.user!.role; const { id } = req.params;
+    const [pmt] = await db.select().from(paymentsReceived).where(and(eq(paymentsReceived.id, id), eq(paymentsReceived.orgId, orgId))).limit(1);
+    if (!pmt) throw new AppError('Payment not found.', 404);
+    const { newStatus } = await validateAndExecuteTransition(orgId, 'payments_received', id, pmt.status, 'recall', userId, userRole);
+    await db.update(paymentsReceived).set({ status: newStatus as any }).where(eq(paymentsReceived.id, id));
+    createAuditLog({ orgId, userId, action: 'recall', entityType: 'payment', entityId: id, newValues: { status: newStatus }, ...extractReqMeta(req) });
+    return res.status(200).json({ ...pmt, status: newStatus });
+  } catch (err) { next(err); }
+});
+
+router.post('/payments/:id/post', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId; const orgId = req.user!.orgId!; const userRole = req.user!.role; const { id } = req.params;
+    const [pmt] = await db.select().from(paymentsReceived).where(and(eq(paymentsReceived.id, id), eq(paymentsReceived.orgId, orgId))).limit(1);
+    if (!pmt) throw new AppError('Payment not found.', 404);
+    const { newStatus } = await validateAndExecuteTransition(orgId, 'payments_received', id, pmt.status, 'post', userId, userRole);
+    const posted = await recordPaymentReceived({
+      customerId: pmt.customerId, payerName: pmt.payerName, date: pmt.date?.toISOString(),
+      amount: pmt.amount, currency: pmt.currency, fxRate: pmt.fxRate,
+      paymentMethod: pmt.paymentMethod, reference: pmt.reference, accountId: pmt.accountId,
+      incomeAccountId: pmt.incomeAccountId, notes: pmt.notes, allocations: [],
+    } as any, userId);
+    await db.update(paymentsReceived).set({ status: 'posted' as any, postedBy: userId, journalEntryId: posted?.journalEntryId }).where(eq(paymentsReceived.id, id));
+    createAuditLog({ orgId, userId, action: 'post', entityType: 'payment', entityId: id, newValues: { status: 'posted' }, ...extractReqMeta(req) });
+    return res.status(200).json(posted);
+  } catch (err) { next(err); }
 });
 
 // ==========================================

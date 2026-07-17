@@ -6,6 +6,7 @@ import { eq, and, asc, sql } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
 import { updateJournalEntry } from '../services/ledger.service';
 import { createAuditLog, extractReqMeta } from '../services/audit.service';
+import { validateAndExecuteTransition } from '../services/approval.service';
 import * as faService from '../services/fixedAssets.service';
 
 const router = Router();
@@ -428,6 +429,61 @@ router.get('/reports/movement-schedule', async (req: AuthenticatedRequest, res: 
     const schedule = await faService.getAssetMovementSchedule(req.user!.orgId!, fromDate as string, toDate as string);
     return res.json(schedule);
   } catch (err) { return next(err); }
+});
+
+router.post('/:id/submit-review', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId; const orgId = req.user!.orgId!; const userRole = req.user!.role; const { id } = req.params;
+    const asset = await faService.getAsset(orgId, id);
+    const { newStatus } = await validateAndExecuteTransition(orgId, 'fixed_assets', id, asset.status, 'submit', userId, userRole);
+    await db.update(fixedAssets).set({ status: newStatus as any }).where(eq(fixedAssets.id, id));
+    createAuditLog({ orgId, userId, action: 'submit_review', entityType: 'fixed-asset', entityId: id, newValues: { status: newStatus }, ...extractReqMeta(req) });
+    return res.status(200).json({ ...asset, status: newStatus });
+  } catch (err) { next(err); }
+});
+
+router.post('/:id/approve', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId; const orgId = req.user!.orgId!; const userRole = req.user!.role; const { id } = req.params;
+    const asset = await faService.getAsset(orgId, id);
+    const { newStatus } = await validateAndExecuteTransition(orgId, 'fixed_assets', id, asset.status, 'approve', userId, userRole);
+    await db.update(fixedAssets).set({ status: newStatus as any, approvedBy: userId }).where(eq(fixedAssets.id, id));
+    createAuditLog({ orgId, userId, action: 'approve', entityType: 'fixed-asset', entityId: id, newValues: { status: newStatus }, ...extractReqMeta(req) });
+    return res.status(200).json({ ...asset, status: newStatus });
+  } catch (err) { next(err); }
+});
+
+router.post('/:id/reject', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId; const orgId = req.user!.orgId!; const userRole = req.user!.role; const { id } = req.params;
+    const asset = await faService.getAsset(orgId, id);
+    const { newStatus } = await validateAndExecuteTransition(orgId, 'fixed_assets', id, asset.status, 'reject', userId, userRole);
+    await db.update(fixedAssets).set({ status: newStatus as any }).where(eq(fixedAssets.id, id));
+    createAuditLog({ orgId, userId, action: 'reject', entityType: 'fixed-asset', entityId: id, newValues: { status: newStatus }, ...extractReqMeta(req) });
+    return res.status(200).json({ ...asset, status: newStatus });
+  } catch (err) { next(err); }
+});
+
+router.post('/:id/recall', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId; const orgId = req.user!.orgId!; const userRole = req.user!.role; const { id } = req.params;
+    const asset = await faService.getAsset(orgId, id);
+    const { newStatus } = await validateAndExecuteTransition(orgId, 'fixed_assets', id, asset.status, 'recall', userId, userRole);
+    await db.update(fixedAssets).set({ status: newStatus as any }).where(eq(fixedAssets.id, id));
+    createAuditLog({ orgId, userId, action: 'recall', entityType: 'fixed-asset', entityId: id, newValues: { status: newStatus }, ...extractReqMeta(req) });
+    return res.status(200).json({ ...asset, status: newStatus });
+  } catch (err) { next(err); }
+});
+
+router.post('/:id/post', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId; const orgId = req.user!.orgId!; const userRole = req.user!.role; const { id } = req.params;
+    const asset = await faService.getAsset(orgId, id);
+    const { newStatus } = await validateAndExecuteTransition(orgId, 'fixed_assets', id, asset.status, 'post', userId, userRole);
+    await db.update(fixedAssets).set({ status: 'active' as any, postedBy: userId }).where(eq(fixedAssets.id, id));
+    createAuditLog({ orgId, userId, action: 'post', entityType: 'fixed-asset', entityId: id, newValues: { status: 'active' }, ...extractReqMeta(req) });
+    return res.status(200).json({ ...asset, status: 'active' });
+  } catch (err) { next(err); }
 });
 
 export default router;

@@ -104,6 +104,7 @@ import {
 
 import EmailSettingsPage from './pages/settings/EmailSettingsPage';
 import PostingRulesPage from './pages/settings/PostingRulesPage';
+import ApprovalWorkflowsPage from './pages/settings/ApprovalWorkflowsPage';
 
 import { useAuth } from './hooks/useAuth';
 import { EmployeesPage as EmployeesPageReal } from './pages/payroll/EmployeesPage';
@@ -380,6 +381,7 @@ function AppRoutes() {
             <Route path="taxes" element={<TaxesPage />} />
             <Route path="tax" element={<TaxConfigurationPage />} />
             <Route path="posting-rules" element={<PostingRulesPage />} />
+            <Route path="approval-workflows" element={<ApprovalWorkflowsPage />} />
             <Route path="contacts" element={<ContactsSettingsPage />} />
             <Route path="items" element={<ItemsSettingsPage />} />
             <Route path="revenue-recognition" element={<RevenueRecognitionPage />} />

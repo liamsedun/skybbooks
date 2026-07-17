@@ -13,6 +13,7 @@ import { AppError } from '../lib/errors';
 import { createJournalEntry } from '../services/ledger.service';
 import { postToGL } from '../services/posting.service';
 import { createAuditLog, extractReqMeta } from '../services/audit.service';
+import { validateAndExecuteTransition } from '../services/approval.service';
 import * as invService from '../services/inventory.service';
 
 // Helper: auto-create opening stock lot when item has trackInventory + purchasePrice + numeric unit
@@ -1073,6 +1074,73 @@ router.post('/adjustments/:id/upload', upload.array('files', 5), async (req: Aut
 
     return res.status(201).json({ files: results });
   } catch (err) { return next(err); }
+});
+
+router.post('/adjustments/:id/submit-review', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId; const orgId = req.user!.orgId!; const userRole = req.user!.role; const { id } = req.params;
+    const [adj] = await db.select().from(inventoryAdjustments).where(and(eq(inventoryAdjustments.id, id), eq(inventoryAdjustments.orgId, orgId))).limit(1);
+    if (!adj) throw new AppError('Adjustment not found.', 404);
+    const { newStatus } = await validateAndExecuteTransition(orgId, 'inventory_adjustments', id, adj.status, 'submit', userId, userRole);
+    await db.update(inventoryAdjustments).set({ status: newStatus as any }).where(eq(inventoryAdjustments.id, id));
+    createAuditLog({ orgId, userId, action: 'submit_review', entityType: 'inventory-adjustment', entityId: id, newValues: { status: newStatus }, ...extractReqMeta(req) });
+    return res.status(200).json({ ...adj, status: newStatus });
+  } catch (err) { next(err); }
+});
+
+router.post('/adjustments/:id/approve', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId; const orgId = req.user!.orgId!; const userRole = req.user!.role; const { id } = req.params;
+    const [adj] = await db.select().from(inventoryAdjustments).where(and(eq(inventoryAdjustments.id, id), eq(inventoryAdjustments.orgId, orgId))).limit(1);
+    if (!adj) throw new AppError('Adjustment not found.', 404);
+    const { newStatus } = await validateAndExecuteTransition(orgId, 'inventory_adjustments', id, adj.status, 'approve', userId, userRole);
+    await db.update(inventoryAdjustments).set({ status: newStatus as any, approvedBy: userId }).where(eq(inventoryAdjustments.id, id));
+    createAuditLog({ orgId, userId, action: 'approve', entityType: 'inventory-adjustment', entityId: id, newValues: { status: newStatus }, ...extractReqMeta(req) });
+    return res.status(200).json({ ...adj, status: newStatus });
+  } catch (err) { next(err); }
+});
+
+router.post('/adjustments/:id/reject', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId; const orgId = req.user!.orgId!; const userRole = req.user!.role; const { id } = req.params;
+    const [adj] = await db.select().from(inventoryAdjustments).where(and(eq(inventoryAdjustments.id, id), eq(inventoryAdjustments.orgId, orgId))).limit(1);
+    if (!adj) throw new AppError('Adjustment not found.', 404);
+    const { newStatus } = await validateAndExecuteTransition(orgId, 'inventory_adjustments', id, adj.status, 'reject', userId, userRole);
+    await db.update(inventoryAdjustments).set({ status: newStatus as any }).where(eq(inventoryAdjustments.id, id));
+    createAuditLog({ orgId, userId, action: 'reject', entityType: 'inventory-adjustment', entityId: id, newValues: { status: newStatus }, ...extractReqMeta(req) });
+    return res.status(200).json({ ...adj, status: newStatus });
+  } catch (err) { next(err); }
+});
+
+router.post('/adjustments/:id/recall', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId; const orgId = req.user!.orgId!; const userRole = req.user!.role; const { id } = req.params;
+    const [adj] = await db.select().from(inventoryAdjustments).where(and(eq(inventoryAdjustments.id, id), eq(inventoryAdjustments.orgId, orgId))).limit(1);
+    if (!adj) throw new AppError('Adjustment not found.', 404);
+    const { newStatus } = await validateAndExecuteTransition(orgId, 'inventory_adjustments', id, adj.status, 'recall', userId, userRole);
+    await db.update(inventoryAdjustments).set({ status: newStatus as any }).where(eq(inventoryAdjustments.id, id));
+    createAuditLog({ orgId, userId, action: 'recall', entityType: 'inventory-adjustment', entityId: id, newValues: { status: newStatus }, ...extractReqMeta(req) });
+    return res.status(200).json({ ...adj, status: newStatus });
+  } catch (err) { next(err); }
+});
+
+router.post('/adjustments/:id/post', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId; const orgId = req.user!.orgId!; const userRole = req.user!.role; const { id } = req.params;
+    const [adj] = await db.select().from(inventoryAdjustments).where(and(eq(inventoryAdjustments.id, id), eq(inventoryAdjustments.orgId, orgId))).limit(1);
+    if (!adj) throw new AppError('Adjustment not found.', 404);
+    const { newStatus } = await validateAndExecuteTransition(orgId, 'inventory_adjustments', id, adj.status, 'post', userId, userRole);
+    const lineItems = await db.select().from(inventoryAdjustmentItems).where(eq(inventoryAdjustmentItems.adjustmentId, id));
+    if (adj.mode === 'quantity') {
+      await applyQuantityAdjustment(adj, lineItems, orgId, userId);
+    } else {
+      await applyValueAdjustment(adj, lineItems, orgId, userId);
+    }
+    await db.update(inventoryAdjustments).set({ status: 'posted' as any, postedBy: userId, updatedAt: new Date() }).where(eq(inventoryAdjustments.id, id));
+    const [updated] = await db.select().from(inventoryAdjustments).where(eq(inventoryAdjustments.id, id)).limit(1);
+    createAuditLog({ orgId, userId, action: 'post', entityType: 'inventory-adjustment', entityId: id, newValues: { status: 'posted' }, ...extractReqMeta(req) });
+    return res.status(200).json({ ...updated, lineItems });
+  } catch (err) { next(err); }
 });
 
 // ==============================

@@ -42,6 +42,7 @@ const NAV: NavGroup[] = [
       { label: 'Taxes (VAT)', path: '/settings/taxes', icon: Receipt },
       { label: 'Tax Configuration', path: '/settings/tax', icon: FileText },
       { label: 'Posting Rules', path: '/settings/posting-rules', icon: GitPullRequestArrow },
+      { label: 'Approval Workflows', path: '/settings/approval-workflows', icon: Shield },
       { label: 'Customer Portal', path: '/settings/customer-portal', icon: Store },
       { label: 'Vendor Portal', path: '/settings/vendor-portal', icon: Boxes },
     ],

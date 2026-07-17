@@ -2213,6 +2213,92 @@ export async function runMigration() {
 
     console.log('[Migration] Enterprise Audit Trail columns, indexes, and immutable trigger created.');
 
+    // ===== APPROVAL WORKFLOW MIGRATION =====
+
+    await db.execute(sql`
+      DO $$ BEGIN
+        CREATE TYPE approval_module AS ENUM (
+          'bills', 'expenses', 'journals', 'payments_received', 'payments_made',
+          'purchase_orders', 'fixed_assets', 'inventory_adjustments'
+        );
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$;
+    `);
+
+    await db.execute(sql`
+      DO $$ BEGIN
+        CREATE TYPE expense_status AS ENUM ('draft', 'pending_review', 'approved', 'posted', 'void');
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$;
+    `);
+
+    await db.execute(sql`
+      DO $$ BEGIN
+        CREATE TYPE payment_status AS ENUM ('draft', 'pending_review', 'approved', 'posted', 'void');
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$;
+    `);
+
+    await db.execute(sql`ALTER TYPE adjustment_status ADD VALUE IF NOT EXISTS 'pending_review'`);
+    await db.execute(sql`ALTER TYPE adjustment_status ADD VALUE IF NOT EXISTS 'approved'`);
+    await db.execute(sql`ALTER TYPE adjustment_status ADD VALUE IF NOT EXISTS 'posted'`);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS approval_workflows (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        module approval_module NOT NULL,
+        level integer DEFAULT 1 NOT NULL,
+        created_at timestamp DEFAULT now() NOT NULL,
+        updated_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_workflow_org_module ON approval_workflows (org_id, module)`);
+    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_workflow_org_module_unique ON approval_workflows (org_id, module)`);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS approval_history (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        module approval_module NOT NULL,
+        entity_id uuid NOT NULL,
+        action text NOT NULL,
+        performed_by uuid REFERENCES users(id) NOT NULL,
+        comment text,
+        old_status text,
+        new_status text,
+        created_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_approval_history_org ON approval_history (org_id, module, entity_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_approval_history_entity ON approval_history (entity_id)`);
+
+    await db.execute(sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS status expense_status DEFAULT 'posted' NOT NULL`);
+    await db.execute(sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS approved_by uuid REFERENCES users(id)`);
+    await db.execute(sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS posted_by uuid REFERENCES users(id)`);
+
+    await db.execute(sql`ALTER TABLE payments_received ADD COLUMN IF NOT EXISTS status payment_status DEFAULT 'posted' NOT NULL`);
+    await db.execute(sql`ALTER TABLE payments_received ADD COLUMN IF NOT EXISTS approved_by uuid REFERENCES users(id)`);
+    await db.execute(sql`ALTER TABLE payments_received ADD COLUMN IF NOT EXISTS posted_by uuid REFERENCES users(id)`);
+
+    await db.execute(sql`ALTER TABLE payments_made ADD COLUMN IF NOT EXISTS status payment_status DEFAULT 'posted' NOT NULL`);
+    await db.execute(sql`ALTER TABLE payments_made ADD COLUMN IF NOT EXISTS approved_by uuid REFERENCES users(id)`);
+    await db.execute(sql`ALTER TABLE payments_made ADD COLUMN IF NOT EXISTS posted_by uuid REFERENCES users(id)`);
+
+    await db.execute(sql`ALTER TABLE bills ADD COLUMN IF NOT EXISTS approved_by uuid REFERENCES users(id)`);
+    await db.execute(sql`ALTER TABLE bills ADD COLUMN IF NOT EXISTS posted_by uuid REFERENCES users(id)`);
+
+    await db.execute(sql`ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS approved_by uuid REFERENCES users(id)`);
+    await db.execute(sql`ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS posted_by uuid REFERENCES users(id)`);
+
+    await db.execute(sql`ALTER TABLE fixed_assets ADD COLUMN IF NOT EXISTS approved_by uuid REFERENCES users(id)`);
+    await db.execute(sql`ALTER TABLE fixed_assets ADD COLUMN IF NOT EXISTS posted_by uuid REFERENCES users(id)`);
+
+    await db.execute(sql`ALTER TABLE inventory_adjustments ADD COLUMN IF NOT EXISTS approved_by uuid REFERENCES users(id)`);
+    await db.execute(sql`ALTER TABLE inventory_adjustments ADD COLUMN IF NOT EXISTS posted_by uuid REFERENCES users(id)`);
+
+    console.log('[Migration] Approval workflow tables and columns created.');
+
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema setup:', err);

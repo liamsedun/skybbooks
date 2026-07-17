@@ -35,6 +35,7 @@ import {
   getBillAgingReport
 } from '../services/bill.service';
 import { createAuditLog, extractReqMeta } from '../services/audit.service';
+import { validateAndExecuteTransition } from '../services/approval.service';
 import { createJournalEntry } from '../services/ledger.service';
 import { postToGL } from '../services/posting.service';
 import {
@@ -347,6 +348,62 @@ router.post('/bills/:id/duplicate', async (req: AuthenticatedRequest, res: Respo
   }
 });
 
+router.post('/bills/:id/submit-review', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId;
+    const orgId = req.user!.orgId!;
+    const userRole = req.user!.role;
+    const { id } = req.params;
+    const bill = await getBill(id, orgId);
+    const { newStatus } = await validateAndExecuteTransition(orgId, 'bills', id, bill.status, 'submit', userId, userRole);
+    await db.update(bills).set({ status: newStatus as any }).where(eq(bills.id, id));
+    createAuditLog({ orgId, userId, action: 'submit_review', entityType: 'bill', entityId: id, newValues: { status: newStatus }, ...extractReqMeta(req) });
+    return res.status(200).json({ ...bill, status: newStatus });
+  } catch (err) { next(err); }
+});
+
+router.post('/bills/:id/reject', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId;
+    const orgId = req.user!.orgId!;
+    const userRole = req.user!.role;
+    const { id } = req.params;
+    const bill = await getBill(id, orgId);
+    const { newStatus } = await validateAndExecuteTransition(orgId, 'bills', id, bill.status, 'reject', userId, userRole);
+    await db.update(bills).set({ status: newStatus as any }).where(eq(bills.id, id));
+    createAuditLog({ orgId, userId, action: 'reject', entityType: 'bill', entityId: id, newValues: { status: newStatus }, ...extractReqMeta(req) });
+    return res.status(200).json({ ...bill, status: newStatus });
+  } catch (err) { next(err); }
+});
+
+router.post('/bills/:id/recall', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId;
+    const orgId = req.user!.orgId!;
+    const userRole = req.user!.role;
+    const { id } = req.params;
+    const bill = await getBill(id, orgId);
+    const { newStatus } = await validateAndExecuteTransition(orgId, 'bills', id, bill.status, 'recall', userId, userRole);
+    await db.update(bills).set({ status: newStatus as any }).where(eq(bills.id, id));
+    createAuditLog({ orgId, userId, action: 'recall', entityType: 'bill', entityId: id, newValues: { status: newStatus }, ...extractReqMeta(req) });
+    return res.status(200).json({ ...bill, status: newStatus });
+  } catch (err) { next(err); }
+});
+
+router.post('/bills/:id/post', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId;
+    const orgId = req.user!.orgId!;
+    const userRole = req.user!.role;
+    const { id } = req.params;
+    const bill = await getBill(id, orgId);
+    const { newStatus } = await validateAndExecuteTransition(orgId, 'bills', id, bill.status, 'post', userId, userRole);
+    const posted = await approveBill(id, userId, orgId);
+    await db.update(bills).set({ status: 'posted' as any, postedBy: userId }).where(eq(bills.id, id));
+    createAuditLog({ orgId, userId, action: 'post', entityType: 'bill', entityId: id, newValues: { status: 'posted' }, ...extractReqMeta(req) });
+    return res.status(200).json(posted);
+  } catch (err) { next(err); }
+});
 
 // ==========================================
 // 2. PAYMENTS MADE ENDPOINTS (VENDOR SUPPLIER ACTIONS)
@@ -444,6 +501,72 @@ router.delete('/payments/:id', async (req: AuthenticatedRequest, res: Response, 
   } catch (err) {
     return next(err);
   }
+});
+
+router.post('/payments/:id/submit-review', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId; const orgId = req.user!.orgId!; const userRole = req.user!.role; const { id } = req.params;
+    const [pmt] = await db.select().from(paymentsMade).where(and(eq(paymentsMade.id, id), eq(paymentsMade.orgId, orgId))).limit(1);
+    if (!pmt) throw new AppError('Payment not found.', 404);
+    const { newStatus } = await validateAndExecuteTransition(orgId, 'payments_made', id, pmt.status, 'submit', userId, userRole);
+    await db.update(paymentsMade).set({ status: newStatus as any }).where(eq(paymentsMade.id, id));
+    createAuditLog({ orgId, userId, action: 'submit_review', entityType: 'payment-made', entityId: id, newValues: { status: newStatus }, ...extractReqMeta(req) });
+    return res.status(200).json({ ...pmt, status: newStatus });
+  } catch (err) { next(err); }
+});
+
+router.post('/payments/:id/approve', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId; const orgId = req.user!.orgId!; const userRole = req.user!.role; const { id } = req.params;
+    const [pmt] = await db.select().from(paymentsMade).where(and(eq(paymentsMade.id, id), eq(paymentsMade.orgId, orgId))).limit(1);
+    if (!pmt) throw new AppError('Payment not found.', 404);
+    const { newStatus } = await validateAndExecuteTransition(orgId, 'payments_made', id, pmt.status, 'approve', userId, userRole);
+    await db.update(paymentsMade).set({ status: newStatus as any, approvedBy: userId }).where(eq(paymentsMade.id, id));
+    createAuditLog({ orgId, userId, action: 'approve', entityType: 'payment-made', entityId: id, newValues: { status: newStatus }, ...extractReqMeta(req) });
+    return res.status(200).json({ ...pmt, status: newStatus });
+  } catch (err) { next(err); }
+});
+
+router.post('/payments/:id/reject', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId; const orgId = req.user!.orgId!; const userRole = req.user!.role; const { id } = req.params;
+    const [pmt] = await db.select().from(paymentsMade).where(and(eq(paymentsMade.id, id), eq(paymentsMade.orgId, orgId))).limit(1);
+    if (!pmt) throw new AppError('Payment not found.', 404);
+    const { newStatus } = await validateAndExecuteTransition(orgId, 'payments_made', id, pmt.status, 'reject', userId, userRole);
+    await db.update(paymentsMade).set({ status: newStatus as any }).where(eq(paymentsMade.id, id));
+    createAuditLog({ orgId, userId, action: 'reject', entityType: 'payment-made', entityId: id, newValues: { status: newStatus }, ...extractReqMeta(req) });
+    return res.status(200).json({ ...pmt, status: newStatus });
+  } catch (err) { next(err); }
+});
+
+router.post('/payments/:id/recall', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId; const orgId = req.user!.orgId!; const userRole = req.user!.role; const { id } = req.params;
+    const [pmt] = await db.select().from(paymentsMade).where(and(eq(paymentsMade.id, id), eq(paymentsMade.orgId, orgId))).limit(1);
+    if (!pmt) throw new AppError('Payment not found.', 404);
+    const { newStatus } = await validateAndExecuteTransition(orgId, 'payments_made', id, pmt.status, 'recall', userId, userRole);
+    await db.update(paymentsMade).set({ status: newStatus as any }).where(eq(paymentsMade.id, id));
+    createAuditLog({ orgId, userId, action: 'recall', entityType: 'payment-made', entityId: id, newValues: { status: newStatus }, ...extractReqMeta(req) });
+    return res.status(200).json({ ...pmt, status: newStatus });
+  } catch (err) { next(err); }
+});
+
+router.post('/payments/:id/post', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId; const orgId = req.user!.orgId!; const userRole = req.user!.role; const { id } = req.params;
+    const [pmt] = await db.select().from(paymentsMade).where(and(eq(paymentsMade.id, id), eq(paymentsMade.orgId, orgId))).limit(1);
+    if (!pmt) throw new AppError('Payment not found.', 404);
+    const { newStatus } = await validateAndExecuteTransition(orgId, 'payments_made', id, pmt.status, 'post', userId, userRole);
+    const posted = await recordPaymentMade({
+      vendorId: pmt.vendorId, date: pmt.date?.toISOString(), amount: pmt.amount,
+      currency: pmt.currency, fxRate: pmt.fxRate, paymentMethod: pmt.paymentMethod,
+      reference: pmt.reference, accountId: pmt.accountId, notes: pmt.notes,
+      allocations: [],
+    } as any, userId);
+    await db.update(paymentsMade).set({ status: 'posted' as any, postedBy: userId, journalEntryId: posted?.journalEntryId }).where(eq(paymentsMade.id, id));
+    createAuditLog({ orgId, userId, action: 'post', entityType: 'payment-made', entityId: id, newValues: { status: 'posted' }, ...extractReqMeta(req) });
+    return res.status(200).json(posted);
+  } catch (err) { next(err); }
 });
 
 // ==========================================
@@ -552,6 +675,72 @@ router.delete('/expenses/:id', async (req: AuthenticatedRequest, res: Response, 
   }
 });
 
+router.post('/expenses/:id/submit-review', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId; const orgId = req.user!.orgId!; const userRole = req.user!.role; const { id } = req.params;
+    const [expense] = await db.select().from(expenses).where(and(eq(expenses.id, id), eq(expenses.orgId, orgId))).limit(1);
+    if (!expense) throw new AppError('Expense not found.', 404);
+    const { newStatus } = await validateAndExecuteTransition(orgId, 'expenses', id, expense.status, 'submit', userId, userRole);
+    await db.update(expenses).set({ status: newStatus as any }).where(eq(expenses.id, id));
+    createAuditLog({ orgId, userId, action: 'submit_review', entityType: 'expense', entityId: id, newValues: { status: newStatus }, ...extractReqMeta(req) });
+    return res.status(200).json({ ...expense, status: newStatus });
+  } catch (err) { next(err); }
+});
+
+router.post('/expenses/:id/approve', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId; const orgId = req.user!.orgId!; const userRole = req.user!.role; const { id } = req.params;
+    const [expense] = await db.select().from(expenses).where(and(eq(expenses.id, id), eq(expenses.orgId, orgId))).limit(1);
+    if (!expense) throw new AppError('Expense not found.', 404);
+    const { newStatus } = await validateAndExecuteTransition(orgId, 'expenses', id, expense.status, 'approve', userId, userRole);
+    await db.update(expenses).set({ status: newStatus as any, approvedBy: userId }).where(eq(expenses.id, id));
+    createAuditLog({ orgId, userId, action: 'approve', entityType: 'expense', entityId: id, newValues: { status: newStatus }, ...extractReqMeta(req) });
+    return res.status(200).json({ ...expense, status: newStatus });
+  } catch (err) { next(err); }
+});
+
+router.post('/expenses/:id/reject', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId; const orgId = req.user!.orgId!; const userRole = req.user!.role; const { id } = req.params;
+    const [expense] = await db.select().from(expenses).where(and(eq(expenses.id, id), eq(expenses.orgId, orgId))).limit(1);
+    if (!expense) throw new AppError('Expense not found.', 404);
+    const { newStatus } = await validateAndExecuteTransition(orgId, 'expenses', id, expense.status, 'reject', userId, userRole);
+    await db.update(expenses).set({ status: newStatus as any }).where(eq(expenses.id, id));
+    createAuditLog({ orgId, userId, action: 'reject', entityType: 'expense', entityId: id, newValues: { status: newStatus }, ...extractReqMeta(req) });
+    return res.status(200).json({ ...expense, status: newStatus });
+  } catch (err) { next(err); }
+});
+
+router.post('/expenses/:id/recall', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId; const orgId = req.user!.orgId!; const userRole = req.user!.role; const { id } = req.params;
+    const [expense] = await db.select().from(expenses).where(and(eq(expenses.id, id), eq(expenses.orgId, orgId))).limit(1);
+    if (!expense) throw new AppError('Expense not found.', 404);
+    const { newStatus } = await validateAndExecuteTransition(orgId, 'expenses', id, expense.status, 'recall', userId, userRole);
+    await db.update(expenses).set({ status: newStatus as any }).where(eq(expenses.id, id));
+    createAuditLog({ orgId, userId, action: 'recall', entityType: 'expense', entityId: id, newValues: { status: newStatus }, ...extractReqMeta(req) });
+    return res.status(200).json({ ...expense, status: newStatus });
+  } catch (err) { next(err); }
+});
+
+router.post('/expenses/:id/post', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId; const orgId = req.user!.orgId!; const userRole = req.user!.role; const { id } = req.params;
+    const [expense] = await db.select().from(expenses).where(and(eq(expenses.id, id), eq(expenses.orgId, orgId))).limit(1);
+    if (!expense) throw new AppError('Expense not found.', 404);
+    const { newStatus } = await validateAndExecuteTransition(orgId, 'expenses', id, expense.status, 'post', userId, userRole);
+    const posted = await createExpense({
+      accountId: expense.accountId, vendorId: expense.vendorId, date: expense.date?.toISOString(),
+      amount: expense.amount, taxAmount: expense.taxAmount, currency: expense.currency,
+      fxRate: expense.fxRate, paymentMethod: expense.paymentMethod, reference: expense.reference,
+      description: expense.description, isBillable: expense.isBillable,
+      paymentAccountId: null, customerId: expense.customerId, projectId: expense.projectId,
+    } as any, userId);
+    await db.update(expenses).set({ status: 'posted' as any, postedBy: userId, journalEntryId: posted.journalEntryId }).where(eq(expenses.id, id));
+    createAuditLog({ orgId, userId, action: 'post', entityType: 'expense', entityId: id, newValues: { status: 'posted' }, ...extractReqMeta(req) });
+    return res.status(200).json(posted);
+  } catch (err) { next(err); }
+});
 
 // ==========================================
 // 4. PURCHASE ORDERS ENDPOINTS
@@ -677,6 +866,50 @@ router.post('/orders/:id/approve', async (req: AuthenticatedRequest, res: Respon
   } catch (err) {
     return next(err);
   }
+});
+
+router.post('/orders/:id/submit-review', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId; const orgId = req.user!.orgId!; const userRole = req.user!.role; const { id } = req.params;
+    const po = await getPO(id, orgId);
+    const { newStatus } = await validateAndExecuteTransition(orgId, 'purchase_orders', id, po.status, 'submit', userId, userRole);
+    await db.update(purchaseOrders).set({ status: newStatus as any }).where(eq(purchaseOrders.id, id));
+    createAuditLog({ orgId, userId, action: 'submit_review', entityType: 'purchase-order', entityId: id, newValues: { status: newStatus }, ...extractReqMeta(req) });
+    return res.status(200).json({ ...po, status: newStatus });
+  } catch (err) { next(err); }
+});
+
+router.post('/orders/:id/reject', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId; const orgId = req.user!.orgId!; const userRole = req.user!.role; const { id } = req.params;
+    const po = await getPO(id, orgId);
+    const { newStatus } = await validateAndExecuteTransition(orgId, 'purchase_orders', id, po.status, 'reject', userId, userRole);
+    await db.update(purchaseOrders).set({ status: newStatus as any }).where(eq(purchaseOrders.id, id));
+    createAuditLog({ orgId, userId, action: 'reject', entityType: 'purchase-order', entityId: id, newValues: { status: newStatus }, ...extractReqMeta(req) });
+    return res.status(200).json({ ...po, status: newStatus });
+  } catch (err) { next(err); }
+});
+
+router.post('/orders/:id/recall', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId; const orgId = req.user!.orgId!; const userRole = req.user!.role; const { id } = req.params;
+    const po = await getPO(id, orgId);
+    const { newStatus } = await validateAndExecuteTransition(orgId, 'purchase_orders', id, po.status, 'recall', userId, userRole);
+    await db.update(purchaseOrders).set({ status: newStatus as any }).where(eq(purchaseOrders.id, id));
+    createAuditLog({ orgId, userId, action: 'recall', entityType: 'purchase-order', entityId: id, newValues: { status: newStatus }, ...extractReqMeta(req) });
+    return res.status(200).json({ ...po, status: newStatus });
+  } catch (err) { next(err); }
+});
+
+router.post('/orders/:id/post', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId; const orgId = req.user!.orgId!; const userRole = req.user!.role; const { id } = req.params;
+    const po = await getPO(id, orgId);
+    const { newStatus } = await validateAndExecuteTransition(orgId, 'purchase_orders', id, po.status, 'post', userId, userRole);
+    await db.update(purchaseOrders).set({ status: 'approved' as any, postedBy: userId }).where(eq(purchaseOrders.id, id));
+    createAuditLog({ orgId, userId, action: 'post', entityType: 'purchase-order', entityId: id, newValues: { status: 'approved' }, ...extractReqMeta(req) });
+    return res.status(200).json({ ...po, status: 'approved' });
+  } catch (err) { next(err); }
 });
 
 // Conversion of a PO into an expense

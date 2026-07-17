@@ -1624,4 +1624,20 @@ export const inventoryApi = {
   },
 };
 
+// ===== APPROVAL WORKFLOW API =====
+export const approvalApi = {
+  getWorkflows: async (): Promise<any[]> => {
+    const res = await api.get('/approval/workflows'); return res.data;
+  },
+  setWorkflow: async (module: string, level: number): Promise<any> => {
+    const res = await api.put('/approval/workflows', { module, level }); return res.data;
+  },
+  deleteWorkflow: async (module: string): Promise<any> => {
+    const res = await api.delete(`/approval/workflows/${module}`); return res.data;
+  },
+  getHistory: async (module: string, entityId: string): Promise<any[]> => {
+    const res = await api.get(`/approval/history/${module}/${entityId}`); return res.data;
+  },
+};
+
 
