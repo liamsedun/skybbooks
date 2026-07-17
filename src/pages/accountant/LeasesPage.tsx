@@ -65,7 +65,7 @@ export function LeasesPage() {
   return (
     <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">Lease Accounting (IFRS 16)</h1>
+
         <div className="flex gap-2">
           <button onClick={handlePrintPdf} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-red-600 rounded-xl hover:bg-red-700 transition-all duration-200"><Printer className="w-3.5 h-3.5" /> PDF</button>
           <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200"><Plus className="w-3.5 h-3.5" /> +New Lease</button>

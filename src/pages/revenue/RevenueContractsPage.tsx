@@ -105,10 +105,7 @@ export function RevenueContractsPage() {
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-xl font-semibold text-ink-900">Revenue Contracts</h1>
-          <p className="text-sm text-ink-500 mt-1">IFRS 15 — Manage contracts, performance obligations, and revenue recognition schedules</p>
-        </div>
+
         <button onClick={() => { setFormData({}); setShowForm(true); }} className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-xl hover:bg-emerald-700 transition-colors">
           <Plus className="w-4 h-4" /> New Contract
         </button>

@@ -183,10 +183,7 @@ export function OcrProcessingPage() {
   return (
     <div className="p-4 sm:p-6 max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">OCR Document Processing</h1>
-          <p className="text-sm text-slate-500 mt-1">Upload invoices, bills, receipts & purchase orders for automatic data extraction</p>
-        </div>
+
         <div className="flex items-center gap-2">
           <input
             ref={fileInputRef}

@@ -162,7 +162,7 @@ export function DepreciationPage() {
   return (
     <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">Depreciation History</h1>
+
         <div className="flex items-center gap-2">
           <button onClick={handlePrintPdf} disabled={grouped.length === 0}
             className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium border border-slate-200/80 text-slate-600 rounded-xl hover:bg-slate-50 transition-all duration-200 disabled:opacity-50">

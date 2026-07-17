@@ -33,7 +33,7 @@ export function FixedAssetsPage() {
   return (
     <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">Fixed Assets</h1>
+
         <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm flex overflow-hidden">
           <button onClick={() => setTab('assets')} className={`px-4 py-2 text-xs font-semibold transition-all duration-200 ${tab === 'assets' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}><Building className="w-3.5 h-3.5 inline mr-1" /> Assets</button>
           <button onClick={() => setTab('classes')} className={`px-4 py-2 text-xs font-semibold border-x border-slate-200/80 ${tab === 'classes' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}><Layers className="w-3.5 h-3.5 inline mr-1" /> Classes</button>

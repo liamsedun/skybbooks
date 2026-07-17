@@ -355,10 +355,7 @@ export function ChartOfAccountsPage() {
   return (
     <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
       <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Chart of Accounts</h1>
-          <p className="text-sm text-slate-500 mt-1">{counts.all} accounts · Double-entry general ledger structure</p>
-        </div>
+
         <div className="flex gap-2">
           <button
             onClick={() => setShowBalances((v) => !v)}
