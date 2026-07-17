@@ -72,6 +72,7 @@ import {
   ProjectsReportPage,
   CustomReportsPage,
   TaxComputationPage,
+  TaxEnginePage,
   LegacyMigrationPage,
   InvitesSettingsPage,
   IntegrationsSettingsPage
@@ -341,6 +342,7 @@ function AppRoutes() {
           </Route>
           <Route path="/reports/projects" element={<ProjectsReportPage />} />
           <Route path="/reports/tax-computation" element={<TaxComputationPage />} />
+          <Route path="/reports/tax-engine" element={<TaxEnginePage />} />
           <Route path="/reports/custom" element={<CustomReportsPage />} />
           <Route path="/reports/legacy" element={<LegacyMigrationPage />} />
           <Route path="/reports/notes" element={<NotesPage />} />

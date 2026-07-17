@@ -678,6 +678,7 @@ export { CurrencyRatesPage } from './banking/CurrencyRatesPage';
 export { AuditLogsPage } from './reports/AuditLogsPage';
 export { InvitesSettingsPage } from './settings/InvitesPage';
 export { IntegrationsSettingsPage } from './settings/IntegrationsPage';
+export { default as TaxEnginePage } from './tax/TaxEnginePage';
 
 export { CustomReportsPage } from './reports/CustomReportsPage';
 export { LegacyMigrationPage } from './reports/LegacyMigrationPage';

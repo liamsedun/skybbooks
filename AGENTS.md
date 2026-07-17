@@ -198,3 +198,33 @@ Maintain and enhance accounting features: fix kobo/naira display, parent-child a
 4. (Done) Consolidated reports endpoint (`GET /reports/consolidated`)
 5. (Done) IFRS 15 Revenue Recognition: schema, service, routes, API client, migration, frontend (RevenueContractsPage + RevenueRecognitionReport), sidebar nav, App.tsx routing
 6. (Done) IFRS 16 Lease Accounting: schema, service, routes, API client, migration, frontend (LeasesPage with full CRUD, schedule, payments, depreciation, modify/terminate), sidebar nav, App.tsx routing
+7. (Done) Inventory Accounting Improvement: routes, API, frontend, service fixes — committed at `c84649e`, pushed to main (Render auto-deploys)
+8. (Done) Nigerian Tax Engine: PAYE, NHF, NSITF, ITF, Stamp Duty, Tax Exemptions, FIRS Reports, Auto Tax Journals — committed at `c84649e`, pushed to main
+
+### Nigerian Tax Engine — Completed Items
+- **Schema (`schema.ts`)**: Added 7 new tables — `payeSchedules`, `payeScheduleLines`, `itfAssessments`, `stampDutyRecords`, `taxExemptions`, `firsReports`, `autoTaxJournals` — with 6 new enums (`payePeriodStatus`, `itfStatus`, `taxExemptionStatus`, `taxTypeEnum`, `firsReportStatus`, `firsReportType`)
+- **Migration (`migrate.ts`)**: Creates all 7 tables with indexes, seeds 5 new accounts (306100 NSITF Payable, 306200 ITF Payable, 306300 Stamp Duty Payable, 950700 ITF Expense, 950800 Stamp Duty Expense)
+- **PAYE Engine (`statutory.service.ts`)**: Nigerian PAYE tax bands (7%-24%), consolidated relief (1% or ₦200k + 20%), monthly/annual computation functions, schedule creation, journal posting via `postToGL()`
+- **NHF/NSITF/ITF**: NHF 2.5% of basic, NSITF 1% of basic, ITF 1% of annual payroll — all with auto journal posting
+- **Stamp Duty**: ₦50 (5000 kobo) per transaction ≥ ₦5,000 with auto JE posting
+- **Tax Exemptions**: CRUD for exemptions per tax type with status tracking (active/expired/revoked)
+- **FIRS Reports**: Consolidated tax report generation per type (VAT, WHT, CIT, PAYE, ITF, consolidated) with status workflow (draft→filed→assessed→paid)
+- **Auto Tax Journal Tracking**: `autoTaxJournals` table records all auto-generated tax JEs for audit trail
+- **Tax Dashboard**: `getTaxDashboardSummary()` returns VAT/WHT/PAYE/CIT positions for the overview
+- **Routes** (`tax.ts`): 14 new endpoints — dashboard, PAYE CRUD+post, ITF CRUD+post, stamp duty CRUD+summary, exemptions CRUD+status, FIRS reports generate+file, auto journal listing
+- **API Client** (`api.ts`): 18 new methods on `taxApi` (dashboard, PAYE, ITF, stamp duty, exemptions, FIRS reports, auto journals)
+- **Frontend** (`TaxEnginePage.tsx` at `/reports/tax-engine`): 7-tab page — Dashboard (summary cards), PAYE schedules, ITF assessments, Stamp Duty records, Tax Exemptions, FIRS Reports, VAT Settings — with create modals, status badges, action buttons, Naira formatting
+- **Routing/sidebar**: Route at `/reports/tax-engine` in `App.tsx`; sidebar nav item "Tax Engine" with Shield icon under REPORTS group
+- **Build**: Passes with 0 errors
+
+## Critical Context
+- All tax amounts stored in kobo (bigint); frontend divides by 100 with `fmtNaira`
+- PAYE computation uses annualized approach: monthly gross × 12, compute annual tax, divide back by 12
+- NHF (2.5%) based on basic salary, not gross pay
+- NSITF (1%) is employer-only contribution on basic salary
+- ITF (1% of annual payroll) applies to organisations with 5+ employees
+- Stamp duty is ₦50 fixed per transaction ≥ ₦5,000 (500000 kobo)  
+- All tax journal entries use `postToGL()` with source `'tax_provision'` (cast with `as any` for enum compatibility)
+- Tax exemption types include: pioneer_status, export_exemption, agricultural_exemption, first_four_years_exemption, foreign_equity_exemption, and custom types
+- FIRS consolidated report generates all sub-reports (VAT, WHT, PAYE, CIT) and aggregates totals
+- Pre-existing VAT return at `/reports/vat-return` and CIT computation at `/reports/tax-computation` remain unchanged

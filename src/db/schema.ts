@@ -1042,6 +1042,140 @@ export const taxComputationsRelations = relations(taxComputations, ({ one }) => 
   })
 }));
 
+// --- PAYE / Statutory Deduction Schedules ---
+
+export const payePeriodStatusEnum = pgEnum('paye_period_status', ['draft', 'computed', 'posted', 'remitted']);
+
+export const payeSchedules = pgTable('paye_schedules', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  payrollRunId: uuid('payroll_run_id').references(() => payrollRuns.id),
+  periodStart: timestamp('period_start').notNull(),
+  periodEnd: timestamp('period_end').notNull(),
+  periodLabel: text('period_label').notNull(),
+  totalGrossPay: bigint('total_gross_pay', { mode: 'number' }).default(0).notNull(),
+  totalTaxablePay: bigint('total_taxable_pay', { mode: 'number' }).default(0).notNull(),
+  totalPaye: bigint('total_paye', { mode: 'number' }).default(0).notNull(),
+  totalNhf: bigint('total_nhf', { mode: 'number' }).default(0).notNull(),
+  totalNsitf: bigint('total_nsitf', { mode: 'number' }).default(0).notNull(),
+  status: payePeriodStatusEnum('status').default('draft').notNull(),
+  journalEntryId: uuid('journal_entry_id').references(() => journalEntries.id),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+});
+
+export const payeSchedulesRelations = relations(payeSchedules, ({ one }) => ({
+  organisation: one(organisations, { fields: [payeSchedules.orgId], references: [organisations.id] }),
+  journalEntry: one(journalEntries, { fields: [payeSchedules.journalEntryId], references: [journalEntries.id] })
+}));
+
+export const payeScheduleLines = pgTable('paye_schedule_lines', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  payeScheduleId: uuid('paye_schedule_id').references(() => payeSchedules.id).notNull(),
+  employeeId: uuid('employee_id').references(() => employees.id),
+  grossPay: bigint('gross_pay', { mode: 'number' }).default(0).notNull(),
+  consolidatedRelief: bigint('consolidated_relief', { mode: 'number' }).default(0).notNull(),
+  taxablePay: bigint('taxable_pay', { mode: 'number' }).default(0).notNull(),
+  paye: bigint('paye', { mode: 'number' }).default(0).notNull(),
+  nhf: bigint('nhf', { mode: 'number' }).default(0).notNull(),
+  nsitf: bigint('nsitf', { mode: 'number' }).default(0).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+// --- ITF Assessments ---
+
+export const itfStatusEnum = pgEnum('itf_status', ['pending', 'paid', 'waived']);
+
+export const itfAssessments = pgTable('itf_assessments', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  assessmentYear: text('assessment_year').notNull(),
+  totalPayroll: bigint('total_payroll', { mode: 'number' }).default(0).notNull(),
+  contributionRate: numeric('contribution_rate', { precision: 5, scale: 2 }).default('0.01').notNull(),
+  contributionAmount: bigint('contribution_amount', { mode: 'number' }).default(0).notNull(),
+  paidAmount: bigint('paid_amount', { mode: 'number' }).default(0).notNull(),
+  journalEntryId: uuid('journal_entry_id').references(() => journalEntries.id),
+  status: itfStatusEnum('status').default('pending').notNull(),
+  paidAt: timestamp('paid_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+});
+
+// --- Stamp Duty Records ---
+
+export const stampDutyRecords = pgTable('stamp_duty_records', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  transactionType: text('transaction_type').notNull(),
+  referenceType: text('reference_type'),
+  referenceId: uuid('reference_id'),
+  grossAmount: bigint('gross_amount', { mode: 'number' }).default(0).notNull(),
+  stampDutyAmount: bigint('stamp_duty_amount', { mode: 'number' }).default(0).notNull(),
+  journalEntryId: uuid('journal_entry_id').references(() => journalEntries.id),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+// --- Tax Exemptions ---
+
+export const taxExemptionStatusEnum = pgEnum('tax_exemption_status', ['active', 'expired', 'revoked']);
+export const taxTypeEnum = pgEnum('tax_type_enum', ['vat', 'wht', 'cit', 'paye', 'itf', 'cgt', 'edt', 'stamp_duty', 'nhf', 'nsitf', 'all']);
+
+export const taxExemptions = pgTable('tax_exemptions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  taxType: taxTypeEnum('tax_type').notNull(),
+  exemptionType: text('exemption_type').notNull(),
+  referenceNumber: text('reference_number'),
+  startDate: timestamp('start_date').notNull(),
+  endDate: timestamp('end_date'),
+  certificateUrl: text('certificate_url'),
+  description: text('description'),
+  status: taxExemptionStatusEnum('status').default('active').notNull(),
+  createdBy: uuid('created_by').references(() => users.id),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+});
+
+// --- FIRS Reports ---
+
+export const firsReportStatusEnum = pgEnum('firs_report_status', ['draft', 'filed', 'assessed', 'paid']);
+export const firsReportTypeEnum = pgEnum('firs_report_type', ['vat', 'wht', 'cit', 'paye', 'itf', 'nsitf', 'nhf', 'cgt', 'edt', 'stamp_duty', 'consolidated']);
+
+export const firsReports = pgTable('firs_reports', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  reportType: firsReportTypeEnum('report_type').notNull(),
+  periodStart: timestamp('period_start').notNull(),
+  periodEnd: timestamp('period_end').notNull(),
+  periodLabel: text('period_label').notNull(),
+  taxYear: text('tax_year'),
+  totalLiability: bigint('total_liability', { mode: 'number' }).default(0).notNull(),
+  totalPaid: bigint('total_paid', { mode: 'number' }).default(0).notNull(),
+  balanceDue: bigint('balance_due', { mode: 'number' }).default(0).notNull(),
+  status: firsReportStatusEnum('status').default('draft').notNull(),
+  metadata: jsonb('metadata'),
+  filedAt: timestamp('filed_at'),
+  filedBy: uuid('filed_by').references(() => users.id),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+});
+
+// --- Auto Tax Journal Tracking ---
+
+export const autoTaxJournals = pgTable('auto_tax_journals', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  taxType: taxTypeEnum('tax_type').notNull(),
+  periodStart: timestamp('period_start').notNull(),
+  periodEnd: timestamp('period_end').notNull(),
+  referenceType: text('reference_type'),
+  referenceId: uuid('reference_id'),
+  journalEntryId: uuid('journal_entry_id').references(() => journalEntries.id).notNull(),
+  amount: bigint('amount', { mode: 'number' }).default(0).notNull(),
+  description: text('description'),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
 // --- Banking ---
 
 export const bankAccounts = pgTable('bank_accounts', {

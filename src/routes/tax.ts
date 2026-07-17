@@ -1,7 +1,7 @@
 import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { eq, and, desc } from 'drizzle-orm';
-import { db, accounts, taxConfigurations, capitalAllowanceSchedule, taxLosses, taxComputations } from '../db/schema';
+import { db, accounts, taxConfigurations, capitalAllowanceSchedule, taxLosses, taxComputations, payeSchedules, payeScheduleLines, itfAssessments, stampDutyRecords, taxExemptions, firsReports, autoTaxJournals } from '../db/schema';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
 import { createAuditLog, extractReqMeta } from '../services/audit.service';
 import {
@@ -12,6 +12,15 @@ import {
   getCapitalAllowancesTotal,
   postTaxJournalEntries,
 } from '../services/tax.service';
+import {
+  createPayeSchedule, getPayeSchedules, getPayeScheduleLines, postPayeJournal,
+  createItfAssessment, getItfAssessments, postItfJournal,
+  recordStampDuty, getStampDutyRecords, getStampDutySummary,
+  createTaxExemption, getTaxExemptions, updateTaxExemptionStatus,
+  generateFirsReport, getFirsReports, fileFirsReport,
+  recordAutoTaxJournal, getAutoTaxJournals,
+  getTaxDashboardSummary,
+} from '../services/statutory.service';
 
 const router = Router();
 
@@ -401,6 +410,163 @@ router.get('/schedule', async (req: AuthenticatedRequest, res: Response, next: N
   } catch (err) {
     next(err);
   }
+});
+
+// ==============================
+// TAX ENGINE — NEW ENDPOINTS
+// ==============================
+
+// GET /tax/dashboard — consolidated tax dashboard summary
+router.get('/dashboard', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const summary = await getTaxDashboardSummary(req.user!.orgId!);
+    return res.json(summary);
+  } catch (err) { return next(err); }
+});
+
+// --- PAYE Schedules ---
+
+router.get('/paye-schedules', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try { return res.json(await getPayeSchedules(req.user!.orgId!)); } catch (err) { return next(err); }
+});
+
+router.get('/paye-schedules/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try { return res.json(await getPayeScheduleLines(req.params.id)); } catch (err) { return next(err); }
+});
+
+router.post('/paye-schedules', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const body = z.object({
+      periodStart: z.string(), periodEnd: z.string(),
+      payrollRunId: z.string().uuid().optional(),
+      entries: z.array(z.object({ employeeId: z.string().uuid(), grossPay: z.number(), basicSalary: z.number().optional() })),
+    }).parse(req.body);
+    const result = await createPayeSchedule(req.user!.orgId!, req.user!.userId!, body, extractReqMeta(req));
+    return res.status(201).json(result);
+  } catch (err) { return next(err); }
+});
+
+router.post('/paye-schedules/:id/post', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const body = z.object({ date: z.string(), bankAccountId: z.string().uuid().optional() }).parse(req.body);
+    const result = await postPayeJournal(req.user!.orgId!, req.user!.userId!, req.params.id, body, extractReqMeta(req));
+    return res.json(result);
+  } catch (err) { return next(err); }
+});
+
+// --- ITF Assessments ---
+
+router.get('/itf-assessments', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try { return res.json(await getItfAssessments(req.user!.orgId!)); } catch (err) { return next(err); }
+});
+
+router.post('/itf-assessments', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const body = z.object({ assessmentYear: z.string(), totalPayroll: z.number() }).parse(req.body);
+    const result = await createItfAssessment(req.user!.orgId!, req.user!.userId!, body, extractReqMeta(req));
+    return res.status(201).json(result);
+  } catch (err) { return next(err); }
+});
+
+router.post('/itf-assessments/:id/post', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const body = z.object({ date: z.string() }).parse(req.body);
+    const result = await postItfJournal(req.user!.orgId!, req.user!.userId!, req.params.id, body, extractReqMeta(req));
+    return res.json(result);
+  } catch (err) { return next(err); }
+});
+
+// --- Stamp Duty ---
+
+router.get('/stamp-duty', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { fromDate, toDate } = req.query as any;
+    return res.json(await getStampDutyRecords(req.user!.orgId!, { fromDate, toDate }));
+  } catch (err) { return next(err); }
+});
+
+router.get('/stamp-duty/summary', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { fromDate, toDate } = req.query as any;
+    return res.json(await getStampDutySummary(req.user!.orgId!, fromDate, toDate));
+  } catch (err) { return next(err); }
+});
+
+router.post('/stamp-duty', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const body = z.object({
+      transactionType: z.string(), grossAmount: z.number(), date: z.string(),
+      referenceType: z.string().optional(), referenceId: z.string().uuid().optional(),
+    }).parse(req.body);
+    const result = await recordStampDuty(req.user!.orgId!, req.user!.userId!, body, extractReqMeta(req));
+    return res.status(201).json(result);
+  } catch (err) { return next(err); }
+});
+
+// --- Tax Exemptions ---
+
+router.get('/exemptions', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { taxType, status } = req.query as any;
+    return res.json(await getTaxExemptions(req.user!.orgId!, { taxType, status }));
+  } catch (err) { return next(err); }
+});
+
+router.post('/exemptions', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const body = z.object({
+      taxType: z.enum(['vat','wht','cit','paye','itf','cgt','edt','stamp_duty','nhf','nsitf','all']),
+      exemptionType: z.string(), referenceNumber: z.string().optional(),
+      startDate: z.string(), endDate: z.string().optional(),
+      certificateUrl: z.string().optional(), description: z.string().optional(),
+    }).parse(req.body);
+    const result = await createTaxExemption(req.user!.orgId!, req.user!.userId!, body, extractReqMeta(req));
+    return res.status(201).json(result);
+  } catch (err) { return next(err); }
+});
+
+router.patch('/exemptions/:id/status', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { status } = z.object({ status: z.enum(['active','expired','revoked']) }).parse(req.body);
+    const result = await updateTaxExemptionStatus(req.params.id, req.user!.orgId!, status, extractReqMeta(req));
+    return res.json(result);
+  } catch (err) { return next(err); }
+});
+
+// --- FIRS Reports ---
+
+router.get('/firs-reports', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { reportType } = req.query as any;
+    return res.json(await getFirsReports(req.user!.orgId!, { reportType }));
+  } catch (err) { return next(err); }
+});
+
+router.post('/firs-reports/generate', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const body = z.object({
+      reportType: z.enum(['vat','wht','cit','paye','itf','nsitf','nhf','cgt','edt','stamp_duty','consolidated']),
+      periodStart: z.string(), periodEnd: z.string(), taxYear: z.string().optional(),
+    }).parse(req.body);
+    const result = await generateFirsReport(req.user!.orgId!, req.user!.userId!, body, extractReqMeta(req));
+    return res.status(201).json(result);
+  } catch (err) { return next(err); }
+});
+
+router.post('/firs-reports/:id/file', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const result = await fileFirsReport(req.params.id, req.user!.orgId!, req.user!.userId!, extractReqMeta(req));
+    return res.json(result);
+  } catch (err) { return next(err); }
+});
+
+// --- Auto Tax Journals ---
+
+router.get('/auto-journals', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { taxType, fromDate, toDate } = req.query as any;
+    return res.json(await getAutoTaxJournals(req.user!.orgId!, { taxType, fromDate, toDate }));
+  } catch (err) { return next(err); }
 });
 
 export default router;

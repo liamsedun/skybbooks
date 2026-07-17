@@ -1213,6 +1213,61 @@ export const taxApi = {
     const res = await api.get('/tax/schedule');
     return res.data;
   },
+  // === NIGERIAN TAX ENGINE EXTENSIONS ===
+  getDashboard: async () => {
+    const res = await api.get('/tax/dashboard'); return res.data;
+  },
+  getPayeSchedules: async () => {
+    const res = await api.get('/tax/paye-schedules'); return res.data;
+  },
+  getPayeScheduleById: async (id: string) => {
+    const res = await api.get(`/tax/paye-schedules/${id}`); return res.data;
+  },
+  createPayeSchedule: async (data: any) => {
+    const res = await api.post('/tax/paye-schedules', data); return res.data;
+  },
+  postPayeJournal: async (id: string, data: { date: string; bankAccountId?: string }) => {
+    const res = await api.post(`/tax/paye-schedules/${id}/post`, data); return res.data;
+  },
+  getItfAssessments: async () => {
+    const res = await api.get('/tax/itf-assessments'); return res.data;
+  },
+  createItfAssessment: async (data: any) => {
+    const res = await api.post('/tax/itf-assessments', data); return res.data;
+  },
+  postItfJournal: async (id: string, data: { date: string }) => {
+    const res = await api.post(`/tax/itf-assessments/${id}/post`, data); return res.data;
+  },
+  getStampDuty: async (params?: { fromDate?: string; toDate?: string }) => {
+    const res = await api.get('/tax/stamp-duty', { params }); return res.data;
+  },
+  getStampDutySummary: async (params?: { fromDate?: string; toDate?: string }) => {
+    const res = await api.get('/tax/stamp-duty/summary', { params }); return res.data;
+  },
+  createStampDuty: async (data: any) => {
+    const res = await api.post('/tax/stamp-duty', data); return res.data;
+  },
+  getExemptions: async (params?: { taxType?: string; status?: string }) => {
+    const res = await api.get('/tax/exemptions', { params }); return res.data;
+  },
+  createExemption: async (data: any) => {
+    const res = await api.post('/tax/exemptions', data); return res.data;
+  },
+  updateExemptionStatus: async (id: string, status: string) => {
+    const res = await api.patch(`/tax/exemptions/${id}/status`, { status }); return res.data;
+  },
+  getFirsReports: async (params?: { reportType?: string }) => {
+    const res = await api.get('/tax/firs-reports', { params }); return res.data;
+  },
+  generateFirsReport: async (data: any) => {
+    const res = await api.post('/tax/firs-reports/generate', data); return res.data;
+  },
+  fileFirsReport: async (id: string) => {
+    const res = await api.post(`/tax/firs-reports/${id}/file`); return res.data;
+  },
+  getAutoTaxJournals: async (params?: { taxType?: string; fromDate?: string; toDate?: string }) => {
+    const res = await api.get('/tax/auto-journals', { params }); return res.data;
+  },
 };
 
 export const vatApi = {

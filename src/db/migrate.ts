@@ -1931,6 +1931,206 @@ export async function runMigration() {
 
     console.log('[Migration] Inventory Enhancement tables and columns created.');
 
+    // ===== NIGERIAN TAX ENGINE MIGRATION =====
+
+    // Enums (IF NOT EXISTS handled by drizzle push; raw SQL we protect)
+    await db.execute(sql`DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'paye_period_status') THEN
+        CREATE TYPE paye_period_status AS ENUM ('draft','computed','posted','remitted');
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'itf_status') THEN
+        CREATE TYPE itf_status AS ENUM ('pending','paid','waived');
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'tax_exemption_status') THEN
+        CREATE TYPE tax_exemption_status AS ENUM ('active','expired','revoked');
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'tax_type_enum') THEN
+        CREATE TYPE tax_type_enum AS ENUM ('vat','wht','cit','paye','itf','cgt','edt','stamp_duty','nhf','nsitf','all');
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'firs_report_status') THEN
+        CREATE TYPE firs_report_status AS ENUM ('draft','filed','assessed','paid');
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'firs_report_type') THEN
+        CREATE TYPE firs_report_type AS ENUM ('vat','wht','cit','paye','itf','nsitf','nhf','cgt','edt','stamp_duty','consolidated');
+      END IF;
+    END $$`);
+
+    // PAYE Schedules
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS paye_schedules (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        payroll_run_id uuid REFERENCES payroll_runs(id),
+        period_start timestamp NOT NULL,
+        period_end timestamp NOT NULL,
+        period_label text NOT NULL,
+        total_gross_pay bigint DEFAULT 0 NOT NULL,
+        total_taxable_pay bigint DEFAULT 0 NOT NULL,
+        total_paye bigint DEFAULT 0 NOT NULL,
+        total_nhf bigint DEFAULT 0 NOT NULL,
+        total_nsitf bigint DEFAULT 0 NOT NULL,
+        status paye_period_status DEFAULT 'draft' NOT NULL,
+        journal_entry_id uuid REFERENCES journal_entries(id),
+        created_at timestamp DEFAULT now() NOT NULL,
+        updated_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_paye_schedules_org ON paye_schedules (org_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_paye_schedules_status ON paye_schedules (status)`);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS paye_schedule_lines (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        paye_schedule_id uuid REFERENCES paye_schedules(id) NOT NULL,
+        employee_id uuid REFERENCES employees(id),
+        gross_pay bigint DEFAULT 0 NOT NULL,
+        consolidated_relief bigint DEFAULT 0 NOT NULL,
+        taxable_pay bigint DEFAULT 0 NOT NULL,
+        paye bigint DEFAULT 0 NOT NULL,
+        nhf bigint DEFAULT 0 NOT NULL,
+        nsitf bigint DEFAULT 0 NOT NULL,
+        created_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_paye_schedule_lines_schedule ON paye_schedule_lines (paye_schedule_id)`);
+
+    // ITF Assessments
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS itf_assessments (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        assessment_year text NOT NULL,
+        total_payroll bigint DEFAULT 0 NOT NULL,
+        contribution_rate numeric(5,2) DEFAULT '0.01' NOT NULL,
+        contribution_amount bigint DEFAULT 0 NOT NULL,
+        paid_amount bigint DEFAULT 0 NOT NULL,
+        journal_entry_id uuid REFERENCES journal_entries(id),
+        status itf_status DEFAULT 'pending' NOT NULL,
+        paid_at timestamp,
+        created_at timestamp DEFAULT now() NOT NULL,
+        updated_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_itf_assessments_org ON itf_assessments (org_id)`);
+
+    // Stamp Duty Records
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS stamp_duty_records (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        transaction_type text NOT NULL,
+        reference_type text,
+        reference_id uuid,
+        gross_amount bigint DEFAULT 0 NOT NULL,
+        stamp_duty_amount bigint DEFAULT 0 NOT NULL,
+        journal_entry_id uuid REFERENCES journal_entries(id),
+        created_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_stamp_duty_org ON stamp_duty_records (org_id)`);
+
+    // Tax Exemptions
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS tax_exemptions (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        tax_type tax_type_enum NOT NULL,
+        exemption_type text NOT NULL,
+        reference_number text,
+        start_date timestamp NOT NULL,
+        end_date timestamp,
+        certificate_url text,
+        description text,
+        status tax_exemption_status DEFAULT 'active' NOT NULL,
+        created_by uuid REFERENCES users(id),
+        created_at timestamp DEFAULT now() NOT NULL,
+        updated_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_tax_exemptions_org ON tax_exemptions (org_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_tax_exemptions_type ON tax_exemptions (tax_type)`);
+
+    // FIRS Reports
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS firs_reports (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        report_type firs_report_type NOT NULL,
+        period_start timestamp NOT NULL,
+        period_end timestamp NOT NULL,
+        period_label text NOT NULL,
+        tax_year text,
+        total_liability bigint DEFAULT 0 NOT NULL,
+        total_paid bigint DEFAULT 0 NOT NULL,
+        balance_due bigint DEFAULT 0 NOT NULL,
+        status firs_report_status DEFAULT 'draft' NOT NULL,
+        metadata jsonb,
+        filed_at timestamp,
+        filed_by uuid REFERENCES users(id),
+        created_at timestamp DEFAULT now() NOT NULL,
+        updated_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_firs_reports_org ON firs_reports (org_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_firs_reports_type ON firs_reports (report_type)`);
+
+    // Auto Tax Journals
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS auto_tax_journals (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        tax_type tax_type_enum NOT NULL,
+        period_start timestamp NOT NULL,
+        period_end timestamp NOT NULL,
+        reference_type text,
+        reference_id uuid,
+        journal_entry_id uuid REFERENCES journal_entries(id) NOT NULL,
+        amount bigint DEFAULT 0 NOT NULL,
+        description text,
+        created_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_auto_tax_journals_org ON auto_tax_journals (org_id)`);
+
+    // Seed new tax accounts per org
+    await db.execute(sql`
+      INSERT INTO accounts (id, org_id, code, name, type, sub_type, description, is_system, is_active, system_account_role)
+      SELECT gen_random_uuid(), o.id, '306100', 'NSITF Payable', 'liability', 'current_liability',
+             'Nigeria Social Insurance Trust Fund – employer 1% contribution payable.', true, true, 'none'
+      FROM organisations o
+      WHERE NOT EXISTS (SELECT 1 FROM accounts a WHERE a.org_id = o.id AND a.code = '306100')
+    `);
+    await db.execute(sql`
+      INSERT INTO accounts (id, org_id, code, name, type, sub_type, description, is_system, is_active, system_account_role)
+      SELECT gen_random_uuid(), o.id, '306200', 'ITF Contribution Payable', 'liability', 'current_liability',
+             'Industrial Training Fund – 1% of annual payroll payable.', true, true, 'none'
+      FROM organisations o
+      WHERE NOT EXISTS (SELECT 1 FROM accounts a WHERE a.org_id = o.id AND a.code = '306200')
+    `);
+    await db.execute(sql`
+      INSERT INTO accounts (id, org_id, code, name, type, sub_type, description, is_system, is_active, system_account_role)
+      SELECT gen_random_uuid(), o.id, '306300', 'Stamp Duty Payable', 'liability', 'current_liability',
+             'Stamp duties on receipts – ₦50 per transaction ≥ ₦5,000.', true, true, 'none'
+      FROM organisations o
+      WHERE NOT EXISTS (SELECT 1 FROM accounts a WHERE a.org_id = o.id AND a.code = '306300')
+    `);
+    await db.execute(sql`
+      INSERT INTO accounts (id, org_id, code, name, type, sub_type, description, is_system, is_active, system_account_role)
+      SELECT gen_random_uuid(), o.id, '950700', 'ITF Contribution Expense', 'expense', 'tax_expense',
+             'Industrial Training Fund levy expense – deductible for CIT.', true, true, 'none'
+      FROM organisations o
+      WHERE NOT EXISTS (SELECT 1 FROM accounts a WHERE a.org_id = o.id AND a.code = '950700')
+    `);
+    await db.execute(sql`
+      INSERT INTO accounts (id, org_id, code, name, type, sub_type, description, is_system, is_active, system_account_role)
+      SELECT gen_random_uuid(), o.id, '950800', 'Stamp Duty Expense', 'expense', 'tax_expense',
+             'Stamp duty charges on receipts and financial transactions.', true, true, 'none'
+      FROM organisations o
+      WHERE NOT EXISTS (SELECT 1 FROM accounts a WHERE a.org_id = o.id AND a.code = '950800')
+    `);
+
+    console.log('[Migration] Nigerian Tax Engine tables and accounts created.');
+
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema setup:', err);
