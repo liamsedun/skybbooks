@@ -604,9 +604,9 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
         {/* Main content */}
         <main className={`flex-1 ${isSettingsPage ? '' : 'p-4 sm:p-6 md:p-8 max-w-7xl mx-auto w-full'}`}>
           {!isSettingsPage && (
-            <div className="mb-4 flex items-center justify-between">
+              <div className="mb-4 flex items-center justify-between">
               <div>
-                <Breadcrumbs />
+                <Breadcrumbs variant="content" />
                 {currentNavItem && (
                   <h1 className="text-xl font-bold text-ink-900 mt-1">{currentNavItem.name}</h1>
                 )}

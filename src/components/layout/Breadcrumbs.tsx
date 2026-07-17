@@ -101,20 +101,22 @@ function formatSegment(segment: string, prevLabel?: string): string {
   return segmentLabels[segment] || toTitleCase(segment);
 }
 
-export function Breadcrumbs() {
+export function Breadcrumbs({ variant = 'header' }: { variant?: 'header' | 'content' }) {
   const location = useLocation();
 
   const segments = location.pathname.split('/').filter(Boolean);
 
   if (segments.length === 0) return null;
 
+  const isHeader = variant === 'header';
+
   return (
-    <nav className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400" aria-label="Breadcrumb">
+    <nav className={`flex items-center gap-1.5 text-sm ${isHeader ? 'text-white/70' : 'text-slate-500 dark:text-slate-400'}`} aria-label="Breadcrumb">
       <Link
         to="/dashboard"
-        className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
+        className={`p-1 rounded-lg transition-colors shrink-0 ${isHeader ? 'hover:bg-white/10' : 'hover:bg-slate-100 dark:hover:bg-slate-800'}`}
       >
-        <Home className="w-4 h-4" />
+        <Home className={`w-4 h-4 ${isHeader ? 'text-white/70' : ''}`} />
       </Link>
 
       {segments.map((segment, index) => {
@@ -126,15 +128,15 @@ export function Breadcrumbs() {
 
         return (
           <span key={path} className="flex items-center gap-1.5 min-w-0">
-            <ChevronRight className="w-3.5 h-3.5 shrink-0 text-slate-400 dark:text-slate-500" />
+            <ChevronRight className={`w-3.5 h-3.5 shrink-0 ${isHeader ? 'text-white/40' : 'text-slate-400 dark:text-slate-500'}`} />
             {isLast ? (
-              <span className="font-medium text-slate-700 dark:text-slate-200 truncate">
+              <span className={`font-medium truncate ${isHeader ? 'text-white' : 'text-slate-700 dark:text-slate-200'}`}>
                 {label}
               </span>
             ) : (
               <Link
                 to={path}
-                className="hover:text-primary dark:hover:text-primary transition-colors truncate"
+                className={`transition-colors truncate ${isHeader ? 'text-white/70 hover:text-white' : 'hover:text-primary dark:hover:text-primary'}`}
               >
                 {label}
               </Link>
