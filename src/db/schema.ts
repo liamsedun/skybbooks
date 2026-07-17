@@ -1211,6 +1211,9 @@ export const bankTransactions = pgTable('bank_transactions', {
   status: bankTxnStatusEnum('status').default('unreconciled').notNull(),
   journalLineId: uuid('journal_line_id').references(() => journalLines.id),
   relatedJournalEntryId: uuid('related_journal_entry_id').references(() => journalEntries.id),
+  matchConfidence: numeric('match_confidence', { precision: 5, scale: 2 }),
+  matchMethod: text('match_method'),
+  reconciledAt: timestamp('reconciled_at'),
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
@@ -1257,6 +1260,21 @@ export const bankRules = pgTable('bank_rules', {
   actions: jsonb('actions'),
   isActive: boolean('is_active').default(true).notNull(),
   priority: integer('priority').default(0).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+// --- Reconciliation Adjustments ---
+
+export const reconciliationAdjustments = pgTable('reconciliation_adjustments', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  bankAccountId: uuid('bank_account_id').references(() => bankAccounts.id).notNull(),
+  adjustmentType: text('adjustment_type').notNull(),
+  amount: bigint('amount', { mode: 'number' }).notNull(),
+  description: text('description').notNull(),
+  reference: text('reference'),
+  journalEntryId: uuid('journal_entry_id').references(() => journalEntries.id),
+  createdBy: uuid('created_by').references(() => users.id),
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 

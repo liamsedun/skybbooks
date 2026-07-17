@@ -100,6 +100,27 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
     setSelectedAllocations([]);
   }, [quickCreateForm.type, quickCreateForm.contactId]);
 
+  // ML suggestion popup state
+  const [suggestionTxnId, setSuggestionTxnId] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+
+  // Partial match state
+  const [partialMatchTxnId, setPartialMatchTxnId] = useState<string | null>(null);
+  const [partialMatchLineId, setPartialMatchLineId] = useState<string | null>(null);
+  const [partialAmount, setPartialAmount] = useState<number>(0);
+
+  // Adjustment journal modal state
+  const [showAdjustmentModal, setShowAdjustmentModal] = useState(false);
+  const [adjustmentForm, setAdjustmentForm] = useState({
+    adjustmentType: 'bank_charge' as 'bank_charge' | 'interest_income' | 'correction' | 'difference',
+    amount: 0,
+    description: '',
+    reference: '',
+    date: new Date().toISOString().split('T')[0],
+    contraAccountId: ''
+  });
+
   // Recent match logs this session to print at bottom
   const [sessionMatches, setSessionMatches] = useState<Array<{
     txn: any;
@@ -271,6 +292,74 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
     },
     onError: (err: any) => {
       alert(`Auto-Matching bot faulted: ${err.message}`);
+    }
+  });
+
+  // Suggest matches mutation
+  const loadSuggestions = async (txnId: string) => {
+    setSuggestionTxnId(txnId);
+    setSuggestionsLoading(true);
+    try {
+      const res: any = await bankingApi.suggestMatches(txnId);
+      setSuggestions(res.suggestions || []);
+    } catch {
+      setSuggestions([]);
+    } finally {
+      setSuggestionsLoading(false);
+    }
+  };
+
+  // Partial match mutation
+  const partialMatchMutation = useMutation({
+    mutationFn: ({ txnId, lineId, amount }: { txnId: string; lineId: string; amount: number }) =>
+      bankingApi.partialMatchTransaction(txnId, { journalLineId: lineId, allocatedAmount: amount }),
+    onSuccess: () => {
+      setPartialMatchTxnId(null);
+      setPartialMatchLineId(null);
+      setPartialAmount(0);
+      queryClient.invalidateQueries({ queryKey: ['bankingTransactions', selectedBankAccountId] });
+      queryClient.invalidateQueries({ queryKey: ['unmatchedJournalLines', selectedBankAccountId] });
+    },
+    onError: (err: any) => {
+      alert(`Partial match failed: ${err.response?.data?.message || err.message}`);
+    }
+  });
+
+  // Batch reconcile mutation
+  const batchReconcileMutation = useMutation({
+    mutationFn: (matches: { bankTransactionId: string; journalLineId: string }[]) =>
+      bankingApi.batchReconcile(selectedBankAccountId, { matches }),
+    onSuccess: (result: any) => {
+      setSelectedFeedIds([]);
+      queryClient.invalidateQueries({ queryKey: ['bankingTransactions', selectedBankAccountId] });
+      queryClient.invalidateQueries({ queryKey: ['unmatchedJournalLines', selectedBankAccountId] });
+      alert(`Batch reconciled ${result.matched} transaction(s).${result.errors?.length ? ` ${result.errors.length} error(s).` : ''}`);
+    },
+    onError: (err: any) => {
+      alert(`Batch reconcile failed: ${err.response?.data?.message || err.message}`);
+    }
+  });
+
+  // Adjustment journal mutation
+  const adjustmentMutation = useMutation({
+    mutationFn: (data: any) => bankingApi.generateAdjustment(selectedBankAccountId, data),
+    onSuccess: (result: any) => {
+      setShowAdjustmentModal(false);
+      setAdjustmentForm({
+        adjustmentType: 'bank_charge',
+        amount: 0,
+        description: '',
+        reference: '',
+        date: new Date().toISOString().split('T')[0],
+        contraAccountId: ''
+      });
+      queryClient.invalidateQueries({ queryKey: ['bankAccounts'] });
+      queryClient.invalidateQueries({ queryKey: ['bankingTransactions', selectedBankAccountId] });
+      queryClient.invalidateQueries({ queryKey: ['unmatchedJournalLines', selectedBankAccountId] });
+      alert(`Adjustment journal created successfully.`);
+    },
+    onError: (err: any) => {
+      alert(`Adjustment failed: ${err.response?.data?.message || err.message}`);
     }
   });
 
@@ -537,6 +626,14 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
             <span>Print Statement</span>
           </button>
+          <button
+            type="button"
+            onClick={() => setShowAdjustmentModal(true)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold bg-white border border-slate-200/80 hover:bg-slate-50 text-slate-700 rounded-xl transition-all duration-200 cursor-pointer font-sans shadow-xs"
+          >
+            <Calculator className="w-3.5 h-3.5" />
+            <span>Adjustment JE</span>
+          </button>
         </div>
       </div>
 
@@ -587,7 +684,7 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
               )}
             </div>
             {selectedFeedIds.length > 0 && (
-              <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+              <div className="flex items-center gap-2 pt-2 border-t border-slate-100 flex-wrap">
                 <span className="text-[11px] font-bold text-slate-600">{selectedFeedIds.length} selected</span>
                 <button
                   type="button"
@@ -596,6 +693,27 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
                 >
                   <PlusCircle className="w-3 h-3" />
                   <span>Record as Quick Payment</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    // Build batch matches from perfect matches of selected items
+                    const matches = selectedFeedIds.map(id => {
+                      const txn = feedTxns.find((t: any) => t.id === id);
+                      if (!txn) return null;
+                      const perfect = findPerfectMatchFromGL(txn);
+                      return perfect ? { bankTransactionId: id, journalLineId: perfect.id } : null;
+                    }).filter((m): m is { bankTransactionId: string; journalLineId: string } => m !== null);
+                    if (matches.length === 0) { alert('No perfect matches found for selected items.'); return; }
+                    if (matches.length < selectedFeedIds.length) {
+                      if (!confirm(`${matches.length} of ${selectedFeedIds.length} items have perfect matches. Proceed?`)) return;
+                    }
+                    batchReconcileMutation.mutate(matches);
+                  }}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold uppercase rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 text-white hover:from-emerald-700 hover:to-emerald-800 transition-all duration-200 cursor-pointer shadow-sm"
+                >
+                  <CheckSquare className="w-3 h-3" />
+                  <span>Batch Reconcile</span>
                 </button>
                 <button
                   type="button"
@@ -772,7 +890,102 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
                               <ArrowRightLeft className="w-3.5 h-3.5" />
                               <span>Record Transfer</span>
                             </button>
+
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); loadSuggestions(txn.id); }}
+                              className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-[10px] font-bold uppercase rounded-xl border border-slate-700/80 text-emerald-400 inline-flex items-center gap-1 cursor-pointer transition-all duration-200 shrink-0"
+                            >
+                              <TrendingUp className="w-3.5 h-3.5" />
+                              <span>ML Suggestions</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setPartialMatchTxnId(partialMatchTxnId === txn.id ? null : txn.id);
+                                setPartialAmount(txn.amount);
+                              }}
+                              className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-[10px] font-bold uppercase rounded-xl border border-slate-700/80 text-cyan-400 inline-flex items-center gap-1 cursor-pointer transition-all duration-200 shrink-0"
+                            >
+                              <Calculator className="w-3.5 h-3.5" />
+                              <span>Partial Match</span>
+                            </button>
                           </div>
+
+                          {/* ML Suggestions Popup */}
+                          {suggestionTxnId === txn.id && (
+                            <div className="mt-2 bg-slate-800/50 border border-slate-700 rounded-xl p-2.5 space-y-2" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-center justify-between">
+                                <span className="text-[9px] font-black uppercase text-emerald-400">ML Confidence Scored Suggestions</span>
+                                <button type="button" onClick={() => setSuggestionTxnId(null)} className="text-slate-500 hover:text-slate-300"><X className="w-3 h-3" /></button>
+                              </div>
+                              {suggestionsLoading ? (
+                                <div className="text-[10px] text-slate-400 py-2 text-center">Loading suggestions...</div>
+                              ) : suggestions.length === 0 ? (
+                                <div className="text-[10px] text-slate-400 py-2 text-center">No matching candidates found.</div>
+                              ) : (
+                                <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
+                                  {suggestions.map((s: any, idx: number) => (
+                                    <div key={idx} className="flex items-center justify-between bg-slate-900/50 rounded-lg p-2 gap-2">
+                                      <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-1.5">
+                                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                                            s.confidence >= 90 ? 'bg-emerald-600/20 text-emerald-400' :
+                                            s.confidence >= 70 ? 'bg-amber-600/20 text-amber-400' :
+                                            'bg-slate-600/20 text-slate-400'
+                                          }`}>{s.confidence}%</span>
+                                          <span className="text-[10px] font-bold text-slate-300 truncate">{s.entryDescription || s.entryNumber}</span>
+                                        </div>
+                                        <div className="text-[8px] text-slate-500 mt-0.5">
+                                          {s.entryNumber} · {new Date(s.entryDate).toLocaleDateString()} · ₦{(s.lineAmount / 100).toLocaleString()}
+                                        </div>
+                                        {s.descriptionMatch != null && (
+                                          <div className="text-[8px] text-slate-500">Desc match: {s.descriptionMatch}% · Date diff: {s.dateDiffDays}d · Amt diff: ₦{s.amountDiff}</div>
+                                        )}
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleMatch(txn.id, s.journalLineId)}
+                                        className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[8px] font-bold uppercase shrink-0"
+                                      >
+                                        <Check className="w-2.5 h-2.5" />
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Partial Match Form */}
+                          {partialMatchTxnId === txn.id && (
+                            <div className="mt-2 bg-slate-800/50 border border-slate-700 rounded-xl p-2.5 space-y-2" onClick={(e) => e.stopPropagation()}>
+                              <span className="text-[9px] font-black uppercase text-cyan-400 block">Partial Match</span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-slate-400 shrink-0">Amount (kobo):</span>
+                                <input
+                                  type="number"
+                                  value={partialAmount}
+                                  onChange={(e) => setPartialAmount(Number(e.target.value))}
+                                  className="flex-1 px-2 py-1 text-xs bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-cyan-500"
+                                />
+                                <span className="text-[9px] text-slate-500">max: {formatNaira(txn.amount)}</span>
+                              </div>
+                              <div className="text-[9px] text-slate-500">Select a GL line card on the right, then click here to match:</div>
+                              {selectedFeedTxnId && partialMatchLineId && (
+                                <button
+                                  type="button"
+                                  onClick={() => partialMatchMutation.mutate({ txnId: txn.id, lineId: partialMatchLineId, amount: partialAmount })}
+                                  disabled={partialMatchMutation.isPending}
+                                  className="w-full py-1.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg text-[9px] font-bold uppercase disabled:opacity-50"
+                                >
+                                  {partialMatchMutation.isPending ? 'Processing...' : `Allocate ${formatNaira(partialAmount)}`}
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
@@ -877,12 +1090,18 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
                     onDragOver={(e) => handleDragOver(e, line.id, 'gl')}
                     onDrop={(e) => handleDrop(e, line.id, 'gl')}
                     onClick={() => {
+                      if (partialMatchTxnId) {
+                        setPartialMatchLineId(line.id);
+                        return;
+                      }
                       if (selectedFeedTxnId) {
                         handleMatch(selectedFeedTxnId, line.id);
                       }
                     }}
                     className={`p-3.5 border rounded-xl transition-all duration-200 flex flex-col justify-between text-left relative overflow-hidden group select-none cursor-pointer ${
-                      canMatch
+                      partialMatchLineId === line.id
+                        ? 'bg-cyan-50 border-cyan-300 ring-2 ring-cyan-200'
+                        : canMatch
                         ? 'bg-amber-50/70 border-amber-300 ring-2 ring-amber-100 hover:bg-amber-50'
                         : dragOverLineId === line.id
                         ? 'bg-indigo-50 border-indigo-300 ring-2 ring-indigo-200'
@@ -998,6 +1217,118 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
             >
               Confirm Reconciliation & Done
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* AGING TABLE — show when statement data is available */}
+      {recStatement?.data && (
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+          <div className="bg-slate-50 px-5 py-3 border-b border-slate-200">
+            <h4 className="font-bold text-xs uppercase tracking-wider text-slate-800 font-sans">Unreconciled Aging</h4>
+          </div>
+          <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <h5 className="text-[10px] font-bold uppercase text-slate-500 mb-2">Outstanding Deposits</h5>
+              {(() => {
+                const aging = recStatement.data.aging?.outstandingDeposits || {};
+                return (
+                  <table className="w-full text-xs">
+                    <thead><tr className="text-slate-400 text-[9px] uppercase font-bold"><td className="pb-1">Bucket</td><td className="pb-1 text-right">Amount</td></tr></thead>
+                    <tbody>
+                      {Object.entries(aging).map(([bucket, amt]: any) => (
+                        <tr key={bucket} className="border-t border-slate-100"><td className="py-1 text-slate-700">{bucket} days</td><td className="py-1 text-right font-mono font-bold text-slate-900">{formatNaira(amt)}</td></tr>
+                      ))}
+                      <tr className="border-t-2 border-slate-300"><td className="py-1 font-bold text-slate-800">Total</td><td className="py-1 text-right font-mono font-bold text-slate-900">{formatNaira(Object.values(aging).reduce((s: number, a: any) => s + a, 0))}</td></tr>
+                    </tbody>
+                  </table>
+                );
+              })()}
+            </div>
+            <div>
+              <h5 className="text-[10px] font-bold uppercase text-slate-500 mb-2">Outstanding Payments</h5>
+              {(() => {
+                const aging = recStatement.data.aging?.outstandingPayments || {};
+                return (
+                  <table className="w-full text-xs">
+                    <thead><tr className="text-slate-400 text-[9px] uppercase font-bold"><td className="pb-1">Bucket</td><td className="pb-1 text-right">Amount</td></tr></thead>
+                    <tbody>
+                      {Object.entries(aging).map(([bucket, amt]: any) => (
+                        <tr key={bucket} className="border-t border-slate-100"><td className="py-1 text-slate-700">{bucket} days</td><td className="py-1 text-right font-mono font-bold text-slate-900">{formatNaira(amt)}</td></tr>
+                      ))}
+                      <tr className="border-t-2 border-slate-300"><td className="py-1 font-bold text-slate-800">Total</td><td className="py-1 text-right font-mono font-bold text-slate-900">{formatNaira(Object.values(aging).reduce((s: number, a: any) => s + a, 0))}</td></tr>
+                    </tbody>
+                  </table>
+                );
+              })()}
+            </div>
+          </div>
+          {recStatement.data.matchMethodBreakdown && (
+            <div className="px-5 pb-4">
+              <h5 className="text-[10px] font-bold uppercase text-slate-500 mb-2">Match Method Breakdown</h5>
+              <div className="flex flex-wrap gap-2">
+                {Object.entries(recStatement.data.matchMethodBreakdown).map(([method, count]: any) => (
+                  <span key={method} className="px-2.5 py-1 bg-slate-100 rounded-lg text-[10px] font-bold text-slate-700">{method}: {count}</span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ADJUSTMENT JOURNAL MODAL */}
+      {showAdjustmentModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 border border-slate-200/80">
+            <div className="p-4 border-b border-slate-200/80 bg-slate-50 flex items-center justify-between rounded-t-2xl">
+              <div className="flex items-center gap-2">
+                <Calculator className="w-4 h-4 text-indigo-600" />
+                <h3 className="font-bold text-xs text-slate-900 uppercase tracking-tight">Reconciliation Adjustment JE</h3>
+              </div>
+              <button type="button" onClick={() => setShowAdjustmentModal(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-xl hover:bg-slate-100">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <form onSubmit={(e) => { e.preventDefault(); adjustmentMutation.mutate(adjustmentForm); }} className="p-5 space-y-4">
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Adjustment Type</label>
+                <select
+                  value={adjustmentForm.adjustmentType}
+                  onChange={(e) => setAdjustmentForm({ ...adjustmentForm, adjustmentType: e.target.value as any })}
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 bg-white text-slate-800"
+                >
+                  <option value="bank_charge">Bank Charge</option>
+                  <option value="interest_income">Interest Income</option>
+                  <option value="correction">Correction</option>
+                  <option value="difference">Difference</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Amount (₦)</label>
+                <input type="number" step="0.01" value={adjustmentForm.amount / 100} onChange={(e) => setAdjustmentForm({ ...adjustmentForm, amount: Math.round(parseFloat(e.target.value || '0') * 100) })} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 text-slate-800" />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Description</label>
+                <input type="text" required value={adjustmentForm.description} onChange={(e) => setAdjustmentForm({ ...adjustmentForm, description: e.target.value })} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 text-slate-800" />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Date</label>
+                <input type="date" required value={adjustmentForm.date} onChange={(e) => setAdjustmentForm({ ...adjustmentForm, date: e.target.value })} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 text-slate-800" />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Contra GL Account (optional)</label>
+                <AccountSearchSelect
+                  accounts={glAccounts}
+                  value={adjustmentForm.contraAccountId}
+                  onChange={(id) => setAdjustmentForm({ ...adjustmentForm, contraAccountId: id })}
+                  placeholder="-- Auto-select --"
+                />
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button type="button" onClick={() => setShowAdjustmentModal(false)} className="flex-1 py-2 text-xs font-bold border border-slate-200/80 hover:bg-slate-100 text-slate-600 rounded-xl cursor-pointer">Cancel</button>
+                <button type="submit" disabled={adjustmentMutation.isPending} className="flex-1 py-2 text-xs font-bold bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-xl hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50 cursor-pointer">{adjustmentMutation.isPending ? 'Posting...' : 'Post Adjustment JE'}</button>
+              </div>
+            </form>
           </div>
         </div>
       )}

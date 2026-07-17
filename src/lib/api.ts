@@ -368,6 +368,26 @@ export const bankingApi = {
     const res = await api.get(`/banking/accounts/${bankAccountId}/reconciliation-statement`, { params });
     return res.data;
   },
+  suggestMatches: async (transactionId: string) => {
+    const res = await api.get(`/banking/transactions/${transactionId}/suggest-matches`);
+    return res.data;
+  },
+  partialMatchTransaction: async (transactionId: string, data: { journalLineId: string; allocatedAmount: number }) => {
+    const res = await api.post(`/banking/transactions/${transactionId}/partial-match`, data);
+    return res.data;
+  },
+  batchReconcile: async (accountId: string, data: { matches: { bankTransactionId: string; journalLineId: string }[] }) => {
+    const res = await api.post(`/banking/accounts/${accountId}/batch-reconcile`, data);
+    return res.data;
+  },
+  generateAdjustment: async (accountId: string, data: any) => {
+    const res = await api.post(`/banking/accounts/${accountId}/adjustment`, data);
+    return res.data;
+  },
+  getPerfectMatch: async (transactionId: string) => {
+    const res = await api.get(`/banking/transactions/${transactionId}/perfect-match`);
+    return res.data;
+  },
   getRules: async () => {
     const res = await api.get('/banking/rules');
     return res.data;

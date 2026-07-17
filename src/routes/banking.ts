@@ -41,7 +41,12 @@ import {
   autoMatchTransactions,
   applyBankRule,
   createTransactionFromBankFeed,
-  getBankReconciliationStatement
+  getBankReconciliationStatement,
+  suggestMatches,
+  partialMatchBankTransaction,
+  batchReconcile,
+  generateAdjustmentJournal,
+  findPerfectMatchFromGL
 } from '../services/reconciliation.service';
 import { fetchLatestRates } from '../services/cbn.service';
 import { createJournalEntry, reverseJournalEntry } from '../services/ledger.service';
@@ -1522,6 +1527,81 @@ router.post('/accounts/:id/auto-match', async (req: AuthenticatedRequest, res: R
       needsReviewCount: result.needsReview,
       unmatchedCount: result.unmatched - rulesMatchedCount
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET suggest-matches — ML-style scored candidates for a specific bank transaction
+router.get('/transactions/:id/suggest-matches', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const suggestions = await suggestMatches(id);
+    return res.status(200).json({ success: true, suggestions });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST partial-match — allocate a portion of a bank transaction to a journal line
+router.post('/transactions/:id/partial-match', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const { journalLineId, allocatedAmount } = z.object({
+      journalLineId: z.string().uuid(),
+      allocatedAmount: z.number().positive()
+    }).parse(req.body);
+    const result = await partialMatchBankTransaction(id, journalLineId, allocatedAmount);
+    await createAuditLog({ orgId: req.user!.orgId!, userId: req.user!.userId, action: 'reconcile', entityType: 'bank-transaction', entityId: id, newValues: { partialMatch: true }, ...extractReqMeta(req) });
+    return res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST batch-reconcile — reconcile multiple bank transactions at once
+router.post('/accounts/:id/batch-reconcile', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { matches } = z.object({
+      matches: z.array(z.object({ bankTransactionId: z.string(), journalLineId: z.string() })).min(1)
+    }).parse(req.body);
+    const result = await batchReconcile(orgId, matches);
+    await createAuditLog({ orgId, userId: req.user!.userId, action: 'reconcile', entityType: 'bank-transaction', entityId: matches.map(m => m.bankTransactionId).join(','), newValues: { batchReconcile: true, matched: result.matched, errors: result.errors.length }, ...extractReqMeta(req) });
+    return res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST adjustment — generate a reconciliation adjustment journal entry
+router.post('/accounts/:id/adjustment', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const userId = req.user!.userId!;
+    const { id } = req.params;
+    const body = z.object({
+      adjustmentType: z.enum(['bank_charge', 'interest_income', 'correction', 'difference']),
+      amount: z.number(),
+      description: z.string().min(1),
+      reference: z.string().optional(),
+      date: z.string(),
+      contraAccountId: z.string().uuid().optional(),
+    }).parse(req.body);
+    const result = await generateAdjustmentJournal(orgId, userId, id, body);
+    await createAuditLog({ orgId, userId, action: 'create', entityType: 'reconciliation-adjustment', entityId: result.adjustment.id, newValues: { adjustmentType: body.adjustmentType, amount: body.amount }, ...extractReqMeta(req) });
+    return res.status(201).json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET perfect-match — find the best GL match for a bank transaction
+router.get('/transactions/:id/perfect-match', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const match = await findPerfectMatchFromGL(id);
+    return res.status(200).json({ success: true, match });
   } catch (err) {
     next(err);
   }

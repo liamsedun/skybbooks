@@ -2131,6 +2131,42 @@ export async function runMigration() {
 
     console.log('[Migration] Nigerian Tax Engine tables and accounts created.');
 
+    // ===== SMART BANK RECONCILIATION MIGRATION =====
+
+    // Add match_confidence, match_method, reconciled_at to bank_transactions
+    await db.execute(sql`
+      DO $$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='bank_transactions' AND column_name='match_confidence') THEN
+          ALTER TABLE bank_transactions ADD COLUMN match_confidence numeric(5,2);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='bank_transactions' AND column_name='match_method') THEN
+          ALTER TABLE bank_transactions ADD COLUMN match_method text;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='bank_transactions' AND column_name='reconciled_at') THEN
+          ALTER TABLE bank_transactions ADD COLUMN reconciled_at timestamp;
+        END IF;
+      END $$;
+    `);
+
+    // Create reconciliation_adjustments table
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS reconciliation_adjustments (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        bank_account_id uuid REFERENCES bank_accounts(id) NOT NULL,
+        adjustment_type text NOT NULL,
+        amount bigint NOT NULL,
+        description text NOT NULL,
+        reference text,
+        journal_entry_id uuid REFERENCES journal_entries(id),
+        created_by uuid REFERENCES users(id),
+        created_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_reconciliation_adjustments_org ON reconciliation_adjustments (org_id)`);
+
+    console.log('[Migration] Smart Bank Reconciliation columns and table created.');
+
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema setup:', err);
