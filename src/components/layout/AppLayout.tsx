@@ -402,11 +402,11 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
         sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-60'
       }`}>
         {/* Top header */}
-        <header className="sticky top-0 z-20 h-14 md:h-16 bg-surface border-b border-border-custom flex items-center gap-3 px-3 md:px-5">
+        <header className="sticky top-0 z-20 h-14 md:h-16 header-main flex items-center gap-3 px-3 md:px-5">
           {/* Mobile menu */}
           <button
             onClick={() => setIsMobileOpen(true)}
-            className="lg:hidden w-8 h-8 flex items-center justify-center rounded-lg text-ink-600 hover:bg-surface-hover"
+            className="lg:hidden w-8 h-8 flex items-center justify-center rounded-lg header-icon-btn"
           >
             <Menu className="w-4.5 h-4.5" />
           </button>
@@ -416,15 +416,15 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
             {organisation?.logoUrl ? (
               <img src={organisation.logoUrl} alt="" className="w-6 h-6 rounded-md object-contain hidden sm:block" />
             ) : (
-              <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center text-primary text-[10px] font-bold hidden sm:block">
+              <div className="w-6 h-6 rounded-md bg-white/20 flex items-center justify-center text-white text-[10px] font-bold hidden sm:block">
                 {organisation?.name?.charAt(0) || 'O'}
               </div>
             )}
             <div className="min-w-0">
-              <div className="text-sm font-bold text-ink-900 truncate leading-tight">
+              <div className="text-sm font-bold header-text truncate leading-tight">
                 {organisation?.name || 'SkyBooks'}
               </div>
-              <div className="text-[10px] text-ink-400 hidden sm:block leading-tight">
+              <div className="text-[10px] header-text-muted hidden sm:block leading-tight">
                 <Breadcrumbs />
               </div>
             </div>
@@ -441,7 +441,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
             </button>
             <button
               onClick={() => navigate('/purchases/bills/new')}
-              className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-border-custom text-ink-600 hover:bg-surface-hover transition-colors flex items-center gap-1.5"
+              className="px-3 py-1.5 text-xs font-semibold header-btn-secondary flex items-center gap-1.5"
             >
               <Plus className="w-3.5 h-3.5" />
               New Bill
@@ -451,11 +451,11 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
           {/* Search trigger */}
           <button
             onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { metaKey: true, shiftKey: true, key: 'f' }))}
-            className="hidden sm:flex items-center gap-2 px-3 py-1.5 text-xs text-ink-400 bg-surface-subtle border border-border-custom rounded-lg hover:border-ink-300 transition-colors min-w-[160px]"
+            className="hidden sm:flex items-center gap-2 header-search-trigger min-w-[160px]"
           >
             <Search className="w-3.5 h-3.5" />
             <span>Search anything...</span>
-            <kbd className="ml-auto px-1.5 py-0.5 text-[10px] font-mono bg-surface border border-border-custom rounded text-ink-400">⌘K</kbd>
+            <kbd className="header-kbd">⌘K</kbd>
           </button>
 
           {/* Right side actions */}
@@ -465,11 +465,11 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
               <button
                 id="header-notification-button"
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="w-8 h-8 flex items-center justify-center rounded-lg text-ink-400 hover:text-ink-600 hover:bg-surface-hover transition-colors relative"
+                className="w-8 h-8 flex items-center justify-center header-icon-btn relative"
               >
                 <Bell className="w-4 h-4" />
                 {totalUnread > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-danger-custom text-white text-[9px] font-bold flex items-center justify-center shadow-sm">
+                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full header-badge text-[9px] font-bold flex items-center justify-center shadow-sm">
                     {totalUnread > 99 ? '99+' : totalUnread}
                   </span>
                 )}
@@ -518,7 +518,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
               <button
                 id="header-profile-button"
                 onClick={() => setShowUserMenu(!showUserMenu)}
-                className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold hover:bg-primary-light transition-colors"
+                className="w-8 h-8 rounded-full header-avatar flex items-center justify-center text-xs font-bold"
               >
                 {user?.fullName?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
               </button>
