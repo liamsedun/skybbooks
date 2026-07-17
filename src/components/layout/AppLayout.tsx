@@ -36,7 +36,8 @@ import {
   TrendingDown,
   ReceiptText,
   AlertTriangle,
-  Bot
+  Bot,
+  Wifi
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -169,6 +170,8 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     'payslips': '/payroll/payslips',
     'bank_accounts': '/banking',
     'bank_feed': '/banking/reconciliation/demo',
+    'bank_connections': '/banking/connections',
+    'payment_gateway': '/banking/payment-gateway',
     'banking_rules': '/banking/rules',
     'currency_rates': '/banking/currency-rates',
     'bank_transfers': '/banking/transfers',
@@ -281,6 +284,8 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
       items: [
         { name: 'Bank Accounts', id: 'bank_accounts', icon: CreditCard },
         { name: 'Bank Feed Reconciler', id: 'bank_feed', icon: History },
+        { name: 'Connections', id: 'bank_connections', icon: Wifi },
+        { name: 'Payment Gateway', id: 'payment_gateway', icon: DollarSign },
         { name: 'Rules', id: 'banking_rules', icon: Shield },
         { name: 'Currency Rates', id: 'currency_rates', icon: TrendingUp },
         { name: 'Transfers', id: 'bank_transfers', icon: ArrowRightLeft },

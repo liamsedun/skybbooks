@@ -111,6 +111,11 @@ export const systemAccountRoleEnum = pgEnum('system_account_role', [
   'allowance_for_doubtful_debts',
 ]);
 
+export const bankFeedProviderEnum = pgEnum('bank_feed_provider', ['mono', 'paystack', 'flutterwave', 'moniepoint']);
+export const bankConnectionStatusEnum = pgEnum('bank_connection_status', ['active', 'reauth_required', 'expired', 'disconnected', 'pending']);
+export const paymentGatewayEnum = pgEnum('payment_gateway', ['paystack', 'flutterwave', 'moniepoint']);
+export const gatewayTxnStatusEnum = pgEnum('gateway_txn_status', ['pending', 'success', 'failed', 'settled', 'partial_refund', 'full_refund']);
+
 export const itemTypeEnum = pgEnum('item_type', ['product', 'service']);
 
 export const inventoryTxnTypeEnum = pgEnum('inventory_txn_type', [
@@ -1306,6 +1311,50 @@ export const reconciliationAdjustments = pgTable('reconciliation_adjustments', {
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
+// --- Bank Connections (OAuth-based provider connections) ---
+
+export const bankConnections = pgTable('bank_connections', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  bankAccountId: uuid('bank_account_id').references(() => bankAccounts.id).notNull(),
+  provider: bankFeedProviderEnum('provider').notNull(),
+  providerAccountId: text('provider_account_id'),
+  providerAccountName: text('provider_account_name'),
+  status: bankConnectionStatusEnum('status').default('pending').notNull(),
+  authToken: text('auth_token'),
+  refreshToken: text('refresh_token'),
+  tokenExpiresAt: timestamp('token_expires_at'),
+  lastSyncedAt: timestamp('last_synced_at'),
+  meta: jsonb('meta').default({}),
+  errorMessage: text('error_message'),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+// --- Payment Gateway Transactions ---
+
+export const paymentGatewayTransactions = pgTable('payment_gateway_transactions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  provider: paymentGatewayEnum('provider').notNull(),
+  gatewayTransactionId: text('gateway_transaction_id').notNull(),
+  reference: text('reference').notNull(),
+  amount: bigint('amount', { mode: 'number' }).notNull(),
+  fee: bigint('fee', { mode: 'number' }).default(0).notNull(),
+  currency: text('currency').default('NGN').notNull(),
+  status: gatewayTxnStatusEnum('status').default('pending').notNull(),
+  customerEmail: text('customer_email'),
+  customerName: text('customer_name'),
+  customerPhone: text('customer_phone'),
+  description: text('description'),
+  bankAccountId: uuid('bank_account_id').references(() => bankAccounts.id),
+  matchedTransactionId: uuid('matched_transaction_id').references(() => bankTransactions.id),
+  paymentMethod: text('payment_method'),
+  channel: text('channel'),
+  rawData: jsonb('raw_data').default({}),
+  settledAt: timestamp('settled_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
 // --- Closed Periods ---
 
 export const closedPeriods = pgTable('closed_periods', {
@@ -2039,6 +2088,8 @@ export const organisationsRelations = relations(organisations, ({ many }) => ({
   bankAccounts: many(bankAccounts),
   bankTransactions: many(bankTransactions),
   bankRules: many(bankRules),
+  bankConnections: many(bankConnections),
+  paymentGatewayTransactions: many(paymentGatewayTransactions),
   employees: many(employees),
   payrollRuns: many(payrollRuns),
   fixedAssets: many(fixedAssets),
@@ -2672,6 +2723,32 @@ export const bankRulesRelations = relations(bankRules, ({ one }) => ({
   })
 }));
 
+export const bankConnectionsRelations = relations(bankConnections, ({ one }) => ({
+  organisation: one(organisations, {
+    fields: [bankConnections.orgId],
+    references: [organisations.id]
+  }),
+  bankAccount: one(bankAccounts, {
+    fields: [bankConnections.bankAccountId],
+    references: [bankAccounts.id]
+  }),
+}));
+
+export const paymentGatewayTransactionsRelations = relations(paymentGatewayTransactions, ({ one }) => ({
+  organisation: one(organisations, {
+    fields: [paymentGatewayTransactions.orgId],
+    references: [organisations.id]
+  }),
+  bankAccount: one(bankAccounts, {
+    fields: [paymentGatewayTransactions.bankAccountId],
+    references: [bankAccounts.id]
+  }),
+  matchedTransaction: one(bankTransactions, {
+    fields: [paymentGatewayTransactions.matchedTransactionId],
+    references: [bankTransactions.id]
+  }),
+}));
+
 export const employeesRelations = relations(employees, ({ one, many }) => ({
   organisation: one(organisations, {
     fields: [employees.orgId],
@@ -3212,6 +3289,8 @@ export const db = drizzle(pool, {
     bankAccounts,
     bankTransactions,
     bankRules,
+    bankConnections,
+    paymentGatewayTransactions,
     employees,
     payrollRuns,
     payrollLines,
@@ -3281,6 +3360,8 @@ export const db = drizzle(pool, {
     bankAccountsRelations,
     bankTransactionsRelations,
     bankRulesRelations,
+    bankConnectionsRelations,
+    paymentGatewayTransactionsRelations,
     employeesRelations,
     payrollRunsRelations,
     payrollLinesRelations,
@@ -3363,8 +3444,10 @@ export const schema = {
   bankAccounts,
   bankTransactions,
   bankRules,
+  bankConnections,
+  paymentGatewayTransactions,
   employees,
-  payrollRuns,
+    payrollRuns,
   payrollLines,
   fixedAssets,
   depreciationEntries,

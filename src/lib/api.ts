@@ -431,6 +431,65 @@ export const bankingApi = {
     const res = await api.delete(`/banking/transfers/${id}`);
     return res.data;
   },
+  // ══════════════════════════════════════════════
+  // Nigerian Banking Integration — New Methods
+  // ══════════════════════════════════════════════
+  getConnections: async () => {
+    const res = await api.get('/banking/connections');
+    return res.data;
+  },
+  connectMonoCallback: async (bankAccountId: string, code: string) => {
+    const res = await api.post('/banking/connections/mono/callback', { bankAccountId, code });
+    return res.data;
+  },
+  syncConnection: async (connectionId: string) => {
+    const res = await api.post(`/banking/connections/${connectionId}/sync`);
+    return res.data;
+  },
+  deleteConnection: async (connectionId: string) => {
+    const res = await api.delete(`/banking/connections/${connectionId}`);
+    return res.data;
+  },
+  getGatewayTransactions: async (params?: { provider?: string; status?: string; from?: string; to?: string; page?: number; limit?: number }) => {
+    const res = await api.get('/banking/payment-gateway/transactions', { params });
+    return res.data;
+  },
+  syncGatewayTransactions: async (provider: string) => {
+    const res = await api.post(`/banking/payment-gateway/sync/${provider}`);
+    return res.data;
+  },
+  autoMatchGateway: async (bankAccountId?: string) => {
+    const res = await api.post('/banking/payment-gateway/auto-match', { bankAccountId });
+    return res.data;
+  },
+  getGatewaySummary: async () => {
+    const res = await api.get('/banking/payment-gateway/summary');
+    return res.data;
+  },
+  getGatewayProviders: async () => {
+    const res = await api.get('/banking/payment-gateway/providers');
+    return res.data;
+  },
+  initializePayment: async (data: { provider: string; email: string; amount: number; currency?: string; callbackUrl?: string; customerName?: string; phone?: string; description?: string; bankAccountId?: string }) => {
+    const res = await api.post('/banking/payment-gateway/initialize', data);
+    return res.data;
+  },
+  getBanksList: async () => {
+    const res = await api.get('/banking/banks');
+    return res.data;
+  },
+  resolveAccount: async (accountNumber: string, bankCode: string) => {
+    const res = await api.post('/banking/resolve-account', { accountNumber, bankCode });
+    return res.data;
+  },
+  disburse: async (data: { provider: string; amount: number; bankCode: string; accountNumber: string; accountName: string; narration?: string; reference?: string }) => {
+    const res = await api.post('/banking/disburse', data);
+    return res.data;
+  },
+  getProviderStatus: async () => {
+    const res = await api.get('/banking/providers/status');
+    return res.data;
+  },
 };
 
 export const periodsApi = {

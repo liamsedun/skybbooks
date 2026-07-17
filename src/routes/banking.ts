@@ -52,6 +52,21 @@ import { fetchLatestRates } from '../services/cbn.service';
 import { createJournalEntry, reverseJournalEntry } from '../services/ledger.service';
 import { postToGL } from '../services/posting.service';
 import { createAuditLog, extractReqMeta } from '../services/audit.service';
+import {
+  getBankConnections,
+  getPaymentGatewayTransactions,
+  syncBankFeed,
+  syncPaymentGatewayTransactions,
+  autoMatchPaymentGatewayTransactions,
+  getProviderStatus,
+  disconnectBankConnection,
+  getGatewaySummary,
+  getActiveProviders,
+} from '../services/banking.service';
+import { monoProvider } from '../services/providers/mono.provider';
+import { paystackProvider } from '../services/providers/paystack.provider';
+import { flutterwavePaymentProvider } from '../services/providers/flutterwave.provider';
+import { moniepointProvider } from '../services/providers/moniepoint.provider';
 
 const router = Router();
 
@@ -2275,6 +2290,286 @@ router.post('/currency-rates/refresh', async (req: AuthenticatedRequest, res: Re
   } catch (err) {
     next(err);
   }
+});
+
+// ════════════════════════════════════════════════════════════════
+// NIGERIAN BANKING INTEGRATION — Provider Connections & Payment Gateways
+// ════════════════════════════════════════════════════════════════
+
+// GET available banking providers (configured via env vars)
+router.get('/providers/status', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const status = await getProviderStatus(orgId);
+    return res.status(200).json(status);
+  } catch (err) { next(err); }
+});
+
+// GET all bank connections (OAuth-linked providers)
+router.get('/connections', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const connections = await getBankConnections(orgId);
+    return res.status(200).json(connections);
+  } catch (err) { next(err); }
+});
+
+// POST exchange Mono auth code and create connection
+router.post('/connections/mono/callback', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const userId = req.user!.userId;
+    const { code, bankAccountId } = z.object({
+      code: z.string().min(1),
+      bankAccountId: z.string().uuid(),
+    }).parse(req.body);
+
+    const { accountId: monoAccountId } = await monoProvider.exchangeCode(code);
+    const accountInfo = await monoProvider.getAccountInfo(monoAccountId);
+
+    const connectionId = await monoProvider.storeConnection(orgId, bankAccountId, {
+      accessToken: '',
+      providerAccountId: monoAccountId,
+      providerAccountName: accountInfo.accountName,
+      raw: accountInfo,
+    });
+
+    // Update bank_accounts with Mono info
+    await db.update(bankAccounts)
+      .set({
+        monoAccountId,
+        monoAccountStatus: 'active',
+        bankName: accountInfo.bankName || undefined,
+        accountNumber: accountInfo.accountNumber || undefined,
+      })
+      .where(eq(bankAccounts.id, bankAccountId));
+
+    await createAuditLog({
+      orgId, userId, action: 'create', entityType: 'bank-connection',
+      entityId: connectionId,
+      newValues: { provider: 'mono', bankAccountId, monoAccountId, ...accountInfo },
+      ...extractReqMeta(req),
+    });
+
+    return res.status(200).json({ connectionId, monoAccountId, ...accountInfo });
+  } catch (err) { next(err); }
+});
+
+// POST sync a bank feed connection
+router.post('/connections/:id/sync', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { id } = req.params;
+    const result = await syncBankFeed(id, orgId);
+    await createAuditLog({
+      orgId, userId: req.user!.userId, action: 'sync', entityType: 'bank-connection',
+      entityId: id, newValues: { transactionsAdded: result.transactionsAdded },
+      ...extractReqMeta(req),
+    });
+    return res.status(200).json(result);
+  } catch (err) { next(err); }
+});
+
+// DELETE disconnect a bank connection
+router.delete('/connections/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    await disconnectBankConnection(req.params.id, orgId);
+    await createAuditLog({
+      orgId, userId: req.user!.userId, action: 'delete', entityType: 'bank-connection',
+      entityId: req.params.id,
+      newValues: { status: 'disconnected' },
+      ...extractReqMeta(req),
+    });
+    return res.status(200).json({ success: true });
+  } catch (err) { next(err); }
+});
+
+// GET payment gateway providers that are configured
+router.get('/payment-gateway/providers', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { gateway } = getActiveProviders(orgId);
+    return res.status(200).json({
+      providers: gateway.map(p => ({
+        provider: p,
+        configured: true,
+        publicKey: p === 'paystack' ? (process.env.PAYSTACK_PUBLIC_KEY || '') : p === 'flutterwave' ? (process.env.FLW_PUBLIC_KEY || '') : '',
+      })),
+    });
+  } catch (err) { next(err); }
+});
+
+// GET payment gateway transactions
+router.get('/payment-gateway/transactions', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { provider, status, from, to, page, limit } = req.query as any;
+    const result = await getPaymentGatewayTransactions(orgId, {
+      provider, status, from, to,
+      page: page ? parseInt(page) : undefined,
+      limit: limit ? parseInt(limit) : undefined,
+    });
+    return res.status(200).json(result);
+  } catch (err) { next(err); }
+});
+
+// POST sync transactions from a payment gateway provider
+router.post('/payment-gateway/sync/:provider', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { provider } = req.params;
+    const validProviders = ['paystack', 'flutterwave', 'moniepoint'];
+    if (!validProviders.includes(provider)) {
+      throw new AppError(`Unsupported provider: ${provider}. Supported: ${validProviders.join(', ')}`, 400);
+    }
+    const added = await syncPaymentGatewayTransactions(orgId, provider);
+    await createAuditLog({
+      orgId, userId: req.user!.userId, action: 'sync', entityType: 'payment-gateway',
+      newValues: { provider, transactionsAdded: added },
+      ...extractReqMeta(req),
+    });
+    return res.status(200).json({ transactionsAdded: added, provider });
+  } catch (err) { next(err); }
+});
+
+// POST auto-match gateway success transactions with bank feed
+router.post('/payment-gateway/auto-match', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { bankAccountId } = req.body as { bankAccountId?: string };
+    const matches = await autoMatchPaymentGatewayTransactions(orgId, bankAccountId);
+    return res.status(200).json({ matches, count: matches.length });
+  } catch (err) { next(err); }
+});
+
+// GET payment gateway summary stats
+router.get('/payment-gateway/summary', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const summary = await getGatewaySummary(orgId);
+    return res.status(200).json(summary);
+  } catch (err) { next(err); }
+});
+
+// POST initialize a Paystack payment
+router.post('/payment-gateway/initialize', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const userId = req.user!.userId;
+    const schema = z.object({
+      provider: z.enum(['paystack', 'flutterwave']),
+      email: z.string().email(),
+      amount: z.number().positive(),
+      currency: z.string().default('NGN'),
+      callbackUrl: z.string().optional(),
+      customerName: z.string().optional(),
+      phone: z.string().optional(),
+      description: z.string().optional(),
+      bankAccountId: z.string().uuid().optional(),
+    });
+    const data = schema.parse(req.body);
+
+    let result: { authorizationUrl: string; reference: string };
+    if (data.provider === 'paystack') {
+      const psResult = await paystackProvider.initializeTransaction({
+        email: data.email,
+        amount: data.amount,
+        currency: data.currency,
+        callbackUrl: data.callbackUrl,
+        metadata: { description: data.description, orgId, bankAccountId: data.bankAccountId },
+      });
+      result = { authorizationUrl: psResult.authorizationUrl, reference: psResult.reference };
+    } else {
+      const flwResult = await flutterwavePaymentProvider.initializeTransaction({
+        email: data.email,
+        amount: data.amount,
+        currency: data.currency,
+        callbackUrl: data.callbackUrl,
+        customerName: data.customerName,
+        meta: { orgId, bankAccountId: data.bankAccountId },
+      });
+      result = { authorizationUrl: flwResult.authorizationUrl, reference: flwResult.reference };
+    }
+
+    await createAuditLog({
+      orgId, userId, action: 'create', entityType: 'payment-gateway',
+      newValues: { provider: data.provider, amount: data.amount, reference: result.reference },
+      ...extractReqMeta(req),
+    });
+
+    return res.status(200).json(result);
+  } catch (err) { next(err); }
+});
+
+// GET list supported Nigerian bank codes (from Paystack + Flutterwave)
+router.get('/banks', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    let banks: { name: string; code: string }[] = [];
+    try { banks = await paystackProvider.getBanks(); }
+    catch { try { banks = await flutterwavePaymentProvider.getBanks(); } catch {} }
+    return res.status(200).json(banks);
+  } catch (err) { next(err); }
+});
+
+// POST resolve Nigerian account number
+router.post('/resolve-account', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { accountNumber, bankCode } = z.object({
+      accountNumber: z.string().min(10).max(10),
+      bankCode: z.string().min(1),
+    }).parse(req.body);
+
+    let accountName = '';
+    try {
+      const result = await paystackProvider.resolveAccountNumber(accountNumber, bankCode);
+      accountName = result.accountName;
+    } catch {
+      const result = await flutterwavePaymentProvider.resolveAccountNumber(accountNumber, bankCode);
+      accountName = result.accountName;
+    }
+    return res.status(200).json({ accountName, accountNumber, bankCode });
+  } catch (err) { next(err); }
+});
+
+// POST initiate bank transfer (disbursement)
+router.post('/disburse', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const schema = z.object({
+      provider: z.enum(['flutterwave', 'moniepoint']),
+      amount: z.number().positive(),
+      bankCode: z.string().min(1),
+      accountNumber: z.string().min(10).max(10),
+      accountName: z.string().min(1),
+      narration: z.string().optional(),
+      reference: z.string().optional(),
+    });
+    const data = schema.parse(req.body);
+
+    let result: { reference: string; status: string };
+    if (data.provider === 'flutterwave') {
+      const r = await flutterwavePaymentProvider.initiateTransfer({
+        amount: data.amount, bankCode: data.bankCode, accountNumber: data.accountNumber,
+        accountName: data.accountName, narration: data.narration, reference: data.reference,
+      });
+      result = { reference: r.reference, status: r.status };
+    } else {
+      const r = await moniepointProvider.initiateTransfer({
+        amount: data.amount, bankCode: data.bankCode, accountNumber: data.accountNumber,
+        accountName: data.accountName, narration: data.narration, reference: data.reference,
+      });
+      result = { reference: r.reference, status: r.status };
+    }
+
+    await createAuditLog({
+      orgId, userId: req.user!.userId, action: 'create', entityType: 'bank-transfer',
+      newValues: { provider: data.provider, amount: data.amount, ...result },
+      ...extractReqMeta(req),
+    });
+
+    return res.status(200).json(result);
+  } catch (err) { next(err); }
 });
 
 export default router;

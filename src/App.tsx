@@ -28,6 +28,8 @@ import { BankAccounts } from './pages/banking/BankAccounts';
 import { Reconciliation } from './pages/banking/Reconciliation';
 import { BankRules } from './pages/banking/BankRules';
 import { TransfersPage } from './pages/banking/TransfersPage';
+import { BankConnectionsPage } from './pages/banking/BankConnectionsPage';
+import { PaymentGatewayPage } from './pages/banking/PaymentGatewayPage';
 import { ProjectsPage } from './pages/sales/ProjectsPage';
 import { ProjectDetailPage } from './pages/sales/ProjectDetailPage';
 
@@ -308,6 +310,8 @@ function AppRoutes() {
           {/* Banking module routing */}
           <Route path="/banking" element={<BankAccountsWrapper />} />
           <Route path="/banking/reconciliation/:accountId" element={<ReconciliationWrapper />} />
+          <Route path="/banking/connections" element={<BankConnectionsPage />} />
+          <Route path="/banking/payment-gateway" element={<PaymentGatewayPage />} />
           <Route path="/banking/rules" element={<BankRules />} />
           <Route path="/banking/currency-rates" element={<CurrencyRatesPage />} />
           <Route path="/banking/transfers" element={<TransfersPage />} />

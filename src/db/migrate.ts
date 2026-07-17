@@ -2299,6 +2299,86 @@ export async function runMigration() {
 
     console.log('[Migration] Approval workflow tables and columns created.');
 
+    // ── Nigerian Banking Integration — Provider Connections & Gateway Transactions ──
+    await db.execute(sql`
+      DO $$ BEGIN
+        CREATE TYPE bank_feed_provider AS ENUM ('mono', 'paystack', 'flutterwave', 'moniepoint');
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$;
+    `);
+    await db.execute(sql`
+      DO $$ BEGIN
+        CREATE TYPE bank_connection_status AS ENUM ('active', 'reauth_required', 'expired', 'disconnected', 'pending');
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$;
+    `);
+    await db.execute(sql`
+      DO $$ BEGIN
+        CREATE TYPE payment_gateway AS ENUM ('paystack', 'flutterwave', 'moniepoint');
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$;
+    `);
+    await db.execute(sql`
+      DO $$ BEGIN
+        CREATE TYPE gateway_txn_status AS ENUM ('pending', 'success', 'failed', 'settled', 'partial_refund', 'full_refund');
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$;
+    `);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS bank_connections (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        bank_account_id uuid REFERENCES bank_accounts(id) NOT NULL,
+        provider bank_feed_provider NOT NULL,
+        provider_account_id text,
+        provider_account_name text,
+        status bank_connection_status DEFAULT 'pending' NOT NULL,
+        auth_token text,
+        refresh_token text,
+        token_expires_at timestamp,
+        last_synced_at timestamp,
+        meta jsonb DEFAULT '{}'::jsonb,
+        error_message text,
+        created_at timestamp DEFAULT now() NOT NULL
+      );
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_bank_connections_org ON bank_connections(org_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_bank_connections_bank_account ON bank_connections(bank_account_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_bank_connections_provider ON bank_connections(provider)`);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS payment_gateway_transactions (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        provider payment_gateway NOT NULL,
+        gateway_transaction_id text NOT NULL,
+        reference text NOT NULL,
+        amount bigint NOT NULL,
+        fee bigint DEFAULT 0 NOT NULL,
+        currency text DEFAULT 'NGN' NOT NULL,
+        status gateway_txn_status DEFAULT 'pending' NOT NULL,
+        customer_email text,
+        customer_name text,
+        customer_phone text,
+        description text,
+        bank_account_id uuid REFERENCES bank_accounts(id),
+        matched_transaction_id uuid REFERENCES bank_transactions(id),
+        payment_method text,
+        channel text,
+        raw_data jsonb DEFAULT '{}'::jsonb,
+        settled_at timestamp,
+        created_at timestamp DEFAULT now() NOT NULL
+      );
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_pgt_org ON payment_gateway_transactions(org_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_pgt_provider ON payment_gateway_transactions(provider)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_pgt_status ON payment_gateway_transactions(status)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_pgt_gateway_txn_id ON payment_gateway_transactions(gateway_transaction_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_pgt_reference ON payment_gateway_transactions(reference)`);
+
+    console.log('[Migration] Nigerian Banking Integration tables created.');
+
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema setup:', err);
