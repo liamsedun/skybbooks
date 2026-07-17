@@ -90,6 +90,34 @@ function mapGatewayStatus(status: string, provider: string): 'pending' | 'succes
   }
 }
 
+/**
+ * Resolve the organisation ID from a payment gateway webhook payload.
+ * Priority: metadata.orgId → existing transaction's orgId → fallback.
+ */
+async function resolveOrgFromWebhookEvent(event: any): Promise<string | null> {
+  // Paystack stores orgId in metadata
+  if (event.data?.metadata?.orgId) {
+    return event.data.metadata.orgId;
+  }
+  // Flutterwave stores orgId in meta
+  if (event.data?.meta?.orgId) {
+    return event.data.meta.orgId;
+  }
+  // Look up existing transaction by reference to find its org
+  const ref = event.data?.reference || event.data?.tx_ref || '';
+  if (ref) {
+    const [existing] = await db
+      .select({ orgId: paymentGatewayTransactions.orgId })
+      .from(paymentGatewayTransactions)
+      .where(eq(paymentGatewayTransactions.reference, ref))
+      .limit(1);
+    if (existing?.orgId) return existing.orgId;
+  }
+  // Fallback: log warning and return null
+  console.warn(`[Webhook] Could not resolve orgId from webhook event: ${event.event || 'unknown'} ref=${ref}`);
+  return null;
+}
+
 // ── Paystack Webhook ──
 
 router.post('/paystack', (req: Request, res: Response) => {
@@ -106,18 +134,12 @@ router.post('/paystack', (req: Request, res: Response) => {
       const event = JSON.parse(rawBody);
 
       if (event.event === 'charge.success' && event.data) {
-        const ref = event.data.reference || '';
-        const [org] = await db
-          .select({ id: organisations.id })
-          .from(organisations)
-          .limit(1);
-
-        if (org) {
-          await recordGatewayTransaction(org.id, 'paystack', event.data);
-          res.status(200).json({ received: true });
-        } else {
-          res.status(404).json({ error: 'Organisation not found' });
+        const orgId = await resolveOrgFromWebhookEvent(event);
+        if (!orgId) {
+          return res.status(200).json({ received: true, note: 'Org not resolved' });
         }
+        await recordGatewayTransaction(orgId, 'paystack', event.data);
+        res.status(200).json({ received: true });
       } else {
         res.status(200).json({ received: true });
       }
@@ -144,17 +166,12 @@ router.post('/flutterwave', (req: Request, res: Response) => {
       const event = JSON.parse(rawBody);
 
       if (event.event === 'charge.completed' && event.data?.status === 'successful') {
-        const [org] = await db
-          .select({ id: organisations.id })
-          .from(organisations)
-          .limit(1);
-
-        if (org) {
-          await recordGatewayTransaction(org.id, 'flutterwave', event.data);
-          res.status(200).json({ received: true });
-        } else {
-          res.status(404).json({ error: 'Organisation not found' });
+        const orgId = await resolveOrgFromWebhookEvent(event);
+        if (!orgId) {
+          return res.status(200).json({ received: true, note: 'Org not resolved' });
         }
+        await recordGatewayTransaction(orgId, 'flutterwave', event.data);
+        res.status(200).json({ received: true });
       } else if (event.event === 'transfer.completed') {
         res.status(200).json({ received: true });
       } else {
@@ -183,17 +200,12 @@ router.post('/moniepoint', (req: Request, res: Response) => {
       const event = JSON.parse(rawBody);
 
       if (event.event === 'transaction.successful' && event.data) {
-        const [org] = await db
-          .select({ id: organisations.id })
-          .from(organisations)
-          .limit(1);
-
-        if (org) {
-          await recordGatewayTransaction(org.id, 'moniepoint', event.data);
-          res.status(200).json({ received: true });
-        } else {
-          res.status(404).json({ error: 'Organisation not found' });
+        const orgId = await resolveOrgFromWebhookEvent(event);
+        if (!orgId) {
+          return res.status(200).json({ received: true, note: 'Org not resolved' });
         }
+        await recordGatewayTransaction(orgId, 'moniepoint', event.data);
+        res.status(200).json({ received: true });
       } else {
         res.status(200).json({ received: true });
       }

@@ -47,9 +47,12 @@ import ocrRouter from '../routes/ocr';
 import groupsRouter from '../routes/groups';
 import intercompanyRouter from '../routes/intercompany';
 import consolidationRouter from '../routes/consolidation';
+import passwordResetRouter from '../routes/passwordReset';
 
 import { runMigration } from '../db/migrate';
 import { fetchLatestRates } from '../services/cbn.service';
+import { requestId } from '../middleware/requestId';
+import { AppError, ValidationError } from '../lib/errors';
 
 const logger = winston.createLogger({
   level: 'info',
@@ -105,6 +108,9 @@ async function startServer() {
     credentials: true
   }));
 
+  // Request ID for tracing
+  app.use(requestId);
+
   // Body parsers
   // IMPORTANT: Webhook routes must be mounted BEFORE express.json()
   // so the raw body is available for HMAC signature verification.
@@ -141,6 +147,7 @@ async function startServer() {
   // API ROUTES (must be before static files)
   // ==========================================
   app.use('/api/auth', authRouter);
+  app.use('/api/auth', passwordResetRouter);
   app.use('/api/org', organisationsRouter);
   app.use('/api/sales', salesRouter);
   app.use('/api/purchases', purchasesRouter);
@@ -186,17 +193,28 @@ async function startServer() {
   // Global error handler
   app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
     const status = err.statusCode || err.status || 500;
-    const pgErr = err.cause?.message || err.cause?.detail || err.cause;
-    const message = err.message || 'An unexpected error occurred.';
-    const detail = pgErr ? `${message}: ${pgErr}` : message;
+    const requestId = (req as any).requestId || 'unknown';
 
     if (status === 401 && err.errorCode === 'TOKEN_EXPIRED') {
-      logger.debug(`Access token expired (expected) — ${req.method} ${req.url}`);
+      logger.debug(`[${requestId}] Access token expired (expected) — ${req.method} ${req.url}`);
+    } else if (status >= 500) {
+      logger.error(`[${requestId}] ${status} ${req.method} ${req.url}`, err);
     } else {
-      logger.error(`[ERROR] ${status} ${req.method} ${req.url}`, err);
+      logger.warn(`[${requestId}] ${status} ${req.method} ${req.url} — ${err.message}`);
     }
 
-    res.status(status).json({ error: detail, status });
+    const body: Record<string, any> = {
+      success: false,
+      error: err.message || 'An unexpected error occurred.',
+      status,
+      requestId,
+    };
+
+    if (err instanceof ValidationError && err.fields) {
+      body.fields = err.fields;
+    }
+
+    res.status(status).json(body);
   });
 
   // ==========================================

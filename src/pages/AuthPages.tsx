@@ -505,6 +505,22 @@ export function RegisterPage() {
 export function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      await authApi.forgotPassword(email);
+      setSent(true);
+    } catch (err: any) {
+      setError(err?.response?.data?.error || err?.message || 'Failed to send reset email.');
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <AuthShell>
@@ -516,13 +532,10 @@ export function ForgotPasswordPage() {
           If that email exists, you'll receive reset instructions shortly.
         </div>
       ) : (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            setSent(true);
-          }}
-          className="space-y-4"
-        >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-red-700 text-sm">{error}</div>
+          )}
           <TextField
             icon={Mail}
             label="Work email"
@@ -532,7 +545,7 @@ export function ForgotPasswordPage() {
             onChange={(e) => setEmail(e.target.value)}
             required
           />
-          <SubmitButton loading={false} idleLabel="Send reset link" loadingLabel="Sending..." />
+          <SubmitButton loading={loading} idleLabel="Send reset link" loadingLabel="Sending..." />
         </form>
       )}
 
@@ -627,6 +640,83 @@ export function AcceptInvitePage() {
           </p>
         </>
       ) : null}
+    </AuthShell>
+  );
+}
+
+export function ResetPasswordPage() {
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get('token');
+  const navigate = useNavigate();
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (password !== confirmPassword) { setError('Passwords do not match.'); return; }
+    if (password.length < 6) { setError('Password must be at least 6 characters.'); return; }
+    if (!token) { setError('Invalid reset link.'); return; }
+    setLoading(true);
+    setError('');
+    try {
+      await authApi.resetPassword(token, password);
+      setSuccess(true);
+      setTimeout(() => navigate('/login'), 2500);
+    } catch (err: any) {
+      setError(err?.response?.data?.error || err?.message || 'Failed to reset password.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <AuthShell>
+      <h2 className="text-2xl font-bold text-slate-900 mb-1">Set new password</h2>
+      <p className="text-slate-500 text-sm mb-7">Enter your new password below.</p>
+
+      {success ? (
+        <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-700 text-sm text-center">
+          Password reset successfully! Redirecting to login...
+        </div>
+      ) : !token ? (
+        <div className="p-4 bg-red-50 border border-red-100 rounded-xl text-red-700 text-sm text-center">
+          Invalid or missing reset token. Please request a new reset link.
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-red-700 text-sm">{error}</div>
+          )}
+          <TextField
+            icon={Lock}
+            label="New password"
+            type="password"
+            placeholder="Min. 6 characters"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={6}
+          />
+          <TextField
+            icon={Lock}
+            label="Confirm password"
+            type="password"
+            placeholder="Repeat password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+            minLength={6}
+          />
+          <SubmitButton loading={loading} idleLabel="Reset password" loadingLabel="Resetting..." />
+        </form>
+      )}
+
+      <p className="text-center text-sm text-slate-500 mt-7">
+        <Link to="/login" className="text-indigo-600 font-medium hover:underline">Back to sign in</Link>
+      </p>
     </AuthShell>
   );
 }

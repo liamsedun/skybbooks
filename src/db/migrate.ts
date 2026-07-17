@@ -2568,6 +2568,92 @@ export async function runMigration() {
 
     console.log('[Migration] Multi-company / Group structure tables created.');
 
+    // ----------------------------------------------------------------
+    // Performance indexes on core tables
+    // ----------------------------------------------------------------
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_journal_entries_org ON journal_entries(org_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_journal_entries_date ON journal_entries(date)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_journal_entries_status ON journal_entries(status)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_journal_entries_source ON journal_entries(source)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_journal_entries_source_id ON journal_entries(source_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_journal_entries_entry_number ON journal_entries(org_id, entry_number)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_journal_entries_created ON journal_entries(org_id, created_at)`);
+
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_journal_lines_entry ON journal_lines(entry_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_journal_lines_account ON journal_lines(account_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_journal_lines_org_account ON journal_lines(org_id, account_id)`);
+
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_accounts_org ON accounts(org_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_accounts_code ON accounts(org_id, code)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_accounts_parent ON accounts(parent_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_accounts_role ON accounts(system_account_role)`);
+
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_contacts_org ON contacts(org_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_contacts_type ON contacts(org_id, type)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_contacts_email ON contacts(org_id, email)`);
+
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_invoices_org ON invoices(org_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_invoices_contact ON invoices(org_id, contact_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(org_id, status)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_invoices_date ON invoices(org_id, issue_date)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_invoice_lines_invoice ON invoice_lines(invoice_id)`);
+
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_bills_org ON bills(org_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_bills_contact ON bills(org_id, contact_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_bills_status ON bills(org_id, status)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_bills_date ON bills(org_id, bill_date)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_bill_lines_bill ON bill_lines(bill_id)`);
+
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_payments_org ON payments(org_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_payments_contact ON payments(org_id, contact_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_payments_invoice ON payments(invoice_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_payments_date ON payments(org_id, payment_date)`);
+
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_items_org ON items(org_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_items_sku ON items(org_id, sku)`);
+
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(refresh_token_hash)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at)`);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS password_reset_tokens (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        user_id uuid REFERENCES users(id) NOT NULL,
+        token_hash text NOT NULL,
+        expires_at timestamp NOT NULL,
+        used_at timestamp,
+        created_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_password_reset_token_hash ON password_reset_tokens(token_hash)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_password_reset_user ON password_reset_tokens(user_id)`);
+
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_audit_log_org ON audit_log(org_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_audit_log_entity ON audit_log(entity_type, entity_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_audit_log_created ON audit_log(org_id, created_at)`);
+
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_bank_transactions_account ON bank_transactions(bank_account_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_bank_transactions_date ON bank_transactions(bank_account_id, transaction_date)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_bank_transactions_status ON bank_transactions(bank_account_id, status)`);
+
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_recon_matches_account ON reconciliation_matches(bank_account_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_recon_matches_tx ON reconciliation_matches(bank_transaction_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_recon_matches_jl ON reconciliation_matches(journal_line_id)`);
+
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_fixed_assets_org ON fixed_assets(org_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_fixed_assets_account ON fixed_assets(asset_account_id)`);
+
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_leases_org ON leases(org_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_revenue_contracts_org ON revenue_contracts(org_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_rev_obligations_contract ON performance_obligations(contract_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_rev_schedules_obligation ON revenue_schedules(obligation_id)`);
+
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_ecl_provisions_org ON ecl_provisions(org_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_payroll_runs_org ON payroll_runs(org_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_inventory_adjustments_item ON inventory_adjustments(item_id)`);
+
+    console.log('[Migration] Performance indexes created on core tables.');
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema setup:', err);

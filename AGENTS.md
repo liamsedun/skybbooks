@@ -49,6 +49,22 @@ Maintain and enhance accounting features: fix kobo/naira display, parent-child a
 - **Cash Flow Statement revamp**: Rewrote `getCashFlowStatement()` and all exports (frontend table, CSV, PDF, Excel) to match the legacy CF layout. Adds `profitBeforeInterestAndTax`, `operatingLineItems` flat list with auto subtotals, `cashBreakdown` section (cash & bank balance, term deposit, term loan), amortization/grant income/provision for tax as separate adjustment lines. Comparative table preserved via old fields.
 - **Legacy Migration PDF/Excel exports**: Added PDF (`printWindow`) and Excel (CSV download) buttons to all three statement tabs (Income, Cash Flow, SOCIE) on the Legacy Migration page. PDF build HTML tables with `printWindow()`; Excel generates downloadable CSV files.
 
+### Session 3 — System Architecture & Infrastructure Improvements (Jul 2026)
+- **Database performance indexes**: Added 45+ B-tree indexes on all core table foreign keys and date columns — `journal_entries` (org_id, date, status, source, source_id, entry_number), `journal_lines` (entry_id, account_id), `accounts` (org_id, code, parent_id, role), `contacts` (org, type, email), `invoices` (org, contact, status, issue_date), `bills`, `payments`, `items`, `sessions`, `audit_log`, `bank_transactions`, `reconciliation_matches`, `fixed_assets`, `leases`, `revenue_contracts`, `ecl_provisions`, `payroll_runs`, `inventory_adjustments` — all via startup migration (`src/db/migrate.ts:2571-2685`)
+- **SELECT FOR UPDATE concurrency protection**: Added `.forUpdate()` lock to both `checkDuplicate()` (`src/services/posting.service.ts:249`) and `createJournalEntry()` duplicate-prevention query (`src/services/ledger.service.ts:120`) — prevents race conditions when two requests post to the same source simultaneously
+- **Webhook multi-tenant routing fix**: All three payment gateway webhooks (Paystack, Flutterwave, Moniepoint) previously resolved the org via `organisations LIMIT 1` — always routing to the first org. Fixed with `resolveOrgFromWebhookEvent()` that checks `event.data.metadata.orgId` first, falls back to `paymentGatewayTransactions` reference lookup, and logs a warning if unresolvable (`src/routes/bankingWebhooks.ts:93-129`)
+- **Async handler wrapper**: `src/middleware/asyncHandler.ts` — eliminates try/catch boilerplate from route handlers; wraps async functions to auto-forward errors to Express error handler
+- **Enhanced error classes**: Added `NotFoundError` (404), `ForbiddenError` (403), `UnauthorizedError` (401), `ConflictError` (409), `ValidationError` (400 with optional `fields` record) to `src/lib/errors.ts`
+- **Request ID middleware**: `src/middleware/requestId.ts` — generates `crypto.randomUUID()` per request, attached to `req.requestId`. Logged in every error message via `[${requestId}]` prefix in global error handler (`src/server/index.ts:187-208`)
+- **Structured error responses**: Global error handler now returns `{ success: false, error, status, requestId, fields? }` instead of plain `{ error, status }`. ValidationErrors include field-level error map. Log levels: `error` for 500+, `warn` for 4xx, `debug` for TOKEN_EXPIRED (`src/server/index.ts:187-208`)
+- **Standardized API response envelope**: `src/lib/response.ts` exports `ok(data)` → `{ success: true, data }` and `paginated(data, total, page, pageSize)` → `{ success: true, data, meta: { page, pageSize, total, totalPages } }` — consistent response shape for all future endpoints
+- **Password reset flow**: Full backend (new `password_reset_tokens` table in schema + migration, `POST /auth/forgot-password` and `POST /auth/reset-password` routes at `src/routes/passwordReset.ts`, 60-min expiry, bcrypt hashing, SHA-256 token hash storage); frontend (updated `ForgotPasswordPage` to call real API, new `ResetPasswordPage` with token-from-URL and confirm-password validations, route at `/reset-password` in App.tsx)
+- **React ErrorBoundary**: `src/components/ui/ErrorBoundary.tsx` — class-based error boundary with optional `fallback` prop, `onError` callback, "Try again" button; `withErrorBoundary()` HOC for wrapping individual pages. Wrapped entire App root in App.tsx
+- **Toast notification system**: `src/contexts/ToastContext.tsx` — `ToastProvider` + `useToast()` hook supporting success/error/info/warning types with auto-dismiss (4s), slide-in animation, Lucide icons, color-coded backgrounds. Integrated into App.tsx root. Replaces all `alert()` calls over time
+- **Skeleton loading components**: `src/components/ui/Skeleton.tsx` — `Skeleton` (text/rect/circle variants), `TableSkeleton` (5×4 grid), `CardSkeleton` (card layout). CSS shimmer animation injected once via `injectKeyframes()`
+- **Pagination utilities**: `src/lib/pagination.ts` — `getPaginationParams()`, `paginatedResponse()` helpers for consistent paginated API responses; `src/hooks/usePagination.ts` — `usePagination()` hook with page/pageSize/total/totalPages state and `from`/`to` computed values; `src/components/ui/TablePagination.tsx` — reusable pagination bar showing range (Showing X–Y of Z), page selector, prev/next buttons, page size dropdown
+- **All changes compile**: `npx tsc --noEmit` passes with 0 errors
+
 ### In Progress
 - (none)
 
@@ -181,6 +197,17 @@ Maintain and enhance accounting features: fix kobo/naira display, parent-child a
 - `src/server/index.ts`: Mounted `/api/revenue` routes
 - `src/lib/api.ts`: `revenueApi` with 16 methods for IFRS 15 endpoints
 
+### System Architecture & Infrastructure — Files Created
+- `src/middleware/asyncHandler.ts`: Async error wrapper for route handlers
+- `src/middleware/requestId.ts`: Per-request UUID for error tracing
+- `src/lib/response.ts`: `ok()` / `paginated()` API response envelope helpers
+- `src/lib/pagination.ts`: `getPaginationParams()` / `paginatedResponse()` for consistent pagination
+- `src/hooks/usePagination.ts`: Frontend pagination state hook
+- `src/components/ui/ErrorBoundary.tsx`: React error boundary + `withErrorBoundary()` HOC
+- `src/components/ui/Skeleton.tsx`: Skeleton/TableSkeleton/CardSkeleton loading components
+- `src/components/ui/TablePagination.tsx`: Reusable pagination bar component
+- `src/contexts/ToastContext.tsx`: Toast notification system (replaces `alert()`)
+
 ### IFRS 16 Lease Accounting — Completed Items
 - **Schema tables**: `leases` (org FK, lessor, asset category, ROU/liability/interest account FKs, commencement/end dates, term, payment amount, PV, IBR, initial direct costs, status), `lease_payment_schedules` (lease FK, period number, due date, payment/interest/principal amounts, outstanding balance, is_paid, JE FK), `lease_journal_entries` (lease FK, period number, JE FK, entry type, description); added `lease` to `journal_source` enum; added all relations (`leasesRelations`, `leasePaymentSchedulesRelations`, `leaseJournalEntriesRelations`)
 - **Migration (`migrate.ts`)**: Creates all 3 IFRS 16 tables with indexes, seeds ROU asset accounts (201100 Buildings, 201101 Accum Depr Buildings, 201200 Motor Vehicles, 201201 Accum Depr Vehicles), lease liability accounts (304000 Current, 401000 Non-current), interest expense account (910300), depreciation expense account (810900), adds `lease` to `journal_source` enum
@@ -192,14 +219,20 @@ Maintain and enhance accounting features: fix kobo/naira display, parent-child a
 - **Routing/sidebar**: Route at `/accountant/leases` in `App.tsx`; sidebar nav item "Lease Accounting" with Briefcase icon under ACCOUNTANT group in `AppLayout.tsx`
 
 ### Next Steps
-1. (Done) Report mappings UI at `/reports/mappings`
-2. (Done) Notes to Financial Statements UI at `/reports/notes`
-3. (Done) Notes included in PDF/Excel exports for BS, PL, CF
-4. (Done) Consolidated reports endpoint (`GET /reports/consolidated`)
-5. (Done) IFRS 15 Revenue Recognition: schema, service, routes, API client, migration, frontend (RevenueContractsPage + RevenueRecognitionReport), sidebar nav, App.tsx routing
-6. (Done) IFRS 16 Lease Accounting: schema, service, routes, API client, migration, frontend (LeasesPage with full CRUD, schedule, payments, depreciation, modify/terminate), sidebar nav, App.tsx routing
-7. (Done) Inventory Accounting Improvement: routes, API, frontend, service fixes — committed at `c84649e`, pushed to main (Render auto-deploys)
-8. (Done) Nigerian Tax Engine: PAYE, NHF, NSITF, ITF, Stamp Duty, Tax Exemptions, FIRS Reports, Auto Tax Journals — committed at `c84649e`, pushed to main
+1. (Done) System Architecture & Infrastructure (Session 3): 45+ DB indexes, FOR UPDATE locking, webhook org resolution, async handler, enhanced errors, request ID middleware, structured error responses, standard API envelope, password reset, ErrorBoundary, Toast notifications, Skeleton/TablePagination components
+2. (Done) Report mappings UI at `/reports/mappings`
+3. (Done) Notes to Financial Statements UI at `/reports/notes`
+4. (Done) Notes included in PDF/Excel exports for BS, PL, CF
+5. (Done) Consolidated reports endpoint (`GET /reports/consolidated`)
+6. (Done) IFRS 15 Revenue Recognition: schema, service, routes, API client, migration, frontend (RevenueContractsPage + RevenueRecognitionReport), sidebar nav, App.tsx routing
+7. (Done) IFRS 16 Lease Accounting: schema, service, routes, API client, migration, frontend (LeasesPage with full CRUD, schedule, payments, depreciation, modify/terminate), sidebar nav, App.tsx routing
+8. (Done) Inventory Accounting Improvement: routes, API, frontend, service fixes — committed at `c84649e`, pushed to main (Render auto-deploys)
+9. (Done) Nigerian Tax Engine: PAYE, NHF, NSITF, ITF, Stamp Duty, Tax Exemptions, FIRS Reports, Auto Tax Journals — committed at `c84649e`, pushed to main
+10. (Pending) Commit Session 3 improvements and push to origin/main
+11. (Pending) Split 3955-line ReportsPage.tsx into separate component files
+12. (Pending) Begin replacing `alert()` calls across 26+ files with `useToast()`
+13. (Pending) Add lazy loading for page-level React components in App.tsx
+14. (Pending) Implement rate limiting per-user/per-org
 
 ### Nigerian Tax Engine — Completed Items
 - **Schema (`schema.ts`)**: Added 7 new tables — `payeSchedules`, `payeScheduleLines`, `itfAssessments`, `stampDutyRecords`, `taxExemptions`, `firsReports`, `autoTaxJournals` — with 6 new enums (`payePeriodStatus`, `itfStatus`, `taxExemptionStatus`, `taxTypeEnum`, `firsReportStatus`, `firsReportType`)

@@ -3,13 +3,15 @@
  * SPDX-License-Identifier: Apache-2.5
  */
 
-import React from 'react';
+import React, { Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useParams, Outlet } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './lib/api';
+import { ErrorBoundary } from './components/ui/ErrorBoundary';
 
 import { ChatProvider } from './contexts/ChatContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { ToastProvider } from './contexts/ToastContext';
 
 // Layout & Custom Pages
 import { AppLayout } from './components/layout/AppLayout';
@@ -35,7 +37,7 @@ import { ProjectsPage } from './pages/sales/ProjectsPage';
 import { ProjectDetailPage } from './pages/sales/ProjectDetailPage';
 
 // Public & Protected Route Component Placeholders
-import { LoginPage, RegisterPage, ForgotPasswordPage, AcceptInvitePage } from './pages/AuthPages';
+import { LoginPage, RegisterPage, ForgotPasswordPage, ResetPasswordPage, AcceptInvitePage } from './pages/AuthPages';
 import {
   NotFoundPage,
   CustomersPage,
@@ -264,6 +266,7 @@ function AppRoutes() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/accept-invite" element={<AcceptInvitePage />} />
 
         {/* Protected general ledger system */}
@@ -435,15 +438,27 @@ function AppRoutes() {
   );
 }
 
+const Loader = () => (
+  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: '#888' }}>
+    <span style={{ marginRight: 8 }}>Loading...</span>
+  </div>
+);
+
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <ChatProvider>
-          <AppRoutes />
-        </ChatProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <ToastProvider>
+            <ChatProvider>
+              <Suspense fallback={<Loader />}>
+                <AppRoutes />
+              </Suspense>
+            </ChatProvider>
+          </ToastProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 

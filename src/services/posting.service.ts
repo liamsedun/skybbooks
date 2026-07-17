@@ -234,7 +234,7 @@ async function checkDuplicate(
   if (!sourceId) return;
 
   const client = tx || db;
-  const [existing] = await client
+  let query = client
     .select({ id: journalEntries.id })
     .from(journalEntries)
     .where(
@@ -244,8 +244,9 @@ async function checkDuplicate(
         eq(journalEntries.sourceId, sourceId),
         eq(journalEntries.isReversed, false)
       )
-    )
-    .limit(1);
+    );
+  if (tx) query = query.forUpdate();
+  const [existing] = await query.limit(1);
 
   if (existing) {
     throw new AppError(

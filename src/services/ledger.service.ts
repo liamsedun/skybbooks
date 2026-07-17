@@ -104,7 +104,7 @@ export async function createJournalEntry(
 
   // 0a. Prevent duplicate posting (same source + sourceId, non-reversed)
   if (input.sourceId) {
-    const [dup] = await client
+    let dupQuery = client
       .select({ id: journalEntries.id })
       .from(journalEntries)
       .where(
@@ -114,8 +114,9 @@ export async function createJournalEntry(
           eq(journalEntries.sourceId, input.sourceId),
           eq(journalEntries.isReversed, false)
         )
-      )
-      .limit(1);
+      );
+    if (tx) dupQuery = dupQuery.forUpdate();
+    const [dup] = await dupQuery.limit(1);
     if (dup) {
       throw new AppError(
         `Journal entry already exists for ${input.source} ${input.sourceId} (JE: ${dup.id}).`,
