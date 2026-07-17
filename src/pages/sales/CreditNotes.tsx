@@ -291,12 +291,6 @@ export function CreditNotesPage() {
   return (
     <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
       <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Client Credit Notes</h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Issue and apply credit notes against customer invoices for returns, disputes, or VAT adjustments.
-          </p>
-        </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => exportCreditNotesCSV(filtered)}

@@ -158,7 +158,6 @@ export function AccountingAssistant() {
             <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-sm">
               <Sparkles className="w-4 h-4 text-white" />
             </div>
-            <h2 className="text-sm font-bold text-slate-800">AI Assistant</h2>
           </div>
           <p className="text-[11px] text-slate-400 mt-1">Ask anything about your accounts</p>
         </div>

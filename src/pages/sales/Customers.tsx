@@ -297,12 +297,6 @@ function CustomerList() {
   return (
     <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
       <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Customers</h1>
-          <p className="text-sm text-slate-500 mt-1">
-            {counts.all} customers · {counts.active} active · {counts.inactive} inactive · {counts.newThisMonth} new this month
-          </p>
-        </div>
         <div className="flex items-center gap-2">
           <button onClick={() => exportCustomersCSV(filtered)} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white text-emerald-700 text-xs font-medium border border-slate-200 rounded-xl hover:bg-emerald-50 transition-all duration-200">
             <Download size={14} /> CSV

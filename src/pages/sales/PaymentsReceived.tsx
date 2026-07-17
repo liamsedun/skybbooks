@@ -809,12 +809,6 @@ export function PaymentsReceivedPage() {
       <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
         {/* Page header */}
         <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">Payments Received</h1>
-            <p className="text-sm text-slate-500 mt-1">
-              {totals.count} payments · {formatNaira(totals.sum)} total received
-            </p>
-          </div>
           <div className="flex gap-2">
             <button
               onClick={() => { setAddForm({ ...EMPTY_ADD_FORM, reference: nextReference }); setAddError(null); setAddOpen(true); }}

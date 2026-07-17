@@ -313,10 +313,6 @@ export function SalesOrdersPage() {
     <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">Sales Orders</h1>
-          <p className="text-sm text-slate-500 mt-0.5">{counts.all} total · {counts.byStatus['confirmed'] || 0} confirmed · {counts.byStatus['fulfilled'] || 0} fulfilled</p>
-        </div>
         <div className="flex items-center gap-2">
           <button onClick={() => exportSOsCSV(filtered, customerMap)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl hover:bg-slate-50 transition-all duration-200">
             <Download size={14} /> CSV

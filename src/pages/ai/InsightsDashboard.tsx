@@ -344,9 +344,8 @@ export default function InsightsDashboard() {
       {/* Header section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
         <div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center">
             <Sparkles className="h-6 w-6 text-indigo-600 animate-pulse" />
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Smart Financial Analyst</h1>
           </div>
           <p className="text-sm text-slate-500 mt-1">
             Monthly financial management analysis reports comparing current vs prior periods with variance analysis and recommendations.

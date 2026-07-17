@@ -246,7 +246,6 @@ export function Dashboard({ onNavigate }: { onNavigate: (viewId: string) => void
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-xl font-bold text-ink-900 tracking-tight">Dashboard</h1>
             <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-success-custom bg-success-bg px-2.5 py-1 rounded-full border border-success-custom/20">
               <CheckCircle2 className="w-3 h-3" /> Trial Balance Verified
             </span>
