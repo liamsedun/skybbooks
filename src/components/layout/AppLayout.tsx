@@ -266,18 +266,10 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
           sidebarCollapsed ? 'h-14 justify-center px-2' : 'h-16 px-4'
         }`}>
           {sidebarCollapsed ? (
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white text-sm font-bold shrink-0">
-              S
-            </div>
+            <img src="/images/skyhouse-logo.png" alt="SkyBooks" className="w-8 h-8 rounded-lg object-contain shrink-0" />
           ) : (
             <div className="flex items-center gap-3 min-w-0 flex-1">
-              {developerLogoUrl ? (
-                <img src={developerLogoUrl} alt="Logo" className="h-8 w-8 rounded-lg object-contain" />
-              ) : (
-                <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white text-sm font-bold shrink-0">
-                  S
-                </div>
-              )}
+              <img src="/images/skyhouse-logo.png" alt="SkyBooks" className="w-8 h-8 rounded-lg object-contain shrink-0" />
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-bold sidebar-text truncate leading-tight">SkyBooks</div>
                 <div className="text-[10px] sidebar-text-muted font-medium truncate leading-tight">Books Engine</div>
