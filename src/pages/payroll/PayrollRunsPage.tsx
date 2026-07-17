@@ -246,10 +246,7 @@ export function PayrollRunsPage() {
   return (
     <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">Payroll Runs</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Manage payroll cycles and processing</p>
-        </div>
+
         <div className="flex items-center gap-2">
           {selectedRunIds.length > 0 && (
             <button onClick={() => { if (confirm(`Delete ${selectedRunIds.length} selected run(s)? Only draft runs will be deleted.`)) bulkDeleteRunsMutation.mutate(selectedRunIds); }}

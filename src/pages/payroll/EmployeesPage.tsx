@@ -298,10 +298,7 @@ export function EmployeesPage() {
     <div className="max-w-7xl mx-auto px-6 py-6 space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900">Employees</h2>
-          <p className="text-xs text-slate-400 uppercase tracking-wide font-semibold mt-0.5">Personnel Directory & Payroll Setup</p>
-        </div>
+
         <div className="flex items-center flex-wrap gap-2">
           {selectedIds.length > 0 && (
             <button onClick={() => { if (confirm(`Delete ${selectedIds.length} selected employee(s)?`)) batchDeleteMutation.mutate(selectedIds); }}

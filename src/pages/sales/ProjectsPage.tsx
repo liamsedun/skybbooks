@@ -141,9 +141,7 @@ export function ProjectsPage() {
   return (
     <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-          <Briefcase className="w-6 h-6 text-indigo-600" /> Projects
-        </h1>
+
         <div className="flex items-center gap-3">
           <button onClick={handlePrint}
             className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200 transition-all">

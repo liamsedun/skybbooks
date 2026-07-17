@@ -407,12 +407,7 @@ export function PaymentsMadePage() {
     <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
       {/* Page header */}
       <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Payments Made</h1>
-          <p className="text-sm text-slate-500 mt-1">
-            {totals.count} payments · {formatNaira(totals.sum)} total disbursed
-          </p>
-        </div>
+
         <div className="flex gap-2">
           <button onClick={() => { setModalOpen(true); setFormError(null); }}
             className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-sm font-semibold rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200 shadow-sm">

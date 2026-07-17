@@ -75,10 +75,7 @@ export function PensionSchedulesPage() {
   return (
     <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">Pension Schedules</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Employee and employer pension contributions per run</p>
-        </div>
+
         {lines.length > 0 && (
           <div className="flex items-center gap-2">
             {selectedPensionIds.length > 0 && selectedRun?.status === 'draft' && (

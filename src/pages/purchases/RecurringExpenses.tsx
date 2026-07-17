@@ -355,10 +355,7 @@ export function RecurringExpensesPage() {
   return (
     <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">Recurring Expenses</h1>
-          <p className="text-sm text-slate-500 mt-0.5">{schedules.length} schedules · {activeCount} active</p>
-        </div>
+
         <div className="flex items-center gap-2">
           <button onClick={() => exportRecurringCSV(filtered, vendorMap, accountMap)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl hover:bg-slate-50 transition-all duration-200">
             <Download size={14} /> CSV

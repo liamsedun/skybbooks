@@ -296,12 +296,7 @@ export function ItemsPage() {
   return (
     <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
       <div className="flex items-start justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Items & Inventory</h1>
-          <p className="text-sm text-slate-500 mt-1">
-            {counts.all} items · {counts.product} products · {counts.service} services
-          </p>
-        </div>
+
         <button
           onClick={openAddModal}
           className="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-xs font-medium rounded-xl transition-all duration-200 hover:from-indigo-700 hover:to-indigo-800 shadow-sm"

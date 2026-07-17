@@ -293,12 +293,7 @@ export function PurchaseCreditNotesPage() {
   return (
     <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
       <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Vendor Credit Notes</h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Record credits from vendors for returns, overpayments, or adjustments.
-          </p>
-        </div>
+
         <div className="flex items-center gap-2">
           <button
             onClick={() => exportVendorCreditNotesCSV(filtered)}

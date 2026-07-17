@@ -325,12 +325,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
     <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 pb-5">
-        <div>
-          <h1 className="text-xl lg:text-2xl font-bold text-slate-900 font-sans tracking-tight">Bank Accounts</h1>
-          <p className="text-xs text-slate-500 mt-1 font-sans">
-            Connect corporate bank accounts to automatically stream transactions into your SkyBooks accounting ledger.
-          </p>
-        </div>
+
 
         <div className="flex items-center gap-2">
           <button

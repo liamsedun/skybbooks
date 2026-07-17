@@ -236,10 +236,7 @@ function VendorsList() {
   return (
     <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">Vendors</h1>
-          <p className="text-sm text-slate-500 mt-0.5">{vendors.length} vendors · {activeCount} active</p>
-        </div>
+
         <div className="flex items-center gap-2">
           <button onClick={() => downloadCsv('vendors-template.csv', ['Name','Email','Phone','Address','City','State','Country','Tax PIN','Payment Terms','Opening Balance','Currency','Notes'], ['ABC Supplies Ltd','vendor@company.com','+2348000000000','123 Marina Street','Lagos','Lagos State','Nigeria','TIN-1234567890','30','500000','NGN','Main supplier for office materials'])} className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-xl hover:bg-slate-50 transition-all duration-200">
             <FileText size={14} /> Sample CSV

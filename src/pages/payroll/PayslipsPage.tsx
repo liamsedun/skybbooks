@@ -337,10 +337,7 @@ export function PayslipsPage() {
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">Payslips</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Employee payslips per payroll run</p>
-        </div>
+
       </div>
 
       <div className="flex flex-wrap gap-3 items-center">

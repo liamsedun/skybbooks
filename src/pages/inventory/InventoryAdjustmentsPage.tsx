@@ -261,10 +261,7 @@ export default function InventoryAdjustmentsPage() {
     <div className="p-4 md:p-6 space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">Inventory Adjustments</h1>
-          <p className="text-sm text-slate-500 mt-1">Keep Your Inventory Accurate — adjust quantities and values to ensure accurate stock and valuation.</p>
-        </div>
+
         <button onClick={() => { resetForm(); setShowNewModal(true); }} className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all text-sm font-semibold shadow-md hover:shadow-lg">
           <Plus size={18} /> +New
         </button>
