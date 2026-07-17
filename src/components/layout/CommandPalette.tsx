@@ -17,8 +17,7 @@ import {
   CreditCard,
   BookOpen,
   BarChart3,
-  Moon,
-  Sun,
+  Lock,
 } from 'lucide-react';
 
 interface Command {
@@ -85,8 +84,7 @@ export function CommandPalette() {
     { id: 'new-customer', label: 'New Customer', icon: Users, category: 'Actions', action: () => navigate('/sales/customers?new=1') },
     { id: 'new-vendor', label: 'New Vendor', icon: Building2, category: 'Actions', action: () => navigate('/purchases/vendors?new=1') },
     { id: 'record-payment', label: 'Record Payment', icon: CreditCard, category: 'Actions', action: () => navigate('/sales/payments') },
-    { id: 'toggle-dark-mode', label: 'Toggle Dark Mode', icon: Moon, category: 'Quick', action: () => document.documentElement.classList.toggle('dark') },
-    { id: 'lock-screen', label: 'Lock Screen', icon: Sun, category: 'Quick', action: () => {} },
+    { id: 'lock-screen', label: 'Lock Screen', icon: Lock, category: 'Quick', action: () => {} },
   ], [navigate]);
 
   const filteredGroups = useMemo(() => {

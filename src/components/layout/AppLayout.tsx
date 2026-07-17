@@ -10,7 +10,7 @@ import {
   Menu, X, Building, Bell, ArrowRight, LogOut, User, Shield, CreditCard,
   FileBarChart, HelpCircle, FileInput, BookOpen, Sparkles, Package,
   ArrowRightLeft, TrendingDown, ReceiptText, AlertTriangle, Bot, Wifi,
-  Moon, Sun, Star, Zap, ChevronRight, PanelLeftClose, PanelLeft,
+  Star, Zap, ChevronRight, PanelLeftClose, PanelLeft,
   CircleUser, Command, Plus, LayoutList, Home, Landmark
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
@@ -19,7 +19,6 @@ import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { Footer } from './Footer';
 import { usePlatformBranding } from '../../hooks/usePlatformBranding';
 import { useNotifications } from '../../hooks/useNotifications';
-import { useTheme } from '../../context/ThemeContext';
 import { useFavorites } from '../../hooks/useFavorites';
 import { useRecentActivity } from '../../hooks/useRecentActivity';
 import { api } from '../../lib/api';
@@ -51,7 +50,6 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
   const { role, hasModuleAccess } = usePermissions();
   const { developerLogoUrl } = usePlatformBranding();
   const { notifications, unreadCount } = useNotifications();
-  const { theme, toggleTheme } = useTheme();
   const { favorites, toggleFavorite, isFavorite } = useFavorites();
   const { addActivity } = useRecentActivity();
 
@@ -462,15 +460,6 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
 
           {/* Right side actions */}
           <div className="flex items-center gap-1">
-            {/* Dark mode toggle */}
-            <button
-              onClick={toggleTheme}
-              className="w-8 h-8 flex items-center justify-center rounded-lg text-ink-400 hover:text-ink-600 hover:bg-surface-hover transition-colors"
-              title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
-            >
-              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-            </button>
-
             {/* Notifications */}
             <div className="relative">
               <button
