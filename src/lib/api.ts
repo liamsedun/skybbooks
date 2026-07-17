@@ -1715,4 +1715,30 @@ export const assistantApi = {
   },
 };
 
+export const ocrApi = {
+  upload: async (file: File): Promise<any> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await api.post('/ocr/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data;
+  },
+  list: async (params?: { status?: string; docType?: string; limit?: number }): Promise<any> => {
+    const res = await api.get('/ocr/documents', { params }); return res.data;
+  },
+  get: async (id: string): Promise<any> => {
+    const res = await api.get(`/ocr/documents/${id}`); return res.data;
+  },
+  reprocess: async (id: string): Promise<any> => {
+    const res = await api.post(`/ocr/documents/${id}/reprocess`); return res.data;
+  },
+  confirm: async (id: string, data: { suggestedJournal: any }): Promise<any> => {
+    const res = await api.post(`/ocr/documents/${id}/confirm`, data); return res.data;
+  },
+  delete: async (id: string): Promise<any> => {
+    const res = await api.delete(`/ocr/documents/${id}`); return res.data;
+  },
+};
+
 

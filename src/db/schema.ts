@@ -1768,6 +1768,45 @@ export const approvalHistoryRelations = relations(approvalHistory, ({ one }) => 
   performer: one(users, { fields: [approvalHistory.performedBy], references: [users.id] }),
 }));
 
+// --- OCR Document Processing ---
+
+export const ocrDocTypeEnum = pgEnum('ocr_doc_type', ['invoice', 'bill', 'receipt', 'purchase_order']);
+export const ocrDocStatusEnum = pgEnum('ocr_doc_status', ['pending', 'extracting', 'ready', 'posted', 'error']);
+
+export const ocrDocuments = pgTable('ocr_documents', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  fileName: text('file_name').notNull(),
+  fileUrl: text('file_url').notNull(),
+  fileType: text('file_type'),
+  fileSize: integer('file_size'),
+  docType: ocrDocTypeEnum('doc_type'),
+  status: ocrDocStatusEnum('status').default('pending').notNull(),
+  extractedData: jsonb('extracted_data'),
+  suggestedJournal: jsonb('suggested_journal'),
+  journalEntryId: uuid('journal_entry_id').references(() => journalEntries.id),
+  confirmedBy: uuid('confirmed_by').references(() => users.id),
+  confirmedAt: timestamp('confirmed_at'),
+  errorMessage: text('error_message'),
+  uploadedBy: uuid('uploaded_by').references(() => users.id).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+export const ocrDocumentsRelations = relations(ocrDocuments, ({ one }) => ({
+  organisation: one(organisations, {
+    fields: [ocrDocuments.orgId],
+    references: [organisations.id]
+  }),
+  uploader: one(users, {
+    fields: [ocrDocuments.uploadedBy],
+    references: [users.id]
+  }),
+  journalEntry: one(journalEntries, {
+    fields: [ocrDocuments.journalEntryId],
+    references: [journalEntries.id]
+  }),
+}));
+
 export const chatConversations = pgTable('chat_conversations', {
   id: uuid('id').defaultRandom().primaryKey(),
   orgId: uuid('org_id').references(() => organisations.id).notNull(),
@@ -2094,6 +2133,7 @@ export const organisationsRelations = relations(organisations, ({ many }) => ({
   payrollRuns: many(payrollRuns),
   fixedAssets: many(fixedAssets),
   documents: many(documents),
+  ocrDocuments: many(ocrDocuments),
   budgets: many(budgets),
   auditLog: many(auditLog),
   currencyRates: many(currencyRates)
@@ -3307,6 +3347,7 @@ export const db = drizzle(pool, {
     budgetLines,
     auditLog,
     accountingRules,
+    ocrDocuments,
     chatConversations,
     chatConversationParticipants,
     chatMessages,
@@ -3378,6 +3419,7 @@ export const db = drizzle(pool, {
     budgetLinesRelations,
     auditLogRelations,
     accountingRulesRelations,
+    ocrDocumentsRelations,
     chatConversationsRelations,
     chatConversationParticipantsRelations,
     chatMessagesRelations,
@@ -3489,5 +3531,6 @@ export const schema = {
   eclComputations,
   approvalWorkflows,
   approvalHistory,
+  ocrDocuments,
 };
 

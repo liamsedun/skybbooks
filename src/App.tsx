@@ -109,6 +109,7 @@ import EmailSettingsPage from './pages/settings/EmailSettingsPage';
 import PostingRulesPage from './pages/settings/PostingRulesPage';
 import ApprovalWorkflowsPage from './pages/settings/ApprovalWorkflowsPage';
 
+import { OcrProcessingPage } from './pages/accountant/OcrProcessingPage';
 import { useAuth } from './hooks/useAuth';
 import { EmployeesPage as EmployeesPageReal } from './pages/payroll/EmployeesPage';
 import { PayrollRunsPage } from './pages/payroll/PayrollRunsPage';
@@ -333,6 +334,7 @@ function AppRoutes() {
           <Route path="/accountant/fixed-assets/depreciation" element={<DepreciationPage />} />
           <Route path="/accountant/leases" element={<LeasesPage />} />
           <Route path="/accountant/ecl" element={<EclPage />} />
+          <Route path="/accountant/ocr" element={<OcrProcessingPage />} />
 
           {/* Financial statements & analytics reports */}
           <Route path="/reports/trial-balance" element={<TrialBalancePage />} />

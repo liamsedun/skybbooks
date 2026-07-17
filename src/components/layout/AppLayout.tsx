@@ -182,6 +182,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     'fixed_assets': '/accountant/fixed-assets',
     'depreciation': '/accountant/fixed-assets/depreciation',
     'leases': '/accountant/leases',
+    'ocr': '/accountant/ocr',
     'rep_trial_balance': '/reports/trial-balance',
     'rep_income_statement': '/reports/income-statement',
     'rep_balance_sheet': '/reports/balance-sheet',
@@ -302,6 +303,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
         { name: 'Lease Accounting', id: 'leases', icon: Briefcase },
         { name: 'Revenue Contracts', id: 'revenue_contracts', icon: FileText },
         { name: 'ECL (IFRS 9)', id: 'ecl', icon: AlertTriangle },
+        { name: 'OCR Processor', id: 'ocr', icon: FileText },
       ],
     },
     {

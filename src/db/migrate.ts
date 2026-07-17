@@ -2379,6 +2379,46 @@ export async function runMigration() {
 
     console.log('[Migration] Nigerian Banking Integration tables created.');
 
+    // ── OCR Document Processing Tables ──
+    await db.execute(sql`
+      DO $$ BEGIN
+        CREATE TYPE ocr_doc_type AS ENUM ('invoice', 'bill', 'receipt', 'purchase_order');
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$;
+    `);
+    await db.execute(sql`
+      DO $$ BEGIN
+        CREATE TYPE ocr_doc_status AS ENUM ('pending', 'extracting', 'ready', 'posted', 'error');
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$;
+    `);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS ocr_documents (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        file_name text NOT NULL,
+        file_url text NOT NULL,
+        file_type text,
+        file_size integer,
+        doc_type ocr_doc_type,
+        status ocr_doc_status DEFAULT 'pending' NOT NULL,
+        extracted_data jsonb,
+        suggested_journal jsonb,
+        journal_entry_id uuid REFERENCES journal_entries(id),
+        confirmed_by uuid REFERENCES users(id),
+        confirmed_at timestamp,
+        error_message text,
+        uploaded_by uuid REFERENCES users(id) NOT NULL,
+        created_at timestamp DEFAULT now() NOT NULL
+      );
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_ocr_docs_org ON ocr_documents(org_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_ocr_docs_status ON ocr_documents(status)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_ocr_docs_doc_type ON ocr_documents(doc_type)`);
+
+    console.log('[Migration] OCR Document Processing tables created.');
+
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema setup:', err);
