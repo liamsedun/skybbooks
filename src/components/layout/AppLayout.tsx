@@ -61,6 +61,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showNewMenu, setShowNewMenu] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({
     overview: false, sales: false, purchases: true, inventory: true,
@@ -80,10 +81,15 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
         const pop = document.getElementById('header-notifications-popup');
         if (btn && !btn.contains(el) && pop && !pop.contains(el)) setShowNotifications(false);
       }
+      if (showNewMenu) {
+        const btn = document.getElementById('header-new-button');
+        const dd = document.getElementById('header-new-dropdown');
+        if (btn && !btn.contains(el) && dd && !dd.contains(el)) setShowNewMenu(false);
+      }
     };
     document.addEventListener('click', handleClick);
     return () => document.removeEventListener('click', handleClick);
-  }, [showUserMenu, showNotifications]);
+  }, [showUserMenu, showNotifications, showNewMenu]);
 
   const pathMap: Record<string, string> = useMemo(() => ({
     dashboard: '/dashboard', ai_insights: '/ai/insights', ai_assistant: '/ai/assistant',
@@ -235,6 +241,22 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     return path ? location.pathname.startsWith(path) : false;
   };
 
+  const newMenuItems = useMemo(() => [
+    { label: 'Customer', icon: Users, path: '/sales/customers' },
+    { label: 'Invoice', icon: ReceiptText, path: '/sales/invoices/new' },
+    { label: 'Receipt', icon: FileInput, path: '/sales/receipts' },
+    { label: 'Payment Received', icon: DollarSign, path: '/sales/payments' },
+    { label: 'Sales Order', icon: FileCode, path: '/sales/sales-orders' },
+    { label: 'Vendor', icon: Building, path: '/purchases/vendors' },
+    { label: 'Expense', icon: CreditCard, path: '/purchases/expenses/new' },
+    { label: 'Purchase Order', icon: FileCode, path: '/purchases/purchase-orders' },
+    { label: 'Bill', icon: FileText, path: '/purchases/bills/new' },
+    { label: 'Payment Made', icon: DollarSign, path: '/purchases/payments-made' },
+    { label: 'Employee', icon: Users, path: '/payroll/employees' },
+    { label: 'Payroll Run', icon: FileText, path: '/payroll/runs' },
+    { label: 'New Manual Journal', icon: BookOpen, path: '/accountant/journals/new' },
+  ], []);
+
   const handleLogout = async () => { await logout(); navigate('/login'); };
 
   const currentNavItem = useMemo(() =>
@@ -266,10 +288,10 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
           sidebarCollapsed ? 'h-14 justify-center px-2' : 'h-16 px-4'
         }`}>
           {sidebarCollapsed ? (
-            <img src="/images/skyhouse-logo.png" alt="SkyBooks" className="w-8 h-8 rounded-lg object-contain shrink-0" />
+            <img src="/images/skyhouse-logo.png" alt="SkyBooks" className="w-10 h-10 rounded-lg object-contain shrink-0" />
           ) : (
             <div className="flex items-center gap-3 min-w-0 flex-1">
-              <img src="/images/skyhouse-logo.png" alt="SkyBooks" className="w-8 h-8 rounded-lg object-contain shrink-0" />
+              <img src="/images/skyhouse-logo.png" alt="SkyBooks" className="w-10 h-10 rounded-lg object-contain shrink-0" />
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-bold sidebar-text truncate leading-tight">SkyBooks</div>
                 <div className="text-[10px] sidebar-text-muted font-medium truncate leading-tight">Books Engine</div>
@@ -339,7 +361,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
                       <Icon className={`w-4.5 h-4.5 shrink-0 sidebar-icon`} />
                       {!sidebarCollapsed && (
                         <>
-                          <span className="truncate text-[13px] sidebar-text">{item.name}</span>
+                          <span className="truncate text-sm sidebar-text">{item.name}</span>
                           {fav && <Star className="w-3 h-3 sidebar-fav-star ml-auto" />}
                         </>
                       )}
@@ -406,7 +428,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
           {/* Org display */}
           <div className="flex items-center gap-2 min-w-0 mr-auto">
             {organisation?.logoUrl ? (
-              <img src={organisation.logoUrl} alt="" className="w-8 h-8 rounded-md object-contain bg-white p-0.5 hidden sm:block ring-1 ring-white/20" />
+              <img src={organisation.logoUrl} alt="" className="w-10 h-10 rounded-md object-contain bg-white p-0.5 hidden sm:block ring-1 ring-white/20" />
             ) : (
               <div className="w-6 h-6 rounded-md bg-white/20 flex items-center justify-center text-white text-[10px] font-bold hidden sm:block">
                 {organisation?.name?.charAt(0) || 'O'}
@@ -424,20 +446,39 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
 
           {/* Quick action buttons */}
           <div className="hidden md:flex items-center gap-1">
-            <button
-              onClick={() => navigate('/sales/invoices/new')}
-              className="px-3 py-1.5 bg-primary text-white text-xs font-semibold rounded-lg hover:bg-primary-hover transition-colors flex items-center gap-1.5 shadow-sm"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              New Invoice
-            </button>
-            <button
-              onClick={() => navigate('/purchases/bills/new')}
-              className="px-3 py-1.5 text-xs font-semibold header-btn-secondary flex items-center gap-1.5"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              New Bill
-            </button>
+            <div className="relative">
+              <button
+                id="header-new-button"
+                onClick={() => setShowNewMenu(!showNewMenu)}
+                className="px-3 py-1.5 bg-primary text-white text-xs font-semibold rounded-lg hover:bg-primary-hover transition-colors flex items-center gap-1.5 shadow-sm"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                New
+                <ChevronDown className="w-3 h-3" />
+              </button>
+              {showNewMenu && (
+                <div
+                  id="header-new-dropdown"
+                  className="absolute right-0 top-full mt-2 w-52 bg-surface rounded-2xl shadow-xl border border-border-custom overflow-hidden z-50"
+                >
+                  <div className="p-1.5 max-h-80 overflow-y-auto">
+                    {newMenuItems.map((item, i) => {
+                      const Icon = item.icon;
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => { setShowNewMenu(false); navigate(item.path); }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-ink-600 hover:bg-surface-hover hover:text-ink-900 transition-colors"
+                        >
+                          <Icon className="w-4 h-4" />
+                          {item.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Search trigger */}

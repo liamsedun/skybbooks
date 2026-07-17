@@ -11,9 +11,9 @@ export function Footer() {
         {/* Brand identity */}
         <div className="flex items-center space-x-2.5 select-none">
           {developerLogoUrl ? (
-            <img src={developerLogoUrl} alt="Developer Logo" className="w-8 h-8 rounded-lg object-contain border border-white/10 bg-white/5 p-0.5 shrink-0" />
+            <img src={developerLogoUrl} alt="Developer Logo" className="w-10 h-10 rounded-lg object-contain border border-white/10 bg-white/5 p-0.5 shrink-0" />
           ) : (
-            <img src="/images/skyhouse-logo.png" alt="SkyBooks" className="w-8 h-8 rounded-lg object-contain border border-white/10 bg-white/5 p-0.5 shrink-0" />
+            <img src="/images/skyhouse-logo.png" alt="SkyBooks" className="w-10 h-10 rounded-lg object-contain border border-white/10 bg-white/5 p-0.5 shrink-0" />
           )}
           <div>
             <h4 className="text-xs sm:text-sm font-black footer-text tracking-tight leading-none">SkyBooks</h4>
