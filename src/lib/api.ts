@@ -886,46 +886,56 @@ export const budgetsApi = {
 
 // 7d. Fixed Assets Endpoints
 export const fixedAssetsApi = {
-  getAssets: async () => {
-    const res = await api.get('/fixed-assets');
-    return res.data;
-  },
-  getAsset: async (id: string) => {
-    const res = await api.get(`/fixed-assets/${id}`);
-    return res.data;
-  },
-  createAsset: async (data: any) => {
-    const res = await api.post('/fixed-assets', data);
-    return res.data;
-  },
-  updateAsset: async (id: string, data: any) => {
-    const res = await api.patch(`/fixed-assets/${id}`, data);
-    return res.data;
-  },
-  deleteAsset: async (id: string) => {
-    const res = await api.delete(`/fixed-assets/${id}`);
-    return res.data;
-  },
-  bulkDeleteAssets: async (ids: string[]) => {
-    const res = await api.post('/fixed-assets/bulk-delete', { ids });
-    return res.data;
-  },
-  importAssetsCsv: async (data: { csvData: string }) => {
-    const res = await api.post('/fixed-assets/import-csv', data);
-    return res.data;
-  },
-  exportAssetsCsv: async () => {
-    const res = await api.get('/fixed-assets/export-csv', { responseType: 'blob' });
-    return res.data;
-  },
-  getAssetsPdf: async () => {
-    const res = await api.get('/fixed-assets/pdf', { responseType: 'blob' });
-    return res.data;
-  },
-  runDepreciation: async (periodDate?: string) => {
-    const res = await api.post('/fixed-assets/run-depreciation', { periodDate });
-    return res.data;
-  },
+  getAssets: async () => { const res = await api.get('/fixed-assets'); return res.data; },
+  getAsset: async (id: string) => { const res = await api.get(`/fixed-assets/${id}`); return res.data; },
+  createAsset: async (data: any) => { const res = await api.post('/fixed-assets', data); return res.data; },
+  updateAsset: async (id: string, data: any) => { const res = await api.patch(`/fixed-assets/${id}`, data); return res.data; },
+  deleteAsset: async (id: string) => { const res = await api.delete(`/fixed-assets/${id}`); return res.data; },
+  bulkDeleteAssets: async (ids: string[]) => { const res = await api.post('/fixed-assets/bulk-delete', { ids }); return res.data; },
+  importAssetsCsv: async (data: { csvData: string }) => { const res = await api.post('/fixed-assets/import-csv', data); return res.data; },
+  exportAssetsCsv: async () => { const res = await api.get('/fixed-assets/export-csv', { responseType: 'blob' }); return res.data; },
+  getAssetsPdf: async () => { const res = await api.get('/fixed-assets/pdf', { responseType: 'blob' }); return res.data; },
+  runDepreciation: async (periodDate?: string) => { const res = await api.post('/fixed-assets/run-depreciation', { periodDate }); return res.data; },
+
+  // Asset Classes
+  getClasses: async () => { const res = await api.get('/fixed-assets/classes'); return res.data; },
+  createClass: async (data: any) => { const res = await api.post('/fixed-assets/classes', data); return res.data; },
+  updateClass: async (id: string, data: any) => { const res = await api.put(`/fixed-assets/classes/${id}`, data); return res.data; },
+  deleteClass: async (id: string) => { const res = await api.delete(`/fixed-assets/classes/${id}`); return res.data; },
+
+  // Components
+  getComponents: async (assetId: string) => { const res = await api.get(`/fixed-assets/${assetId}/components`); return res.data; },
+  createComponent: async (assetId: string, data: any) => { const res = await api.post(`/fixed-assets/${assetId}/components`, data); return res.data; },
+  updateComponent: async (componentId: string, data: any) => { const res = await api.put(`/fixed-assets/components/${componentId}`, data); return res.data; },
+  deleteComponent: async (componentId: string) => { const res = await api.delete(`/fixed-assets/components/${componentId}`); return res.data; },
+
+  // Revaluation
+  revalueAsset: async (assetId: string, data: any) => { const res = await api.post(`/fixed-assets/${assetId}/revalue`, data); return res.data; },
+  getRevaluations: async (assetId?: string) => { const res = await api.get('/fixed-assets/revaluations', { params: { assetId } }); return res.data; },
+
+  // Impairment
+  impairAsset: async (assetId: string, data: any) => { const res = await api.post(`/fixed-assets/${assetId}/impair`, data); return res.data; },
+  getImpairments: async (assetId?: string) => { const res = await api.get('/fixed-assets/impairments', { params: { assetId } }); return res.data; },
+
+  // Disposal
+  disposeAsset: async (assetId: string, data: any) => { const res = await api.post(`/fixed-assets/${assetId}/dispose`, data); return res.data; },
+
+  // Transfer
+  transferAsset: async (assetId: string, data: any) => { const res = await api.post(`/fixed-assets/${assetId}/transfer`, data); return res.data; },
+  getTransfers: async (assetId: string) => { const res = await api.get(`/fixed-assets/${assetId}/transfers`); return res.data; },
+
+  // Maintenance
+  addMaintenance: async (assetId: string, data: any) => { const res = await api.post(`/fixed-assets/${assetId}/maintenance`, data); return res.data; },
+  getMaintenance: async (assetId: string) => { const res = await api.get(`/fixed-assets/${assetId}/maintenance`); return res.data; },
+
+  // CWIP
+  capitalizeCwip: async (data: any) => { const res = await api.post('/fixed-assets/capitalize-cwip', data); return res.data; },
+
+  // IFRS Reports
+  getAssetRegister: async () => { const res = await api.get('/fixed-assets/reports/register'); return res.data; },
+  getAssetSummary: async () => { const res = await api.get('/fixed-assets/reports/summary'); return res.data; },
+  getAssetAging: async () => { const res = await api.get('/fixed-assets/reports/aging'); return res.data; },
+  getMovementSchedule: async (fromDate: string, toDate: string) => { const res = await api.get('/fixed-assets/reports/movement-schedule', { params: { fromDate, toDate } }); return res.data; },
 };
 
 // 7e. Depreciation History Endpoint

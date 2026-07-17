@@ -54,7 +54,8 @@ export const journalSourceEnum = pgEnum('journal_source', [
   'owner_drawings',
   'revenue_recognition',
   'lease',
-  'ecl_provision'
+  'ecl_provision',
+  'fixed_asset'
 ]);
 
 export const journalStatusEnum = pgEnum('journal_status', [
@@ -229,7 +230,8 @@ export const depreciationMethodEnum = pgEnum('depreciation_method', [
 export const fixedAssetStatusEnum = pgEnum('fixed_asset_status', [
   'active',
   'disposed',
-  'fully_depreciated'
+  'fully_depreciated',
+  'cwip'
 ]);
 
 export const budgetPeriodEnum = pgEnum('budget_period', [
@@ -1163,6 +1165,7 @@ export const fixedAssets = pgTable('fixed_assets', {
   assetNumber: text('asset_number').notNull(),
   name: text('name').notNull(),
   category: text('category'),
+  assetClassId: uuid('asset_class_id').references(() => assetClasses.id),
   purchaseDate: timestamp('purchase_date').notNull(),
   purchaseCost: bigint('purchase_cost', { mode: 'number' }).notNull(),
   accumulatedDepreciation: bigint('accumulated_depreciation', { mode: 'number' }).default(0).notNull(),
@@ -1171,9 +1174,122 @@ export const fixedAssets = pgTable('fixed_assets', {
   usefulLifeMonths: integer('useful_life_months').notNull(),
   residualValue: bigint('residual_value', { mode: 'number' }).default(0).notNull(),
   accountId: uuid('account_id').references(() => accounts.id).notNull(),
+  location: text('location'),
+  department: text('department'),
+  revaluationAmount: bigint('revaluation_amount', { mode: 'number' }).default(0).notNull(),
+  revaluationSurplusAccountId: uuid('revaluation_surplus_account_id').references(() => accounts.id),
+  impairmentLoss: bigint('impairment_loss', { mode: 'number' }).default(0).notNull(),
+  lastDepreciationDate: timestamp('last_depreciation_date'),
+  nextDepreciationDate: timestamp('next_depreciation_date'),
+  capitalizationDate: timestamp('capitalization_date'),
+  cwipSourceId: uuid('cwip_source_id'),
   disposalDate: timestamp('disposal_date'),
   disposalAmount: bigint('disposal_amount', { mode: 'number' }),
+  disposalAccountId: uuid('disposal_account_id').references(() => accounts.id),
   status: fixedAssetStatusEnum('status').default('active').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+export const assetClasses = pgTable('asset_classes', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  name: text('name').notNull(),
+  code: text('code'),
+  description: text('description'),
+  defaultUsefulLifeMonths: integer('default_useful_life_months').default(60),
+  defaultDepreciationMethod: depreciationMethodEnum('default_depreciation_method').default('straight_line'),
+  defaultResidualValuePct: numeric('default_residual_value_pct', { precision: 5, scale: 2 }).default('0'),
+  glAssetAccountId: uuid('gl_asset_account_id').references(() => accounts.id),
+  glDepreciationExpenseAccountId: uuid('gl_depreciation_expense_account_id').references(() => accounts.id),
+  glAccumDeprAccountId: uuid('gl_accum_depr_account_id').references(() => accounts.id),
+  glRevaluationReserveAccountId: uuid('gl_revaluation_reserve_account_id').references(() => accounts.id),
+  glDisposalProceedsAccountId: uuid('gl_disposal_proceeds_account_id').references(() => accounts.id),
+  glDisposalLossAccountId: uuid('gl_disposal_loss_account_id').references(() => accounts.id),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+export const assetComponents = pgTable('asset_components', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  assetId: uuid('asset_id').references(() => fixedAssets.id).notNull(),
+  name: text('name').notNull(),
+  description: text('description'),
+  cost: bigint('cost', { mode: 'number' }).notNull(),
+  usefulLifeMonths: integer('useful_life_months').notNull(),
+  residualValue: bigint('residual_value', { mode: 'number' }).default(0).notNull(),
+  depreciationMethod: depreciationMethodEnum('depreciation_method').default('straight_line'),
+  accumulatedDepreciation: bigint('accumulated_depreciation', { mode: 'number' }).default(0).notNull(),
+  bookValue: bigint('book_value', { mode: 'number' }).notNull(),
+  glAssetAccountId: uuid('gl_asset_account_id').references(() => accounts.id),
+  glAccumDeprAccountId: uuid('gl_accum_depr_account_id').references(() => accounts.id),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+export const revaluationEntries = pgTable('revaluation_entries', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  assetId: uuid('asset_id').references(() => fixedAssets.id).notNull(),
+  componentId: uuid('component_id').references(() => assetComponents.id),
+  revaluationDate: timestamp('revaluation_date').notNull(),
+  revaluationType: text('revaluation_type').notNull(),
+  oldCarryingAmount: bigint('old_carrying_amount', { mode: 'number' }).notNull(),
+  newCarryingAmount: bigint('new_carrying_amount', { mode: 'number' }).notNull(),
+  revaluationAmount: bigint('revaluation_amount', { mode: 'number' }).notNull(),
+  revaluationSurplus: bigint('revaluation_surplus', { mode: 'number' }).default(0).notNull(),
+  revaluationLoss: bigint('revaluation_loss', { mode: 'number' }).default(0).notNull(),
+  journalEntryId: uuid('journal_entry_id').references(() => journalEntries.id),
+  notes: text('notes'),
+  createdBy: uuid('created_by').references(() => users.id),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+export const impairmentEntries = pgTable('impairment_entries', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  assetId: uuid('asset_id').references(() => fixedAssets.id).notNull(),
+  componentId: uuid('component_id').references(() => assetComponents.id),
+  impairmentDate: timestamp('impairment_date').notNull(),
+  carryingAmount: bigint('carrying_amount', { mode: 'number' }).notNull(),
+  recoverableAmount: bigint('recoverable_amount', { mode: 'number' }).notNull(),
+  impairmentLoss: bigint('impairment_loss', { mode: 'number' }).notNull(),
+  impairmentSource: text('impairment_source'),
+  journalEntryId: uuid('journal_entry_id').references(() => journalEntries.id),
+  notes: text('notes'),
+  createdBy: uuid('created_by').references(() => users.id),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+export const maintenanceRecords = pgTable('maintenance_records', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  assetId: uuid('asset_id').references(() => fixedAssets.id).notNull(),
+  componentId: uuid('component_id').references(() => assetComponents.id),
+  maintenanceDate: timestamp('maintenance_date').notNull(),
+  maintenanceType: text('maintenance_type').notNull(),
+  description: text('description').notNull(),
+  cost: bigint('cost', { mode: 'number' }).notNull(),
+  vendor: text('vendor'),
+  journalEntryId: uuid('journal_entry_id').references(() => journalEntries.id),
+  notes: text('notes'),
+  createdBy: uuid('created_by').references(() => users.id),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+export const assetTransfers = pgTable('asset_transfers', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  assetId: uuid('asset_id').references(() => fixedAssets.id).notNull(),
+  transferDate: timestamp('transfer_date').notNull(),
+  fromLocation: text('from_location'),
+  toLocation: text('to_location'),
+  fromDepartment: text('from_department'),
+  toDepartment: text('to_department'),
+  reason: text('reason'),
+  authorizedBy: uuid('authorized_by').references(() => users.id),
+  notes: text('notes'),
+  createdBy: uuid('created_by').references(() => users.id),
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
@@ -2127,7 +2243,32 @@ export const fixedAssetsRelations = relations(fixedAssets, ({ one, many }) => ({
     fields: [fixedAssets.accountId],
     references: [accounts.id]
   }),
-  depreciationEntries: many(depreciationEntries)
+  assetClass: one(assetClasses, {
+    fields: [fixedAssets.assetClassId],
+    references: [assetClasses.id]
+  }),
+  revaluationSurplusAccount: one(accounts, {
+    fields: [fixedAssets.revaluationSurplusAccountId],
+    references: [accounts.id],
+    relationName: 'faRevaluationSurplusAccount'
+  }),
+  disposalAccount: one(accounts, {
+    fields: [fixedAssets.disposalAccountId],
+    references: [accounts.id],
+    relationName: 'faDisposalAccount'
+  }),
+  cwipSource: one(fixedAssets, {
+    fields: [fixedAssets.cwipSourceId],
+    references: [fixedAssets.id],
+    relationName: 'cwipSource'
+  }),
+  cwipDerived: many(fixedAssets, { relationName: 'cwipSource' }),
+  depreciationEntries: many(depreciationEntries),
+  components: many(assetComponents),
+  revaluations: many(revaluationEntries),
+  impairments: many(impairmentEntries),
+  maintenanceRecords: many(maintenanceRecords),
+  transfers: many(assetTransfers)
 }));
 
 export const depreciationEntriesRelations = relations(depreciationEntries, ({ one }) => ({
@@ -2138,6 +2279,158 @@ export const depreciationEntriesRelations = relations(depreciationEntries, ({ on
   journalEntry: one(journalEntries, {
     fields: [depreciationEntries.journalEntryId],
     references: [journalEntries.id]
+  })
+}));
+
+export const assetClassesRelations = relations(assetClasses, ({ one, many }) => ({
+  organisation: one(organisations, {
+    fields: [assetClasses.orgId],
+    references: [organisations.id]
+  }),
+  glAssetAccount: one(accounts, {
+    fields: [assetClasses.glAssetAccountId],
+    references: [accounts.id],
+    relationName: 'acGlAssetAccount'
+  }),
+  glDepreciationExpenseAccount: one(accounts, {
+    fields: [assetClasses.glDepreciationExpenseAccountId],
+    references: [accounts.id],
+    relationName: 'acGlDeprExpenseAccount'
+  }),
+  glAccumDeprAccount: one(accounts, {
+    fields: [assetClasses.glAccumDeprAccountId],
+    references: [accounts.id],
+    relationName: 'acGlAccumDeprAccount'
+  }),
+  glRevaluationReserveAccount: one(accounts, {
+    fields: [assetClasses.glRevaluationReserveAccountId],
+    references: [accounts.id],
+    relationName: 'acGlRevalReserveAccount'
+  }),
+  glDisposalProceedsAccount: one(accounts, {
+    fields: [assetClasses.glDisposalProceedsAccountId],
+    references: [accounts.id],
+    relationName: 'acGlDisposalProceedsAccount'
+  }),
+  glDisposalLossAccount: one(accounts, {
+    fields: [assetClasses.glDisposalLossAccountId],
+    references: [accounts.id],
+    relationName: 'acGlDisposalLossAccount'
+  }),
+  assets: many(fixedAssets)
+}));
+
+export const assetComponentsRelations = relations(assetComponents, ({ one, many }) => ({
+  organisation: one(organisations, {
+    fields: [assetComponents.orgId],
+    references: [organisations.id]
+  }),
+  asset: one(fixedAssets, {
+    fields: [assetComponents.assetId],
+    references: [fixedAssets.id]
+  }),
+  glAssetAccount: one(accounts, {
+    fields: [assetComponents.glAssetAccountId],
+    references: [accounts.id],
+    relationName: 'acompGlAssetAccount'
+  }),
+  glAccumDeprAccount: one(accounts, {
+    fields: [assetComponents.glAccumDeprAccountId],
+    references: [accounts.id],
+    relationName: 'acompGlAccumDeprAccount'
+  }),
+  revaluations: many(revaluationEntries),
+  impairments: many(impairmentEntries),
+  maintenanceRecords: many(maintenanceRecords)
+}));
+
+export const revaluationEntriesRelations = relations(revaluationEntries, ({ one }) => ({
+  organisation: one(organisations, {
+    fields: [revaluationEntries.orgId],
+    references: [organisations.id]
+  }),
+  asset: one(fixedAssets, {
+    fields: [revaluationEntries.assetId],
+    references: [fixedAssets.id]
+  }),
+  component: one(assetComponents, {
+    fields: [revaluationEntries.componentId],
+    references: [assetComponents.id]
+  }),
+  journalEntry: one(journalEntries, {
+    fields: [revaluationEntries.journalEntryId],
+    references: [journalEntries.id]
+  }),
+  createdByUser: one(users, {
+    fields: [revaluationEntries.createdBy],
+    references: [users.id]
+  })
+}));
+
+export const impairmentEntriesRelations = relations(impairmentEntries, ({ one }) => ({
+  organisation: one(organisations, {
+    fields: [impairmentEntries.orgId],
+    references: [organisations.id]
+  }),
+  asset: one(fixedAssets, {
+    fields: [impairmentEntries.assetId],
+    references: [fixedAssets.id]
+  }),
+  component: one(assetComponents, {
+    fields: [impairmentEntries.componentId],
+    references: [assetComponents.id]
+  }),
+  journalEntry: one(journalEntries, {
+    fields: [impairmentEntries.journalEntryId],
+    references: [journalEntries.id]
+  }),
+  createdByUser: one(users, {
+    fields: [impairmentEntries.createdBy],
+    references: [users.id]
+  })
+}));
+
+export const maintenanceRecordsRelations = relations(maintenanceRecords, ({ one }) => ({
+  organisation: one(organisations, {
+    fields: [maintenanceRecords.orgId],
+    references: [organisations.id]
+  }),
+  asset: one(fixedAssets, {
+    fields: [maintenanceRecords.assetId],
+    references: [fixedAssets.id]
+  }),
+  component: one(assetComponents, {
+    fields: [maintenanceRecords.componentId],
+    references: [assetComponents.id]
+  }),
+  journalEntry: one(journalEntries, {
+    fields: [maintenanceRecords.journalEntryId],
+    references: [journalEntries.id]
+  }),
+  createdByUser: one(users, {
+    fields: [maintenanceRecords.createdBy],
+    references: [users.id]
+  })
+}));
+
+export const assetTransfersRelations = relations(assetTransfers, ({ one }) => ({
+  organisation: one(organisations, {
+    fields: [assetTransfers.orgId],
+    references: [organisations.id]
+  }),
+  asset: one(fixedAssets, {
+    fields: [assetTransfers.assetId],
+    references: [fixedAssets.id]
+  }),
+  authorizedByUser: one(users, {
+    fields: [assetTransfers.authorizedBy],
+    references: [users.id],
+    relationName: 'atAuthorizedBy'
+  }),
+  createdByUser: one(users, {
+    fields: [assetTransfers.createdBy],
+    references: [users.id],
+    relationName: 'atCreatedBy'
   })
 }));
 
@@ -2443,6 +2736,12 @@ export const db = drizzle(pool, {
     payrollLines,
     fixedAssets,
     depreciationEntries,
+    assetClasses,
+    assetComponents,
+    revaluationEntries,
+    impairmentEntries,
+    maintenanceRecords,
+    assetTransfers,
     documents,
     budgets,
     budgetLines,
@@ -2498,6 +2797,12 @@ export const db = drizzle(pool, {
     payrollLinesRelations,
     fixedAssetsRelations,
     depreciationEntriesRelations,
+    assetClassesRelations,
+    assetComponentsRelations,
+    revaluationEntriesRelations,
+    impairmentEntriesRelations,
+    maintenanceRecordsRelations,
+    assetTransfersRelations,
     documentsRelations,
     budgetsRelations,
     budgetLinesRelations,
@@ -2566,6 +2871,12 @@ export const schema = {
   payrollLines,
   fixedAssets,
   depreciationEntries,
+  assetClasses,
+  assetComponents,
+  revaluationEntries,
+  impairmentEntries,
+  maintenanceRecords,
+  assetTransfers,
   documents,
   budgets,
   budgetLines,

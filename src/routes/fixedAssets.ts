@@ -2,11 +2,11 @@ import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { db, fixedAssets, accounts, depreciationEntries, journalEntries } from '../db/schema';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
-import { eq, and, asc, desc, sql } from 'drizzle-orm';
+import { eq, and, asc, sql } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
-import { createJournalEntry, updateJournalEntry } from '../services/ledger.service';
-import { postToGL } from '../services/posting.service';
+import { updateJournalEntry } from '../services/ledger.service';
 import { createAuditLog, extractReqMeta } from '../services/audit.service';
+import * as faService from '../services/fixedAssets.service';
 
 const router = Router();
 router.use(authenticate);
@@ -16,61 +16,37 @@ const assetSchema = z.object({
   assetNumber: z.string().min(1),
   name: z.string().min(1),
   category: z.string().optional().nullable(),
+  assetClassId: z.string().uuid().optional().nullable(),
   purchaseDate: z.string().transform(v => new Date(v)),
   purchaseCost: z.number().int(),
   depreciationMethod: z.enum(['straight_line', 'declining_balance', 'no_depreciation']),
-  usefulLifeMonths: z.number().int().min(1),
+  usefulLifeMonths: z.number().int().min(0),
   residualValue: z.number().int().default(0),
   accountId: z.string().uuid(),
-  status: z.enum(['active', 'disposed', 'fully_depreciated']).optional(),
+  location: z.string().optional().nullable(),
+  department: z.string().optional().nullable(),
+  disposalAccountId: z.string().uuid().optional().nullable(),
+  status: z.enum(['active', 'disposed', 'fully_depreciated', 'cwip']).optional(),
 });
+
+// ==============================
+// EXISTING ENDPOINTS (preserved)
+// ==============================
 
 router.get('/', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const orgId = req.user!.orgId!;
-    const list = await db
-      .select()
-      .from(fixedAssets)
-      .where(eq(fixedAssets.orgId, orgId))
-      .orderBy(desc(fixedAssets.createdAt));
+    const list = await faService.listAssets(req.user!.orgId!);
     return res.status(200).json(list);
   } catch (err) { return next(err); }
 });
 
-// GET /depreciation-history - Returns all depreciation runs with asset details
 router.get('/depreciation-history', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const orgId = req.user!.orgId!;
-    const { rows } = await db.execute(sql`
-      SELECT
-        de.id,
-        de.asset_id AS "assetId",
-        de.period_date AS "periodDate",
-        de.amount,
-        de.journal_entry_id AS "journalEntryId",
-        de.entry_number AS "entryNumber",
-        de.created_at AS "createdAt",
-        fa.asset_number AS "assetNumber",
-        fa.name AS "assetName",
-        fa.purchase_cost AS "purchaseCost",
-        fa.accumulated_depreciation AS "accumulatedDepreciation",
-        fa.book_value AS "bookValue",
-        je.entry_number AS "jeNumber",
-        je.date AS "jeDate"
-      FROM depreciation_entries de
-      JOIN fixed_assets fa ON fa.id = de.asset_id
-      JOIN journal_entries je ON je.id = de.journal_entry_id
-      WHERE fa.org_id = ${orgId}
-      ORDER BY de.period_date DESC, fa.name ASC
-    `);
-    return res.json(rows || []);
-  } catch (err) {
-    console.error('[Depreciation History] Error:', err);
-    return next(err);
-  }
+    const rows = await faService.getDepreciationHistory(req.user!.orgId!);
+    return res.json(rows);
+  } catch (err) { return next(err); }
 });
 
-// GET /pdf - Export fixed assets as PDF
 router.get('/pdf', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const { generateFixedAssetsPDF } = await import('../services/pdf.service');
@@ -83,44 +59,15 @@ router.get('/pdf', async (req: AuthenticatedRequest, res: Response, next: NextFu
 
 router.get('/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const orgId = req.user!.orgId!;
-    const { id } = req.params;
-    const [asset] = await db
-      .select()
-      .from(fixedAssets)
-      .where(and(eq(fixedAssets.id, id), eq(fixedAssets.orgId, orgId)))
-      .limit(1);
-    if (!asset) throw new AppError('Fixed asset not found.', 404);
+    const asset = await faService.getAsset(req.user!.orgId!, req.params.id);
     return res.status(200).json(asset);
   } catch (err) { return next(err); }
 });
 
 router.post('/', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const orgId = req.user!.orgId!;
     const body = assetSchema.parse(req.body);
-    const bookValue = body.purchaseCost - body.residualValue;
-
-    const [asset] = await db
-      .insert(fixedAssets)
-      .values({
-        orgId,
-        assetNumber: body.assetNumber,
-        name: body.name,
-        category: body.category,
-        purchaseDate: body.purchaseDate,
-        purchaseCost: body.purchaseCost,
-        accumulatedDepreciation: 0,
-        bookValue,
-        depreciationMethod: body.depreciationMethod,
-        usefulLifeMonths: body.usefulLifeMonths,
-        residualValue: body.residualValue,
-        accountId: body.accountId,
-        status: body.status || 'active',
-      })
-      .returning();
-
-    createAuditLog({ orgId, userId: req.user!.userId!, action: 'create', entityType: 'fixed-asset', entityId: asset.id, newValues: { name: body.name, purchaseCost: body.purchaseCost }, ...extractReqMeta(req) });
+    const asset = await faService.createAsset(req.user!.orgId!, req.user!.userId!, body, extractReqMeta(req));
     return res.status(201).json(asset);
   } catch (err) {
     if (err instanceof z.ZodError) return next(new AppError(err.issues[0]?.message || 'Validation failed', 400));
@@ -130,30 +77,8 @@ router.post('/', async (req: AuthenticatedRequest, res: Response, next: NextFunc
 
 router.patch('/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const orgId = req.user!.orgId!;
-    const { id } = req.params;
     const body = assetSchema.partial().parse(req.body);
-
-    if (body.purchaseCost !== undefined || body.residualValue !== undefined) {
-      const [existing] = await db
-        .select()
-        .from(fixedAssets)
-        .where(and(eq(fixedAssets.id, id), eq(fixedAssets.orgId, orgId)))
-        .limit(1);
-      if (existing) {
-        const cost = body.purchaseCost ?? existing.purchaseCost;
-        const residual = body.residualValue ?? existing.residualValue;
-        (body as any).bookValue = cost - residual;
-      }
-    }
-
-    const [asset] = await db
-      .update(fixedAssets)
-      .set(body)
-      .where(and(eq(fixedAssets.id, id), eq(fixedAssets.orgId, orgId)))
-      .returning();
-    if (!asset) throw new AppError('Fixed asset not found.', 404);
-    createAuditLog({ orgId, userId: req.user!.userId!, action: 'update', entityType: 'fixed-asset', entityId: id, newValues: body, ...extractReqMeta(req) });
+    const asset = await faService.updateAsset(req.user!.orgId!, req.user!.userId!, req.params.id, body, extractReqMeta(req));
     return res.status(200).json(asset);
   } catch (err) {
     if (err instanceof z.ZodError) return next(new AppError(err.issues[0]?.message || 'Validation failed', 400));
@@ -163,26 +88,17 @@ router.patch('/:id', async (req: AuthenticatedRequest, res: Response, next: Next
 
 router.delete('/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const orgId = req.user!.orgId!;
-    const { id } = req.params;
-    const [asset] = await db
-      .delete(fixedAssets)
-      .where(and(eq(fixedAssets.id, id), eq(fixedAssets.orgId, orgId)))
-      .returning();
-    if (!asset) throw new AppError('Fixed asset not found.', 404);
-    createAuditLog({ orgId, userId: req.user!.userId!, action: 'delete', entityType: 'fixed-asset', entityId: id, ...extractReqMeta(req) });
+    await faService.deleteAsset(req.user!.orgId!, req.user!.userId!, req.params.id, extractReqMeta(req));
     return res.status(200).json({ message: 'Fixed asset deleted.' });
   } catch (err) { return next(err); }
 });
 
-// CSV import for fixed assets
 router.post('/import-csv', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const orgId = req.user!.orgId!;
+    const userId = req.user!.userId!;
     const { csvData } = req.body;
-    if (!csvData || typeof csvData !== 'string' || !csvData.trim()) {
-      throw new AppError('CSV data is required.', 400);
-    }
+    if (!csvData || typeof csvData !== 'string' || !csvData.trim()) throw new AppError('CSV data is required.', 400);
 
     const cleaned = csvData.replace(/^\uFEFF/, '').replace(/\r$/, '');
     const lines = cleaned.split(/\n/).filter(Boolean);
@@ -213,11 +129,7 @@ router.post('/import-csv', async (req: AuthenticatedRequest, res: Response, next
     if (nameIdx === -1) throw new AppError('CSV must contain a "name" column.', 400);
     if (costIdx === -1) throw new AppError('CSV must contain a "cost" column.', 400);
 
-    // Load org accounts for asset account lookup
-    const orgAccounts = await db
-      .select()
-      .from(accounts)
-      .where(eq(accounts.orgId, orgId));
+    const orgAccounts = await db.select().from(accounts).where(eq(accounts.orgId, orgId));
     const accountByCode = new Map(orgAccounts.map(a => [a.code, a]));
     const assetAccounts = orgAccounts.filter(a => a.type === 'asset');
     const defaultAccount = assetAccounts[0];
@@ -229,279 +141,293 @@ router.post('/import-csv', async (req: AuthenticatedRequest, res: Response, next
       const row = dataRows[i];
       const name = row[nameIdx]?.trim();
       if (!name) { errors.push(`Row ${i + 2}: missing name`); continue; }
-
       const costStr = row[costIdx]?.replace(/[₦,]/g, '') || '0';
       const cost = Math.round(parseFloat(costStr) * 100);
       if (isNaN(cost) || cost <= 0) { errors.push(`Row ${i + 2}: invalid cost "${row[costIdx]}"`); continue; }
-
-      const purchaseDate = dateIdx >= 0 && row[dateIdx]?.trim()
-        ? new Date(row[dateIdx].trim())
-        : new Date();
+      const purchaseDate = dateIdx >= 0 && row[dateIdx]?.trim() ? new Date(row[dateIdx].trim()) : new Date();
       if (isNaN(purchaseDate.getTime())) { errors.push(`Row ${i + 2}: invalid date "${row[dateIdx]}"`); continue; }
-
       const methodRaw = methodIdx >= 0 ? row[methodIdx]?.trim().toLowerCase().replace(/[\s-]+/g, '_') : 'straight_line';
       const method = ['straight_line', 'declining_balance', 'no_depreciation'].includes(methodRaw) ? methodRaw : 'straight_line';
-
       const life = lifeIdx >= 0 ? parseInt(row[lifeIdx]?.trim() || '60', 10) : 60;
       if (isNaN(life) || life < 1) { errors.push(`Row ${i + 2}: invalid useful life`); continue; }
-
       const residualRaw = residualIdx >= 0 ? row[residualIdx]?.replace(/[₦,]/g, '') : '0';
       const residual = Math.round(parseFloat(residualRaw) * 100);
-
-      const category = categoryIdx >= 0 ? (row[categoryIdx]?.trim() || null) : null;
-
+      const category = categoryIdx >= 0 ? row[categoryIdx]?.trim() || null : null;
       let accountId = '';
       if (accCodeIdx >= 0 && row[accCodeIdx]?.trim()) {
-        const accCode = row[accCodeIdx].trim();
-        const acc = accountByCode.get(accCode);
+        const accCode = row[accCodeIdx].trim(); const acc = accountByCode.get(accCode);
         if (acc) accountId = acc.id;
         else errors.push(`Row ${i + 2}: account code "${accCode}" not found`);
       }
       if (!accountId && defaultAccount) accountId = defaultAccount.id;
-
       const assetNumber = `FA-${orgId.slice(0, 4)}-${Date.now()}-${i}`;
       const bookValue = cost - residual;
-
-      const [asset] = await db
-        .insert(fixedAssets)
-        .values({
-          orgId, assetNumber, name, category: category || null,
-          purchaseDate, purchaseCost: cost, accumulatedDepreciation: 0, bookValue,
-          depreciationMethod: method as any, usefulLifeMonths: life, residualValue: residual,
-          accountId,
-          status: 'active',
-        })
-        .returning();
+      const [asset] = await db.insert(fixedAssets).values({
+        orgId, assetNumber, name, category, purchaseDate, purchaseCost: cost,
+        accumulatedDepreciation: 0, bookValue, depreciationMethod: method as any,
+        usefulLifeMonths: life, residualValue: residual, accountId, status: 'active',
+      }).returning();
       created.push(asset);
     }
-
-    createAuditLog({ orgId, userId: req.user!.userId!, action: 'import', entityType: 'fixed-asset', newValues: { count: created.length }, ...extractReqMeta(req) });
-    return res.status(201).json({
-      success: true,
-      message: `Imported ${created.length} fixed asset(s) successfully.${errors.length > 0 ? ` ${errors.length} error(s).` : ''}`,
-      created,
-      errors: errors.length > 0 ? errors : undefined,
-    });
-  } catch (err) {
-    next(err);
-  }
+    createAuditLog({ orgId, userId, action: 'import', entityType: 'fixed-asset', newValues: { count: created.length }, ...extractReqMeta(req) });
+    return res.status(201).json({ success: true, message: `Imported ${created.length} fixed asset(s) successfully.${errors.length > 0 ? ` ${errors.length} error(s).` : ''}`, created, errors: errors.length > 0 ? errors : undefined });
+  } catch (err) { next(err); }
 });
 
-// CSV export for fixed assets
 router.get('/export-csv', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const orgId = req.user!.orgId!;
-    const list = await db
-      .select()
-      .from(fixedAssets)
-      .where(eq(fixedAssets.orgId, orgId))
-      .orderBy(asc(fixedAssets.name));
-
-    const csvHeader = 'Asset #,Name,Category,Purchase Date,Purchase Cost (NGN),Depreciation Method,Useful Life (months),Residual Value (NGN),Accumulated Depreciation (NGN),Book Value (NGN),Status\r\n';
+    const list = await faService.listAssets(req.user!.orgId!);
+    const csvHeader = 'Asset #,Name,Category,Purchase Date,Purchase Cost (NGN),Depreciation Method,Useful Life (months),Residual Value (NGN),Accumulated Depreciation (NGN),Book Value (NGN),Status,Location,Department\r\n';
     const csvRows = list.map(a => {
       const date = a.purchaseDate.toISOString().split('T')[0];
       const methodLabel = a.depreciationMethod === 'straight_line' ? 'Straight Line' : a.depreciationMethod === 'declining_balance' ? 'Declining Balance' : 'No Depreciation';
-      return `${a.assetNumber},"${a.name.replace(/"/g, '""')}",${a.category || ''},${date},${(a.purchaseCost / 100).toFixed(2)},${methodLabel},${a.usefulLifeMonths},${(a.residualValue / 100).toFixed(2)},${(a.accumulatedDepreciation / 100).toFixed(2)},${(a.bookValue / 100).toFixed(2)},${a.status}`;
+      return `${a.assetNumber},"${a.name.replace(/"/g, '""')}",${a.category || ''},${date},${(a.purchaseCost / 100).toFixed(2)},${methodLabel},${a.usefulLifeMonths},${(a.residualValue / 100).toFixed(2)},${(a.accumulatedDepreciation / 100).toFixed(2)},${(a.bookValue / 100).toFixed(2)},${a.status},${a.location || ''},${a.department || ''}`;
     }).join('\r\n');
-
     const csv = '\uFEFF' + csvHeader + csvRows;
     res.setHeader('Content-Type', 'text/csv;charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename="fixed_assets.csv"');
     return res.end(csv);
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 });
 
-// Bulk delete (for clearing last import)
 router.post('/bulk-delete', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const orgId = req.user!.orgId!;
-    const { ids } = req.body;
-    if (!Array.isArray(ids) || ids.length === 0) {
-      throw new AppError('ids array is required.', 400);
-    }
-    const deleted = await db
-      .delete(fixedAssets)
-      .where(and(eq(fixedAssets.orgId, orgId), sql`${fixedAssets.id} = ANY(${ids}::uuid[])`))
-      .returning({ id: fixedAssets.id });
-    createAuditLog({ orgId, userId: req.user!.userId!, action: 'delete', entityType: 'fixed-asset', newValues: { count: deleted.length }, ...extractReqMeta(req) });
+    const deleted = await faService.bulkDeleteAssets(req.user!.orgId!, req.user!.userId!, req.body.ids, extractReqMeta(req));
     return res.status(200).json({ message: `Deleted ${deleted.length} asset(s).`, count: deleted.length });
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 });
 
-// Run depreciation for all active fixed assets
 router.post('/run-depreciation', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const orgId = req.user!.orgId!;
-    const userId = req.user!.userId;
-    const periodDate = req.body.periodDate ? new Date(req.body.periodDate) : new Date();
-    periodDate.setHours(0, 0, 0, 0);
-
-    // Fetch all active fixed assets with depreciation methods
-    const assetList = await db
-      .select()
-      .from(fixedAssets)
-      .where(and(eq(fixedAssets.orgId, orgId), eq(fixedAssets.status, 'active'), sql`${fixedAssets.depreciationMethod} != 'no_depreciation'`));
-
-    if (assetList.length === 0) {
-      return res.json({ success: true, message: 'No depreciable assets found.', entries: 0 });
-    }
-
-    // Fetch org accounts for mapping
-    const orgAccounts = await db.select().from(accounts).where(eq(accounts.orgId, orgId));
-    const accountByCode = new Map(orgAccounts.map(a => [a.code, a]));
-
-    // Find depreciation expense account
-    const deprExpenseAccount = orgAccounts.find(a => a.code === '810700');
-    if (!deprExpenseAccount) throw new AppError('Depreciation expense account (810700) not found.', 400);
-
-    // Get next entry number
-    const countResult = await db.execute(sql`
-      SELECT count(*)::int AS cnt
-      FROM depreciation_entries de
-      JOIN fixed_assets fa ON fa.id = de.asset_id
-      WHERE fa.org_id = ${orgId}
-    `);
-    let nextNum = Number(countResult.rows[0]?.cnt || 0);
-
-    const lines: { accountId: string; debit: number; credit: number; description: string }[] = [];
-    const entryRows: { assetId: string; periodDate: Date; amount: number; entryNumber: string }[] = [];
-    const assetUpdates: { id: string; accumulatedDepreciation: number; bookValue: number; status: string }[] = [];
-
-    for (const asset of assetList) {
-      const deprBase = asset.purchaseCost - asset.residualValue;
-      if (deprBase <= 0) continue;
-
-      let monthlyDepr = 0;
-      if (asset.depreciationMethod === 'straight_line') {
-        monthlyDepr = Math.round(deprBase / asset.usefulLifeMonths);
-      } else if (asset.depreciationMethod === 'declining_balance') {
-        const rate = 2 / asset.usefulLifeMonths;
-        monthlyDepr = Math.round(asset.bookValue * rate);
-      }
-
-      if (monthlyDepr <= 0) continue;
-
-      const remaining = asset.bookValue - asset.residualValue;
-      if (remaining <= 0) continue;
-
-      const actualDepr = Math.min(monthlyDepr, remaining);
-
-      // Find accumulated depreciation account for this asset
-      const assetAccount = orgAccounts.find(a => a.id === asset.accountId);
-      let accDeprCode = '';
-      if (assetAccount) {
-        accDeprCode = assetAccount.code.slice(0, -1) + '1' + assetAccount.code.slice(-1);
-        // Try code + '01' pattern (e.g., 200200 -> 200201)
-        const tryCode = assetAccount.code.slice(0, -2) + '01';
-        if (accountByCode.has(tryCode)) accDeprCode = tryCode;
-      }
-      if (!accDeprCode) accDeprCode = '200201';
-      const accDeprAccount = accountByCode.get(accDeprCode);
-      if (!accDeprAccount) continue;
-
-      // Debit depreciation expense, credit accumulated depreciation
-      lines.push(
-        { accountId: deprExpenseAccount.id, debit: actualDepr, credit: 0, description: `Depreciation - ${asset.name}` },
-        { accountId: accDeprAccount.id, debit: 0, credit: actualDepr, description: `Accumulated depreciation - ${asset.name}` }
-      );
-
-      nextNum++;
-      entryRows.push({ assetId: asset.id, periodDate, amount: actualDepr, entryNumber: `DE-${String(nextNum).padStart(6, '0')}` });
-
-      const newAccumulated = asset.accumulatedDepreciation + actualDepr;
-      const newBookValue = asset.purchaseCost - newAccumulated;
-      const newStatus = newBookValue <= asset.residualValue ? 'fully_depreciated' : 'active';
-      assetUpdates.push({ id: asset.id, accumulatedDepreciation: newAccumulated, bookValue: newBookValue, status: newStatus });
-    }
-
-    if (lines.length === 0) {
-      return res.json({ success: true, message: 'No depreciation to post.', entries: 0 });
-    }
-
-    // Create consolidated journal entry for all depreciation
-    const journalEntry = await postToGL({
-      orgId,
-      date: periodDate,
-      description: `Monthly depreciation - ${periodDate.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}`,
-      source: 'manual',
-      createdBy: userId,
-      lines,
-    });
-
-    // Record individual depreciation entries
-    for (const row of entryRows) {
-      await db.insert(depreciationEntries).values({
-        assetId: row.assetId,
-        periodDate: row.periodDate,
-        amount: row.amount,
-        journalEntryId: journalEntry.id,
-        entryNumber: row.entryNumber,
-      });
-    }
-
-    // Update asset accumulated depreciation and book values
-    for (const upd of assetUpdates) {
-      await db.update(fixedAssets)
-        .set({ accumulatedDepreciation: upd.accumulatedDepreciation, bookValue: upd.bookValue, status: upd.status as any })
-        .where(eq(fixedAssets.id, upd.id));
-    }
-
-    createAuditLog({ orgId, userId, action: 'depreciate', entityType: 'fixed-asset', newValues: { entriesCreated: entryRows.length }, ...extractReqMeta(req) });
-    return res.json({
-      success: true,
-      message: `Depreciation run complete. Posted depreciation for ${entryRows.length} asset(s). Journal entry: ${journalEntry.entryNumber}`,
-      entries: entryRows.length,
-      journalEntryNumber: journalEntry.entryNumber,
-    });
+    const result = await faService.runDepreciation(req.user!.orgId!, req.user!.userId!, req.body.periodDate, extractReqMeta(req));
+    return res.json(result);
   } catch (err) { return next(err); }
 });
 
-// Debug: check data counts
-// PATCH /depreciation-entries/:entryId - Edit a depreciation journal entry's lines
 router.patch('/depreciation-entries/:entryId', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const orgId = req.user!.orgId!;
     const userId = req.user!.userId!;
     const { entryId } = req.params;
     const body = z.object({
-      lines: z.array(z.object({
-        id: z.string().optional(),
-        accountId: z.string(),
-        debitAmount: z.number(),
-        creditAmount: z.number(),
-        description: z.string().optional(),
-      })),
+      lines: z.array(z.object({ id: z.string().optional(), accountId: z.string(), debitAmount: z.number(), creditAmount: z.number(), description: z.string().optional() })),
     }).parse(req.body);
-
-    // Verify the journal entry belongs to this org
-    const [entry] = await db
-      .select()
-      .from(journalEntries)
-      .where(and(eq(journalEntries.id, entryId), eq(journalEntries.orgId, orgId)))
-      .limit(1);
+    const [entry] = await db.select().from(journalEntries).where(and(eq(journalEntries.id, entryId), eq(journalEntries.orgId, orgId))).limit(1);
     if (!entry) throw new AppError('Journal entry not found.', 404);
-
-    const updated = await updateJournalEntry(entryId, {
-      date: entry.date,
-      description: entry.description || '',
-      lines: body.lines.map(l => ({
-        id: l.id,
-        accountId: l.accountId,
-        debitAmount: l.debitAmount,
-        creditAmount: l.creditAmount,
-        description: l.description || '',
-      })),
-    });
-
+    const updated = await updateJournalEntry(entryId, { date: entry.date, description: entry.description || '', lines: body.lines.map(l => ({ id: l.id, accountId: l.accountId, debitAmount: l.debitAmount, creditAmount: l.creditAmount, description: l.description || '' })) });
     createAuditLog({ orgId, userId, action: 'update', entityType: 'depreciation-entry', entityId: entryId, newValues: body, ...extractReqMeta(req) });
     return res.status(200).json(updated);
-  } catch (err) {
-    return next(err);
-  }
+  } catch (err) { return next(err); }
+});
+
+// ==============================
+// NEW: ASSET CLASSES
+// ==============================
+
+router.get('/classes', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const classes = await faService.getAssetClasses(req.user!.orgId!);
+    return res.json(classes);
+  } catch (err) { return next(err); }
+});
+
+router.post('/classes', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const cls = await faService.createAssetClass(req.user!.orgId!, req.body);
+    createAuditLog({ orgId: req.user!.orgId!, userId: req.user!.userId!, action: 'create', entityType: 'asset-class', entityId: cls.id, newValues: req.body, ...extractReqMeta(req) });
+    return res.status(201).json(cls);
+  } catch (err) { return next(err); }
+});
+
+router.put('/classes/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const cls = await faService.updateAssetClass(req.params.id, req.user!.orgId!, req.body);
+    return res.json(cls);
+  } catch (err) { return next(err); }
+});
+
+router.delete('/classes/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const cls = await faService.deleteAssetClass(req.params.id, req.user!.orgId!);
+    return res.json({ message: 'Asset class deleted.' });
+  } catch (err) { return next(err); }
+});
+
+// ==============================
+// NEW: COMPONENTS
+// ==============================
+
+router.get('/:id/components', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const comps = await faService.getComponents(req.user!.orgId!, req.params.id);
+    return res.json(comps);
+  } catch (err) { return next(err); }
+});
+
+router.post('/:id/components', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const comp = await faService.createComponent(req.user!.orgId!, req.user!.userId!, req.params.id, req.body, extractReqMeta(req));
+    return res.status(201).json(comp);
+  } catch (err) { return next(err); }
+});
+
+router.put('/components/:componentId', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const comp = await faService.updateComponent(req.user!.orgId!, req.user!.userId!, req.params.componentId, req.body, extractReqMeta(req));
+    return res.json(comp);
+  } catch (err) { return next(err); }
+});
+
+router.delete('/components/:componentId', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    await faService.deleteComponent(req.user!.orgId!, req.user!.userId!, req.params.componentId, extractReqMeta(req));
+    return res.json({ message: 'Component deleted.' });
+  } catch (err) { return next(err); }
+});
+
+// ==============================
+// NEW: REVALUATION
+// ==============================
+
+router.post('/:id/revalue', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const result = await faService.performRevaluation(req.user!.orgId!, req.user!.userId!, {
+      assetId: req.params.id, revaluationDate: req.body.revaluationDate, newCarryingAmount: req.body.newCarryingAmount, notes: req.body.notes,
+    }, extractReqMeta(req));
+    return res.json(result);
+  } catch (err) { return next(err); }
+});
+
+router.get('/revaluations', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const revaluations = await faService.getRevaluationHistory(req.user!.orgId!, req.query.assetId as string | undefined);
+    return res.json(revaluations);
+  } catch (err) { return next(err); }
+});
+
+// ==============================
+// NEW: IMPAIRMENT
+// ==============================
+
+router.post('/:id/impair', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const result = await faService.performImpairment(req.user!.orgId!, req.user!.userId!, {
+      assetId: req.params.id, impairmentDate: req.body.impairmentDate, recoverableAmount: req.body.recoverableAmount, impairmentSource: req.body.impairmentSource, notes: req.body.notes,
+    }, extractReqMeta(req));
+    return res.json(result);
+  } catch (err) { return next(err); }
+});
+
+router.get('/impairments', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const impairments = await faService.getImpairmentHistory(req.user!.orgId!, req.query.assetId as string | undefined);
+    return res.json(impairments);
+  } catch (err) { return next(err); }
+});
+
+// ==============================
+// NEW: DISPOSAL
+// ==============================
+
+router.post('/:id/dispose', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const result = await faService.disposeAsset(req.user!.orgId!, req.user!.userId!, {
+      assetId: req.params.id, disposalDate: req.body.disposalDate, disposalAmount: req.body.disposalAmount, disposalAccountId: req.body.disposalAccountId, notes: req.body.notes,
+    }, extractReqMeta(req));
+    return res.json(result);
+  } catch (err) { return next(err); }
+});
+
+// ==============================
+// NEW: TRANSFER
+// ==============================
+
+router.post('/:id/transfer', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const transfer = await faService.transferAsset(req.user!.orgId!, req.user!.userId!, {
+      assetId: req.params.id, transferDate: req.body.transferDate, toLocation: req.body.toLocation,
+      toDepartment: req.body.toDepartment, reason: req.body.reason, authorizedBy: req.body.authorizedBy, notes: req.body.notes,
+    }, extractReqMeta(req));
+    return res.status(201).json(transfer);
+  } catch (err) { return next(err); }
+});
+
+router.get('/:id/transfers', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const transfers = await faService.getTransferHistory(req.user!.orgId!, req.params.id);
+    return res.json(transfers);
+  } catch (err) { return next(err); }
+});
+
+// ==============================
+// NEW: MAINTENANCE
+// ==============================
+
+router.post('/:id/maintenance', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const record = await faService.addMaintenanceRecord(req.user!.orgId!, req.user!.userId!, {
+      assetId: req.params.id, maintenanceDate: req.body.maintenanceDate, maintenanceType: req.body.maintenanceType,
+      description: req.body.description, cost: req.body.cost, vendor: req.body.vendor, notes: req.body.notes, journalEntryId: req.body.journalEntryId,
+    }, extractReqMeta(req));
+    return res.status(201).json(record);
+  } catch (err) { return next(err); }
+});
+
+router.get('/:id/maintenance', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const records = await faService.getMaintenanceHistory(req.user!.orgId!, req.params.id);
+    return res.json(records);
+  } catch (err) { return next(err); }
+});
+
+// ==============================
+// NEW: CWIP CAPITALIZATION
+// ==============================
+
+router.post('/capitalize-cwip', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const asset = await faService.capitalizeCwip(req.user!.orgId!, req.user!.userId!, {
+      cwipAssetId: req.body.cwipAssetId, capitalizationDate: req.body.capitalizationDate,
+      newAssetName: req.body.newAssetName, newAssetNumber: req.body.newAssetNumber, accountId: req.body.accountId,
+      usefulLifeMonths: req.body.usefulLifeMonths, depreciationMethod: req.body.depreciationMethod,
+      residualValue: req.body.residualValue, location: req.body.location, department: req.body.department,
+    }, extractReqMeta(req));
+    return res.status(201).json(asset);
+  } catch (err) { return next(err); }
+});
+
+// ==============================
+// NEW: IFRS REPORTS
+// ==============================
+
+router.get('/reports/register', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const report = await faService.getFixedAssetRegister(req.user!.orgId!);
+    return res.json(report);
+  } catch (err) { return next(err); }
+});
+
+router.get('/reports/summary', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const summary = await faService.getAssetSummary(req.user!.orgId!);
+    return res.json(summary);
+  } catch (err) { return next(err); }
+});
+
+router.get('/reports/aging', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const aging = await faService.getAssetAging(req.user!.orgId!);
+    return res.json(aging);
+  } catch (err) { return next(err); }
+});
+
+router.get('/reports/movement-schedule', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { fromDate, toDate } = req.query;
+    if (!fromDate || !toDate) throw new AppError('fromDate and toDate are required.', 400);
+    const schedule = await faService.getAssetMovementSchedule(req.user!.orgId!, fromDate as string, toDate as string);
+    return res.json(schedule);
+  } catch (err) { return next(err); }
 });
 
 export default router;

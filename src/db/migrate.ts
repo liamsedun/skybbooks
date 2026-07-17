@@ -1540,6 +1540,215 @@ export async function runMigration() {
     }
 
     console.log('[Migration] Created IFRS 9 ECL tables and seeded default provision matrix.');
+
+    // -------------------------------------------------------------------------
+    // IFRS Fixed Asset Enhancements — Tables & Columns
+    // -------------------------------------------------------------------------
+
+    // Add 'cwip' to fixed_asset_status enum
+    await db.execute(sql`
+      DO $$ BEGIN
+        ALTER TYPE fixed_asset_status ADD VALUE 'cwip';
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$;
+    `);
+
+    // Add new columns to fixed_assets (IF NOT EXISTS for idempotency)
+    const faCols = [
+      'ADD COLUMN IF NOT EXISTS asset_class_id uuid REFERENCES asset_classes(id)',
+      'ADD COLUMN IF NOT EXISTS location text',
+      'ADD COLUMN IF NOT EXISTS department text',
+      'ADD COLUMN IF NOT EXISTS revaluation_amount bigint DEFAULT 0',
+      'ADD COLUMN IF NOT EXISTS revaluation_surplus_account_id uuid REFERENCES accounts(id)',
+      'ADD COLUMN IF NOT EXISTS impairment_loss bigint DEFAULT 0',
+      'ADD COLUMN IF NOT EXISTS last_depreciation_date timestamp',
+      'ADD COLUMN IF NOT EXISTS next_depreciation_date timestamp',
+      'ADD COLUMN IF NOT EXISTS capitalization_date timestamp',
+      'ADD COLUMN IF NOT EXISTS cwip_source_id uuid REFERENCES fixed_assets(id)',
+      'ADD COLUMN IF NOT EXISTS disposal_account_id uuid REFERENCES accounts(id)',
+    ];
+    for (const col of faCols) {
+      await db.execute(sql`ALTER TABLE fixed_assets ${sql.raw(col)}`);
+    }
+
+    // Asset Classes table
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS asset_classes (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        name text NOT NULL,
+        code text,
+        description text,
+        default_useful_life_months integer DEFAULT 60,
+        default_depreciation_method depreciation_method DEFAULT 'straight_line',
+        default_residual_value_pct numeric(5,2) DEFAULT '0',
+        gl_asset_account_id uuid REFERENCES accounts(id),
+        gl_depreciation_expense_account_id uuid REFERENCES accounts(id),
+        gl_accum_depr_account_id uuid REFERENCES accounts(id),
+        gl_revaluation_reserve_account_id uuid REFERENCES accounts(id),
+        gl_disposal_proceeds_account_id uuid REFERENCES accounts(id),
+        gl_disposal_loss_account_id uuid REFERENCES accounts(id),
+        is_active boolean DEFAULT true NOT NULL,
+        created_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_asset_classes_org ON asset_classes (org_id)`);
+
+    // Asset Components table
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS asset_components (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        asset_id uuid REFERENCES fixed_assets(id) NOT NULL,
+        name text NOT NULL,
+        description text,
+        cost bigint NOT NULL,
+        useful_life_months integer NOT NULL,
+        residual_value bigint DEFAULT 0,
+        depreciation_method depreciation_method DEFAULT 'straight_line',
+        accumulated_depreciation bigint DEFAULT 0 NOT NULL,
+        book_value bigint NOT NULL,
+        gl_asset_account_id uuid REFERENCES accounts(id),
+        gl_accum_depr_account_id uuid REFERENCES accounts(id),
+        is_active boolean DEFAULT true NOT NULL,
+        created_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_asset_components_asset ON asset_components (asset_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_asset_components_org ON asset_components (org_id)`);
+
+    // Revaluation Entries table
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS revaluation_entries (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        asset_id uuid REFERENCES fixed_assets(id) NOT NULL,
+        component_id uuid REFERENCES asset_components(id),
+        revaluation_date timestamp NOT NULL,
+        revaluation_type text NOT NULL,
+        old_carrying_amount bigint NOT NULL,
+        new_carrying_amount bigint NOT NULL,
+        revaluation_amount bigint NOT NULL,
+        revaluation_surplus bigint DEFAULT 0 NOT NULL,
+        revaluation_loss bigint DEFAULT 0 NOT NULL,
+        journal_entry_id uuid REFERENCES journal_entries(id),
+        notes text,
+        created_by uuid REFERENCES users(id),
+        created_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_revaluation_entries_asset ON revaluation_entries (asset_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_revaluation_entries_org ON revaluation_entries (org_id)`);
+
+    // Impairment Entries table
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS impairment_entries (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        asset_id uuid REFERENCES fixed_assets(id) NOT NULL,
+        component_id uuid REFERENCES asset_components(id),
+        impairment_date timestamp NOT NULL,
+        carrying_amount bigint NOT NULL,
+        recoverable_amount bigint NOT NULL,
+        impairment_loss bigint NOT NULL,
+        impairment_source text,
+        journal_entry_id uuid REFERENCES journal_entries(id),
+        notes text,
+        created_by uuid REFERENCES users(id),
+        created_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_impairment_entries_asset ON impairment_entries (asset_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_impairment_entries_org ON impairment_entries (org_id)`);
+
+    // Maintenance Records table
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS maintenance_records (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        asset_id uuid REFERENCES fixed_assets(id) NOT NULL,
+        component_id uuid REFERENCES asset_components(id),
+        maintenance_date timestamp NOT NULL,
+        maintenance_type text NOT NULL,
+        description text NOT NULL,
+        cost bigint NOT NULL,
+        vendor text,
+        journal_entry_id uuid REFERENCES journal_entries(id),
+        notes text,
+        created_by uuid REFERENCES users(id),
+        created_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_maintenance_records_asset ON maintenance_records (asset_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_maintenance_records_org ON maintenance_records (org_id)`);
+
+    // Asset Transfers table
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS asset_transfers (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        asset_id uuid REFERENCES fixed_assets(id) NOT NULL,
+        transfer_date timestamp NOT NULL,
+        from_location text,
+        to_location text,
+        from_department text,
+        to_department text,
+        reason text,
+        authorized_by uuid REFERENCES users(id),
+        notes text,
+        created_by uuid REFERENCES users(id),
+        created_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_asset_transfers_asset ON asset_transfers (asset_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_asset_transfers_org ON asset_transfers (org_id)`);
+
+    console.log('[Migration] Fixed Asset Enhancement tables and columns created.');
+
+    // Add Fixed Asset journal source if not present
+    await db.execute(sql`
+      DO $$ BEGIN
+        ALTER TYPE journal_source ADD VALUE 'fixed_asset';
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$;
+    `);
+
+    // Seed default asset classes for existing orgs
+    const orgsForFa = await db.execute(sql`SELECT id FROM organisations`);
+    const orgRowsFa = (orgsForFa as any).rows || [];
+    for (const org of orgRowsFa) {
+      const existingClasses = await db.execute(sql`SELECT id FROM asset_classes WHERE org_id = ${org.id}::uuid LIMIT 1`);
+      if (!((existingClasses as any).rows?.length)) {
+        const classes = [
+          { name: 'Land', code: '200100', life: 0, method: 'no_depreciation', assetCode: '200100' },
+          { name: 'Buildings', code: '200200', life: 240, method: 'straight_line', assetCode: '200200', deprExpenseCode: '810700', accumCode: '200201' },
+          { name: 'Plant & Machinery', code: '200300', life: 120, method: 'straight_line', assetCode: '200300', deprExpenseCode: '810700', accumCode: '200301' },
+          { name: 'Motor Vehicles', code: '200400', life: 60, method: 'declining_balance', assetCode: '200400', deprExpenseCode: '810700', accumCode: '200401' },
+          { name: 'Furniture & Fittings', code: '200500', life: 60, method: 'straight_line', assetCode: '200500', deprExpenseCode: '810700', accumCode: '200501' },
+          { name: 'Computer & IT Equipment', code: '200600', life: 36, method: 'straight_line', assetCode: '200600', deprExpenseCode: '810700', accumCode: '200601' },
+          { name: 'Generator & Power Equipment', code: '200700', life: 120, method: 'straight_line', assetCode: '200700', deprExpenseCode: '810700', accumCode: '200701' },
+          { name: 'Capital Work In Progress', code: '200800', life: 0, method: 'no_depreciation', assetCode: '200800' },
+        ];
+        for (const cls of classes) {
+          const accRes = await db.execute(sql`SELECT id FROM accounts WHERE org_id = ${org.id}::uuid AND code = ${cls.assetCode} LIMIT 1`);
+          const accRow = (accRes as any).rows?.[0];
+          let deprExpId: string | null = null;
+          let accumId: string | null = null;
+          if (cls.code !== '200100' && cls.code !== '200800') {
+            const deprRes = await db.execute(sql`SELECT id FROM accounts WHERE org_id = ${org.id}::uuid AND code = ${cls.deprExpenseCode} LIMIT 1`);
+            deprExpId = (deprRes as any).rows?.[0]?.id || null;
+            const accumRes = await db.execute(sql`SELECT id FROM accounts WHERE org_id = ${org.id}::uuid AND code = ${cls.accumCode} LIMIT 1`);
+            accumId = (accumRes as any).rows?.[0]?.id || null;
+          }
+          await db.execute(sql`
+            INSERT INTO asset_classes (org_id, name, code, default_useful_life_months, default_depreciation_method, gl_asset_account_id, gl_depreciation_expense_account_id, gl_accum_depr_account_id)
+            VALUES (${org.id}::uuid, ${cls.name}, ${cls.code}, ${cls.life}, ${cls.method}::depreciation_method, ${accRow?.id || null}::uuid, ${deprExpId}::uuid, ${accumId}::uuid)
+          `);
+        }
+      }
+    }
+    console.log('[Migration] Seeded default asset classes for existing organisations.');
+
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema setup:', err);
