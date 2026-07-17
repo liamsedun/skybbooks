@@ -55,6 +55,7 @@ import {
   generateAgedReportPDF,
   generateStatementOfChangesInEquityPDF,
 } from '../services/pdf.service';
+import { getDashboardMetrics } from '../services/dashboard.service';
 
 const router = Router();
 
@@ -728,6 +729,17 @@ router.post('/custom/pdf', async (req: AuthenticatedRequest, res: Response, next
 const dashboardQuerySchema = z.object({
   startDate: z.string().optional().transform((val) => val ? new Date(val) : new Date(new Date().getFullYear(), 0, 1)),
   endDate: z.string().optional().transform((val) => val ? new Date(val) : new Date()),
+});
+
+router.get('/dashboard-metrics', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { startDate, endDate } = dashboardQuerySchema.parse(req.query);
+    const metrics = await getDashboardMetrics(orgId, startDate, endDate);
+    return res.status(200).json({ success: true, data: metrics });
+  } catch (err) {
+    return next(err);
+  }
 });
 
 router.get('/dashboard-summary', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
