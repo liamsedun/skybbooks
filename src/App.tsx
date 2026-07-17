@@ -14,6 +14,7 @@ import { ChatProvider } from './contexts/ChatContext';
 import AppLayout from './components/layout/AppLayout';
 import { Dashboard } from './pages/Dashboard';
 import InsightsDashboard from './pages/ai/InsightsDashboard';
+import { AccountingAssistant } from './pages/ai/AccountingAssistant';
 
 // Sales Pages
 import { InvoiceList } from './pages/sales/InvoiceList';
@@ -263,6 +264,7 @@ function AppRoutes() {
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<Dashboard onNavigate={() => {}} />} />
           <Route path="/ai/insights" element={<InsightsDashboard />} />
+          <Route path="/ai/assistant" element={<AccountingAssistant />} />
           
           {/* Sales module routing */}
           <Route path="/sales/customers" element={<CustomersPage />} />

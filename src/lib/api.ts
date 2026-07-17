@@ -1644,4 +1644,16 @@ export const approvalApi = {
   },
 };
 
+export const assistantApi = {
+  query: async (query: string): Promise<any> => {
+    const res = await api.post('/assistant/query', { query }); return res.data;
+  },
+  queryByCapability: async (capability: string, query?: string): Promise<any> => {
+    const res = await api.post(`/assistant/query/${capability}`, { query }); return res.data;
+  },
+  getCapabilities: async (): Promise<any> => {
+    const res = await api.get('/assistant/capabilities'); return res.data;
+  },
+};
+
 

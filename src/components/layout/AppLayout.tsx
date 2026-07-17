@@ -35,7 +35,8 @@ import {
   ArrowRightLeft,
   TrendingDown,
   ReceiptText,
-  AlertTriangle
+  AlertTriangle,
+  Bot
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -142,6 +143,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
   const pathMap: Record<string, string> = useMemo(() => ({
     'dashboard': '/dashboard',
     'ai_insights': '/ai/insights',
+    'ai_assistant': '/ai/assistant',
     'chat': '/chat',
     'customers': '/sales/customers',
     'quotes': '/sales/quotes',
@@ -222,6 +224,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
       items: [
         { name: 'Dashboard', id: 'dashboard', icon: LayoutDashboard },
         { name: 'SMART CFO Insights', id: 'ai_insights', icon: Sparkles },
+        { name: 'AI Assistant', id: 'ai_assistant', icon: Bot },
         { name: 'Team Chat', id: 'chat', icon: MessageCircle },
       ],
     },

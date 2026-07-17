@@ -42,6 +42,7 @@ import revenueRouter from '../routes/revenue';
 import leasesRouter from '../routes/leases';
 import eclRouter from '../routes/ecl';
 import approvalRouter from '../routes/approval';
+import assistantRouter from '../routes/assistant';
 
 import { runMigration } from '../db/migrate';
 import { fetchLatestRates } from '../services/cbn.service';
@@ -162,6 +163,7 @@ async function startServer() {
   app.use('/api/leases', leasesRouter);
   app.use('/api/ecl', eclRouter);
   app.use('/api/approval', approvalRouter);
+  app.use('/api/assistant', assistantRouter);
 
   app.get('/api/health', (req, res) => {
     res.json({ status: 'healthy', timestamp: new Date().toISOString() });
