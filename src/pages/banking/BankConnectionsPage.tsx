@@ -103,10 +103,7 @@ export function BankConnectionsPage() {
   return (
     <div className="p-4 sm:p-6 max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">Bank Connections</h1>
-          <p className="text-sm text-slate-500 mt-1">Manage OAuth connections to your bank feed and payment gateway providers</p>
-        </div>
+
         <button
           onClick={fetchStatus}
           className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors"

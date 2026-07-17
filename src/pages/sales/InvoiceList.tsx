@@ -296,12 +296,7 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
       
       {/* 1. Header Area with Action buttons */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-extrabold text-slate-800 tracking-tight">Client Billings & Invoices</h2>
-          <p className="text-xs text-slate-400 font-semibold tracking-wide uppercase mt-1">
-            Accounts Receivable Ledger System
-          </p>
-        </div>
+
 
         <div className="inline-flex items-center gap-3">
           <button 

@@ -151,9 +151,7 @@ export function TransfersPage() {
   return (
     <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-          <ArrowRightLeft className="w-6 h-6 text-indigo-600" /> Inter Account Transfers
-        </h1>
+
         <div className="flex items-center gap-2">
           <button onClick={printTransfersPDF} disabled={filteredTransfers.length === 0}
             className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-slate-700 bg-slate-100 rounded-xl hover:bg-slate-200 transition-all duration-200 disabled:opacity-50">

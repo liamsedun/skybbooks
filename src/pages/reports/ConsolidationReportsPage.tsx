@@ -162,10 +162,7 @@ export function ConsolidationReportsPage() {
   return (
     <div className="p-4 sm:p-6 max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">Consolidation Reports</h1>
-          <p className="text-sm text-slate-500 mt-1">Run and view group consolidation reports across organisations.</p>
-        </div>
+
       </div>
 
       <div className="mb-6">

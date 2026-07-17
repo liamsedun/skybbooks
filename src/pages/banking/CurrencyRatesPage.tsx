@@ -78,10 +78,7 @@ export function CurrencyRatesPage() {
             className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all duration-200 cursor-pointer">
             <ArrowLeft className="w-4 h-4" />
           </button>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">Currency Rates</h1>
-            <p className="text-xs text-slate-400 mt-0.5">Live foreign exchange rates against your base currency</p>
-          </div>
+
         </div>
         <button onClick={() => refreshMutation.mutate()} disabled={refreshMutation.isPending}
           className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50 transition-all duration-200">

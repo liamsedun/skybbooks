@@ -424,10 +424,7 @@ export function CustomReportsPage() {
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-200">
             <BarChart3 className="w-6 h-6 text-white" />
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">Custom Reports</h1>
-            <p className="text-sm text-slate-400">40+ categorized reports across all modules</p>
-          </div>
+
         </div>
       </div>
 

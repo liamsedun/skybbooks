@@ -356,7 +356,6 @@ export function AuditLogsPage() {
         <>
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-slate-900">Audit Logs</h1>
               {total > 0 && <span className="text-xs text-slate-400">{total} total entries</span>}
               {statsData?.dateRange?.earliest && (
                 <span className="text-[10px] text-slate-400">From {fmtDateShort(statsData.dateRange.earliest)}</span>
@@ -516,10 +515,7 @@ export function AuditLogsPage() {
               <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
                 <Shield className="w-5 h-5 text-indigo-600" />
               </div>
-              <div>
-                <h1 className="text-2xl font-bold text-slate-900">Audit-Shield</h1>
-                <p className="text-sm text-slate-500">AI-powered transaction monitoring & threat detection</p>
-              </div>
+
             </div>
             <div className="flex items-center gap-2">
               <button onClick={exportShieldCSV} disabled={filteredAlerts.length === 0}

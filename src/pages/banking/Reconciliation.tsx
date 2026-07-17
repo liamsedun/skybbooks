@@ -580,12 +580,7 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
-          <div>
-            <h1 className="text-xl lg:text-2xl font-bold text-slate-900 tracking-tight">Reconciliation Desk</h1>
-            <p className="text-xs text-slate-500 mt-1">
-              Reconcile live bank statement feeds against company accounting records with drag-and-drop simplicity.
-            </p>
-          </div>
+
         </div>
 
         {/* Select Account & Bot Controls */}

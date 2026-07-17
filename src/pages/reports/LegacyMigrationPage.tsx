@@ -821,14 +821,7 @@ export function LegacyMigrationPage() {
     <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-            <History className="w-6 h-6 text-indigo-500" /> Legacy / Migration Financial Statements
-          </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Enter prior-year financial data from your previous accounting system for comparative reporting.
-          </p>
-        </div>
+
         {org?.legacySystemName && (
           <span className="px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-full text-xs font-semibold border border-indigo-200 flex items-center gap-1.5">
             <Database className="w-3.5 h-3.5" /> Migrated from {org.legacySystemName}

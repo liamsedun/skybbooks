@@ -123,10 +123,7 @@ export function PaymentGatewayPage() {
   return (
     <div className="p-4 sm:p-6 max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">Payment Gateway</h1>
-          <p className="text-sm text-slate-500 mt-1">Track Paystack, Flutterwave & Moniepoint transactions</p>
-        </div>
+
         <div className="flex items-center gap-2">
           <button onClick={handleAutoMatch} className="px-3 py-1.5 text-xs font-semibold bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-colors flex items-center gap-1.5">
             <ArrowRightLeft className="w-3.5 h-3.5" />
