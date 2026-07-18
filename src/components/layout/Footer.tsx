@@ -78,14 +78,7 @@ export function Footer() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto mt-6 pt-4 border-t footer-border flex flex-col sm:flex-row items-center justify-between text-[11px] footer-text-muted">
-        <p>© {new Date().getFullYear()} Skyhouse. All rights reserved. Registered SaaS Workspace.</p>
-        <div className="flex space-x-4 mt-2 sm:mt-0 font-medium font-mono uppercase text-[9px] tracking-widest footer-text-muted">
-          <span>SECURE BANK SEC-FEED</span>
-          <span className="footer-text-muted">•</span>
-          <span>NIGERIAN GAAP & IFRS ENFORCED</span>
-        </div>
-      </div>
+
     </footer>
   );
 }

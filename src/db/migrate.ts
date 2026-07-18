@@ -1553,25 +1553,7 @@ export async function runMigration() {
       END $$;
     `);
 
-    // Add new columns to fixed_assets (IF NOT EXISTS for idempotency)
-    const faCols = [
-      'ADD COLUMN IF NOT EXISTS asset_class_id uuid REFERENCES asset_classes(id)',
-      'ADD COLUMN IF NOT EXISTS location text',
-      'ADD COLUMN IF NOT EXISTS department text',
-      'ADD COLUMN IF NOT EXISTS revaluation_amount bigint DEFAULT 0',
-      'ADD COLUMN IF NOT EXISTS revaluation_surplus_account_id uuid REFERENCES accounts(id)',
-      'ADD COLUMN IF NOT EXISTS impairment_loss bigint DEFAULT 0',
-      'ADD COLUMN IF NOT EXISTS last_depreciation_date timestamp',
-      'ADD COLUMN IF NOT EXISTS next_depreciation_date timestamp',
-      'ADD COLUMN IF NOT EXISTS capitalization_date timestamp',
-      'ADD COLUMN IF NOT EXISTS cwip_source_id uuid REFERENCES fixed_assets(id)',
-      'ADD COLUMN IF NOT EXISTS disposal_account_id uuid REFERENCES accounts(id)',
-    ];
-    for (const col of faCols) {
-      await db.execute(sql`ALTER TABLE fixed_assets ${sql.raw(col)}`);
-    }
-
-    // Asset Classes table
+    // Asset Classes table (must be created before fixed_assets columns reference it)
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS asset_classes (
         id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -1593,6 +1575,24 @@ export async function runMigration() {
       )
     `);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_asset_classes_org ON asset_classes (org_id)`);
+
+    // Add new columns to fixed_assets (IF NOT EXISTS for idempotency)
+    const faCols = [
+      'ADD COLUMN IF NOT EXISTS asset_class_id uuid REFERENCES asset_classes(id)',
+      'ADD COLUMN IF NOT EXISTS location text',
+      'ADD COLUMN IF NOT EXISTS department text',
+      'ADD COLUMN IF NOT EXISTS revaluation_amount bigint DEFAULT 0',
+      'ADD COLUMN IF NOT EXISTS revaluation_surplus_account_id uuid REFERENCES accounts(id)',
+      'ADD COLUMN IF NOT EXISTS impairment_loss bigint DEFAULT 0',
+      'ADD COLUMN IF NOT EXISTS last_depreciation_date timestamp',
+      'ADD COLUMN IF NOT EXISTS next_depreciation_date timestamp',
+      'ADD COLUMN IF NOT EXISTS capitalization_date timestamp',
+      'ADD COLUMN IF NOT EXISTS cwip_source_id uuid REFERENCES fixed_assets(id)',
+      'ADD COLUMN IF NOT EXISTS disposal_account_id uuid REFERENCES accounts(id)',
+    ];
+    for (const col of faCols) {
+      await db.execute(sql`ALTER TABLE fixed_assets ${sql.raw(col)}`);
+    }
 
     // Asset Components table
     await db.execute(sql`
