@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import {
   Search, ChevronDown, LayoutDashboard, Users, FileCode, FileText,
   DollarSign, Briefcase, History, MessageCircle, TrendingUp, Settings,
@@ -12,7 +12,7 @@ import {
   ArrowRightLeft, TrendingDown, ReceiptText, AlertTriangle, Bot, Wifi,
   Star, Zap, ChevronRight, PanelLeftClose, PanelLeft,
   CircleUser, Command, Plus, LayoutList, Home, Landmark,
-  ShoppingCart, ShoppingBag, Receipt
+  ShoppingCart, ShoppingBag, Receipt, Mail, Phone, ExternalLink, Video
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -76,6 +76,19 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     PURCHASES: true, INVENTORY: true, PAYROLL: true,
     BANKING: true, ACCOUNTANT: true, REPORTS: true,
   });
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [showMailForm, setShowMailForm] = useState(false);
+  const [mailSubject, setMailSubject] = useState('');
+  const [mailMessage, setMailMessage] = useState('');
+  const helpRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (helpRef.current && !helpRef.current.contains(e.target as Node)) setHelpOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
 
   useEffect(() => {
     const handleClick = (event: MouseEvent) => {
@@ -326,13 +339,14 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
         {!sidebarCollapsed && (
           <div className="px-3 pt-3 pb-1 sidebar-search-wrapper">
             <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 sidebar-search-icon" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 sidebar-search-icon pointer-events-none" />
               <input
                 type="text"
                 placeholder="Search functions..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 className="w-full pl-8 pr-3 py-1.5 text-xs sidebar-search rounded-lg transition-all"
+                autoComplete="off"
               />
             </div>
           </div>
@@ -402,6 +416,56 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
             <Settings className="w-4 h-4 shrink-0 sidebar-icon" />
             {!sidebarCollapsed && <span className="truncate sidebar-text">Settings</span>}
           </button>
+        </div>
+
+        {/* Help & Support dropdown */}
+        <div className="sidebar-settings p-2" ref={helpRef}>
+          <button
+            onClick={() => setHelpOpen(!helpOpen)}
+            className={`sidebar-nav-btn w-full flex items-center gap-2 px-2.5 py-1 rounded-xl text-[13px] transition-all duration-150 ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
+          >
+            <HelpCircle className="w-4 h-4 shrink-0 sidebar-icon" />
+            {!sidebarCollapsed && <><span className="truncate sidebar-text flex-1 text-left">Help & Support</span><ChevronDown size={12} className={`sidebar-icon transition-transform ${helpOpen ? 'rotate-180' : ''}`} /></>}
+          </button>
+          {helpOpen && (
+            <div className="absolute left-0 bottom-full mb-1 w-64 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-2 max-h-[70vh] overflow-y-auto">
+              {/* Page links */}
+              <button onClick={() => { setHelpOpen(false); navigate('/help/documents'); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><BookOpen size={15} /> Help Documents</button>
+              <button onClick={() => { setHelpOpen(false); navigate('/help/faqs'); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><HelpCircle size={15} /> FAQs</button>
+              <button onClick={() => { setHelpOpen(false); navigate('/help/videos'); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Video className="w-3.5 h-3.5" /> Video Tutorials</button>
+              <button onClick={() => { setHelpOpen(false); navigate('/help/migration-guide'); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><History size={15} /> Migration Guide</button>
+
+              <div className="border-t border-slate-100 my-1" />
+
+              <div className="px-3 py-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Need Assistance?</div>
+
+              <a href="https://wa.me/2348157377000" target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-green-50 hover:text-green-700">
+                <MessageCircle size={15} className="text-green-600" /> Chat on WhatsApp (+234 815 737 7000)
+              </a>
+              <a href="https://wa.me/2347058119864" target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-green-50 hover:text-green-700">
+                <MessageCircle size={15} className="text-green-600" /> Chat on WhatsApp (+234 705 811 9864)
+              </a>
+
+              <button onClick={() => { setHelpOpen(false); setShowMailForm(true); }}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700">
+                <Mail size={15} className="text-blue-600" /> Send an Email
+              </button>
+
+              <div className="border-t border-slate-100 my-1" />
+
+              <div className="px-3 py-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Early Access Features</div>
+              <button onClick={() => { setHelpOpen(false); /* early access link */ }}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Sparkles size={15} /> Early Access</button>
+
+              <div className="border-t border-slate-100 my-1" />
+
+              <div className="px-3 py-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Talk to us (Mon - Fri)</div>
+              <a href="tel:+2348157377000" className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Phone size={15} /> +234 815 737 7000</a>
+              <a href="tel:+2347058119864" className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Phone size={15} /> +234 705 811 9864</a>
+            </div>
+          )}
         </div>
 
         {/* User footer */}
@@ -652,6 +716,27 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
 
       <QuickActionsBar />
       <ChatWidget />
+
+      {/* Email form modal */}
+      {showMailForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setShowMailForm(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4 border border-slate-200/80" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-slate-900">Send an Email</h2>
+              <button onClick={() => setShowMailForm(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-xl hover:bg-slate-100 transition-all duration-200"><X className="w-5 h-5" /></button>
+            </div>
+            <input type="text" placeholder="Subject" value={mailSubject} onChange={e => setMailSubject(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+            <textarea placeholder="Your message..." rows={5} value={mailMessage} onChange={e => setMailMessage(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 resize-none" />
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setShowMailForm(false)} className="px-4 py-2 text-sm font-medium text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50">Cancel</button>
+              <button onClick={() => { const a = document.createElement('a'); a.href = `mailto:hello@skyaccounting.com.ng?subject=${encodeURIComponent(mailSubject)}&body=${encodeURIComponent(mailMessage)}`; a.click(); setShowMailForm(false); setMailSubject(''); setMailMessage(''); }}
+                className="px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl hover:from-indigo-700 hover:to-indigo-800">Send</button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

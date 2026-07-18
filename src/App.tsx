@@ -115,6 +115,10 @@ import PostingRulesPage from './pages/settings/PostingRulesPage';
 import ApprovalWorkflowsPage from './pages/settings/ApprovalWorkflowsPage';
 
 import { OcrProcessingPage } from './pages/accountant/OcrProcessingPage';
+import { HelpDocumentsPage } from './pages/help/HelpDocumentsPage';
+import { FAQsPage } from './pages/help/FAQsPage';
+import { VideoTutorialsPage } from './pages/help/VideoTutorialsPage';
+import { MigrationGuidePage } from './pages/help/MigrationGuidePage';
 import { useAuth } from './hooks/useAuth';
 import { EmployeesPage as EmployeesPageReal } from './pages/payroll/EmployeesPage';
 import { PayrollRunsPage } from './pages/payroll/PayrollRunsPage';
@@ -439,6 +443,13 @@ function AppRoutes() {
           <Route path="/settings/invites" element={<InvitesSettingsPage />} />
           <Route path="/settings/integrations" element={<IntegrationsSettingsPage />} />
         </Route>
+
+        {/* Help & Support routes */}
+          <Route path="/help/documents" element={<HelpDocumentsPage />} />
+          <Route path="/help/faqs" element={<FAQsPage />} />
+          <Route path="/help/videos" element={<VideoTutorialsPage />} />
+          <Route path="/help/migration-guide" element={<MigrationGuidePage />} />
+          <Route path="/help" element={<Navigate to="/help/documents" replace />} />
 
         {/* Unmatched wildcard route */}
         <Route path="*" element={<NotFoundPage />} />
