@@ -276,10 +276,31 @@ export function ExpensesPage() {
   }
 
   const totalExpenses = filtered.reduce((s, e) => s + e.amount, 0);
+  const totalVat = filtered.reduce((s, e) => s + e.taxAmount, 0);
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
+          <p className="text-xs font-semibold text-slate-400 uppercase">Total Expenses</p>
+          <p className="text-2xl font-bold text-slate-900 mt-1">{formatNaira(totalExpenses)}</p>
+        </div>
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
+          <p className="text-xs font-semibold text-slate-400 uppercase">Recorded</p>
+          <p className="text-2xl font-bold text-slate-900 mt-1">{filtered.length}</p>
+        </div>
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
+          <p className="text-xs font-semibold text-slate-400 uppercase">Input VAT</p>
+          <p className="text-2xl font-bold text-amber-700 mt-1">{formatNaira(totalVat)}</p>
+        </div>
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
+          <p className="text-xs font-semibold text-slate-400 uppercase">Net Expense</p>
+          <p className="text-2xl font-bold text-emerald-700 mt-1">{formatNaira(totalExpenses - totalVat)}</p>
+        </div>
+      </div>
+
       <div className="flex items-center justify-between">
 
         <div className="flex items-center gap-2">
