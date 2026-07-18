@@ -427,7 +427,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
           {/* Org display */}
           <div className="flex items-center gap-2 min-w-0 mr-auto">
             {organisation?.logoUrl ? (
-              <img src={organisation.logoUrl} alt="" className="w-10 h-10 rounded-md object-contain bg-white p-0.5 hidden sm:block ring-1 ring-white/20" />
+              <img src={organisation.logoUrl} alt="" className="w-12 h-12 rounded-md object-contain bg-white p-0.5 hidden sm:block ring-1 ring-white/20" />
             ) : (
               <div className="w-6 h-6 rounded-md bg-white/20 flex items-center justify-center text-white text-[10px] font-bold hidden sm:block">
                 {organisation?.name?.charAt(0) || 'O'}
