@@ -11,7 +11,8 @@ import {
   FileBarChart, HelpCircle, FileInput, BookOpen, Sparkles, Package,
   ArrowRightLeft, TrendingDown, ReceiptText, AlertTriangle, Bot, Wifi,
   Star, Zap, ChevronRight, PanelLeftClose, PanelLeft,
-  CircleUser, Command, Plus, LayoutList, Home, Landmark
+  CircleUser, Command, Plus, LayoutList, Home, Landmark,
+  ShoppingCart, ShoppingBag, Receipt
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -42,6 +43,7 @@ interface NavItem {
 
 interface NavGroup {
   title: string;
+  icon: React.ComponentType<{ className?: string }>;
   items: NavItem[];
 }
 
@@ -64,8 +66,9 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
   const [showNewMenu, setShowNewMenu] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({
-    overview: false, sales: false, purchases: true, inventory: true,
-    payroll: true, banking: true, accountant: true, reports: true,
+    OVERVIEW: false, SALES: false, PROJECTS: true,
+    PURCHASES: true, INVENTORY: true, PAYROLL: true,
+    BANKING: true, ACCOUNTANT: true, REPORTS: true,
   });
 
   useEffect(() => {
@@ -123,11 +126,11 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
   }), []);
 
   const navigation: NavGroup[] = useMemo(() => [
-    { title: 'OVERVIEW', items: [
+    { title: 'OVERVIEW', icon: LayoutDashboard, items: [
       { name: 'Dashboard', id: 'dashboard', icon: LayoutDashboard },
       { name: 'AI Assistant', id: 'ai_assistant', icon: Bot },
     ]},
-    { title: 'SALES', items: [
+    { title: 'SALES', icon: ShoppingCart, items: [
       { name: 'Customers', id: 'customers', icon: Users },
       { name: 'Quotes', id: 'quotes', icon: FileText },
       { name: 'Sales Orders', id: 'sales_orders', icon: FileCode },
@@ -137,10 +140,10 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
       { name: 'Payments Received', id: 'payments_received', icon: DollarSign },
       { name: 'Credit Notes', id: 'credit_notes', icon: FileText },
     ]},
-    { title: 'PROJECTS', items: [
+    { title: 'PROJECTS', icon: Briefcase, items: [
       { name: 'All Projects', id: 'projects', icon: Briefcase },
     ]},
-    { title: 'PURCHASES', items: [
+    { title: 'PURCHASES', icon: ShoppingBag, items: [
       { name: 'Vendors', id: 'vendors', icon: Building },
       { name: 'Expenses', id: 'expenses', icon: CreditCard },
       { name: 'Recurring Expenses', id: 'recurring_expenses', icon: History },
@@ -149,19 +152,19 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
       { name: 'Payments Made', id: 'payments_made', icon: DollarSign },
       { name: 'Credit Notes', id: 'purchase_credit_notes', icon: FileText },
     ]},
-    { title: 'INVENTORY', items: [
+    { title: 'INVENTORY', icon: Package, items: [
       { name: 'Items & Services', id: 'items', icon: Package },
       { name: 'Inventory Adjustments', id: 'inventory_adjustments', icon: TrendingDown },
       { name: 'Inventory Management', id: 'inventory_management', icon: LayoutList },
     ]},
-    { title: 'PAYROLL', items: [
+    { title: 'PAYROLL', icon: Users, items: [
       { name: 'Employees', id: 'employees', icon: Users },
       { name: 'Payroll Runs', id: 'payroll_runs', icon: FileText },
       { name: 'PAYE Schedules', id: 'paye_schedules', icon: FileCode },
       { name: 'Pension Schedules', id: 'pension_schedules', icon: Shield },
       { name: 'Payslips', id: 'payslips', icon: FileInput },
     ]},
-    { title: 'BANKING', items: [
+    { title: 'BANKING', icon: Landmark, items: [
       { name: 'Bank Accounts', id: 'bank_accounts', icon: Landmark },
       { name: 'Bank Feed Reconciler', id: 'bank_feed', icon: ArrowRightLeft },
       { name: 'Connections', id: 'bank_connections', icon: Wifi },
@@ -170,7 +173,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
       { name: 'Currency Rates', id: 'currency_rates', icon: TrendingUp },
       { name: 'Transfers', id: 'bank_transfers', icon: ArrowRightLeft },
     ]},
-    { title: 'ACCOUNTANT', items: [
+    { title: 'ACCOUNTANT', icon: BookOpen, items: [
       { name: 'Chart of Accounts', id: 'chart_accounts', icon: BookOpen },
       { name: 'Manual Journals', id: 'manual_journals', icon: FileCode },
       { name: 'Budgets', id: 'budgets', icon: TrendingUp },
@@ -182,7 +185,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
       { name: 'OCR Processor', id: 'ocr', icon: FileText },
       { name: 'Intercompany Txns', id: 'intercompany', icon: ArrowRightLeft },
     ]},
-    { title: 'REPORTS', items: [
+    { title: 'REPORTS', icon: FileBarChart, items: [
       { name: 'Trial Balance', id: 'rep_trial_balance', icon: FileBarChart },
       { name: 'Income Statement', id: 'rep_income_statement', icon: FileBarChart },
       { name: 'Balance Sheet', id: 'rep_balance_sheet', icon: FileBarChart },
@@ -333,6 +336,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
         <nav className="flex-1 overflow-y-auto sidebar-scrollbar px-2 py-1 space-y-0.5">
           {filteredNavigation.map(group => {
             const isCollapsed = collapsedGroups[group.title] !== false;
+            const GroupIcon = group.icon;
             return (
               <div key={group.title}>
                 {!sidebarCollapsed && (
@@ -341,12 +345,15 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
                       if (!isCollapsed) {
                         setCollapsedGroups(prev => ({ ...prev, [group.title]: true }));
                       } else {
-                        setCollapsedGroups(prev => Object.keys(prev).reduce((acc, key) => ({ ...acc, [key]: key !== group.title }), {} as Record<string, boolean>));
+                        setCollapsedGroups(prev => {
+                          const allCollapsed = Object.fromEntries(Object.keys(prev).map(k => [k, true]));
+                          return { ...allCollapsed, [group.title]: false };
+                        });
                       }
                     }}
                     className="flex items-center justify-between w-full px-2 py-1.5 text-[10px] font-bold uppercase tracking-widest sidebar-group-header transition-colors"
                   >
-                    <span>{group.title}</span>
+                    <span className="flex items-center gap-2"><GroupIcon className="w-3.5 h-3.5 sidebar-icon" />{group.title}</span>
                     <ChevronDown className={`w-3 h-3 transition-transform ${isCollapsed ? '' : 'rotate-180'}`} />
                   </button>
                 )}

@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
@@ -10,7 +10,7 @@ import { CsvImportModal } from '../../components/ui/CsvImportModal';
 import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
 import {
   Plus, Search, Pencil, Trash2, X, Loader2, AlertCircle, Package, Briefcase,
-  Upload, Database, CheckCircle2, BarChart3, FileText, Download
+  Upload, Database, CheckCircle2, BarChart3, FileText, Download, ChevronDown
 } from 'lucide-react';
 
 interface GLAccount {
@@ -150,6 +150,19 @@ export function ItemsPage() {
   const [stockError, setStockError] = useState<string | null>(null);
   const [valuationOpen, setValuationOpen] = useState(false);
   const [valuationItemId, setValuationItemId] = useState('');
+  const [openStockOpen, setOpenStockOpen] = useState(false);
+  const [downloadOpen, setDownloadOpen] = useState(false);
+  const openStockRef = useRef<HTMLDivElement>(null);
+  const downloadRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (openStockRef.current && !openStockRef.current.contains(e.target as Node)) setOpenStockOpen(false);
+      if (downloadRef.current && !downloadRef.current.contains(e.target as Node)) setDownloadOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
 
   const { data: items, isLoading, isError } = useQuery<Item[]>({
     queryKey: ['inventory', 'items'],
@@ -304,34 +317,38 @@ export function ItemsPage() {
           <Plus size={14} />
           Add Item
         </button>
-        <button
-          onClick={() => setImportOpen(true)}
-          className="inline-flex items-center gap-2 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl transition-all duration-200 hover:bg-slate-50 hover:border-slate-300"
-        >
-          <Upload size={14} />
-          Import Opening Stock
-        </button>
-        <button
-          onClick={() => { setStockForm({ itemId: '', quantity: '', unitCost: '' }); setStockError(null); setStockSuccess(null); setOpenStockModal(true); }}
-          className="inline-flex items-center gap-2 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl transition-all duration-200 hover:bg-slate-50 hover:border-slate-300"
-        >
-          <Database size={14} />
-          Record Opening Stock
-        </button>
-        <button
-          onClick={() => exportItemsCSV(filteredItems)}
-          className="inline-flex items-center gap-2 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl transition-all duration-200 hover:bg-slate-50 hover:border-slate-300"
-        >
-          <Download size={14} />
-          CSV
-        </button>
-        <button
-          onClick={() => exportItemsPDF(filteredItems)}
-          className="inline-flex items-center gap-2 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl transition-all duration-200 hover:bg-slate-50 hover:border-slate-300"
-        >
-          <FileText size={14} />
-          PDF
-        </button>
+        <div className="relative" ref={openStockRef}>
+          <button
+            onClick={() => { setOpenStockOpen(!openStockOpen); setDownloadOpen(false); }}
+            className="inline-flex items-center gap-2 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl transition-all duration-200 hover:bg-slate-50 hover:border-slate-300"
+          >
+            <Database size={14} />
+            Opening Stock
+            <ChevronDown size={12} className={`transition-transform ${openStockOpen ? 'rotate-180' : ''}`} />
+          </button>
+          {openStockOpen && (
+            <div className="absolute right-0 top-full mt-1 w-52 bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1">
+              <button onClick={() => { setImportOpen(true); setOpenStockOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-600 hover:bg-slate-50"><Upload size={14} /> Import Opening Stock</button>
+              <button onClick={() => { setStockForm({ itemId: '', quantity: '', unitCost: '' }); setStockError(null); setStockSuccess(null); setOpenStockModal(true); setOpenStockOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-600 hover:bg-slate-50"><Database size={14} /> Record Opening Stock</button>
+            </div>
+          )}
+        </div>
+        <div className="relative" ref={downloadRef}>
+          <button
+            onClick={() => { setDownloadOpen(!downloadOpen); setOpenStockOpen(false); }}
+            className="inline-flex items-center gap-2 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl transition-all duration-200 hover:bg-slate-50 hover:border-slate-300"
+          >
+            <Download size={14} />
+            Download
+            <ChevronDown size={12} className={`transition-transform ${downloadOpen ? 'rotate-180' : ''}`} />
+          </button>
+          {downloadOpen && (
+            <div className="absolute right-0 top-full mt-1 w-40 bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1">
+              <button onClick={() => { exportItemsCSV(filteredItems); setDownloadOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-600 hover:bg-slate-50"><Download size={14} /> CSV</button>
+              <button onClick={() => { exportItemsPDF(filteredItems); setDownloadOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-600 hover:bg-slate-50"><FileText size={14} /> PDF</button>
+            </div>
+          )}
+        </div>
         <button
           onClick={() => setValuationOpen(true)}
           className="inline-flex items-center gap-2 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl transition-all duration-200 hover:bg-slate-50 hover:border-slate-300"

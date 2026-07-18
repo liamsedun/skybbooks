@@ -1,9 +1,9 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { budgetsApi, accountantApi, printWindow } from '../../lib/api';
 import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
 import { PageLoader } from '../../components/ui/PageLoader';
-import { Plus, X, Loader2, AlertCircle, CheckCircle2, Trash2, Download, Upload, Printer } from 'lucide-react';
+import { Plus, X, Loader2, AlertCircle, CheckCircle2, Trash2, Download, Upload, Printer, ChevronDown } from 'lucide-react';
 import { exportToCsv } from '../../lib/csvTemplates';
 
 function fmtNaira(v: number): string {
@@ -22,6 +22,16 @@ export function BudgetsPage() {
   const [csvText, setCsvText] = useState('');
   const [importMsg, setImportMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [importing, setImporting] = useState(false);
+  const [downloadOpen, setDownloadOpen] = useState(false);
+  const downloadRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (downloadRef.current && !downloadRef.current.contains(e.target as Node)) setDownloadOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const { data: budgets, isLoading } = useQuery({
@@ -89,11 +99,18 @@ export function BudgetsPage() {
             className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium border border-slate-200/80 text-slate-600 rounded-xl hover:bg-slate-50 transition-all duration-200">
             <Upload size={14} /> Import CSV
           </button>
-          <button onClick={exportBudgetsCSV}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium border border-slate-200/80 text-slate-600 rounded-xl hover:bg-slate-50 transition-all duration-200">
-            <Download size={14} /> CSV
-          </button>
-          <button onClick={handlePrintPdf} className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-white bg-red-600 rounded-xl hover:bg-red-700 transition-all duration-200"><Printer className="w-3.5 h-3.5" /> PDF</button>
+          <div className="relative" ref={downloadRef}>
+            <button onClick={() => setDownloadOpen(!downloadOpen)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium border border-slate-200/80 text-slate-600 rounded-xl hover:bg-slate-50 transition-all duration-200">
+              <Download size={14} /> Download <ChevronDown size={12} className={`transition-transform ${downloadOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {downloadOpen && (
+              <div className="absolute right-0 top-full mt-1 w-40 bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1">
+                <button onClick={() => { exportBudgetsCSV(); setDownloadOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-600 hover:bg-slate-50"><Download size={14} /> CSV</button>
+                <button onClick={() => { handlePrintPdf(); setDownloadOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-600 hover:bg-slate-50"><Printer size={14} /> Print PDF</button>
+              </div>
+            )}
+          </div>
           <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200"><Plus className="w-4 h-4" /> +New</button>
         </div>
       </div>

@@ -1,9 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fixedAssetsApi, printWindow } from '../../lib/api';
 import { PageLoader } from '../../components/ui/PageLoader';
 import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
-import { Building, TrendingDown, Plus, FileText, Download, Upload, Search, Trash2, Eye, Edit3, AlertTriangle, Repeat, Wrench, ArrowRight, History, BarChart4, X, Loader2, CheckCircle, MapPin, Layers } from 'lucide-react';
+import { Building, TrendingDown, Plus, FileText, Download, Upload, Search, Trash2, Eye, Edit3, AlertTriangle, Repeat, Wrench, ArrowRight, History, BarChart4, X, Loader2, CheckCircle, MapPin, Layers, ChevronDown } from 'lucide-react';
 
 function fmtNaira(v: number): string { return `₦${(v / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`; }
 function fmtDate(d: string | Date): string {
@@ -59,6 +59,16 @@ function AssetsTab() {
   const [csvText, setCsvText] = useState('');
   const [importMsg, setImportMsg] = useState('');
   const [importing, setImporting] = useState(false);
+  const [downloadOpen, setDownloadOpen] = useState(false);
+  const downloadRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (downloadRef.current && !downloadRef.current.contains(e.target as Node)) setDownloadOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
   const [lastImportIds, setLastImportIds] = useState<string[]>([]);
   const [clearing, setClearing] = useState(false);
   const [showDisposal, setShowDisposal] = useState<{ assetId: string; assetName: string; nbv: number } | null>(null);
@@ -150,8 +160,18 @@ function AssetsTab() {
         </select>
         <button onClick={() => { setEditAsset(null); setShowForm(true); }} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700"><Plus className="w-3.5 h-3.5" /> New Asset</button>
         <button onClick={() => { setShowImport(true); setCsvText(''); setImportMsg(''); }} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-600 bg-white border border-slate-200/80 rounded-xl hover:bg-slate-50"><Upload className="w-3.5 h-3.5" /> Import CSV</button>
-        <button onClick={handleExportCsv} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-600 bg-white border border-slate-200/80 rounded-xl hover:bg-slate-50"><Download className="w-3.5 h-3.5" /> Export CSV</button>
-        <button onClick={handlePrintPdf} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-red-600 rounded-xl hover:bg-red-700"><FileText className="w-3.5 h-3.5" /> PDF</button>
+        <div className="relative" ref={downloadRef}>
+            <button onClick={() => setDownloadOpen(!downloadOpen)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-600 bg-white border border-slate-200/80 rounded-xl hover:bg-slate-50">
+              <Download className="w-3.5 h-3.5" /> Download <ChevronDown size={12} className={`transition-transform ${downloadOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {downloadOpen && (
+              <div className="absolute right-0 top-full mt-1 w-40 bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1">
+                <button onClick={() => { handleExportCsv(); setDownloadOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-600 hover:bg-slate-50"><Download size={14} /> CSV</button>
+                <button onClick={() => { handlePrintPdf(); setDownloadOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-600 hover:bg-slate-50"><FileText size={14} /> Print PDF</button>
+              </div>
+            )}
+          </div>
       </div>
 
       {isLoading && <PageLoader message="Loading fixed assets..." />}

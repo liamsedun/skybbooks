@@ -2,14 +2,14 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   UserPlus, Search, X, Edit2, Loader2, RefreshCw,
   User, Phone, Briefcase, CreditCard,
   CheckCircle, XCircle, Save, GraduationCap,
   Award, Building2, Heart, Shield, Users, Plus, Trash2, MapPin, Upload,
-  Download, ToggleLeft, ToggleRight, AlertCircle, Settings, Trash, DollarSign
+  Download, ToggleLeft, ToggleRight, AlertCircle, Settings, Trash, DollarSign, ChevronDown, FileText
 } from 'lucide-react';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
 import { exportToCsv } from '../../lib/csvTemplates';
@@ -214,6 +214,16 @@ export function EmployeesPage() {
   });
 
   const [deletionTargetId, setDeletionTargetId] = useState<string | null>(null);
+  const [downloadOpen, setDownloadOpen] = useState(false);
+  const downloadRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (downloadRef.current && !downloadRef.current.contains(e.target as Node)) setDownloadOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
 
   function resetForm() {
     setForm({ ...emptyForm });
@@ -306,24 +316,18 @@ export function EmployeesPage() {
               <Trash2 className="w-3.5 h-3.5" /> Delete ({selectedIds.length})
             </button>
           )}
-          <button onClick={exportEmployeesCSV}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-600 border border-slate-200 rounded-xl transition-all duration-200 hover:bg-slate-50 hover:border-slate-300">
-            <Download className="w-3.5 h-3.5" /> CSV
-          </button>
-          <button onClick={() => {
-              try {
-                const rows = (employees||[]).map((e: any) =>
-                  `<tr><td>${e.staffId||''}</td><td>${e.firstName||''} ${e.lastName||''}</td><td>${e.department||'-'}</td><td>${e.jobTitle||'-'}</td><td class="c">${e.employmentStatus||'-'}</td><td>${e.email||''}</td></tr>`
-                ).join('');
-                printWindow('Employees', `<table><thead><tr><th>Staff ID</th><th>Name</th><th>Department</th><th>Job Title</th><th class="c">Status</th><th>Email</th></tr></thead><tbody>${rows}</tbody></table>`, `${(employees||[]).length} employees`);
-              } catch (err) {
-                alert('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'));
-                console.error('Print error:', err);
-              }
-            }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl transition-all duration-200 hover:from-blue-700 hover:to-blue-800 shadow-sm">
-            <Download className="w-3.5 h-3.5" /> PDF
-          </button>
+          <div className="relative" ref={downloadRef}>
+            <button onClick={() => setDownloadOpen(!downloadOpen)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-600 border border-slate-200 rounded-xl transition-all duration-200 hover:bg-slate-50 hover:border-slate-300">
+              <Download className="w-3.5 h-3.5" /> Download <ChevronDown size={12} className={`transition-transform ${downloadOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {downloadOpen && (
+              <div className="absolute left-0 top-full mt-1 w-40 bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1">
+                <button onClick={() => { exportEmployeesCSV(); setDownloadOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-600 hover:bg-slate-50"><Download size={14} /> CSV</button>
+                <button onClick={() => { setDownloadOpen(false); try { const rows = (employees||[]).map((e: any) => `<tr><td>${e.staffId||''}</td><td>${e.firstName||''} ${e.lastName||''}</td><td>${e.department||'-'}</td><td>${e.jobTitle||'-'}</td><td class="c">${e.employmentStatus||'-'}</td><td>${e.email||''}</td></tr>`).join(''); printWindow('Employees', `<table><thead><tr><th>Staff ID</th><th>Name</th><th>Department</th><th>Job Title</th><th class="c">Status</th><th>Email</th></tr></thead><tbody>${rows}</tbody></table>`, `${(employees||[]).length} employees`); } catch (err) { alert('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error')); console.error('Print error:', err); } }} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-600 hover:bg-slate-50"><FileText size={14} /> PDF</button>
+              </div>
+            )}
+          </div>
           {lastImportIds.length > 0 && (
             <button onClick={() => { if (confirm('Delete all employees from the last CSV import?')) clearMutation.mutate(lastImportIds); }}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-rose-600 bg-rose-50 border border-rose-200 rounded-xl transition-all duration-200 hover:bg-rose-100" title="Clear Last Import">

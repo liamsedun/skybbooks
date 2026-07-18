@@ -143,6 +143,19 @@ export function ChartOfAccountsPage() {
   const [importing, setImporting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const [showBalances, setShowBalances] = useState(true);
+  const [downloadOpen, setDownloadOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const downloadRef = useRef<HTMLDivElement>(null);
+  const importRef = useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (downloadRef.current && !downloadRef.current.contains(e.target as Node)) setDownloadOpen(false);
+      if (importRef.current && !importRef.current.contains(e.target as Node)) setImportOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
 
   const { data: accounts, isLoading, isError } = useQuery<Account[]>({
     queryKey: ['accountant', 'accounts', 'withBalances'],
@@ -365,10 +378,24 @@ export function ChartOfAccountsPage() {
                 : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
             }`}
           ><Eye className="w-3.5 h-3.5" /> {showBalances ? 'Hide Balances' : 'Show Balances'}</button>
-          <button onClick={() => downloadCsv('chart-of-accounts-template.csv', ['code', 'name', 'type', 'sub-type', 'parent code', 'description', 'active', 'opening balance (NGN)'], ['100000', 'Cash and Cash Equivalents', 'asset', 'Current Assets', '', '', 'Yes', '5000000'])} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-slate-500 rounded-xl hover:bg-slate-600 transition-all duration-200"><FileText className="w-3.5 h-3.5" /> Sample CSV</button>
-          <button onClick={() => setShowImport(true)} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200"><Upload className="w-3.5 h-3.5" /> Import CSV</button>
-          <button onClick={handleExportCsv} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 transition-all duration-200"><Download className="w-3.5 h-3.5" /> CSV</button>
-          <button onClick={handlePrintPdf} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-red-600 rounded-xl hover:bg-red-700 transition-all duration-200"><Printer className="w-3.5 h-3.5" /> PDF</button>
+          <div className="relative" ref={importRef}>
+            <button onClick={() => { setImportOpen(!importOpen); setDownloadOpen(false); }} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200"><Upload className="w-3.5 h-3.5" /> Import CoAs <ChevronDown size={12} className={`transition-transform ${importOpen ? 'rotate-180' : ''}`} /></button>
+            {importOpen && (
+              <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1">
+                <button onClick={() => { downloadCsv('chart-of-accounts-template.csv', ['code', 'name', 'type', 'sub-type', 'parent code', 'description', 'active', 'opening balance (NGN)'], ['100000', 'Cash and Cash Equivalents', 'asset', 'Current Assets', '', '', 'Yes', '5000000']); setImportOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-600 hover:bg-slate-50"><FileText size={14} /> Sample CSV</button>
+                <button onClick={() => { setShowImport(true); setImportOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-600 hover:bg-slate-50"><Upload size={14} /> Import CSV</button>
+              </div>
+            )}
+          </div>
+          <div className="relative" ref={downloadRef}>
+            <button onClick={() => { setDownloadOpen(!downloadOpen); setImportOpen(false); }} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 transition-all duration-200"><Download className="w-3.5 h-3.5" /> Download <ChevronDown size={12} className={`transition-transform ${downloadOpen ? 'rotate-180' : ''}`} /></button>
+            {downloadOpen && (
+              <div className="absolute right-0 top-full mt-1 w-40 bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1">
+                <button onClick={() => { handleExportCsv(); setDownloadOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-600 hover:bg-slate-50"><Download size={14} /> CSV</button>
+                <button onClick={() => { handlePrintPdf(); setDownloadOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-600 hover:bg-slate-50"><Printer size={14} /> Print PDF</button>
+              </div>
+            )}
+          </div>
           <button onClick={openAddModal} className="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-xs font-medium rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200"><Plus size={14} /> Add Account</button>
         </div>
       </div>
