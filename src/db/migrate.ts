@@ -2276,6 +2276,10 @@ export async function runMigration() {
     await db.execute(sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS status expense_status DEFAULT 'posted' NOT NULL`);
     await db.execute(sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS approved_by uuid REFERENCES users(id)`);
     await db.execute(sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS posted_by uuid REFERENCES users(id)`);
+    await db.execute(sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS fx_rate numeric(18,8)`);
+    await db.execute(sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS is_billable boolean DEFAULT false NOT NULL`);
+    await db.execute(sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS customer_id uuid REFERENCES contacts(id)`);
+    await db.execute(sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS recurring_id uuid`);
 
     await db.execute(sql`ALTER TABLE payments_received ADD COLUMN IF NOT EXISTS status payment_status DEFAULT 'posted' NOT NULL`);
     await db.execute(sql`ALTER TABLE payments_received ADD COLUMN IF NOT EXISTS approved_by uuid REFERENCES users(id)`);
