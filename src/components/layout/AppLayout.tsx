@@ -337,7 +337,13 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
               <div key={group.title}>
                 {!sidebarCollapsed && (
                   <button
-                    onClick={() => setCollapsedGroups(prev => ({ ...prev, [group.title]: !isCollapsed }))}
+                    onClick={() => {
+                      if (!isCollapsed) {
+                        setCollapsedGroups(prev => ({ ...prev, [group.title]: true }));
+                      } else {
+                        setCollapsedGroups(prev => Object.keys(prev).reduce((acc, key) => ({ ...acc, [key]: key !== group.title }), {} as Record<string, boolean>));
+                      }
+                    }}
                     className="flex items-center justify-between w-full px-2 py-1.5 text-[10px] font-bold uppercase tracking-widest sidebar-group-header transition-colors"
                   >
                     <span>{group.title}</span>
