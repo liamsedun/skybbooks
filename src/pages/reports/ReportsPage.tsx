@@ -313,13 +313,13 @@ export function TrialBalancePage() {
           <div className="relative" ref={obRef}>
             <button onClick={() => { setObOpen(!obOpen); setDlOpen(false); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-slate-600 rounded-xl hover:bg-slate-700 transition-all duration-200"><Database className="w-3.5 h-3.5" /> Opening Balances <ChevronDown size={12} className={`transition-transform ${obOpen ? 'rotate-180' : ''}`} /></button>
             {obOpen && (
-              <div className="absolute left-0 top-full mt-1 w-52 bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1">
+              <div className="absolute left-0 top-full mt-1 w-56 bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1">
                 <button onClick={() => { downloadCsv('trial-balance-opening-balances-template.csv', ['accountCode', 'accountName', 'debit (NGN)', 'credit (NGN)'], ['100000', 'Cash and Cash Equivalents', '5000000', '0']); setObOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-600 hover:bg-slate-50"><FileText size={14} /> Sample CSV</button>
                 <button onClick={() => { setShowImport(true); setObOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-600 hover:bg-slate-50"><Upload size={14} /> Import Opening Balances</button>
+                <button onClick={() => { handleOpenEditOb(); setObOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-600 hover:bg-slate-50"><Pencil size={14} /> Edit Opening Balances</button>
               </div>
             )}
           </div>
-          <button onClick={handleOpenEditOb} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-amber-600 rounded-xl hover:bg-amber-700 transition-all duration-200"><Pencil className="w-3.5 h-3.5" /> Edit Opening Balances</button>
           <div className="relative" ref={dlRef}>
             <button onClick={() => { setDlOpen(!dlOpen); setObOpen(false); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 transition-all duration-200"><Download className="w-3.5 h-3.5" /> Download <ChevronDown size={12} className={`transition-transform ${dlOpen ? 'rotate-180' : ''}`} /></button>
             {dlOpen && (
