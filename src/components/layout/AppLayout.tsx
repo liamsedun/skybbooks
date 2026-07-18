@@ -22,7 +22,7 @@ import { usePlatformBranding } from '../../hooks/usePlatformBranding';
 import { useNotifications } from '../../hooks/useNotifications';
 import { useFavorites } from '../../hooks/useFavorites';
 import { useRecentActivity } from '../../hooks/useRecentActivity';
-import { api } from '../../lib/api';
+import { api, setPrintOrgInfo } from '../../lib/api';
 import ChatWidget from '../chat/ChatWidget';
 import { CommandPalette } from './CommandPalette';
 import { QuickActionsBar } from './QuickActionsBar';
@@ -58,6 +58,12 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
   const totalUnread = unreadCount;
   const navigate = useNavigate();
   const location = useLocation();
+
+  React.useEffect(() => {
+    if (organisation) {
+      setPrintOrgInfo({ name: organisation.name, address: organisation.address, phone: organisation.phone, email: organisation.email, logoUrl: organisation.logoUrl });
+    }
+  }, [organisation]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileOpen, setIsMobileOpen] = useState(false);

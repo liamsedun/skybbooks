@@ -1540,13 +1540,31 @@ export function downloadBlob(blob: Blob, filename: string) {
   }
 }
 
+export interface OrgPrintInfo {
+  name: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  logoUrl?: string;
+}
+
+let _orgInfo: OrgPrintInfo | null = null;
+
+export function setPrintOrgInfo(info: OrgPrintInfo | null) {
+  _orgInfo = info;
+}
+
 export function printWindow(title: string, bodyHtml: string, subtitle?: string) {
+  const org = _orgInfo;
+  const logoHtml = org?.logoUrl ? `<img src="${org.logoUrl}" alt="" style="max-height:48px;max-width:160px;object-fit:contain" />` : '';
+  const orgDetails = [org?.address, org?.phone, org?.email].filter(Boolean).join(' &bull; ');
   const html = `<!DOCTYPE html><html><head><title>${title}</title><style>
     *{margin:0;padding:0;box-sizing:border-box}
     body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:40px;color:#1e293b}
     .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid #0f172a}
-    .company{font-size:14px;font-weight:700;color:#0f172a}
-    .subtitle{font-size:10px;color:#64748b}
+    .org-info{display:flex;align-items:center;gap:12px}
+    .org-name{font-size:15px;font-weight:700;color:#0f172a}
+    .org-details{font-size:11px;color:#64748b;margin-top:2px}
     .title{font-size:18px;font-weight:700;color:#0f172a}
     .date{font-size:11px;color:#64748b;margin-top:4px}
     table{width:100%;border-collapse:collapse;margin-top:16px}
@@ -1558,11 +1576,11 @@ export function printWindow(title: string, bodyHtml: string, subtitle?: string) 
     @media print{body{padding:20px;color-adjust:exact;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   </style></head><body>
   <div class="header">
-    <div><div class="company">SkyBooks</div><div class="subtitle">By Skyhouse Accountants &amp; Technologies</div></div>
+    <div><div class="org-info">${logoHtml}<div><div class="org-name">${org?.name || 'SkyBooks'}</div>${orgDetails ? `<div class="org-details">${orgDetails}</div>` : '<div class="org-details">By Skyhouse Accountants &amp; Technologies</div>'}</div></div></div>
     <div style="text-align:right"><div class="title">${title}</div>${subtitle ? `<div class="date">${subtitle}</div>` : ''}<div class="date">Generated: ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}</div></div>
   </div>
   ${bodyHtml}
-  <div class="footer">SkyBooks By Skyhouse Accountants &amp; Technologies (Olalekan Williams Edun) &bull; Confidential</div>
+  <div class="footer">${org?.name || 'SkyBooks'} &bull; Confidential</div>
   </body></html>`;
   const w = window.open('', '_blank');
   if (w) { w.document.write(html); w.document.close(); w.name = 'printPopup'; setTimeout(() => { try { w.print(); } catch(e) {} }, 1500); }
