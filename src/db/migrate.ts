@@ -2280,6 +2280,7 @@ export async function runMigration() {
     await db.execute(sql`ALTER TABLE payments_received ADD COLUMN IF NOT EXISTS status payment_status DEFAULT 'posted' NOT NULL`);
     await db.execute(sql`ALTER TABLE payments_received ADD COLUMN IF NOT EXISTS approved_by uuid REFERENCES users(id)`);
     await db.execute(sql`ALTER TABLE payments_received ADD COLUMN IF NOT EXISTS posted_by uuid REFERENCES users(id)`);
+    await db.execute(sql`ALTER TABLE payments_received ADD COLUMN IF NOT EXISTS income_account_id uuid REFERENCES accounts(id)`);
 
     await db.execute(sql`ALTER TABLE payments_made ADD COLUMN IF NOT EXISTS status payment_status DEFAULT 'posted' NOT NULL`);
     await db.execute(sql`ALTER TABLE payments_made ADD COLUMN IF NOT EXISTS approved_by uuid REFERENCES users(id)`);
