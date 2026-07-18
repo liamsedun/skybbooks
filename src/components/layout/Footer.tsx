@@ -5,7 +5,7 @@ import { usePlatformBranding } from '../../hooks/usePlatformBranding';
 export function Footer() {
   const { developerLogoUrl } = usePlatformBranding();
   return (
-    <footer className="footer-main mt-16 py-8 px-6 md:px-8" id="corporate-skyhouse-footer">
+    <footer className="footer-main mt-8 py-4 px-6 md:px-8" id="corporate-skyhouse-footer">
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
 
         {/* Brand identity */}
@@ -78,7 +78,9 @@ export function Footer() {
         </div>
       </div>
 
-
+      <div className="max-w-7xl mx-auto mt-4 pt-3 border-t footer-border text-center text-[11px] footer-text-muted">
+        <p>© {new Date().getFullYear()} Skyhouse. All rights reserved. Registered SaaS Workspace.</p>
+      </div>
     </footer>
   );
 }
