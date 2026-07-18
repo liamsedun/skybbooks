@@ -92,7 +92,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
   }, [showUserMenu, showNotifications, showNewMenu]);
 
   const pathMap: Record<string, string> = useMemo(() => ({
-    dashboard: '/dashboard', ai_insights: '/ai/insights', ai_assistant: '/ai/assistant',
+    dashboard: '/dashboard', ai_assistant: '/ai/assistant',
     customers: '/sales/customers', quotes: '/sales/quotes', sales_orders: '/sales/sales-orders',
     invoices: '/sales/invoices', receipts: '/sales/receipts', recurring_invoices: '/sales/recurring-invoices',
     payments_received: '/sales/payments', credit_notes: '/sales/credit-notes',
@@ -125,7 +125,6 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
   const navigation: NavGroup[] = useMemo(() => [
     { title: 'OVERVIEW', items: [
       { name: 'Dashboard', id: 'dashboard', icon: LayoutDashboard },
-      { name: 'SMART CFO Insights', id: 'ai_insights', icon: Sparkles },
       { name: 'AI Assistant', id: 'ai_assistant', icon: Bot },
     ]},
     { title: 'SALES', items: [

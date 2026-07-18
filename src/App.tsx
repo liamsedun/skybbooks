@@ -16,7 +16,6 @@ import { ToastProvider } from './contexts/ToastContext';
 // Layout & Custom Pages
 import { AppLayout } from './components/layout/AppLayout';
 import { Dashboard } from './pages/Dashboard';
-import InsightsDashboard from './pages/ai/InsightsDashboard';
 import { AccountingAssistant } from './pages/ai/AccountingAssistant';
 
 // Sales Pages
@@ -275,7 +274,7 @@ function AppRoutes() {
           <Route path="/dashboard" element={<Dashboard onNavigate={() => {}} />} />
 
           {/* Module root redirects (for breadcrumb parent links) */}
-          <Route path="/ai" element={<Navigate to="/ai/insights" replace />} />
+          <Route path="/ai" element={<Navigate to="/ai/assistant" replace />} />
           <Route path="/sales" element={<Navigate to="/sales/invoices" replace />} />
           <Route path="/purchases" element={<Navigate to="/purchases/bills" replace />} />
           <Route path="/inventory" element={<Navigate to="/inventory/items" replace />} />
@@ -284,7 +283,6 @@ function AppRoutes() {
           <Route path="/reports" element={<Navigate to="/reports/trial-balance" replace />} />
           <Route path="/revenue" element={<Navigate to="/revenue/contracts" replace />} />
 
-          <Route path="/ai/insights" element={<InsightsDashboard />} />
           <Route path="/ai/assistant" element={<AccountingAssistant />} />
           
           {/* Sales module routing */}
