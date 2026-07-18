@@ -308,7 +308,7 @@ export function ItemsPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
-      <div className="flex items-start justify-between mb-6">
+      <div className="flex items-center justify-end gap-2 mb-6">
 
         <button
           onClick={openAddModal}
