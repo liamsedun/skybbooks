@@ -420,7 +420,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
         </div>
 
         {/* Help & Support dropdown */}
-        <div className="sidebar-settings p-2" ref={helpRef}>
+        <div className="sidebar-settings p-2 relative" ref={helpRef}>
           <button
             onClick={() => setHelpOpen(!helpOpen)}
             className={`sidebar-nav-btn w-full flex items-center gap-2 px-2.5 py-1 rounded-xl text-[13px] transition-all duration-150 ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
@@ -429,7 +429,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
             {!sidebarCollapsed && <><span className="truncate sidebar-text flex-1 text-left">Help & Support</span><ChevronDown size={12} className={`sidebar-icon transition-transform ${helpOpen ? 'rotate-180' : ''}`} /></>}
           </button>
           {helpOpen && (
-            <div className="absolute left-0 bottom-full mb-1 w-64 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-2 max-h-[70vh] overflow-y-auto">
+            <div className="absolute right-0 bottom-full mb-1 w-64 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-2 max-h-[70vh] overflow-y-auto">
               {/* Page links */}
               <button onClick={() => { setHelpOpen(false); navigate('/help/documents'); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><BookOpen size={15} /> Help Documents</button>
               <button onClick={() => { setHelpOpen(false); navigate('/help/faqs'); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><HelpCircle size={15} /> FAQs</button>
