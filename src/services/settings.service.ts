@@ -8,14 +8,14 @@ export interface OrgSettings {
   txnNumbering?: { series?: { module: string; prefix: string; start: string }[] };
   branding?: { primaryColor?: string; showLogo?: boolean; [key: string]: any };
   paymentTerms?: { terms?: { name: string; days: number }[] };
-  invoices?: { autoGenerateNumbers?: boolean; allowDiscounts?: boolean };
-  bills?: { autoGenerateNumbers?: boolean };
-  quotes?: { autoGenerateNumbers?: boolean };
-  salesOrders?: { autoGenerateNumbers?: boolean };
+  invoices?: { autoGenerateNumbers?: boolean; allowDiscounts?: boolean; defaultStatus?: 'draft' | 'sent' };
+  bills?: { autoGenerateNumbers?: boolean; defaultStatus?: 'draft' };
+  quotes?: { autoGenerateNumbers?: boolean; defaultStatus?: 'draft' | 'sent' };
+  salesOrders?: { autoGenerateNumbers?: boolean; defaultStatus?: 'draft' | 'confirmed' };
   creditNotes?: { autoGenerateNumbers?: boolean };
-  purchases?: { autoGenerateNumbers?: boolean };
+  purchases?: { autoGenerateNumbers?: boolean; defaultStatus?: 'draft' };
   revenueRecognition?: { method?: 'accrual' | 'cash'; deferRevenue?: boolean; autoDeferredSchedule?: boolean };
-  accountant?: { defaultAdjustmentAccountId?: string; [key: string]: any };
+  accountant?: { defaultAdjustmentAccountId?: string; defaultWriteOffAccountId?: string; [key: string]: any };
   [key: string]: any;
 }
 
@@ -26,13 +26,13 @@ const DEFAULT_SETTINGS: OrgSettings = {
   txnNumbering: { series: [] },
   branding: { primaryColor: '#1e3a8a', showLogo: true },
   paymentTerms: { terms: [] },
-  invoices: { autoGenerateNumbers: true, allowDiscounts: true },
-  bills: { autoGenerateNumbers: true },
-  quotes: { autoGenerateNumbers: true },
-  salesOrders: { autoGenerateNumbers: true },
+  invoices: { autoGenerateNumbers: true, allowDiscounts: true, defaultStatus: 'draft' },
+  bills: { autoGenerateNumbers: true, defaultStatus: 'draft' },
+  quotes: { autoGenerateNumbers: true, defaultStatus: 'draft' },
+  salesOrders: { autoGenerateNumbers: true, defaultStatus: 'draft' },
   creditNotes: { autoGenerateNumbers: true },
   revenueRecognition: { method: 'accrual', deferRevenue: false, autoDeferredSchedule: false },
-  accountant: { defaultAdjustmentAccountId: '' },
+  accountant: { defaultAdjustmentAccountId: '', defaultWriteOffAccountId: '' },
 };
 
 export async function getOrgSettings(orgId: string): Promise<OrgSettings> {

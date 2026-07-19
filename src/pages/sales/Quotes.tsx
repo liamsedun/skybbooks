@@ -6,6 +6,7 @@ import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { api, orgApi } from '../../lib/api';
+import { useOrgSettings } from '../../hooks/useOrgSettings';
 import {
   Plus, Search, Pencil, Trash2, X, Loader2, AlertCircle, Upload,
   FileText, ArrowRight, CheckCircle2, Clock, XCircle, RefreshCw, ChevronRight,
@@ -157,6 +158,7 @@ function exportQuotesPDF(quotes: Quote[], customerMap: Map<string, Customer>) {
 export function QuotesPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { settings: orgSettings } = useOrgSettings();
   const [searchTerm, setSearchTerm]     = useState('');
   const [statusFilter, setStatusFilter] = useState<'all'|QuoteStatus>('all');
   const [dateFrom, setDateFrom] = useState('');
@@ -260,7 +262,7 @@ export function QuotesPage() {
 
   const selectedQuote = selectedId ? (quotesData||[]).find(q=>q.id===selectedId) : null;
 
-  function openAddModal() { setForm(EMPTY_FORM); setEditingId(null); setFormError(null); setModalOpen(true); }
+  function openAddModal() { setForm({ ...EMPTY_FORM, status: (orgSettings?.quotes?.defaultStatus as QuoteStatus) || 'draft' }); setEditingId(null); setFormError(null); setModalOpen(true); }
   function openEditModal(q:Quote) { setForm(formFromQuote(q)); setEditingId(q.id); setFormError(null); setModalOpen(true); }
   function closeModal() { setModalOpen(false); setEditingId(null); setFormError(null); }
   function handleSubmit(e:React.FormEvent) {

@@ -31,6 +31,7 @@ import { useCurrency } from '../../hooks/useCurrency';
 import { AmountDisplay } from '../../components/ui/AmountDisplay';
 import { CurrencySelector } from '../../components/ui/CurrencySelector';
 import { useAuth } from '../../hooks/useAuth';
+import { useOrgSettings } from '../../hooks/useOrgSettings';
 
 interface InvoiceFormProps {
   invoiceId?: string; // If present, we are in Edit Mode
@@ -65,6 +66,7 @@ type InvoiceFormValues = z.infer<typeof invoiceFormZodSchema>;
 export function InvoiceForm({ invoiceId, onNavigate }: InvoiceFormProps) {
   const queryClient = useQueryClient();
   const { formatNaira } = useCurrency();
+  const { settings: orgSettings } = useOrgSettings();
 
   // 1. Core Component States
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
@@ -317,7 +319,7 @@ export function InvoiceForm({ invoiceId, onNavigate }: InvoiceFormProps) {
         terms: data.formValues.terms || '',
         currency: invoiceCurrency,
         fxRate: invoiceFxRate ? parseFloat(invoiceFxRate) : 1.0,
-        status: data.saveAndSend ? 'sent' : (invoiceId ? editingInvoice?.status : 'draft'),
+        status: data.saveAndSend ? 'sent' : (invoiceId ? editingInvoice?.status : (orgSettings?.invoices?.defaultStatus || 'draft')),
         projectId: invoiceProjectId || undefined,
         lines: linesPayload,
       };

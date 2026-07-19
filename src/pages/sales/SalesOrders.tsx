@@ -5,6 +5,7 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, orgApi } from '../../lib/api';
+import { useOrgSettings } from '../../hooks/useOrgSettings';
 import {
   Plus, Search, Pencil, Trash2, X, Loader2, AlertCircle,
   FileText, Download, CheckCircle2, Clock, XCircle, TrendingDown,
@@ -172,6 +173,7 @@ function exportSOsPDF(orders: SalesOrder[], customerMap: Map<string, Customer>) 
 
 export function SalesOrdersPage() {
   const queryClient = useQueryClient();
+  const { settings: orgSettings } = useOrgSettings();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | SOStatus>('all');
   const [dateFrom, setDateFrom] = useState('');
@@ -266,7 +268,7 @@ export function SalesOrdersPage() {
     return { all, byStatus };
   }, [ordersData]);
 
-  function openCreate() { setEditingId(null); setForm(EMPTY_FORM); setFormError(null); setViewOnly(false); setModalOpen(true); }
+  function openCreate() { setEditingId(null); setForm({ ...EMPTY_FORM, status: (orgSettings?.salesOrders?.defaultStatus as SOStatus) || 'draft' }); setFormError(null); setViewOnly(false); setModalOpen(true); }
   function openEdit(so: SalesOrder, readonly = false) { setEditingId(so.id); setForm(formFromSO(so)); setFormError(null); setViewOnly(readonly); setModalOpen(true); }
   function closeModal() { setModalOpen(false); setEditingId(null); setFormError(null); setViewOnly(false); }
 
