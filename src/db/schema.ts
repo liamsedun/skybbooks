@@ -783,7 +783,7 @@ export const recurringBills = pgTable('recurring_bills', {
   id: uuid('id').defaultRandom().primaryKey(),
   orgId: uuid('org_id').references(() => organisations.id).notNull(),
   vendorId: uuid('vendor_id').references(() => contacts.id).notNull(),
-  frequency: recurringFrequencyEnum('frequency').notNull(),
+  frequency: text('frequency').notNull(),
   startDate: timestamp('start_date').notNull(),
   endDate: timestamp('end_date'),
   nextRunDate: timestamp('next_run_date'),

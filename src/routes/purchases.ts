@@ -219,7 +219,7 @@ const recurringTemplateLineSchema = z.object({
 
 const createRecurringBillSchema = z.object({
   vendorId: z.string().uuid('Invalid vendor.'),
-  frequency: z.enum(['daily', 'weekly', 'monthly', 'quarterly', 'semi-annually', 'annually']),
+  frequency: z.enum(['daily', 'weekly', 'monthly', 'quarterly', 'annually']),
   startDate: z.string().or(z.date()),
   endDate: z.string().or(z.date()).nullable().optional(),
   isActive: z.boolean().optional().default(true),
