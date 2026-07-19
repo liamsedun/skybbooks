@@ -120,6 +120,9 @@ import { HelpDocumentsPage } from './pages/help/HelpDocumentsPage';
 import { FAQsPage } from './pages/help/FAQsPage';
 import { VideoTutorialsPage } from './pages/help/VideoTutorialsPage';
 import { MigrationGuidePage } from './pages/help/MigrationGuidePage';
+import { LandingPage } from './pages/marketing/LandingPage';
+import { PrivacyPage } from './pages/marketing/PrivacyPage';
+import { TermsPage } from './pages/marketing/TermsPage';
 import { useAuth } from './hooks/useAuth';
 import { EmployeesPage as EmployeesPageReal } from './pages/payroll/EmployeesPage';
 import { PayrollRunsPage } from './pages/payroll/PayrollRunsPage';
@@ -273,9 +276,13 @@ function AppRoutes() {
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/accept-invite" element={<AcceptInvitePage />} />
 
+        {/* Public marketing pages */}
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
+
         {/* Protected general ledger system */}
         <Route element={<ProtectedRoute />}>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<Dashboard onNavigate={() => {}} />} />
 
           {/* Module root redirects (for breadcrumb parent links) */}
