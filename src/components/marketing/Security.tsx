@@ -1,101 +1,90 @@
 import React from 'react';
 import { useScrollReveal } from '../../hooks/useScrollReveal';
-import { Shield, Lock, Server, Eye, Check } from 'lucide-react';
+import {
+  Shield, ShieldCheck, Cloud, Users, ScrollText, Globe, CheckCircle,
+  FileText, Receipt, Building2, Activity, Lock, Database, RefreshCw, Server,
+} from 'lucide-react';
 
-const features = [
-  {
-    icon: Shield,
-    title: 'End-to-End Encryption',
-    description: 'All data encrypted with AES-256 at rest and TLS 1.3 in transit. Your financial information stays private and secure.',
-  },
-  {
-    icon: Lock,
-    title: 'SOC 2 Infrastructure',
-    description: 'Cloud infrastructure audited annually against SOC 2 Type II standards for security, availability, and confidentiality.',
-  },
-  {
-    icon: Server,
-    title: 'Daily Automated Backups',
-    description: 'Automated backups with 30-day retention policy. Geo-redundant storage ensures your data survives any disaster.',
-  },
-  {
-    icon: Eye,
-    title: 'Access Controls & Audit Trails',
-    description: 'Role-based permissions with granular access levels. Every action is logged in an immutable audit trail.',
-  },
+const items = [
+  { label: '256-bit Encryption', icon: Shield, color: '#0EA5E9', group: 'Security' },
+  { label: 'SSL Security', icon: Lock, color: '#0EA5E9', group: 'Security' },
+  { label: '99.9% Uptime', icon: Activity, color: '#0EA5E9', group: 'Security' },
+  { label: 'Role Permissions', icon: Users, color: '#0EA5E9', group: 'Security' },
+  { label: 'Cloud Backup', icon: Cloud, color: '#8B5CF6', group: 'Backup' },
+  { label: 'Daily Backups', icon: RefreshCw, color: '#8B5CF6', group: 'Backup' },
+  { label: 'Audit Trail', icon: ScrollText, color: '#8B5CF6', group: 'Backup' },
+  { label: 'GDPR Ready', icon: Globe, color: '#059669', group: 'Compliance' },
+  { label: 'NDPR Ready', icon: CheckCircle, color: '#059669', group: 'Compliance' },
+  { label: 'IFRS Compliant', icon: FileText, color: '#059669', group: 'Compliance' },
+  { label: 'VAT Ready', icon: Receipt, color: '#059669', group: 'Compliance' },
+  { label: 'FIRS Ready', icon: Building2, color: '#059669', group: 'Compliance' },
+  { label: 'Database Encryption', icon: Database, color: '#0EA5E9', group: 'Security' },
+  { label: 'SOC 2 Infrastructure', icon: ShieldCheck, color: '#059669', group: 'Compliance' },
 ];
 
-const badges = [
-  'ISO 27001',
-  'SOC 2 Type II',
-  'NDPR Compliant',
-  'PCI DSS',
-];
+const groups = ['Security', 'Backup', 'Compliance'] as const;
+const groupLabels: Record<string, string> = {
+  Security: 'Security & Infrastructure',
+  Backup: 'Backup & Audit',
+  Compliance: 'Regulatory Compliance',
+};
 
 export function Security() {
   const { ref, isVisible } = useScrollReveal();
 
   return (
-    <section className="py-16 lg:py-24 bg-white">
+    <section id="security" className="py-16 lg:py-24 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-2xl mx-auto mb-16">
-          <span className="text-xs font-semibold text-[#0EA5E9] uppercase tracking-widest">Security</span>
+        <div className="text-center max-w-2xl mx-auto mb-14">
+          <span className="text-xs font-semibold text-[#0EA5E9] uppercase tracking-widest">Security & Trust</span>
           <h2 className="mt-3 text-3xl lg:text-4xl font-bold text-[#082F49]">
             Bank-grade security for your financial data
           </h2>
           <p className="mt-4 text-slate-600 leading-relaxed">
-            Your data is protected by enterprise-grade security infrastructure and best-in-class practices.
+            Your data is protected by enterprise-grade encryption, daily backups, and full regulatory compliance.
           </p>
         </div>
 
-        <div ref={ref} className="grid lg:grid-cols-5 gap-10 items-start">
-          <div className="lg:col-span-3 space-y-6">
-            {features.map((f, i) => {
-              const Icon = f.icon;
-              return (
-                <div
-                  key={f.title}
-                  className={`flex gap-5 p-5 rounded-xl transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}
-                  style={{ transitionDelay: `${i * 120}ms` }}
-                >
-                  <div className="w-12 h-12 rounded-xl bg-sky-50 flex items-center justify-center shrink-0">
-                    <Icon size={22} className="text-[#0EA5E9]" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-semibold text-[#082F49] mb-1">{f.title}</h3>
-                    <p className="text-sm text-slate-500 leading-relaxed">{f.description}</p>
-                  </div>
+        <div ref={ref} className="space-y-10">
+          {groups.map((group, gIdx) => {
+            const groupItems = items.filter(i => i.group === group);
+            return (
+              <div key={group} className={`transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}
+                style={{ transitionDelay: `${gIdx * 150}ms` }}
+              >
+                <h3 className="text-xs font-semibold text-[#0EA5E9] uppercase tracking-widest mb-4">{groupLabels[group]}</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                  {groupItems.map((item, i) => {
+                    const Icon = item.icon;
+                    return (
+                      <div
+                        key={item.label}
+                        className="group relative flex flex-col items-center justify-center gap-2.5 bg-white rounded-xl border border-slate-200 p-5 transition-all duration-300 hover:border-slate-300 hover:shadow-md hover:-translate-y-0.5 cursor-default"
+                      >
+                        <div className="transition-all duration-300 group-hover:scale-110" style={{ color: item.color }}>
+                          <Icon size={24} />
+                        </div>
+                        <span className="text-[11px] font-semibold text-slate-700 text-center leading-tight">{item.label}</span>
+                        <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+                          style={{ boxShadow: `inset 0 0 24px ${item.color}12` }} />
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            );
+          })}
+        </div>
 
-          <div
-            className={`lg:col-span-2 transition-all duration-700 delay-300 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}
-          >
-            <div className="bg-slate-50 rounded-2xl border border-slate-200 p-6 lg:p-8">
-              <div className="flex items-center gap-3 mb-6">
-                <Shield size={22} className="text-[#0EA5E9]" />
-                <h3 className="text-lg font-bold text-[#082F49]">Certifications & Compliance</h3>
-              </div>
-              <div className="space-y-3">
-                {badges.map((badge) => (
-                  <div
-                    key={badge}
-                    className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 border border-slate-100 micro-scale"
-                  >
-                    <div className="w-7 h-7 rounded-full bg-green-50 flex items-center justify-center">
-                      <Check size={14} className="text-green-600" />
-                    </div>
-                    <span className="text-sm font-medium text-[#082F49]">{badge}</span>
-                  </div>
-                ))}
-              </div>
-              <p className="text-xs text-slate-400 mt-5 leading-relaxed">
-                Independently verified security certifications and compliance frameworks.
-              </p>
-            </div>
-          </div>
+        {/* Trust bar */}
+        <div className={`mt-10 flex flex-wrap items-center justify-center gap-3 text-xs text-slate-400 transition-all duration-700 delay-700 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
+          <span className="flex items-center gap-1"><Shield size={12} className="text-emerald-500" /> AES-256 at rest</span>
+          <span className="text-slate-200">·</span>
+          <span className="flex items-center gap-1"><Lock size={12} className="text-emerald-500" /> TLS 1.3 in transit</span>
+          <span className="text-slate-200">·</span>
+          <span className="flex items-center gap-1"><Server size={12} className="text-emerald-500" /> 30-day retention</span>
+          <span className="text-slate-200">·</span>
+          <span className="flex items-center gap-1"><Globe size={12} className="text-emerald-500" /> Geo-redundant</span>
         </div>
       </div>
     </section>
