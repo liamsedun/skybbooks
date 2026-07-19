@@ -147,7 +147,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
   const navigation: NavGroup[] = useMemo(() => [
     { title: 'OVERVIEW', icon: LayoutDashboard, items: [
       { name: 'Dashboard', id: 'dashboard', icon: LayoutDashboard },
-      { name: 'AI Assistant', id: 'ai_assistant', icon: Bot },
+      { name: 'Smart Assistant', id: 'ai_assistant', icon: Bot },
     ]},
     { title: 'SALES', icon: ShoppingCart, items: [
       { name: 'Customers', id: 'customers', icon: Users },
@@ -251,6 +251,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     const path = pathMap[id];
     if (!path) return;
     addActivity({ id, path, label: navigation.flatMap(g => g.items).find(i => i.id === id)?.name || id });
+    window.scrollTo(0, 0);
     navigate(path);
     setIsMobileOpen(false);
     if (onViewChange) onViewChange(id);

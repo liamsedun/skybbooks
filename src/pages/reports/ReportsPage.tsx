@@ -1866,13 +1866,7 @@ function ReportShell({ reportType, title }: ReportPageProps) {
             (fc.accounts?.length ? secRows('Finance Costs', fc.accounts, fcTotal) : '');
 
           printWindow('Income Statement',
-            `<div style="text-align:center;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #e2e8f0">
-              ${orgLogo}
-              <h1 style="margin:4px 0;font-size:18px;color:#0f172a">${orgName}</h1>
-              ${orgAddr}
-              <p style="margin:2px 0;font-size:11px;color:#64748b">${contactInfo}</p>
-            </div>
-            <h2 style="font-size:16px;color:#0f172a;margin:0 0 8px">Income Statement</h2>
+            `<h2 style="font-size:16px;color:#0f172a;margin:0 0 8px">Income Statement</h2>
             <p style="font-size:11px;color:#64748b;margin:0 0 12px">Period: ${sDate} - ${eDate} &bull; Generated: ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
             <table style="width:100%;border-collapse:collapse">
               <thead>
@@ -1920,13 +1914,7 @@ function ReportShell({ reportType, title }: ReportPageProps) {
           const liabilityHtml = printSection('Current Liabilities', cl.total||0, cl.subSections||[]) + printSection('Non-Current Liabilities', ncl.total||0, ncl.subSections||[]);
           const equityHtml = printSection('Equity', eq.total||0, eq.subSections||[]);
           printWindow('Balance Sheet',
-            `<div style="text-align:center;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #e2e8f0">
-              ${orgLogo}
-              <h1 style="margin:4px 0;font-size:18px;color:#0f172a">${orgName}</h1>
-              ${orgAddr}
-              <p style="margin:2px 0;font-size:11px;color:#64748b">${contactInfo}</p>
-            </div>
-            <h2 style="font-size:16px;color:#0f172a;margin:0 0 8px">Balance Sheet</h2>
+            `<h2 style="font-size:16px;color:#0f172a;margin:0 0 8px">Balance Sheet</h2>
             <p style="font-size:11px;color:#64748b;margin:0 0 12px">As of ${asOfDate} &bull; Generated: ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
             <table style="width:100%;border-collapse:collapse">
               <thead>
@@ -1983,13 +1971,7 @@ function ReportShell({ reportType, title }: ReportPageProps) {
           const orgCfLogo = orgCf.logoUrl ? `<img src="${orgCf.logoUrl}" style="max-height:60px;max-width:200px;object-fit:contain" />` : '';
           const orgCfContact = [orgCfPhone, orgCfEmail, orgCfWebsite].filter(Boolean).join(' | ');
           printWindow('Cash Flow Statement',
-            `<div style="text-align:center;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #e2e8f0">
-              ${orgCfLogo}
-              <h1 style="margin:4px 0;font-size:18px;color:#0f172a">${orgCfName}</h1>
-              ${orgCfAddr}
-              <p style="margin:2px 0;font-size:11px;color:#64748b">${orgCfContact}</p>
-            </div>
-            <h2 style="font-size:16px;color:#0f172a;margin:0 0 8px">Cash Flow Statement</h2>
+            `<h2 style="font-size:16px;color:#0f172a;margin:0 0 8px">Cash Flow Statement</h2>
             <p style="font-size:11px;color:#64748b;margin:0 0 12px">Period: ${sDate} - ${eDate} &bull; Generated: ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
             <table style="width:100%;border-collapse:collapse">
               <thead>
@@ -2021,13 +2003,7 @@ function ReportShell({ reportType, title }: ReportPageProps) {
           }
           const orgSocie = (orgData as any)?.data || orgData || {};
           printWindow('Statement of Changes in Equity',
-            `<div style="text-align:center;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #e2e8f0">
-              ${orgSocie.logoUrl ? `<img src="${orgSocie.logoUrl}" style="max-height:60px;max-width:200px;object-fit:contain" />` : ''}
-              <h1 style="margin:4px 0;font-size:18px;color:#0f172a">${orgSocie.name || ''}</h1>
-              ${orgSocie.address ? `<p style="margin:0;font-size:11px;color:#475569">${orgSocie.address}</p>` : ''}
-              <p style="margin:2px 0;font-size:11px;color:#64748b">${[orgSocie.phone, orgSocie.email, orgSocie.website].filter(Boolean).join(' | ')}</p>
-            </div>
-            <h2 style="font-size:16px;color:#0f172a;margin:0 0 8px">Statement of Changes in Equity</h2>
+            `<h2 style="font-size:16px;color:#0f172a;margin:0 0 8px">Statement of Changes in Equity</h2>
             <p style="font-size:11px;color:#64748b;margin:0 0 12px">As of ${asOfDate} &bull; Generated: ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
             ${pdfSocieHtml}`,
             `As of ${asOfDate}`
@@ -2054,13 +2030,7 @@ function ReportShell({ reportType, title }: ReportPageProps) {
           const orgArLogo = orgAr.logoUrl ? `<img src="${orgAr.logoUrl}" style="max-height:60px;max-width:200px;object-fit:contain" />` : '';
           const orgArContact = [orgArPhone, orgArEmail, orgArWebsite].filter(Boolean).join(' | ');
           printWindow(title,
-            `<div style="text-align:center;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #e2e8f0">
-              ${orgArLogo}
-              <h1 style="margin:4px 0;font-size:18px;color:#0f172a">${orgArName}</h1>
-              ${orgArAddr}
-              <p style="margin:2px 0;font-size:11px;color:#64748b">${orgArContact}</p>
-            </div>
-            <h2 style="font-size:16px;color:#0f172a;margin:0 0 8px">${title}</h2>
+            `<h2 style="font-size:16px;color:#0f172a;margin:0 0 8px">${title}</h2>
             <p style="font-size:11px;color:#64748b;margin:0 0 12px">As of ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
             <table style="width:100%;border-collapse:collapse">
               <thead>

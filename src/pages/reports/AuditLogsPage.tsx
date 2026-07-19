@@ -310,13 +310,7 @@ export function AuditLogsPage() {
         `<tr><td style="padding:6px 10px;font-size:11px;border-bottom:1px solid #f1f5f9">${new Date(l.createdAt).toLocaleDateString('en-GB')}</td><td style="padding:6px 10px;font-size:11px;border-bottom:1px solid #f1f5f9"><span style="background:#f1f5f9;padding:2px 8px;border-radius:999px;font-size:10px">${l.action}</span></td><td style="padding:6px 10px;font-size:11px;border-bottom:1px solid #f1f5f9">${l.entityType}</td><td style="padding:6px 10px;font-size:11px;font-family:monospace;border-bottom:1px solid #f1f5f9">${l.entityId||'—'}</td><td style="padding:6px 10px;font-size:11px;border-bottom:1px solid #f1f5f9">${l.user?.name||l.user?.email||'—'}</td><td style="padding:6px 10px;font-size:11px;border-bottom:1px solid #f1f5f9">${l.description||'—'}</td><td style="padding:6px 10px;font-size:11px;border-bottom:1px solid #f1f5f9">${l.ipAddress||'—'}</td><td style="padding:6px 10px;font-size:11px;color:#94a3b8;border-bottom:1px solid #f1f5f9">${l.userAgent ? l.userAgent.substring(0, 50) : '—'}</td></tr>`
       ).join('');
       printWindow('Audit Logs',
-        `<div style="text-align:center;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #e2e8f0">
-          ${orgLogo}
-          <h1 style="margin:4px 0;font-size:18px;color:#0f172a">${orgName}</h1>
-          ${orgAddr}
-          <p style="margin:2px 0;font-size:11px;color:#64748b">${contactInfo}</p>
-        </div>
-        <h2 style="font-size:16px;color:#0f172a;margin:0 0 8px">Audit Logs</h2>
+        `<h2 style="font-size:16px;color:#0f172a;margin:0 0 8px">Audit Logs</h2>
         <p style="font-size:11px;color:#64748b;margin:0 0 12px">${list.length} entries</p>
         <table style="width:100%;border-collapse:collapse">
           <thead><tr style="background:#f8fafc">
