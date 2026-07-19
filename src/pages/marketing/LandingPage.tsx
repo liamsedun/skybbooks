@@ -1,6 +1,7 @@
 import React from 'react';
 import '../../styles/landing-animations.css';
 import { MarketingLayout } from '../../components/marketing/MarketingLayout';
+import { SeoHead } from '../../components/seo/SeoHead';
 import { HeroSection } from '../../components/marketing/HeroSection';
 import { FeaturesSection } from '../../components/marketing/FeaturesSection';
 import { WhySkyBooks } from '../../components/marketing/WhySkyBooks';
@@ -26,6 +27,7 @@ import { CTASection } from '../../components/marketing/CTASection';
 export function LandingPage() {
   return (
     <MarketingLayout>
+      <SeoHead />
       <HeroSection />
       <FeaturesSection />
       <AccountingModules />

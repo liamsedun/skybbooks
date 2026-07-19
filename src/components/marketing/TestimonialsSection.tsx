@@ -132,11 +132,11 @@ export function TestimonialsSection() {
         {current && (
           <div className="relative max-w-3xl mx-auto">
             {/* Nav arrows */}
-            <button onClick={prev} className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 lg:-translate-x-12 z-10 w-9 h-9 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center hover:border-slate-300 hover:shadow-md transition-all text-slate-400 hover:text-[#082F49]">
-              <ChevronLeft size={16} />
+            <button onClick={prev} aria-label="Previous testimonial" className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 lg:-translate-x-12 z-10 w-9 h-9 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center hover:border-slate-300 hover:shadow-md transition-all text-slate-400 hover:text-[#082F49]">
+              <ChevronLeft size={16} aria-hidden="true" />
             </button>
-            <button onClick={next} className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 lg:translate-x-12 z-10 w-9 h-9 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center hover:border-slate-300 hover:shadow-md transition-all text-slate-400 hover:text-[#082F49]">
-              <ChevronRight size={16} />
+            <button onClick={next} aria-label="Next testimonial" className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 lg:translate-x-12 z-10 w-9 h-9 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center hover:border-slate-300 hover:shadow-md transition-all text-slate-400 hover:text-[#082F49]">
+              <ChevronRight size={16} aria-hidden="true" />
             </button>
 
             {/* Card */}
@@ -177,6 +177,7 @@ export function TestimonialsSection() {
                 <button
                   key={i}
                   onClick={() => goTo(i)}
+                  aria-label={`Go to testimonial ${i + 1}`}
                   className={`h-2 rounded-full transition-all duration-300 ${
                     i === active ? 'w-6 bg-[#082F49]' : 'w-2 bg-slate-200 hover:bg-slate-300'
                   }`}

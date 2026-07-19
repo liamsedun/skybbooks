@@ -53,23 +53,23 @@ export function Navbar() {
           <button
             onClick={() => setBannerDismissed(true)}
             className="ml-2 align-middle text-white/60 hover:text-white transition-colors"
-            aria-label="Dismiss"
+            aria-label="Dismiss announcement"
           >
-            <X size={14} />
+            <X size={14} aria-hidden="true" />
           </button>
         </div>
       )}
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 lg:h-20">
-          <Link to="/" className="flex items-center gap-2">
+          <Link to="/" className="flex items-center gap-2" aria-label="SkyBooks home">
             <div className="w-8 h-8 rounded-lg bg-[#082F49] flex items-center justify-center">
-              <span className="text-white font-bold text-sm">S</span>
+              <span className="text-white font-bold text-sm" aria-hidden="true">S</span>
             </div>
             <span className="text-lg font-bold text-[#082F49]">SkyBooks</span>
           </Link>
 
-          <nav className="hidden md:flex items-center gap-8">
+          <nav className="hidden md:flex items-center gap-8" aria-label="Main navigation">
             {NAV_LINKS.map(link =>
               isHashLink(link.href) ? (
                 <a
@@ -97,8 +97,9 @@ export function Navbar() {
               <button
                 onClick={() => navigate('/dashboard')}
                 className="px-5 py-2 text-sm font-semibold text-white bg-[#082F49] hover:bg-[#0C4A6E] rounded-lg transition-colors shadow-sm flex items-center gap-1.5"
+                aria-label="Go to dashboard"
               >
-                <LayoutDashboard size={14} /> Dashboard
+                <LayoutDashboard size={14} aria-hidden="true" /> Dashboard
               </button>
             ) : (
               <>
@@ -121,8 +122,9 @@ export function Navbar() {
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
             className="md:hidden p-2 text-slate-600 hover:text-[#082F49]"
+            aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
           >
-            {mobileOpen ? <X size={24} /> : <Menu size={24} />}
+            {mobileOpen ? <X size={24} aria-hidden="true" /> : <Menu size={24} aria-hidden="true" />}
           </button>
         </div>
       </div>

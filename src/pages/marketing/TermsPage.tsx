@@ -1,9 +1,11 @@
 import React from 'react';
 import { MarketingLayout } from '../../components/marketing/MarketingLayout';
+import { SeoHead } from '../../components/seo/SeoHead';
 
 export function TermsPage() {
   return (
     <MarketingLayout>
+      <SeoHead title="Terms of Service" description="SkyBooks terms of service. Understand your rights, obligations, and our commitment to providing reliable accounting software." canonical="https://skyaccounting.com.ng/terms" />
       <div className="pt-24 pb-16 lg:pb-24">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <h1 className="text-3xl lg:text-4xl font-bold text-[#082F49] mb-4">Terms of Service</h1>

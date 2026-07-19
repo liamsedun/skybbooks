@@ -20,8 +20,9 @@ export function CTASection() {
           <button
             onClick={() => navigate('/register')}
             className="w-full sm:w-auto px-8 py-3.5 bg-white hover:bg-slate-100 text-[#082F49] font-semibold rounded-xl transition-all shadow-xl flex items-center justify-center gap-2 text-sm"
+            aria-label="Start free trial"
           >
-            Start Free Trial <ArrowRight size={16} />
+            Start Free Trial <ArrowRight size={16} aria-hidden="true" />
           </button>
           <button
             onClick={() => navigate('/login')}

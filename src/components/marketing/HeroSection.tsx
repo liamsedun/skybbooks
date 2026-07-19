@@ -55,21 +55,24 @@ export function HeroSection() {
             <button
               onClick={() => navigate('/register')}
               className="group w-full sm:w-auto px-8 py-3.5 bg-[#082F49] hover:bg-[#0C4A6E] text-white font-semibold rounded-xl transition-all shadow-lg shadow-[#082F49]/20 hover:shadow-xl hover:shadow-[#082F49]/30 flex items-center justify-center gap-2 text-sm"
+              aria-label="Start free trial"
             >
               Start Free
-              <ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
+              <ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" aria-hidden="true" />
             </button>
             <button
               onClick={() => navigate('/contact')}
               className="w-full sm:w-auto px-8 py-3.5 border border-slate-200 hover:border-[#0EA5E9]/40 text-slate-700 font-medium rounded-xl transition-all flex items-center justify-center gap-2 text-sm hover:bg-sky-50 hover:text-[#082F49]"
+              aria-label="Book a demo"
             >
-              <Calendar size={16} /> Book a Demo
+              <Calendar size={16} aria-hidden="true" /> Book a Demo
             </button>
             <button
               onClick={() => navigate('/register')}
               className="w-full sm:w-auto px-8 py-3.5 border border-slate-200 hover:border-slate-300 text-slate-600 font-medium rounded-xl transition-all flex items-center justify-center gap-2 text-sm hover:bg-slate-50"
+              aria-label="Watch video overview"
             >
-              <Play size={16} /> Watch Video
+              <Play size={16} aria-hidden="true" /> Watch Video
             </button>
           </div>
 

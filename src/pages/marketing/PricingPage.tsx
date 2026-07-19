@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check, X, ArrowRight, Plus, Minus } from 'lucide-react';
+import { SeoHead } from '../../components/seo/SeoHead';
 
 type BillingPeriod = 'monthly' | 'annual';
 
@@ -145,6 +146,7 @@ export function PricingPage() {
 
   return (
     <div className="min-h-screen bg-white">
+      <SeoHead title="Pricing" description="Simple, transparent pricing for Nigerian SMEs. Start free, upgrade as you grow. Plans from ₦0 to ₦20,000/month." canonical="https://skyaccounting.com.ng/pricing" />
       {/* Simple nav */}
       <header className="border-b border-slate-100 bg-white/95 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">

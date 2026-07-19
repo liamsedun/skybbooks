@@ -1,12 +1,14 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Phone, MapPin, Globe, ArrowRight, Send, MessageCircle } from 'lucide-react';
+import { SeoHead } from '../../components/seo/SeoHead';
 
 export function ContactPage() {
   const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-white">
+      <SeoHead title="Contact" description="Get in touch with SkyBooks. Book a demo, ask questions, or reach our sales team. We typically respond within 2 hours." canonical="https://skyaccounting.com.ng/contact" />
       <header className="border-b border-slate-100 bg-white/95 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
           <button onClick={() => navigate('/')} className="flex items-center gap-2">

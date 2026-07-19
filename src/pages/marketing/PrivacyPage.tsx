@@ -1,9 +1,11 @@
 import React from 'react';
 import { MarketingLayout } from '../../components/marketing/MarketingLayout';
+import { SeoHead } from '../../components/seo/SeoHead';
 
 export function PrivacyPage() {
   return (
     <MarketingLayout>
+      <SeoHead title="Privacy Policy" description="SkyBooks privacy policy. How we collect, use, and protect your data in compliance with NDPR and GDPR." canonical="https://skyaccounting.com.ng/privacy" />
       <div className="pt-24 pb-16 lg:pb-24">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <h1 className="text-3xl lg:text-4xl font-bold text-[#082F49] mb-4">Privacy Policy</h1>

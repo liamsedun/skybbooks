@@ -112,9 +112,9 @@ export function Footer() {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-10 lg:gap-12">
           {/* Brand column */}
           <div className="col-span-2 md:col-span-2">
-            <Link to="/" className="flex items-center gap-2.5 mb-5">
+            <Link to="/" className="flex items-center gap-2.5 mb-5" aria-label="SkyBooks home">
               <div className="w-9 h-9 rounded-lg bg-white/15 flex items-center justify-center">
-                <span className="text-white font-bold text-base">S</span>
+                <span className="text-white font-bold text-base" aria-hidden="true">S</span>
               </div>
               <span className="text-xl font-bold">SkyBooks</span>
             </Link>
@@ -132,7 +132,7 @@ export function Footer() {
                     aria-label={s.label}
                     className="w-9 h-9 rounded-full bg-white/10 hover:bg-[#0EA5E9] flex items-center justify-center text-white/60 hover:text-white transition-all duration-300"
                   >
-                    <Icon />
+                    <Icon aria-hidden="true" />
                   </a>
                 );
               })}
@@ -141,7 +141,7 @@ export function Footer() {
 
           {/* Link columns */}
           {columns.map(col => (
-            <div key={col.title}>
+            <nav key={col.title} aria-label={`${col.title} links`}>
               <h4 className="text-xs font-semibold text-white/40 uppercase tracking-widest mb-5">{col.title}</h4>
               <ul className="space-y-3.5">
                 {col.links.map(link => (
@@ -158,7 +158,7 @@ export function Footer() {
                   </li>
                 ))}
               </ul>
-            </div>
+            </nav>
           ))}
 
           {/* Contact block */}

@@ -1,0 +1,21 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /accept-invite
+Disallow: /dashboard
+Disallow: /sales/
+Disallow: /purchases/
+Disallow: /inventory/
+Disallow: /payroll/
+Disallow: /accountant/
+Disallow: /reports/
+Disallow: /banking/
+Disallow: /settings/
+Disallow: /revenue/
+Disallow: /ai/
+
+Sitemap: https://skyaccounting.com.ng/sitemap.xml
