@@ -88,7 +88,7 @@ async function startServer() {
   const app = express();
   const PORT = Number(process.env.PORT) || 3000;
 
-  // Trust Render's proxy for correct IP detection
+  // Trust proxy for correct IP detection behind cPanel's Apache/nginx
   app.set('trust proxy', 1);
 
   // Compression
