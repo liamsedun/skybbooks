@@ -19,7 +19,7 @@ export function ContactPage() {
             onClick={() => navigate('/register')}
             className="px-5 py-2 text-sm font-semibold text-white bg-[#082F49] hover:bg-[#0C4A6E] rounded-lg transition-colors"
           >
-            Get Started
+            Sign Up
           </button>
         </div>
       </header>

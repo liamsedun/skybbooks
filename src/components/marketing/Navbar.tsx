@@ -112,7 +112,7 @@ export function Navbar() {
                   onClick={() => navigate('/register')}
                   className="px-5 py-2 text-sm font-semibold text-white bg-[#082F49] hover:bg-[#0C4A6E] rounded-lg transition-colors shadow-sm"
                 >
-                  Get Started
+                  Sign Up
                 </button>
               </>
             )}
@@ -170,7 +170,7 @@ export function Navbar() {
                   onClick={() => navigate('/register')}
                   className="w-full px-3 py-2.5 text-sm font-semibold text-white bg-[#082F49] hover:bg-[#0C4A6E] rounded-lg transition-colors mt-1"
                 >
-                  Get Started
+                  Sign Up
                 </button>
               </>
             )}
