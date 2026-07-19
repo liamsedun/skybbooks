@@ -121,6 +121,7 @@ import { FAQsPage } from './pages/help/FAQsPage';
 import { VideoTutorialsPage } from './pages/help/VideoTutorialsPage';
 import { MigrationGuidePage } from './pages/help/MigrationGuidePage';
 import { LandingPage } from './pages/marketing/LandingPage';
+import { PricingPage } from './pages/marketing/PricingPage';
 import { PrivacyPage } from './pages/marketing/PrivacyPage';
 import { TermsPage } from './pages/marketing/TermsPage';
 import { useAuth } from './hooks/useAuth';
@@ -278,6 +279,7 @@ function AppRoutes() {
 
         {/* Public marketing pages */}
         <Route path="/" element={<LandingPage />} />
+        <Route path="/pricing" element={<PricingPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/terms" element={<TermsPage />} />
 
