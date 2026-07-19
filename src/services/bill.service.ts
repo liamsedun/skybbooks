@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { eq, and, lte, gte, sql, desc, inArray, getTableColumns } from 'drizzle-orm';
+import { eq, and, lte, gte, sql, desc, inArray } from 'drizzle-orm';
 import {
   db,
   accounts,
@@ -696,9 +696,33 @@ export async function duplicateBill(billId: string, userId: string, orgId: strin
 }
 
 export async function getBill(billId: string, orgId: string): Promise<any> {
-  const billCols = getTableColumns(bills);
   const [bill] = await db
-    .select({ ...billCols, journalEntryNumber: journalEntries.entryNumber })
+    .select({
+      id: bills.id,
+      orgId: bills.orgId,
+      billNumber: bills.billNumber,
+      vendorId: bills.vendorId,
+      poId: bills.poId,
+      date: bills.date,
+      dueDate: bills.dueDate,
+      status: bills.status,
+      currency: bills.currency,
+      fxRate: bills.fxRate,
+      subtotal: bills.subtotal,
+      taxAmount: bills.taxAmount,
+      total: bills.total,
+      projectId: bills.projectId,
+      whtRate: bills.whtRate,
+      whtAmount: bills.whtAmount,
+      amountPaid: bills.amountPaid,
+      balanceDue: bills.balanceDue,
+      journalEntryId: bills.journalEntryId,
+      approvedBy: bills.approvedBy,
+      postedBy: bills.postedBy,
+      createdBy: bills.createdBy,
+      createdAt: bills.createdAt,
+      journalEntryNumber: journalEntries.entryNumber,
+    })
     .from(bills)
     .leftJoin(journalEntries, eq(bills.journalEntryId, journalEntries.id))
     .where(and(eq(bills.id, billId), eq(bills.orgId, orgId)))
@@ -765,9 +789,33 @@ export async function listBills(
     }
   }
 
-  const billCols = getTableColumns(bills);
   const itemsList = await db
-    .select({ ...billCols, journalEntryNumber: journalEntries.entryNumber })
+    .select({
+      id: bills.id,
+      orgId: bills.orgId,
+      billNumber: bills.billNumber,
+      vendorId: bills.vendorId,
+      poId: bills.poId,
+      date: bills.date,
+      dueDate: bills.dueDate,
+      status: bills.status,
+      currency: bills.currency,
+      fxRate: bills.fxRate,
+      subtotal: bills.subtotal,
+      taxAmount: bills.taxAmount,
+      total: bills.total,
+      projectId: bills.projectId,
+      whtRate: bills.whtRate,
+      whtAmount: bills.whtAmount,
+      amountPaid: bills.amountPaid,
+      balanceDue: bills.balanceDue,
+      journalEntryId: bills.journalEntryId,
+      approvedBy: bills.approvedBy,
+      postedBy: bills.postedBy,
+      createdBy: bills.createdBy,
+      createdAt: bills.createdAt,
+      journalEntryNumber: journalEntries.entryNumber,
+    })
     .from(bills)
     .leftJoin(journalEntries, eq(bills.journalEntryId, journalEntries.id))
     .where(and(...conditions))
