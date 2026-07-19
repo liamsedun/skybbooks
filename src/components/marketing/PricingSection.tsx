@@ -4,50 +4,60 @@ import { Check, ArrowRight } from 'lucide-react';
 
 const tiers = [
   {
-    name: 'Starter',
+    name: 'Free',
     price: '₦0',
     period: 'forever',
     description: 'Perfect for freelancers and micro-businesses just getting started.',
-    features: ['Up to 10 invoices/month', 'Basic expense tracking', 'Single user', 'Bank feed connection', 'Email support'],
+    features: ['1 user', 'Basic invoicing (10/mo)', 'Manual expense entry', 'Single currency (NGN)', 'Community support'],
     cta: 'Get Started',
+    popular: false,
+  },
+  {
+    name: 'Standard',
+    price: '₦7,500',
+    period: '/month',
+    description: 'For growing startups that need more transactions and bank feeds.',
+    features: ['3 users', 'Unlimited invoicing', 'Receipt scanning', 'Bank reconciliation', 'VAT computation', 'AI features', 'Email support'],
+    cta: 'Start Free Trial',
     popular: false,
   },
   {
     name: 'Professional',
     price: '₦15,000',
     period: '/month',
-    description: 'For growing businesses that need full accounting capabilities.',
+    description: 'For established SMEs needing full accounting, inventory, and tax compliance.',
     features: [
-      'Unlimited invoices & quotes',
-      'Full expense management',
-      'Up to 5 users',
-      'Bank reconciliation',
-      'Multi-currency support',
-      'Financial reports (P&L, BS, CF)',
+      '10 users',
+      'Unlimited invoicing & quotes',
+      'Multi-currency (unlimited)',
+      'Auto bank reconciliation',
       'Inventory management',
-      'Priority email & chat support',
+      'Project tracking',
+      'Full tax (VAT, WHT, PAYE, CIT)',
+      'API access',
+      'Advanced reports',
+      'Priority support',
     ],
     cta: 'Start Free Trial',
     popular: true,
   },
   {
-    name: 'Enterprise',
-    price: '₦50,000',
+    name: 'Premium',
+    price: '₦30,000',
     period: '/month',
-    description: 'For established businesses with advanced reporting and compliance needs.',
+    description: 'For companies needing payroll, IFRS compliance, and enterprise features.',
     features: [
-      'Everything in Professional',
-      'Unlimited users & roles',
+      '25 users',
       'Payroll management',
-      'Tax engine (VAT, WHT, PAYE, CIT)',
-      'IFRS 15 & 16 compliance',
+      'Fixed assets',
+      'IFRS 15, 16 & 9 compliance',
       'Multi-entity consolidation',
-      'API access & webhooks',
+      'All tax computations (NSITF, ITF, NHIF, Stamp Duty)',
+      'White-label option',
       'Dedicated account manager',
-      'Custom reports & integrations',
-      'SLA guarantee',
+      'Priority phone support',
     ],
-    cta: 'Contact Sales',
+    cta: 'Start Free Trial',
     popular: false,
   },
 ];
@@ -68,13 +78,13 @@ export function PricingSection() {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6 lg:gap-8 max-w-5xl mx-auto">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-6 max-w-6xl mx-auto">
           {tiers.map(tier => (
             <div
               key={tier.name}
-              className={`relative bg-white rounded-2xl border p-6 lg:p-8 transition-all duration-300 ${
+              className={`relative bg-white rounded-2xl border p-6 transition-all duration-300 ${
                 tier.popular
-                  ? 'border-[#0EA5E9] shadow-xl shadow-[#0EA5E9]/10 ring-1 ring-[#0EA5E9]/20'
+                  ? 'border-[#0EA5E9] shadow-xl shadow-[#0EA5E9]/10 ring-1 ring-[#0EA5E9]/20 scale-[1.02]'
                   : 'border-slate-200 hover:border-slate-300 shadow-sm hover:shadow-md'
               }`}
             >
@@ -85,7 +95,7 @@ export function PricingSection() {
               )}
 
               <div className="text-center mb-6">
-                <h3 className="text-lg font-semibold text-[#082F49]">{tier.name}</h3>
+                <h3 className={`text-lg font-semibold ${tier.popular ? 'text-[#0EA5E9]' : 'text-[#082F49]'}`}>{tier.name}</h3>
                 <div className="mt-3 flex items-baseline justify-center gap-1">
                   <span className="text-3xl lg:text-4xl font-extrabold text-[#082F49]">{tier.price}</span>
                   <span className="text-sm text-slate-500">{tier.period}</span>
@@ -103,7 +113,7 @@ export function PricingSection() {
               </ul>
 
               <button
-                onClick={() => navigate(tier.name === 'Enterprise' ? '/contact' : '/register')}
+                onClick={() => navigate(tier.name === 'Premium' ? '/register' : '/register')}
                 className={`w-full py-3 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 ${
                   tier.popular
                     ? 'bg-[#082F49] text-white hover:bg-[#0C4A6E] shadow-lg shadow-[#082F49]/20'
@@ -116,7 +126,16 @@ export function PricingSection() {
           ))}
         </div>
 
-        <p className="text-center text-xs text-slate-400 mt-8">
+        <div className="text-center mt-8">
+          <button
+            onClick={() => navigate('/pricing')}
+            className="text-sm font-semibold text-[#0EA5E9] hover:text-[#0284C7] transition-colors"
+          >
+            View full pricing details &rarr;
+          </button>
+        </div>
+
+        <p className="text-center text-xs text-slate-400 mt-6">
           All plans include a 14-day free trial. No credit card required.
         </p>
       </div>

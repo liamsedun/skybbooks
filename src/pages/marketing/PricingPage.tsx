@@ -47,7 +47,12 @@ const tiers: Tier[] = [
     aiAccess: false,
     integrations: '1 bank connection',
     advancedReports: false,
-    accountingFeatures: ['Basic invoicing (10/mo)', 'Manual expense entry', 'Single currency (NGN)', 'Basic reports'],
+    accountingFeatures: [
+      'Basic invoicing (10/mo)',
+      'Manual expense entry',
+      'Single currency (NGN)',
+      'Basic dashboard',
+    ],
     taxFeatures: [],
     inventory: false,
     projects: false,
@@ -71,8 +76,18 @@ const tiers: Tier[] = [
     aiAccess: true,
     integrations: '3 bank connections',
     advancedReports: false,
-    accountingFeatures: ['Unlimited invoicing', 'Receipt scanning', 'Multi-currency (NGN + 1)', 'Bank reconciliation', 'Expense categorization'],
-    taxFeatures: ['VAT computation', 'VAT return export'],
+    accountingFeatures: [
+      'Unlimited invoicing',
+      'Receipt scanning',
+      'Multi-currency (NGN + 1)',
+      'Bank reconciliation',
+      'Expense categorization',
+      'Standard reports',
+    ],
+    taxFeatures: [
+      'VAT computation',
+      'VAT return export',
+    ],
     inventory: false,
     projects: false,
     payroll: false,
@@ -84,7 +99,7 @@ const tiers: Tier[] = [
     annualPrice: '₦150,000',
     annualPerMonth: '₦12,500',
     savings: 'Save ₦30,000',
-    description: 'For established SMEs needing full accounting and team collaboration.',
+    description: 'For established SMEs needing full accounting, inventory, and team collaboration.',
     popular: true,
     cta: 'Start Free Trial',
     ctaLink: '/register',
@@ -95,8 +110,23 @@ const tiers: Tier[] = [
     aiAccess: true,
     integrations: 'Unlimited bank connections',
     advancedReports: true,
-    accountingFeatures: ['Unlimited invoicing & quotes', 'Receipt OCR scanning', 'Multi-currency (unlimited)', 'Auto bank reconciliation', 'Recurring invoices', 'Bill management', 'Multi-user roles'],
-    taxFeatures: ['VAT computation & filing', 'WHT computation', 'PAYE computation', 'CIT computation'],
+    accountingFeatures: [
+      'Unlimited invoicing & quotes',
+      'Receipt OCR scanning',
+      'Multi-currency (unlimited)',
+      'Auto bank reconciliation',
+      'Recurring invoices',
+      'Bill management',
+      'Multi-user roles & permissions',
+      'Budget management',
+      'Advanced reports (P&L, BS, CF, TB)',
+    ],
+    taxFeatures: [
+      'VAT computation & filing',
+      'WHT computation',
+      'PAYE computation',
+      'CIT computation',
+    ],
     inventory: true,
     projects: true,
     payroll: false,
@@ -108,7 +138,7 @@ const tiers: Tier[] = [
     annualPrice: '₦300,000',
     annualPerMonth: '₦25,000',
     savings: 'Save ₦60,000',
-    description: 'For companies with payroll needs and advanced inventory management.',
+    description: 'For companies needing payroll, IFRS compliance, and enterprise features.',
     popular: false,
     cta: 'Start Free Trial',
     ctaLink: '/register',
@@ -119,91 +149,32 @@ const tiers: Tier[] = [
     aiAccess: true,
     integrations: 'Unlimited + API webhooks',
     advancedReports: true,
-    accountingFeatures: ['Everything in Professional', 'Budget management', 'Fixed assets register', 'Multi-entity consolidation', 'Custom reporting'],
-    taxFeatures: ['Everything in Professional', 'NSITF computation', 'ITF computation', 'NHIF computation', 'Stamp duty', 'FIRS-ready returns'],
+    accountingFeatures: [
+      'Everything in Professional',
+      'Payroll management',
+      'Fixed assets register',
+      'Multi-entity consolidation',
+      'Custom reporting',
+      'IFRS 15 (Revenue Recognition)',
+      'IFRS 16 (Lease Accounting)',
+      'IFRS 9 (ECL Provisioning)',
+      'White-label option',
+      'Dedicated account manager',
+    ],
+    taxFeatures: [
+      'Everything in Professional',
+      'NSITF computation',
+      'ITF computation',
+      'NHIF computation',
+      'Stamp duty',
+      'FIRS-ready returns',
+      'Auto tax journal posting',
+      'Tax calendar & reminders',
+    ],
     inventory: true,
     projects: true,
     payroll: true,
-    analytics: 'Executive dashboard + KPIs',
-  },
-  {
-    name: 'Elite',
-    monthlyPrice: '₦60,000',
-    annualPrice: '₦600,000',
-    annualPerMonth: '₦50,000',
-    savings: 'Save ₦120,000',
-    description: 'For enterprises demanding IFRS compliance and advanced automation.',
-    popular: false,
-    cta: 'Start Free Trial',
-    ctaLink: '/register',
-    maxUsers: '50 users',
-    support: 'Dedicated account manager',
-    storage: '50 GB',
-    apiAccess: true,
-    aiAccess: true,
-    integrations: 'Unlimited + custom connectors',
-    advancedReports: true,
-    accountingFeatures: ['Everything in Premium', 'IFRS 15 (Revenue Recognition)', 'IFRS 16 (Lease Accounting)', 'IFRS 9 (ECL Provisioning)', 'Multi-org consolidation', 'Custom report builder'],
-    taxFeatures: ['Everything in Premium', 'Auto tax journal posting', 'Tax calendar & reminders', 'Multi-jurisdiction support'],
-    inventory: true,
-    projects: true,
-    payroll: true,
-    analytics: 'AI-powered insights & forecasting',
-  },
-  {
-    name: 'Ultimate',
-    monthlyPrice: '₦120,000',
-    annualPrice: '₦1,200,000',
-    annualPerMonth: '₦100,000',
-    savings: 'Save ₦240,000',
-    description: 'For large organizations requiring full customization and white-label.',
-    popular: false,
-    cta: 'Contact Sales',
-    ctaLink: '/contact',
-    maxUsers: 'Unlimited users',
-    support: '24/7 dedicated support',
-    storage: 'Unlimited',
-    apiAccess: true,
-    aiAccess: true,
-    integrations: 'Unlimited + white-label',
-    advancedReports: true,
-    accountingFeatures: ['Everything in Elite', 'White-label platform', 'On-premise option', 'SLA guarantee', 'Custom development', 'Priority feature requests'],
-    taxFeatures: ['Everything in Elite', 'Custom tax rules', 'Automated multi-jurisdiction filing'],
-    inventory: true,
-    projects: true,
-    payroll: true,
-    analytics: 'Full BI integration + data warehouse',
-  },
-];
-
-const FEATURE_CATEGORIES = [
-  {
-    label: 'Users & Support',
-    key: 'usersSupport' as const,
-    rows: [
-      { label: 'Maximum Users', key: 'maxUsers' as const },
-      { label: 'Support', key: 'support' as const },
-      { label: 'Storage', key: 'storage' as const },
-    ],
-  },
-  {
-    label: 'Platform Features',
-    key: 'platform' as const,
-    rows: [
-      { label: 'API Access', key: 'apiAccess' as const },
-      { label: 'AI Features', key: 'aiAccess' as const },
-      { label: 'Integrations', key: 'integrations' as const },
-      { label: 'Advanced Reports', key: 'advancedReports' as const },
-    ],
-  },
-  {
-    label: 'Modules',
-    key: 'modules' as const,
-    rows: [
-      { label: 'Inventory', key: 'inventory' as const },
-      { label: 'Projects', key: 'projects' as const },
-      { label: 'Payroll', key: 'payroll' as const },
-    ],
+    analytics: 'Executive dashboard + AI insights & forecasting',
   },
 ];
 
@@ -270,7 +241,7 @@ export function PricingPage() {
       {/* ─── Pricing Cards ─── */}
       <section className="pb-16 lg:pb-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 lg:gap-5">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-6 max-w-6xl mx-auto">
             {tiers.map((tier) => {
               const price = billing === 'monthly' ? tier.monthlyPrice : tier.annualPrice;
               const period = billing === 'monthly' ? '/month' : '/year';
@@ -348,28 +319,28 @@ export function PricingPage() {
 
                       <hr className="border-slate-100" />
 
-                      {tier.accountingFeatures.slice(0, 4).map((f) => (
+                      {tier.accountingFeatures.slice(0, 5).map((f) => (
                         <div key={f} className="flex items-start gap-2 text-[11px] text-slate-600">
                           <Check size={11} className="text-emerald-500 mt-0.5 shrink-0" />
                           {f}
                         </div>
                       ))}
-                      {tier.accountingFeatures.length > 4 && (
-                        <div className="text-[10px] text-[#0EA5E9] font-medium ml-5">+{tier.accountingFeatures.length - 4} more</div>
+                      {tier.accountingFeatures.length > 5 && (
+                        <div className="text-[10px] text-[#0EA5E9] font-medium ml-5">+{tier.accountingFeatures.length - 5} more</div>
                       )}
 
                       {/* Tax features */}
                       {tier.taxFeatures.length > 0 && (
                         <>
                           <hr className="border-slate-100" />
-                          {tier.taxFeatures.slice(0, 2).map((f) => (
+                          {tier.taxFeatures.slice(0, 3).map((f) => (
                             <div key={f} className="flex items-start gap-2 text-[11px] text-slate-600">
                               <Check size={11} className="text-emerald-500 mt-0.5 shrink-0" />
                               {f}
                             </div>
                           ))}
-                          {tier.taxFeatures.length > 2 && (
-                            <div className="text-[10px] text-[#0EA5E9] font-medium ml-5">+{tier.taxFeatures.length - 2} tax features</div>
+                          {tier.taxFeatures.length > 3 && (
+                            <div className="text-[10px] text-[#0EA5E9] font-medium ml-5">+{tier.taxFeatures.length - 3} tax features</div>
                           )}
                         </>
                       )}
@@ -430,7 +401,7 @@ export function PricingPage() {
                 <tbody>
                   {/* Users & Support */}
                   <tr className="bg-slate-50">
-                    <td colSpan={7} className="py-2 px-4 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Users & Support</td>
+                    <td colSpan={5} className="py-2 px-4 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Users & Support</td>
                   </tr>
                   {[
                     { label: 'Maximum Users', vals: tiers.map(t => t.maxUsers) },
@@ -447,7 +418,7 @@ export function PricingPage() {
 
                   {/* Platform */}
                   <tr className="bg-slate-50">
-                    <td colSpan={7} className="py-2 px-4 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Platform</td>
+                    <td colSpan={5} className="py-2 px-4 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Platform</td>
                   </tr>
                   {[
                     { label: 'API Access', vals: tiers.map(t => t.apiAccess) },
@@ -471,7 +442,7 @@ export function PricingPage() {
 
                   {/* Modules */}
                   <tr className="bg-slate-50">
-                    <td colSpan={7} className="py-2 px-4 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Modules</td>
+                    <td colSpan={5} className="py-2 px-4 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Modules</td>
                   </tr>
                   {[
                     { label: 'Inventory', vals: tiers.map(t => t.inventory) },
@@ -490,24 +461,23 @@ export function PricingPage() {
 
                   {/* Accounting */}
                   <tr className="bg-slate-50">
-                    <td colSpan={7} className="py-2 px-4 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Accounting</td>
+                    <td colSpan={5} className="py-2 px-4 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Accounting</td>
                   </tr>
-                  {tiers[0].accountingFeatures.map((feat, fi) => (
-                    <tr key={feat} className="border-b border-slate-100">
-                      <td className="py-2.5 px-4 text-[12px] text-slate-700">{feat}</td>
-                      {tiers.map((t, ti) => {
-                        const has = ti <= fi ? ti >= 0 : false;
-                        const idx = t.accountingFeatures.indexOf(feat);
-                        return (
-                          <td key={ti} className="py-2.5 px-3 text-center">
-                            {idx >= 0 ? (
-                              <Check size={14} className="mx-auto text-emerald-500" />
-                            ) : (
-                              <X size={14} className="mx-auto text-slate-300" />
-                            )}
-                          </td>
-                        );
-                      })}
+                  {[
+                    ...tiers[0].accountingFeatures.map(f => ({ label: f })),
+                    ...tiers[0].taxFeatures.map(f => ({ label: f })),
+                  ].map((feat, fi) => (
+                    <tr key={`${feat.label}-${fi}`} className="border-b border-slate-100">
+                      <td className="py-2.5 px-4 text-[12px] text-slate-700">{feat.label}</td>
+                      {tiers.map((t, ti) => (
+                        <td key={ti} className="py-2.5 px-3 text-center">
+                          {t.accountingFeatures.includes(feat.label) || t.taxFeatures.includes(feat.label) ? (
+                            <Check size={14} className="mx-auto text-emerald-500" />
+                          ) : (
+                            <X size={14} className="mx-auto text-slate-300" />
+                          )}
+                        </td>
+                      ))}
                     </tr>
                   ))}
                 </tbody>
@@ -529,7 +499,7 @@ export function PricingPage() {
               { q: 'What happens when I exceed my plan limits?', a: 'We will notify you when you approach your plan limits. You can upgrade to a higher tier at any time with no downtime or data loss.' },
               { q: 'Is there a discount for non-profits or educational institutions?', a: 'Yes, we offer a 25% discount for registered non-profits and educational institutions. Contact our sales team to apply.' },
               { q: 'Can I cancel my subscription?', a: 'You can cancel anytime from your account settings. Your access will continue until the end of the current billing period. No cancellation fees.' },
-              { q: 'Do you offer custom enterprise plans?', a: 'Yes, the Ultimate plan can be fully customized to your needs. Contact our sales team for a tailored quote.' },
+              { q: 'Do you offer custom enterprise plans?', a: 'Yes, we offer custom plans for large organizations. Contact our sales team for a tailored quote.' },
             ].map((faq, i) => (
               <div key={i} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
                 <button
