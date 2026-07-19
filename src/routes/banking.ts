@@ -1724,6 +1724,7 @@ router.get('/accounts/:id/payments', async (req: AuthenticatedRequest, res: Resp
         WHERE jl.account_id = ${ba.accountId}::uuid
           AND je.org_id = ${orgId}::uuid
           AND je.is_reversed = false
+          AND je.status NOT IN ('draft', 'pending_review', 'cancelled')
           AND je.date >= ${ba.openingBalanceDate}::date
           AND je.date < ${from}::date
       `);
@@ -1740,6 +1741,7 @@ router.get('/accounts/:id/payments', async (req: AuthenticatedRequest, res: Resp
         WHERE jl.account_id = ${ba.accountId}::uuid
           AND je.org_id = ${orgId}::uuid
           AND je.is_reversed = false
+          AND je.status NOT IN ('draft', 'pending_review', 'cancelled')
           AND je.date < ${from}::date
       `);
       const preRow = preResult.rows ? (preResult.rows as unknown as any[])[0] : (preResult as any)[0];
@@ -1774,6 +1776,7 @@ router.get('/accounts/:id/payments', async (req: AuthenticatedRequest, res: Resp
         WHERE jl.account_id = ${ba.accountId}::uuid
           AND je.org_id = ${orgId}::uuid
           AND je.is_reversed = false
+          AND je.status NOT IN ('draft', 'pending_review', 'cancelled')
           ${dateFilter}
       ),
       contra AS (

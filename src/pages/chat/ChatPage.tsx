@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSocket } from '../../hooks/useSocket';
 import { api } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
+import { useToast } from '../../contexts/ToastContext';
 import { Send, MessageCircle, Loader, Plus, Users, ArrowLeft, Check, X, Bell } from 'lucide-react';
 
 interface UserInfo {
@@ -35,6 +36,7 @@ interface ChatNotification {
 export default function ChatPage() {
   const { socket, connected, connectError, joinConversations } = useSocket();
   const { user } = useAuth();
+  const { toast } = useToast();
   const [convs, setConvs] = useState<Conversation[]>([]);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMsg[]>([]);
@@ -142,7 +144,7 @@ export default function ChatPage() {
       await loadConvs();
     } catch (e: any) {
       console.error('[Chat] Create conversation failed:', e?.response?.data || e?.message || e);
-      alert('Failed to create conversation. Check console for details.');
+      toast('Failed to create conversation. Check console for details.', 'error');
     }
     finally { setCreating(false); }
   }

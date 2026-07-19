@@ -14,6 +14,7 @@ import {
 import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
 import { CurrencySelector } from '../../components/ui/CurrencySelector';
+import { useToast } from '../../contexts/ToastContext';
 
 // ── Interfaces ──────────────────────────────────────────────────────────────
 
@@ -198,7 +199,7 @@ function statusStyle(status: string): string {
   }
 }
 
-function printReceipt(payment: PaymentDetail, org: any, cust: any, invoices: (InvoiceDetail | undefined)[]) {
+function printReceipt(payment: PaymentDetail, org: any, cust: any, invoices: (InvoiceDetail | undefined)[], toast: any) {
   const meta = METHOD_META[payment.paymentMethod] || { label: payment.paymentMethod };
   const methodLabel = meta.label;
   const logoHtml = org?.logoUrl
@@ -328,10 +329,10 @@ function printReceipt(payment: PaymentDetail, org: any, cust: any, invoices: (In
 
   const w = window.open('', '_blank');
   if (w) { w.document.write(html); w.document.close(); setTimeout(() => w.print(), 500); }
-  else { alert('Popup blocked. Please allow popups for this site and try again.'); }
+  else { toast('Popup blocked. Please allow popups for this site and try again.', 'warning'); }
 }
 
-function printPaymentDetail(payment: PaymentDetail, org: any) {
+function printPaymentDetail(payment: PaymentDetail, org: any, toast: any) {
   const meta = METHOD_META[payment.paymentMethod] || { label: payment.paymentMethod };
   const logoHtml = org?.logoUrl
     ? `<img src="${org.logoUrl}" style="height:48px;width:48px;object-fit:contain;border-radius:8px;" />`
@@ -410,7 +411,7 @@ function printPaymentDetail(payment: PaymentDetail, org: any) {
 
   const w = window.open('', '_blank');
   if (w) { w.document.write(html); w.document.close(); setTimeout(() => w.print(), 500); }
-  else { alert('Popup blocked. Please allow popups for this site and try again.'); }
+  else { toast('Popup blocked. Please allow popups for this site and try again.', 'warning'); }
 }
 
 // ── Export Helpers ──────────────────────────────────────────────────────────
@@ -471,6 +472,7 @@ function exportPaymentsPDF(payments: Payment[]) {
 // ── Main Page ────────────────────────────────────────────────────────────────
 
 export function PaymentsReceivedPage() {
+  const { toast } = useToast();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -977,7 +979,7 @@ export function PaymentsReceivedPage() {
                                   <Download size={14} />
                                 </button>
                               ) : (
-                                <button onClick={() => { if (org) printPaymentDetail(p as PaymentDetail, org); }}
+                                <button onClick={() => { if (org) printPaymentDetail(p as PaymentDetail, org, toast); }}
                                   className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200" title="Print payment detail">
                                   <Download size={14} />
                                 </button>
@@ -1026,7 +1028,7 @@ export function PaymentsReceivedPage() {
                         <Download size={16} />
                       </button>
                     ) : (
-                      <button onClick={() => { if (selectedPayment && org) printPaymentDetail(selectedPayment as PaymentDetail, org); }}
+                      <button onClick={() => { if (selectedPayment && org) printPaymentDetail(selectedPayment as PaymentDetail, org, toast); }}
                         className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50" title="Print payment detail">
                         <Download size={16} />
                       </button>
@@ -1476,6 +1478,7 @@ function ReceiptModal({ paymentId, onClose, customerMap, org }: {
   customerMap: Map<string, Customer>;
   org?: Org;
 }) {
+  const { toast } = useToast();
   const { data: payment, isLoading: paymentLoading } = useQuery<PaymentDetail>({
     queryKey: ['sales', 'payments', paymentId],
     queryFn: async () => { const r = await api.get(`/sales/payments/${paymentId}`); return r.data; },
@@ -1516,7 +1519,7 @@ function ReceiptModal({ paymentId, onClose, customerMap, org }: {
               if (payment) {
                 const cust = payment.customerId ? customerMap.get(payment.customerId) : undefined;
                 const invs = invoiceQueries.map(q => q.data).filter(Boolean) as InvoiceDetail[];
-                printReceipt(payment, org, cust, invs);
+                printReceipt(payment, org, cust, invs, toast);
               }
             }} disabled={isLoading}
               className="flex items-center gap-1.5 px-3.5 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-slate-900 transition disabled:opacity-50">

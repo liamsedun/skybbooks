@@ -14,6 +14,7 @@ import {
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
 import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
 import { CurrencySelector } from '../../components/ui/CurrencySelector';
+import { useToast } from '../../contexts/ToastContext';
 
 interface Vendor { id: string; name: string; email?: string; phone?: string; }
 interface Account { id: string; code: string; name: string; type: string; }
@@ -115,6 +116,7 @@ const EMPTY_FORM: FormState = {
 };
 
 export function BillsPage() {
+  const { toast } = useToast();
   const { id } = useParams();
   const navigate = useNavigate();
   if (id) return <BillDetail id={id} onBack={() => navigate('/app/purchases/bills')} />;
@@ -122,6 +124,7 @@ export function BillsPage() {
 }
 
 function BillList() {
+  const { toast } = useToast();
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -211,27 +214,27 @@ function BillList() {
   const approveMutation = useMutation({
     mutationFn: (id: string) => api.post(`/purchases/bills/${id}/approve`).then(r => r.data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['bills'] }); invalidateBank(); },
-    onError: (e: any) => alert(e?.response?.data?.message || 'Failed to approve bill'),
+    onError: (e: any) => toast(e?.response?.data?.message || 'Failed to approve bill', 'error'),
   });
   const unapproveMutation = useMutation({
     mutationFn: (id: string) => api.post(`/purchases/bills/${id}/unapprove`).then(r => r.data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['bills'] }); invalidateBank(); },
-    onError: (e: any) => alert(e?.response?.data?.message || 'Failed to unapprove bill'),
+    onError: (e: any) => toast(e?.response?.data?.message || 'Failed to unapprove bill', 'error'),
   });
   const voidMutation = useMutation({
     mutationFn: (id: string) => api.post(`/purchases/bills/${id}/void`).then(r => r.data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['bills'] }); invalidateBank(); },
-    onError: (e: any) => alert(e?.response?.data?.message || 'Failed to void bill'),
+    onError: (e: any) => toast(e?.response?.data?.message || 'Failed to void bill', 'error'),
   });
   const duplicateMutation = useMutation({
     mutationFn: (id: string) => api.post(`/purchases/bills/${id}/duplicate`).then(r => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['bills'] }),
-    onError: (e: any) => alert(e?.response?.data?.message || 'Failed to duplicate bill'),
+    onError: (e: any) => toast(e?.response?.data?.message || 'Failed to duplicate bill', 'error'),
   });
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.delete(`/purchases/bills/${id}`).then(r => r.data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['bills'] }); invalidateBank(); },
-    onError: (e: any) => alert(e?.response?.data?.message || 'Failed to delete bill'),
+    onError: (e: any) => toast(e?.response?.data?.message || 'Failed to delete bill', 'error'),
   });
 
   // ── Modal helpers ─────────────────────────────────────────────────────────
@@ -269,7 +272,7 @@ function BillList() {
       });
       setModalMode('edit');
     } catch {
-      alert('Could not load bill details. Please try again.');
+      toast('Could not load bill details. Please try again.', 'error');
     }
   }
 
@@ -351,7 +354,7 @@ function BillList() {
                 ).join('');
                 printWindow('Bills', `<table><thead><tr><th>Bill #</th><th>Vendor</th><th>Date</th><th>Due Date</th><th class="c">Status</th><th class="r">Total</th><th class="r">Paid</th><th class="r">Balance</th></tr></thead><tbody>${rows}</tbody></table>`, `${filtered.length} bills`);
               } catch (err) {
-                alert('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'));
+                toast('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'), 'error');
                 console.error('Print error:', err);
               }
             }}
@@ -861,6 +864,7 @@ interface DetailBill extends Bill {
 }
 
 function BillDetail({ id, onBack }: { id: string; onBack: () => void }) {
+  const { toast } = useToast();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { data: billRaw, isLoading, error } = useQuery({
@@ -884,27 +888,27 @@ function BillDetail({ id, onBack }: { id: string; onBack: () => void }) {
   const voidMutation = useMutation({
     mutationFn: (bid: string) => api.post(`/purchases/bills/${bid}/void`).then(r => r.data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['bill', id] }); qc.invalidateQueries({ queryKey: ['bills'] }); invalidateBank(); },
-    onError: (e: any) => alert(e?.response?.data?.message || 'Failed to void bill'),
+    onError: (e: any) => toast(e?.response?.data?.message || 'Failed to void bill', 'error'),
   });
   const approveMutation = useMutation({
     mutationFn: (bid: string) => api.post(`/purchases/bills/${bid}/approve`).then(r => r.data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['bill', id] }); qc.invalidateQueries({ queryKey: ['bills'] }); invalidateBank(); },
-    onError: (e: any) => alert(e?.response?.data?.message || 'Failed to approve bill'),
+    onError: (e: any) => toast(e?.response?.data?.message || 'Failed to approve bill', 'error'),
   });
   const unapproveMutation = useMutation({
     mutationFn: (bid: string) => api.post(`/purchases/bills/${bid}/unapprove`).then(r => r.data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['bill', id] }); qc.invalidateQueries({ queryKey: ['bills'] }); invalidateBank(); },
-    onError: (e: any) => alert(e?.response?.data?.message || 'Failed to unapprove bill'),
+    onError: (e: any) => toast(e?.response?.data?.message || 'Failed to unapprove bill', 'error'),
   });
   const duplicateMutation = useMutation({
     mutationFn: (bid: string) => api.post(`/purchases/bills/${bid}/duplicate`).then(r => r.data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['bills'] }); navigate('/app/purchases/bills'); },
-    onError: (e: any) => alert(e?.response?.data?.message || 'Failed to duplicate bill'),
+    onError: (e: any) => toast(e?.response?.data?.message || 'Failed to duplicate bill', 'error'),
   });
   const deleteMutation = useMutation({
     mutationFn: (bid: string) => api.delete(`/purchases/bills/${bid}`).then(r => r.data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['bills'] }); invalidateBank(); navigate('/app/purchases/bills'); },
-    onError: (e: any) => alert(e?.response?.data?.message || 'Failed to delete bill'),
+    onError: (e: any) => toast(e?.response?.data?.message || 'Failed to delete bill', 'error'),
   });
 
   const bill = billRaw as DetailBill | undefined;
@@ -1026,23 +1030,23 @@ function BillDetail({ id, onBack }: { id: string; onBack: () => void }) {
                   <div style="margin-top:16px;background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0;padding:16px 20px;max-width:320px;margin-left:auto">
                     <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0">
                       <span style="color:#64748b">Subtotal</span>
-                      <span style="font-weight:600;color:#334155;font-family:monospace">${formatNaira(bill.subtotal)}</span>
+                      <span style="font-weight:600;color:#334155;font-family:monospace">${fmtDual(bill.subtotal, bill.currency, bill.fxRate)}</span>
                     </div>
                     <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0">
                       <span style="color:#64748b">VAT</span>
-                      <span style="font-weight:600;color:#334155;font-family:monospace">${formatNaira(bill.taxAmount)}</span>
+                      <span style="font-weight:600;color:#334155;font-family:monospace">${fmtDual(bill.taxAmount, bill.currency, bill.fxRate)}</span>
                     </div>
                     <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-top:1px solid #e2e8f0;margin-top:4px;padding-top:8px">
                       <span style="font-weight:700;color:#0f172a">Total</span>
-                      <span style="font-weight:700;color:#0f172a;font-family:monospace">${formatNaira(bill.total)}</span>
+                      <span style="font-weight:700;color:#0f172a;font-family:monospace">${fmtDual(bill.total, bill.currency, bill.fxRate)}</span>
                     </div>
                     <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0">
                       <span style="color:#16a34a">Amount Paid</span>
-                      <span style="font-weight:600;color:#16a34a;font-family:monospace">${formatNaira(bill.amountPaid)}</span>
+                      <span style="font-weight:600;color:#16a34a;font-family:monospace">${fmtDual(bill.amountPaid, bill.currency, bill.fxRate)}</span>
                     </div>
                     <div style="display:flex;justify-content:space-between;font-size:14px;padding:4px 0;border-top:2px solid #0f172a;margin-top:4px;padding-top:8px">
                       <span style="font-weight:700;color:#0f172a">Balance Due</span>
-                      <span style="font-weight:800;color:#0f172a;font-family:monospace">${formatNaira(bill.balanceDue)}</span>
+                      <span style="font-weight:800;color:#0f172a;font-family:monospace">${fmtDual(bill.balanceDue, bill.currency, bill.fxRate)}</span>
                     </div>
                   </div>
                   ${bill.notes ? `<div style="margin-top:24px;padding:12px 16px;background:#fefce8;border:1px solid #fde68a;border-radius:8px;font-size:11px;color:#92400e"><strong style="font-weight:600">Notes:</strong> ${bill.notes}</div>` : ''}
@@ -1051,7 +1055,7 @@ function BillDetail({ id, onBack }: { id: string; onBack: () => void }) {
                 const w = window.open('','_blank');
                 if(w){w.document.write(fullHtml);w.document.close();setTimeout(()=>w.print(),500);}
               } catch (err) {
-                alert('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'));
+                toast('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'), 'error');
                 console.error('Print error:', err);
               }
             }}
@@ -1108,7 +1112,7 @@ function BillDetail({ id, onBack }: { id: string; onBack: () => void }) {
         </div>
         <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
           <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Amount Paid</p>
-          <p className="text-lg font-bold mt-1 text-green-600">{formatNaira(bill.amountPaid)}</p>
+          <p className="text-lg font-bold mt-1 text-green-600">{fmtDual(bill.amountPaid, bill.currency, bill.fxRate)}</p>
         </div>
         <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
           <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Balance Due</p>

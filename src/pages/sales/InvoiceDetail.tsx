@@ -537,7 +537,7 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
                   {computedPricing.discountKobo > 0 && (
                     <div className="flex justify-between text-sm text-violet-600 pb-2">
                       <span>Discount</span>
-                      <span className="font-medium font-mono">&minus; {formatNaira(computedPricing.discountKobo)}</span>
+                      <span className="font-medium font-mono">&minus; {fmtDual(computedPricing.discountKobo, invoiceData.currency, invoiceData.fxRate)}</span>
                     </div>
                   )}
                   <div className="flex justify-between text-sm text-slate-500 pb-2">
@@ -554,12 +554,12 @@ export function InvoiceDetail({ invoiceId, onNavigate }: InvoiceDetailProps) {
                       {invoiceData.payments.map((p: any, i: number) => (
                         <div key={i} className="flex justify-between text-xs text-slate-500 pl-3">
                           <span>{p.paymentNumber} ({p.reference || ''})</span>
-                          <span className="font-mono text-emerald-700">{formatNaira(p.amountAllocated ?? p.amount)}</span>
+                          <span className="font-mono text-emerald-700">{fmtDual(p.amountAllocated ?? p.amount, invoiceData.currency, invoiceData.fxRate)}</span>
                         </div>
                       ))}
                       <div className="flex justify-between text-sm font-medium text-slate-600 pt-1 border-t border-dashed border-slate-200">
                         <span>Amount Paid</span>
-                        <span className="font-mono">{formatNaira(invoiceData.amountPaid ?? 0)}</span>
+                        <span className="font-mono">{fmtDual(invoiceData.amountPaid ?? 0, invoiceData.currency, invoiceData.fxRate)}</span>
                       </div>
                     </div>
                   )}

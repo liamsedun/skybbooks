@@ -9,6 +9,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { bankingApi } from '../../lib/api';
 import { useCurrency } from '../../hooks/useCurrency';
 import { useAuth } from '../../hooks/useAuth';
+import { useToast } from '../../contexts/ToastContext';
 import { FlutterwaveConnectButton } from '../../components/banking/FlutterwaveConnectButton';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
 import { CSV_TEMPLATES, downloadCsv } from '../../lib/csvTemplates';
@@ -77,6 +78,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
   const queryClient = useQueryClient();
   const { formatNaira } = useCurrency();
   const { token } = useAuth();
+  const { toast } = useToast();
 
   const [showConnectModal, setShowConnectModal] = useState(false);
   const [editAccount, setEditAccount] = useState<any | null>(null);
@@ -175,7 +177,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
       queryClient.invalidateQueries({ queryKey: ['bankingTransactions'] });
     },
     onError: (err: any) => {
-      alert(`Sync failed: ${err.message}`);
+      toast(`Sync failed: ${err.message}`, 'error');
     },
     onSettled: () => {
       setSyncingAccountId(null);
@@ -204,7 +206,7 @@ export function BankAccounts({ onNavigate }: BankAccountsProps) {
       queryClient.invalidateQueries({ queryKey: ['bankAccounts'] });
     },
     onError: (err: any) => {
-      alert(err.response?.data?.message || err.message || 'Cannot delete audited accounts.');
+      toast(err.response?.data?.message || err.message || 'Cannot delete audited accounts.', 'error');
     }
   });
 

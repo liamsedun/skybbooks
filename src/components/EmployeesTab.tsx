@@ -13,6 +13,7 @@ import {
   Wrench
 } from 'lucide-react';
 import { Employee, Kobo } from '../types';
+import { useToast } from '../contexts/ToastContext';
 
 interface EmployeesTabProps {
   employees: Employee[];
@@ -25,6 +26,7 @@ interface EmployeesTabProps {
  * in Nigerian kobo integers.
  */
 export default function EmployeesTab({ employees, setEmployees }: EmployeesTabProps) {
+  const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [newName, setNewName] = useState('');
   const [newRole, setNewRole] = useState('');
@@ -41,7 +43,7 @@ export default function EmployeesTab({ employees, setEmployees }: EmployeesTabPr
 
     const rateNumNaira = parseFloat(newRate);
     if (isNaN(rateNumNaira) || rateNumNaira <= 0) {
-      alert("Please enter a valid hourly rate.");
+      toast("Please enter a valid hourly rate.", 'warning');
       return;
     }
 
@@ -75,7 +77,7 @@ export default function EmployeesTab({ employees, setEmployees }: EmployeesTabPr
     setNewRate('');
     setShowAddForm(false);
     
-    alert(`Successfully registered ${newEmp.name} into Skyhouse Payroll Database.`);
+    toast(`Successfully registered ${newEmp.name} into Skyhouse Payroll Database.`, 'success');
   };
 
   const toggleStatus = (id: string) => {

@@ -9,6 +9,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { bankingApi } from '../../lib/api';
 import { useCurrency } from '../../hooks/useCurrency';
 import { useAuth } from '../../hooks/useAuth';
+import { useToast } from '../../contexts/ToastContext';
 import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
 import {
   Plus,
@@ -30,6 +31,7 @@ import {
 } from 'lucide-react';
 
 export function BankRules() {
+  const { toast } = useToast();
   const queryClient = useQueryClient();
   const { formatNaira } = useCurrency();
   const { token } = useAuth();
@@ -83,7 +85,7 @@ export function BankRules() {
       resetForm();
     },
     onError: (err: any) => {
-      alert(`Failed to save automation rule: ${err.message}`);
+      toast(`Failed to save automation rule: ${err.message}`, 'error');
     }
   });
 
@@ -96,7 +98,7 @@ export function BankRules() {
       resetForm();
     },
     onError: (err: any) => {
-      alert(`Failed to update automation rule: ${err.message}`);
+      toast(`Failed to update automation rule: ${err.message}`, 'error');
     }
   });
 
@@ -107,7 +109,7 @@ export function BankRules() {
       queryClient.invalidateQueries({ queryKey: ['bankRules'] });
     },
     onError: (err: any) => {
-      alert(`Failed to delete rule: ${err.message}`);
+      toast(`Failed to delete rule: ${err.message}`, 'error');
     }
   });
 
@@ -190,8 +192,8 @@ export function BankRules() {
 
   const handleSubmittingRule = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!ruleName.trim()) return alert('Automated Rule display name is required.');
-    if (!actionAccountId) return alert('You must select a classification account for categorization.');
+    if (!ruleName.trim()) return toast('Automated Rule display name is required.', 'warning');
+    if (!actionAccountId) return toast('You must select a classification account for categorization.', 'warning');
 
     const selectedAccount = expenseGLAccounts.find((a: any) => a.id === actionAccountId);
     const categoryName = actionCategory || (selectedAccount ? selectedAccount.name : 'Automated Allocation');

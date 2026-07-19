@@ -12,6 +12,7 @@ import {
   Ban, CheckCircle2, ReceiptText, Download, FileText, Wallet, Clock,
 } from 'lucide-react';
 import { CurrencySelector } from '../../components/ui/CurrencySelector';
+import { useToast } from '../../contexts/ToastContext';
 
 interface Customer { id: string; name: string; email: string | null; customerCode?: string; }
 
@@ -122,7 +123,7 @@ function exportCreditNotesPDF(notes: CreditNote[]) {
   if (w) { w.document.write(html); w.document.close(); setTimeout(()=>w.print(),500); }
 }
 
-function printCreditNote(note: CreditNote, org: any) {
+function printCreditNote(note: CreditNote, org: any, toast: any) {
   const logoHtml = org?.logoUrl
     ? `<img src="${org.logoUrl}" style="height:48px;width:48px;object-fit:contain;border-radius:8px;" />`
     : `<div style="width:48px;height:48px;border-radius:12px;background:#4f46e5;display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;font-weight:700;">${org?.name?.[0]?.toUpperCase() ?? 'S'}</div>`;
@@ -227,10 +228,11 @@ function printCreditNote(note: CreditNote, org: any) {
 
   const w = window.open('', '_blank');
   if (w) { w.document.write(html); w.document.close(); setTimeout(() => w.print(), 500); }
-  else { alert('Popup blocked. Please allow popups for this site and try again.'); }
+  else { toast('Popup blocked. Please allow popups for this site and try again.', 'warning'); }
 }
 
 export function CreditNotesPage() {
+  const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState('');
@@ -538,6 +540,7 @@ function DetailPanel({
   onClose: () => void;
   onError: (msg: string | null) => void;
 }) {
+  const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showApplyForm, setShowApplyForm] = useState(false);
   const [applyInvoiceId, setApplyInvoiceId] = useState('');
@@ -608,7 +611,7 @@ function DetailPanel({
           <h2 className="text-base font-bold text-slate-900">Credit Note</h2>
           <div className="flex items-center gap-1">
             {note && org && (
-              <button onClick={() => printCreditNote(note, org)}
+              <button onClick={() => printCreditNote(note, org, toast)}
                 className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors" title="Print credit note">
                 <Download size={16} />
               </button>

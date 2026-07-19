@@ -13,6 +13,7 @@ import {
   Search
 } from 'lucide-react';
 import { Invoice, InvoiceItem, Kobo } from '../types';
+import { useToast } from '../contexts/ToastContext';
 
 interface InvoicesTabProps {
   invoices: Invoice[];
@@ -26,6 +27,7 @@ interface InvoicesTabProps {
  * and stores all financial variables with integer kobo precision.
  */
 export default function InvoicesTab({ invoices, setInvoices, onAddTransaction }: InvoicesTabProps) {
+  const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [viewingInvoice, setViewingInvoice] = useState<Invoice | null>(null);
@@ -92,7 +94,7 @@ export default function InvoicesTab({ invoices, setInvoices, onAddTransaction }:
   const handleCreateInvoice = (e: React.FormEvent) => {
     e.preventDefault();
     if (!clientName || !clientEmail || !dueDate || lineItems.some(i => !i.description)) {
-      alert("Please complete all invoice details and item descriptions.");
+      toast("Please complete all invoice details and item descriptions.", 'warning');
       return;
     }
 
@@ -118,7 +120,7 @@ export default function InvoicesTab({ invoices, setInvoices, onAddTransaction }:
     setLineItems([{ id: '1', description: 'Consulting Advisory Services', quantity: 1, unitPrice: 12000000, amount: 12000000 }]);
     setShowCreateModal(false);
 
-    alert(`Successfully generated Invoice ${newInvoice.id} to ${newInvoice.clientName}!`);
+    toast(`Successfully generated Invoice ${newInvoice.id} to ${newInvoice.clientName}!`, 'success');
   };
 
   /**
@@ -147,7 +149,7 @@ export default function InvoicesTab({ invoices, setInvoices, onAddTransaction }:
         setViewingInvoice(prev => prev ? { ...prev, status: 'Paid' } : null);
       }
       
-      alert(`Invoice ${invoiceId} logged as PAID. Consulting revenues posted to Ledger.`);
+      toast(`Invoice ${invoiceId} logged as PAID. Consulting revenues posted to Ledger.`, 'success');
     }
   };
 

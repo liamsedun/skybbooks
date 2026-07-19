@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { RefreshCw, Search, ExternalLink, DollarSign, TrendingUp, Activity, Loader2, Wallet, ArrowRightLeft, CheckCircle, XCircle, Clock, AlertTriangle } from 'lucide-react';
 import { bankingApi } from '../../lib/api';
+import { useToast } from '../../contexts/ToastContext';
 
 interface GatewayTransaction {
   id: string;
@@ -52,6 +53,7 @@ function fmtNaira(kobo: number) {
 }
 
 export function PaymentGatewayPage() {
+  const { toast } = useToast();
   const [transactions, setTransactions] = useState<GatewayTransaction[]>([]);
   const [summary, setSummary] = useState<GatewaySummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -85,7 +87,7 @@ export function PaymentGatewayPage() {
       await bankingApi.syncGatewayTransactions(provider);
       await fetchData();
     } catch (err: any) {
-      alert(err?.response?.data?.error || err.message || 'Sync failed');
+      toast(err?.response?.data?.error || err.message || 'Sync failed', 'error');
     } finally {
       setSyncing(null);
     }
@@ -94,10 +96,10 @@ export function PaymentGatewayPage() {
   const handleAutoMatch = async () => {
     try {
       const result = await bankingApi.autoMatchGateway();
-      alert(`Auto-matched ${result.count} transactions`);
+      toast(`Auto-matched ${result.count} transactions`, 'success');
       await fetchData();
     } catch (err: any) {
-      alert(err?.response?.data?.error || err.message || 'Auto-match failed');
+      toast(err?.response?.data?.error || err.message || 'Auto-match failed', 'error');
     }
   };
 

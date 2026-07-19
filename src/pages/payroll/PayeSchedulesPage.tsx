@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, payrollApi, printWindow, downloadBlob, orgApi } from '../../lib/api';
+import { useToast } from '../../contexts/ToastContext';
 import {
   Loader2, AlertCircle, FileText, Download, Printer, Trash2
 } from 'lucide-react';
@@ -15,6 +16,7 @@ function fmtDate(d: string | null) {
 
 export function PayeSchedulesPage() {
   const qc = useQueryClient();
+  const { toast } = useToast();
   const [selectedRunId, setSelectedRunId] = useState<string>('');
   const [selectedPayeIds, setSelectedPayeIds] = useState<string[]>([]);
 
@@ -168,9 +170,9 @@ export function PayeSchedulesPage() {
                 </body></html>`;
                 const w = window.open('', '_blank');
                 if (w) { w.document.write(html); w.document.close(); setTimeout(() => w.print(), 500); }
-                else { alert('Popup blocked. Please allow popups for this site and try again.'); }
+                else { toast('Popup blocked. Please allow popups for this site and try again.', 'warning'); }
               } catch (err) {
-                alert('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'));
+                toast('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'), 'error');
                 console.error('Print error:', err);
               }
             }} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-xs font-medium rounded-xl transition-all duration-200 hover:from-blue-700 hover:to-blue-800 shadow-sm">

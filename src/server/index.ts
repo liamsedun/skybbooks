@@ -9,8 +9,8 @@ import path from 'path';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
-import rateLimit from 'express-rate-limit';
 import winston from 'winston';
+import { apiLimiter, authLimiter, perUserLimiter, perOrgLimiter } from '../middleware/rateLimiters';
 import http from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 
@@ -130,28 +130,10 @@ async function startServer() {
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
   // Rate limiters
-  const generalLimiter = rateLimit({
-    windowMs: 1 * 60 * 1000,
-    max: 100,
-    message: { error: 'Too many requests. Please try again later.' },
-    standardHeaders: true,
-    legacyHeaders: false,
-    validate: { xForwardedForHeader: false },
-    skip: () => process.env.NODE_ENV !== 'production'
-  });
-
-  const authLimiter = rateLimit({
-    windowMs: 1 * 60 * 1000,
-    max: 10,
-    message: { error: 'Too many authentication attempts. Please try again in a minute.' },
-    standardHeaders: true,
-    legacyHeaders: false,
-    validate: { xForwardedForHeader: false },
-    skip: () => process.env.NODE_ENV !== 'production'
-  });
-
-  app.use('/api/', generalLimiter);
+  app.use('/api/', apiLimiter);
   app.use('/api/auth/', authLimiter);
+  app.use('/api/', perUserLimiter);
+  app.use('/api/', perOrgLimiter);
 
   // ==========================================
   // API ROUTES (must be before static files)

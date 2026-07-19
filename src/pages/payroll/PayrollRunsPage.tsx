@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, payrollApi, printWindow, orgApi } from '../../lib/api';
+import { useToast } from '../../contexts/ToastContext';
 import {
   Plus, X, Loader2, AlertCircle, Search, FileText,
   CheckCircle2, Ban, ChevronDown, ChevronUp, Play, DollarSign,
@@ -25,6 +26,7 @@ const STATUS_STYLES: Record<string, string> = {
 
 export function PayrollRunsPage() {
   const qc = useQueryClient();
+  const { toast } = useToast();
   const { id: routeRunId } = useParams<{ id: string }>();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -226,7 +228,7 @@ export function PayrollRunsPage() {
     </body></html>`;
     const w = window.open('', '_blank');
     if (w) { w.document.write(html); w.document.close(); setTimeout(() => w.print(), 500); }
-    else { alert('Popup blocked. Please allow popups for this site and try again.'); }
+    else { toast('Popup blocked. Please allow popups for this site and try again.', 'warning'); }
   }
 
   function handleCreate() {
@@ -265,7 +267,7 @@ export function PayrollRunsPage() {
                 ).join('');
                 printWindow('Payroll Runs', `<table><thead><tr><th>Run #</th><th>Period Start</th><th>Period End</th><th class="r">Gross</th><th class="r">Net</th><th class="c">Employees</th><th class="c">Status</th></tr></thead><tbody>${rows}</tbody></table>`, `${filteredRuns.length} runs`);
               } catch (err) {
-                alert('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'));
+                toast('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'), 'error');
                 console.error('Print error:', err);
               }
             }}

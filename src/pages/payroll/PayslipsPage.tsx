@@ -246,7 +246,7 @@ function buildPayslipHtml(line: any, run: any, employee: any, calc: any, org: an
 function openPayslipPrint(html: string, title: string) {
   const w = window.open('', '_blank');
   if (w) { w.document.write(html); w.document.close(); setTimeout(() => w.print(), 500); }
-  else { alert('Popup blocked. Please allow popups for this site and try again.'); }
+  else { window.dispatchEvent(new CustomEvent('app:toast', { detail: { message: 'Popup blocked. Please allow popups for this site and try again.', type: 'warning' } })); }
 }
 
 export function PayslipsPage() {

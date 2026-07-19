@@ -4,6 +4,7 @@ import { leaseApi, accountantApi, printWindow } from '../../lib/api';
 import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
 import { PageLoader } from '../../components/ui/PageLoader';
 import { Plus, X, Loader2, Eye, Trash2, FileText, Printer, Ban, ArrowUpDown, CheckCircle, DollarSign, Calendar } from 'lucide-react';
+import { useToast } from '../../contexts/ToastContext';
 
 function fmtNaira(v: number): string {
   return `₦${(v / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
@@ -30,6 +31,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 export function LeasesPage() {
+  const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [editLease, setEditLease] = useState<any | null>(null);
@@ -58,7 +60,7 @@ export function LeasesPage() {
       ).join('');
       printWindow('Leases Schedule', `<table><thead><tr><th>Lease #</th><th>Lessor</th><th>Category</th><th class="r">Payment</th><th class="r">PV</th><th class="r">ROU Asset</th><th>Commencement</th><th class="c">Status</th></tr></thead><tbody>${rows}</tbody></table>`, `${list.length} leases`);
     } catch (err) {
-      alert('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      toast('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'), 'error');
     }
   };
 
@@ -155,6 +157,7 @@ export function LeasesPage() {
 }
 
 function LeaseDetailView({ leaseId, onBack, onRefresh }: { leaseId: string; onBack: () => void; onRefresh: () => void }) {
+  const { toast } = useToast();
   const queryClient = useQueryClient();
   const [processingPayment, setProcessingPayment] = useState(false);
   const [postingDepr, setPostingDepr] = useState(false);
@@ -176,7 +179,7 @@ function LeaseDetailView({ leaseId, onBack, onRefresh }: { leaseId: string; onBa
       await refetch();
       onRefresh();
     } catch (err: any) {
-      alert(err?.response?.data?.error || err?.message || 'Failed to post commencement entry');
+      toast(err?.response?.data?.error || err?.message || 'Failed to post commencement entry', 'error');
     } finally { setPostingCommencement(false); }
   };
 
@@ -187,7 +190,7 @@ function LeaseDetailView({ leaseId, onBack, onRefresh }: { leaseId: string; onBa
       await refetch();
       onRefresh();
     } catch (err: any) {
-      alert(err?.response?.data?.error || err?.message || 'Failed to process payment');
+      toast(err?.response?.data?.error || err?.message || 'Failed to process payment', 'error');
     } finally { setProcessingPayment(false); }
   };
 
@@ -198,7 +201,7 @@ function LeaseDetailView({ leaseId, onBack, onRefresh }: { leaseId: string; onBa
       await refetch();
       onRefresh();
     } catch (err: any) {
-      alert(err?.response?.data?.error || err?.message || 'Failed to post depreciation');
+      toast(err?.response?.data?.error || err?.message || 'Failed to post depreciation', 'error');
     } finally { setPostingDepr(false); }
   };
 
@@ -209,7 +212,7 @@ function LeaseDetailView({ leaseId, onBack, onRefresh }: { leaseId: string; onBa
       await refetch();
       onRefresh();
     } catch (err: any) {
-      alert(err?.response?.data?.error || err?.message || 'Failed to batch process payments');
+      toast(err?.response?.data?.error || err?.message || 'Failed to batch process payments', 'error');
     } finally { setBatchProcessing(false); }
   };
 
@@ -220,7 +223,7 @@ function LeaseDetailView({ leaseId, onBack, onRefresh }: { leaseId: string; onBa
       await refetch();
       onRefresh();
     } catch (err: any) {
-      alert(err?.response?.data?.error || err?.message || 'Failed to batch post depreciation');
+      toast(err?.response?.data?.error || err?.message || 'Failed to batch post depreciation', 'error');
     } finally { setBatchDepr(false); }
   };
 

@@ -6,6 +6,7 @@ import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
 import { PageLoader } from '../../components/ui/PageLoader';
 import { Plus, X, Loader2, AlertCircle, CheckCircle2, Eye, Download, Upload, Printer, ExternalLink, ArrowLeft, RotateCcw, Trash2, Pencil, FileText, ChevronDown } from 'lucide-react';
 import { exportToCsv } from '../../lib/csvTemplates';
+import { useToast } from '../../contexts/ToastContext';
 
 function fmtNaira(v: number): string {
   return `₦${(v / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
@@ -52,6 +53,7 @@ function sourceDocLink(source: string, sourceId?: string): string | null {
 }
 
 export function JournalsPage() {
+  const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
@@ -182,7 +184,7 @@ export function JournalsPage() {
         `${list.length} entries`
       );
     } catch (err) {
-      alert('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      toast('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'), 'error');
       console.error('Print error:', err);
     }
   };

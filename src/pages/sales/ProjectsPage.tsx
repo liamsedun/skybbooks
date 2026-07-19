@@ -5,6 +5,7 @@ import { projectsApi, api, printWindow } from '../../lib/api';
 import { PageLoader } from '../../components/ui/PageLoader';
 import { useOrgSettings } from '../../hooks/useOrgSettings';
 import { useOrg } from '../../hooks/useOrg';
+import { useToast } from '../../contexts/ToastContext';
 import {
   Plus, X, Loader2, AlertCircle, CheckCircle2, Briefcase, Search, Trash2, Edit3, Eye, Printer, FileText
 } from 'lucide-react';
@@ -21,6 +22,7 @@ function fmtDate(d: string): string {
 }
 
 export function ProjectsPage() {
+  const { toast } = useToast();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
@@ -61,7 +63,7 @@ export function ProjectsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
     },
-    onError: (err: any) => alert(err?.response?.data?.error || err?.message || 'Failed to update status.'),
+    onError: (err: any) => toast(err?.response?.data?.error || err?.message || 'Failed to update status.', 'error'),
   });
 
   const closeForm = () => { setShowForm(false); setEditTarget(null); setFormError(null); };
@@ -98,7 +100,7 @@ export function ProjectsPage() {
     },
     onError: (err: any) => {
       setDeleteTarget(null);
-      alert(err?.response?.data?.error || err?.message || 'Failed to delete project.');
+      toast(err?.response?.data?.error || err?.message || 'Failed to delete project.', 'error');
     },
   });
 
@@ -134,7 +136,7 @@ export function ProjectsPage() {
 
       printWindow('Projects', headerHtml + rows ? `<table><thead><tr><th>Project</th><th>Customer</th><th>Billing Method</th><th class="r">Budget</th><th class="c">Status</th></tr></thead><tbody>${rows}</tbody></table>` : '<p style="text-align:center;color:#94a3b8">No projects</p>', '');
     } catch (err) {
-      alert('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      toast('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'), 'error');
     }
   }, [projects, org]);
 
@@ -297,6 +299,7 @@ export function ProjectsPage() {
 }
 
 function ProjectDetailView({ project, onClose, org }: { project: any; onClose: () => void; org: any }) {
+  const { toast } = useToast();
   const { settings } = useOrgSettings();
   const customFieldDefs: { name: string; dataType: string }[] = settings?.projects?.fields || [];
   const customFields = project.customFields || {};
@@ -337,7 +340,7 @@ function ProjectDetailView({ project, onClose, org }: { project: any; onClose: (
       </table>`;
       printWindow('Project Details', headerHtml + details, '');
     } catch (err) {
-      alert('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      toast('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'), 'error');
     }
   };
 

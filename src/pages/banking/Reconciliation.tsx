@@ -9,6 +9,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { bankingApi, salesApi, purchasesApi } from '../../lib/api';
 import { useCurrency } from '../../hooks/useCurrency';
 import { useAuth } from '../../hooks/useAuth';
+import { useToast } from '../../contexts/ToastContext';
 import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
 import { printWindow } from '../../lib/api';
 import {
@@ -41,6 +42,7 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
   const queryClient = useQueryClient();
   const { formatNaira } = useCurrency();
   const { token } = useAuth();
+  const { toast } = useToast();
 
   // Active bank account selected
   const [selectedBankAccountId, setSelectedBankAccountId] = useState<string>(initialAccountId || '');
@@ -215,7 +217,7 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
       queryClient.invalidateQueries({ queryKey: ['unmatchedJournalLines', selectedBankAccountId] });
     },
     onError: (err: any) => {
-      alert(`Booking Match Failed: ${err.response?.data?.message || err.message}`);
+      toast(`Booking Match Failed: ${err.response?.data?.message || err.message}`, 'error');
     }
   });
 
@@ -231,7 +233,7 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
       queryClient.invalidateQueries({ queryKey: ['unmatchedJournalLines', selectedBankAccountId] });
     },
     onError: (err: any) => {
-      alert(`Quick-Create failed: ${err.response?.data?.message || err.response?.data?.error || err.message}`);
+      toast(`Quick-Create failed: ${err.response?.data?.message || err.response?.data?.error || err.message}`, 'error');
     }
   });
 
@@ -247,11 +249,11 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
       queryClient.invalidateQueries({ queryKey: ['bankingTransactions', selectedBankAccountId] });
       queryClient.invalidateQueries({ queryKey: ['unmatchedJournalLines', selectedBankAccountId] });
       if (result.errors?.length > 0) {
-        alert(`Created ${result.success} record(s). ${result.errors.length} item(s) failed: ${result.errors.map((e: any) => e.error).join('; ')}`);
+        toast(`Created ${result.success} record(s). ${result.errors.length} item(s) failed: ${result.errors.map((e: any) => e.error).join('; ')}`, 'success');
       }
     },
     onError: (err: any) => {
-      alert(`Batch Quick-Create failed: ${err.response?.data?.message || err.response?.data?.error || err.message}`);
+      toast(`Batch Quick-Create failed: ${err.response?.data?.message || err.response?.data?.error || err.message}`, 'error');
     }
   });
 
@@ -261,10 +263,10 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
     onSuccess: (result: any) => {
       queryClient.invalidateQueries({ queryKey: ['bankAccounts'] });
       queryClient.invalidateQueries({ queryKey: ['bankingTransactions', selectedBankAccountId] });
-      alert(result.message || 'Imported statements cleared.');
+      toast(result.message || 'Imported statements cleared.', 'success');
     },
     onError: (err: any) => {
-      alert(`Failed to clear: ${err.message}`);
+      toast(`Failed to clear: ${err.message}`, 'error');
     }
   });
 
@@ -291,7 +293,7 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
       queryClient.invalidateQueries({ queryKey: ['unmatchedJournalLines', selectedBankAccountId] });
     },
     onError: (err: any) => {
-      alert(`Auto-Matching bot faulted: ${err.message}`);
+      toast(`Auto-Matching bot faulted: ${err.message}`, 'error');
     }
   });
 
@@ -321,7 +323,7 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
       queryClient.invalidateQueries({ queryKey: ['unmatchedJournalLines', selectedBankAccountId] });
     },
     onError: (err: any) => {
-      alert(`Partial match failed: ${err.response?.data?.message || err.message}`);
+      toast(`Partial match failed: ${err.response?.data?.message || err.message}`, 'error');
     }
   });
 
@@ -333,10 +335,10 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
       setSelectedFeedIds([]);
       queryClient.invalidateQueries({ queryKey: ['bankingTransactions', selectedBankAccountId] });
       queryClient.invalidateQueries({ queryKey: ['unmatchedJournalLines', selectedBankAccountId] });
-      alert(`Batch reconciled ${result.matched} transaction(s).${result.errors?.length ? ` ${result.errors.length} error(s).` : ''}`);
+      toast(`Batch reconciled ${result.matched} transaction(s).${result.errors?.length ? ` ${result.errors.length} error(s).` : ''}`, 'success');
     },
     onError: (err: any) => {
-      alert(`Batch reconcile failed: ${err.response?.data?.message || err.message}`);
+      toast(`Batch reconcile failed: ${err.response?.data?.message || err.message}`, 'error');
     }
   });
 
@@ -356,10 +358,10 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
       queryClient.invalidateQueries({ queryKey: ['bankAccounts'] });
       queryClient.invalidateQueries({ queryKey: ['bankingTransactions', selectedBankAccountId] });
       queryClient.invalidateQueries({ queryKey: ['unmatchedJournalLines', selectedBankAccountId] });
-      alert(`Adjustment journal created successfully.`);
+      toast(`Adjustment journal created successfully.`, 'success');
     },
     onError: (err: any) => {
-      alert(`Adjustment failed: ${err.response?.data?.message || err.message}`);
+      toast(`Adjustment failed: ${err.response?.data?.message || err.message}`, 'error');
     }
   });
 
@@ -479,7 +481,7 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
   const submitQuickCreate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!quickCreateForm.accountId) {
-      alert('Please select a General Ledger categorization account.');
+      toast('Please select a General Ledger categorization account.', 'warning');
       return;
     }
 
@@ -699,7 +701,7 @@ export function Reconciliation({ initialAccountId, onNavigateHome }: Reconciliat
                       const perfect = findPerfectMatchFromGL(txn);
                       return perfect ? { bankTransactionId: id, journalLineId: perfect.id } : null;
                     }).filter((m): m is { bankTransactionId: string; journalLineId: string } => m !== null);
-                    if (matches.length === 0) { alert('No perfect matches found for selected items.'); return; }
+                    if (matches.length === 0) { toast('No perfect matches found for selected items.', 'warning'); return; }
                     if (matches.length < selectedFeedIds.length) {
                       if (!confirm(`${matches.length} of ${selectedFeedIds.length} items have perfect matches. Proceed?`)) return;
                     }

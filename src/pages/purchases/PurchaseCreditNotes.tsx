@@ -7,6 +7,7 @@ import {
   Ban, CheckCircle2, ReceiptText, Edit2, Download, FileText, Wallet, Clock,
 } from 'lucide-react';
 import { CurrencySelector } from '../../components/ui/CurrencySelector';
+import { useToast } from '../../contexts/ToastContext';
 
 interface Vendor { id: string; name: string; email: string | null; }
 
@@ -116,7 +117,7 @@ function exportVendorCreditNotesPDF(notes: VendorCredit[]) {
   if (w) { w.document.write(html); w.document.close(); setTimeout(()=>w.print(),500); }
 }
 
-function printVendorCreditNote(note: VendorCredit, org: any) {
+function printVendorCreditNote(note: VendorCredit, org: any, toast: any) {
   const logoHtml = org?.logoUrl
     ? `<img src="${org.logoUrl}" style="height:48px;width:48px;object-fit:contain;border-radius:8px;" />`
     : `<div style="width:48px;height:48px;border-radius:12px;background:#4f46e5;display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;font-weight:700;">${org?.name?.[0]?.toUpperCase() ?? 'S'}</div>`;
@@ -221,10 +222,11 @@ function printVendorCreditNote(note: VendorCredit, org: any) {
 
   const w = window.open('', '_blank');
   if (w) { w.document.write(html); w.document.close(); setTimeout(() => w.print(), 500); }
-  else { alert('Popup blocked. Please allow popups for this site and try again.'); }
+  else { toast('Popup blocked. Please allow popups for this site and try again.', 'warning'); }
 }
 
 export function PurchaseCreditNotesPage() {
+  const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -554,6 +556,7 @@ function DetailPanel({
   onClose: () => void;
   onError: (msg: string | null) => void;
 }) {
+  const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showApplyForm, setShowApplyForm] = useState(false);
   const [applyBillId, setApplyBillId] = useState('');
@@ -624,7 +627,7 @@ function DetailPanel({
           <h2 className="text-base font-semibold text-slate-900">Vendor Credit Note</h2>
           <div className="flex items-center gap-1">
             {note && org && (
-              <button onClick={() => printVendorCreditNote(note, org)}
+              <button onClick={() => printVendorCreditNote(note, org, toast)}
                 className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200" title="Print vendor credit note">
                 <Download size={16} />
               </button>

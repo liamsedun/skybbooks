@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
 import { CurrencySelector } from '../../components/ui/CurrencySelector';
+import { useToast } from '../../contexts/ToastContext';
 
 interface Vendor { id: string; name: string; }
 interface Item { id: string; name: string; purchasePrice: number | null; }
@@ -78,6 +79,7 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 export function PurchaseOrdersPage() {
+  const { toast } = useToast();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [dateFrom, setDateFrom] = useState('');
@@ -153,25 +155,25 @@ export function PurchaseOrdersPage() {
       showSuccess('PO converted to bill successfully.');
       setMenuOpen(null);
     },
-    onError: (e: any) => alert(e?.response?.data?.error || 'Failed to convert PO.'),
+    onError: (e: any) => toast(e?.response?.data?.error || 'Failed to convert PO.', 'error'),
   });
 
   const confirmMutation = useMutation({
     mutationFn: (id: string) => api.post(`/purchases/orders/${id}/confirm`),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['purchase-orders'] }); showSuccess('PO confirmed.'); },
-    onError: (e: any) => alert(e?.response?.data?.error || 'Failed to confirm PO.'),
+    onError: (e: any) => toast(e?.response?.data?.error || 'Failed to confirm PO.', 'error'),
   });
 
   const acceptMutation = useMutation({
     mutationFn: (id: string) => api.post(`/purchases/orders/${id}/accept`),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['purchase-orders'] }); showSuccess('PO accepted.'); },
-    onError: (e: any) => alert(e?.response?.data?.error || 'Failed to accept PO.'),
+    onError: (e: any) => toast(e?.response?.data?.error || 'Failed to accept PO.', 'error'),
   });
 
   const approveMutation = useMutation({
     mutationFn: (id: string) => api.post(`/purchases/orders/${id}/approve`),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['purchase-orders'] }); showSuccess('PO approved.'); },
-    onError: (e: any) => alert(e?.response?.data?.error || 'Failed to approve PO.'),
+    onError: (e: any) => toast(e?.response?.data?.error || 'Failed to approve PO.', 'error'),
   });
 
   const convertToExpenseMutation = useMutation({
@@ -182,7 +184,7 @@ export function PurchaseOrdersPage() {
       showSuccess('PO converted to expense successfully.');
       setMenuOpen(null);
     },
-    onError: (e: any) => alert(e?.response?.data?.error || 'Failed to convert PO to expense.'),
+    onError: (e: any) => toast(e?.response?.data?.error || 'Failed to convert PO to expense.', 'error'),
   });
 
   function openView(po: PO) { setViewingPo(po); }

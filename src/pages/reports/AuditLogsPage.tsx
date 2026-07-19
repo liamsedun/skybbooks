@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { auditLogApi, api, orgApi, printWindow } from '../../lib/api';
+import { useToast } from '../../contexts/ToastContext';
 import { Loader2, AlertCircle, Search, Download, RefreshCw, Shield, ShieldAlert, AlertTriangle, Info, History, ExternalLink, ChevronDown, ChevronUp, Eye, Edit3, Trash2, FileText, Fingerprint, Hash, Link2 } from 'lucide-react';
 import { exportToCsv } from '../../lib/csvTemplates';
 
@@ -134,6 +135,7 @@ function HashBadge({ hash }: { hash?: string | null }) {
 
 export function AuditLogsPage() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [tab, setTab] = useState<'logs' | 'shield'>('logs');
   const [actionFilter, setActionFilter] = useState('');
   const [entityFilter, setEntityFilter] = useState('');
@@ -328,7 +330,7 @@ export function AuditLogsPage() {
         `${list.length} entries`
       );
     } catch (err) {
-      alert('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      toast('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'), 'error');
     }
   };
 

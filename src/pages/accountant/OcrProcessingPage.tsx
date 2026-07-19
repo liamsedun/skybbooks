@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Upload, FileText, CheckCircle, XCircle, RefreshCw, Loader2, Eye, AlertCircle, Search, FileUp, Trash2, Download, ArrowRight, BookOpen, Clock, DollarSign } from 'lucide-react';
 import { bankingApi } from '../../lib/api';
 import { api } from '../../lib/api';
+import { useToast } from '../../contexts/ToastContext';
 
 interface OcrDocument {
   id: string;
@@ -41,6 +42,7 @@ function fmtNaira(kobo: number) {
 }
 
 export function OcrProcessingPage() {
+  const { toast } = useToast();
   const [documents, setDocuments] = useState<OcrDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -90,7 +92,7 @@ export function OcrProcessingPage() {
       });
       await fetchDocs();
     } catch (err: any) {
-      alert(err?.response?.data?.error || err.message || 'Upload failed');
+      toast(err?.response?.data?.error || err.message || 'Upload failed', 'error');
     } finally {
       setUploading(false);
     }
@@ -124,7 +126,7 @@ export function OcrProcessingPage() {
       setSelectedDoc(null);
       setEditableJournal(null);
     } catch (err: any) {
-      alert(err?.response?.data?.error || err.message || 'Failed to post journal');
+      toast(err?.response?.data?.error || err.message || 'Failed to post journal', 'error');
     }
   };
 
@@ -135,7 +137,7 @@ export function OcrProcessingPage() {
       await fetchDocs();
       if (selectedDoc?.id === docId) setSelectedDoc(null);
     } catch (err: any) {
-      alert(err?.response?.data?.error || err.message || 'Delete failed');
+      toast(err?.response?.data?.error || err.message || 'Delete failed', 'error');
     }
   };
 
@@ -144,7 +146,7 @@ export function OcrProcessingPage() {
       await api.post(`/ocr/documents/${docId}/reprocess`);
       await fetchDocs();
     } catch (err: any) {
-      alert(err?.response?.data?.error || err.message || 'Reprocess failed');
+      toast(err?.response?.data?.error || err.message || 'Reprocess failed', 'error');
     }
   };
 

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { Employee, PayoutRegister, PayoutItem, Kobo } from '../types';
 import { CHART_DUMMY_DATA } from '../utils/accountingData';
+import { useToast } from '../contexts/ToastContext';
 
 interface PaymentsTabProps {
   employees: Employee[];
@@ -42,6 +43,7 @@ export default function PaymentsTab({
   setSchedulesActive,
   onAddTransaction
 }: PaymentsTabProps) {
+  const { toast } = useToast();
   const [employeeSearch, setEmployeeSearch] = useState('');
   const [rosterSearch, setRosterSearch] = useState('');
   const [selectedRosterIds, setSelectedRosterIds] = useState<string[]>(['934660', '934661']); // defaults Katrina and Tanisha
@@ -111,9 +113,9 @@ export default function PaymentsTab({
         'credit',
         'Salary Expense'
       );
-      alert(`Successfully dispatched ₦${(payoutAmount / 100).toLocaleString(undefined, {minimumFractionDigits: 2})} in salary payouts!`);
+      toast(`Successfully dispatched ₦${(payoutAmount / 100).toLocaleString(undefined, {minimumFractionDigits: 2})} in salary payouts!`, 'success');
     } else {
-      alert(`Register is already entirely processed.`);
+      toast(`Register is already entirely processed.`, 'info');
     }
   };
 
@@ -166,7 +168,7 @@ export default function PaymentsTab({
       };
     }));
 
-    alert(`Successfully added ${selectedEmployees.length} employee(s) to Payout Register #284!`);
+    toast(`Successfully added ${selectedEmployees.length} employee(s) to Payout Register #284!`, 'success');
     setSelectedRosterIds([]);
   };
 
@@ -320,7 +322,7 @@ export default function PaymentsTab({
             <button 
               id="btn-import-register"
               onClick={() => {
-                alert("Upload a standard CSV payroll file containing [EmployeeID, HoursWorked, TaxWithholding] to import records.");
+                toast("Upload a standard CSV payroll file containing [EmployeeID, HoursWorked, TaxWithholding] to import records.", 'info');
               }}
               className="border border-neutral-200 hover:bg-neutral-50 active:bg-neutral-100 transition py-2.5 rounded-xl text-neutral-700 font-semibold text-xs flex items-center justify-center gap-2 cursor-pointer"
             >
@@ -366,7 +368,7 @@ export default function PaymentsTab({
           <div className="mt-6 font-sans">
             <button 
               id="btn-schedule-setup"
-              onClick={() => alert("Configure automatic Direct Deposit calendars and tax withholding thresholds (7.5% default, up to 24% PAYE progressive rate).")}
+              onClick={() => toast("Configure automatic Direct Deposit calendars and tax withholding thresholds (7.5% default, up to 24% PAYE progressive rate).", 'info')}
               className="w-full border border-neutral-200 hover:bg-neutral-50 active:bg-neutral-100 font-semibold text-xs text-neutral-700 py-2.5 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer"
             >
               <Settings className="w-3.5 h-3.5 text-neutral-500" />

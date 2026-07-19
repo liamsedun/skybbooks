@@ -13,6 +13,7 @@ import {
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
 import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
 import { CurrencySelector } from '../../components/ui/CurrencySelector';
+import { useToast } from '../../contexts/ToastContext';
 
 interface Vendor { id: string; name: string; }
 interface Customer { id: string; name: string; }
@@ -131,6 +132,7 @@ function exportPDF(expenses: Expense[], vendorMap: Map<string,string>, accountMa
 }
 
 export function ExpensesPage() {
+  const { toast } = useToast();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
@@ -213,7 +215,7 @@ export function ExpensesPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.delete(`/purchases/expenses/${id}`),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['expenses'] }); queryClient.invalidateQueries({ queryKey: ['bankAccounts'] }); showSuccess('Expense deleted and journal reversed.'); },
-    onError: (e: any) => alert(e?.response?.data?.error || 'Failed to delete expense.'),
+    onError: (e: any) => toast(e?.response?.data?.error || 'Failed to delete expense.', 'error'),
   });
 
   function showSuccess(msg: string) { setSuccessMsg(msg); setTimeout(() => setSuccessMsg(null), 4000); }

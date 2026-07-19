@@ -13,6 +13,7 @@ import {
   Eye, Upload,
 } from 'lucide-react';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
+import { useToast } from '../../contexts/ToastContext';
 
 type SOStatus = 'draft' | 'confirmed' | 'partial' | 'fulfilled' | 'cancelled';
 
@@ -172,6 +173,7 @@ function exportSOsPDF(orders: SalesOrder[], customerMap: Map<string, Customer>) 
 }
 
 export function SalesOrdersPage() {
+  const { toast } = useToast();
   const queryClient = useQueryClient();
   const { settings: orgSettings } = useOrgSettings();
   const [searchTerm, setSearchTerm] = useState('');
@@ -246,7 +248,7 @@ export function SalesOrdersPage() {
       setConvertSuccess(`Converted to ${res.data?.invoice?.invoiceNumber || 'invoice'} successfully.`);
       setTimeout(() => setConvertSuccess(null), 4000);
     },
-    onError: (e: any) => { setConvertingId(null); alert(e?.response?.data?.error || 'Conversion failed.'); },
+    onError: (e: any) => { setConvertingId(null); toast(e?.response?.data?.error || 'Conversion failed.', 'error'); },
   });
 
   const filtered = useMemo(() => {

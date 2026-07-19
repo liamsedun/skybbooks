@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { bankingApi, orgApi, printWindow } from '../../lib/api';
 import { PageLoader } from '../../components/ui/PageLoader';
+import { useToast } from '../../contexts/ToastContext';
 import {
   Plus, X, Loader2, AlertCircle, CheckCircle2, ArrowRightLeft, Trash2, Edit3, Search, Eye, Printer
 } from 'lucide-react';
@@ -15,6 +16,7 @@ function fmtDate(d: string): string {
 }
 
 export function TransfersPage() {
+  const { toast } = useToast();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [dateFrom, setDateFrom] = useState('');
@@ -85,7 +87,7 @@ export function TransfersPage() {
     },
     onError: (err: any) => {
       setDeleteTarget(null);
-      alert(err?.response?.data?.error || err?.message || 'Failed to reverse transfer.');
+      toast(err?.response?.data?.error || err?.message || 'Failed to reverse transfer.', 'error');
     },
   });
 

@@ -38,6 +38,7 @@ import { AmountDisplay } from '../../components/ui/AmountDisplay';
 import { RecordPaymentDrawer } from '../../components/sales/RecordPaymentDrawer';
 import { useAuth } from '../../hooks/useAuth';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
+import { useToast } from '../../contexts/ToastContext';
 
 interface InvoiceListProps {
   onNavigate: (viewId: string, invoiceId?: string) => void;
@@ -101,6 +102,7 @@ function exportInvoicesPDF(invoices: any[]) {
 }
 
 export function InvoiceList({ onNavigate }: InvoiceListProps) {
+  const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { formatNaira } = useCurrency();
@@ -282,7 +284,7 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
   };
 
   const handleBulkDownloadZip = () => {
-    alert(`Bulk PDF Download initiated for: ${selectedInvoices.join(', ')}. Compressed package ZIP is saving onto system.`);
+    toast(`Bulk PDF Download initiated for: ${selectedInvoices.join(', ')}. Compressed package ZIP is saving onto system.`, 'info');
     setSelectedInvoices([]);
   };
 

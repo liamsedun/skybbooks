@@ -20,6 +20,7 @@ import {
   Eye,
 } from 'lucide-react';
 import { downloadCsv, exportToCsv } from '../../lib/csvTemplates';
+import { useToast } from '../../contexts/ToastContext';
 
 interface Account {
   id: string;
@@ -127,6 +128,7 @@ function fmtNaira(v: number): string {
 }
 
 export function ChartOfAccountsPage() {
+  const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState<'all' | Account['type']>('all');
@@ -180,7 +182,7 @@ export function ChartOfAccountsPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.delete(`/accountant/accounts/${id}`),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['accountant', 'accounts'] }); setDeleteTarget(null); },
-    onError: (err: any) => { alert(err?.response?.data?.error || 'Failed to delete account.'); },
+    onError: (err: any) => { toast(err?.response?.data?.error || 'Failed to delete account.', 'error'); },
   });
 
   const seedMutation = useMutation({
@@ -264,7 +266,7 @@ export function ChartOfAccountsPage() {
       const footer = `<tr style="font-weight:bold;border-top:2px solid #333;background:#f8fafc"><td colspan="4">Total</td><td class="r">₦${Number(totDr/100).toLocaleString()}</td><td class="r">₦${Number(totCr/100).toLocaleString()}</td></tr>`;
       printWindow('Chart of Accounts', `<table><thead><tr><th>Code</th><th>Account Name</th><th>Type</th><th class="c">Status</th><th class="r">Debit</th><th class="r">Credit</th></tr></thead><tbody>${rows||'<tr><td colspan="6" style="text-align:center;color:#94a3b8">No accounts</td></tr>'}</tbody>${list.length ? `<tfoot>${footer}</tfoot>` : ''}</table>`, `${list.length} accounts`);
     } catch (err) {
-      alert('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      toast('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'), 'error');
       console.error('Print error:', err);
     }
   };

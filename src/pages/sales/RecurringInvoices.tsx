@@ -11,6 +11,7 @@ import {
   Calendar, TrendingDown, Search, Upload, Download, FileText,
 } from 'lucide-react';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
+import { useToast } from '../../contexts/ToastContext';
 
 type Frequency = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'annually';
 
@@ -126,6 +127,7 @@ function exportRecurringPDF(invoices: RecurringInvoice[], customerMap: Map<strin
 }
 
 export function RecurringInvoicesPage() {
+  const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
@@ -192,7 +194,7 @@ export function RecurringInvoicesPage() {
     },
     onError: (e: any) => {
       setGeneratingId(null);
-      alert(e?.response?.data?.error || 'Failed to generate invoice.');
+      toast(e?.response?.data?.error || 'Failed to generate invoice.', 'error');
     },
   });
 

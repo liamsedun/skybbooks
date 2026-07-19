@@ -5,6 +5,7 @@ import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
 import { PageLoader } from '../../components/ui/PageLoader';
 import { Plus, X, Loader2, AlertCircle, CheckCircle2, Trash2, Download, Upload, Printer, ChevronDown } from 'lucide-react';
 import { exportToCsv } from '../../lib/csvTemplates';
+import { useToast } from '../../contexts/ToastContext';
 
 function fmtNaira(v: number): string {
   return `₦${(v / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
@@ -14,6 +15,7 @@ const PERIOD_LABELS: Record<string, string> = { monthly: 'Monthly', quarterly: '
 const STATUS_COLORS: Record<string, string> = { draft: 'bg-slate-100 text-slate-600', active: 'bg-emerald-100 text-emerald-700', archived: 'bg-amber-100 text-amber-700' };
 
 export function BudgetsPage() {
+  const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [dateFrom, setDateFrom] = useState('');
@@ -59,7 +61,7 @@ export function BudgetsPage() {
       ).join('');
       printWindow('Budgets', `<table><thead><tr><th>Name</th><th>Fiscal Year</th><th>Period</th><th class="c">Status</th></tr></thead><tbody>${rows||'<tr><td colspan="4" style="text-align:center;color:#94a3b8">No budgets</td></tr>'}</tbody></table>`, `${list.length} budgets`);
     } catch (err) {
-      alert('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      toast('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'), 'error');
       console.error('Print error:', err);
     }
   };

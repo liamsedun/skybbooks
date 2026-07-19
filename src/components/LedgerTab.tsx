@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Transaction, Kobo } from '../types';
 import { CHART_OF_ACCOUNTS } from '../utils/accountingData';
+import { useToast } from '../contexts/ToastContext';
 
 interface LedgerTabProps {
   transactions: Transaction[];
@@ -26,6 +27,7 @@ interface LedgerTabProps {
  * Renders the General Journal Ledger displaying GAAP/IFRS double-entry transaction trails in kobo integers.
  */
 export default function LedgerTab({ transactions, setTransactions, onAddTransaction }: LedgerTabProps) {
+  const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [accountFilter, setAccountFilter] = useState('All');
   const [categoryFilter, setCategoryFilter] = useState('All');
@@ -68,7 +70,7 @@ export default function LedgerTab({ transactions, setTransactions, onAddTransact
     setReference('');
     setShowForm(false);
     
-    alert("Post Journal Entry complete. Ledger double balances updated successfully under GAAP protocol.");
+    toast("Post Journal Entry complete. Ledger double balances updated successfully under GAAP protocol.", 'success');
   };
 
   const filteredTransactions = transactions.filter(t => {

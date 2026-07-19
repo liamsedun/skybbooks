@@ -6,6 +6,7 @@ import {
   RefreshCw, Pause, Play, Trash2, Zap,
   Calendar, TrendingDown, Search, Download, FileText,
 } from 'lucide-react';
+import { useToast } from '../../contexts/ToastContext';
 
 type Frequency = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'annually';
 
@@ -121,6 +122,7 @@ function exportRecurringBillsPDF(bills: RecurringBill[], vendorMap: Map<string, 
 }
 
 export function RecurringBillsPage() {
+  const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
@@ -186,7 +188,7 @@ export function RecurringBillsPage() {
     },
     onError: (e: any) => {
       setGeneratingId(null);
-      alert(e?.response?.data?.error || 'Failed to generate bill.');
+      toast(e?.response?.data?.error || 'Failed to generate bill.', 'error');
     },
   });
 

@@ -5,8 +5,8 @@
 
 import { Router, Response, NextFunction } from 'express';
 import multer from 'multer';
-import rateLimit from 'express-rate-limit';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
+import { aiLimiter } from '../middleware/rateLimiters';
 import { aiService } from '../services/ai.service';
 
 const router = Router();
@@ -16,22 +16,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 router.use(authenticate);
 router.use(requireOrg);
 
-// AI-specific rate limiter: rate-limited to 50/hour per organization, fall back to IP address
-const aiRateLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 50,
-  keyGenerator: (req: any) => {
-    const { ip } = req;
-    return req.user?.orgId || ip;
-  },
-  validate: { xForwardedForHeader: false },
-  message: { error: 'Rate limit exceeded: Max 50 AI assistant requests per hour.' },
-  standardHeaders: true,
-  legacyHeaders: false,
-  skip: () => process.env.NODE_ENV !== 'production', // Skip rate limit in development for smoother editing and testing
-});
-
-router.use(aiRateLimiter);
+router.use(aiLimiter);
 
 /**
  * POST /api/ai/extract-receipt

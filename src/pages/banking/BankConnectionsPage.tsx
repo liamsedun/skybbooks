@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { RefreshCw, Link, Unlink, AlertCircle, CheckCircle, XCircle, Clock, ExternalLink, Loader2, Wifi, WifiOff } from 'lucide-react';
 import { bankingApi } from '../../lib/api';
+import { useToast } from '../../contexts/ToastContext';
 
 interface BankConnection {
   id: string;
@@ -47,6 +48,7 @@ const STATUS_BADGES: Record<string, { label: string; className: string }> = {
 };
 
 export function BankConnectionsPage() {
+  const { toast } = useToast();
   const [status, setStatus] = useState<ProviderStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState<string | null>(null);
@@ -70,7 +72,7 @@ export function BankConnectionsPage() {
       await bankingApi.syncConnection(connectionId);
       await fetchStatus();
     } catch (err: any) {
-      alert(err?.response?.data?.error || err.message || 'Sync failed');
+      toast(err?.response?.data?.error || err.message || 'Sync failed', 'error');
     } finally {
       setSyncing(null);
     }
@@ -82,7 +84,7 @@ export function BankConnectionsPage() {
       await bankingApi.deleteConnection(connectionId);
       await fetchStatus();
     } catch (err: any) {
-      alert(err?.response?.data?.error || err.message || 'Failed to disconnect');
+      toast(err?.response?.data?.error || err.message || 'Failed to disconnect', 'error');
     }
   };
 

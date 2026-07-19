@@ -5,7 +5,8 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { verifyAccessToken, TokenPayload } from '../lib/tokens';
-import { TokenExpiredError, JsonWebTokenError } from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
+const { TokenExpiredError, JsonWebTokenError } = jwt;
 import { AppError } from '../lib/errors';
 
 /**

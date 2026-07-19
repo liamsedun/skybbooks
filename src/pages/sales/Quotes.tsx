@@ -13,6 +13,7 @@ import {
   RotateCcw, Download, Copy, Send, ClipboardList,
 } from 'lucide-react';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
+import { useToast } from '../../contexts/ToastContext';
 
 type QuoteStatus = 'draft' | 'sent' | 'accepted' | 'declined' | 'expired' | 'converted';
 
@@ -156,6 +157,7 @@ function exportQuotesPDF(quotes: Quote[], customerMap: Map<string, Customer>) {
 }
 
 export function QuotesPage() {
+  const { toast } = useToast();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { settings: orgSettings } = useOrgSettings();
@@ -216,7 +218,7 @@ export function QuotesPage() {
       setConvertSuccess(`Converted to ${res.data?.invoice?.invoiceNumber||'invoice'} successfully.`);
       setTimeout(()=>setConvertSuccess(null),4000);
     },
-    onError: (e:any) => { setConvertingId(null); alert(e?.response?.data?.error||'Conversion failed.'); },
+    onError: (e:any) => { setConvertingId(null); toast(e?.response?.data?.error||'Conversion failed.', 'error'); },
   });
   const convertToSoMutation = useMutation({
     mutationFn: (id: string) => api.post(`/sales/quotes/${id}/convert-to-sales-order`),
@@ -224,13 +226,13 @@ export function QuotesPage() {
       queryClient.invalidateQueries({queryKey:['sales','quotes']});
       queryClient.invalidateQueries({queryKey:['sales','sales-orders']});
     },
-    onError: (e:any) => alert(e?.response?.data?.error||'Failed to convert to sales order.'),
+    onError: (e:any) => toast(e?.response?.data?.error||'Failed to convert to sales order.', 'error'),
   });
 
   const statusUpdateMutation = useMutation({
     mutationFn: ({id, status}: {id: string; status: string}) => api.patch(`/sales/quotes/${id}`, {status}),
     onSuccess: () => { queryClient.invalidateQueries({queryKey:['sales','quotes']}); },
-    onError: (e:any) => alert(e?.response?.data?.error||'Failed to update status.'),
+    onError: (e:any) => toast(e?.response?.data?.error||'Failed to update status.', 'error'),
   });
 
   const unconvertMutation = useMutation({
@@ -240,7 +242,7 @@ export function QuotesPage() {
       queryClient.invalidateQueries({queryKey:['invoices']});
       setUnconvertingId(null);
     },
-    onError: (e:any) => { setUnconvertingId(null); alert(e?.response?.data?.error||'Unconvert failed.'); },
+    onError: (e:any) => { setUnconvertingId(null); toast(e?.response?.data?.error||'Unconvert failed.', 'error'); },
   });
 
   const filtered = useMemo(() => {

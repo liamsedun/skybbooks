@@ -1,6 +1,6 @@
 import { Router, Response, NextFunction } from 'express';
-import rateLimit from 'express-rate-limit';
 import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
+import { assistantLimiter } from '../middleware/rateLimiters';
 import { accountingAssistant } from '../services/assistant.service';
 import { extractReqMeta } from '../services/audit.service';
 
@@ -9,21 +9,7 @@ const router = Router();
 router.use(authenticate);
 router.use(requireOrg);
 
-const assistantRateLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 20,
-  keyGenerator: (req: any) => {
-    const { ip } = req;
-    return req.user?.orgId || ip;
-  },
-  validate: { xForwardedForHeader: false },
-  message: { error: 'Rate limit: Max 20 AI assistant requests per minute.' },
-  standardHeaders: true,
-  legacyHeaders: false,
-  skip: () => process.env.NODE_ENV !== 'production',
-});
-
-router.use(assistantRateLimiter);
+router.use(assistantLimiter);
 
 router.post('/query', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {

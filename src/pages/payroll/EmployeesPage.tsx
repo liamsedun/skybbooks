@@ -16,6 +16,7 @@ import { exportToCsv } from '../../lib/csvTemplates';
 import { payrollApi, printWindow } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
 import { useCurrency } from '../../hooks/useCurrency';
+import { useToast } from '../../contexts/ToastContext';
 
 const DEPARTMENTS = ['Engineering', 'Finance', 'Sales', 'HR', 'Operations', 'Legal', 'Marketing', 'IT', 'Management'];
 const FREQUENCIES = [{ value: 'monthly', label: 'Monthly' }, { value: 'weekly', label: 'Weekly' }, { value: 'biweekly', label: 'Bi-weekly' }];
@@ -137,6 +138,7 @@ export function EmployeesPage() {
   const { token } = useAuth();
   const { formatNaira } = useCurrency();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
@@ -324,7 +326,7 @@ export function EmployeesPage() {
             {downloadOpen && (
               <div className="absolute left-0 top-full mt-1 w-40 bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1">
                 <button onClick={() => { exportEmployeesCSV(); setDownloadOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-600 hover:bg-slate-50"><Download size={14} /> CSV</button>
-                <button onClick={() => { setDownloadOpen(false); try { const rows = (employees||[]).map((e: any) => `<tr><td>${e.staffId||''}</td><td>${e.firstName||''} ${e.lastName||''}</td><td>${e.department||'-'}</td><td>${e.jobTitle||'-'}</td><td class="c">${e.employmentStatus||'-'}</td><td>${e.email||''}</td></tr>`).join(''); printWindow('Employees', `<table><thead><tr><th>Staff ID</th><th>Name</th><th>Department</th><th>Job Title</th><th class="c">Status</th><th>Email</th></tr></thead><tbody>${rows}</tbody></table>`, `${(employees||[]).length} employees`); } catch (err) { alert('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error')); console.error('Print error:', err); } }} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-600 hover:bg-slate-50"><FileText size={14} /> PDF</button>
+                <button onClick={() => { setDownloadOpen(false); try { const rows = (employees||[]).map((e: any) => `<tr><td>${e.staffId||''}</td><td>${e.firstName||''} ${e.lastName||''}</td><td>${e.department||'-'}</td><td>${e.jobTitle||'-'}</td><td class="c">${e.employmentStatus||'-'}</td><td>${e.email||''}</td></tr>`).join(''); printWindow('Employees', `<table><thead><tr><th>Staff ID</th><th>Name</th><th>Department</th><th>Job Title</th><th class="c">Status</th><th>Email</th></tr></thead><tbody>${rows}</tbody></table>`, `${(employees||[]).length} employees`); } catch (err) { toast('Failed to open print window: ' + (err instanceof Error ? err.message : 'Unknown error'), 'error'); console.error('Print error:', err); } }} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-600 hover:bg-slate-50"><FileText size={14} /> PDF</button>
               </div>
             )}
           </div>

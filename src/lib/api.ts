@@ -1535,7 +1535,7 @@ export function downloadBlob(blob: Blob, filename: string) {
     document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 2000);
   } catch (e) {
-    alert('Download failed. Please try again or contact support.');
+    window.dispatchEvent(new CustomEvent('app:toast', { detail: { message: 'Download failed. Please try again or contact support.', type: 'error' } }));
     console.error('Download error:', e);
   }
 }
@@ -1584,7 +1584,7 @@ export function printWindow(title: string, bodyHtml: string, subtitle?: string) 
   </body></html>`;
   const w = window.open('', '_blank');
   if (w) { w.document.write(html); w.document.close(); w.name = 'printPopup'; setTimeout(() => { try { w.print(); } catch(e) {} }, 1500); }
-  else { alert('Popup blocked. Please allow popups for this site and try again.'); }
+  else { window.dispatchEvent(new CustomEvent('app:toast', { detail: { message: 'Popup blocked. Please allow popups for this site and try again.', type: 'warning' } })); }
 }
 
 export function apiDownload(url: string, filename: string) {

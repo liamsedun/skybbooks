@@ -4,6 +4,7 @@ import { periodsApi } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
 import { useOrgSettings } from '../../hooks/useOrgSettings';
 import { orgApi, authApi, accountantApi, api } from '../../lib/api';
+import { useToast } from '../../contexts/ToastContext';
 
 function useSettingsForm(key: string, defaults?: Record<string, any>) {
   const { settings, save, isPending } = useOrgSettings();
@@ -217,6 +218,7 @@ function fromOrg(org: OrgData): OrgFormState {
 }
 
 function PeriodManagementContent() {
+  const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [showCloseModal, setShowCloseModal] = useState(false);
@@ -235,7 +237,7 @@ function PeriodManagementContent() {
       setCloseForm({ periodStart: '', periodEnd: '' });
     },
     onError: (err: any) => {
-      alert(err.response?.data?.message || err.message);
+      toast(err.response?.data?.message || err.message, 'error');
     }
   });
 
@@ -246,7 +248,7 @@ function PeriodManagementContent() {
       queryClient.invalidateQueries({ queryKey: ['closedPeriods'] });
     },
     onError: (err: any) => {
-      alert(err.response?.data?.message || err.message);
+      toast(err.response?.data?.message || err.message, 'error');
     }
   });
 
@@ -338,7 +340,7 @@ function PeriodManagementContent() {
                 type="button"
                 onClick={() => {
                   if (!closeForm.periodStart || !closeForm.periodEnd) {
-                    alert('Please select both start and end dates.');
+                    toast('Please select both start and end dates.', 'warning');
                     return;
                   }
                   closeMutation.mutate(closeForm);

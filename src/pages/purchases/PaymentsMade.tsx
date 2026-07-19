@@ -41,7 +41,7 @@ interface BillDetail {
   date: string; dueDate: string; status: string;
   subtotal: number; taxAmount: number; total: number;
   amountPaid: number; balanceDue: number;
-  currency: string; notes: string | null;
+  currency: string; fxRate?: number | null; notes: string | null;
   lines: BillLine[];
   vendor: Vendor;
 }
@@ -1132,6 +1132,12 @@ export function PaymentsMadePage() {
                   <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Currency</span>
                   <p className="font-semibold text-slate-700 mt-1">{billDetail.currency}</p>
                 </div>
+                {billDetail.currency && billDetail.currency !== 'NGN' && billDetail.fxRate && (
+                  <div>
+                    <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">FX Rate</span>
+                    <p className="font-semibold text-slate-700 mt-1">1 {billDetail.currency} = {formatNaira(Math.round(100 * Number(billDetail.fxRate)))}</p>
+                  </div>
+                )}
               </div>
 
               <div className="border border-slate-200 rounded-xl overflow-hidden">
@@ -1150,24 +1156,24 @@ export function PaymentsMadePage() {
                       <tr key={line.id} className="hover:bg-slate-50/50 transition-colors">
                         <td className="px-3 py-3 text-slate-700">{line.description}</td>
                         <td className="px-3 py-3 text-right text-slate-600">{line.quantity}</td>
-                        <td className="px-3 py-3 text-right text-slate-600">{formatNaira(line.unitPrice)}</td>
-                        <td className="px-3 py-3 text-right text-slate-600">{formatNaira(line.taxAmount)}</td>
-                        <td className="px-3 py-3 text-right font-medium text-slate-700">{formatNaira(line.lineTotal)}</td>
+                        <td className="px-3 py-3 text-right text-slate-600">{fmtDual(line.unitPrice, billDetail.currency, billDetail.fxRate)}</td>
+                        <td className="px-3 py-3 text-right text-slate-600">{fmtDual(line.taxAmount, billDetail.currency, billDetail.fxRate)}</td>
+                        <td className="px-3 py-3 text-right font-medium text-slate-700">{fmtDual(line.lineTotal, billDetail.currency, billDetail.fxRate)}</td>
                       </tr>
                     ))}
                   </tbody>
                   <tfoot>
                     <tr className="bg-slate-50 text-sm font-semibold">
                       <td colSpan={4} className="px-3 py-3 text-slate-600">Subtotal</td>
-                      <td className="px-3 py-3 text-right text-slate-700">{formatNaira(billDetail.subtotal)}</td>
+                      <td className="px-3 py-3 text-right text-slate-700">{fmtDual(billDetail.subtotal, billDetail.currency, billDetail.fxRate)}</td>
                     </tr>
                     <tr className="bg-slate-50 text-sm">
                       <td colSpan={4} className="px-3 py-3 text-slate-600">VAT</td>
-                      <td className="px-3 py-3 text-right text-slate-600">{formatNaira(billDetail.taxAmount)}</td>
+                      <td className="px-3 py-3 text-right text-slate-600">{fmtDual(billDetail.taxAmount, billDetail.currency, billDetail.fxRate)}</td>
                     </tr>
                     <tr className="bg-slate-50 text-sm font-bold">
                       <td colSpan={4} className="px-3 py-3 text-slate-800">Total</td>
-                      <td className="px-3 py-3 text-right text-slate-900">{formatNaira(billDetail.total)}</td>
+                      <td className="px-3 py-3 text-right text-slate-900">{fmtDual(billDetail.total, billDetail.currency, billDetail.fxRate)}</td>
                     </tr>
                   </tfoot>
                 </table>
@@ -1176,11 +1182,11 @@ export function PaymentsMadePage() {
               <div className="grid grid-cols-3 gap-4 text-sm">
                 <div>
                   <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Amount Paid</span>
-                  <p className="font-semibold text-green-600 mt-1">{formatNaira(billDetail.amountPaid)}</p>
+                  <p className="font-semibold text-green-600 mt-1">{fmtDual(billDetail.amountPaid, billDetail.currency, billDetail.fxRate)}</p>
                 </div>
                 <div>
                   <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Balance Due</span>
-                  <p className="font-semibold text-slate-900 mt-1">{formatNaira(billDetail.balanceDue)}</p>
+                  <p className="font-semibold text-slate-900 mt-1">{fmtDual(billDetail.balanceDue, billDetail.currency, billDetail.fxRate)}</p>
                 </div>
               </div>
 
