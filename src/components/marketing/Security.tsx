@@ -29,11 +29,11 @@ const groupLabels: Record<string, string> = {
   Compliance: 'Regulatory Compliance',
 };
 
-export function Security() {
+export const Security = React.memo(function Security() {
   const { ref, isVisible } = useScrollReveal();
 
   return (
-    <section id="security" className="py-16 lg:py-24 bg-white">
+    <section id="security" className="py-16 lg:py-24 bg-white section-auto">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-2xl mx-auto mb-14">
           <span className="text-xs font-semibold text-[#0EA5E9] uppercase tracking-widest">Security & Trust</span>
@@ -89,4 +89,5 @@ export function Security() {
       </div>
     </section>
   );
-}
+});
+

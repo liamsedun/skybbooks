@@ -88,6 +88,12 @@
 .delay-5  { transition-delay: 500ms; }
 .delay-6  { transition-delay: 600ms; }
 
+/* ── Performance ──────────────────────────────────── */
+.section-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: 600px;
+}
+
 /* ── Micro-interactions ───────────────────────────── */
 .micro-lift {
   transition: transform 0.2s ease, box-shadow 0.2s ease;

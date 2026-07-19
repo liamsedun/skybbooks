@@ -33,7 +33,7 @@ export default function ArtificialIntelligence() {
   const { ref, isVisible } = useScrollReveal();
 
   return (
-    <section id="ai-features" className="py-16 lg:py-24 bg-slate-50 relative overflow-hidden">
+    <section id="ai-features" className="py-16 lg:py-24 bg-slate-50 relative overflow-hidden section-auto">
       <div className="absolute inset-0 opacity-[0.02] pointer-events-none"
         style={{ backgroundImage: 'radial-gradient(circle at 25% 50%, #0EA5E9 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
 

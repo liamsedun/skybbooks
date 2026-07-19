@@ -14,11 +14,11 @@ const summaryCards = [
 
 const barData = [40, 65, 45, 80, 55, 70, 90, 60, 75, 50, 85, 70];
 
-export default function DashboardShowcase() {
+const DashboardShowcase = React.memo(function DashboardShowcase() {
   const { ref, isVisible } = useScrollReveal();
 
   return (
-    <section className="py-16 lg:py-24 bg-white relative overflow-hidden">
+    <section className="py-16 lg:py-24 bg-white relative overflow-hidden section-auto">
       {/* Background accents */}
       <div className="absolute top-1/2 left-1/4 w-96 h-96 bg-[#0EA5E9]/3 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 right-1/4 w-64 h-64 bg-violet-500/3 rounded-full blur-3xl pointer-events-none" />
@@ -213,4 +213,5 @@ export default function DashboardShowcase() {
       </div>
     </section>
   );
-}
+});
+export default DashboardShowcase;

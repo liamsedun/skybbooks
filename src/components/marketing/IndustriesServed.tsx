@@ -35,11 +35,11 @@ const industries = [
   },
 ];
 
-export default function IndustriesServed() {
+const IndustriesServed = React.memo(function IndustriesServed() {
   const { ref, isVisible } = useScrollReveal();
 
   return (
-    <section id="industries" className="py-16 lg:py-24 bg-white">
+    <section id="industries" className="py-16 lg:py-24 bg-white section-auto">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" ref={ref}>
         <div className={`text-center max-w-2xl mx-auto mb-16 transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
           <span className="text-xs font-semibold text-[#0EA5E9] uppercase tracking-widest">Industries</span>
@@ -72,4 +72,5 @@ export default function IndustriesServed() {
       </div>
     </section>
   );
-}
+});
+export default IndustriesServed;

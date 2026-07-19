@@ -215,7 +215,7 @@ export function Integrations() {
   const { ref, isVisible } = useScrollReveal();
 
   return (
-    <section id="integrations" className="py-16 lg:py-24 bg-slate-50 overflow-hidden">
+    <section id="integrations" className="py-16 lg:py-24 bg-slate-50 overflow-hidden section-auto">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-2xl mx-auto mb-12">
           <span className="text-xs font-semibold text-[#0EA5E9] uppercase tracking-widest">Integrations</span>

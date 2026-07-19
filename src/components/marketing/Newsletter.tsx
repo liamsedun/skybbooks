@@ -12,7 +12,7 @@ export function Newsletter() {
   const { ref, isVisible } = useScrollReveal();
 
   return (
-    <section className="relative py-16 lg:py-24 overflow-hidden">
+    <section className="relative py-16 lg:py-24 overflow-hidden section-auto">
       <div className="absolute inset-0 bg-gradient-to-br from-[#082F49] to-[#0C4A6E]" />
       <div
         className="absolute inset-0 opacity-[0.04]"

@@ -48,11 +48,11 @@ const faqs = [
   },
 ];
 
-export function FAQsSection() {
+export const FAQsSection = React.memo(function FAQsSection() {
   const [openIdx, setOpenIdx] = useState<number | null>(0);
 
   return (
-    <section id="faqs" className="py-16 lg:py-24 bg-white">
+    <section id="faqs" className="py-16 lg:py-24 bg-white section-auto">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
           <span className="text-xs font-semibold text-[#0EA5E9] uppercase tracking-widest">FAQs</span>
@@ -101,4 +101,5 @@ export function FAQsSection() {
       </div>
     </section>
   );
-}
+});
+

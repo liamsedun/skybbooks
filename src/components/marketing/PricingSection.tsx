@@ -63,7 +63,7 @@ const tiers = [
   },
 ];
 
-export function PricingSection() {
+export const PricingSection = React.memo(function PricingSection() {
   const navigate = useNavigate();
 
   return (
@@ -144,4 +144,5 @@ export function PricingSection() {
       </div>
     </section>
   );
-}
+});
+

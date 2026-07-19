@@ -44,7 +44,7 @@ const testimonials: Testimonial[] = [
 
 const ratingColors = ['#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B'];
 
-export function TestimonialsSection() {
+export const TestimonialsSection = React.memo(function TestimonialsSection() {
   const [active, setActive] = useState(0);
   const [filter, setFilter] = useState<string | null>(null);
   const [direction, setDirection] = useState<'left' | 'right'>('right');
@@ -89,7 +89,7 @@ export function TestimonialsSection() {
   );
 
   return (
-    <section id="testimonials" className="py-16 lg:py-24 bg-slate-50 overflow-hidden">
+    <section id="testimonials" className="py-16 lg:py-24 bg-slate-50 overflow-hidden section-auto">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-2xl mx-auto mb-12">
           <span className="text-xs font-semibold text-[#0EA5E9] uppercase tracking-widest">Testimonials</span>
@@ -189,4 +189,5 @@ export function TestimonialsSection() {
       </div>
     </section>
   );
-}
+});
+

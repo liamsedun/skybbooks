@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 
-export function CTASection() {
+export const CTASection = React.memo(function CTASection() {
   const navigate = useNavigate();
 
   return (
@@ -35,4 +35,5 @@ export function CTASection() {
       </div>
     </section>
   );
-}
+});
+
