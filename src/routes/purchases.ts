@@ -233,7 +233,7 @@ const createRecurringBillSchema = z.object({
 
 const updateRecurringBillSchema = z.object({
   vendorId: z.string().uuid('Invalid vendor.').optional(),
-  frequency: z.enum(['daily', 'weekly', 'monthly', 'quarterly', 'semi-annually', 'annually']).optional(),
+  frequency: z.enum(['daily', 'weekly', 'monthly', 'quarterly', 'annually']).optional(),
   startDate: z.string().or(z.date()).optional(),
   endDate: z.string().or(z.date()).nullable().optional(),
   isActive: z.boolean().optional(),

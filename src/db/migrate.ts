@@ -2606,13 +2606,13 @@ export async function runMigration() {
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_bills_org ON bills(org_id)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_bills_contact ON bills(org_id, contact_id)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_bills_status ON bills(org_id, status)`);
-    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_bills_date ON bills(org_id, bill_date)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_bills_date ON bills(org_id, date)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_bill_lines_bill ON bill_lines(bill_id)`);
 
-    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_payments_org ON payments(org_id)`);
-    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_payments_contact ON payments(org_id, contact_id)`);
-    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_payments_invoice ON payments(invoice_id)`);
-    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_payments_date ON payments(org_id, payment_date)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_payments_made_org ON payments_made(org_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_payments_made_date ON payments_made(org_id, date)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_payments_received_org ON payments_received(org_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_payments_received_date ON payments_received(org_id, date)`);
 
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_items_org ON items(org_id)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_items_sku ON items(org_id, sku)`);
