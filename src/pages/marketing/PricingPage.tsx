@@ -31,27 +31,27 @@ interface Tier {
 
 const tiers: Tier[] = [
   {
-    name: 'Free',
+    name: 'Starter',
     monthlyPrice: '₦0',
     annualPrice: '₦0',
     annualPerMonth: '₦0',
     savings: '',
-    description: 'Perfect for freelancers and sole proprietors just starting out.',
+    description: 'Perfect for freelancers and micro-businesses just getting started.',
     popular: false,
-    cta: 'Get Started Free',
+    cta: 'Get Started',
     ctaLink: '/register',
     maxUsers: '1 user',
-    support: 'Community forum',
+    support: 'Email support',
     storage: '100 MB',
     apiAccess: false,
     aiAccess: false,
     integrations: '1 bank connection',
     advancedReports: false,
     accountingFeatures: [
-      'Basic invoicing (10/mo)',
-      'Manual expense entry',
+      'Up to 10 invoices/month',
+      'Basic expense tracking',
       'Single currency (NGN)',
-      'Basic dashboard',
+      'Bank feed connection',
     ],
     taxFeatures: [],
     inventory: false,
@@ -60,50 +60,16 @@ const tiers: Tier[] = [
     analytics: 'Basic dashboard',
   },
   {
-    name: 'Standard',
-    monthlyPrice: '₦7,500',
-    annualPrice: '₦75,000',
-    annualPerMonth: '₦6,250',
-    savings: 'Save ₦15,000',
-    description: 'For growing startups that need more transactions and bank feeds.',
-    popular: false,
-    cta: 'Start Free Trial',
-    ctaLink: '/register',
-    maxUsers: '3 users',
-    support: 'Email support (24h)',
-    storage: '1 GB',
-    apiAccess: false,
-    aiAccess: true,
-    integrations: '3 bank connections',
-    advancedReports: false,
-    accountingFeatures: [
-      'Unlimited invoicing',
-      'Receipt scanning',
-      'Multi-currency (NGN + 1)',
-      'Bank reconciliation',
-      'Expense categorization',
-      'Standard reports',
-    ],
-    taxFeatures: [
-      'VAT computation',
-      'VAT return export',
-    ],
-    inventory: false,
-    projects: false,
-    payroll: false,
-    analytics: 'Standard reports',
-  },
-  {
     name: 'Professional',
     monthlyPrice: '₦15,000',
     annualPrice: '₦150,000',
     annualPerMonth: '₦12,500',
     savings: 'Save ₦30,000',
-    description: 'For established SMEs needing full accounting, inventory, and team collaboration.',
+    description: 'For growing businesses that need full accounting capabilities.',
     popular: true,
     cta: 'Start Free Trial',
     ctaLink: '/register',
-    maxUsers: '10 users',
+    maxUsers: '5 users',
     support: 'Priority email & chat',
     storage: '5 GB',
     apiAccess: true,
@@ -111,70 +77,55 @@ const tiers: Tier[] = [
     integrations: 'Unlimited bank connections',
     advancedReports: true,
     accountingFeatures: [
-      'Unlimited invoicing & quotes',
-      'Receipt OCR scanning',
-      'Multi-currency (unlimited)',
-      'Auto bank reconciliation',
-      'Recurring invoices',
-      'Bill management',
-      'Multi-user roles & permissions',
-      'Budget management',
-      'Advanced reports (P&L, BS, CF, TB)',
+      'Unlimited invoices & quotes',
+      'Full expense management',
+      'Bank reconciliation',
+      'Multi-currency support',
+      'Financial reports (P&L, BS, CF)',
+      'Inventory management',
     ],
     taxFeatures: [
-      'VAT computation & filing',
+      'VAT computation',
       'WHT computation',
-      'PAYE computation',
-      'CIT computation',
     ],
     inventory: true,
     projects: true,
     payroll: false,
-    analytics: 'Advanced reports (P&L, BS, CF, TB)',
+    analytics: 'Financial reports (P&L, BS, CF)',
   },
   {
-    name: 'Premium',
-    monthlyPrice: '₦30,000',
-    annualPrice: '₦300,000',
-    annualPerMonth: '₦25,000',
-    savings: 'Save ₦60,000',
-    description: 'For companies needing payroll, IFRS compliance, and enterprise features.',
+    name: 'Enterprise',
+    monthlyPrice: '₦50,000',
+    annualPrice: '₦500,000',
+    annualPerMonth: '₦41,667',
+    savings: 'Save ₦100,000',
+    description: 'For established businesses with advanced reporting and compliance needs.',
     popular: false,
-    cta: 'Start Free Trial',
-    ctaLink: '/register',
-    maxUsers: '25 users',
-    support: 'Priority chat & phone',
-    storage: '20 GB',
+    cta: 'Contact Sales',
+    ctaLink: '/contact',
+    maxUsers: 'Unlimited users',
+    support: 'Dedicated account manager',
+    storage: 'Unlimited',
     apiAccess: true,
     aiAccess: true,
-    integrations: 'Unlimited + API webhooks',
+    integrations: 'Unlimited + webhooks',
     advancedReports: true,
     accountingFeatures: [
       'Everything in Professional',
       'Payroll management',
-      'Fixed assets register',
       'Multi-entity consolidation',
-      'Custom reporting',
-      'IFRS 15 (Revenue Recognition)',
-      'IFRS 16 (Lease Accounting)',
-      'IFRS 9 (ECL Provisioning)',
-      'White-label option',
-      'Dedicated account manager',
+      'Custom reports & integrations',
+      'IFRS 15 & 16 compliance',
+      'SLA guarantee',
     ],
     taxFeatures: [
-      'Everything in Professional',
-      'NSITF computation',
-      'ITF computation',
-      'NHIF computation',
-      'Stamp duty',
-      'FIRS-ready returns',
+      'Tax engine (VAT, WHT, PAYE, CIT)',
       'Auto tax journal posting',
-      'Tax calendar & reminders',
     ],
     inventory: true,
     projects: true,
     payroll: true,
-    analytics: 'Executive dashboard + AI insights & forecasting',
+    analytics: 'Custom reports & dashboards',
   },
 ];
 
@@ -186,7 +137,7 @@ export function PricingPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Simple nav for the pricing page */}
+      {/* Simple nav */}
       <header className="border-b border-slate-100 bg-white/95 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
           <button onClick={() => navigate('/')} className="flex items-center gap-2">
@@ -209,10 +160,10 @@ export function PricingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <span className="text-xs font-semibold text-[#0EA5E9] uppercase tracking-widest">Pricing</span>
           <h1 className="mt-3 text-4xl lg:text-5xl font-extrabold text-[#082F49] leading-tight">
-            Plans for every stage of growth
+            Simple, transparent pricing
           </h1>
           <p className="mt-4 text-lg text-slate-600 max-w-2xl mx-auto">
-            Start free, upgrade as you grow. All plans include a 14-day free trial with no credit card required.
+            No hidden fees. No surprise charges. Start free and upgrade as you grow.
           </p>
 
           {/* Billing toggle */}
@@ -241,7 +192,7 @@ export function PricingPage() {
       {/* ─── Pricing Cards ─── */}
       <section className="pb-16 lg:pb-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-6 max-w-6xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-6 lg:gap-8 max-w-5xl mx-auto">
             {tiers.map((tier) => {
               const price = billing === 'monthly' ? tier.monthlyPrice : tier.annualPrice;
               const period = billing === 'monthly' ? '/month' : '/year';
@@ -257,30 +208,28 @@ export function PricingPage() {
                       : 'border-slate-200 hover:border-slate-300 shadow-sm hover:shadow-md'
                   }`}
                 >
-                  {/* Recommended badge */}
                   {tier.popular && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-[#0EA5E9] text-white text-[10px] font-semibold rounded-full whitespace-nowrap">
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-[#0EA5E9] text-white text-xs font-semibold rounded-full whitespace-nowrap">
                       Most Popular
                     </div>
                   )}
 
-                  <div className="p-5 flex flex-col flex-1">
-                    {/* Plan name */}
-                    <h3 className={`text-base font-bold ${tier.popular ? 'text-[#0EA5E9]' : 'text-[#082F49]'}`}>{tier.name}</h3>
-                    <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">{tier.description}</p>
+                  <div className="p-6 lg:p-8 flex flex-col flex-1">
+                    <h3 className={`text-lg font-semibold text-center ${tier.popular ? 'text-[#0EA5E9]' : 'text-[#082F49]'}`}>{tier.name}</h3>
+                    <p className="text-sm text-slate-500 text-center mt-2">{tier.description}</p>
 
                     {/* Price */}
-                    <div className="mt-4">
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-2xl font-extrabold text-[#082F49]">{price}</span>
-                        <span className="text-[11px] text-slate-400">{period}</span>
+                    <div className="mt-6 text-center">
+                      <div className="flex items-baseline justify-center gap-1">
+                        <span className="text-3xl lg:text-4xl font-extrabold text-[#082F49]">{price}</span>
+                        <span className="text-sm text-slate-400">{period}</span>
                       </div>
                       {perMonth && (
-                        <div className="text-[10px] text-slate-400 mt-0.5">{perMonth}/month billed annually</div>
+                        <div className="text-xs text-slate-400 mt-1">{perMonth}/month billed annually</div>
                       )}
                       {showSavings && (
-                        <div className="mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[9px] font-semibold rounded">
-                          <Check size={10} /> {tier.savings}
+                        <div className="mt-2 inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded">
+                          <Check size={12} /> {tier.savings}
                         </div>
                       )}
                     </div>
@@ -288,80 +237,46 @@ export function PricingPage() {
                     {/* CTA */}
                     <button
                       onClick={() => navigate(tier.ctaLink)}
-                      className={`mt-5 w-full py-2.5 rounded-xl font-semibold text-xs transition-all flex items-center justify-center gap-1.5 ${
+                      className={`mt-6 w-full py-3 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 ${
                         tier.popular
                           ? 'bg-[#082F49] text-white hover:bg-[#0C4A6E] shadow-lg shadow-[#082F49]/20'
-                          : tier.name === 'Free'
+                          : tier.name === 'Starter'
                             ? 'border border-slate-200 text-slate-700 hover:border-[#0EA5E9]/40 hover:bg-sky-50'
                             : 'border border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50'
                       }`}
                     >
-                      {tier.cta} <ArrowRight size={12} />
+                      {tier.cta} <ArrowRight size={14} />
                     </button>
 
                     {/* Feature list */}
-                    <div className="mt-5 space-y-2.5 flex-1">
-                      {/* Max users */}
-                      <div className="flex items-center justify-between text-[11px]">
-                        <span className="text-slate-500">Users</span>
-                        <span className="font-medium text-[#082F49]">{tier.maxUsers}</span>
-                      </div>
-                      {/* Support */}
-                      <div className="flex items-center justify-between text-[11px]">
-                        <span className="text-slate-500">Support</span>
-                        <span className="font-medium text-[#082F49]">{tier.support}</span>
-                      </div>
-                      {/* Storage */}
-                      <div className="flex items-center justify-between text-[11px]">
-                        <span className="text-slate-500">Storage</span>
-                        <span className="font-medium text-[#082F49]">{tier.storage}</span>
-                      </div>
-
-                      <hr className="border-slate-100" />
-
-                      {tier.accountingFeatures.slice(0, 5).map((f) => (
-                        <div key={f} className="flex items-start gap-2 text-[11px] text-slate-600">
-                          <Check size={11} className="text-emerald-500 mt-0.5 shrink-0" />
+                    <ul className="mt-6 space-y-3 flex-1">
+                      {tier.accountingFeatures.map((f) => (
+                        <li key={f} className="flex items-start gap-2.5 text-sm text-slate-600">
+                          <Check size={14} className="text-emerald-500 mt-0.5 shrink-0" />
                           {f}
-                        </div>
+                        </li>
                       ))}
-                      {tier.accountingFeatures.length > 5 && (
-                        <div className="text-[10px] text-[#0EA5E9] font-medium ml-5">+{tier.accountingFeatures.length - 5} more</div>
-                      )}
+                      {tier.taxFeatures.map((f) => (
+                        <li key={f} className="flex items-start gap-2.5 text-sm text-slate-600">
+                          <Check size={14} className="text-emerald-500 mt-0.5 shrink-0" />
+                          {f}
+                        </li>
+                      ))}
+                    </ul>
 
-                      {/* Tax features */}
-                      {tier.taxFeatures.length > 0 && (
-                        <>
-                          <hr className="border-slate-100" />
-                          {tier.taxFeatures.slice(0, 3).map((f) => (
-                            <div key={f} className="flex items-start gap-2 text-[11px] text-slate-600">
-                              <Check size={11} className="text-emerald-500 mt-0.5 shrink-0" />
-                              {f}
-                            </div>
-                          ))}
-                          {tier.taxFeatures.length > 3 && (
-                            <div className="text-[10px] text-[#0EA5E9] font-medium ml-5">+{tier.taxFeatures.length - 3} tax features</div>
-                          )}
-                        </>
-                      )}
-
-                      {/* Module checks */}
-                      <hr className="border-slate-100" />
+                    {/* Module indicators */}
+                    <div className="mt-6 pt-5 border-t border-slate-100 space-y-2">
                       {([
+                        ['Unlimited users & roles', tier.maxUsers === 'Unlimited users'],
                         ['Inventory', tier.inventory],
-                        ['Projects', tier.projects],
                         ['Payroll', tier.payroll],
-                        ['API Access', tier.apiAccess],
-                        ['AI Features', tier.aiAccess],
-                        ['Advanced Reports', tier.advancedReports],
-                      ] as const).map(([label, included]) => (
-                        <div key={label} className="flex items-center justify-between text-[11px]">
-                          <span className="text-slate-500">{label}</span>
-                          {included ? (
-                            <Check size={12} className="text-emerald-500" />
-                          ) : (
-                            <X size={12} className="text-slate-300" />
-                          )}
+                        ['API access', tier.apiAccess],
+                        ['Dedicated account manager', tier.support === 'Dedicated account manager'],
+                        ['SLA guarantee', false],
+                      ] as const).filter(([, included]) => included).map(([label]) => (
+                        <div key={label} className="flex items-center gap-2 text-xs text-slate-600">
+                          <Check size={12} className="text-emerald-500 shrink-0" />
+                          {label}
                         </div>
                       ))}
                     </div>
@@ -399,9 +314,8 @@ export function PricingPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {/* Users & Support */}
                   <tr className="bg-slate-50">
-                    <td colSpan={5} className="py-2 px-4 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Users & Support</td>
+                    <td colSpan={4} className="py-2 px-4 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Users & Support</td>
                   </tr>
                   {[
                     { label: 'Maximum Users', vals: tiers.map(t => t.maxUsers) },
@@ -416,13 +330,11 @@ export function PricingPage() {
                     </tr>
                   ))}
 
-                  {/* Platform */}
                   <tr className="bg-slate-50">
-                    <td colSpan={5} className="py-2 px-4 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Platform</td>
+                    <td colSpan={4} className="py-2 px-4 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Platform</td>
                   </tr>
                   {[
                     { label: 'API Access', vals: tiers.map(t => t.apiAccess) },
-                    { label: 'AI Features', vals: tiers.map(t => t.aiAccess) },
                     { label: 'Integrations', vals: tiers.map(t => t.integrations) },
                     { label: 'Advanced Reports', vals: tiers.map(t => t.advancedReports) },
                   ].map((row) => (
@@ -440,9 +352,8 @@ export function PricingPage() {
                     </tr>
                   ))}
 
-                  {/* Modules */}
                   <tr className="bg-slate-50">
-                    <td colSpan={5} className="py-2 px-4 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Modules</td>
+                    <td colSpan={4} className="py-2 px-4 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Modules</td>
                   </tr>
                   {[
                     { label: 'Inventory', vals: tiers.map(t => t.inventory) },
@@ -454,28 +365,6 @@ export function PricingPage() {
                       {row.vals.map((v, i) => (
                         <td key={i} className="py-2.5 px-3 text-center">
                           {v ? <Check size={14} className="mx-auto text-emerald-500" /> : <X size={14} className="mx-auto text-slate-300" />}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-
-                  {/* Accounting */}
-                  <tr className="bg-slate-50">
-                    <td colSpan={5} className="py-2 px-4 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Accounting</td>
-                  </tr>
-                  {[
-                    ...tiers[0].accountingFeatures.map(f => ({ label: f })),
-                    ...tiers[0].taxFeatures.map(f => ({ label: f })),
-                  ].map((feat, fi) => (
-                    <tr key={`${feat.label}-${fi}`} className="border-b border-slate-100">
-                      <td className="py-2.5 px-4 text-[12px] text-slate-700">{feat.label}</td>
-                      {tiers.map((t, ti) => (
-                        <td key={ti} className="py-2.5 px-3 text-center">
-                          {t.accountingFeatures.includes(feat.label) || t.taxFeatures.includes(feat.label) ? (
-                            <Check size={14} className="mx-auto text-emerald-500" />
-                          ) : (
-                            <X size={14} className="mx-auto text-slate-300" />
-                          )}
                         </td>
                       ))}
                     </tr>
@@ -537,7 +426,7 @@ export function PricingPage() {
 
       {/* ─── Footer note ─── */}
       <div className="py-6 text-center text-xs text-slate-400 bg-white border-t border-slate-100">
-        Prices exclude applicable taxes.
+        All plans include a 14-day free trial. No credit card required.
       </div>
     </div>
   );

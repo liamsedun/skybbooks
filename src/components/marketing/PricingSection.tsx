@@ -4,60 +4,56 @@ import { Check, ArrowRight } from 'lucide-react';
 
 const tiers = [
   {
-    name: 'Free',
+    name: 'Starter',
     price: '₦0',
     period: 'forever',
     description: 'Perfect for freelancers and micro-businesses just getting started.',
-    features: ['1 user', 'Basic invoicing (10/mo)', 'Manual expense entry', 'Single currency (NGN)', 'Community support'],
+    features: [
+      'Up to 10 invoices/month',
+      'Basic expense tracking',
+      'Single user',
+      'Bank feed connection',
+      'Email support',
+    ],
     cta: 'Get Started',
-    popular: false,
-  },
-  {
-    name: 'Standard',
-    price: '₦7,500',
-    period: '/month',
-    description: 'For growing startups that need more transactions and bank feeds.',
-    features: ['3 users', 'Unlimited invoicing', 'Receipt scanning', 'Bank reconciliation', 'VAT computation', 'AI features', 'Email support'],
-    cta: 'Start Free Trial',
     popular: false,
   },
   {
     name: 'Professional',
     price: '₦15,000',
     period: '/month',
-    description: 'For established SMEs needing full accounting, inventory, and tax compliance.',
+    description: 'For growing businesses that need full accounting capabilities.',
     features: [
-      '10 users',
-      'Unlimited invoicing & quotes',
-      'Multi-currency (unlimited)',
-      'Auto bank reconciliation',
+      'Unlimited invoices & quotes',
+      'Full expense management',
+      'Up to 5 users',
+      'Bank reconciliation',
+      'Multi-currency support',
+      'Financial reports (P&L, BS, CF)',
       'Inventory management',
-      'Project tracking',
-      'Full tax (VAT, WHT, PAYE, CIT)',
-      'API access',
-      'Advanced reports',
-      'Priority support',
+      'Priority email & chat support',
     ],
     cta: 'Start Free Trial',
     popular: true,
   },
   {
-    name: 'Premium',
-    price: '₦30,000',
+    name: 'Enterprise',
+    price: '₦50,000',
     period: '/month',
-    description: 'For companies needing payroll, IFRS compliance, and enterprise features.',
+    description: 'For established businesses with advanced reporting and compliance needs.',
     features: [
-      '25 users',
+      'Everything in Professional',
+      'Unlimited users & roles',
       'Payroll management',
-      'Fixed assets',
-      'IFRS 15, 16 & 9 compliance',
+      'Tax engine (VAT, WHT, PAYE, CIT)',
+      'IFRS 15 & 16 compliance',
       'Multi-entity consolidation',
-      'All tax computations (NSITF, ITF, NHIF, Stamp Duty)',
-      'White-label option',
+      'API access & webhooks',
       'Dedicated account manager',
-      'Priority phone support',
+      'Custom reports & integrations',
+      'SLA guarantee',
     ],
-    cta: 'Start Free Trial',
+    cta: 'Contact Sales',
     popular: false,
   },
 ];
@@ -78,13 +74,13 @@ export function PricingSection() {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-6 max-w-6xl mx-auto">
+        <div className="grid md:grid-cols-3 gap-6 lg:gap-8 max-w-5xl mx-auto">
           {tiers.map(tier => (
             <div
               key={tier.name}
-              className={`relative bg-white rounded-2xl border p-6 transition-all duration-300 ${
+              className={`relative bg-white rounded-2xl border p-6 lg:p-8 transition-all duration-300 ${
                 tier.popular
-                  ? 'border-[#0EA5E9] shadow-xl shadow-[#0EA5E9]/10 ring-1 ring-[#0EA5E9]/20 scale-[1.02]'
+                  ? 'border-[#0EA5E9] shadow-xl shadow-[#0EA5E9]/10 ring-1 ring-[#0EA5E9]/20'
                   : 'border-slate-200 hover:border-slate-300 shadow-sm hover:shadow-md'
               }`}
             >
@@ -113,7 +109,7 @@ export function PricingSection() {
               </ul>
 
               <button
-                onClick={() => navigate(tier.name === 'Premium' ? '/register' : '/register')}
+                onClick={() => navigate(tier.name === 'Enterprise' ? '/contact' : '/register')}
                 className={`w-full py-3 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 ${
                   tier.popular
                     ? 'bg-[#082F49] text-white hover:bg-[#0C4A6E] shadow-lg shadow-[#082F49]/20'
