@@ -8,7 +8,7 @@ import {
   Search, ChevronDown, LayoutDashboard, Users, FileCode, FileText,
   DollarSign, Briefcase, History, MessageCircle, TrendingUp, Settings,
   Menu, X, Building, Bell, ArrowRight, LogOut, User, Shield, CreditCard,
-  FileBarChart, HelpCircle, FileInput, BookOpen, Sparkles, Package,
+  FileBarChart, HelpCircle, FileInput, BookOpen, Package,
   ArrowRightLeft, TrendingDown, ReceiptText, AlertTriangle, Bot, Wifi,
   Star, Zap, ChevronRight, PanelLeftClose, PanelLeft,
   CircleUser, Command, Plus, LayoutList, Home, Landmark,
@@ -79,19 +79,10 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     PURCHASES: true, INVENTORY: true, PAYROLL: true,
     BANKING: true, ACCOUNTANT: true, REPORTS: true,
   });
-  const [helpOpen, setHelpOpen] = useState(false);
+  const [showHelpSubMenu, setShowHelpSubMenu] = useState(false);
   const [showMailForm, setShowMailForm] = useState(false);
   const [mailSubject, setMailSubject] = useState('');
   const [mailMessage, setMailMessage] = useState('');
-  const helpRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (helpRef.current && !helpRef.current.contains(e.target as Node)) setHelpOpen(false);
-    }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, []);
 
   useEffect(() => {
     const handleClick = (event: MouseEvent) => {
@@ -421,56 +412,6 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
           </button>
         </div>
 
-        {/* Help & Support dropdown */}
-        <div className="sidebar-settings p-2 relative" ref={helpRef}>
-          <button
-            onClick={() => setHelpOpen(!helpOpen)}
-            className={`sidebar-nav-btn w-full flex items-center gap-2 px-2.5 py-1 rounded-xl text-[13px] transition-all duration-150 ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
-          >
-            <HelpCircle className="w-4 h-4 shrink-0 sidebar-icon" />
-            {!sidebarCollapsed && <><span className="truncate sidebar-text flex-1 text-left">Help & Support</span><ChevronDown size={12} className={`sidebar-icon transition-transform ${helpOpen ? 'rotate-180' : ''}`} /></>}
-          </button>
-          {helpOpen && (
-            <div className="absolute right-0 bottom-full mb-1 w-64 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-2 max-h-[70vh] overflow-y-auto">
-              {/* Page links */}
-              <button onClick={() => { setHelpOpen(false); navigate('/help/documents'); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><BookOpen size={15} /> Help Documents</button>
-              <button onClick={() => { setHelpOpen(false); navigate('/help/faqs'); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><HelpCircle size={15} /> FAQs</button>
-              <button onClick={() => { setHelpOpen(false); navigate('/help/videos'); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Video className="w-3.5 h-3.5" /> Video Tutorials</button>
-              <button onClick={() => { setHelpOpen(false); navigate('/help/migration-guide'); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><History size={15} /> Migration Guide</button>
-
-              <div className="border-t border-slate-100 my-1" />
-
-              <div className="px-3 py-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Need Assistance?</div>
-
-              <a href="https://wa.me/2348157377000" target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-green-50 hover:text-green-700">
-                <MessageCircle size={15} className="text-green-600" /> Chat on WhatsApp (+234 815 737 7000)
-              </a>
-              <a href="https://wa.me/2347058119864" target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-green-50 hover:text-green-700">
-                <MessageCircle size={15} className="text-green-600" /> Chat on WhatsApp (+234 705 811 9864)
-              </a>
-
-              <button onClick={() => { setHelpOpen(false); setShowMailForm(true); }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700">
-                <Mail size={15} className="text-blue-600" /> Send an Email
-              </button>
-
-              <div className="border-t border-slate-100 my-1" />
-
-              <div className="px-3 py-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Early Access Features</div>
-              <button onClick={() => { setHelpOpen(false); /* early access link */ }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Sparkles size={15} /> Early Access</button>
-
-              <div className="border-t border-slate-100 my-1" />
-
-              <div className="px-3 py-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Talk to us (Mon - Fri)</div>
-              <a href="tel:+2348157377000" className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Phone size={15} /> +234 815 737 7000</a>
-              <a href="tel:+2347058119864" className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Phone size={15} /> +234 705 811 9864</a>
-            </div>
-          )}
-        </div>
-
         {/* User footer */}
         {!sidebarCollapsed && (
           <div className="sidebar-user-section p-2.5">
@@ -643,7 +584,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
               {showUserMenu && (
                 <div
                   id="header-profile-dropdown"
-                  className="absolute right-0 top-full mt-2 w-56 bg-surface rounded-2xl shadow-xl border border-border-custom overflow-hidden"
+                  className="absolute right-0 top-full mt-2 w-64 bg-surface rounded-2xl shadow-xl border border-border-custom overflow-hidden"
                 >
                   <div className="px-4 py-3 border-b border-border-custom">
                     <div className="text-sm font-bold text-ink-900 truncate">{user?.fullName || user?.email}</div>
@@ -665,12 +606,44 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
                       Organisation Settings
                     </button>
                     <button
-                      onClick={() => setShowUserMenu(false)}
+                      onClick={() => setShowHelpSubMenu(!showHelpSubMenu)}
                       className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-ink-600 hover:bg-surface-hover hover:text-ink-900 transition-colors"
                     >
                       <HelpCircle className="w-4 h-4" />
-                      Help & Support
+                      <span className="flex-1 text-left">Help & Support</span>
+                      <ChevronDown className={`w-3.5 h-3.5 text-ink-400 transition-transform duration-200 ${showHelpSubMenu ? 'rotate-180' : ''}`} />
                     </button>
+                    {showHelpSubMenu && (
+                      <div className="ml-3 pl-3 border-l-2 border-indigo-100 space-y-0.5">
+                        <button onClick={() => { setShowUserMenu(false); window.open('/help/documents', '_blank', 'noopener,noreferrer'); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs text-ink-500 hover:bg-surface-hover hover:text-ink-700 transition-colors"><BookOpen className="w-3.5 h-3.5" /> Help Documents</button>
+                        <button onClick={() => { setShowUserMenu(false); window.open('/help/faqs', '_blank', 'noopener,noreferrer'); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs text-ink-500 hover:bg-surface-hover hover:text-ink-700 transition-colors"><HelpCircle className="w-3.5 h-3.5" /> FAQs</button>
+                        <button onClick={() => { setShowUserMenu(false); window.open('/help/videos', '_blank', 'noopener,noreferrer'); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs text-ink-500 hover:bg-surface-hover hover:text-ink-700 transition-colors"><Video className="w-3.5 h-3.5" /> Video Tutorials</button>
+                        <button onClick={() => { setShowUserMenu(false); window.open('/help/migration-guide', '_blank', 'noopener,noreferrer'); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs text-ink-500 hover:bg-surface-hover hover:text-ink-700 transition-colors"><ExternalLink className="w-3.5 h-3.5" /> Migration Guide</button>
+                        <div className="h-px bg-border-custom my-1.5" />
+                        <div className="flex items-center gap-1.5 px-3 py-1.5">
+                          <span className="text-[10px] font-semibold text-ink-400 uppercase tracking-wider">WhatsApp</span>
+                        </div>
+                        <a href="https://wa.me/2348157377000" target="_blank" rel="noopener noreferrer"
+                          className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs text-ink-500 hover:bg-green-50 hover:text-green-700 transition-colors">
+                          <MessageCircle className="w-3.5 h-3.5 text-green-600" /> <span>Chat on WhatsApp</span>
+                        </a>
+                        <a href="https://wa.me/2347058119864" target="_blank" rel="noopener noreferrer"
+                          className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs text-ink-500 hover:bg-green-50 hover:text-green-700 transition-colors">
+                          <MessageCircle className="w-3.5 h-3.5 text-green-600" /> <span>Chat on WhatsApp</span>
+                        </a>
+                        <button onClick={() => { setShowMailForm(true); }}
+                          className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs text-ink-500 hover:bg-blue-50 hover:text-blue-700 transition-colors">
+                          <Mail className="w-3.5 h-3.5 text-blue-600" /> Send an Email
+                        </button>
+                        <div className="h-px bg-border-custom my-1.5" />
+                        <div className="flex items-center gap-1.5 px-3 py-1.5">
+                          <span className="text-[10px] font-semibold text-ink-400 uppercase tracking-wider">Talk to us</span>
+                          <span className="text-[9px] text-ink-300">(Mon - Fri)</span>
+                        </div>
+                        <a href="tel:+2348157377000" className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs text-ink-500 hover:bg-surface-hover hover:text-ink-700 transition-colors"><Phone className="w-3.5 h-3.5" /> +234 815 737 7000</a>
+                        <a href="tel:+2347058119864" className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs text-ink-500 hover:bg-surface-hover hover:text-ink-700 transition-colors"><Phone className="w-3.5 h-3.5" /> +234 705 811 9864</a>
+                      </div>
+                    )}
                     <hr className="my-1 border-border-custom" />
                     <button
                       onClick={handleLogout}
@@ -722,20 +695,41 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
 
       {/* Email form modal */}
       {showMailForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setShowMailForm(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4 border border-slate-200/80" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-slate-900">Send an Email</h2>
-              <button onClick={() => setShowMailForm(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-xl hover:bg-slate-100 transition-all duration-200"><X className="w-5 h-5" /></button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setShowMailForm(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md border border-slate-200 overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="px-6 py-4 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-white/15 rounded-xl"><Mail className="w-5 h-5" /></div>
+                <div>
+                  <h2 className="text-base font-bold">Send an Email</h2>
+                  <p className="text-[11px] text-indigo-200">We typically respond within 24 hours</p>
+                </div>
+              </div>
+              <button onClick={() => setShowMailForm(false)} className="p-1.5 rounded-lg hover:bg-white/10 transition-colors"><X className="w-5 h-5" /></button>
             </div>
-            <input type="text" placeholder="Subject" value={mailSubject} onChange={e => setMailSubject(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
-            <textarea placeholder="Your message..." rows={5} value={mailMessage} onChange={e => setMailMessage(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 resize-none" />
-            <div className="flex justify-end gap-2">
-              <button onClick={() => setShowMailForm(false)} className="px-4 py-2 text-sm font-medium text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50">Cancel</button>
-              <button onClick={() => { const a = document.createElement('a'); a.href = `mailto:hello@skyaccounting.com.ng?subject=${encodeURIComponent(mailSubject)}&body=${encodeURIComponent(mailMessage)}`; a.click(); setShowMailForm(false); setMailSubject(''); setMailMessage(''); }}
-                className="px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl hover:from-indigo-700 hover:to-indigo-800">Send</button>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Subject</label>
+                <div className="relative">
+                  <input type="text" placeholder="e.g. Account query, Feature request..." value={mailSubject} onChange={e => setMailSubject(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all placeholder:text-slate-400" />
+                  <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                </div>
+              </div>
+              <div>
+                <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Message</label>
+                <textarea placeholder="Describe your issue or question in detail..." rows={5} value={mailMessage} onChange={e => setMailMessage(e.target.value)}
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all resize-none placeholder:text-slate-400" />
+              </div>
+              <div className="flex items-center gap-2 bg-slate-50 rounded-xl px-3.5 py-2.5">
+                <HelpCircle className="w-4 h-4 text-slate-400 shrink-0" />
+                <p className="text-[11px] text-slate-500">We'll reply to <strong className="text-slate-700">{user?.email || 'your email'}</strong></p>
+              </div>
+              <div className="flex justify-end gap-2.5 pt-1">
+                <button onClick={() => setShowMailForm(false)} className="px-4 py-2.5 text-sm font-medium text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200 transition-colors">Cancel</button>
+                <button onClick={() => { const a = document.createElement('a'); a.href = `mailto:hello@skyaccounting.com.ng?subject=${encodeURIComponent(mailSubject)}&body=${encodeURIComponent(mailMessage)}`; a.click(); setShowMailForm(false); setMailSubject(''); setMailMessage(''); }}
+                  className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl hover:from-indigo-700 hover:to-indigo-800 shadow-sm transition-all">Send Message</button>
+              </div>
             </div>
           </div>
         </div>

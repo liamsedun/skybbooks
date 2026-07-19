@@ -196,7 +196,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (viewId: string) => void
 
   if (isLoading) {
     return (
-      <div className="space-y-6 w-full">
+      <div className="space-y-6 w-full min-h-[calc(100vh-12rem)]">
         <div className="flex items-center justify-between">
           <div>
             <div className="h-8 bg-ink-100 rounded-xl w-52 animate-pulse" />
