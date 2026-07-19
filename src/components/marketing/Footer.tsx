@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Mail, ArrowRight } from 'lucide-react';
+import { Mail, ArrowRight, Globe, MapPin, MessageCircle } from 'lucide-react';
 
 /* ─── SVG Social Icons ─── */
 
@@ -164,23 +164,41 @@ export function Footer() {
           {/* Contact block */}
           <div>
             <h4 className="text-xs font-semibold text-white/40 uppercase tracking-widest mb-5">Contact</h4>
-            <ul className="space-y-3.5">
+            <ul className="space-y-3">
               <li>
-                <a href="mailto:subscription@skyaccounting.com.ng" className="text-sm text-white/65 hover:text-white transition-colors">subscription@skyaccounting.com.ng</a>
+                <a href="mailto:subscription@skyaccounting.com.ng" className="flex items-center gap-2.5 text-sm text-white/65 hover:text-white transition-colors">
+                  <Mail size={14} className="text-[#0EA5E9] shrink-0" />
+                  <span>subscription@skyaccounting.com.ng</span>
+                </a>
               </li>
               <li>
-                <a href="mailto:hello@skyaccounting.com.ng" className="text-sm text-white/65 hover:text-white transition-colors">hello@skyaccounting.com.ng</a>
+                <a href="mailto:hello@skyaccounting.com.ng" className="flex items-center gap-2.5 text-sm text-white/65 hover:text-white transition-colors">
+                  <Mail size={14} className="text-[#0EA5E9] shrink-0" />
+                  <span>hello@skyaccounting.com.ng</span>
+                </a>
               </li>
               <li>
-                <a href="https://wa.me/2348157377000" target="_blank" rel="noopener noreferrer" className="text-sm text-white/65 hover:text-white transition-colors">WhatsApp: +234 815 737 7000</a>
+                <a href="https://wa.me/2348157377000" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2.5 text-sm text-white/65 hover:text-white transition-colors">
+                  <MessageCircle size={14} className="text-[#0EA5E9] shrink-0" />
+                  <span>+234 815 737 7000</span>
+                </a>
               </li>
               <li>
-                <a href="https://wa.me/2347058119864" target="_blank" rel="noopener noreferrer" className="text-sm text-white/65 hover:text-white transition-colors">WhatsApp: +234 705 811 9864</a>
+                <a href="https://wa.me/2347058119864" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2.5 text-sm text-white/65 hover:text-white transition-colors">
+                  <MessageCircle size={14} className="text-[#0EA5E9] shrink-0" />
+                  <span>+234 705 811 9864</span>
+                </a>
               </li>
               <li>
-                <a href="https://skyaccounting.com.ng" target="_blank" rel="noopener noreferrer" className="text-sm text-white/65 hover:text-white transition-colors">skyaccounting.com.ng</a>
+                <a href="https://skyaccounting.com.ng" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2.5 text-sm text-white/65 hover:text-white transition-colors">
+                  <Globe size={14} className="text-[#0EA5E9] shrink-0" />
+                  <span>skyaccounting.com.ng</span>
+                </a>
               </li>
-              <li><span className="text-sm text-white/40">2/4 Moses Adebayo Street, Ojodu-Ikeja, Lagos, Nigeria</span></li>
+              <li className="flex items-start gap-2.5 text-sm text-white/40">
+                <MapPin size={14} className="text-[#0EA5E9] shrink-0 mt-0.5" />
+                <span>2/4 Moses Adebayo Street, Ojodu-Ikeja, Lagos, Nigeria</span>
+              </li>
             </ul>
             <div className="mt-5 px-3 py-1.5 rounded-lg bg-white/5 inline-block">
               <span className="text-[10px] font-mono text-white/30">v3.2.1</span>
