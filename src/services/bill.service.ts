@@ -265,6 +265,7 @@ export async function createBill(input: any, createdBy: string): Promise<any> {
         total,
         amountPaid: 0,
         balanceDue: total,
+        recurringId: input.recurringId || null,
         createdBy
       })
       .returning();

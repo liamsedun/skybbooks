@@ -39,6 +39,14 @@ import { validateAndExecuteTransition } from '../services/approval.service';
 import { createJournalEntry } from '../services/ledger.service';
 import { postToGL } from '../services/posting.service';
 import {
+  createRecurringBill,
+  listRecurringBills,
+  getRecurringBill,
+  updateRecurringBill,
+  deleteRecurringBill,
+  generateBillFromTemplate,
+} from '../services/recurring-bills.service';
+import {
   recordPaymentMade,
   updatePaymentMade,
   deletePaymentMade
@@ -197,6 +205,44 @@ const createVendorCreditSchema = z.object({
 const applyVendorCreditSchema = z.object({
   billId: z.string().uuid('Invalid bill id.'),
   amount: z.number().int().positive('Amount must be positive (In Kobo).'),
+});
+
+const recurringTemplateLineSchema = z.object({
+  itemId: z.string().uuid().nullable().optional(),
+  description: z.string(),
+  quantity: z.number().positive('Quantity must be positive.'),
+  unitPrice: z.number().int().positive('Unit price must be positive (in Kobo).'),
+  taxRate: z.number().min(0).optional().default(0),
+  taxId: z.string().uuid().nullable().optional(),
+  accountId: z.string().uuid().nullable().optional(),
+});
+
+const createRecurringBillSchema = z.object({
+  vendorId: z.string().uuid('Invalid vendor.'),
+  frequency: z.enum(['daily', 'weekly', 'monthly', 'quarterly', 'semi-annually', 'annually']),
+  startDate: z.string().or(z.date()),
+  endDate: z.string().or(z.date()).nullable().optional(),
+  isActive: z.boolean().optional().default(true),
+  autoSend: z.boolean().optional().default(false),
+  template: z.object({
+    notes: z.string().nullable().optional(),
+    paymentTerms: z.number().nullable().optional(),
+    lines: z.array(recurringTemplateLineSchema).min(1, 'At least one line is required.'),
+  }),
+});
+
+const updateRecurringBillSchema = z.object({
+  vendorId: z.string().uuid('Invalid vendor.').optional(),
+  frequency: z.enum(['daily', 'weekly', 'monthly', 'quarterly', 'semi-annually', 'annually']).optional(),
+  startDate: z.string().or(z.date()).optional(),
+  endDate: z.string().or(z.date()).nullable().optional(),
+  isActive: z.boolean().optional(),
+  autoSend: z.boolean().optional(),
+  template: z.object({
+    notes: z.string().nullable().optional(),
+    paymentTerms: z.number().nullable().optional(),
+    lines: z.array(recurringTemplateLineSchema).min(1, 'At least one line is required.'),
+  }).optional(),
 });
 
 // Configure core security session middleware checks on all purchases routes
@@ -1401,6 +1447,74 @@ router.post('/credit-notes/:id/void', async (req: AuthenticatedRequest, res: Res
   } catch (err) {
     return next(err);
   }
+});
+
+// ==========================================
+// 6. RECURRING BILLS ENDPOINTS
+// ==========================================
+
+router.get('/recurring-bills', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const list = await listRecurringBills(orgId);
+    return res.json(list);
+  } catch (err) { return next(err); }
+});
+
+router.get('/recurring-bills/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const template = await getRecurringBill(req.params.id, orgId);
+    return res.json(template);
+  } catch (err) { return next(err); }
+});
+
+router.post('/recurring-bills', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId;
+    const orgId = req.user!.orgId!;
+    const data = createRecurringBillSchema.parse(req.body);
+    const template = await createRecurringBill(data, orgId, userId);
+    createAuditLog({ orgId, userId, action: 'create', entityType: 'recurring-bill', entityId: template.id, newValues: data, ...extractReqMeta(req) });
+    return res.status(201).json(template);
+  } catch (err) {
+    if (err instanceof z.ZodError) return next(new AppError(err.issues[0]?.message || 'Validation failed', 400));
+    return next(err);
+  }
+});
+
+router.patch('/recurring-bills/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId;
+    const orgId = req.user!.orgId!;
+    const data = updateRecurringBillSchema.parse(req.body);
+    const template = await updateRecurringBill(req.params.id, orgId, data);
+    createAuditLog({ orgId, userId, action: 'update', entityType: 'recurring-bill', entityId: req.params.id, newValues: data, ...extractReqMeta(req) });
+    return res.json(template);
+  } catch (err) {
+    if (err instanceof z.ZodError) return next(new AppError(err.issues[0]?.message || 'Validation failed', 400));
+    return next(err);
+  }
+});
+
+router.delete('/recurring-bills/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId;
+    const orgId = req.user!.orgId!;
+    await deleteRecurringBill(req.params.id, orgId);
+    createAuditLog({ orgId, userId, action: 'delete', entityType: 'recurring-bill', entityId: req.params.id, ...extractReqMeta(req) });
+    return res.status(204).send();
+  } catch (err) { return next(err); }
+});
+
+router.post('/recurring-bills/:id/generate', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId;
+    const orgId = req.user!.orgId!;
+    const bill = await generateBillFromTemplate(req.params.id, orgId, userId);
+    createAuditLog({ orgId, userId, action: 'generate', entityType: 'recurring-bill', entityId: req.params.id, newValues: { generatedBillId: bill.id }, ...extractReqMeta(req) });
+    return res.json(bill);
+  } catch (err) { return next(err); }
 });
 
 // =========================================================================

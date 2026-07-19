@@ -12,7 +12,7 @@ import {
   ArrowRightLeft, TrendingDown, ReceiptText, AlertTriangle, Bot, Wifi,
   Star, Zap, ChevronRight, PanelLeftClose, PanelLeft,
   CircleUser, Command, Plus, LayoutList, Home, Landmark,
-  ShoppingCart, ShoppingBag, Receipt, Mail, Phone, ExternalLink, Video
+  ShoppingCart, ShoppingBag, Receipt, Mail, Phone, ExternalLink, Video, RefreshCw
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -120,6 +120,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     payments_received: '/sales/payments', credit_notes: '/sales/credit-notes',
     vendors: '/purchases/vendors', expenses: '/purchases/expenses', recurring_expenses: '/purchases/recurring-expenses',
     purchase_orders: '/purchases/purchase-orders', bills: '/purchases/bills',
+    recurring_bills: '/purchases/recurring-bills',
     payments_made: '/purchases/payments-made', purchase_credit_notes: '/purchases/credit-notes',
     items: '/inventory/items', inventory_adjustments: '/inventory/adjustments', inventory_management: '/inventory/management',
     employees: '/payroll/employees', payroll_runs: '/payroll/runs', paye_schedules: '/payroll/paye-schedules',
@@ -168,6 +169,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
       { name: 'Recurring Expenses', id: 'recurring_expenses', icon: History },
       { name: 'Purchase Orders', id: 'purchase_orders', icon: FileCode },
       { name: 'Bills', id: 'bills', icon: FileText },
+      { name: 'Recurring Bills', id: 'recurring_bills', icon: RefreshCw },
       { name: 'Payments Made', id: 'payments_made', icon: DollarSign },
       { name: 'Credit Notes', id: 'purchase_credit_notes', icon: FileText },
     ]},

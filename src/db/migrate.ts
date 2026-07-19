@@ -2658,6 +2658,38 @@ export async function runMigration() {
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_payroll_runs_org ON payroll_runs(org_id)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_inventory_adjustments_item ON inventory_adjustments(item_id)`);
 
+    // --------------------------------
+    // Recurring Bills table
+    // --------------------------------
+    await db.execute(sql`CREATE TABLE IF NOT EXISTS recurring_bills (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      org_id UUID NOT NULL REFERENCES organisations(id),
+      vendor_id UUID NOT NULL REFERENCES contacts(id),
+      frequency TEXT NOT NULL,
+      start_date TIMESTAMP NOT NULL,
+      end_date TIMESTAMP,
+      next_run_date TIMESTAMP,
+      is_active BOOLEAN DEFAULT true NOT NULL,
+      template JSONB,
+      created_by UUID NOT NULL REFERENCES users(id),
+      created_at TIMESTAMP DEFAULT now() NOT NULL
+    )`);
+
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_recurring_bills_org ON recurring_bills(org_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_recurring_bills_vendor ON recurring_bills(vendor_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_recurring_bills_next_run ON recurring_bills(next_run_date)`);
+
+    // Add recurring_id FK to bills if not present
+    await db.execute(sql`ALTER TABLE bills ADD COLUMN IF NOT EXISTS recurring_id UUID REFERENCES recurring_bills(id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_bills_recurring ON bills(recurring_id)`);
+
+    console.log('[Migration] Recurring bills table created.');
+
+    // Add last_reminder_sent_at columns
+    await db.execute(sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS last_reminder_sent_at TIMESTAMP`);
+    await db.execute(sql`ALTER TABLE bills ADD COLUMN IF NOT EXISTS last_reminder_sent_at TIMESTAMP`);
+    console.log('[Migration] last_reminder_sent_at columns added to invoices and bills.');
+
     console.log('[Migration] Performance indexes created on core tables.');
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {

@@ -779,6 +779,20 @@ export const recurringInvoices = pgTable('recurring_invoices', {
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
+export const recurringBills = pgTable('recurring_bills', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  vendorId: uuid('vendor_id').references(() => contacts.id).notNull(),
+  frequency: recurringFrequencyEnum('frequency').notNull(),
+  startDate: timestamp('start_date').notNull(),
+  endDate: timestamp('end_date'),
+  nextRunDate: timestamp('next_run_date'),
+  isActive: boolean('is_active').default(true).notNull(),
+  template: jsonb('template'),
+  createdBy: uuid('created_by').references(() => users.id).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
 export const invoices = pgTable('invoices', {
   id: uuid('id').defaultRandom().primaryKey(),
   orgId: uuid('org_id').references(() => organisations.id).notNull(),
@@ -805,7 +819,8 @@ export const invoices = pgTable('invoices', {
   recurringId: uuid('recurring_id').references((): AnyPgColumn => recurringInvoices.id),
   journalEntryId: uuid('journal_entry_id').references(() => journalEntries.id),
   createdBy: uuid('created_by').references(() => users.id).notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull()
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  lastReminderSentAt: timestamp('last_reminder_sent_at')
 });
 
 export const invoiceLines = pgTable('invoice_lines', {
@@ -924,7 +939,9 @@ export const bills = pgTable('bills', {
   approvedBy: uuid('approved_by').references(() => users.id),
   postedBy: uuid('posted_by').references(() => users.id),
   createdBy: uuid('created_by').references(() => users.id).notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull()
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  recurringId: uuid('recurring_id').references((): AnyPgColumn => recurringBills.id),
+  lastReminderSentAt: timestamp('last_reminder_sent_at')
 });
 
 export const billLines = pgTable('bill_lines', {
@@ -2604,6 +2621,22 @@ export const recurringInvoicesRelations = relations(recurringInvoices, ({ one, m
   invoices: many(invoices)
 }));
 
+export const recurringBillsRelations = relations(recurringBills, ({ one, many }) => ({
+  organisation: one(organisations, {
+    fields: [recurringBills.orgId],
+    references: [organisations.id]
+  }),
+  vendor: one(contacts, {
+    fields: [recurringBills.vendorId],
+    references: [contacts.id]
+  }),
+  creator: one(users, {
+    fields: [recurringBills.createdBy],
+    references: [users.id]
+  }),
+  bills: many(bills)
+}));
+
 export const invoicesRelations = relations(invoices, ({ one, many }) => ({
   organisation: one(organisations, {
     fields: [invoices.orgId],
@@ -2739,6 +2772,10 @@ export const billsRelations = relations(bills, ({ one, many }) => ({
   creator: one(users, {
     fields: [bills.createdBy],
     references: [users.id]
+  }),
+  recurringBill: one(recurringBills, {
+    fields: [bills.recurringId],
+    references: [recurringBills.id]
   }),
   lines: many(billLines),
   paymentMadeAllocations: many(paymentMadeAllocations),
@@ -3541,6 +3578,7 @@ export const db = drizzle(pool, {
     quotes,
     salesOrders,
     recurringInvoices,
+    recurringBills,
     invoices,
     invoiceLines,
     paymentsReceived,
@@ -3620,6 +3658,7 @@ export const db = drizzle(pool, {
     quotesRelations,
     salesOrdersRelations,
     recurringInvoicesRelations,
+    recurringBillsRelations,
     invoicesRelations,
     invoiceLinesRelations,
     paymentsReceivedRelations,
@@ -3711,6 +3750,7 @@ export const schema = {
   quotes,
   salesOrders,
   recurringInvoices,
+  recurringBills,
   invoices,
   invoiceLines,
   paymentsReceived,

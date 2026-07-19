@@ -53,6 +53,8 @@ import { runMigration } from '../db/migrate';
 import { fetchLatestRates } from '../services/cbn.service';
 import { requestId } from '../middleware/requestId';
 import { AppError, ValidationError } from '../lib/errors';
+import { processPaymentReminders } from '../services/reminders.service';
+import { runDueRecurringBills } from '../services/recurring-bills.service';
 
 const logger = winston.createLogger({
   level: 'info',
@@ -76,6 +78,12 @@ async function startServer() {
   // Auto-refresh currency rates on startup and every hour
   fetchLatestRates().catch(() => {});
   setInterval(() => fetchLatestRates().catch(() => {}), 60 * 60 * 1000);
+
+  // Process recurring bills (check every 15 minutes)
+  setInterval(() => runDueRecurringBills().catch((err) => logger.error('[RecurringBills] Error:', err)), 15 * 60 * 1000);
+
+  // Send payment reminders (every 6 hours)
+  setInterval(() => processPaymentReminders().catch((err) => logger.error('[Reminders] Error:', err)), 6 * 60 * 60 * 1000);
 
   const app = express();
   const PORT = Number(process.env.PORT) || 3000;

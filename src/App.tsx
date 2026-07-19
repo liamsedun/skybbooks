@@ -83,6 +83,7 @@ import {
   IntegrationsSettingsPage
 } from './pages/ModulePlaceholders';
 import { GroupManagementPage } from './pages/settings/GroupManagementPage';
+import { RecurringBillsPage } from './pages/purchases/RecurringBillsPage';
 import { IntercompanyTransactionsPage } from './pages/accountant/IntercompanyTransactionsPage';
 import { ConsolidationReportsPage } from './pages/reports/ConsolidationReportsPage';
 import { SettingsLayout } from './components/settings/SettingsLayout';
@@ -316,6 +317,7 @@ function AppRoutes() {
           <Route path="/purchases/payments-made" element={<PaymentsMadePage />} />
           <Route path="/purchases/recurring-expenses" element={<RecurringExpensesPage />} />
           <Route path="/purchases/purchase-orders" element={<PurchaseOrdersPage />} />
+          <Route path="/purchases/recurring-bills" element={<RecurringBillsPage />} />
           <Route path="/purchases/credit-notes" element={<PurchaseCreditNotesPage />} />
 
           {/* Projects module routing */}
