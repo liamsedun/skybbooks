@@ -4,8 +4,11 @@ import { Menu, X } from 'lucide-react';
 
 const NAV_LINKS = [
   { label: 'Features', href: '#features' },
-  { label: 'How It Works', href: '#how-it-works' },
+  { label: 'Modules', href: '#modules' },
+  { label: 'Why SkyBooks', href: '#why-skybooks' },
+  { label: 'AI & Automation', href: '#ai-automation' },
   { label: 'Pricing', href: '#pricing' },
+  { label: 'Testimonials', href: '#testimonials' },
   { label: 'FAQs', href: '#faqs' },
 ];
 
