@@ -59,6 +59,9 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Scroll to top on every route change
+  React.useEffect(() => { window.scrollTo(0, 0); }, [location.pathname]);
+
   React.useEffect(() => {
     if (organisation) {
       setPrintOrgInfo({ name: organisation.name, address: organisation.address, phone: organisation.phone, email: organisation.email, logoUrl: organisation.logoUrl });
@@ -251,7 +254,6 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     const path = pathMap[id];
     if (!path) return;
     addActivity({ id, path, label: navigation.flatMap(g => g.items).find(i => i.id === id)?.name || id });
-    window.scrollTo(0, 0);
     navigate(path);
     setIsMobileOpen(false);
     if (onViewChange) onViewChange(id);
