@@ -113,7 +113,7 @@ export function Breadcrumbs({ variant = 'header' }: { variant?: 'header' | 'cont
   return (
     <nav className={`flex items-center gap-1.5 text-sm ${isHeader ? 'text-white/70' : 'text-slate-500 dark:text-slate-400'}`} aria-label="Breadcrumb">
       <Link
-        to="/dashboard"
+        to="/app/dashboard"
         className={`p-1 rounded-lg transition-colors shrink-0 ${isHeader ? 'hover:bg-white/10' : 'hover:bg-slate-100 dark:hover:bg-slate-800'}`}
       >
         <Home className={`w-4 h-4 ${isHeader ? 'text-white/70' : ''}`} />

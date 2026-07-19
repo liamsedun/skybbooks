@@ -264,7 +264,7 @@ export function BankRules() {
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => navigate('/banking')}
+            onClick={() => navigate('/app/banking')}
             className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all duration-200 cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4" />

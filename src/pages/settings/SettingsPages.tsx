@@ -6531,7 +6531,7 @@ export function TaxesPage() {
             <Field label="Tax Registration Number" placeholder="TAX 2301110109017" value={form.taxRegistrationNumber || ''} onChange={field('taxRegistrationNumber')} />
             <p className="text-xs text-slate-400 mt-1">
               To include this number as part of your organization address in transaction PDFs, insert this number's placeholder in Organization Address Format under{' '}
-              <a href="/settings/general" className="text-indigo-600 hover:underline">Settings &gt; Preferences &gt; General</a>.
+              <a href="/app/settings/general" className="text-indigo-600 hover:underline">Settings &gt; Preferences &gt; General</a>.
             </p>
           </Section>
 

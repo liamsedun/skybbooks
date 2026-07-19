@@ -114,35 +114,35 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
   }, [showUserMenu, showNotifications, showNewMenu, showHeaderSearch]);
 
   const pathMap: Record<string, string> = useMemo(() => ({
-    dashboard: '/dashboard', ai_assistant: '/ai/assistant',
-    customers: '/sales/customers', quotes: '/sales/quotes', sales_orders: '/sales/sales-orders',
-    invoices: '/sales/invoices', receipts: '/sales/receipts', recurring_invoices: '/sales/recurring-invoices',
-    payments_received: '/sales/payments', credit_notes: '/sales/credit-notes',
-    vendors: '/purchases/vendors', expenses: '/purchases/expenses', recurring_expenses: '/purchases/recurring-expenses',
-    purchase_orders: '/purchases/purchase-orders', bills: '/purchases/bills',
-    recurring_bills: '/purchases/recurring-bills',
-    payments_made: '/purchases/payments-made', purchase_credit_notes: '/purchases/credit-notes',
-    items: '/inventory/items', inventory_adjustments: '/inventory/adjustments', inventory_management: '/inventory/management',
-    employees: '/payroll/employees', payroll_runs: '/payroll/runs', paye_schedules: '/payroll/paye-schedules',
-    pension_schedules: '/payroll/pension-schedules', payslips: '/payroll/payslips',
-    bank_accounts: '/banking', bank_feed: '/banking/reconciliation/demo',
-    bank_connections: '/banking/connections', payment_gateway: '/banking/payment-gateway',
-    banking_rules: '/banking/rules', currency_rates: '/banking/currency-rates', bank_transfers: '/banking/transfers',
-    projects: '/projects', chart_accounts: '/accountant/chart-of-accounts', manual_journals: '/accountant/journals',
-    budgets: '/accountant/budgets', fixed_assets: '/accountant/fixed-assets', depreciation: '/accountant/fixed-assets/depreciation',
-    leases: '/accountant/leases', ocr: '/accountant/ocr', intercompany: '/accountant/intercompany',
-    ecl: '/accountant/ecl',
-    rep_trial_balance: '/reports/trial-balance', rep_income_statement: '/reports/income-statement',
-    rep_balance_sheet: '/reports/balance-sheet', rep_cash_flow: '/reports/cash-flow',
-    rep_changes_in_equity: '/reports/statement-of-changes-in-equity', rep_general_ledger: '/reports/general-ledger',
-    rep_vat_return: '/reports/vat-return', rep_aged_receivables: '/reports/aged-receivables',
-    rep_aged_payables: '/reports/aged-payables', rep_audit_logs: '/reports/audit-logs',
-    rep_custom: '/reports/custom', rep_tax_computation: '/reports/tax-computation',
-    rep_tax_engine: '/reports/tax-engine', rep_projects: '/reports/projects', rep_legacy: '/reports/legacy',
-    rep_consolidation: '/reports/consolidation',
-    revenue_contracts: '/revenue/contracts', rep_revenue_recognition: '/revenue/recognition-report',
-    set_organisation: '/settings/organisation', set_invites: '/settings/invites', set_roles: '/settings/roles',
-    user_preferences: '/settings/user-preferences', set_integrations: '/settings/integrations',
+    dashboard: '/app/dashboard', ai_assistant: '/app/ai/assistant',
+    customers: '/app/sales/customers', quotes: '/app/sales/quotes', sales_orders: '/app/sales/sales-orders',
+    invoices: '/app/sales/invoices', receipts: '/app/sales/receipts', recurring_invoices: '/app/sales/recurring-invoices',
+    payments_received: '/app/sales/payments', credit_notes: '/app/sales/credit-notes',
+    vendors: '/app/purchases/vendors', expenses: '/app/purchases/expenses', recurring_expenses: '/app/purchases/recurring-expenses',
+    purchase_orders: '/app/purchases/purchase-orders', bills: '/app/purchases/bills',
+    recurring_bills: '/app/purchases/recurring-bills',
+    payments_made: '/app/purchases/payments-made', purchase_credit_notes: '/app/purchases/credit-notes',
+    items: '/app/inventory/items', inventory_adjustments: '/app/inventory/adjustments', inventory_management: '/app/inventory/management',
+    employees: '/app/payroll/employees', payroll_runs: '/app/payroll/runs', paye_schedules: '/app/payroll/paye-schedules',
+    pension_schedules: '/app/payroll/pension-schedules', payslips: '/app/payroll/payslips',
+    bank_accounts: '/app/banking', bank_feed: '/app/banking/reconciliation/demo',
+    bank_connections: '/app/banking/connections', payment_gateway: '/app/banking/payment-gateway',
+    banking_rules: '/app/banking/rules', currency_rates: '/app/banking/currency-rates', bank_transfers: '/app/banking/transfers',
+    projects: '/app/projects', chart_accounts: '/app/accountant/chart-of-accounts', manual_journals: '/app/accountant/journals',
+    budgets: '/app/accountant/budgets', fixed_assets: '/app/accountant/fixed-assets', depreciation: '/app/accountant/fixed-assets/depreciation',
+    leases: '/app/accountant/leases', ocr: '/app/accountant/ocr', intercompany: '/app/accountant/intercompany',
+    ecl: '/app/accountant/ecl',
+    rep_trial_balance: '/app/reports/trial-balance', rep_income_statement: '/app/reports/income-statement',
+    rep_balance_sheet: '/app/reports/balance-sheet', rep_cash_flow: '/app/reports/cash-flow',
+    rep_changes_in_equity: '/app/reports/statement-of-changes-in-equity', rep_general_ledger: '/app/reports/general-ledger',
+    rep_vat_return: '/app/reports/vat-return', rep_aged_receivables: '/app/reports/aged-receivables',
+    rep_aged_payables: '/app/reports/aged-payables', rep_audit_logs: '/app/reports/audit-logs',
+    rep_custom: '/app/reports/custom', rep_tax_computation: '/app/reports/tax-computation',
+    rep_tax_engine: '/app/reports/tax-engine', rep_projects: '/app/reports/projects', rep_legacy: '/app/reports/legacy',
+    rep_consolidation: '/app/reports/consolidation',
+    revenue_contracts: '/app/revenue/contracts', rep_revenue_recognition: '/app/revenue/recognition-report',
+    set_organisation: '/app/settings/organisation', set_invites: '/app/settings/invites', set_roles: '/app/settings/roles',
+    user_preferences: '/app/settings/user-preferences', set_integrations: '/app/settings/integrations',
   }), []);
 
   const navigation: NavGroup[] = useMemo(() => [
@@ -241,7 +241,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
       .filter(group => group.items.length > 0);
   }, [navigation, searchQuery]);
 
-  const isSettingsPage = location.pathname.startsWith('/settings');
+  const isSettingsPage = location.pathname.startsWith('/app/settings');
 
   const activeNavId = useMemo(() => {
     const path = location.pathname;
@@ -265,22 +265,22 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
   };
 
   const newMenuItems = useMemo(() => [
-    { label: 'Customer', icon: Users, path: '/sales/customers' },
-    { label: 'Invoice', icon: ReceiptText, path: '/sales/invoices/new' },
-    { label: 'Receipt', icon: FileInput, path: '/sales/receipts' },
-    { label: 'Payment Received', icon: DollarSign, path: '/sales/payments' },
-    { label: 'Sales Order', icon: FileCode, path: '/sales/sales-orders' },
-    { label: 'Vendor', icon: Building, path: '/purchases/vendors' },
-    { label: 'Expense', icon: CreditCard, path: '/purchases/expenses/new' },
-    { label: 'Purchase Order', icon: FileCode, path: '/purchases/purchase-orders' },
-    { label: 'Bill', icon: FileText, path: '/purchases/bills/new' },
-    { label: 'Payment Made', icon: DollarSign, path: '/purchases/payments-made' },
-    { label: 'Employee', icon: Users, path: '/payroll/employees' },
-    { label: 'Payroll Run', icon: FileText, path: '/payroll/runs' },
-    { label: 'New Manual Journal', icon: BookOpen, path: '/accountant/journals/new' },
+    { label: 'Customer', icon: Users, path: '/app/sales/customers' },
+    { label: 'Invoice', icon: ReceiptText, path: '/app/sales/invoices/new' },
+    { label: 'Receipt', icon: FileInput, path: '/app/sales/receipts' },
+    { label: 'Payment Received', icon: DollarSign, path: '/app/sales/payments' },
+    { label: 'Sales Order', icon: FileCode, path: '/app/sales/sales-orders' },
+    { label: 'Vendor', icon: Building, path: '/app/purchases/vendors' },
+    { label: 'Expense', icon: CreditCard, path: '/app/purchases/expenses/new' },
+    { label: 'Purchase Order', icon: FileCode, path: '/app/purchases/purchase-orders' },
+    { label: 'Bill', icon: FileText, path: '/app/purchases/bills/new' },
+    { label: 'Payment Made', icon: DollarSign, path: '/app/purchases/payments-made' },
+    { label: 'Employee', icon: Users, path: '/app/payroll/employees' },
+    { label: 'Payroll Run', icon: FileText, path: '/app/payroll/runs' },
+    { label: 'New Manual Journal', icon: BookOpen, path: '/app/accountant/journals/new' },
   ], []);
 
-  const handleLogout = async () => { await logout(); navigate('/login'); };
+  const handleLogout = async () => { await logout(); navigate('/auth/login'); };
 
   const currentNavItem = useMemo(() =>
     navigation.flatMap(g => g.items).find(i => i.id === activeNavId),
@@ -665,14 +665,14 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
                   </div>
                   <div className="p-1.5">
                     <button
-                      onClick={() => { setShowUserMenu(false); navigate('/settings/user-preferences'); }}
+                      onClick={() => { setShowUserMenu(false); navigate('/app/settings/user-preferences'); }}
                       className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-ink-600 hover:bg-surface-hover hover:text-ink-900 transition-colors"
                     >
                       <User className="w-4 h-4" />
                       User Preferences
                     </button>
                     <button
-                      onClick={() => { setShowUserMenu(false); navigate('/settings/organisation'); }}
+                      onClick={() => { setShowUserMenu(false); navigate('/app/settings/organisation'); }}
                       className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-ink-600 hover:bg-surface-hover hover:text-ink-900 transition-colors"
                     >
                       <Settings className="w-4 h-4" />

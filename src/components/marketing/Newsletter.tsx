@@ -53,17 +53,20 @@ export function Newsletter() {
                 <Mail size={20} className="text-[#0EA5E9]" />
                 <h3 className="text-lg font-semibold text-white">Subscribe to our newsletter</h3>
               </div>
-              <div className="flex gap-3">
+              <form onSubmit={e => { e.preventDefault(); const email = (e.target as HTMLFormElement).querySelector('input')?.value; if (email) window.location.href = `mailto:hello@skyaccounting.com.ng?subject=Newsletter%20signup&body=Please%20subscribe%20me:%20${encodeURIComponent(email)}`; }} className="flex gap-3">
                 <input
                   type="email"
                   placeholder="Enter your email"
                   className="flex-1 px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-sky-300/60 text-sm focus:outline-none focus:ring-2 focus:ring-[#0EA5E9]/50 focus:border-transparent transition-all"
                 />
-                <button className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[#0EA5E9] text-white text-sm font-semibold hover:bg-sky-500 transition-colors whitespace-nowrap">
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[#0EA5E9] text-white text-sm font-semibold hover:bg-sky-500 transition-colors whitespace-nowrap"
+                >
                   Subscribe
                   <Send size={14} />
                 </button>
-              </div>
+              </form>
               <p className="mt-4 text-xs text-sky-300/60">
                 No spam. Unsubscribe anytime.
               </p>

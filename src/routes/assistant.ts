@@ -12,7 +12,10 @@ router.use(requireOrg);
 const assistantRateLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 20,
-  keyGenerator: (req: any) => req.user?.orgId || req.ip,
+  keyGenerator: (req: any) => {
+    const { ip } = req;
+    return req.user?.orgId || ip;
+  },
   validate: { xForwardedForHeader: false },
   message: { error: 'Rate limit: Max 20 AI assistant requests per minute.' },
   standardHeaders: true,

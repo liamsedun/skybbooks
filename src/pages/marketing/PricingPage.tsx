@@ -40,7 +40,7 @@ const tiers: Tier[] = [
     description: 'Perfect for freelancers and micro-businesses just getting started.',
     popular: false,
     cta: 'Get Started',
-    ctaLink: '/register',
+    ctaLink: '/auth/register',
     maxUsers: '1 user',
     support: 'Email support',
     storage: '100 MB',
@@ -74,7 +74,7 @@ const tiers: Tier[] = [
     description: 'For growing businesses that need full accounting capabilities.',
     popular: true,
     cta: 'Start Free Trial',
-    ctaLink: '/register',
+    ctaLink: '/auth/register',
     maxUsers: '5 users',
     support: 'Priority email & chat',
     storage: '5 GB',
@@ -146,18 +146,34 @@ export function PricingPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <SeoHead title="Pricing" description="Simple, transparent pricing for Nigerian SMEs. Start free, upgrade as you grow. Plans from ₦0 to ₦20,000/month." canonical="https://skyaccounting.com.ng/pricing" />
+      <SeoHead
+        title="Pricing"
+        description="Simple, transparent pricing for Nigerian SMEs. Start free, upgrade as you grow. Plans from ₦0 to ₦20,000/month."
+        canonical="https://skyaccounting.com.ng/pricing"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "Product",
+          "name": "SkyBooks Accounting Platform",
+          "description": "Cloud-based accounting software for Nigerian SMEs with invoicing, expense tracking, payroll, bank reconciliation, and tax compliance.",
+          "brand": { "@type": "Brand", "name": "SkyBooks" },
+          "offers": [
+            { "@type": "Offer", "name": "Starter", "price": "0", "priceCurrency": "NGN", "description": "Free plan for small businesses" },
+            { "@type": "Offer", "name": "Professional", "price": "9000", "priceCurrency": "NGN", "description": "₦9,000/month billed monthly" },
+            { "@type": "Offer", "name": "Enterprise", "price": "20000", "priceCurrency": "NGN", "description": "₦20,000/month billed monthly" }
+          ]
+        }}
+      />
       {/* Simple nav */}
       <header className="border-b border-slate-100 bg-white/95 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
           <button onClick={() => navigate('/')} className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-[#082F49] flex items-center justify-center">
-              <span className="text-white font-bold text-xs">S</span>
+            <div className="w-7 h-7 rounded-lg bg-[#082F49] flex items-center justify-center overflow-hidden">
+              <img src="/images/skyhouse-logo.png" alt="" className="w-full h-full object-contain p-0.5" />
             </div>
             <span className="text-base font-bold text-[#082F49]">SkyBooks</span>
           </button>
           <button
-            onClick={() => navigate('/register')}
+            onClick={() => navigate('/auth/register')}
             className="px-5 py-2 text-sm font-semibold text-white bg-[#082F49] hover:bg-[#0C4A6E] rounded-lg transition-colors"
           >
             Sign Up
@@ -424,7 +440,7 @@ export function PricingPage() {
           <h2 className="text-3xl lg:text-4xl font-bold text-white leading-tight">Ready to get started?</h2>
           <p className="mt-4 text-lg text-white/70 max-w-xl mx-auto">Join 10,000+ Nigerian businesses already using SkyBooks. Start your free trial today.</p>
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <button onClick={() => navigate('/register')} className="w-full sm:w-auto px-8 py-3.5 bg-white hover:bg-slate-100 text-[#082F49] font-semibold rounded-xl transition-all shadow-xl text-sm">
+            <button onClick={() => navigate('/auth/register')} className="w-full sm:w-auto px-8 py-3.5 bg-white hover:bg-slate-100 text-[#082F49] font-semibold rounded-xl transition-all shadow-xl text-sm">
               Start Free Trial <ArrowRight size={16} className="inline ml-1" />
             </button>
             <button onClick={() => navigate('/contact')} className="w-full sm:w-auto px-8 py-3.5 border border-white/20 hover:border-white/40 text-white font-medium rounded-xl transition-all text-sm">

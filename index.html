@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en-NG">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -11,6 +11,10 @@
     <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
     <link rel="dns-prefetch" href="https://connect.withmono.com" />
 
+    <!-- Preload critical assets -->
+    <link rel="preload" href="/images/skyhouse-logo.png" as="image" type="image/png" />
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" as="style" />
+
     <!-- Primary meta -->
     <title>SkyBooks — Accounting Software for Nigerian SMEs</title>
     <meta name="description" content="SkyBooks is the all-in-one accounting platform built for Nigerian SMEs. Send invoices, track expenses, reconcile banks, run payroll, compute VAT/WHT/PAYE/CIT, and generate IFRS-compliant reports — all in one place." />
@@ -18,13 +22,18 @@
     <meta name="robots" content="index, follow" />
     <meta name="author" content="SkyHouse Accounting &amp; Bookkeepers" />
     <meta name="theme-color" content="#082F49" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta name="format-detection" content="telephone=yes" />
 
     <!-- Canonical -->
     <link rel="canonical" href="https://skyaccounting.com.ng" />
 
     <!-- Icons -->
-    <link rel="icon" type="image/png" href="/images/skyhouse-logo.png" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
     <link rel="apple-touch-icon" href="/images/skyhouse-logo.png" />
+    <link rel="manifest" href="/site.webmanifest" />
 
     <!-- Open Graph -->
     <meta property="og:title" content="SkyBooks — Accounting Software Built for Nigerian SMEs" />

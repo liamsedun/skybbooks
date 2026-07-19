@@ -1,6 +1,6 @@
 import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { eq } from 'drizzle-orm';
 import { db, users, passwordResetTokens } from '../db/schema';

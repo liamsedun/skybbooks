@@ -117,7 +117,7 @@ const EMPTY_FORM: FormState = {
 export function BillsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  if (id) return <BillDetail id={id} onBack={() => navigate('/purchases/bills')} />;
+  if (id) return <BillDetail id={id} onBack={() => navigate('/app/purchases/bills')} />;
   return <BillList />;
 }
 
@@ -338,7 +338,7 @@ function BillList() {
         <div className="flex items-center gap-2 px-4 py-3 bg-indigo-50 border border-indigo-200/80 rounded-2xl text-sm text-indigo-800 shadow-sm">
           <ExternalLink className="w-4 h-4 flex-shrink-0" />
           <span>Showing bills for <strong>{accountName || `Account ${accountCode}`}</strong></span>
-          <button onClick={() => navigate('/purchases/bills')} className="ml-auto text-xs font-medium text-indigo-600 hover:text-indigo-800 underline">Clear filter</button>
+          <button onClick={() => navigate('/app/purchases/bills')} className="ml-auto text-xs font-medium text-indigo-600 hover:text-indigo-800 underline">Clear filter</button>
         </div>
       )}
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -898,12 +898,12 @@ function BillDetail({ id, onBack }: { id: string; onBack: () => void }) {
   });
   const duplicateMutation = useMutation({
     mutationFn: (bid: string) => api.post(`/purchases/bills/${bid}/duplicate`).then(r => r.data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['bills'] }); navigate('/purchases/bills'); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['bills'] }); navigate('/app/purchases/bills'); },
     onError: (e: any) => alert(e?.response?.data?.message || 'Failed to duplicate bill'),
   });
   const deleteMutation = useMutation({
     mutationFn: (bid: string) => api.delete(`/purchases/bills/${bid}`).then(r => r.data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['bills'] }); invalidateBank(); navigate('/purchases/bills'); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['bills'] }); invalidateBank(); navigate('/app/purchases/bills'); },
     onError: (e: any) => alert(e?.response?.data?.message || 'Failed to delete bill'),
   });
 

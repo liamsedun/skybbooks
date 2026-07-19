@@ -347,7 +347,7 @@ export function LoginPage() {
       localStorage.setItem('refreshToken', data.refreshToken);
       localStorage.setItem('user', JSON.stringify(data.user));
       localStorage.setItem('organisation', JSON.stringify(data.organisation));
-      window.location.href = '/dashboard';
+      window.location.href = '/app/dashboard';
     } catch (err: any) {
       setError(err?.response?.data?.error || 'Invalid email or password.');
     } finally {
@@ -382,7 +382,7 @@ export function LoginPage() {
           autoComplete="current-password"
         />
         <div className="flex justify-end -mt-1">
-          <Link to="/forgot-password" className="text-xs font-medium text-indigo-600 hover:text-indigo-700 hover:underline">
+          <Link to="/auth/forgot-password" className="text-xs font-medium text-indigo-600 hover:text-indigo-700 hover:underline">
             Forgot password?
           </Link>
         </div>
@@ -391,7 +391,7 @@ export function LoginPage() {
 
       <p className="text-center text-sm text-slate-500 mt-7">
         New to SkyBooks?{' '}
-        <Link to="/register" className="text-indigo-600 font-medium hover:underline">
+        <Link to="/auth/register" className="text-indigo-600 font-medium hover:underline">
           Set up your company
         </Link>
       </p>
@@ -428,7 +428,7 @@ export function RegisterPage() {
       localStorage.setItem('refreshToken', data.refreshToken);
       localStorage.setItem('user', JSON.stringify(data.user));
       localStorage.setItem('organisation', JSON.stringify(data.organisation));
-      window.location.href = '/dashboard';
+      window.location.href = '/app/dashboard';
     } catch (err: any) {
       setError(err?.response?.data?.error || 'Registration failed. Please try again.');
     } finally {
@@ -490,7 +490,7 @@ export function RegisterPage() {
 
       <p className="text-center text-sm text-slate-500 mt-7">
         Already have an account?{' '}
-        <Link to="/login" className="text-indigo-600 font-medium hover:underline">
+        <Link to="/auth/login" className="text-indigo-600 font-medium hover:underline">
           Sign in
         </Link>
       </p>
@@ -550,7 +550,7 @@ export function ForgotPasswordPage() {
       )}
 
       <p className="text-center text-sm text-slate-500 mt-7">
-        <Link to="/login" className="text-indigo-600 font-medium hover:underline">
+        <Link to="/auth/login" className="text-indigo-600 font-medium hover:underline">
           Back to sign in
         </Link>
       </p>
@@ -589,7 +589,7 @@ export function AcceptInvitePage() {
     try {
       const res = await api.post(`/org/invite/${token}/accept`, { password });
       setSuccess(res.data.message || 'Account created! You can now log in.');
-      setTimeout(() => navigate('/login'), 2500);
+      setTimeout(() => navigate('/auth/login'), 2500);
     } catch (err: any) {
       setError(err?.response?.data?.error || err?.message || 'Failed to accept invitation.');
     } finally { setAccepting(false); }
@@ -636,7 +636,7 @@ export function AcceptInvitePage() {
           </form>
 
           <p className="text-center text-sm text-slate-500 mt-7">
-            <Link to="/login" className="text-indigo-600 font-medium hover:underline">Back to sign in</Link>
+            <Link to="/auth/login" className="text-indigo-600 font-medium hover:underline">Back to sign in</Link>
           </p>
         </>
       ) : null}
@@ -664,7 +664,7 @@ export function ResetPasswordPage() {
     try {
       await authApi.resetPassword(token, password);
       setSuccess(true);
-      setTimeout(() => navigate('/login'), 2500);
+      setTimeout(() => navigate('/auth/login'), 2500);
     } catch (err: any) {
       setError(err?.response?.data?.error || err?.message || 'Failed to reset password.');
     } finally {
@@ -715,7 +715,7 @@ export function ResetPasswordPage() {
       )}
 
       <p className="text-center text-sm text-slate-500 mt-7">
-        <Link to="/login" className="text-indigo-600 font-medium hover:underline">Back to sign in</Link>
+        <Link to="/auth/login" className="text-indigo-600 font-medium hover:underline">Back to sign in</Link>
       </p>
     </AuthShell>
   );

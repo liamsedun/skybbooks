@@ -546,7 +546,7 @@ function VendorDetail({ id }: { id: string }) {
       <div className="max-w-5xl mx-auto px-6 py-16 text-center text-slate-500">
         Vendor not found.
         <div className="mt-3">
-          <Link to="/purchases/vendors" className="text-indigo-600 hover:underline text-sm">
+          <Link to="/app/purchases/vendors" className="text-indigo-600 hover:underline text-sm">
             Back to vendors
           </Link>
         </div>
@@ -557,7 +557,7 @@ function VendorDetail({ id }: { id: string }) {
   return (
     <div className="max-w-5xl mx-auto px-6 py-8">
       <button
-        onClick={() => navigate('/purchases/vendors')}
+        onClick={() => navigate('/app/purchases/vendors')}
         className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 mb-4"
       >
         <ArrowLeft size={14} />

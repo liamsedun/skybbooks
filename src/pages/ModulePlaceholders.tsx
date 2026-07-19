@@ -30,7 +30,7 @@ export function LoginPage() {
 
   React.useEffect(() => {
     if (isAuthenticated) {
-      navigate('/dashboard');
+      navigate('/app/dashboard');
     }
   }, [isAuthenticated, navigate]);
 
@@ -40,7 +40,7 @@ export function LoginPage() {
     setLoading(true);
     try {
       await login(email, password);
-      navigate('/dashboard');
+      navigate('/app/dashboard');
     } catch (err: any) {
       setError(err.message || 'Authentication failed. Please verify credentials.');
     } finally {
@@ -65,7 +65,7 @@ export function LoginPage() {
       name: 'Skyhouse Enterprises',
       email: 'hello@skyaccounting.com.ng'
     }));
-    window.location.href = '/dashboard';
+    window.location.href = '/app/dashboard';
   };
 
   return (
@@ -187,7 +187,7 @@ export function LoginPage() {
               </div>
 
               <div className="text-xs font-bold">
-                <Link to="/forgot-password" id="forgot-pass-anchor" className="text-indigo-600 hover:text-indigo-700">Forgot password?</Link>
+                <Link to="/auth/forgot-password" id="forgot-pass-anchor" className="text-indigo-600 hover:text-indigo-700">Forgot password?</Link>
               </div>
             </div>
 
@@ -208,7 +208,7 @@ export function LoginPage() {
           </form>
 
           <div className="mt-6 pt-5 border-t border-slate-100 text-center">
-            <Link to="/register" id="ref-register-anchor" className="text-xs font-black text-indigo-650 text-indigo-650 hover:text-indigo-700">
+            <Link to="/auth/register" id="ref-register-anchor" className="text-xs font-black text-indigo-650 text-indigo-650 hover:text-indigo-700">
               New company? Build Corporate Accounting Books
             </Link>
           </div>
@@ -297,7 +297,7 @@ export function RegisterPage() {
     setLoading(true);
     try {
       await register({ orgName, fullName, email, password });
-      navigate('/dashboard');
+      navigate('/app/dashboard');
     } catch (err: any) {
       setError(err.message || 'Ledger instantiation failed.');
     } finally {
@@ -450,7 +450,7 @@ export function RegisterPage() {
           </form>
 
           <div className="mt-5 pt-4 border-t border-slate-100 text-center">
-            <Link to="/login" id="back-signin-anchor" className="text-xs font-bold text-indigo-600 hover:text-indigo-700">
+            <Link to="/auth/login" id="back-signin-anchor" className="text-xs font-bold text-indigo-600 hover:text-indigo-700">
               Already have active accounting books? Sign In
             </Link>
           </div>
@@ -553,7 +553,7 @@ export function ForgotPasswordPage() {
                 An authorization token has been sent to <strong>{email}</strong>. Open the link to verify credentials override.
               </p>
               <div className="pt-2">
-                <Link to="/login" className="text-xs font-bold text-purple-600 hover:text-purple-700">Return to sign-in terminal</Link>
+                <Link to="/auth/login" className="text-xs font-bold text-purple-600 hover:text-purple-700">Return to sign-in terminal</Link>
               </div>
             </div>
           ) : (
@@ -581,7 +581,7 @@ export function ForgotPasswordPage() {
               </button>
 
               <div className="text-center pt-2">
-                <Link to="/login" className="text-xs font-bold text-slate-500 hover:text-slate-700">Cancel and return</Link>
+                <Link to="/auth/login" className="text-xs font-bold text-slate-500 hover:text-slate-700">Cancel and return</Link>
               </div>
             </form>
           )}
@@ -603,7 +603,7 @@ export function NotFoundPage() {
           The requested system route is either protected, offline or unmapped. Return to the home cockpit index.
         </p>
         <Link 
-          to="/dashboard"
+          to="/app/dashboard"
           className="block w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl text-xs transition"
         >
           Return to Dashboard

@@ -114,7 +114,7 @@ export const PricingSection = React.memo(function PricingSection() {
               </ul>
 
               <button
-                onClick={() => navigate(tier.name === 'Enterprise' ? '/contact' : '/register')}
+                onClick={() => navigate(tier.name === 'Enterprise' ? '/contact' : '/auth/register')}
                 className={`w-full py-3 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 ${
                   tier.popular
                     ? 'bg-[#082F49] text-white hover:bg-[#0C4A6E] shadow-lg shadow-[#082F49]/20'

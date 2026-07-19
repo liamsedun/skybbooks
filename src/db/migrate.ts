@@ -15,7 +15,10 @@ export async function runMigration() {
   
   const pool = new pg.Pool({ 
     connectionString: process.env.DATABASE_URL, 
-    max: 1 
+    max: 1,
+    ssl: process.env.DATABASE_URL?.includes('sslmode=require')
+      ? { rejectUnauthorized: false }
+      : undefined
   });
   
   const db = drizzle(pool);
@@ -2586,7 +2589,6 @@ export async function runMigration() {
 
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_journal_lines_entry ON journal_lines(entry_id)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_journal_lines_account ON journal_lines(account_id)`);
-    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_journal_lines_org_account ON journal_lines(org_id, account_id)`);
 
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_accounts_org ON accounts(org_id)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_accounts_code ON accounts(org_id, code)`);
@@ -2598,13 +2600,13 @@ export async function runMigration() {
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_contacts_email ON contacts(org_id, email)`);
 
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_invoices_org ON invoices(org_id)`);
-    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_invoices_contact ON invoices(org_id, contact_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_invoices_customer ON invoices(org_id, customer_id)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(org_id, status)`);
-    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_invoices_date ON invoices(org_id, issue_date)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_invoices_date ON invoices(org_id, date)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_invoice_lines_invoice ON invoice_lines(invoice_id)`);
 
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_bills_org ON bills(org_id)`);
-    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_bills_contact ON bills(org_id, contact_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_bills_vendor ON bills(org_id, vendor_id)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_bills_status ON bills(org_id, status)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_bills_date ON bills(org_id, date)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_bill_lines_bill ON bill_lines(bill_id)`);
@@ -2639,7 +2641,7 @@ export async function runMigration() {
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_audit_log_created ON audit_log(org_id, created_at)`);
 
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_bank_transactions_account ON bank_transactions(bank_account_id)`);
-    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_bank_transactions_date ON bank_transactions(bank_account_id, transaction_date)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_bank_transactions_date ON bank_transactions(bank_account_id, date)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_bank_transactions_status ON bank_transactions(bank_account_id, status)`);
 
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_recon_matches_account ON reconciliation_matches(bank_account_id)`);
@@ -2682,6 +2684,10 @@ export async function runMigration() {
     // Add recurring_id FK to bills if not present
     await db.execute(sql`ALTER TABLE bills ADD COLUMN IF NOT EXISTS recurring_id UUID REFERENCES recurring_bills(id)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_bills_recurring ON bills(recurring_id)`);
+
+    // Also add recurring_id to invoices for schema consistency
+    await db.execute(sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS recurring_id UUID`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_invoices_recurring ON invoices(recurring_id)`);
 
     console.log('[Migration] Recurring bills table created.');
 

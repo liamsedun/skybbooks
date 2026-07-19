@@ -119,7 +119,7 @@ export function useAuth() {
       setUser(null);
       setOrganisation(null);
       setIsLoading(false);
-      window.location.href = '/login';
+      window.location.href = '/auth/login';
     }
   };
 

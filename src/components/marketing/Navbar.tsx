@@ -63,8 +63,8 @@ export function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 lg:h-20">
           <Link to="/" className="flex items-center gap-2" aria-label="SkyBooks home">
-            <div className="w-8 h-8 rounded-lg bg-[#082F49] flex items-center justify-center">
-              <span className="text-white font-bold text-sm" aria-hidden="true">S</span>
+            <div className="w-8 h-8 rounded-lg bg-[#082F49] flex items-center justify-center overflow-hidden">
+              <img src="/images/skyhouse-logo.png" alt="" width="32" height="32" decoding="async" className="w-full h-full object-contain p-0.5" />
             </div>
             <span className="text-lg font-bold text-[#082F49]">SkyBooks</span>
           </Link>
@@ -95,7 +95,7 @@ export function Navbar() {
           <div className="hidden md:flex items-center gap-3">
             {isAuthenticated ? (
               <button
-                onClick={() => navigate('/dashboard')}
+                onClick={() => navigate('/app/dashboard')}
                 className="px-5 py-2 text-sm font-semibold text-white bg-[#082F49] hover:bg-[#0C4A6E] rounded-lg transition-colors shadow-sm flex items-center gap-1.5"
                 aria-label="Go to dashboard"
               >
@@ -104,13 +104,13 @@ export function Navbar() {
             ) : (
               <>
                 <button
-                  onClick={() => navigate('/login')}
+                  onClick={() => navigate('/auth/login')}
                   className="px-5 py-2 text-sm font-medium text-slate-700 hover:text-[#082F49] transition-colors rounded-lg"
                 >
                   Log in
                 </button>
                 <button
-                  onClick={() => navigate('/register')}
+                  onClick={() => navigate('/auth/register')}
                   className="px-5 py-2 text-sm font-semibold text-white bg-[#082F49] hover:bg-[#0C4A6E] rounded-lg transition-colors shadow-sm"
                 >
                   Sign Up
@@ -155,7 +155,7 @@ export function Navbar() {
             <hr className="my-3 border-slate-100" />
             {isAuthenticated ? (
               <button
-                onClick={() => navigate('/dashboard')}
+                onClick={() => navigate('/app/dashboard')}
                 className="w-full px-3 py-2.5 text-sm font-semibold text-white bg-[#082F49] hover:bg-[#0C4A6E] rounded-lg transition-colors text-center"
               >
                 Dashboard
@@ -163,13 +163,13 @@ export function Navbar() {
             ) : (
               <>
                 <button
-                  onClick={() => navigate('/login')}
+                  onClick={() => navigate('/auth/login')}
                   className="w-full px-3 py-2.5 text-sm font-medium text-slate-700 hover:text-[#082F49] hover:bg-slate-50 rounded-lg transition-colors text-left"
                 >
                   Log in
                 </button>
                 <button
-                  onClick={() => navigate('/register')}
+                  onClick={() => navigate('/auth/register')}
                   className="w-full px-3 py-2.5 text-sm font-semibold text-white bg-[#082F49] hover:bg-[#0C4A6E] rounded-lg transition-colors mt-1"
                 >
                   Sign Up

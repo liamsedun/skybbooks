@@ -99,13 +99,13 @@ export function ProjectDetailPage() {
     printWindow(`Project - ${project.name}`, headerHtml + detailsTable + pnlHtml + breakdownHtml, '');
   };
 
-  if (!id) { navigate('/projects'); return null; }
+  if (!id) { navigate('/app/projects'); return null; }
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/projects')}
+          <button onClick={() => navigate('/app/projects')}
             className="text-slate-500 hover:text-slate-700 p-2 rounded-xl hover:bg-slate-100 transition-all">
             <ArrowLeft className="w-5 h-5" />
           </button>
@@ -151,12 +151,12 @@ export function ProjectDetailPage() {
       ) : detailData ? (
         <div className="space-y-6">
           <div className="grid grid-cols-3 gap-4">
-            <div onClick={() => navigate('/sales/invoices')}
+            <div onClick={() => navigate('/app/sales/invoices')}
               className="bg-emerald-50 rounded-xl p-4 border border-emerald-200/50 cursor-pointer hover:bg-emerald-100 hover:shadow-md transition-all">
               <p className="text-[11px] font-semibold text-emerald-600 uppercase tracking-wider">Income</p>
               <p className="text-xl font-bold text-emerald-700 mt-1">{fmtNaira(detailData.totalIncome)}</p>
             </div>
-            <div onClick={() => navigate('/purchases/expenses')}
+            <div onClick={() => navigate('/app/purchases/expenses')}
               className="bg-red-50 rounded-xl p-4 border border-red-200/50 cursor-pointer hover:bg-red-100 hover:shadow-md transition-all">
               <p className="text-[11px] font-semibold text-red-600 uppercase tracking-wider">Expenses</p>
               <p className="text-xl font-bold text-red-700 mt-1">{fmtNaira(detailData.totalExpenses)}</p>
@@ -167,12 +167,12 @@ export function ProjectDetailPage() {
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div onClick={() => navigate('/sales/payments')}
+            <div onClick={() => navigate('/app/sales/payments')}
               className="bg-cyan-50 rounded-xl p-4 border border-cyan-200/50 cursor-pointer hover:bg-cyan-100 hover:shadow-md transition-all">
               <p className="text-[11px] font-semibold text-cyan-600 uppercase tracking-wider">Cash Received</p>
               <p className="text-xl font-bold text-cyan-700 mt-1">{fmtNaira(detailData.cashReceived)}</p>
             </div>
-            <div onClick={() => navigate('/accountant/journals')}
+            <div onClick={() => navigate('/app/accountant/journals')}
               className="bg-amber-50 rounded-xl p-4 border border-amber-200/50 cursor-pointer hover:bg-amber-100 hover:shadow-md transition-all">
               <p className="text-[11px] font-semibold text-amber-600 uppercase tracking-wider">WHT Deducted (Recoverable)</p>
               <p className="text-xl font-bold text-amber-700 mt-1">{fmtNaira(detailData.whtDeducted)}</p>
@@ -185,7 +185,7 @@ export function ProjectDetailPage() {
                 <thead><tr className="bg-slate-50 text-[10px] font-semibold text-slate-500 uppercase tracking-wider"><th className="px-3 py-2 text-left">Account</th><th className="px-3 py-2 text-right">Amount</th></tr></thead>
                 <tbody>
                   {(detailData.income || []).length > 0 ? detailData.income.map((a: any, i: number) => (
-                    <tr key={i} onClick={() => navigate('/sales/invoices')} className="border-t border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors"><td className="px-3 py-2 text-slate-700">{a.code} - {a.name}</td><td className="px-3 py-2 text-right font-mono text-slate-900">{fmtNaira(a.amount)}</td></tr>
+                    <tr key={i} onClick={() => navigate('/app/sales/invoices')} className="border-t border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors"><td className="px-3 py-2 text-slate-700">{a.code} - {a.name}</td><td className="px-3 py-2 text-right font-mono text-slate-900">{fmtNaira(a.amount)}</td></tr>
                   )) : <tr><td colSpan={2} className="px-3 py-4 text-center text-slate-400">No income recorded</td></tr>}
                   {(detailData.income || []).length > 0 && (
                     <tr className="border-t-2 border-slate-200 font-bold bg-slate-50"><td className="px-3 py-2 text-slate-800">Total Income</td><td className="px-3 py-2 text-right font-mono text-slate-900">{fmtNaira(detailData.totalIncome)}</td></tr>
@@ -199,7 +199,7 @@ export function ProjectDetailPage() {
                 <thead><tr className="bg-slate-50 text-[10px] font-semibold text-slate-500 uppercase tracking-wider"><th className="px-3 py-2 text-left">Account</th><th className="px-3 py-2 text-right">Amount</th></tr></thead>
                 <tbody>
                   {(detailData.expenses || []).length > 0 ? detailData.expenses.map((a: any, i: number) => (
-                    <tr key={i} onClick={() => navigate('/purchases/expenses')} className="border-t border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors"><td className="px-3 py-2 text-slate-700">{a.code} - {a.name}</td><td className="px-3 py-2 text-right font-mono text-slate-900">{fmtNaira(a.amount)}</td></tr>
+                    <tr key={i} onClick={() => navigate('/app/purchases/expenses')} className="border-t border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors"><td className="px-3 py-2 text-slate-700">{a.code} - {a.name}</td><td className="px-3 py-2 text-right font-mono text-slate-900">{fmtNaira(a.amount)}</td></tr>
                   )) : <tr><td colSpan={2} className="px-3 py-4 text-center text-slate-400">No expenses recorded</td></tr>}
                   {(detailData.expenses || []).length > 0 && (
                     <tr className="border-t-2 border-slate-200 font-bold bg-slate-50"><td className="px-3 py-2 text-slate-800">Total Expenses</td><td className="px-3 py-2 text-right font-mono text-slate-900">{fmtNaira(detailData.totalExpenses)}</td></tr>

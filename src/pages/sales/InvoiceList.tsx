@@ -288,7 +288,7 @@ export function InvoiceList({ onNavigate }: InvoiceListProps) {
 
   // Single PDF download helper
   const handleDownloadPdf = (invoiceId: string) => {
-    window.open(`/sales/invoices/${invoiceId}?print=1`, '_blank');
+    window.open(`/app/sales/invoices/${invoiceId}?print=1`, '_blank');
   };
 
   return (

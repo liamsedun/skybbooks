@@ -265,7 +265,7 @@ export function ProjectsPage() {
                   ))}
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <button onClick={() => window.open(`/sales/invoices/new?projectId=${p.id}&customerId=${p.customerId || ''}`, '_blank')}
+                      <button onClick={() => window.open(`/app/sales/invoices/new?projectId=${p.id}&customerId=${p.customerId || ''}`, '_blank')}
                         className="text-indigo-600 hover:text-indigo-800 p-1" title="Create Invoice">
                         <FileText className="w-4 h-4" />
                       </button>

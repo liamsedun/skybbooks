@@ -142,7 +142,7 @@ api.interceptors.response.use(
         isRefreshing = false;
         clearAuthData();
         window.dispatchEvent(new CustomEvent('auth:unauthorized'));
-        window.location.href = '#/login'; // Client-side router path
+        window.location.href = '/auth/login'; // Client-side router path
         return Promise.reject(refreshError);
       }
     }

@@ -25,13 +25,13 @@ interface QuickAction {
 }
 
 const actions: QuickAction[] = [
-  { label: 'New Invoice', icon: FileText, path: '/sales/invoices/new' },
-  { label: 'New Bill', icon: FileCode, path: '/purchases/bills/new' },
-  { label: 'New Customer', icon: Users, path: '/sales/customers', state: { openAddModal: true } },
-  { label: 'New Vendor', icon: Building2, path: '/purchases/vendors' },
-  { label: 'Record Expense', icon: Receipt, path: '/purchases/expenses/new' },
-  { label: 'Manual Journal', icon: BookOpen, path: '/accountant/journals/new' },
-  { label: 'Bank Transfer', icon: ArrowRightLeft, path: '/banking/transfers' },
+  { label: 'New Invoice', icon: FileText, path: '/app/sales/invoices/new' },
+  { label: 'New Bill', icon: FileCode, path: '/app/purchases/bills/new' },
+  { label: 'New Customer', icon: Users, path: '/app/sales/customers', state: { openAddModal: true } },
+  { label: 'New Vendor', icon: Building2, path: '/app/purchases/vendors' },
+  { label: 'Record Expense', icon: Receipt, path: '/app/purchases/expenses/new' },
+  { label: 'Manual Journal', icon: BookOpen, path: '/app/accountant/journals/new' },
+  { label: 'Bank Transfer', icon: ArrowRightLeft, path: '/app/banking/transfers' },
 ];
 
 export function QuickActionsBar() {

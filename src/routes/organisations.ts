@@ -6,7 +6,7 @@
 import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import multer from 'multer';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';

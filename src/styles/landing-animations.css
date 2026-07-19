@@ -88,6 +88,16 @@
 .delay-5  { transition-delay: 500ms; }
 .delay-6  { transition-delay: 600ms; }
 
+/* ── Reduced motion ──────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .reveal { opacity: 1; transform: none !important; }
+}
+
 /* ── Performance ──────────────────────────────────── */
 .section-auto {
   content-visibility: auto;

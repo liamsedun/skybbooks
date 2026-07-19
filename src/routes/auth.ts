@@ -5,7 +5,7 @@
 
 import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import multer from 'multer';
 import { eq, and } from 'drizzle-orm';
 import { db } from '../db/schema';

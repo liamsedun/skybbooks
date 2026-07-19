@@ -782,7 +782,7 @@ function CustomerDetail({ id }: { id: string }) {
       <div className="max-w-7xl mx-auto px-6 py-16 text-center text-slate-500">
         Customer not found.
         <div className="mt-3">
-          <Link to="/sales/customers" className="text-indigo-600 hover:underline text-sm">
+          <Link to="/app/sales/customers" className="text-indigo-600 hover:underline text-sm">
             Back to customers
           </Link>
         </div>
@@ -793,7 +793,7 @@ function CustomerDetail({ id }: { id: string }) {
   return (
     <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
       <button
-        onClick={() => navigate('/sales/customers')}
+        onClick={() => navigate('/app/sales/customers')}
         className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 transition-colors"
       >
         <ArrowLeft size={14} />

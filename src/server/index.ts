@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import 'dotenv/config';
 import express from 'express';
 import path from 'path';
 import cors from 'cors';
@@ -10,7 +11,6 @@ import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import winston from 'winston';
-import { createServer as createViteServer } from 'vite';
 import http from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 
@@ -48,6 +48,7 @@ import groupsRouter from '../routes/groups';
 import intercompanyRouter from '../routes/intercompany';
 import consolidationRouter from '../routes/consolidation';
 import passwordResetRouter from '../routes/passwordReset';
+import contactRouter from '../routes/contact';
 
 import { runMigration } from '../db/migrate';
 import { fetchLatestRates } from '../services/cbn.service';
@@ -73,7 +74,8 @@ const logger = winston.createLogger({
 });
 
 async function startServer() {
-  await runMigration();
+  // Run migration in background so server starts immediately
+  runMigration().catch(err => console.error('[Migration] Background migration failed:', err));
 
   // Auto-refresh currency rates on startup and every hour
   fetchLatestRates().catch(() => {});
@@ -188,6 +190,7 @@ async function startServer() {
   app.use('/api/groups', groupsRouter);
   app.use('/api/intercompany', intercompanyRouter);
   app.use('/api/reports/consolidation', consolidationRouter);
+  app.use('/api/contact', contactRouter);
 
   app.get('/api/health', (req, res) => {
     res.json({ status: 'healthy', timestamp: new Date().toISOString() });
@@ -232,6 +235,9 @@ async function startServer() {
   // STATIC FILES (after API routes)
   // ==========================================
   if (process.env.NODE_ENV !== 'production') {
+    // Dynamic import: keeps `vite` out of the production require graph,
+    // since this branch never runs in production.
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',

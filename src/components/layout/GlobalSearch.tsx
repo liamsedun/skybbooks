@@ -115,7 +115,7 @@ export function GlobalSearch() {
               id: c.id,
               label: c.name || c.displayName || c.customerName || '',
               subtitle: c.email || c.phone || '',
-              link: `/sales/customers/${c.id}`,
+              link: `/app/sales/customers/${c.id}`,
             })),
           };
         }).catch(() => ({ key: 'customers' as const, results: [] })),
@@ -128,7 +128,7 @@ export function GlobalSearch() {
               id: v.id,
               label: v.name || v.displayName || '',
               subtitle: v.email || v.phone || '',
-              link: `/purchases/vendors/${v.id}`,
+              link: `/app/purchases/vendors/${v.id}`,
             })),
           };
         }).catch(() => ({ key: 'vendors' as const, results: [] })),
@@ -141,7 +141,7 @@ export function GlobalSearch() {
               id: a.id,
               label: `${a.code || ''} ${a.name || ''}`.trim(),
               subtitle: a.type || '',
-              link: `/accountant/chart-of-accounts`,
+              link: `/app/accountant/chart-of-accounts`,
             })),
           };
         }).catch(() => ({ key: 'accounts' as const, results: [] })),
@@ -154,7 +154,7 @@ export function GlobalSearch() {
               id: inv.id,
               label: inv.invoiceNumber || inv.number || `Invoice #${inv.id}`,
               subtitle: inv.customerName || inv.customer?.name || '',
-              link: `/sales/invoices/${inv.id}`,
+              link: `/app/sales/invoices/${inv.id}`,
             })),
           };
         }).catch(() => ({ key: 'invoices' as const, results: [] })),
@@ -167,7 +167,7 @@ export function GlobalSearch() {
               id: b.id,
               label: b.billNumber || b.number || `Bill #${b.id}`,
               subtitle: b.vendorName || b.vendor?.name || '',
-              link: `/purchases/bills/${b.id}`,
+              link: `/app/purchases/bills/${b.id}`,
             })),
           };
         }).catch(() => ({ key: 'bills' as const, results: [] })),

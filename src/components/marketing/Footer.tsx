@@ -38,7 +38,7 @@ const socialLinks = [
   { icon: XIcon, href: 'https://x.com/SkyhouseAccount', label: 'X' },
   { icon: LinkedInIcon, href: 'https://ng.linkedin.com/company/skyhouse-accounting-bookkeepers', label: 'LinkedIn' },
   { icon: FacebookIcon, href: 'https://web.facebook.com/skyhouseaccountants', label: 'Facebook' },
-  { icon: InstagramIcon, href: '#', label: 'Instagram' },
+  { icon: InstagramIcon, href: 'https://www.instagram.com/skyhouseaccounting', label: 'Instagram' },
   { icon: YouTubeIcon, href: 'https://www.youtube.com/channel/UCapqWrjoXasFhyGENVywYxw', label: 'YouTube' },
 ];
 
@@ -90,7 +90,7 @@ export function Footer() {
                 <p className="text-sm text-white/50">Get product updates, tips, and Nigerian tax news.</p>
               </div>
             </div>
-            <form onSubmit={e => e.preventDefault()} className="flex w-full lg:w-auto gap-2">
+            <form onSubmit={e => { e.preventDefault(); const email = (e.target as HTMLFormElement).querySelector('input')?.value; if (email) window.location.href = `mailto:hello@skyaccounting.com.ng?subject=Newsletter%20signup&body=Please%20subscribe%20me:%20${encodeURIComponent(email)}`; }} className="flex w-full lg:w-auto gap-2">
               <input
                 type="email"
                 placeholder="Enter your email"
@@ -113,8 +113,8 @@ export function Footer() {
           {/* Brand column */}
           <div className="col-span-2 md:col-span-2">
             <Link to="/" className="flex items-center gap-2.5 mb-5" aria-label="SkyBooks home">
-              <div className="w-9 h-9 rounded-lg bg-white/15 flex items-center justify-center">
-                <span className="text-white font-bold text-base" aria-hidden="true">S</span>
+              <div className="w-9 h-9 rounded-lg bg-white/15 flex items-center justify-center overflow-hidden">
+                <img src="/images/skyhouse-logo.png" alt="" width="36" height="36" decoding="async" className="w-full h-full object-contain p-0.5" />
               </div>
               <span className="text-xl font-bold">SkyBooks</span>
             </Link>

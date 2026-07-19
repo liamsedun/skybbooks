@@ -29,7 +29,10 @@ const CTASection = lazy(() => import('../../components/marketing/CTASection').th
 export function LandingPage() {
   return (
     <MarketingLayout>
-      <SeoHead />
+      <SeoHead
+        description="SkyBooks is the all-in-one accounting platform built for Nigerian SMEs. Send invoices, track expenses, reconcile banks, run payroll, compute VAT/WHT/PAYE/CIT, and generate IFRS-compliant reports — all in one place."
+        canonical="https://skyaccounting.com.ng"
+      />
       <HeroSection />
       <Suspense fallback={<SectionSkeleton />}><FeaturesSection /></Suspense>
       <Suspense fallback={<SectionSkeleton />}><AccountingModules /></Suspense>

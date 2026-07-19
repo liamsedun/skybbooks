@@ -1,24 +1,52 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Phone, MapPin, Globe, ArrowRight, Send, MessageCircle } from 'lucide-react';
+import { Mail, Phone, MapPin, Globe, ArrowRight, Send, MessageCircle, CheckCircle, LoaderCircle } from 'lucide-react';
 import { SeoHead } from '../../components/seo/SeoHead';
 
 export function ContactPage() {
   const navigate = useNavigate();
+  const [form, setForm] = useState({ name: '', email: '', subject: 'Book a Demo', message: '' });
+  const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
 
   return (
     <div className="min-h-screen bg-white">
-      <SeoHead title="Contact" description="Get in touch with SkyBooks. Book a demo, ask questions, or reach our sales team. We typically respond within 2 hours." canonical="https://skyaccounting.com.ng/contact" />
+      <SeoHead
+        title="Contact"
+        description="Get in touch with SkyBooks. Book a demo, ask questions, or reach our sales team. We typically respond within 2 hours."
+        canonical="https://skyaccounting.com.ng/contact"
+        jsonLd={[{
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://skyaccounting.com.ng" },
+            { "@type": "ListItem", "position": 2, "name": "Contact", "item": "https://skyaccounting.com.ng/contact" }
+          ]
+        }, {
+          "@context": "https://schema.org",
+          "@type": "ContactPage",
+          "name": "Contact SkyBooks",
+          "description": "Contact the SkyBooks sales and support team.",
+          "url": "https://skyaccounting.com.ng/contact",
+          "mainEntity": {
+            "@type": "Organization",
+            "name": "SkyHouse Accounting & Bookkeepers",
+            "telephone": "+234-815-737-7000",
+            "email": "hello@skyaccounting.com.ng",
+            "contactType": "customer support",
+            "areaServed": "NG"
+          }
+        }]}
+      />
       <header className="border-b border-slate-100 bg-white/95 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
           <button onClick={() => navigate('/')} className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-[#082F49] flex items-center justify-center">
-              <span className="text-white font-bold text-xs">S</span>
+            <div className="w-7 h-7 rounded-lg bg-[#082F49] flex items-center justify-center overflow-hidden">
+              <img src="/images/skyhouse-logo.png" alt="" className="w-full h-full object-contain p-0.5" />
             </div>
             <span className="text-base font-bold text-[#082F49]">SkyBooks</span>
           </button>
           <button
-            onClick={() => navigate('/register')}
+            onClick={() => navigate('/auth/register')}
             className="px-5 py-2 text-sm font-semibold text-white bg-[#082F49] hover:bg-[#0C4A6E] rounded-lg transition-colors"
           >
             Sign Up
@@ -116,38 +144,68 @@ export function ContactPage() {
             {/* Right — Contact form */}
             <div className="bg-slate-50 rounded-2xl border border-slate-200 p-6 lg:p-8">
               <h2 className="text-xl font-bold text-[#082F49] mb-6">Send us a message</h2>
-              <form onSubmit={e => { e.preventDefault(); window.location.href = 'mailto:hello@skyaccounting.com.ng'; }} className="space-y-4">
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-medium text-slate-600 mb-1.5">Full name</label>
-                    <input type="text" placeholder="Your name" className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0EA5E9]/20 focus:border-[#0EA5E9] transition-all" />
+              <form onSubmit={async e => {
+                e.preventDefault();
+                if (status === 'sending') return;
+                setStatus('sending');
+                try {
+                  const res = await fetch('/api/contact', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(form),
+                  });
+                  if (!res.ok) throw new Error('Failed to send');
+                  setStatus('sent');
+                } catch {
+                  setStatus('error');
+                }
+              }} className="space-y-4">
+                {status === 'sent' ? (
+                  <div className="flex flex-col items-center justify-center py-10 text-center">
+                    <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center mb-4">
+                      <CheckCircle size={28} className="text-emerald-600" />
+                    </div>
+                    <h3 className="text-lg font-bold text-[#082F49]">Message sent!</h3>
+                    <p className="text-sm text-slate-500 mt-1">We'll get back to you within 2 hours.</p>
                   </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-600 mb-1.5">Email</label>
-                    <input type="email" placeholder="you@company.com" className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0EA5E9]/20 focus:border-[#0EA5E9] transition-all" />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1.5">Subject</label>
-                  <select className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0EA5E9]/20 focus:border-[#0EA5E9] transition-all">
-                    <option>Book a Demo</option>
-                    <option>Sales Inquiry</option>
-                    <option>Technical Support</option>
-                    <option>Partnership</option>
-                    <option>Other</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1.5">Message</label>
-                  <textarea rows={4} placeholder="Tell us about your needs..." className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0EA5E9]/20 focus:border-[#0EA5E9] transition-all resize-none" />
-                </div>
-                <button
-                  type="submit"
-                  className="w-full py-3 bg-[#082F49] hover:bg-[#0C4A6E] text-white font-semibold rounded-xl transition-colors shadow-lg shadow-[#082F49]/20 flex items-center justify-center gap-2 text-sm"
-                >
-                  <Send size={14} /> Send Message
-                </button>
-                <p className="text-xs text-slate-400 text-center">We typically respond within 2 hours during business hours.</p>
+                ) : (
+                  <>
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 mb-1.5">Full name</label>
+                        <input type="text" placeholder="Your name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0EA5E9]/20 focus:border-[#0EA5E9] transition-all" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 mb-1.5">Email</label>
+                        <input type="email" placeholder="you@company.com" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} required className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0EA5E9]/20 focus:border-[#0EA5E9] transition-all" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 mb-1.5">Subject</label>
+                      <select value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0EA5E9]/20 focus:border-[#0EA5E9] transition-all">
+                        <option>Book a Demo</option>
+                        <option>Sales Inquiry</option>
+                        <option>Technical Support</option>
+                        <option>Partnership</option>
+                        <option>Other</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 mb-1.5">Message</label>
+                      <textarea rows={4} placeholder="Tell us about your needs..." value={form.message} onChange={e => setForm(f => ({ ...f, message: e.target.value }))} required className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0EA5E9]/20 focus:border-[#0EA5E9] transition-all resize-none" />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={status === 'sending'}
+                      className="w-full py-3 bg-[#082F49] hover:bg-[#0C4A6E] disabled:opacity-60 text-white font-semibold rounded-xl transition-colors shadow-lg shadow-[#082F49]/20 flex items-center justify-center gap-2 text-sm"
+                    >
+                      {status === 'sending' ? <LoaderCircle size={14} className="animate-spin" /> : <Send size={14} />}
+                      {status === 'sending' ? 'Sending...' : 'Send Message'}
+                    </button>
+                    {status === 'error' && <p className="text-xs text-rose-500 text-center">Failed to send. Please try again or email us directly at hello@skyaccounting.com.ng.</p>}
+                    <p className="text-xs text-slate-400 text-center">We typically respond within 2 hours during business hours.</p>
+                  </>
+                )}
               </form>
             </div>
           </div>
@@ -160,7 +218,7 @@ export function ContactPage() {
           <h2 className="text-2xl font-bold text-white">Ready to simplify your accounting?</h2>
           <p className="mt-3 text-white/70 text-sm">Start your free trial today. No credit card required.</p>
           <button
-            onClick={() => navigate('/register')}
+            onClick={() => navigate('/auth/register')}
             className="mt-6 px-8 py-3 bg-white hover:bg-slate-100 text-[#082F49] font-semibold rounded-xl transition-all shadow-xl text-sm inline-flex items-center gap-2"
           >
             Start Free Trial <ArrowRight size={14} />

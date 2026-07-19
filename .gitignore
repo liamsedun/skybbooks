@@ -8,3 +8,10 @@ coverage/
 !.env.example
 
 *.mjs
+dist.zip
+*.zip
+app.js
+server.cjs
+package.jon.json
+*.tmp
+deploy_*.ps1

@@ -295,10 +295,10 @@ export function Dashboard({ onNavigate }: { onNavigate: (viewId: string) => void
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <MetricCard title="Cash Position" value={fmtNaira(cp)} subtitle={fmtNaira(totalRev) + ' revenue'} icon={Banknote} color="emerald" trend={{ value: gm, label: 'gross margin', positive: gm >= 0 }} onClick={() => navigate('/banking')} />
-        <MetricCard title="Working Capital" value={fmtNaira(wc)} subtitle={cr > 0 ? 'Current Ratio: ' + cr.toFixed(2) + 'x' : 'N/A'} icon={Activity} color="blue" trend={{ value: cr * 100, label: 'coverage', positive: cr >= 1.5 }} onClick={() => navigate('/reports/balance-sheet')} />
-        <MetricCard title="Cash Flow" value={fmtNaira(cf)} subtitle={cf >= 0 ? 'Positive operating cash flow' : 'Negative'} icon={BarChart3} color={cf >= 0 ? 'teal' : 'rose'} trend={{ value: om, label: 'operating margin', positive: om >= 0 }} onClick={() => navigate('/reports/cash-flow')} />
-        <MetricCard title="Tax Payable" value={fmtNaira(tp)} subtitle="Outstanding liabilities" icon={Landmark} color="amber" trend={{ value: nm, label: 'net margin', positive: nm >= 0 }} onClick={() => navigate('/reports/tax-engine')} />
+        <MetricCard title="Cash Position" value={fmtNaira(cp)} subtitle={fmtNaira(totalRev) + ' revenue'} icon={Banknote} color="emerald" trend={{ value: gm, label: 'gross margin', positive: gm >= 0 }} onClick={() => navigate('/app/banking')} />
+        <MetricCard title="Working Capital" value={fmtNaira(wc)} subtitle={cr > 0 ? 'Current Ratio: ' + cr.toFixed(2) + 'x' : 'N/A'} icon={Activity} color="blue" trend={{ value: cr * 100, label: 'coverage', positive: cr >= 1.5 }} onClick={() => navigate('/app/reports/balance-sheet')} />
+        <MetricCard title="Cash Flow" value={fmtNaira(cf)} subtitle={cf >= 0 ? 'Positive operating cash flow' : 'Negative'} icon={BarChart3} color={cf >= 0 ? 'teal' : 'rose'} trend={{ value: om, label: 'operating margin', positive: om >= 0 }} onClick={() => navigate('/app/reports/cash-flow')} />
+        <MetricCard title="Tax Payable" value={fmtNaira(tp)} subtitle="Outstanding liabilities" icon={Landmark} color="amber" trend={{ value: nm, label: 'net margin', positive: nm >= 0 }} onClick={() => navigate('/app/reports/tax-engine')} />
       </div>
 
       {/* Ratios */}
@@ -423,7 +423,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (viewId: string) => void
             <div className="h-64 flex items-center justify-center text-sm text-ink-400 flex-col gap-2">
               <Target className="w-8 h-8 text-ink-200" />
               <span>No budgets configured</span>
-              <button onClick={() => navigate('/accountant/budgets')} className="text-xs font-semibold text-secondary hover:text-primary mt-1">Create a budget</button>
+              <button onClick={() => navigate('/app/accountant/budgets')} className="text-xs font-semibold text-secondary hover:text-primary mt-1">Create a budget</button>
             </div>
           )}
         </ChartCard>
@@ -431,7 +431,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (viewId: string) => void
 
       {/* Tables */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <TableCard title="Overdue Customers" subtitle={overdueCustomers.length + ' overdue'} icon={AlertTriangle} onClick={() => navigate('/sales/invoices')}>
+        <TableCard title="Overdue Customers" subtitle={overdueCustomers.length + ' overdue'} icon={AlertTriangle} onClick={() => navigate('/app/sales/invoices')}>
           {overdueCustomers.length > 0 ? overdueCustomers.slice(0, 5).map((c: any, i: number) => (
             <div key={i} className="px-5 py-3 flex items-center justify-between hover:bg-surface-hover transition-colors">
               <div className="min-w-0 flex-1">
@@ -444,7 +444,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (viewId: string) => void
             <div className="px-5 py-8 text-center text-sm text-ink-400">All paid up</div>
           )}
         </TableCard>
-        <TableCard title="Upcoming Bills" subtitle={upcomingBills.length + ' due'} icon={Calendar} onClick={() => navigate('/purchases/bills')}>
+        <TableCard title="Upcoming Bills" subtitle={upcomingBills.length + ' due'} icon={Calendar} onClick={() => navigate('/app/purchases/bills')}>
           {upcomingBills.length > 0 ? upcomingBills.slice(0, 5).map((b: any, i: number) => (
             <div key={i} className="px-5 py-3 flex items-center justify-between hover:bg-surface-hover transition-colors">
               <div className="min-w-0 flex-1">
@@ -457,7 +457,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (viewId: string) => void
             <div className="px-5 py-8 text-center text-sm text-ink-400">No pending bills</div>
           )}
         </TableCard>
-        <TableCard title="Top Customers" subtitle={topCustomers.length > 0 ? 'By revenue' : 'No data'} icon={Users} onClick={() => navigate('/sales/customers')}>
+        <TableCard title="Top Customers" subtitle={topCustomers.length > 0 ? 'By revenue' : 'No data'} icon={Users} onClick={() => navigate('/app/sales/customers')}>
           {topCustomers.length > 0 ? topCustomers.slice(0, 5).map((c: any, i: number) => (
             <div key={i} className="px-5 py-3 flex items-center justify-between hover:bg-surface-hover transition-colors">
               <div className="flex items-center gap-2.5 min-w-0 flex-1">
@@ -473,7 +473,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (viewId: string) => void
             <div className="px-5 py-8 text-center text-sm text-ink-400">No customer data</div>
           )}
         </TableCard>
-        <TableCard title="Top Vendors" subtitle={topVendors.length > 0 ? 'By spend' : 'No data'} icon={Building2} onClick={() => navigate('/purchases/vendors')}>
+        <TableCard title="Top Vendors" subtitle={topVendors.length > 0 ? 'By spend' : 'No data'} icon={Building2} onClick={() => navigate('/app/purchases/vendors')}>
           {topVendors.length > 0 ? topVendors.slice(0, 5).map((v: any, i: number) => (
             <div key={i} className="px-5 py-3 flex items-center justify-between hover:bg-surface-hover transition-colors">
               <div className="flex items-center gap-2.5 min-w-0 flex-1">
