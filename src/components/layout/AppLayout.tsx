@@ -83,6 +83,9 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
   const [showMailForm, setShowMailForm] = useState(false);
   const [mailSubject, setMailSubject] = useState('');
   const [mailMessage, setMailMessage] = useState('');
+  const [headerSearchQuery, setHeaderSearchQuery] = useState('');
+  const [showHeaderSearch, setShowHeaderSearch] = useState(false);
+  const headerSearchRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClick = (event: MouseEvent) => {
@@ -102,10 +105,13 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
         const dd = document.getElementById('header-new-dropdown');
         if (btn && !btn.contains(el) && dd && !dd.contains(el)) setShowNewMenu(false);
       }
+      if (showHeaderSearch && headerSearchRef.current && !headerSearchRef.current.contains(el)) {
+        setShowHeaderSearch(false);
+      }
     };
     document.addEventListener('click', handleClick);
     return () => document.removeEventListener('click', handleClick);
-  }, [showUserMenu, showNotifications, showNewMenu]);
+  }, [showUserMenu, showNotifications, showNewMenu, showHeaderSearch]);
 
   const pathMap: Record<string, string> = useMemo(() => ({
     dashboard: '/dashboard', ai_assistant: '/ai/assistant',
@@ -279,6 +285,20 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     [navigation, activeNavId]
   );
 
+  const headerSearchResults = useMemo(() => {
+    if (!headerSearchQuery.trim()) return [];
+    const q = headerSearchQuery.toLowerCase();
+    const all = navigation.flatMap(g => g.items.map(item => ({
+      ...item,
+      group: g.title,
+      path: pathMap[item.id] || '',
+    })));
+    return all.filter(item =>
+      item.name.toLowerCase().includes(q) ||
+      item.id.toLowerCase().includes(q)
+    );
+  }, [navigation, pathMap, headerSearchQuery]);
+
   return (
     <>
       <CommandPalette />
@@ -416,8 +436,14 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
         {!sidebarCollapsed && (
           <div className="sidebar-user-section p-2.5">
             <div className="flex items-center gap-2.5 px-2 py-1.5 rounded-xl sidebar-user-card">
-              <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-white text-[11px] font-bold shrink-0">
-                {user?.fullName?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
+              <div className="w-7 h-7 rounded-full shrink-0 overflow-hidden">
+                {user?.avatarUrl ? (
+                  <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-white/20 flex items-center justify-center text-white text-[11px] font-bold">
+                    {user?.fullName?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
+                  </div>
+                )}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-xs font-semibold sidebar-user-name truncate leading-tight">
@@ -507,15 +533,56 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
             </div>
           </div>
 
-          {/* Search trigger */}
-          <button
-            onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { metaKey: true, shiftKey: true, key: 'f' }))}
-            className="hidden sm:flex items-center gap-2 header-search-trigger min-w-[160px]"
-          >
-            <Search className="w-3.5 h-3.5" />
-            <span>Search anything...</span>
-            <kbd className="header-kbd">⌘K</kbd>
-          </button>
+          {/* Search */}
+          <div className="relative hidden sm:block" ref={headerSearchRef}>
+            <div className="relative min-w-[160px]">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 header-search-icon pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search anything..."
+                value={headerSearchQuery}
+                onChange={e => { setHeaderSearchQuery(e.target.value); setShowHeaderSearch(true); }}
+                onFocus={() => setShowHeaderSearch(true)}
+                onKeyDown={e => {
+                  if (e.key === 'Escape') { setShowHeaderSearch(false); (e.target as HTMLInputElement).blur(); }
+                  if (e.key === 'Enter' && headerSearchResults.length > 0) {
+                    setShowHeaderSearch(false); setHeaderSearchQuery(''); handleNavigation(headerSearchResults[0].id);
+                  }
+                }}
+                className="w-full pl-8 pr-8 py-1.5 text-xs header-search rounded-lg transition-all outline-none"
+                autoComplete="off"
+              />
+              {!headerSearchQuery && (
+                <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 header-kbd text-[9px]">⌘K</kbd>
+              )}
+            </div>
+            {showHeaderSearch && headerSearchQuery.trim() && (
+              <div className="absolute right-0 top-full mt-2 w-80 bg-surface rounded-2xl shadow-xl border border-border-custom overflow-hidden z-50">
+                <div className="p-1.5 max-h-72 overflow-y-auto">
+                  {headerSearchResults.length === 0 ? (
+                    <div className="px-3 py-6 text-center text-xs text-ink-400">No results found</div>
+                  ) : (
+                    headerSearchResults.slice(0, 20).map((item, i) => {
+                      const Icon = item.icon;
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => { setShowHeaderSearch(false); setHeaderSearchQuery(''); handleNavigation(item.id); }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-ink-600 hover:bg-surface-hover hover:text-ink-900 transition-colors text-left"
+                        >
+                          <Icon className="w-4 h-4 shrink-0 text-ink-400" />
+                          <div className="min-w-0 flex-1">
+                            <div className="text-[13px] font-medium truncate">{item.name}</div>
+                            <div className="text-[10px] text-ink-400 truncate">{item.group} · {item.path}</div>
+                          </div>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Right side actions */}
           <div className="flex items-center gap-1">
@@ -577,9 +644,13 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
               <button
                 id="header-profile-button"
                 onClick={() => setShowUserMenu(!showUserMenu)}
-                className="w-8 h-8 rounded-full header-avatar flex items-center justify-center text-xs font-bold"
+                className="w-8 h-8 rounded-full header-avatar flex items-center justify-center text-xs font-bold overflow-hidden"
               >
-                {user?.fullName?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
+                {user?.avatarUrl ? (
+                  <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  user?.fullName?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'
+                )}
               </button>
               {showUserMenu && (
                 <div
