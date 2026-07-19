@@ -13,7 +13,7 @@ export function HeroSection() {
   const navigate = useNavigate();
 
   return (
-    <section className="relative pt-28 lg:pt-32 pb-20 lg:pb-28 overflow-hidden">
+    <section className="relative pt-36 lg:pt-40 pb-20 lg:pb-28 overflow-hidden">
       {/* Background layers */}
       <div className="absolute inset-0 bg-gradient-to-b from-sky-50/60 via-white to-white pointer-events-none" />
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-gradient-to-b from-[#0EA5E9]/5 to-transparent rounded-full blur-3xl pointer-events-none" />

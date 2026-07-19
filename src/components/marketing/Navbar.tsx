@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, Sparkles } from 'lucide-react';
 
 const NAV_LINKS = [
   { label: 'Features', href: '#features' },
   { label: 'Modules', href: '#modules' },
   { label: 'Why SkyBooks', href: '#why-skybooks' },
   { label: 'AI & Automation', href: '#ai-automation' },
-  { label: 'Pricing', href: '#pricing' },
+  { label: 'Pricing', href: '/pricing' },
   { label: 'Testimonials', href: '#testimonials' },
   { label: 'FAQs', href: '#faqs' },
 ];
@@ -15,6 +15,7 @@ const NAV_LINKS = [
 export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -27,15 +28,36 @@ export function Navbar() {
   useEffect(() => { setMobileOpen(false); }, [location]);
 
   const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
-    e.preventDefault();
     if (href.startsWith('#')) {
+      e.preventDefault();
       const el = document.querySelector(href);
       if (el) el.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
+  const isHashLink = (href: string) => href.startsWith('#');
+
   return (
     <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-white/95 backdrop-blur-md shadow-sm' : 'bg-transparent'}`}>
+      {/* Announcement banner */}
+      {!bannerDismissed && (
+        <div className="bg-gradient-to-r from-[#082F49] via-[#0C4A6E] to-[#0EA5E9] text-white text-center text-xs sm:text-sm py-2 px-4 relative">
+          <span className="inline-flex items-center gap-1.5">
+            <Sparkles size={14} className="text-yellow-300 shrink-0" />
+            <span className="font-medium">New:</span>
+            {' '}AI-powered invoice scanning &mdash; upload any receipt, we&rsquo;ll extract the data automatically.{' '}
+            <a href="#features" className="underline font-semibold hover:text-yellow-200 transition-colors whitespace-nowrap">Learn more</a>
+          </span>
+          <button
+            onClick={() => setBannerDismissed(true)}
+            className="ml-2 align-middle text-white/60 hover:text-white transition-colors"
+            aria-label="Dismiss"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 lg:h-20">
           <Link to="/" className="flex items-center gap-2">
@@ -46,16 +68,26 @@ export function Navbar() {
           </Link>
 
           <nav className="hidden md:flex items-center gap-8">
-            {NAV_LINKS.map(link => (
-              <a
-                key={link.href}
-                href={link.href}
-                onClick={e => handleNavClick(e, link.href)}
-                className="text-sm font-medium text-slate-600 hover:text-[#082F49] transition-colors"
-              >
-                {link.label}
-              </a>
-            ))}
+            {NAV_LINKS.map(link =>
+              isHashLink(link.href) ? (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  onClick={e => handleNavClick(e, link.href)}
+                  className="text-sm font-medium text-slate-600 hover:text-[#082F49] transition-colors"
+                >
+                  {link.label}
+                </a>
+              ) : (
+                <Link
+                  key={link.href}
+                  to={link.href}
+                  className="text-sm font-medium text-slate-600 hover:text-[#082F49] transition-colors"
+                >
+                  {link.label}
+                </Link>
+              )
+            )}
           </nav>
 
           <div className="hidden md:flex items-center gap-3">
@@ -85,16 +117,26 @@ export function Navbar() {
       {mobileOpen && (
         <div className="md:hidden bg-white border-t border-slate-100 shadow-lg">
           <div className="px-4 py-4 space-y-1">
-            {NAV_LINKS.map(link => (
-              <a
-                key={link.href}
-                href={link.href}
-                onClick={e => handleNavClick(e, link.href)}
-                className="block px-3 py-2.5 text-sm font-medium text-slate-600 hover:text-[#082F49] hover:bg-slate-50 rounded-lg transition-colors"
-              >
-                {link.label}
-              </a>
-            ))}
+            {NAV_LINKS.map(link =>
+              isHashLink(link.href) ? (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  onClick={e => handleNavClick(e, link.href)}
+                  className="block px-3 py-2.5 text-sm font-medium text-slate-600 hover:text-[#082F49] hover:bg-slate-50 rounded-lg transition-colors"
+                >
+                  {link.label}
+                </a>
+              ) : (
+                <Link
+                  key={link.href}
+                  to={link.href}
+                  className="block px-3 py-2.5 text-sm font-medium text-slate-600 hover:text-[#082F49] hover:bg-slate-50 rounded-lg transition-colors"
+                >
+                  {link.label}
+                </Link>
+              )
+            )}
             <hr className="my-3 border-slate-100" />
             <button
               onClick={() => navigate('/login')}

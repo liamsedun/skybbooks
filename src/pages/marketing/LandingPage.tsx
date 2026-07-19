@@ -1,7 +1,6 @@
 import React from 'react';
 import '../../styles/landing-animations.css';
 import { MarketingLayout } from '../../components/marketing/MarketingLayout';
-import { AnnouncementBar } from '../../components/marketing/AnnouncementBar';
 import { HeroSection } from '../../components/marketing/HeroSection';
 import { FeaturesSection } from '../../components/marketing/FeaturesSection';
 import { WhySkyBooks } from '../../components/marketing/WhySkyBooks';
@@ -26,31 +25,28 @@ import { CTASection } from '../../components/marketing/CTASection';
 
 export function LandingPage() {
   return (
-    <>
-      <AnnouncementBar />
-      <MarketingLayout>
-        <HeroSection />
-        <FeaturesSection />
-        <AccountingModules />
-        <IndustriesServed />
-        <WhySkyBooks />
-        <BenefitsSection />
-        <DashboardShowcase />
-        <Screenshots />
-        <Automation />
-        <ArtificialIntelligence />
-        <FeatureComparison />
-        <TestimonialsSection />
-        <CaseStudies />
-        <PricingSection />
-        <Security />
-        <Compliance />
-        <Integrations />
-        <FAQsSection />
-        <BlogPreview />
-        <Newsletter />
-        <CTASection />
-      </MarketingLayout>
-    </>
+    <MarketingLayout>
+      <HeroSection />
+      <FeaturesSection />
+      <AccountingModules />
+      <IndustriesServed />
+      <WhySkyBooks />
+      <BenefitsSection />
+      <DashboardShowcase />
+      <Screenshots />
+      <Automation />
+      <ArtificialIntelligence />
+      <FeatureComparison />
+      <TestimonialsSection />
+      <CaseStudies />
+      <PricingSection />
+      <Security />
+      <Compliance />
+      <Integrations />
+      <FAQsSection />
+      <BlogPreview />
+      <Newsletter />
+      <CTASection />
+    </MarketingLayout>
   );
 }
