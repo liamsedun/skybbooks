@@ -118,7 +118,9 @@ export function PricingSection() {
                 className={`w-full py-3 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 ${
                   tier.popular
                     ? 'bg-[#082F49] text-white hover:bg-[#0C4A6E] shadow-lg shadow-[#082F49]/20'
-                    : 'border border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                    : tier.name === 'Enterprise'
+                      ? 'border border-slate-200 text-slate-700 hover:border-[#0EA5E9]/40 hover:bg-sky-50'
+                      : 'border border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50'
                 }`}
               >
                 {tier.cta} <ArrowRight size={14} />

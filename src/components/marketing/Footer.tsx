@@ -49,18 +49,18 @@ const columns = [
       { label: 'About', href: '/about' },
       { label: 'Features', href: '#features' },
       { label: 'Pricing', href: '/pricing' },
-      { label: 'Blog', href: '#' },
-      { label: 'Careers', href: '#' },
+      { label: 'Help Center', href: '/help/documents' },
+      { label: 'Contact', href: '/contact' },
     ],
   },
   {
     title: 'Support',
     links: [
-      { label: 'Help Center', href: '#' },
-      { label: 'Developers', href: '#' },
+      { label: 'Help Center', href: '/help/documents' },
+      { label: 'FAQs', href: '/help/faqs' },
       { label: 'API', href: '#' },
-      { label: 'Partners', href: '#' },
-      { label: 'Contact', href: '#' },
+      { label: 'Privacy', href: '/privacy' },
+      { label: 'Terms', href: '/terms' },
     ],
   },
   {
@@ -68,8 +68,8 @@ const columns = [
     links: [
       { label: 'Privacy', href: '/privacy' },
       { label: 'Terms', href: '/terms' },
-      { label: 'Cookies', href: '#' },
-      { label: 'Status', href: '#' },
+      { label: 'Cookies', href: '/privacy' },
+      { label: 'Contact', href: '/contact' },
     ],
   },
 ];

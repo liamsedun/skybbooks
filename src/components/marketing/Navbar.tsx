@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Menu, X, Sparkles } from 'lucide-react';
+import { Menu, X, Sparkles, LayoutDashboard } from 'lucide-react';
+import { useAuth } from '../../hooks/useAuth';
 
 const NAV_LINKS = [
   { label: 'Features', href: '#features' },
@@ -16,6 +17,7 @@ export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -91,18 +93,29 @@ export function Navbar() {
           </nav>
 
           <div className="hidden md:flex items-center gap-3">
-            <button
-              onClick={() => navigate('/login')}
-              className="px-5 py-2 text-sm font-medium text-slate-700 hover:text-[#082F49] transition-colors rounded-lg"
-            >
-              Log in
-            </button>
-            <button
-              onClick={() => navigate('/register')}
-              className="px-5 py-2 text-sm font-semibold text-white bg-[#082F49] hover:bg-[#0C4A6E] rounded-lg transition-colors shadow-sm"
-            >
-              Get Started
-            </button>
+            {isAuthenticated ? (
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="px-5 py-2 text-sm font-semibold text-white bg-[#082F49] hover:bg-[#0C4A6E] rounded-lg transition-colors shadow-sm flex items-center gap-1.5"
+              >
+                <LayoutDashboard size={14} /> Dashboard
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={() => navigate('/login')}
+                  className="px-5 py-2 text-sm font-medium text-slate-700 hover:text-[#082F49] transition-colors rounded-lg"
+                >
+                  Log in
+                </button>
+                <button
+                  onClick={() => navigate('/register')}
+                  className="px-5 py-2 text-sm font-semibold text-white bg-[#082F49] hover:bg-[#0C4A6E] rounded-lg transition-colors shadow-sm"
+                >
+                  Get Started
+                </button>
+              </>
+            )}
           </div>
 
           <button
@@ -138,18 +151,29 @@ export function Navbar() {
               )
             )}
             <hr className="my-3 border-slate-100" />
-            <button
-              onClick={() => navigate('/login')}
-              className="w-full px-3 py-2.5 text-sm font-medium text-slate-700 hover:text-[#082F49] hover:bg-slate-50 rounded-lg transition-colors text-left"
-            >
-              Log in
-            </button>
-            <button
-              onClick={() => navigate('/register')}
-              className="w-full px-3 py-2.5 text-sm font-semibold text-white bg-[#082F49] hover:bg-[#0C4A6E] rounded-lg transition-colors mt-1"
-            >
-              Get Started
-            </button>
+            {isAuthenticated ? (
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="w-full px-3 py-2.5 text-sm font-semibold text-white bg-[#082F49] hover:bg-[#0C4A6E] rounded-lg transition-colors text-center"
+              >
+                Dashboard
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={() => navigate('/login')}
+                  className="w-full px-3 py-2.5 text-sm font-medium text-slate-700 hover:text-[#082F49] hover:bg-slate-50 rounded-lg transition-colors text-left"
+                >
+                  Log in
+                </button>
+                <button
+                  onClick={() => navigate('/register')}
+                  className="w-full px-3 py-2.5 text-sm font-semibold text-white bg-[#082F49] hover:bg-[#0C4A6E] rounded-lg transition-colors mt-1"
+                >
+                  Get Started
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}

@@ -124,6 +124,7 @@ import { LandingPage } from './pages/marketing/LandingPage';
 import { PricingPage } from './pages/marketing/PricingPage';
 import { PrivacyPage } from './pages/marketing/PrivacyPage';
 import { TermsPage } from './pages/marketing/TermsPage';
+import { ContactPage } from './pages/marketing/ContactPage';
 import { useAuth } from './hooks/useAuth';
 import { EmployeesPage as EmployeesPageReal } from './pages/payroll/EmployeesPage';
 import { PayrollRunsPage } from './pages/payroll/PayrollRunsPage';
@@ -282,6 +283,7 @@ function AppRoutes() {
         <Route path="/pricing" element={<PricingPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/terms" element={<TermsPage />} />
+        <Route path="/contact" element={<ContactPage />} />
 
         {/* Protected general ledger system */}
         <Route element={<ProtectedRoute />}>
