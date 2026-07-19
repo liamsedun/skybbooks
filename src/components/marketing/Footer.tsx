@@ -35,11 +35,11 @@ const YouTubeIcon = () => (
 );
 
 const socialLinks = [
-  { icon: XIcon, href: '#', label: 'X' },
-  { icon: LinkedInIcon, href: '#', label: 'LinkedIn' },
-  { icon: FacebookIcon, href: '#', label: 'Facebook' },
+  { icon: XIcon, href: 'https://x.com/SkyhouseAccount', label: 'X' },
+  { icon: LinkedInIcon, href: 'https://ng.linkedin.com/company/skyhouse-accounting-bookkeepers', label: 'LinkedIn' },
+  { icon: FacebookIcon, href: 'https://web.facebook.com/skyhouseaccountants', label: 'Facebook' },
   { icon: InstagramIcon, href: '#', label: 'Instagram' },
-  { icon: YouTubeIcon, href: '#', label: 'YouTube' },
+  { icon: YouTubeIcon, href: 'https://www.youtube.com/channel/UCapqWrjoXasFhyGENVywYxw', label: 'YouTube' },
 ];
 
 const columns = [
@@ -119,7 +119,7 @@ export function Footer() {
               <span className="text-xl font-bold">SkyBooks</span>
             </Link>
             <p className="text-sm text-white/50 leading-relaxed max-w-sm mb-6">
-              The complete accounting platform built for Nigerian SMEs. Invoicing, expense tracking, bank reconciliation, payroll, and statutory tax compliance — all in one place.
+              The complete accounting platform built for Nigerian SMEs. Invoicing, expense tracking, bank reconciliation, payroll, and statutory tax compliance — all in one place. Visit us at <a href="https://skyaccounting.com.ng" target="_blank" rel="noopener noreferrer" className="text-[#0EA5E9] hover:underline">skyaccounting.com.ng</a>.
             </p>
             {/* Social icons */}
             <div className="flex items-center gap-2">
@@ -165,9 +165,22 @@ export function Footer() {
           <div>
             <h4 className="text-xs font-semibold text-white/40 uppercase tracking-widest mb-5">Contact</h4>
             <ul className="space-y-3.5">
-              <li><a href="mailto:hello@skybooks.ng" className="text-sm text-white/65 hover:text-white transition-colors">hello@skybooks.ng</a></li>
-              <li><a href="tel:+2348001234567" className="text-sm text-white/65 hover:text-white transition-colors">+234 800 SKYBOOKS</a></li>
-              <li><span className="text-sm text-white/40">Lagos, Nigeria</span></li>
+              <li>
+                <a href="mailto:subscription@skyaccounting.com.ng" className="text-sm text-white/65 hover:text-white transition-colors">subscription@skyaccounting.com.ng</a>
+              </li>
+              <li>
+                <a href="mailto:hello@skyaccounting.com.ng" className="text-sm text-white/65 hover:text-white transition-colors">hello@skyaccounting.com.ng</a>
+              </li>
+              <li>
+                <a href="https://wa.me/2348157377000" target="_blank" rel="noopener noreferrer" className="text-sm text-white/65 hover:text-white transition-colors">WhatsApp: +234 815 737 7000</a>
+              </li>
+              <li>
+                <a href="https://wa.me/2347058119864" target="_blank" rel="noopener noreferrer" className="text-sm text-white/65 hover:text-white transition-colors">WhatsApp: +234 705 811 9864</a>
+              </li>
+              <li>
+                <a href="https://skyaccounting.com.ng" target="_blank" rel="noopener noreferrer" className="text-sm text-white/65 hover:text-white transition-colors">skyaccounting.com.ng</a>
+              </li>
+              <li><span className="text-sm text-white/40">2/4 Moses Adebayo Street, Ojodu-Ikeja, Lagos, Nigeria</span></li>
             </ul>
             <div className="mt-5 px-3 py-1.5 rounded-lg bg-white/5 inline-block">
               <span className="text-[10px] font-mono text-white/30">v3.2.1</span>
