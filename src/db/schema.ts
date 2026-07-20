@@ -115,7 +115,9 @@ export const systemAccountRoleEnum = pgEnum('system_account_role', [
 // ========== Subscription Management Enums ==========
 export const subscriptionStatusEnum = pgEnum('subscription_status', ['free_trial', 'active', 'grace_period', 'suspended', 'expired', 'cancelled', 'pending_payment', 'failed_payment', 'renewing', 'downgraded', 'upgraded', 'paused']);
 export const billingCycleEnum = pgEnum('billing_cycle', ['monthly', 'yearly', 'quarterly']);
-export const discountTypeEnum = pgEnum('discount_type', ['percentage', 'fixed_amount']);
+export const discountTypeEnum = pgEnum('discount_type', ['percentage', 'fixed_amount', 'free_months', 'referral_reward', 'partner_commission']);
+export const promoCampaignStatusEnum = pgEnum('promo_campaign_status', ['draft', 'active', 'paused', 'completed', 'cancelled']);
+export const referralRewardTypeEnum = pgEnum('referral_reward_type', ['percentage', 'fixed_amount', 'free_months']);
 export const subInvoiceStatusEnum = pgEnum('sub_invoice_status', ['pending', 'paid', 'overdue', 'canceled', 'refunded']);
 export const subPaymentMethodEnum = pgEnum('sub_payment_method', ['card', 'bank_transfer', 'ussd', 'wallet', 'unknown']);
 export const subPaymentStatusEnum = pgEnum('sub_payment_status', ['pending', 'success', 'failed', 'refunded', 'partial_refund', 'cancelled']);
@@ -2337,16 +2339,24 @@ export const subscriptionStatusHistory = pgTable('subscription_status_history', 
 export const coupons = pgTable('coupons', {
   id: uuid('id').defaultRandom().primaryKey(),
   orgId: uuid('org_id').references(() => organisations.id),
-  code: text('code').notNull(),
+  code: text('code').notNull().unique(),
   description: text('description'),
   discountType: discountTypeEnum('discount_type').default('percentage').notNull(),
   discountPercent: integer('discount_percent'),
   discountAmountKobo: bigint('discount_amount_kobo', { mode: 'number' }),
+  freeMonths: integer('free_months').default(0),
   maxRedemptions: integer('max_redemptions').default(0),
   currentRedemptions: integer('current_redemptions').default(0).notNull(),
   minAmountKobo: bigint('min_amount_kobo', { mode: 'number' }),
   maxAmountKobo: bigint('max_amount_kobo', { mode: 'number' }),
   applicablePlanIds: uuid('applicable_plan_ids').array(),
+  minPlanId: uuid('min_plan_id').references(() => subscriptionPlans.id),
+  maxPlanId: uuid('max_plan_id').references(() => subscriptionPlans.id),
+  regionRestrictions: text('region_restrictions').array(),
+  campaignId: uuid('campaign_id').references(() => promotionalCampaigns.id),
+  isStackable: boolean('is_stackable').default(false).notNull(),
+  priority: integer('priority').default(0).notNull(),
+  requireMinimumPayment: boolean('require_minimum_payment').default(false),
   expiresAt: timestamp('expires_at'),
   isActive: boolean('is_active').default(true).notNull(),
   isFirstOrderOnly: boolean('is_first_order_only').default(false).notNull(),
@@ -2354,8 +2364,9 @@ export const coupons = pgTable('coupons', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
-  couponCodeIdx: index('idx_coupon_code').on(table.code),
+  couponCodeIdx: uniqueIndex('idx_coupon_code').on(table.code),
   couponActiveIdx: index('idx_coupon_active').on(table.isActive, table.expiresAt),
+  couponCampaignIdx: index('idx_coupon_campaign').on(table.campaignId),
 }));
 
 export const promotions = pgTable('promotions', {
@@ -2366,7 +2377,16 @@ export const promotions = pgTable('promotions', {
   discountType: discountTypeEnum('discount_type').default('percentage').notNull(),
   discountPercent: integer('discount_percent'),
   discountAmountKobo: bigint('discount_amount_kobo', { mode: 'number' }),
+  freeMonths: integer('free_months').default(0),
   applicablePlanIds: uuid('applicable_plan_ids').array(),
+  minPlanId: uuid('min_plan_id').references(() => subscriptionPlans.id),
+  maxPlanId: uuid('max_plan_id').references(() => subscriptionPlans.id),
+  regionRestrictions: text('region_restrictions').array(),
+  campaignId: uuid('campaign_id').references(() => promotionalCampaigns.id),
+  isStackable: boolean('is_stackable').default(false).notNull(),
+  priority: integer('priority').default(0).notNull(),
+  budgetKobo: bigint('budget_kobo', { mode: 'number' }),
+  spentKobo: bigint('spent_kobo', { mode: 'number' }).default(0),
   startDate: timestamp('start_date').notNull(),
   endDate: timestamp('end_date').notNull(),
   maxRedemptions: integer('max_redemptions').default(0),
@@ -2377,6 +2397,112 @@ export const promotions = pgTable('promotions', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
   promoActiveIdx: index('idx_promo_active').on(table.isActive, table.startDate, table.endDate),
+  promoCampaignIdx: index('idx_promo_campaign').on(table.campaignId),
+}));
+
+// ========== Promotions Engine ==========
+
+export const promotionalCampaigns = pgTable('promotional_campaigns', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id),
+  name: text('name').notNull(),
+  description: text('description'),
+  type: text('type').default('general').notNull(), // general, seasonal, holiday, product_launch, reactivation
+  status: promoCampaignStatusEnum('status').default('draft').notNull(),
+  startDate: timestamp('start_date'),
+  endDate: timestamp('end_date'),
+  budgetKobo: bigint('budget_kobo', { mode: 'number' }),
+  spentKobo: bigint('spent_kobo', { mode: 'number' }).default(0),
+  targetPlanIds: uuid('target_plan_ids').array(),
+  targetRegions: text('target_regions').array(),
+  maxRedemptions: integer('max_redemptions').default(0),
+  currentRedemptions: integer('current_redemptions').default(0).notNull(),
+  metadata: jsonb('metadata').default({}),
+  createdBy: uuid('created_by').references(() => users.id),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  campOrgIdx: index('idx_camp_org').on(table.orgId),
+  campStatusIdx: index('idx_camp_status').on(table.status, table.startDate, table.endDate),
+}));
+
+export const referralCodes = pgTable('referral_codes', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  referrerOrgId: uuid('referrer_org_id').references(() => organisations.id),
+  referrerUserId: uuid('referrer_user_id').references(() => users.id),
+  code: text('code').notNull().unique(),
+  description: text('description'),
+  rewardType: referralRewardTypeEnum('reward_type').default('fixed_amount').notNull(),
+  rewardValue: integer('reward_value').default(0).notNull(), // in kobo for fixed_amount, or percent for percentage
+  rewardFreeMonths: integer('reward_free_months').default(0),
+  maxRedemptions: integer('max_redemptions').default(0),
+  currentRedemptions: integer('current_redemptions').default(0).notNull(),
+  rewardExpiresInDays: integer('reward_expires_in_days'),
+  applicablePlanIds: uuid('applicable_plan_ids').array(),
+  isActive: boolean('is_active').default(true).notNull(),
+  expiresAt: timestamp('expires_at'),
+  metadata: jsonb('metadata').default({}),
+  createdBy: uuid('created_by').references(() => users.id),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  refCodeIdx: uniqueIndex('idx_ref_code').on(table.code),
+  refOrgIdx: index('idx_ref_org').on(table.orgId),
+  refReferrerIdx: index('idx_ref_referrer').on(table.referrerOrgId),
+}));
+
+export const partnerDiscounts = pgTable('partner_discounts', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id),
+  partnerName: text('partner_name').notNull(),
+  partnerCode: text('partner_code').notNull().unique(),
+  contactEmail: text('contact_email'),
+  contactPhone: text('contact_phone'),
+  discountType: discountTypeEnum('discount_type').default('percentage').notNull(),
+  discountPercent: integer('discount_percent'),
+  discountAmountKobo: bigint('discount_amount_kobo', { mode: 'number' }),
+  freeMonths: integer('free_months').default(0),
+  commissionPercent: integer('commission_percent').default(0),
+  commissionAmountKobo: bigint('commission_amount_kobo', { mode: 'number' }),
+  applicablePlanIds: uuid('applicable_plan_ids').array(),
+  maxRedemptions: integer('max_redemptions').default(0),
+  currentRedemptions: integer('current_redemptions').default(0).notNull(),
+  regionRestrictions: text('region_restrictions').array(),
+  isActive: boolean('is_active').default(true).notNull(),
+  expiresAt: timestamp('expires_at'),
+  metadata: jsonb('metadata').default({}),
+  createdBy: uuid('created_by').references(() => users.id),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  partnerCodeIdx: uniqueIndex('idx_partner_code').on(table.partnerCode),
+  partnerOrgIdx: index('idx_partner_org').on(table.orgId),
+}));
+
+export const redemptionHistory = pgTable('redemption_history', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  subscriptionId: uuid('subscription_id').references(() => subscriptions.id),
+  invoiceId: uuid('invoice_id').references(() => subscriptionInvoices.id),
+  redemptionType: text('redemption_type').notNull(), // coupon, promotion, referral, partner, campaign
+  sourceId: text('source_id').notNull(), // ID of the coupon/promotion/referral/partner
+  sourceCode: text('source_code'), // human-readable code
+  discountType: discountTypeEnum('discount_type').notNull(),
+  discountValue: integer('discount_value').default(0), // percent or amount
+  discountKobo: bigint('discount_kobo', { mode: 'number' }).default(0).notNull(),
+  freeMonths: integer('free_months').default(0),
+  originalAmountKobo: bigint('original_amount_kobo', { mode: 'number' }).notNull(),
+  finalAmountKobo: bigint('final_amount_kobo', { mode: 'number' }).notNull(),
+  metadata: jsonb('metadata').default({}),
+  redeemedBy: uuid('redeemed_by').references(() => users.id),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  rhOrgIdx: index('idx_rh_org').on(table.orgId),
+  rhSubIdx: index('idx_rh_sub').on(table.subscriptionId),
+  rhInvIdx: index('idx_rh_inv').on(table.invoiceId),
+  rhTypeIdx: index('idx_rh_type').on(table.redemptionType, table.sourceId),
+  rhCreatedIdx: index('idx_rh_created').on(table.createdAt),
 }));
 
 export const subscriptionInvoices = pgTable('subscription_invoices', {
@@ -2627,11 +2753,43 @@ export const subscriptionStatusHistoryRelations = relations(subscriptionStatusHi
 export const couponsRelations = relations(coupons, ({ one }) => ({
   organisation: one(organisations, { fields: [coupons.orgId], references: [organisations.id] }),
   creator: one(users, { fields: [coupons.createdBy], references: [users.id] }),
+  campaign: one(promotionalCampaigns, { fields: [coupons.campaignId], references: [promotionalCampaigns.id] }),
+  minPlan: one(subscriptionPlans, { fields: [coupons.minPlanId], references: [subscriptionPlans.id] }),
+  maxPlan: one(subscriptionPlans, { fields: [coupons.maxPlanId], references: [subscriptionPlans.id] }),
 }));
 
 export const promotionsRelations = relations(promotions, ({ one }) => ({
   organisation: one(organisations, { fields: [promotions.orgId], references: [organisations.id] }),
   creator: one(users, { fields: [promotions.createdBy], references: [users.id] }),
+  campaign: one(promotionalCampaigns, { fields: [promotions.campaignId], references: [promotionalCampaigns.id] }),
+  minPlan: one(subscriptionPlans, { fields: [promotions.minPlanId], references: [subscriptionPlans.id] }),
+  maxPlan: one(subscriptionPlans, { fields: [promotions.maxPlanId], references: [subscriptionPlans.id] }),
+}));
+
+export const promotionalCampaignsRelations = relations(promotionalCampaigns, ({ one, many }) => ({
+  organisation: one(organisations, { fields: [promotionalCampaigns.orgId], references: [organisations.id] }),
+  creator: one(users, { fields: [promotionalCampaigns.createdBy], references: [users.id] }),
+  coupons: many(coupons),
+  promotions: many(promotions),
+}));
+
+export const referralCodesRelations = relations(referralCodes, ({ one }) => ({
+  organisation: one(organisations, { fields: [referralCodes.orgId], references: [organisations.id] }),
+  referrerOrg: one(organisations, { fields: [referralCodes.referrerOrgId], references: [organisations.id] }),
+  referrerUser: one(users, { fields: [referralCodes.referrerUserId], references: [users.id] }),
+  creator: one(users, { fields: [referralCodes.createdBy], references: [users.id] }),
+}));
+
+export const partnerDiscountsRelations = relations(partnerDiscounts, ({ one }) => ({
+  organisation: one(organisations, { fields: [partnerDiscounts.orgId], references: [organisations.id] }),
+  creator: one(users, { fields: [partnerDiscounts.createdBy], references: [users.id] }),
+}));
+
+export const redemptionHistoryRelations = relations(redemptionHistory, ({ one }) => ({
+  organisation: one(organisations, { fields: [redemptionHistory.orgId], references: [organisations.id] }),
+  subscription: one(subscriptions, { fields: [redemptionHistory.subscriptionId], references: [subscriptions.id] }),
+  invoice: one(subscriptionInvoices, { fields: [redemptionHistory.invoiceId], references: [subscriptionInvoices.id] }),
+  redeemer: one(users, { fields: [redemptionHistory.redeemedBy], references: [users.id] }),
 }));
 
 export const subscriptionInvoicesRelations = relations(subscriptionInvoices, ({ one, many }) => ({
@@ -4094,6 +4252,10 @@ export const db = drizzle(pool, {
     paymentGatewayConfigs,
     subscriptionPayments,
     paymentReceipts,
+    promotionalCampaigns,
+    referralCodes,
+    partnerDiscounts,
+    redemptionHistory,
 
     // Relations
     featureFlagsRelations,
@@ -4111,6 +4273,10 @@ export const db = drizzle(pool, {
     paymentGatewayConfigsRelations,
     subscriptionPaymentsRelations,
     paymentReceiptsRelations,
+    promotionalCampaignsRelations,
+    referralCodesRelations,
+    partnerDiscountsRelations,
+    redemptionHistoryRelations,
     organisationsRelations,
     usersRelations,
     sessionsRelations,
@@ -4299,6 +4465,10 @@ export const schema = {
   paymentGatewayConfigs,
   subscriptionPayments,
   paymentReceipts,
+  promotionalCampaigns,
+  referralCodes,
+  partnerDiscounts,
+  redemptionHistory,
   approvalWorkflows,
   approvalHistory,
   ocrDocuments,

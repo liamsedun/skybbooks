@@ -3328,6 +3328,225 @@ export async function runMigration() {
       console.error('[Migration] Subscription billing tables error:', err);
     }
 
+    // Setup Promotions Engine tables
+    try {
+      // promo_campaign_status enum
+      await pool.query(`
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'promo_campaign_status') THEN
+            CREATE TYPE promo_campaign_status AS ENUM ('draft', 'active', 'paused', 'completed', 'cancelled');
+          END IF;
+        END $$;
+      `);
+      // referral_reward_type enum
+      await pool.query(`
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'referral_reward_type') THEN
+            CREATE TYPE referral_reward_type AS ENUM ('percentage', 'fixed_amount', 'free_months');
+          END IF;
+        END $$;
+      `);
+      // Update discount_type enum to add new values
+      await pool.query(`
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'discount_type' AND pg_enum.enumlabel = 'free_months')
+          THEN
+            ALTER TYPE discount_type ADD VALUE IF NOT EXISTS 'free_months';
+            ALTER TYPE discount_type ADD VALUE IF NOT EXISTS 'referral_reward';
+            ALTER TYPE discount_type ADD VALUE IF NOT EXISTS 'partner_commission';
+          END IF;
+        EXCEPTION WHEN duplicate_object THEN NULL;
+        END $$;
+      `);
+
+      // promotional_campaigns table
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS promotional_campaigns (
+          id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+          org_id UUID REFERENCES organisations(id),
+          name TEXT NOT NULL,
+          description TEXT,
+          type TEXT DEFAULT 'general' NOT NULL,
+          status promo_campaign_status DEFAULT 'draft' NOT NULL,
+          start_date TIMESTAMP,
+          end_date TIMESTAMP,
+          budget_kobo BIGINT,
+          spent_kobo BIGINT DEFAULT 0,
+          target_plan_ids UUID[],
+          target_regions TEXT[],
+          max_redemptions INTEGER DEFAULT 0,
+          current_redemptions INTEGER DEFAULT 0 NOT NULL,
+          metadata JSONB DEFAULT '{}'::jsonb,
+          created_by UUID REFERENCES users(id),
+          created_at TIMESTAMP DEFAULT now() NOT NULL,
+          updated_at TIMESTAMP DEFAULT now() NOT NULL
+        )
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_camp_org ON promotional_campaigns(org_id);
+        CREATE INDEX IF NOT EXISTS idx_camp_status ON promotional_campaigns(status, start_date, end_date)
+      `);
+      await pool.query(`
+        CREATE OR REPLACE FUNCTION update_campaign_updated_at()
+        RETURNS TRIGGER AS $$ BEGIN NEW.updated_at = now(); RETURN NEW; END; $$ LANGUAGE plpgsql
+      `);
+      await pool.query(`
+        DROP TRIGGER IF EXISTS trg_campaign_updated_at ON promotional_campaigns;
+        CREATE TRIGGER trg_campaign_updated_at BEFORE UPDATE ON promotional_campaigns FOR EACH ROW EXECUTE FUNCTION update_campaign_updated_at()
+      `);
+
+      // Add columns to coupons
+      const couponColumns = [
+        { name: 'free_months', def: 'INTEGER DEFAULT 0' },
+        { name: 'min_plan_id', def: 'UUID REFERENCES subscription_plans(id)' },
+        { name: 'max_plan_id', def: 'UUID REFERENCES subscription_plans(id)' },
+        { name: 'region_restrictions', def: 'TEXT[]' },
+        { name: 'campaign_id', def: 'UUID REFERENCES promotional_campaigns(id)' },
+        { name: 'is_stackable', def: 'BOOLEAN DEFAULT false NOT NULL' },
+        { name: 'priority', def: 'INTEGER DEFAULT 0 NOT NULL' },
+        { name: 'require_minimum_payment', def: 'BOOLEAN DEFAULT false' },
+      ];
+      // ALTER coupon code to be unique
+      await pool.query(`ALTER TABLE coupons DROP CONSTRAINT IF EXISTS coupons_code_key`);
+      await pool.query(`
+        DO $$ BEGIN
+          DROP INDEX IF EXISTS idx_coupon_code;
+          CREATE UNIQUE INDEX IF NOT EXISTS idx_coupon_code ON coupons(code);
+        EXCEPTION WHEN duplicate_table THEN NULL;
+        END $$;
+      `);
+      for (const col of couponColumns) {
+        await pool.query(`
+          DO $$ BEGIN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'coupons' AND column_name = '${col.name}') THEN
+              ALTER TABLE coupons ADD COLUMN ${col.name} ${col.def};
+            END IF;
+          END $$;
+        `);
+      }
+
+      // Add columns to promotions
+      const promoCols = [
+        { name: 'free_months', def: 'INTEGER DEFAULT 0' },
+        { name: 'min_plan_id', def: 'UUID REFERENCES subscription_plans(id)' },
+        { name: 'max_plan_id', def: 'UUID REFERENCES subscription_plans(id)' },
+        { name: 'region_restrictions', def: 'TEXT[]' },
+        { name: 'campaign_id', def: 'UUID REFERENCES promotional_campaigns(id)' },
+        { name: 'is_stackable', def: 'BOOLEAN DEFAULT false NOT NULL' },
+        { name: 'priority', def: 'INTEGER DEFAULT 0 NOT NULL' },
+        { name: 'budget_kobo', def: 'BIGINT' },
+        { name: 'spent_kobo', def: 'BIGINT DEFAULT 0' },
+      ];
+      for (const col of promoCols) {
+        await pool.query(`
+          DO $$ BEGIN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'promotions' AND column_name = '${col.name}') THEN
+              ALTER TABLE promotions ADD COLUMN ${col.name} ${col.def};
+            END IF;
+          END $$;
+        `);
+      }
+
+      // referral_codes table
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS referral_codes (
+          id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+          org_id UUID REFERENCES organisations(id) NOT NULL,
+          referrer_org_id UUID REFERENCES organisations(id),
+          referrer_user_id UUID REFERENCES users(id),
+          code TEXT NOT NULL UNIQUE,
+          description TEXT,
+          reward_type referral_reward_type DEFAULT 'fixed_amount' NOT NULL,
+          reward_value INTEGER DEFAULT 0 NOT NULL,
+          reward_free_months INTEGER DEFAULT 0,
+          max_redemptions INTEGER DEFAULT 0,
+          current_redemptions INTEGER DEFAULT 0 NOT NULL,
+          reward_expires_in_days INTEGER,
+          applicable_plan_ids UUID[],
+          is_active BOOLEAN DEFAULT true NOT NULL,
+          expires_at TIMESTAMP,
+          metadata JSONB DEFAULT '{}'::jsonb,
+          created_by UUID REFERENCES users(id),
+          created_at TIMESTAMP DEFAULT now() NOT NULL,
+          updated_at TIMESTAMP DEFAULT now() NOT NULL
+        )
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_ref_org ON referral_codes(org_id);
+        CREATE INDEX IF NOT EXISTS idx_ref_referrer ON referral_codes(referrer_org_id)
+      `);
+
+      // partner_discounts table
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS partner_discounts (
+          id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+          org_id UUID REFERENCES organisations(id),
+          partner_name TEXT NOT NULL,
+          partner_code TEXT NOT NULL UNIQUE,
+          contact_email TEXT,
+          contact_phone TEXT,
+          discount_type discount_type DEFAULT 'percentage' NOT NULL,
+          discount_percent INTEGER,
+          discount_amount_kobo BIGINT,
+          free_months INTEGER DEFAULT 0,
+          commission_percent INTEGER DEFAULT 0,
+          commission_amount_kobo BIGINT,
+          applicable_plan_ids UUID[],
+          max_redemptions INTEGER DEFAULT 0,
+          current_redemptions INTEGER DEFAULT 0 NOT NULL,
+          region_restrictions TEXT[],
+          is_active BOOLEAN DEFAULT true NOT NULL,
+          expires_at TIMESTAMP,
+          metadata JSONB DEFAULT '{}'::jsonb,
+          created_by UUID REFERENCES users(id),
+          created_at TIMESTAMP DEFAULT now() NOT NULL,
+          updated_at TIMESTAMP DEFAULT now() NOT NULL
+        )
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_partner_org ON partner_discounts(org_id)
+      `);
+
+      // redemption_history table
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS redemption_history (
+          id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+          org_id UUID REFERENCES organisations(id) NOT NULL,
+          subscription_id UUID REFERENCES subscriptions(id),
+          invoice_id UUID REFERENCES subscription_invoices(id),
+          redemption_type TEXT NOT NULL,
+          source_id TEXT NOT NULL,
+          source_code TEXT,
+          discount_type discount_type NOT NULL,
+          discount_value INTEGER DEFAULT 0,
+          discount_kobo BIGINT DEFAULT 0 NOT NULL,
+          free_months INTEGER DEFAULT 0,
+          original_amount_kobo BIGINT NOT NULL,
+          final_amount_kobo BIGINT NOT NULL,
+          metadata JSONB DEFAULT '{}'::jsonb,
+          redeemed_by UUID REFERENCES users(id),
+          created_at TIMESTAMP DEFAULT now() NOT NULL
+        )
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_rh_org ON redemption_history(org_id);
+        CREATE INDEX IF NOT EXISTS idx_rh_sub ON redemption_history(subscription_id);
+        CREATE INDEX IF NOT EXISTS idx_rh_inv ON redemption_history(invoice_id);
+        CREATE INDEX IF NOT EXISTS idx_rh_type ON redemption_history(redemption_type, source_id);
+        CREATE INDEX IF NOT EXISTS idx_rh_created ON redemption_history(created_at)
+      `);
+
+      // Add campaign index on promotions
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_promo_campaign ON promotions(campaign_id);
+        CREATE INDEX IF NOT EXISTS idx_coupon_campaign ON coupons(campaign_id)
+      `);
+
+      console.log('[Migration] Promotions Engine tables created.');
+    } catch (err) {
+      console.error('[Migration] Promotions Engine error:', err);
+    }
+
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema setup:', err);

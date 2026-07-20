@@ -1780,6 +1780,49 @@ export const featureFlagApi = {
   bulkSetPlanFlags: async (planId: string, flags: Array<{ featureCode: string; state: string; usageLimit?: number }>) => { const res = await api.put(`/feature-flags/plan/${planId}/bulk`, { flags }); return res.data; },
 };
 
+export const promotionsEngineApi = {
+  // Campaigns
+  listCampaigns: async (orgId?: string) => { const res = await api.get('/promotions/campaigns', { params: { orgId } }); return res.data; },
+  getCampaign: async (id: string) => { const res = await api.get(`/promotions/campaigns/${id}`); return res.data; },
+  createCampaign: async (data: any) => { const res = await api.post('/promotions/campaigns', data); return res.data; },
+  updateCampaign: async (id: string, data: any) => { const res = await api.put(`/promotions/campaigns/${id}`, data); return res.data; },
+  deleteCampaign: async (id: string) => { const res = await api.delete(`/promotions/campaigns/${id}`); return res.data; },
+
+  // Referrals
+  listReferrals: async (orgId?: string) => { const res = await api.get('/promotions/referrals', { params: { orgId } }); return res.data; },
+  getReferral: async (id: string) => { const res = await api.get(`/promotions/referrals/${id}`); return res.data; },
+  createReferral: async (data: any) => { const res = await api.post('/promotions/referrals', data); return res.data; },
+  updateReferral: async (id: string, data: any) => { const res = await api.put(`/promotions/referrals/${id}`, data); return res.data; },
+  deleteReferral: async (id: string) => { const res = await api.delete(`/promotions/referrals/${id}`); return res.data; },
+
+  // Partners
+  listPartners: async (orgId?: string) => { const res = await api.get('/promotions/partners', { params: { orgId } }); return res.data; },
+  getPartner: async (id: string) => { const res = await api.get(`/promotions/partners/${id}`); return res.data; },
+  createPartner: async (data: any) => { const res = await api.post('/promotions/partners', data); return res.data; },
+  updatePartner: async (id: string, data: any) => { const res = await api.put(`/promotions/partners/${id}`, data); return res.data; },
+  deletePartner: async (id: string) => { const res = await api.delete(`/promotions/partners/${id}`); return res.data; },
+
+  // Redemptions
+  listRedemptions: async (orgId: string, filters?: { type?: string; subscriptionId?: string; invoiceId?: string }) => {
+    const res = await api.get('/promotions/redemptions', { params: { orgId, ...filters } }); return res.data;
+  },
+
+  // Application
+  applyDiscounts: async (data: { orgId: string; planId: string; amountKobo: number; couponCode?: string; referralCode?: string; partnerCode?: string; isFirstOrder?: boolean; region?: string }) => {
+    const res = await api.post('/promotions/apply', data); return res.data;
+  },
+  autoApply: async (data: { orgId: string; planId: string; amountKobo: number; isFirstOrder?: boolean; region?: string }) => {
+    const res = await api.post('/promotions/auto-apply', data); return res.data;
+  },
+  recordRedemption: async (data: any) => { const res = await api.post('/promotions/record', data); return res.data; },
+
+  // Extended coupon/promotion CRUD (for admin UI)
+  createCouponExtended: async (data: any) => { const res = await api.post('/promotions/coupons', data); return res.data; },
+  updateCouponExtended: async (id: string, data: any) => { const res = await api.put(`/promotions/coupons/${id}`, data); return res.data; },
+  createPromotionExtended: async (data: any) => { const res = await api.post('/promotions/promotions', data); return res.data; },
+  updatePromotionExtended: async (id: string, data: any) => { const res = await api.put(`/promotions/promotions/${id}`, data); return res.data; },
+};
+
 export const subscriptionApi = {
   // Plans
   listPlans: async (publicOnly?: boolean) => { const res = await api.get('/subscriptions/plans', { params: { publicOnly } }); return res.data; },
