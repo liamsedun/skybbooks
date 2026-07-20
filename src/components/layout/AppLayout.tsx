@@ -13,7 +13,7 @@ import {
   Star, Zap, ChevronRight, PanelLeftClose, PanelLeft,
   CircleUser, Command, Plus, LayoutList, Home, Landmark,
   ShoppingCart, ShoppingBag, Receipt, Mail, Phone, ExternalLink, Video, RefreshCw, Tag,
-  ToggleLeft, SlidersHorizontal
+  ToggleLeft, SlidersHorizontal, BarChart3
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -143,6 +143,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     rep_consolidation: '/app/reports/consolidation',
     revenue_contracts: '/app/revenue/contracts', rep_revenue_recognition: '/app/revenue/recognition-report',
     subscription: '/app/subscription', subscription_plans: '/app/subscription/plans', subscription_coupons: '/app/subscription/coupons', subscription_portal: '/app/subscription/portal',
+    usage_monitor: '/app/reports/usage-monitor',
     set_organisation: '/app/settings/organisation', set_invites: '/app/settings/invites', set_roles: '/app/settings/roles',
     user_preferences: '/app/settings/user-preferences', set_integrations: '/app/settings/integrations',
     feature_flags: '/app/settings/feature-flags', plan_features: '/app/settings/feature-flags/plans',
@@ -226,6 +227,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
       { name: 'VAT Return', id: 'rep_vat_return', icon: FileBarChart },
       { name: 'Aged Receivables', id: 'rep_aged_receivables', icon: FileBarChart },
       { name: 'Aged Payables', id: 'rep_aged_payables', icon: FileBarChart },
+      { name: 'Usage Monitor', id: 'usage_monitor', icon: BarChart3 },
       { name: 'Audit Logs', id: 'rep_audit_logs', icon: Shield },
       { name: 'Custom Reports', id: 'rep_custom', icon: FileBarChart },
       { name: 'Tax Computation', id: 'rep_tax_computation', icon: FileBarChart },

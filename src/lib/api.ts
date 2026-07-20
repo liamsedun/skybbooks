@@ -1243,6 +1243,10 @@ export const reportsApi = {
     const res = await api.get('/reports/consolidated', { params });
     return res.data;
   },
+  // Usage Monitor
+  getUsageDashboard: async () => { const res = await api.get('/reports/usage-monitor/dashboard'); return res.data; },
+  checkUsageResource: async (resource: string) => { const res = await api.get(`/reports/usage-monitor/check/${resource}`); return res.data; },
+  getUsageHistory: async (resource?: string) => { const res = await api.get('/reports/usage-monitor/history', { params: { resource } }); return res.data; },
 };
 
 // 9a. Legacy / Migration Endpoints
