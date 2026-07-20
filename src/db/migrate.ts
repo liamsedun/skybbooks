@@ -3143,6 +3143,191 @@ export async function runMigration() {
 
     console.log('[Migration] Feature flag system created and seeded.');
 
+    // Setup Subscription Payment & Billing tables
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS payment_gateway_configs (
+          id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+          org_id UUID REFERENCES organisations(id) NOT NULL,
+          gateway TEXT NOT NULL,
+          is_active BOOLEAN DEFAULT true NOT NULL,
+          public_key TEXT,
+          secret_key TEXT,
+          webhook_secret TEXT,
+          environment TEXT DEFAULT 'live' NOT NULL,
+          is_default BOOLEAN DEFAULT false NOT NULL,
+          created_at TIMESTAMP DEFAULT now() NOT NULL,
+          updated_at TIMESTAMP DEFAULT now() NOT NULL
+        )
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_pgc_org ON payment_gateway_configs(org_id)
+      `);
+      await pool.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_pgc_org_gateway ON payment_gateway_configs(org_id, gateway)
+      `);
+
+      await pool.query(`
+        CREATE OR REPLACE FUNCTION update_gateway_config_updated_at()
+        RETURNS TRIGGER AS $$
+        BEGIN NEW.updated_at = now(); RETURN NEW; END;
+        $$ LANGUAGE plpgsql
+      `);
+      await pool.query(`
+        DROP TRIGGER IF EXISTS trg_gateway_config_updated_at ON payment_gateway_configs
+      `);
+      await pool.query(`
+        CREATE TRIGGER trg_gateway_config_updated_at
+        BEFORE UPDATE ON payment_gateway_configs
+        FOR EACH ROW EXECUTE FUNCTION update_gateway_config_updated_at()
+      `);
+
+      // subscription_payments table
+      await pool.query(`
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'sub_payment_method') THEN
+            CREATE TYPE sub_payment_method AS ENUM ('card', 'bank_transfer', 'ussd', 'wallet', 'unknown');
+          END IF;
+        END $$;
+      `);
+      await pool.query(`
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'sub_payment_status') THEN
+            CREATE TYPE sub_payment_status AS ENUM ('pending', 'success', 'failed', 'refunded', 'partial_refund', 'cancelled');
+          END IF;
+        END $$;
+      `);
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS subscription_payments (
+          id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+          org_id UUID REFERENCES organisations(id) NOT NULL,
+          subscription_id UUID REFERENCES subscriptions(id) NOT NULL,
+          invoice_id UUID REFERENCES subscription_invoices(id),
+          gateway TEXT NOT NULL,
+          gateway_reference TEXT NOT NULL,
+          gateway_transaction_id TEXT,
+          amount_kobo BIGINT NOT NULL,
+          fee_kobo BIGINT DEFAULT 0,
+          currency TEXT DEFAULT 'NGN' NOT NULL,
+          status sub_payment_status DEFAULT 'pending' NOT NULL,
+          payment_method sub_payment_method DEFAULT 'unknown',
+          payer_email TEXT,
+          payer_name TEXT,
+          channel TEXT,
+          is_auto_renewal BOOLEAN DEFAULT false NOT NULL,
+          is_retry BOOLEAN DEFAULT false NOT NULL,
+          retry_attempt INTEGER DEFAULT 0,
+          receipt_url TEXT,
+          authorization_url TEXT,
+          metadata JSONB DEFAULT '{}'::jsonb,
+          raw_response JSONB DEFAULT '{}'::jsonb,
+          paid_at TIMESTAMP,
+          settled_at TIMESTAMP,
+          created_at TIMESTAMP DEFAULT now() NOT NULL,
+          updated_at TIMESTAMP DEFAULT now() NOT NULL
+        )
+      `);
+      await pool.query(`
+        DO $$ BEGIN
+          CREATE INDEX IF NOT EXISTS idx_sub_pay_org ON subscription_payments(org_id);
+          CREATE INDEX IF NOT EXISTS idx_sub_pay_sub ON subscription_payments(subscription_id);
+          CREATE INDEX IF NOT EXISTS idx_sub_pay_inv ON subscription_payments(invoice_id);
+          CREATE INDEX IF NOT EXISTS idx_sub_pay_ref ON subscription_payments(gateway_reference);
+          CREATE INDEX IF NOT EXISTS idx_sub_pay_status ON subscription_payments(status);
+          CREATE INDEX IF NOT EXISTS idx_sub_pay_created ON subscription_payments(created_at);
+        EXCEPTION WHEN duplicate_table THEN NULL;
+        END $$;
+      `);
+
+      await pool.query(`
+        CREATE OR REPLACE FUNCTION update_sub_payment_updated_at()
+        RETURNS TRIGGER AS $$
+        BEGIN NEW.updated_at = now(); RETURN NEW; END;
+        $$ LANGUAGE plpgsql
+      `);
+      await pool.query(`
+        DROP TRIGGER IF EXISTS trg_sub_payment_updated_at ON subscription_payments
+      `);
+      await pool.query(`
+        CREATE TRIGGER trg_sub_payment_updated_at
+        BEFORE UPDATE ON subscription_payments
+        FOR EACH ROW EXECUTE FUNCTION update_sub_payment_updated_at()
+      `);
+
+      // payment_receipts table
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS payment_receipts (
+          id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+          org_id UUID REFERENCES organisations(id) NOT NULL,
+          payment_id UUID REFERENCES subscription_payments(id) NOT NULL,
+          invoice_id UUID REFERENCES subscription_invoices(id),
+          receipt_number TEXT NOT NULL,
+          title TEXT NOT NULL,
+          html_content TEXT,
+          pdf_url TEXT,
+          metadata JSONB DEFAULT '{}'::jsonb,
+          created_at TIMESTAMP DEFAULT now() NOT NULL
+        )
+      `);
+      await pool.query(`
+        DO $$ BEGIN
+          CREATE INDEX IF NOT EXISTS idx_pr_org ON payment_receipts(org_id);
+          CREATE INDEX IF NOT EXISTS idx_pr_payment ON payment_receipts(payment_id);
+          CREATE UNIQUE INDEX IF NOT EXISTS idx_pr_receipt_num ON payment_receipts(receipt_number);
+        EXCEPTION WHEN duplicate_table THEN NULL;
+        END $$;
+      `);
+
+      // Add columns to subscription_invoices
+      await pool.query(`
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'subscription_invoices' AND column_name = 'payment_method') THEN
+            ALTER TABLE subscription_invoices ADD COLUMN payment_method sub_payment_method;
+          END IF;
+        END $$;
+      `);
+      await pool.query(`
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'subscription_invoices' AND column_name = 'gateway_reference') THEN
+            ALTER TABLE subscription_invoices ADD COLUMN gateway_reference TEXT;
+          END IF;
+        END $$;
+      `);
+      await pool.query(`
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'subscription_invoices' AND column_name = 'gateway_response') THEN
+            ALTER TABLE subscription_invoices ADD COLUMN gateway_response JSONB DEFAULT '{}'::jsonb;
+          END IF;
+        END $$;
+      `);
+      await pool.query(`
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'subscription_invoices' AND column_name = 'attempt_count') THEN
+            ALTER TABLE subscription_invoices ADD COLUMN attempt_count INTEGER DEFAULT 0 NOT NULL;
+          END IF;
+        END $$;
+      `);
+      await pool.query(`
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'subscription_invoices' AND column_name = 'last_attempt_at') THEN
+            ALTER TABLE subscription_invoices ADD COLUMN last_attempt_at TIMESTAMP;
+          END IF;
+        END $$;
+      `);
+      await pool.query(`
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'subscription_invoices' AND column_name = 'receipt_url') THEN
+            ALTER TABLE subscription_invoices ADD COLUMN receipt_url TEXT;
+          END IF;
+        END $$;
+      `);
+
+      console.log('[Migration] Subscription payment/billing tables created.');
+    } catch (err) {
+      console.error('[Migration] Subscription billing tables error:', err);
+    }
+
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema setup:', err);

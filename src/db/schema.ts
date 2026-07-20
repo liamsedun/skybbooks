@@ -117,6 +117,8 @@ export const subscriptionStatusEnum = pgEnum('subscription_status', ['free_trial
 export const billingCycleEnum = pgEnum('billing_cycle', ['monthly', 'yearly', 'quarterly']);
 export const discountTypeEnum = pgEnum('discount_type', ['percentage', 'fixed_amount']);
 export const subInvoiceStatusEnum = pgEnum('sub_invoice_status', ['pending', 'paid', 'overdue', 'canceled', 'refunded']);
+export const subPaymentMethodEnum = pgEnum('sub_payment_method', ['card', 'bank_transfer', 'ussd', 'wallet', 'unknown']);
+export const subPaymentStatusEnum = pgEnum('sub_payment_status', ['pending', 'success', 'failed', 'refunded', 'partial_refund', 'cancelled']);
 
 export const bankFeedProviderEnum = pgEnum('bank_feed_provider', ['mono', 'paystack', 'flutterwave', 'moniepoint']);
 export const bankConnectionStatusEnum = pgEnum('bank_connection_status', ['active', 'reauth_required', 'expired', 'disconnected', 'pending']);
@@ -2395,6 +2397,12 @@ export const subscriptionInvoices = pgTable('subscription_invoices', {
   paidBy: uuid('paid_by').references(() => users.id),
   couponId: uuid('coupon_id').references(() => coupons.id),
   promotionId: uuid('promotion_id').references(() => promotions.id),
+  paymentMethod: subPaymentMethodEnum('payment_method'),
+  gatewayReference: text('gateway_reference'),
+  gatewayResponse: jsonb('gateway_response').default({}),
+  attemptCount: integer('attempt_count').default(0).notNull(),
+  lastAttemptAt: timestamp('last_attempt_at'),
+  receiptUrl: text('receipt_url'),
   metadata: jsonb('metadata').default({}),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -2419,6 +2427,82 @@ export const subscriptionUsage = pgTable('subscription_usage', {
 }, (table) => ({
   usageSubFeatureIdx: index('idx_usage_sub_feature').on(table.subscriptionId, table.featureKey),
   usageOrgPeriodIdx: index('idx_usage_org_period').on(table.orgId, table.periodStart, table.periodEnd),
+}));
+
+// ========== Payment Gateway Configs ==========
+
+export const paymentGatewayConfigs = pgTable('payment_gateway_configs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  gateway: text('gateway').notNull(), // 'paystack' | 'flutterwave' | 'stripe'
+  isActive: boolean('is_active').default(true).notNull(),
+  publicKey: text('public_key'),
+  secretKey: text('secret_key'),
+  webhookSecret: text('webhook_secret'),
+  environment: text('environment').default('live').notNull(), // 'live' | 'test'
+  isDefault: boolean('is_default').default(false).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  pgcOrgIdx: index('idx_pgc_org').on(table.orgId),
+  pgcOrgGatewayIdx: uniqueIndex('idx_pgc_org_gateway').on(table.orgId, table.gateway),
+}));
+
+// ========== Subscription Payments ==========
+
+export const subscriptionPayments = pgTable('subscription_payments', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  subscriptionId: uuid('subscription_id').references(() => subscriptions.id).notNull(),
+  invoiceId: uuid('invoice_id').references(() => subscriptionInvoices.id),
+  gateway: text('gateway').notNull(), // 'paystack' | 'flutterwave' | 'stripe'
+  gatewayReference: text('gateway_reference').notNull(),
+  gatewayTransactionId: text('gateway_transaction_id'),
+  amountKobo: bigint('amount_kobo', { mode: 'number' }).notNull(),
+  feeKobo: bigint('fee_kobo', { mode: 'number' }).default(0),
+  currency: text('currency').default('NGN').notNull(),
+  status: subPaymentStatusEnum('status').default('pending').notNull(),
+  paymentMethod: subPaymentMethodEnum('payment_method').default('unknown'),
+  payerEmail: text('payer_email'),
+  payerName: text('payer_name'),
+  channel: text('channel'),
+  isAutoRenewal: boolean('is_auto_renewal').default(false).notNull(),
+  isRetry: boolean('is_retry').default(false).notNull(),
+  retryAttempt: integer('retry_attempt').default(0),
+  receiptUrl: text('receipt_url'),
+  authorizationUrl: text('authorization_url'),
+  metadata: jsonb('metadata').default({}),
+  rawResponse: jsonb('raw_response').default({}),
+  paidAt: timestamp('paid_at'),
+  settledAt: timestamp('settled_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  subPayOrgIdx: index('idx_sub_pay_org').on(table.orgId),
+  subPaySubIdx: index('idx_sub_pay_sub').on(table.subscriptionId),
+  subPayInvIdx: index('idx_sub_pay_inv').on(table.invoiceId),
+  subPayRefIdx: index('idx_sub_pay_ref').on(table.gatewayReference),
+  subPayStatusIdx: index('idx_sub_pay_status').on(table.status),
+  subPayCreatedIdx: index('idx_sub_pay_created').on(table.createdAt),
+}));
+
+// ========== Payment Receipts ==========
+
+export const paymentReceipts = pgTable('payment_receipts', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  paymentId: uuid('payment_id').references(() => subscriptionPayments.id).notNull(),
+  invoiceId: uuid('invoice_id').references(() => subscriptionInvoices.id),
+  receiptNumber: text('receipt_number').notNull(),
+  title: text('title').notNull(),
+  htmlContent: text('html_content'),
+  pdfUrl: text('pdf_url'),
+  metadata: jsonb('metadata').default({}),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  prOrgIdx: index('idx_pr_org').on(table.orgId),
+  prPaymentIdx: index('idx_pr_payment').on(table.paymentId),
+  prReceiptNumIdx: uniqueIndex('idx_pr_receipt_num').on(table.receiptNumber),
 }));
 
 // ========== Feature Flag System ==========
@@ -2532,6 +2616,7 @@ export const subscriptionsRelations = relations(subscriptions, ({ one, many }) =
   usage: many(subscriptionUsage),
   featureOverrides: many(subscriptionFeatureOverrides),
   statusHistory: many(subscriptionStatusHistory),
+  payments: many(subscriptionPayments),
 }));
 
 export const subscriptionStatusHistoryRelations = relations(subscriptionStatusHistory, ({ one }) => ({
@@ -2549,12 +2634,31 @@ export const promotionsRelations = relations(promotions, ({ one }) => ({
   creator: one(users, { fields: [promotions.createdBy], references: [users.id] }),
 }));
 
-export const subscriptionInvoicesRelations = relations(subscriptionInvoices, ({ one }) => ({
+export const subscriptionInvoicesRelations = relations(subscriptionInvoices, ({ one, many }) => ({
   organisation: one(organisations, { fields: [subscriptionInvoices.orgId], references: [organisations.id] }),
   subscription: one(subscriptions, { fields: [subscriptionInvoices.subscriptionId], references: [subscriptions.id] }),
   coupon: one(coupons, { fields: [subscriptionInvoices.couponId], references: [coupons.id] }),
   promotion: one(promotions, { fields: [subscriptionInvoices.promotionId], references: [promotions.id] }),
   payer: one(users, { fields: [subscriptionInvoices.paidBy], references: [users.id] }),
+  payments: many(subscriptionPayments),
+  receipts: many(paymentReceipts),
+}));
+
+export const paymentGatewayConfigsRelations = relations(paymentGatewayConfigs, ({ one }) => ({
+  organisation: one(organisations, { fields: [paymentGatewayConfigs.orgId], references: [organisations.id] }),
+}));
+
+export const subscriptionPaymentsRelations = relations(subscriptionPayments, ({ one, many }) => ({
+  organisation: one(organisations, { fields: [subscriptionPayments.orgId], references: [organisations.id] }),
+  subscription: one(subscriptions, { fields: [subscriptionPayments.subscriptionId], references: [subscriptions.id] }),
+  invoice: one(subscriptionInvoices, { fields: [subscriptionPayments.invoiceId], references: [subscriptionInvoices.id] }),
+  receipts: many(paymentReceipts),
+}));
+
+export const paymentReceiptsRelations = relations(paymentReceipts, ({ one }) => ({
+  organisation: one(organisations, { fields: [paymentReceipts.orgId], references: [organisations.id] }),
+  payment: one(subscriptionPayments, { fields: [paymentReceipts.paymentId], references: [subscriptionPayments.id] }),
+  invoice: one(subscriptionInvoices, { fields: [paymentReceipts.invoiceId], references: [subscriptionInvoices.id] }),
 }));
 
 export const subscriptionUsageRelations = relations(subscriptionUsage, ({ one }) => ({
@@ -2606,7 +2710,10 @@ export const organisationsRelations = relations(organisations, ({ many }) => ({
   eliminationsFrom: many(intercompanyEliminations, { relationName: 'elimFromOrg' }),
   eliminationsTo: many(intercompanyEliminations, { relationName: 'elimToOrg' }),
   userAccess: many(userOrganisationAccess),
-  featureFlags: many(orgFeatureFlags)
+  featureFlags: many(orgFeatureFlags),
+  subscriptionPayments: many(subscriptionPayments),
+  paymentGatewayConfigs: many(paymentGatewayConfigs),
+  paymentReceipts: many(paymentReceipts),
 }));
 
 export const usersRelations = relations(users, ({ one, many }) => ({
@@ -3984,6 +4091,9 @@ export const db = drizzle(pool, {
     subscriptionInvoices,
     subscriptionUsage,
     subscriptionFeatureOverrides,
+    paymentGatewayConfigs,
+    subscriptionPayments,
+    paymentReceipts,
 
     // Relations
     featureFlagsRelations,
@@ -3998,6 +4108,9 @@ export const db = drizzle(pool, {
     subscriptionInvoicesRelations,
     subscriptionUsageRelations,
     subscriptionFeatureOverridesRelations,
+    paymentGatewayConfigsRelations,
+    subscriptionPaymentsRelations,
+    paymentReceiptsRelations,
     organisationsRelations,
     usersRelations,
     sessionsRelations,
@@ -4183,6 +4296,9 @@ export const schema = {
   subscriptionUsage,
   subscriptionFeatureOverrides,
   subscriptionStatusHistory,
+  paymentGatewayConfigs,
+  subscriptionPayments,
+  paymentReceipts,
   approvalWorkflows,
   approvalHistory,
   ocrDocuments,

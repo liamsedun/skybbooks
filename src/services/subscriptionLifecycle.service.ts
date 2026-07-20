@@ -3,6 +3,7 @@ import { eq, and, inArray, sql, desc, lte, gte, lt, gt, isNull } from 'drizzle-o
 import { db, subscriptions, subscriptionPlans, subscriptionStatusHistory, subscriptionInvoices, organisations } from '../db/schema';
 import { AppError } from '../lib/errors';
 import { createAuditLog, extractReqMeta } from './audit.service';
+import { processAutoRenewalPayment } from './subscriptionBilling.service';
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
   'free_trial': ['active', 'expired', 'cancelled', 'pending_payment'],
@@ -835,6 +836,16 @@ export async function processRenewals(): Promise<any[]> {
       const newPeriodEnd = addBillingDuration(newPeriodStart, billingCycle);
 
       await generateInvoice(sub.orgId, sub.id, newPeriodStart, newPeriodEnd);
+
+      // Attempt auto-payment through configured gateway
+      try {
+        const paymentResult = await processAutoRenewalPayment(sub.orgId, sub.id);
+        if (paymentResult) {
+          console.log(`[Lifecycle] Auto-payment initiated for subscription ${sub.id}: ${paymentResult.reference}`);
+        }
+      } catch (payErr: any) {
+        console.error(`[Lifecycle] Auto-payment failed for subscription ${sub.id}:`, payErr.message);
+      }
 
       const [updated] = await db.update(subscriptions)
         .set({

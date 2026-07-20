@@ -3,7 +3,7 @@ import {
   CreditCard, Package, Users, HardDrive, Calendar, Check, X, AlertCircle, AlertTriangle, ChevronRight,
   History, Download, ExternalLink, Zap, Shield, Crown, Loader2, Building2, Globe, Headphones, FileText,
   Repeat, Banknote, PieChart, Brain, FileSearch, Star, Tag, Ban, Clock, XCircle, ArrowDown, ArrowUp,
-  PauseCircle, CheckCircle, ArrowLeft
+  PauseCircle, CheckCircle, Smartphone, Wallet, Banknote as BankIcon, Receipt, Settings
 } from 'lucide-react';
 import { subscriptionApi } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
@@ -20,6 +20,13 @@ function formatDate(d: string) {
   if (!d) return '—';
   return new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 }
+
+const paymentMethods = [
+  { value: 'card', label: 'Card', icon: CreditCard, desc: 'Debit/Credit Card' },
+  { value: 'bank_transfer', label: 'Bank Transfer', icon: BankIcon, desc: 'Direct Bank Transfer' },
+  { value: 'ussd', label: 'USSD', icon: Smartphone, desc: 'USSD Banking' },
+  { value: 'wallet', label: 'Wallet', icon: Wallet, desc: 'Digital Wallet' },
+];
 
 const limitFields = [
   { key: 'userLimit', label: 'Users', icon: Users },
@@ -58,13 +65,22 @@ export function SubscriptionPage() {
   const [plans, setPlans] = useState<any[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
   const [history, setHistory] = useState<any[]>([]);
+  const [paymentHistory, setPaymentHistory] = useState<any[]>([]);
+  const [paymentStats, setPaymentStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showChangePlan, setShowChangePlan] = useState(false);
   const [confirmChangePlan, setConfirmChangePlan] = useState<string | null>(null);
   const [changing, setChanging] = useState(false);
-  const [cancelling, setCancelling] = useState(false);
   const [showCancelOptions, setShowCancelOptions] = useState(false);
   const [actionLoading, setActionLoading] = useState('');
+
+  // Payment modal state
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [payingInvoice, setPayingInvoice] = useState<any>(null);
+  const [selectedGateway, setSelectedGateway] = useState<string>('paystack');
+  const [selectedChannels, setSelectedChannels] = useState<string[]>(['card']);
+  const [paying, setPaying] = useState(false);
+  const [gatewayConfigs, setGatewayConfigs] = useState<any[]>([]);
 
   useEffect(() => {
     loadAll();
@@ -76,14 +92,20 @@ export function SubscriptionPage() {
       const subData = await subscriptionApi.getMySubscription();
       setSubscription(subData);
       if (subData) {
-        const [plansData, invData, histData] = await Promise.all([
+        const [plansData, invData, histData, payHist, payStats, gwConfigs] = await Promise.all([
           subscriptionApi.listPlans(true),
           subscriptionApi.listInvoices(),
           subscriptionApi.getHistory(subData.id),
+          subscriptionApi.getPaymentHistory().catch(() => []),
+          subscriptionApi.getPaymentStats().catch(() => null),
+          subscriptionApi.getGatewayConfigs().catch(() => []),
         ]);
         setPlans(plansData);
         setInvoices(invData);
         setHistory(histData);
+        setPaymentHistory(payHist);
+        setPaymentStats(payStats);
+        setGatewayConfigs(gwConfigs);
       }
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
@@ -171,18 +193,39 @@ export function SubscriptionPage() {
     } finally { setActionLoading(''); }
   }
 
-  async function handleScheduleChange(planId: string, changeType: string) {
-    if (!subscription) return;
-    setActionLoading('schedule');
+  function openPayModal(invoice: any) {
+    setPayingInvoice(invoice);
+    const gateways = gatewayConfigs.length > 0 ? gatewayConfigs : [{ gateway: 'paystack' }];
+    setSelectedGateway(gateways[0]?.gateway || 'paystack');
+    setSelectedChannels(['card']);
+    setShowPaymentModal(true);
+  }
+
+  async function handlePay() {
+    if (!payingInvoice) return;
+    setPaying(true);
     try {
-      await subscriptionApi.scheduleChange(subscription.id, planId, changeType);
-      window.dispatchEvent(new CustomEvent('app:toast', { detail: { type: 'success', message: 'Plan change scheduled.' } }));
-      setShowChangePlan(false);
-      loadAll();
-    } catch (err) {
+      const result = await subscriptionApi.initializePayment({
+        invoiceId: payingInvoice.id,
+        gateway: selectedGateway,
+        channels: selectedChannels,
+      });
+      if (result.authorizationUrl) {
+        window.open(result.authorizationUrl, '_blank');
+        window.dispatchEvent(new CustomEvent('app:toast', { detail: { type: 'success', message: 'Payment link opened in new tab. Complete payment to activate your subscription.' } }));
+      }
+      setShowPaymentModal(false);
+      setPayingInvoice(null);
+    } catch (err: any) {
       console.error(err);
-      window.dispatchEvent(new CustomEvent('app:toast', { detail: { type: 'error', message: 'Failed to schedule plan change' } }));
-    } finally { setActionLoading(''); }
+      window.dispatchEvent(new CustomEvent('app:toast', { detail: { type: 'error', message: err?.response?.data?.error || 'Failed to initialize payment' } }));
+    } finally { setPaying(false); }
+  }
+
+  function toggleChannel(channel: string) {
+    setSelectedChannels(prev =>
+      prev.includes(channel) ? prev.filter(c => c !== channel) : [...prev, channel]
+    );
   }
 
   const statusBadge = (status: string) => {
@@ -221,6 +264,8 @@ export function SubscriptionPage() {
   const daysToRenewal = currentPeriodEnd ? Math.ceil((new Date(currentPeriodEnd).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 999;
   const showRenewalBanner = daysToRenewal >= 0 && daysToRenewal <= 7 && status === 'active';
 
+  const pendingInvoice = invoices?.find((i: any) => i.status === 'pending' || i.status === 'overdue');
+
   function renderActionButtons() {
     const btn = (key: string, label: string, onClick: () => void, variant: 'primary' | 'danger' | 'secondary' = 'secondary') => {
       const base = 'flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-colors';
@@ -242,6 +287,7 @@ export function SubscriptionPage() {
       case 'free_trial':
         return (
           <div className="flex flex-wrap gap-3">
+            {pendingInvoice && btn('pay', 'Pay Outstanding Invoice', () => openPayModal(pendingInvoice), 'primary')}
             {btn('pause', 'Pause', handlePause)}
             {btn('cancel', 'Cancel', () => setShowCancelOptions(true), 'danger')}
             {btn('change-plan', 'Change Plan', () => setShowChangePlan(true))}
@@ -257,14 +303,14 @@ export function SubscriptionPage() {
       case 'grace_period':
         return (
           <div className="flex flex-wrap gap-3">
-            {btn('renew', 'Pay Now', handleRenew, 'primary')}
+            {pendingInvoice && btn('pay-grace', 'Pay Now', () => openPayModal(pendingInvoice), 'primary')}
             {btn('cancel', 'Cancel', () => setShowCancelOptions(true), 'danger')}
           </div>
         );
       case 'suspended':
         return (
           <div className="flex flex-wrap gap-3">
-            {btn('renew', 'Reactivate', handleRenew, 'primary')}
+            {pendingInvoice && btn('pay-suspend', 'Reactivate — Pay Now', () => openPayModal(pendingInvoice), 'primary')}
           </div>
         );
       case 'expired':
@@ -285,7 +331,7 @@ export function SubscriptionPage() {
       case 'failed_payment':
         return (
           <div className="flex flex-wrap gap-3">
-            {btn('renew', 'Retry Payment', handleRenew, 'primary')}
+            {pendingInvoice && btn('pay-retry', 'Retry Payment', () => openPayModal(pendingInvoice), 'primary')}
             {btn('cancel', 'Cancel', () => setShowCancelOptions(true), 'danger')}
           </div>
         );
@@ -302,6 +348,9 @@ export function SubscriptionPage() {
           <h1 className="text-2xl font-bold text-slate-900">Subscription & Billing</h1>
           {subscription && statusBadge(subscription.status)}
         </div>
+        <a href="/settings/billing" className="flex items-center gap-1.5 text-sm font-medium text-emerald-600 hover:text-emerald-700">
+          <Settings className="w-4 h-4" /> Gateway Settings
+        </a>
       </div>
 
       {/* Renewal Reminder Banner */}
@@ -309,6 +358,19 @@ export function SubscriptionPage() {
         <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200">
           <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
           <p className="text-sm text-amber-800">Your subscription renews on {formatDate(subscription?.currentPeriodEnd)}</p>
+        </div>
+      )}
+
+      {/* Pending Invoice Banner */}
+      {pendingInvoice && status !== 'grace_period' && status !== 'suspended' && status !== 'failed_payment' && (
+        <div className="flex items-center justify-between gap-3 p-4 rounded-xl bg-yellow-50 border border-yellow-200">
+          <div className="flex items-center gap-3">
+            <Clock className="w-5 h-5 text-yellow-600 shrink-0" />
+            <p className="text-sm text-yellow-800">You have an unpaid invoice of <strong>{fmtNaira(pendingInvoice.totalKobo)}</strong> from {formatDate(pendingInvoice.createdAt)}</p>
+          </div>
+          <button onClick={() => openPayModal(pendingInvoice)} className="shrink-0 px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-xl hover:bg-emerald-700">
+            Pay Now
+          </button>
         </div>
       )}
 
@@ -335,17 +397,12 @@ export function SubscriptionPage() {
         <div className="rounded-xl bg-white shadow-sm border border-slate-200 p-5">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-sm font-medium text-slate-500">Status</p>
-              <div className="flex items-center gap-2 mt-1">
-                <span className={`inline-block w-2.5 h-2.5 rounded-full ${subscription?.status === 'active' || subscription?.status === 'free_trial' ? 'bg-emerald-500' : subscription?.status === 'suspended' || subscription?.status === 'failed_payment' ? 'bg-red-500' : subscription?.status === 'cancelled' || subscription?.status === 'expired' ? 'bg-slate-400' : 'bg-amber-500'}`} />
-                <p className="text-lg font-semibold text-slate-900 capitalize">{subscription?.status || 'Unknown'}</p>
-              </div>
-              {subscription?.trialEnd && new Date(subscription.trialEnd) > new Date() && (
-                <p className="text-xs text-slate-500 mt-1">{Math.ceil((new Date(subscription.trialEnd).getTime() - Date.now()) / (1000 * 60 * 60 * 24))} days remaining in trial</p>
-              )}
+              <p className="text-sm font-medium text-slate-500">Payment Gateway</p>
+              <p className="text-lg font-semibold text-slate-900 mt-1 capitalize">{gatewayConfigs[0]?.gateway || 'Paystack'}</p>
+              <p className="text-xs text-slate-500 mt-0.5">{gatewayConfigs[0]?.environment || 'test'} mode</p>
             </div>
-            <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
-              <Shield className="w-5 h-5" />
+            <div className="p-2 rounded-lg bg-indigo-50 text-indigo-600">
+              <CreditCard className="w-5 h-5" />
             </div>
           </div>
         </div>
@@ -353,12 +410,14 @@ export function SubscriptionPage() {
         <div className="rounded-xl bg-white shadow-sm border border-slate-200 p-5">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-sm font-medium text-slate-500">Users</p>
-              <p className="text-lg font-semibold text-slate-900 mt-1">{subscription?.usedSeats ?? 0} / {plan?.userLimit ?? '∞'}</p>
-              <p className="text-xs text-slate-500 mt-0.5">Active team members</p>
+              <p className="text-sm font-medium text-slate-500">Successful Payments</p>
+              <p className="text-lg font-semibold text-slate-900 mt-1">{paymentStats?.successfulPayments || 0}</p>
+              {paymentStats?.totalRevenueKobo > 0 && (
+                <p className="text-xs text-slate-500 mt-0.5">{fmtNaira(paymentStats.totalRevenueKobo)} total</p>
+              )}
             </div>
-            <div className="p-2 rounded-lg bg-indigo-50 text-indigo-600">
-              <Users className="w-5 h-5" />
+            <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600">
+              <CheckCircle className="w-5 h-5" />
             </div>
           </div>
         </div>
@@ -367,9 +426,7 @@ export function SubscriptionPage() {
           <div className="flex items-start justify-between">
             <div>
               <p className="text-sm font-medium text-slate-500">Storage</p>
-              <p className="text-lg font-semibold text-slate-900 mt-1">
-                {plan?.storageLimitGb ?? 0} GB
-              </p>
+              <p className="text-lg font-semibold text-slate-900 mt-1">{plan?.storageLimitGb ?? 0} GB</p>
               <div className="w-full bg-slate-100 rounded-full h-1.5 mt-2">
                 <div className="bg-emerald-500 h-1.5 rounded-full" style={{ width: `${Math.min(100, ((subscription?.usedStorageMb ?? 0) / 1024 / Math.max((plan?.storageLimitGb ?? 1), 1)) * 100)}%` }} />
               </div>
@@ -546,11 +603,7 @@ export function SubscriptionPage() {
               <p className="text-sm text-amber-800">Choose how you'd like to cancel your subscription.</p>
             </div>
             <div className="space-y-3">
-              <button
-                onClick={() => handleCancel()}
-                disabled={actionLoading !== ''}
-                className="w-full text-left p-4 rounded-xl border border-slate-200 hover:border-amber-300 hover:bg-amber-50/30 transition-colors disabled:opacity-50"
-              >
+              <button onClick={() => handleCancel()} disabled={actionLoading !== ''} className="w-full text-left p-4 rounded-xl border border-slate-200 hover:border-amber-300 hover:bg-amber-50/30 transition-colors disabled:opacity-50">
                 <div className="flex items-center gap-3">
                   <Calendar className="w-5 h-5 text-slate-400 shrink-0" />
                   <div>
@@ -559,11 +612,7 @@ export function SubscriptionPage() {
                   </div>
                 </div>
               </button>
-              <button
-                onClick={() => handleCancelNow()}
-                disabled={actionLoading !== ''}
-                className="w-full text-left p-4 rounded-xl border border-red-200 hover:border-red-300 hover:bg-red-50/30 transition-colors disabled:opacity-50"
-              >
+              <button onClick={() => handleCancelNow()} disabled={actionLoading !== ''} className="w-full text-left p-4 rounded-xl border border-red-200 hover:border-red-300 hover:bg-red-50/30 transition-colors disabled:opacity-50">
                 <div className="flex items-center gap-3">
                   <XCircle className="w-5 h-5 text-red-500 shrink-0" />
                   <div>
@@ -577,20 +626,99 @@ export function SubscriptionPage() {
         </div>
       )}
 
-      {/* Invoice History */}
+      {/* Payment Modal */}
+      {showPaymentModal && payingInvoice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => { if (!paying) setShowPaymentModal(false); }}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg m-4 max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-slate-100">
+              <h3 className="text-lg font-semibold text-slate-900">Pay Invoice</h3>
+              <button onClick={() => { if (!paying) setShowPaymentModal(false); setPayingInvoice(null); }} className="p-1 rounded-lg hover:bg-slate-100 text-slate-400"><X className="w-5 h-5" /></button>
+            </div>
+
+            <div className="p-6 space-y-5">
+              {/* Invoice Summary */}
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-slate-600">Invoice</span>
+                  <span className="font-medium text-slate-900">{payingInvoice.invoiceNumber || payingInvoice.id?.slice(0, 8)}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm mt-2">
+                  <span className="text-slate-600">Description</span>
+                  <span className="font-medium text-slate-900">{payingInvoice.description || 'Subscription'}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm mt-2">
+                  <span className="text-slate-600">Amount Due</span>
+                  <span className="text-lg font-bold text-slate-900">{fmtNaira(payingInvoice.totalKobo || payingInvoice.amountKobo)}</span>
+                </div>
+              </div>
+
+              {/* Gateway Selection */}
+              <div>
+                <label className="text-sm font-medium text-slate-700 mb-2 block">Payment Gateway</label>
+                <div className="flex gap-2">
+                  {['paystack', 'flutterwave'].map(gw => (
+                    <button key={gw} onClick={() => setSelectedGateway(gw)}
+                      className={`flex-1 p-2.5 text-sm font-medium rounded-xl border transition-colors capitalize ${
+                        selectedGateway === gw ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                      }`}
+                    >
+                      {gw}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Payment Method Selection */}
+              <div>
+                <label className="text-sm font-medium text-slate-700 mb-2 block">Payment Method</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {paymentMethods.map(m => {
+                    const Icon = m.icon;
+                    const selected = selectedChannels.includes(m.value);
+                    return (
+                      <button key={m.value} onClick={() => toggleChannel(m.value)}
+                        className={`flex items-center gap-2 p-3 text-sm font-medium rounded-xl border transition-colors ${
+                          selected ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4 shrink-0" />
+                        <span className="text-left">
+                          <span className="block">{m.label}</span>
+                          <span className="block text-xs font-normal opacity-70">{m.desc}</span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <button onClick={handlePay} disabled={paying || selectedChannels.length === 0}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 disabled:opacity-50">
+                {paying ? <><Loader2 className="w-4 h-4 animate-spin" /> Initializing...</> : <><CreditCard className="w-4 h-4" /> Pay {fmtNaira(payingInvoice.totalKobo || payingInvoice.amountKobo)}</>}
+              </button>
+
+              <p className="text-xs text-slate-400 text-center">You will be redirected to the payment gateway to complete the transaction.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Invoice & Payment History */}
       <div className="rounded-xl bg-white shadow-sm border border-slate-200 p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <History className="w-5 h-5 text-slate-500" />
-          <h2 className="text-lg font-semibold text-slate-900">Invoice History</h2>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <History className="w-5 h-5 text-slate-500" />
+            <h2 className="text-lg font-semibold text-slate-900">Invoice & Payment History</h2>
+          </div>
         </div>
 
-        {invoices.length > 0 ? (
+        {invoices.length > 0 || paymentHistory.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100">
-                  <th className="text-left font-medium text-slate-500 pb-3 pr-4">Invoice #</th>
-                  <th className="text-left font-medium text-slate-500 pb-3 pr-4">Period</th>
+                  <th className="text-left font-medium text-slate-500 pb-3 pr-4">#</th>
+                  <th className="text-left font-medium text-slate-500 pb-3 pr-4">Description</th>
                   <th className="text-right font-medium text-slate-500 pb-3 pr-4">Amount</th>
                   <th className="text-center font-medium text-slate-500 pb-3 pr-4">Status</th>
                   <th className="text-left font-medium text-slate-500 pb-3 pr-4">Date</th>
@@ -598,22 +726,32 @@ export function SubscriptionPage() {
                 </tr>
               </thead>
               <tbody>
-                {invoices.map((inv: any) => (
-                  <tr key={inv.id} className="border-b border-slate-50 hover:bg-slate-50/50">
-                    <td className="py-3 pr-4 font-medium text-slate-900">{inv.invoiceNumber || inv.id?.slice(0, 8)}</td>
-                    <td className="py-3 pr-4 text-slate-600">{formatDate(inv.periodStart)} – {formatDate(inv.periodEnd)}</td>
-                    <td className="py-3 pr-4 text-right font-medium text-slate-900">{fmtNaira(inv.totalKobo || inv.amountKobo)}</td>
-                    <td className="py-3 pr-4 text-center">{invStatusBadge(inv.status)}</td>
-                    <td className="py-3 pr-4 text-slate-600">{formatDate(inv.createdAt)}</td>
-                    <td className="py-3 text-right">
-                      {inv.invoiceUrl && (
-                        <a href={inv.invoiceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm font-medium text-emerald-600 hover:text-emerald-700">
-                          <Download className="w-3.5 h-3.5" /> PDF
-                        </a>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {invoices.map((inv: any) => {
+                  const payment = paymentHistory?.find((p: any) => p.payment?.invoiceId === inv.id);
+                  return (
+                    <tr key={inv.id} className="border-b border-slate-50 hover:bg-slate-50/50">
+                      <td className="py-3 pr-4 font-medium text-slate-900">{inv.invoiceNumber || inv.id?.slice(0, 8)}</td>
+                      <td className="py-3 pr-4 text-slate-600 max-w-48 truncate">{inv.description || `${formatDate(inv.periodStart)} – ${formatDate(inv.periodEnd)}`}</td>
+                      <td className="py-3 pr-4 text-right font-medium text-slate-900">{fmtNaira(inv.totalKobo || inv.amountKobo)}</td>
+                      <td className="py-3 pr-4 text-center">{invStatusBadge(inv.status)}</td>
+                      <td className="py-3 pr-4 text-slate-600">{formatDate(inv.createdAt)}</td>
+                      <td className="py-3 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          {(inv.status === 'pending' || inv.status === 'overdue') && (
+                            <button onClick={() => openPayModal(inv)} className="inline-flex items-center gap-1 text-sm font-medium text-emerald-600 hover:text-emerald-700">
+                              <CreditCard className="w-3.5 h-3.5" /> Pay
+                            </button>
+                          )}
+                          {inv.receiptUrl && (
+                            <a href={inv.receiptUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm font-medium text-slate-600 hover:text-slate-700">
+                              <Receipt className="w-3.5 h-3.5" /> Receipt
+                            </a>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -625,6 +763,55 @@ export function SubscriptionPage() {
           </div>
         )}
       </div>
+
+      {/* Payment History Detail */}
+      {paymentHistory.length > 0 && (
+        <div className="rounded-xl bg-white shadow-sm border border-slate-200 p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <CreditCard className="w-5 h-5 text-slate-500" />
+            <h2 className="text-lg font-semibold text-slate-900">Payment Transactions</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100">
+                  <th className="text-left font-medium text-slate-500 pb-3 pr-4">Reference</th>
+                  <th className="text-left font-medium text-slate-500 pb-3 pr-4">Gateway</th>
+                  <th className="text-left font-medium text-slate-500 pb-3 pr-4">Method</th>
+                  <th className="text-right font-medium text-slate-500 pb-3 pr-4">Amount</th>
+                  <th className="text-center font-medium text-slate-500 pb-3 pr-4">Status</th>
+                  <th className="text-left font-medium text-slate-500 pb-3">Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paymentHistory.map((ph: any) => {
+                  const p = ph.payment;
+                  const statusColors: Record<string, string> = {
+                    success: 'bg-emerald-50 text-emerald-700',
+                    pending: 'bg-amber-50 text-amber-700',
+                    failed: 'bg-red-50 text-red-600',
+                    refunded: 'bg-purple-50 text-purple-700',
+                  };
+                  return (
+                    <tr key={p.id} className="border-b border-slate-50 hover:bg-slate-50/50">
+                      <td className="py-3 pr-4 font-mono text-xs text-slate-900">{p.gatewayReference?.slice(0, 24)}</td>
+                      <td className="py-3 pr-4 capitalize text-slate-600">{p.gateway}</td>
+                      <td className="py-3 pr-4 capitalize text-slate-600">{(p.paymentMethod || 'unknown').replace(/_/g, ' ')}</td>
+                      <td className="py-3 pr-4 text-right font-medium text-slate-900">{fmtNaira(p.amountKobo)}</td>
+                      <td className="py-3 pr-4 text-center">
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusColors[p.status] || 'bg-slate-100 text-slate-600'}`}>
+                          {p.status}
+                        </span>
+                      </td>
+                      <td className="py-3 text-slate-600">{formatDate(p.createdAt)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Danger Zone */}
       <div className="rounded-xl bg-white shadow-sm border border-red-200 p-6">

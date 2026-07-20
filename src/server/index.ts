@@ -130,6 +130,7 @@ async function startServer() {
   app.use('/api/webhooks/mono', (await import('../routes/monoWebhook')).default);
   app.use('/api/webhooks/gateway', (await import('../routes/bankingWebhooks')).default);
   app.use('/api/subscriptions', subscriptionWebhookRouter); // webhook before json parser
+  app.use('/api/subscriptions', (await import('../routes/subscriptionBilling')).billingWebhookRouter);
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -180,6 +181,7 @@ async function startServer() {
   app.use('/api/feature-flags', featureFlagRouter);
   app.use('/api/subscriptions', subscriptionRouter);
   app.use('/api/subscriptions', lifecycleRouter);
+  app.use('/api/subscriptions', (await import('../routes/subscriptionBilling')).default);
 
   app.get('/api/health', (req, res) => {
     res.json({ status: 'healthy', timestamp: new Date().toISOString() });

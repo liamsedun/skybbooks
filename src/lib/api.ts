@@ -1825,6 +1825,17 @@ export const subscriptionApi = {
   scheduleChange: async (id: string, planId: string, changeType: string) => { const res = await api.post(`/subscriptions/${id}/schedule-change`, { planId, changeType }); return res.data; },
   getHistory: async (id: string) => { const res = await api.get(`/subscriptions/${id}/history`); return res.data; },
   checkAccess: async (id: string) => { const res = await api.get(`/subscriptions/${id}/access`); return res.data; },
+
+  // Billing/Payment methods
+  getGatewayConfigs: async () => { const res = await api.get('/subscriptions/billing/gateway-config'); return res.data; },
+  saveGatewayConfig: async (data: any) => { const res = await api.put('/subscriptions/billing/gateway-config', data); return res.data; },
+  getDefaultGateway: async () => { const res = await api.get('/subscriptions/billing/gateway-default'); return res.data; },
+  initializePayment: async (data: { invoiceId: string; gateway?: string; channels?: string[] }) => { const res = await api.post('/subscriptions/billing/initialize', data); return res.data; },
+  verifyPayment: async (data: { reference: string; invoiceId: string }) => { const res = await api.post('/subscriptions/billing/verify', data); return res.data; },
+  retryPayment: async (data: { invoiceId: string; gateway?: string; channels?: string[] }) => { const res = await api.post('/subscriptions/billing/retry', data); return res.data; },
+  getPaymentHistory: async (subscriptionId?: string) => { const res = await api.get('/subscriptions/billing/payments', { params: { subscriptionId } }); return res.data; },
+  getPaymentStats: async () => { const res = await api.get('/subscriptions/billing/payments/stats'); return res.data; },
+  getReceiptUrl: (paymentId: string) => `/subscriptions/billing/receipts/${paymentId}`,
 };
 
 

@@ -118,6 +118,12 @@ const NAV: NavGroup[] = [
     ],
   },
   {
+    group: 'Billing & Subscriptions',
+    items: [
+      { label: 'Payment Gateways', path: '/settings/billing', icon: CreditCard },
+    ],
+  },
+  {
     group: 'Custom Modules',
     items: [
       { label: 'Overview', path: '/settings/custom-modules', icon: PuzzleIcon },

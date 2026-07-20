@@ -157,6 +157,7 @@ const CustomModulesPage = lazy(() => import('./pages/settings/SettingsPages').th
 const TaxesPage = lazy(() => import('./pages/settings/SettingsPages').then(m => ({ default: m.TaxesPage })));
 
 const EmailSettingsPage = lazy(() => import('./pages/settings/EmailSettingsPage'));
+const BillingSettingsPage = lazy(() => import('./pages/settings/BillingSettingsPage'));
 const PostingRulesPage = lazy(() => import('./pages/settings/PostingRulesPage'));
 const ApprovalWorkflowsPage = lazy(() => import('./pages/settings/ApprovalWorkflowsPage'));
 const FeatureFlagsPage = lazy(() => import('./pages/settings/FeatureFlagsPage').then(m => ({ default: m.FeatureFlagsPage })));
@@ -495,6 +496,7 @@ function AppRoutes() {
             <Route path="pdf-templates" element={<LazyRoute element={<PdfTemplatesPage />} />} />
             <Route path="email-notifications" element={<LazyRoute element={<EmailNotificationsPage />} />} />
             <Route path="email-settings" element={<LazyRoute element={<EmailSettingsPage />} />} />
+            <Route path="billing" element={<LazyRoute element={<BillingSettingsPage />} />} />
             <Route path="reporting-tags" element={<LazyRoute element={<ReportingTagsPage />} />} />
             <Route path="web-tabs" element={<LazyRoute element={<WebTabsPage />} />} />
             <Route path="workflow-rules" element={<LazyRoute element={<WorkflowRulesPage />} />} />

@@ -3,7 +3,7 @@ import { authenticate, requireOrg, requireRole, AuthenticatedRequest } from '../
 import { AppError } from '../lib/errors';
 import {
   getPlans, getPlan, createPlan, updatePlan, deactivatePlan,
-  getOrgSubscription, createSubscription, changePlan, cancelSubscription, renewSubscription,
+  getOrgSubscription, createSubscription, changePlan, renewSubscription,
   getCoupons, getCoupon, createCoupon, validateCoupon,
   getPromotions, getPromotion, createPromotion, updatePromotion,
   getSubscriptionInvoices, markInvoicePaid,
@@ -73,14 +73,6 @@ router.put('/:id/plan', async (req: AuthenticatedRequest, res: Response, next: N
   try {
     const { planId, prorate } = req.body;
     const subscription = await changePlan(req.params.id, planId, req.user!.orgId!, req.user!.userId!, prorate, req);
-    res.json(subscription);
-  } catch (err) { next(err); }
-});
-
-router.post('/:id/cancel', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  try {
-    const { atPeriodEnd } = req.body;
-    const subscription = await cancelSubscription(req.params.id, req.user!.orgId!, req.user!.userId!, atPeriodEnd, req);
     res.json(subscription);
   } catch (err) { next(err); }
 });
