@@ -12,7 +12,7 @@ import {
   ArrowRightLeft, TrendingDown, ReceiptText, AlertTriangle, Bot, Wifi,
   Star, Zap, ChevronRight, PanelLeftClose, PanelLeft,
   CircleUser, Command, Plus, LayoutList, Home, Landmark,
-  ShoppingCart, ShoppingBag, Receipt, Mail, Phone, ExternalLink, Video, RefreshCw
+  ShoppingCart, ShoppingBag, Receipt, Mail, Phone, ExternalLink, Video, RefreshCw, Tag
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -77,7 +77,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({
     OVERVIEW: false, SALES: false, PROJECTS: true,
     PURCHASES: true, INVENTORY: true, PAYROLL: true,
-    BANKING: true, ACCOUNTANT: true, REPORTS: true,
+    BANKING: true, ACCOUNTANT: true, REPORTS: true, BILLING: true,
   });
   const [showHelpSubMenu, setShowHelpSubMenu] = useState(false);
   const [showMailForm, setShowMailForm] = useState(false);
@@ -141,6 +141,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     rep_tax_engine: '/app/reports/tax-engine', rep_projects: '/app/reports/projects', rep_legacy: '/app/reports/legacy',
     rep_consolidation: '/app/reports/consolidation',
     revenue_contracts: '/app/revenue/contracts', rep_revenue_recognition: '/app/revenue/recognition-report',
+    subscription: '/app/subscription', subscription_plans: '/app/subscription/plans', subscription_coupons: '/app/subscription/coupons',
     set_organisation: '/app/settings/organisation', set_invites: '/app/settings/invites', set_roles: '/app/settings/roles',
     user_preferences: '/app/settings/user-preferences', set_integrations: '/app/settings/integrations',
   }), []);
@@ -205,6 +206,11 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
       { name: 'ECL (IFRS 9)', id: 'ecl', icon: AlertTriangle },
       { name: 'OCR Processor', id: 'ocr', icon: FileText },
       { name: 'Intercompany Txns', id: 'intercompany', icon: ArrowRightLeft },
+    ]},
+    { title: 'BILLING', icon: CreditCard, items: [
+      { name: 'Subscription', id: 'subscription', icon: CreditCard },
+      { name: 'Plans', id: 'subscription_plans', icon: Package },
+      { name: 'Coupons', id: 'subscription_coupons', icon: Tag },
     ]},
     { title: 'REPORTS', icon: FileBarChart, items: [
       { name: 'Trial Balance', id: 'rep_trial_balance', icon: FileBarChart },

@@ -2697,6 +2697,273 @@ export async function runMigration() {
     console.log('[Migration] last_reminder_sent_at columns added to invoices and bills.');
 
     console.log('[Migration] Performance indexes created on core tables.');
+
+    // ----------------------------------------------------------------
+    // Subscription Management System (SMS) — enums, tables, defaults
+    // ----------------------------------------------------------------
+    await db.execute(sql`
+      DO $$ BEGIN
+        CREATE TYPE subscription_status AS ENUM ('active', 'trialing', 'canceled', 'past_due', 'incomplete', 'incomplete_expired');
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$;
+    `);
+    await db.execute(sql`
+      DO $$ BEGIN
+        CREATE TYPE billing_cycle AS ENUM ('monthly', 'yearly', 'quarterly');
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$;
+    `);
+    await db.execute(sql`
+      DO $$ BEGIN
+        CREATE TYPE discount_type AS ENUM ('percentage', 'fixed_amount');
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$;
+    `);
+    await db.execute(sql`
+      DO $$ BEGIN
+        CREATE TYPE sub_invoice_status AS ENUM ('pending', 'paid', 'overdue', 'canceled', 'refunded');
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$;
+    `);
+
+    // Subscription plans
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS subscription_plans (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id),
+        name text NOT NULL,
+        code text NOT NULL UNIQUE,
+        description text,
+        monthly_price_kobo bigint DEFAULT 0 NOT NULL,
+        annual_price_kobo bigint DEFAULT 0 NOT NULL,
+        currency text DEFAULT 'NGN' NOT NULL,
+        billing_cycle billing_cycle DEFAULT 'monthly' NOT NULL,
+        trial_days integer DEFAULT 0 NOT NULL,
+        user_limit integer DEFAULT 1 NOT NULL,
+        max_companies integer DEFAULT 1 NOT NULL,
+        storage_limit_gb integer DEFAULT 1 NOT NULL,
+        api_requests integer DEFAULT 0 NOT NULL,
+        max_customers integer DEFAULT 0 NOT NULL,
+        max_vendors integer DEFAULT 0 NOT NULL,
+        max_products integer DEFAULT 0 NOT NULL,
+        max_invoices integer DEFAULT 0 NOT NULL,
+        max_transactions integer DEFAULT 0 NOT NULL,
+        max_bank_accounts integer DEFAULT 0 NOT NULL,
+        max_warehouses integer DEFAULT 0 NOT NULL,
+        max_projects integer DEFAULT 0 NOT NULL,
+        max_assets integer DEFAULT 0 NOT NULL,
+        max_reports integer DEFAULT 0 NOT NULL,
+        max_ai_requests integer DEFAULT 0 NOT NULL,
+        max_ocr_documents integer DEFAULT 0 NOT NULL,
+        support_level text DEFAULT 'community' NOT NULL,
+        popular_badge boolean DEFAULT false NOT NULL,
+        recommended_badge boolean DEFAULT false NOT NULL,
+        ribbon_color text,
+        button_text text DEFAULT 'Subscribe' NOT NULL,
+        is_active boolean DEFAULT true NOT NULL,
+        is_archived boolean DEFAULT false NOT NULL,
+        sort_order integer DEFAULT 0 NOT NULL,
+        is_public boolean DEFAULT true NOT NULL,
+        created_at timestamp DEFAULT now() NOT NULL,
+        updated_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_sub_plans_active ON subscription_plans(is_active, sort_order)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_sub_plans_code ON subscription_plans(code)`);
+
+    // Migration: add new columns to existing subscription_plans tables
+    await db.execute(sql`ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS monthly_price_kobo bigint DEFAULT 0 NOT NULL`);
+    await db.execute(sql`ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS annual_price_kobo bigint DEFAULT 0 NOT NULL`);
+    await db.execute(sql`ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS currency text DEFAULT 'NGN' NOT NULL`);
+    await db.execute(sql`ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS max_companies integer DEFAULT 1 NOT NULL`);
+    await db.execute(sql`ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS storage_limit_gb integer DEFAULT 1 NOT NULL`);
+    await db.execute(sql`ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS api_requests integer DEFAULT 0 NOT NULL`);
+    await db.execute(sql`ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS max_customers integer DEFAULT 0 NOT NULL`);
+    await db.execute(sql`ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS max_vendors integer DEFAULT 0 NOT NULL`);
+    await db.execute(sql`ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS max_products integer DEFAULT 0 NOT NULL`);
+    await db.execute(sql`ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS max_invoices integer DEFAULT 0 NOT NULL`);
+    await db.execute(sql`ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS max_transactions integer DEFAULT 0 NOT NULL`);
+    await db.execute(sql`ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS max_bank_accounts integer DEFAULT 0 NOT NULL`);
+    await db.execute(sql`ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS max_warehouses integer DEFAULT 0 NOT NULL`);
+    await db.execute(sql`ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS max_projects integer DEFAULT 0 NOT NULL`);
+    await db.execute(sql`ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS max_assets integer DEFAULT 0 NOT NULL`);
+    await db.execute(sql`ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS max_reports integer DEFAULT 0 NOT NULL`);
+    await db.execute(sql`ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS max_ai_requests integer DEFAULT 0 NOT NULL`);
+    await db.execute(sql`ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS max_ocr_documents integer DEFAULT 0 NOT NULL`);
+    await db.execute(sql`ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS support_level text DEFAULT 'community' NOT NULL`);
+    await db.execute(sql`ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS popular_badge boolean DEFAULT false NOT NULL`);
+    await db.execute(sql`ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS recommended_badge boolean DEFAULT false NOT NULL`);
+    await db.execute(sql`ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS ribbon_color text`);
+    await db.execute(sql`ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS button_text text DEFAULT 'Subscribe' NOT NULL`);
+    await db.execute(sql`ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS is_archived boolean DEFAULT false NOT NULL`);
+    await db.execute(sql`ALTER TABLE subscription_plans DROP COLUMN IF EXISTS features`);
+    await db.execute(sql`ALTER TABLE subscription_plans DROP COLUMN IF EXISTS storage_limit_mb`);
+    await db.execute(sql`ALTER TABLE subscription_plans DROP COLUMN IF EXISTS price_kobo`);
+
+    // Subscriptions
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS subscriptions (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        plan_id uuid REFERENCES subscription_plans(id) NOT NULL,
+        status subscription_status DEFAULT 'incomplete' NOT NULL,
+        current_period_start timestamp NOT NULL,
+        current_period_end timestamp NOT NULL,
+        trial_start timestamp,
+        trial_end timestamp,
+        canceled_at timestamp,
+        billing_cycle_anchor timestamp NOT NULL,
+        coupon_id uuid REFERENCES coupons(id),
+        promotion_id uuid REFERENCES promotions(id),
+        auto_renew boolean DEFAULT true NOT NULL,
+        next_billing_date timestamp,
+        last_payment_date timestamp,
+        metadata jsonb DEFAULT '{}'::jsonb,
+        created_at timestamp DEFAULT now() NOT NULL,
+        updated_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_sub_org ON subscriptions(org_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_sub_plan ON subscriptions(plan_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_sub_status ON subscriptions(status)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_sub_org_status ON subscriptions(org_id, status)`);
+
+    // Coupons
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS coupons (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id),
+        code text NOT NULL,
+        description text,
+        discount_type discount_type DEFAULT 'percentage' NOT NULL,
+        discount_percent integer,
+        discount_amount_kobo bigint,
+        max_redemptions integer DEFAULT 0,
+        current_redemptions integer DEFAULT 0 NOT NULL,
+        min_amount_kobo bigint,
+        max_amount_kobo bigint,
+        applicable_plan_ids uuid[],
+        expires_at timestamp,
+        is_active boolean DEFAULT true NOT NULL,
+        is_first_order_only boolean DEFAULT false NOT NULL,
+        created_by uuid REFERENCES users(id),
+        created_at timestamp DEFAULT now() NOT NULL,
+        updated_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_coupon_code ON coupons(code)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_coupon_active ON coupons(is_active, expires_at)`);
+
+    // Promotions
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS promotions (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id),
+        name text NOT NULL,
+        description text,
+        discount_type discount_type DEFAULT 'percentage' NOT NULL,
+        discount_percent integer,
+        discount_amount_kobo bigint,
+        applicable_plan_ids uuid[],
+        start_date timestamp NOT NULL,
+        end_date timestamp NOT NULL,
+        max_redemptions integer DEFAULT 0,
+        current_redemptions integer DEFAULT 0 NOT NULL,
+        is_active boolean DEFAULT true NOT NULL,
+        created_by uuid REFERENCES users(id),
+        created_at timestamp DEFAULT now() NOT NULL,
+        updated_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_promo_active ON promotions(is_active, start_date, end_date)`);
+
+    // Subscription invoices
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS subscription_invoices (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        subscription_id uuid REFERENCES subscriptions(id),
+        invoice_number text NOT NULL,
+        description text,
+        amount_kobo bigint DEFAULT 0 NOT NULL,
+        tax_kobo bigint DEFAULT 0 NOT NULL,
+        total_kobo bigint DEFAULT 0 NOT NULL,
+        discount_kobo bigint DEFAULT 0 NOT NULL,
+        status sub_invoice_status DEFAULT 'pending' NOT NULL,
+        period_start timestamp,
+        period_end timestamp,
+        due_date timestamp,
+        paid_at timestamp,
+        paid_by uuid REFERENCES users(id),
+        coupon_id uuid REFERENCES coupons(id),
+        promotion_id uuid REFERENCES promotions(id),
+        metadata jsonb DEFAULT '{}'::jsonb,
+        created_at timestamp DEFAULT now() NOT NULL,
+        updated_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_sub_inv_org ON subscription_invoices(org_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_sub_inv_sub ON subscription_invoices(subscription_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_sub_inv_status ON subscription_invoices(status)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_sub_inv_number ON subscription_invoices(invoice_number)`);
+
+    // Subscription usage
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS subscription_usage (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        subscription_id uuid REFERENCES subscriptions(id) NOT NULL,
+        feature_key text NOT NULL,
+        usage_count integer DEFAULT 0 NOT NULL,
+        usage_limit integer,
+        period_start timestamp NOT NULL,
+        period_end timestamp NOT NULL,
+        created_at timestamp DEFAULT now() NOT NULL,
+        updated_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_usage_sub_feature ON subscription_usage(subscription_id, feature_key)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_usage_org_period ON subscription_usage(org_id, period_start, period_end)`);
+
+    // Subscription feature overrides
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS subscription_feature_overrides (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        plan_id uuid REFERENCES subscription_plans(id),
+        subscription_id uuid REFERENCES subscriptions(id),
+        feature_key text NOT NULL,
+        feature_value jsonb NOT NULL,
+        is_limit boolean DEFAULT false NOT NULL,
+        created_at timestamp DEFAULT now() NOT NULL,
+        updated_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_foverride_plan ON subscription_feature_overrides(plan_id, feature_key)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_foverride_sub ON subscription_feature_overrides(subscription_id, feature_key)`);
+
+    // Seed default plans
+    await db.execute(sql`
+      INSERT INTO subscription_plans (id, code, name, description, monthly_price_kobo, annual_price_kobo, currency, billing_cycle, trial_days, user_limit, max_companies, storage_limit_gb, api_requests, max_customers, max_vendors, max_products, max_invoices, max_transactions, max_bank_accounts, max_warehouses, max_projects, max_assets, max_reports, max_ai_requests, max_ocr_documents, support_level, popular_badge, recommended_badge, button_text, is_active, is_archived, sort_order, is_public)
+      VALUES
+        (gen_random_uuid(), 'free', 'Free', 'For small businesses getting started', 0, 0, 'NGN', 'monthly', 0, 1, 1, 1, 100, 50, 25, 10, 50, 500, 2, 0, 0, 0, 5, 10, 10, 'community', false, false, 'Get Started', true, false, 1, true),
+        (gen_random_uuid(), 'starter', 'Starter', 'For growing businesses', 1500000, 15000000, 'NGN', 'monthly', 14, 3, 3, 5, 1000, 500, 250, 100, 500, 5000, 5, 1, 5, 5, 20, 50, 50, 'email', true, false, 'Start Free Trial', true, false, 2, true),
+        (gen_random_uuid(), 'professional', 'Professional', 'For established businesses', 3500000, 35000000, 'NGN', 'monthly', 14, 10, 10, 20, 10000, 2000, 1000, 500, 2000, 25000, 10, 5, 20, 20, 50, 200, 200, 'priority', false, true, 'Start Free Trial', true, false, 3, true),
+        (gen_random_uuid(), 'enterprise', 'Enterprise', 'For large organisations', 10000000, 100000000, 'NGN', 'monthly', 0, 100, 100, 100, 0, 10000, 5000, 2000, 10000, 0, 50, 20, 50, 50, 200, 500, 500, 'dedicated', false, false, 'Contact Sales', true, false, 4, true)
+      ON CONFLICT (code) DO NOTHING
+    `);
+
+    // Assign Free plan to existing orgs without a subscription
+    await db.execute(sql`
+      INSERT INTO subscriptions (id, org_id, plan_id, status, current_period_start, current_period_end, billing_cycle_anchor, auto_renew)
+      SELECT gen_random_uuid(), o.id, sp.id, 'active', now(), now() + interval '1 month', now(), true
+      FROM organisations o
+      CROSS JOIN subscription_plans sp
+      WHERE sp.code = 'free'
+      AND NOT EXISTS (SELECT 1 FROM subscriptions s WHERE s.org_id = o.id)
+      ON CONFLICT DO NOTHING
+    `);
+
+    console.log('[Migration] Subscription Management System tables created.');
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema setup:', err);

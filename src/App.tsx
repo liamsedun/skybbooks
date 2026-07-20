@@ -99,6 +99,11 @@ const MappingsPage = lazy(() => import('./pages/reports/MappingsPage').then(m =>
 const RevenueContractsPage = lazy(() => import('./pages/revenue/RevenueContractsPage').then(m => ({ default: m.RevenueContractsPage })));
 const RevenueRecognitionReport = lazy(() => import('./pages/revenue/RevenueRecognitionReport').then(m => ({ default: m.RevenueRecognitionReport })));
 
+// Subscriptions
+const SubscriptionPage = lazy(() => import('./pages/subscriptions/SubscriptionPage').then(m => ({ default: m.SubscriptionPage })));
+const SubscriptionPlansPage = lazy(() => import('./pages/subscriptions/SubscriptionPlansPage').then(m => ({ default: m.SubscriptionPlansPage })));
+const SubscriptionCouponsPage = lazy(() => import('./pages/subscriptions/SubscriptionCouponsPage').then(m => ({ default: m.SubscriptionCouponsPage })));
+
 // SettingsPages (30+ named exports from single file)
 const OrganisationProfilePage = lazy(() => import('./pages/settings/SettingsPages').then(m => ({ default: m.OrganisationProfilePage })));
 const BrandingPage = lazy(() => import('./pages/settings/SettingsPages').then(m => ({ default: m.BrandingPage })));
@@ -461,6 +466,11 @@ function AppRoutes() {
           <Route path="reports/mappings" element={<LazyRoute element={<MappingsPage />} />} />
           <Route path="revenue/contracts" element={<LazyRoute element={<RevenueContractsPage />} />} />
           <Route path="revenue/recognition-report" element={<LazyRoute element={<RevenueRecognitionReport />} />} />
+
+          {/* Subscription routes */}
+          <Route path="subscription" element={<LazyRoute element={<SubscriptionPage />} />} />
+          <Route path="subscription/plans" element={<LazyRoute element={<SubscriptionPlansPage />} />} />
+          <Route path="subscription/coupons" element={<LazyRoute element={<SubscriptionCouponsPage />} />} />
 
           {/* System metadata & account preferences */}
           <Route path="settings" element={<Suspense fallback={<PageLoader />}><SettingsLayout /></Suspense>}>

@@ -111,6 +111,12 @@ export const systemAccountRoleEnum = pgEnum('system_account_role', [
   'allowance_for_doubtful_debts',
 ]);
 
+// ========== Subscription Management Enums ==========
+export const subscriptionStatusEnum = pgEnum('subscription_status', ['active', 'trialing', 'canceled', 'past_due', 'incomplete', 'incomplete_expired']);
+export const billingCycleEnum = pgEnum('billing_cycle', ['monthly', 'yearly', 'quarterly']);
+export const discountTypeEnum = pgEnum('discount_type', ['percentage', 'fixed_amount']);
+export const subInvoiceStatusEnum = pgEnum('sub_invoice_status', ['pending', 'paid', 'overdue', 'canceled', 'refunded']);
+
 export const bankFeedProviderEnum = pgEnum('bank_feed_provider', ['mono', 'paystack', 'flutterwave', 'moniepoint']);
 export const bankConnectionStatusEnum = pgEnum('bank_connection_status', ['active', 'reauth_required', 'expired', 'disconnected', 'pending']);
 export const paymentGatewayEnum = pgEnum('payment_gateway', ['paystack', 'flutterwave', 'moniepoint']);
@@ -2229,6 +2235,224 @@ export const eclComputations = pgTable('ecl_computations', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+// ========== Subscription Management Tables ==========
+export const subscriptionPlans = pgTable('subscription_plans', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id),
+  name: text('name').notNull(),
+  code: text('code').notNull().unique(),
+  description: text('description'),
+  monthlyPriceKobo: bigint('monthly_price_kobo', { mode: 'number' }).default(0).notNull(),
+  annualPriceKobo: bigint('annual_price_kobo', { mode: 'number' }).default(0).notNull(),
+  currency: text('currency').default('NGN').notNull(),
+  billingCycle: billingCycleEnum('billing_cycle').default('monthly').notNull(),
+  trialDays: integer('trial_days').default(0).notNull(),
+  userLimit: integer('user_limit').default(1).notNull(),
+  maxCompanies: integer('max_companies').default(1).notNull(),
+  storageLimitGb: integer('storage_limit_gb').default(1).notNull(),
+  apiRequests: integer('api_requests').default(0).notNull(),
+  maxCustomers: integer('max_customers').default(0).notNull(),
+  maxVendors: integer('max_vendors').default(0).notNull(),
+  maxProducts: integer('max_products').default(0).notNull(),
+  maxInvoices: integer('max_invoices').default(0).notNull(),
+  maxTransactions: integer('max_transactions').default(0).notNull(),
+  maxBankAccounts: integer('max_bank_accounts').default(0).notNull(),
+  maxWarehouses: integer('max_warehouses').default(0).notNull(),
+  maxProjects: integer('max_projects').default(0).notNull(),
+  maxAssets: integer('max_assets').default(0).notNull(),
+  maxReports: integer('max_reports').default(0).notNull(),
+  maxAiRequests: integer('max_ai_requests').default(0).notNull(),
+  maxOcrDocuments: integer('max_ocr_documents').default(0).notNull(),
+  supportLevel: text('support_level').default('community').notNull(),
+  popularBadge: boolean('popular_badge').default(false).notNull(),
+  recommendedBadge: boolean('recommended_badge').default(false).notNull(),
+  ribbonColor: text('ribbon_color'),
+  buttonText: text('button_text').default('Subscribe').notNull(),
+  isActive: boolean('is_active').default(true).notNull(),
+  isArchived: boolean('is_archived').default(false).notNull(),
+  sortOrder: integer('sort_order').default(0).notNull(),
+  isPublic: boolean('is_public').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  plansActiveIdx: index('idx_sub_plans_active').on(table.isActive, table.sortOrder),
+  plansCodeIdx: index('idx_sub_plans_code').on(table.code),
+}));
+
+export const subscriptions = pgTable('subscriptions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  planId: uuid('plan_id').references(() => subscriptionPlans.id).notNull(),
+  status: subscriptionStatusEnum('status').default('incomplete').notNull(),
+  currentPeriodStart: timestamp('current_period_start').notNull(),
+  currentPeriodEnd: timestamp('current_period_end').notNull(),
+  trialStart: timestamp('trial_start'),
+  trialEnd: timestamp('trial_end'),
+  canceledAt: timestamp('canceled_at'),
+  billingCycleAnchor: timestamp('billing_cycle_anchor').notNull(),
+  couponId: uuid('coupon_id').references(() => coupons.id),
+  promotionId: uuid('promotion_id').references(() => promotions.id),
+  autoRenew: boolean('auto_renew').default(true).notNull(),
+  nextBillingDate: timestamp('next_billing_date'),
+  lastPaymentDate: timestamp('last_payment_date'),
+  metadata: jsonb('metadata').default({}),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  subOrgIdx: index('idx_sub_org').on(table.orgId),
+  subPlanIdx: index('idx_sub_plan').on(table.planId),
+  subStatusIdx: index('idx_sub_status').on(table.status),
+  subOrgStatusIdx: index('idx_sub_org_status').on(table.orgId, table.status),
+}));
+
+export const coupons = pgTable('coupons', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id),
+  code: text('code').notNull(),
+  description: text('description'),
+  discountType: discountTypeEnum('discount_type').default('percentage').notNull(),
+  discountPercent: integer('discount_percent'),
+  discountAmountKobo: bigint('discount_amount_kobo', { mode: 'number' }),
+  maxRedemptions: integer('max_redemptions').default(0),
+  currentRedemptions: integer('current_redemptions').default(0).notNull(),
+  minAmountKobo: bigint('min_amount_kobo', { mode: 'number' }),
+  maxAmountKobo: bigint('max_amount_kobo', { mode: 'number' }),
+  applicablePlanIds: uuid('applicable_plan_ids').array(),
+  expiresAt: timestamp('expires_at'),
+  isActive: boolean('is_active').default(true).notNull(),
+  isFirstOrderOnly: boolean('is_first_order_only').default(false).notNull(),
+  createdBy: uuid('created_by').references(() => users.id),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  couponCodeIdx: index('idx_coupon_code').on(table.code),
+  couponActiveIdx: index('idx_coupon_active').on(table.isActive, table.expiresAt),
+}));
+
+export const promotions = pgTable('promotions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id),
+  name: text('name').notNull(),
+  description: text('description'),
+  discountType: discountTypeEnum('discount_type').default('percentage').notNull(),
+  discountPercent: integer('discount_percent'),
+  discountAmountKobo: bigint('discount_amount_kobo', { mode: 'number' }),
+  applicablePlanIds: uuid('applicable_plan_ids').array(),
+  startDate: timestamp('start_date').notNull(),
+  endDate: timestamp('end_date').notNull(),
+  maxRedemptions: integer('max_redemptions').default(0),
+  currentRedemptions: integer('current_redemptions').default(0).notNull(),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdBy: uuid('created_by').references(() => users.id),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  promoActiveIdx: index('idx_promo_active').on(table.isActive, table.startDate, table.endDate),
+}));
+
+export const subscriptionInvoices = pgTable('subscription_invoices', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  subscriptionId: uuid('subscription_id').references(() => subscriptions.id),
+  invoiceNumber: text('invoice_number').notNull(),
+  description: text('description'),
+  amountKobo: bigint('amount_kobo', { mode: 'number' }).default(0).notNull(),
+  taxKobo: bigint('tax_kobo', { mode: 'number' }).default(0).notNull(),
+  totalKobo: bigint('total_kobo', { mode: 'number' }).default(0).notNull(),
+  discountKobo: bigint('discount_kobo', { mode: 'number' }).default(0).notNull(),
+  status: subInvoiceStatusEnum('status').default('pending').notNull(),
+  periodStart: timestamp('period_start'),
+  periodEnd: timestamp('period_end'),
+  dueDate: timestamp('due_date'),
+  paidAt: timestamp('paid_at'),
+  paidBy: uuid('paid_by').references(() => users.id),
+  couponId: uuid('coupon_id').references(() => coupons.id),
+  promotionId: uuid('promotion_id').references(() => promotions.id),
+  metadata: jsonb('metadata').default({}),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  subInvOrgIdx: index('idx_sub_inv_org').on(table.orgId),
+  subInvSubIdx: index('idx_sub_inv_sub').on(table.subscriptionId),
+  subInvStatusIdx: index('idx_sub_inv_status').on(table.status),
+  subInvNumberIdx: index('idx_sub_inv_number').on(table.invoiceNumber),
+}));
+
+export const subscriptionUsage = pgTable('subscription_usage', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  subscriptionId: uuid('subscription_id').references(() => subscriptions.id).notNull(),
+  featureKey: text('feature_key').notNull(),
+  usageCount: integer('usage_count').default(0).notNull(),
+  usageLimit: integer('usage_limit'),
+  periodStart: timestamp('period_start').notNull(),
+  periodEnd: timestamp('period_end').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  usageSubFeatureIdx: index('idx_usage_sub_feature').on(table.subscriptionId, table.featureKey),
+  usageOrgPeriodIdx: index('idx_usage_org_period').on(table.orgId, table.periodStart, table.periodEnd),
+}));
+
+export const subscriptionFeatureOverrides = pgTable('subscription_feature_overrides', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  planId: uuid('plan_id').references(() => subscriptionPlans.id),
+  subscriptionId: uuid('subscription_id').references(() => subscriptions.id),
+  featureKey: text('feature_key').notNull(),
+  featureValue: jsonb('feature_value').notNull(),
+  isLimit: boolean('is_limit').default(false).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  fOverridePlanIdx: index('idx_foverride_plan').on(table.planId, table.featureKey),
+  fOverrideSubIdx: index('idx_foverride_sub').on(table.subscriptionId, table.featureKey),
+}));
+
+// ========== SMS Relations ==========
+export const subscriptionPlansRelations = relations(subscriptionPlans, ({ one, many }) => ({
+  organisation: one(organisations, { fields: [subscriptionPlans.orgId], references: [organisations.id] }),
+  subscriptions: many(subscriptions),
+  featureOverrides: many(subscriptionFeatureOverrides),
+}));
+
+export const subscriptionsRelations = relations(subscriptions, ({ one, many }) => ({
+  organisation: one(organisations, { fields: [subscriptions.orgId], references: [organisations.id] }),
+  plan: one(subscriptionPlans, { fields: [subscriptions.planId], references: [subscriptionPlans.id] }),
+  coupon: one(coupons, { fields: [subscriptions.couponId], references: [coupons.id] }),
+  promotion: one(promotions, { fields: [subscriptions.promotionId], references: [promotions.id] }),
+  invoices: many(subscriptionInvoices),
+  usage: many(subscriptionUsage),
+  featureOverrides: many(subscriptionFeatureOverrides),
+}));
+
+export const couponsRelations = relations(coupons, ({ one }) => ({
+  organisation: one(organisations, { fields: [coupons.orgId], references: [organisations.id] }),
+  creator: one(users, { fields: [coupons.createdBy], references: [users.id] }),
+}));
+
+export const promotionsRelations = relations(promotions, ({ one }) => ({
+  organisation: one(organisations, { fields: [promotions.orgId], references: [organisations.id] }),
+  creator: one(users, { fields: [promotions.createdBy], references: [users.id] }),
+}));
+
+export const subscriptionInvoicesRelations = relations(subscriptionInvoices, ({ one }) => ({
+  organisation: one(organisations, { fields: [subscriptionInvoices.orgId], references: [organisations.id] }),
+  subscription: one(subscriptions, { fields: [subscriptionInvoices.subscriptionId], references: [subscriptions.id] }),
+  coupon: one(coupons, { fields: [subscriptionInvoices.couponId], references: [coupons.id] }),
+  promotion: one(promotions, { fields: [subscriptionInvoices.promotionId], references: [promotions.id] }),
+  payer: one(users, { fields: [subscriptionInvoices.paidBy], references: [users.id] }),
+}));
+
+export const subscriptionUsageRelations = relations(subscriptionUsage, ({ one }) => ({
+  organisation: one(organisations, { fields: [subscriptionUsage.orgId], references: [organisations.id] }),
+  subscription: one(subscriptions, { fields: [subscriptionUsage.subscriptionId], references: [subscriptions.id] }),
+}));
+
+export const subscriptionFeatureOverridesRelations = relations(subscriptionFeatureOverrides, ({ one }) => ({
+  plan: one(subscriptionPlans, { fields: [subscriptionFeatureOverrides.planId], references: [subscriptionPlans.id] }),
+  subscription: one(subscriptions, { fields: [subscriptionFeatureOverrides.subscriptionId], references: [subscriptions.id] }),
+}));
+
 // ==========================================
 // 3. RELATIONS DEFINITIONS
 // ==========================================
@@ -3638,8 +3862,22 @@ export const db = drizzle(pool, {
     intercompanyTransactions,
     intercompanyEliminations,
     groupConsolidationRuns,
+    subscriptionPlans,
+    subscriptions,
+    coupons,
+    promotions,
+    subscriptionInvoices,
+    subscriptionUsage,
+    subscriptionFeatureOverrides,
 
     // Relations
+    subscriptionPlansRelations,
+    subscriptionsRelations,
+    couponsRelations,
+    promotionsRelations,
+    subscriptionInvoicesRelations,
+    subscriptionUsageRelations,
+    subscriptionFeatureOverridesRelations,
     organisationsRelations,
     usersRelations,
     sessionsRelations,
@@ -3812,7 +4050,14 @@ export const schema = {
   leasePaymentSchedules,
   leaseJournalEntries,
    eclParameters,
-  eclComputations,
+   eclComputations,
+  subscriptionPlans,
+  subscriptions,
+  coupons,
+  promotions,
+  subscriptionInvoices,
+  subscriptionUsage,
+  subscriptionFeatureOverrides,
   approvalWorkflows,
   approvalHistory,
   ocrDocuments,

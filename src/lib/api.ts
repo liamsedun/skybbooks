@@ -1767,4 +1767,42 @@ export const ocrApi = {
   },
 };
 
+export const subscriptionApi = {
+  // Plans
+  listPlans: async (publicOnly?: boolean) => { const res = await api.get('/subscriptions/plans', { params: { publicOnly } }); return res.data; },
+  getPlan: async (id: string) => { const res = await api.get(`/subscriptions/plans/${id}`); return res.data; },
+  createPlan: async (data: any) => { const res = await api.post('/subscriptions/plans', data); return res.data; },
+  updatePlan: async (id: string, data: any) => { const res = await api.put(`/subscriptions/plans/${id}`, data); return res.data; },
+  deletePlan: async (id: string) => { const res = await api.delete(`/subscriptions/plans/${id}`); return res.data; },
+
+  // Subscriptions
+  getMySubscription: async () => { const res = await api.get('/subscriptions/'); return res.data; },
+  createSubscription: async (data: { planId: string; couponCode?: string; promotionId?: string; billingCycle?: string }) => { const res = await api.post('/subscriptions/', data); return res.data; },
+  changePlan: async (id: string, data: { planId: string; prorate?: boolean }) => { const res = await api.put(`/subscriptions/${id}/plan`, data); return res.data; },
+  cancelSubscription: async (id: string, atPeriodEnd?: boolean) => { const res = await api.post(`/subscriptions/${id}/cancel`, { atPeriodEnd }); return res.data; },
+  renewSubscription: async (id: string) => { const res = await api.post(`/subscriptions/${id}/renew`); return res.data; },
+
+  // Coupons
+  listCoupons: async () => { const res = await api.get('/subscriptions/coupons'); return res.data; },
+  getCoupon: async (id: string) => { const res = await api.get(`/subscriptions/coupons/${id}`); return res.data; },
+  createCoupon: async (data: any) => { const res = await api.post('/subscriptions/coupons', data); return res.data; },
+  validateCoupon: async (data: { code: string; planId?: string; amountKobo?: number }) => { const res = await api.post('/subscriptions/coupons/validate', data); return res.data; },
+
+  // Promotions
+  listPromotions: async () => { const res = await api.get('/subscriptions/promotions'); return res.data; },
+  getPromotion: async (id: string) => { const res = await api.get(`/subscriptions/promotions/${id}`); return res.data; },
+  createPromotion: async (data: any) => { const res = await api.post('/subscriptions/promotions', data); return res.data; },
+  updatePromotion: async (id: string, data: any) => { const res = await api.put(`/subscriptions/promotions/${id}`, data); return res.data; },
+
+  // Invoices
+  listInvoices: async (subscriptionId?: string) => { const res = await api.get('/subscriptions/invoices', { params: { subscriptionId } }); return res.data; },
+
+  // Entitlements & Usage
+  getEntitlements: async () => { const res = await api.get('/subscriptions/entitlements'); return res.data; },
+  checkFeatureAccess: async (featureKey: string) => { const res = await api.get('/subscriptions/entitlements/check', { params: { featureKey } }); return res.data; },
+  recordUsage: async (data: { featureKey: string; count?: number }) => { const res = await api.post('/subscriptions/usage', data); return res.data; },
+  getUsage: async (featureKey?: string) => { const res = await api.get('/subscriptions/usage', { params: { featureKey } }); return res.data; },
+  checkUsageLimit: async (featureKey: string) => { const res = await api.get('/subscriptions/usage/check-limit', { params: { featureKey } }); return res.data; },
+};
+
 

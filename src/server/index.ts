@@ -49,6 +49,7 @@ import intercompanyRouter from '../routes/intercompany';
 import consolidationRouter from '../routes/consolidation';
 import passwordResetRouter from '../routes/passwordReset';
 import contactRouter from '../routes/contact';
+import subscriptionRouter, { subscriptionWebhookRouter } from '../routes/subscriptions';
 
 import { runMigration } from '../db/migrate';
 import { fetchLatestRates } from '../services/cbn.service';
@@ -126,6 +127,7 @@ async function startServer() {
   // so the raw body is available for HMAC signature verification.
   app.use('/api/webhooks/mono', (await import('../routes/monoWebhook')).default);
   app.use('/api/webhooks/gateway', (await import('../routes/bankingWebhooks')).default);
+  app.use('/api/subscriptions', subscriptionWebhookRouter); // webhook before json parser
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -173,6 +175,7 @@ async function startServer() {
   app.use('/api/intercompany', intercompanyRouter);
   app.use('/api/reports/consolidation', consolidationRouter);
   app.use('/api/contact', contactRouter);
+  app.use('/api/subscriptions', subscriptionRouter);
 
   app.get('/api/health', (req, res) => {
     res.json({ status: 'healthy', timestamp: new Date().toISOString() });
