@@ -117,16 +117,19 @@ export async function getCampaigns(orgId?: string): Promise<any[]> {
   return await db.select().from(promotionalCampaigns).where(conditions.length ? and(...conditions) : undefined).orderBy(desc(promotionalCampaigns.createdAt));
 }
 
-export async function getCampaign(campaignId: string): Promise<any> {
-  const [row] = await db.select().from(promotionalCampaigns).where(eq(promotionalCampaigns.id, campaignId)).limit(1);
+export async function getCampaign(campaignId: string, orgId?: string): Promise<any> {
+  const conditions: any[] = [eq(promotionalCampaigns.id, campaignId)];
+  if (orgId) conditions.push(eq(promotionalCampaigns.orgId, orgId));
+  const [row] = await db.select().from(promotionalCampaigns).where(and(...conditions)).limit(1);
   if (!row) throw new AppError('Campaign not found.', 404);
   return row;
 }
 
-export async function createCampaign(data: any, userId?: string): Promise<any> {
+export async function createCampaign(data: any, orgId: string, userId?: string): Promise<any> {
   const parsed = campaignSchema.parse(data);
   const [campaign] = await db.insert(promotionalCampaigns).values({
     ...parsed,
+    orgId,
     startDate: parsed.startDate ? new Date(parsed.startDate) : null,
     endDate: parsed.endDate ? new Date(parsed.endDate) : null,
     createdBy: userId || null,
@@ -134,15 +137,19 @@ export async function createCampaign(data: any, userId?: string): Promise<any> {
   return campaign;
 }
 
-export async function updateCampaign(campaignId: string, data: any, userId?: string): Promise<any> {
-  const existing = await getCampaign(campaignId);
+export async function updateCampaign(campaignId: string, data: any, orgId?: string, userId?: string): Promise<any> {
+  const existing = await getCampaign(campaignId, orgId);
   const parsed = campaignSchema.partial().parse(data);
-  const [updated] = await db.update(promotionalCampaigns).set({ ...parsed, updatedAt: new Date() } as any).where(eq(promotionalCampaigns.id, campaignId)).returning();
+  const conditions: any[] = [eq(promotionalCampaigns.id, campaignId)];
+  if (orgId) conditions.push(eq(promotionalCampaigns.orgId, orgId));
+  const [updated] = await db.update(promotionalCampaigns).set({ ...parsed, updatedAt: new Date() } as any).where(and(...conditions)).returning();
   return updated;
 }
 
-export async function deleteCampaign(campaignId: string): Promise<void> {
-  await db.delete(promotionalCampaigns).where(eq(promotionalCampaigns.id, campaignId));
+export async function deleteCampaign(campaignId: string, orgId?: string): Promise<void> {
+  const conditions: any[] = [eq(promotionalCampaigns.id, campaignId)];
+  if (orgId) conditions.push(eq(promotionalCampaigns.orgId, orgId));
+  await db.delete(promotionalCampaigns).where(and(...conditions));
 }
 
 // ── Referral Codes ──
@@ -153,8 +160,10 @@ export async function getReferralCodes(orgId?: string): Promise<any[]> {
   return await db.select().from(referralCodes).where(conditions.length ? and(...conditions) : undefined).orderBy(desc(referralCodes.createdAt));
 }
 
-export async function getReferralCode(id: string): Promise<any> {
-  const [row] = await db.select().from(referralCodes).where(eq(referralCodes.id, id)).limit(1);
+export async function getReferralCode(id: string, orgId?: string): Promise<any> {
+  const conditions: any[] = [eq(referralCodes.id, id)];
+  if (orgId) conditions.push(eq(referralCodes.orgId, orgId));
+  const [row] = await db.select().from(referralCodes).where(and(...conditions)).limit(1);
   if (!row) throw new AppError('Referral code not found.', 404);
   return row;
 }
@@ -172,14 +181,18 @@ export async function createReferralCode(data: any, orgId: string, userId?: stri
   return ref;
 }
 
-export async function updateReferralCode(id: string, data: any): Promise<any> {
+export async function updateReferralCode(id: string, data: any, orgId?: string): Promise<any> {
   const parsed = referralCodeSchema.partial().parse(data);
-  const [updated] = await db.update(referralCodes).set({ ...parsed, updatedAt: new Date() } as any).where(eq(referralCodes.id, id)).returning();
+  const conditions: any[] = [eq(referralCodes.id, id)];
+  if (orgId) conditions.push(eq(referralCodes.orgId, orgId));
+  const [updated] = await db.update(referralCodes).set({ ...parsed, updatedAt: new Date() } as any).where(and(...conditions)).returning();
   return updated;
 }
 
-export async function deleteReferralCode(id: string): Promise<void> {
-  await db.delete(referralCodes).where(eq(referralCodes.id, id));
+export async function deleteReferralCode(id: string, orgId?: string): Promise<void> {
+  const conditions: any[] = [eq(referralCodes.id, id)];
+  if (orgId) conditions.push(eq(referralCodes.orgId, orgId));
+  await db.delete(referralCodes).where(and(...conditions));
 }
 
 // ── Partner Discounts ──
@@ -190,32 +203,39 @@ export async function getPartnerDiscounts(orgId?: string): Promise<any[]> {
   return await db.select().from(partnerDiscounts).where(conditions.length ? and(...conditions) : undefined).orderBy(desc(partnerDiscounts.createdAt));
 }
 
-export async function getPartnerDiscount(id: string): Promise<any> {
-  const [row] = await db.select().from(partnerDiscounts).where(eq(partnerDiscounts.id, id)).limit(1);
+export async function getPartnerDiscount(id: string, orgId?: string): Promise<any> {
+  const conditions: any[] = [eq(partnerDiscounts.id, id)];
+  if (orgId) conditions.push(eq(partnerDiscounts.orgId, orgId));
+  const [row] = await db.select().from(partnerDiscounts).where(and(...conditions)).limit(1);
   if (!row) throw new AppError('Partner discount not found.', 404);
   return row;
 }
 
-export async function createPartnerDiscount(data: any, userId?: string): Promise<any> {
+export async function createPartnerDiscount(data: any, orgId: string, userId?: string): Promise<any> {
   const parsed = partnerDiscountSchema.parse(data);
   const [existing] = await db.select({ id: partnerDiscounts.id }).from(partnerDiscounts).where(eq(partnerDiscounts.partnerCode, parsed.partnerCode)).limit(1);
   if (existing) throw new AppError('Partner code already exists.', 409);
   const [partner] = await db.insert(partnerDiscounts).values({
     ...parsed,
+    orgId,
     expiresAt: parsed.expiresAt ? new Date(parsed.expiresAt) : null,
     createdBy: userId || null,
   } as any).returning();
   return partner;
 }
 
-export async function updatePartnerDiscount(id: string, data: any): Promise<any> {
+export async function updatePartnerDiscount(id: string, data: any, orgId?: string): Promise<any> {
   const parsed = partnerDiscountSchema.partial().parse(data);
-  const [updated] = await db.update(partnerDiscounts).set({ ...parsed, updatedAt: new Date() } as any).where(eq(partnerDiscounts.id, id)).returning();
+  const conditions: any[] = [eq(partnerDiscounts.id, id)];
+  if (orgId) conditions.push(eq(partnerDiscounts.orgId, orgId));
+  const [updated] = await db.update(partnerDiscounts).set({ ...parsed, updatedAt: new Date() } as any).where(and(...conditions)).returning();
   return updated;
 }
 
-export async function deletePartnerDiscount(id: string): Promise<void> {
-  await db.delete(partnerDiscounts).where(eq(partnerDiscounts.id, id));
+export async function deletePartnerDiscount(id: string, orgId?: string): Promise<void> {
+  const conditions: any[] = [eq(partnerDiscounts.id, id)];
+  if (orgId) conditions.push(eq(partnerDiscounts.orgId, orgId));
+  await db.delete(partnerDiscounts).where(and(...conditions));
 }
 
 // ── Redemption History ──
@@ -230,38 +250,44 @@ export async function getRedemptionHistory(orgId: string, filters?: { type?: str
 
 // ── Extended Coupon/Promotion CRUD ──
 
-export async function createCouponExtended(data: any, userId?: string): Promise<any> {
+export async function createCouponExtended(data: any, orgId: string, userId?: string): Promise<any> {
   const parsed = couponSchemaExtended.parse(data);
   const [coupon] = await db.insert(coupons).values({
     ...parsed,
+    orgId,
     expiresAt: parsed.expiresAt ? new Date(parsed.expiresAt) : null,
     createdBy: userId || null,
   } as any).returning();
   return coupon;
 }
 
-export async function updateCouponExtended(couponId: string, data: any): Promise<any> {
-  const existing = await db.select().from(coupons).where(eq(coupons.id, couponId)).limit(1);
-  if (!existing.length) throw new AppError('Coupon not found.', 404);
+export async function updateCouponExtended(couponId: string, data: any, orgId?: string): Promise<any> {
+  const conditions: any[] = [eq(coupons.id, couponId)];
+  if (orgId) conditions.push(or(eq(coupons.orgId, orgId), isNull(coupons.orgId)));
+  const [existing] = await db.select().from(coupons).where(and(...conditions)).limit(1);
+  if (!existing) throw new AppError('Coupon not found.', 404);
   const parsed = couponSchemaExtended.partial().parse(data);
-  const [updated] = await db.update(coupons).set({ ...parsed, updatedAt: new Date() } as any).where(eq(coupons.id, couponId)).returning();
+  const [updated] = await db.update(coupons).set({ ...parsed, updatedAt: new Date() } as any).where(and(...conditions)).returning();
   return updated;
 }
 
-export async function createPromotionExtended(data: any, userId?: string): Promise<any> {
+export async function createPromotionExtended(data: any, orgId: string, userId?: string): Promise<any> {
   const parsed = promotionSchemaExtended.parse(data);
   const [promo] = await db.insert(promotions).values({
     ...parsed,
+    orgId,
     createdBy: userId || null,
   } as any).returning();
   return promo;
 }
 
-export async function updatePromotionExtended(promotionId: string, data: any): Promise<any> {
-  const existing = await db.select().from(promotions).where(eq(promotions.id, promotionId)).limit(1);
-  if (!existing.length) throw new AppError('Promotion not found.', 404);
+export async function updatePromotionExtended(promotionId: string, data: any, orgId?: string): Promise<any> {
+  const conditions: any[] = [eq(promotions.id, promotionId)];
+  if (orgId) conditions.push(or(eq(promotions.orgId, orgId), isNull(promotions.orgId)));
+  const [existing] = await db.select().from(promotions).where(and(...conditions)).limit(1);
+  if (!existing) throw new AppError('Promotion not found.', 404);
   const parsed = promotionSchemaExtended.partial().parse(data);
-  const [updated] = await db.update(promotions).set({ ...parsed, updatedAt: new Date() } as any).where(eq(promotions.id, promotionId)).returning();
+  const [updated] = await db.update(promotions).set({ ...parsed, updatedAt: new Date() } as any).where(and(...conditions)).returning();
   return updated;
 }
 
@@ -447,7 +473,7 @@ async function validateAndApplyCoupon(code: string, orgId: string, planId: strin
 }
 
 async function validateAndApplyReferral(code: string, orgId: string, planId: string, amountKobo: number): Promise<{ discountKobo: number; freeMonths: number; description: string; sourceId: string } | null> {
-  const [ref] = await db.select().from(referralCodes).where(eq(referralCodes.code, code)).limit(1);
+  const [ref] = await db.select().from(referralCodes).where(and(eq(referralCodes.code, code), or(eq(referralCodes.orgId, orgId), isNull(referralCodes.orgId)))).limit(1);
   if (!ref) return null;
   if (!ref.isActive) return null;
   if (ref.expiresAt && new Date(ref.expiresAt) < new Date()) return null;

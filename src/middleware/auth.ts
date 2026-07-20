@@ -35,11 +35,6 @@ export function authenticate(
     }
   }
 
-  // Allow token via query param for direct-download URLs
-  if (!token && req.method === 'GET' && typeof req.query.token === 'string') {
-    token = req.query.token;
-  }
-
   if (!token) {
     return next(new AppError('Authentication token is required.', 401));
   }

@@ -172,7 +172,7 @@ export async function generateInvoicePDF(invoiceId: string, orgId: string): Prom
   const [client] = await db
     .select()
     .from(contacts)
-    .where(eq(contacts.id, invoice.customerId))
+    .where(and(eq(contacts.id, invoice.customerId), eq(contacts.orgId, orgId)))
     .limit(1);
 
   if (!client) {
@@ -190,7 +190,7 @@ export async function generateInvoicePDF(invoiceId: string, orgId: string): Prom
            pr.date, pr.reference
     FROM payment_allocations pa
     INNER JOIN payments_received pr ON pa.payment_id = pr.id
-    WHERE pa.invoice_id = ${invoiceId}
+    WHERE pa.invoice_id = ${invoiceId} AND pr.org_id = ${orgId}
     ORDER BY pr.date
   `);
 
@@ -368,7 +368,7 @@ export async function generateQuotePDF(quoteId: string, orgId: string): Promise<
   const [client] = await db
     .select()
     .from(contacts)
-    .where(eq(contacts.id, quote.customerId))
+    .where(and(eq(contacts.id, quote.customerId), eq(contacts.orgId, orgId)))
     .limit(1);
 
   if (!client) {
@@ -1103,7 +1103,7 @@ export async function generateBillPDF(billId: string, orgId: string): Promise<Bu
   const [bill] = await db.select().from(bills).where(and(eq(bills.id, billId), eq(bills.orgId, orgId))).limit(1);
   if (!bill) throw new AppError('Bill not found.', 404);
   const [org] = await db.select().from(organisations).where(eq(organisations.id, orgId)).limit(1);
-  const [vendor] = await db.select().from(contacts).where(eq(contacts.id, bill.vendorId)).limit(1);
+  const [vendor] = await db.select().from(contacts).where(and(eq(contacts.id, bill.vendorId), eq(contacts.orgId, orgId))).limit(1);
   const lines = await db.select().from(billLines).where(eq(billLines.billId, billId));
 
   const orgSettings = typeof org.settings === 'string' ? JSON.parse(org.settings) : (org.settings || {});
@@ -1169,7 +1169,7 @@ export async function generateCreditNotePDF(cnId: string, orgId: string): Promis
   const [cn] = await db.select().from(creditNotes).where(and(eq(creditNotes.id, cnId), eq(creditNotes.orgId, orgId))).limit(1);
   if (!cn) throw new AppError('Credit note not found.', 404);
   const [org] = await db.select().from(organisations).where(eq(organisations.id, orgId)).limit(1);
-  const [customer] = await db.select().from(contacts).where(eq(contacts.id, cn.customerId)).limit(1);
+  const [customer] = await db.select().from(contacts).where(and(eq(contacts.id, cn.customerId), eq(contacts.orgId, orgId))).limit(1);
 
   const orgSettings = typeof org.settings === 'string' ? JSON.parse(org.settings) : (org.settings || {});
   const brandColor = orgSettings.branding?.primaryColor || '#059669';
@@ -1261,7 +1261,7 @@ export async function generateFixedAssetsPDF(orgId: string): Promise<Buffer> {
 export async function generateBillsListPDF(orgId: string, startDate: Date, endDate: Date): Promise<Buffer> {
   const list = await db.select().from(bills).where(and(eq(bills.orgId, orgId), gte(bills.date, startDate), lte(bills.date, endDate))).orderBy(desc(bills.date));
   const vendorIds = [...new Set(list.map(b => b.vendorId))];
-  const vendors = await db.select().from(contacts).where(sql`${contacts.id} = ANY(${vendorIds})`);
+  const vendors = await db.select().from(contacts).where(and(sql`${contacts.id} = ANY(${vendorIds})`, eq(contacts.orgId, orgId)));
   const vMap = new Map(vendors.map(v => [v.id, v.name]));
   const rows = list.map(b => [b.billNumber, vMap.get(b.vendorId)||'-', formatShortDate(b.date), (b.status||'').toUpperCase(), formatNaira(b.total), formatNaira(b.amountPaid), formatNaira(b.balanceDue)]);
   return generateListPDF(orgId, 'BILLS LIST', `Period: ${formatShortDate(startDate)} - ${formatShortDate(endDate)}`, ['Bill #','Vendor','Date','Status','Total','Paid','Balance Due'], [60,130,65,60,70,70,60], ['left','left','left','center','right','right','right'], rows, '#1e3a8a');
@@ -1273,7 +1273,7 @@ export async function generateBillsListPDF(orgId: string, startDate: Date, endDa
 export async function generateCreditNotesListPDF(orgId: string, startDate: Date, endDate: Date): Promise<Buffer> {
   const list = await db.select().from(creditNotes).where(and(eq(creditNotes.orgId, orgId), gte(creditNotes.date, startDate), lte(creditNotes.date, endDate))).orderBy(desc(creditNotes.date));
   const custIds = [...new Set(list.map(c => c.customerId))];
-  const custs = await db.select().from(contacts).where(sql`${contacts.id} = ANY(${custIds})`);
+  const custs = await db.select().from(contacts).where(and(sql`${contacts.id} = ANY(${custIds})`, eq(contacts.orgId, orgId)));
   const cMap = new Map(custs.map(c => [c.id, c.name]));
   const rows = list.map(c => [c.cnNumber, cMap.get(c.customerId)||'-', formatShortDate(c.date), (c.status||'').toUpperCase(), formatNaira(c.total), formatNaira(c.remainingCredit)]);
   return generateListPDF(orgId, 'CREDIT NOTES LIST', `Period: ${formatShortDate(startDate)} - ${formatShortDate(endDate)}`, ['CN #','Customer','Date','Status','Total','Remaining'], [60,130,65,60,70,70], ['left','left','left','center','right','right'], rows, '#059669');
