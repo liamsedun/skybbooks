@@ -3547,6 +3547,83 @@ export async function runMigration() {
       console.error('[Migration] Promotions Engine error:', err);
     }
 
+    // Add-on Marketplace tables & seed
+    try {
+      await pool.query(`CREATE TABLE IF NOT EXISTS addon_products (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        code TEXT NOT NULL UNIQUE,
+        name TEXT NOT NULL,
+        description TEXT,
+        icon TEXT,
+        category TEXT NOT NULL,
+        monthly_price_kobo BIGINT DEFAULT 0 NOT NULL,
+        annual_price_kobo BIGINT DEFAULT 0 NOT NULL,
+        usage_limit INTEGER DEFAULT 0,
+        limit_key TEXT,
+        is_active BOOLEAN DEFAULT true NOT NULL,
+        is_public BOOLEAN DEFAULT true NOT NULL,
+        sort_order INTEGER DEFAULT 0 NOT NULL,
+        metadata JSONB DEFAULT '{}'::jsonb,
+        created_at TIMESTAMP DEFAULT now() NOT NULL,
+        updated_at TIMESTAMP DEFAULT now() NOT NULL
+      )`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_ap_code ON addon_products(code)`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_ap_category ON addon_products(category)`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_ap_active ON addon_products(is_active, is_public)`);
+
+      // Enhanced columns on subscription_addons
+      const addonCols: [string, string][] = [
+        ['product_id', 'UUID REFERENCES addon_products(id)'],
+        ['price_when_purchased_kobo', 'BIGINT'],
+        ['auto_renew', 'BOOLEAN DEFAULT true NOT NULL'],
+        ['activated_at', 'TIMESTAMP'],
+        ['expires_at', 'TIMESTAMP'],
+        ['next_billing_date', 'TIMESTAMP'],
+        ['limits_json', 'JSONB DEFAULT \'{}\'::jsonb'],
+      ];
+      for (const [col, dtype] of addonCols) {
+        await pool.query(`
+          DO $$ BEGIN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'subscription_addons' AND column_name = '${col}') THEN
+              ALTER TABLE subscription_addons ADD COLUMN ${col} ${dtype};
+            END IF;
+          END $$;
+        `);
+      }
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_sa_product ON subscription_addons(product_id)`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_sa_expiry ON subscription_addons(expires_at)`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_sa_next_billing ON subscription_addons(next_billing_date)`);
+
+      // Seed marketplace products
+      const existing = await pool.query(`SELECT count(*)::int as cnt FROM addon_products`);
+      if (existing.rows[0].cnt === 0) {
+        const products = [
+          { code: 'extra_users', name: 'Extra Users', description: 'Add more user seats to your account', category: 'users', monthly: 500000, annual: 5000000, limit: 5, limitKey: 'maxUsers' },
+          { code: 'extra_storage', name: 'Extra Storage', description: 'Additional cloud storage space (10 GB)', category: 'storage', monthly: 200000, annual: 2000000, limit: 10, limitKey: 'storageLimitGb' },
+          { code: 'extra_companies', name: 'Extra Companies', description: 'Add another company under your group', category: 'companies', monthly: 1000000, annual: 10000000, limit: 1, limitKey: 'maxCompanies' },
+          { code: 'extra_warehouses', name: 'Extra Warehouses', description: 'Add warehouse locations for inventory', category: 'warehouses', monthly: 300000, annual: 3000000, limit: 1, limitKey: 'maxWarehouses' },
+          { code: 'extra_ai_credits', name: 'Extra AI Credits', description: 'Additional AI assistant requests (1,000 credits)', category: 'credits', monthly: 100000, annual: 1000000, limit: 1000, limitKey: 'maxAiRequests' },
+          { code: 'extra_ocr_credits', name: 'Extra OCR Credits', description: 'Additional OCR document scans (500 pages)', category: 'credits', monthly: 150000, annual: 1500000, limit: 500, limitKey: 'maxOcrDocuments' },
+          { code: 'payroll_module', name: 'Payroll Module', description: 'Full payroll processing with PAYE, NHF, NSITF, ITF', category: 'modules', monthly: 3000000, annual: 30000000, limit: 0, limitKey: null },
+          { code: 'hr_module', name: 'HR Module', description: 'Employee management, leave tracking, performance reviews', category: 'modules', monthly: 2500000, annual: 25000000, limit: 0, limitKey: null },
+          { code: 'crm_module', name: 'CRM Module', description: 'Customer relationship management, pipeline tracking', category: 'modules', monthly: 2000000, annual: 20000000, limit: 0, limitKey: null },
+          { code: 'pos_module', name: 'POS Module', description: 'Point of sale integration with inventory sync', category: 'modules', monthly: 1500000, annual: 15000000, limit: 0, limitKey: null },
+          { code: 'manufacturing_module', name: 'Manufacturing Module', description: 'Bill of materials, production orders, work in progress', category: 'modules', monthly: 4000000, annual: 40000000, limit: 0, limitKey: null },
+          { code: 'bi_module', name: 'Business Intelligence', description: 'Advanced dashboards, custom reports, data visualisation', category: 'modules', monthly: 3500000, annual: 35000000, limit: 0, limitKey: null },
+          { code: 'analytics_module', name: 'Advanced Analytics', description: 'Predictive analytics, trend forecasting, cohort analysis', category: 'modules', monthly: 2500000, annual: 25000000, limit: 0, limitKey: null },
+          { code: 'api_package', name: 'API Package', description: 'Extended API rate limits and webhook integrations', category: 'packages', monthly: 800000, annual: 8000000, limit: 50000, limitKey: 'apiRequests' },
+          { code: 'sms_package', name: 'SMS Package', description: 'Bulk SMS notifications and alerts (1,000 SMS credits)', category: 'packages', monthly: 500000, annual: 5000000, limit: 1000, limitKey: null },
+          { code: 'email_package', name: 'Email Package', description: 'Transactional email volume boost (10,000 emails/mo)', category: 'packages', monthly: 400000, annual: 4000000, limit: 10000, limitKey: null },
+        ];
+        for (const p of products) {
+          await pool.query(`INSERT INTO addon_products (code, name, description, category, monthly_price_kobo, annual_price_kobo, usage_limit, limit_key) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (code) DO NOTHING`, [p.code, p.name, p.description, p.category, p.monthly, p.annual, p.limit, p.limitKey]);
+        }
+      }
+      console.log('[Migration] Add-on Marketplace tables created & seeded.');
+    } catch (err) {
+      console.error('[Migration] Add-on Marketplace error:', err);
+    }
+
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema setup:', err);

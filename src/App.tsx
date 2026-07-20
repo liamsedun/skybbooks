@@ -106,6 +106,7 @@ const SubscriptionPlansPage = lazy(() => import('./pages/subscriptions/Subscript
 const SubscriptionCouponsPage = lazy(() => import('./pages/subscriptions/SubscriptionCouponsPage').then(m => ({ default: m.SubscriptionCouponsPage })));
 const SubscriptionPortalPage = lazy(() => import('./pages/subscriptions/SubscriptionPortalPage').then(m => ({ default: m.SubscriptionPortalPage })));
 const UsageMonitorDashboardPage = lazy(() => import('./pages/reports/UsageMonitorDashboardPage').then(m => ({ default: m.UsageMonitorDashboardPage })));
+const AddonMarketplacePage = lazy(() => import('./pages/subscriptions/AddonMarketplacePage').then(m => ({ default: m.AddonMarketplacePage })));
 
 // SettingsPages (30+ named exports from single file)
 const OrganisationProfilePage = lazy(() => import('./pages/settings/SettingsPages').then(m => ({ default: m.OrganisationProfilePage })));
@@ -479,6 +480,7 @@ function AppRoutes() {
           <Route path="subscription/plans" element={<LazyRoute element={<SubscriptionPlansPage />} />} />
           <Route path="subscription/coupons" element={<LazyRoute element={<SubscriptionCouponsPage />} />} />
           <Route path="subscription/portal" element={<LazyRoute element={<SubscriptionPortalPage />} />} />
+          <Route path="subscription/addons" element={<LazyRoute element={<AddonMarketplacePage />} />} />
           <Route path="reports/usage-monitor" element={<LazyRoute element={<UsageMonitorDashboardPage />} />} />
 
           {/* System metadata & account preferences */}

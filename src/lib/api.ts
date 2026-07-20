@@ -1910,6 +1910,17 @@ export const subscriptionApi = {
   listPortalAddons: async () => { const res = await api.get('/subscriptions/portal/addons'); return res.data; },
   createPortalAddon: async (data: any) => { const res = await api.post('/subscriptions/portal/addons', data); return res.data; },
   removePortalAddon: async (id: string) => { const res = await api.delete(`/subscriptions/portal/addons/${id}`); return res.data; },
+
+  // Marketplace Add-ons
+  listMarketplaceAddons: async () => { const res = await api.get('/subscriptions/addons/marketplace'); return res.data; },
+  getMarketplaceAddon: async (id: string) => { const res = await api.get(`/subscriptions/addons/marketplace/${id}`); return res.data; },
+  listMyAddons: async () => { const res = await api.get('/subscriptions/addons/my'); return res.data; },
+  purchaseAddon: async (data: { productId: string; quantity?: number; billingCycle?: string; autoRenew?: boolean }) => { const res = await api.post('/subscriptions/addons/purchase', data); return res.data; },
+  cancelAddon: async (id: string) => { const res = await api.post(`/subscriptions/addons/${id}/cancel`); return res.data; },
+  reactivateAddon: async (id: string) => { const res = await api.post(`/subscriptions/addons/${id}/reactivate`); return res.data; },
+  updateAddonQuantity: async (id: string, quantity: number) => { const res = await api.put(`/subscriptions/addons/${id}/quantity`, { quantity }); return res.data; },
+  toggleAddonAutoRenew: async (id: string, autoRenew: boolean) => { const res = await api.put(`/subscriptions/addons/${id}/auto-renew`, { autoRenew }); return res.data; },
+  getEffectiveLimits: async () => { const res = await api.get('/subscriptions/addons/effective-limits'); return res.data; },
 };
 
 
