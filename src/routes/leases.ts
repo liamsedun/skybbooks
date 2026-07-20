@@ -106,7 +106,8 @@ router.post('/', async (req: AuthenticatedRequest, res: Response, next: NextFunc
 // GET /api/leases/:id — get single lease with schedule
 router.get('/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const result = await getLease(req.params.id);
+    const orgId = req.user!.orgId!;
+    const result = await getLease(req.params.id, orgId);
     res.json(result);
   } catch (err) { next(err); }
 });
@@ -117,7 +118,7 @@ router.put('/:id', async (req: AuthenticatedRequest, res: Response, next: NextFu
     const userId = req.user!.userId;
     const orgId = req.user!.orgId!;
     const body = updateLeaseSchema.parse(req.body);
-    const result = await updateLease(req.params.id, body);
+    const result = await updateLease(req.params.id, body, orgId);
     createAuditLog({
       orgId, userId,
       action: 'update',
@@ -138,7 +139,7 @@ router.post('/:id/commencement', async (req: AuthenticatedRequest, res: Response
   try {
     const userId = req.user!.userId;
     const orgId = req.user!.orgId!;
-    const je = await postCommencementEntry(req.params.id, userId);
+    const je = await postCommencementEntry(req.params.id, userId, orgId);
     createAuditLog({
       orgId, userId,
       action: 'create',
@@ -158,7 +159,7 @@ router.post('/:id/payments', async (req: AuthenticatedRequest, res: Response, ne
     const orgId = req.user!.orgId!;
     const { periodNumber, paymentDate } = req.body;
     if (!periodNumber) return res.status(400).json({ error: 'periodNumber is required' });
-    const je = await processLeasePayment(req.params.id, periodNumber, userId, paymentDate);
+    const je = await processLeasePayment(req.params.id, periodNumber, userId, paymentDate, orgId);
     createAuditLog({
       orgId, userId,
       action: 'create',
@@ -177,7 +178,7 @@ router.post('/:id/payments/batch', async (req: AuthenticatedRequest, res: Respon
     const userId = req.user!.userId;
     const orgId = req.user!.orgId!;
     const { upToPeriod } = req.body;
-    const results = await batchProcessPayments(req.params.id, userId, upToPeriod);
+    const results = await batchProcessPayments(req.params.id, userId, upToPeriod, orgId);
     createAuditLog({
       orgId, userId,
       action: 'create',
@@ -197,7 +198,7 @@ router.post('/:id/depreciation', async (req: AuthenticatedRequest, res: Response
     const orgId = req.user!.orgId!;
     const { periodNumber } = req.body;
     if (!periodNumber) return res.status(400).json({ error: 'periodNumber is required' });
-    const je = await postLeaseDepreciation(req.params.id, periodNumber, userId);
+    const je = await postLeaseDepreciation(req.params.id, periodNumber, userId, orgId);
     createAuditLog({
       orgId, userId,
       action: 'create',
@@ -216,7 +217,7 @@ router.post('/:id/depreciation/batch', async (req: AuthenticatedRequest, res: Re
     const userId = req.user!.userId;
     const orgId = req.user!.orgId!;
     const { upToPeriod } = req.body;
-    const results = await batchPostDepreciation(req.params.id, userId, upToPeriod);
+    const results = await batchPostDepreciation(req.params.id, userId, upToPeriod, orgId);
     createAuditLog({
       orgId, userId,
       action: 'create',
@@ -235,7 +236,7 @@ router.post('/:id/modify', async (req: AuthenticatedRequest, res: Response, next
     const userId = req.user!.userId;
     const orgId = req.user!.orgId!;
     const body = modifyLeaseSchema.parse(req.body);
-    const je = await modifyLease(req.params.id, body, userId);
+    const je = await modifyLease(req.params.id, body, userId, orgId);
     createAuditLog({
       orgId, userId,
       action: 'update',
@@ -258,7 +259,7 @@ router.post('/:id/terminate', async (req: AuthenticatedRequest, res: Response, n
     const orgId = req.user!.orgId!;
     const { terminationDate } = req.body;
     if (!terminationDate) return res.status(400).json({ error: 'terminationDate is required' });
-    const je = await terminateLease(req.params.id, terminationDate, userId);
+    const je = await terminateLease(req.params.id, terminationDate, userId, orgId);
     createAuditLog({
       orgId, userId,
       action: 'update',

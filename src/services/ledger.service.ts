@@ -408,6 +408,7 @@ export async function reverseJournalEntry(
  * @returns Net balance of the account in Kobo.
  */
 export async function getAccountBalance(
+  orgId: string,
   accountId: string,
   asOfDate?: Date,
   currency?: string
@@ -416,7 +417,7 @@ export async function getAccountBalance(
   const [account] = await db
     .select()
     .from(accounts)
-    .where(eq(accounts.id, accountId))
+    .where(and(eq(accounts.id, accountId), eq(accounts.orgId, orgId)))
     .limit(1);
 
   if (!account) {

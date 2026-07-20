@@ -193,7 +193,7 @@ export async function createSubscription(orgId: string, userId: string, data: an
 
   // Validate coupon
   if (parsed.couponCode) {
-    coupon = await validateCoupon(parsed.couponCode, parsed.planId, plan.monthlyPriceKobo);
+    coupon = await validateCoupon(parsed.couponCode, orgId, parsed.planId, plan.monthlyPriceKobo);
     if (coupon.isFirstOrderOnly) {
       const prevInvoices = await db
         .select({ id: subscriptionInvoices.id })
@@ -206,7 +206,7 @@ export async function createSubscription(orgId: string, userId: string, data: an
 
   // Validate promotion
   if (parsed.promotionId) {
-    promotion = await validatePromotion(parsed.promotionId, parsed.planId);
+    promotion = await validatePromotion(parsed.promotionId, orgId, parsed.planId);
   }
 
   const now = new Date();
@@ -435,11 +435,13 @@ export async function getCoupons(orgId?: string): Promise<any[]> {
     .orderBy(desc(coupons.createdAt));
 }
 
-export async function getCoupon(couponId: string): Promise<any> {
+export async function getCoupon(couponId: string, orgId?: string): Promise<any> {
+  const conditions: any[] = [eq(coupons.id, couponId)];
+  if (orgId) conditions.push(or(eq(coupons.orgId, orgId), isNull(coupons.orgId)));
   const [row] = await db
     .select()
     .from(coupons)
-    .where(eq(coupons.id, couponId))
+    .where(and(...conditions))
     .limit(1);
   if (!row) throw new AppError('Coupon not found.', 404);
   return row;
@@ -468,11 +470,11 @@ export async function createCoupon(data: any, userId?: string, req?: any): Promi
   return coupon;
 }
 
-export async function validateCoupon(code: string, planId?: string, amountKobo?: number): Promise<any> {
+export async function validateCoupon(code: string, orgId: string, planId?: string, amountKobo?: number): Promise<any> {
   const [coupon] = await db
     .select()
     .from(coupons)
-    .where(eq(coupons.code, code))
+    .where(and(eq(coupons.code, code), or(eq(coupons.orgId, orgId), isNull(coupons.orgId))))
     .limit(1);
   if (!coupon) throw new AppError('Coupon not found.', 404);
   if (!coupon.isActive) throw new AppError('Coupon is no longer active.', 400);
@@ -520,11 +522,13 @@ export async function getPromotions(orgId?: string): Promise<any[]> {
     .orderBy(desc(promotions.createdAt));
 }
 
-export async function getPromotion(promotionId: string): Promise<any> {
+export async function getPromotion(promotionId: string, orgId?: string): Promise<any> {
+  const conditions: any[] = [eq(promotions.id, promotionId)];
+  if (orgId) conditions.push(or(eq(promotions.orgId, orgId), isNull(promotions.orgId)));
   const [row] = await db
     .select()
     .from(promotions)
-    .where(eq(promotions.id, promotionId))
+    .where(and(...conditions))
     .limit(1);
   if (!row) throw new AppError('Promotion not found.', 404);
   return row;
@@ -553,7 +557,7 @@ export async function createPromotion(data: any, userId?: string, req?: any): Pr
 }
 
 export async function updatePromotion(promotionId: string, data: any, orgId?: string, userId?: string, req?: any): Promise<any> {
-  const existing = await getPromotion(promotionId);
+  const existing = await getPromotion(promotionId, orgId);
   const parsed = promotionSchema.partial().parse(data);
   const [updated] = await db.update(promotions)
     .set({ ...parsed, updatedAt: new Date() } as any)
@@ -575,8 +579,8 @@ export async function updatePromotion(promotionId: string, data: any, orgId?: st
   return updated;
 }
 
-export async function validatePromotion(promotionId: string, planId?: string): Promise<any> {
-  const promo = await getPromotion(promotionId);
+export async function validatePromotion(promotionId: string, orgId: string, planId?: string): Promise<any> {
+  const promo = await getPromotion(promotionId, orgId);
   if (!promo.isActive) throw new AppError('Promotion is no longer active.', 400);
   const now = new Date();
   if (new Date(promo.startDate) > now) throw new AppError('Promotion has not started yet.', 400);
@@ -642,8 +646,8 @@ export async function generateInvoice(
   // Calculate discount
   const { discountKobo, description: discountDesc } = calculateDiscount(
     amountKobo,
-    coupon || (sub.couponId ? await getCoupon(sub.couponId) : null),
-    promotion || (sub.promotionId ? await getPromotion(sub.promotionId) : null),
+    coupon || (sub.couponId ? await getCoupon(sub.couponId, orgId) : null),
+    promotion || (sub.promotionId ? await getPromotion(sub.promotionId, orgId) : null),
   );
 
   const invoiceNumber = await generateInvoiceNumber(orgId);
@@ -668,12 +672,12 @@ export async function generateInvoice(
   } as any).returning();
 
   // Increment coupon redemptions if applicable
-  const effectiveCoupon = coupon || (sub.couponId ? await getCoupon(sub.couponId).catch(() => null) : null);
+  const effectiveCoupon = coupon || (sub.couponId ? await getCoupon(sub.couponId, orgId).catch(() => null) : null);
   if (effectiveCoupon) {
     await redeemCoupon(effectiveCoupon.id);
   }
   // Increment promotion redemptions if applicable
-  const effectivePromo = promotion || (sub.promotionId ? await getPromotion(sub.promotionId).catch(() => null) : null);
+  const effectivePromo = promotion || (sub.promotionId ? await getPromotion(sub.promotionId, orgId).catch(() => null) : null);
   if (effectivePromo) {
     await db.update(promotions)
       .set({ currentRedemptions: sql`${promotions.currentRedemptions} + 1`, updatedAt: new Date() })

@@ -404,7 +404,7 @@ router.patch('/:id/tag', requireRole('owner', 'accountant'), async (req: Authent
     await db
       .update(journalEntries)
       .set({ source: newSource })
-      .where(eq(journalEntries.id, id));
+      .where(and(eq(journalEntries.id, id), eq(journalEntries.orgId, orgId)));
 
     createAuditLog({ orgId, userId, action: 'update', entityType: 'journal-entry', entityId: id, oldValues: { source: entry.source }, newValues: { source: newSource }, ...extractReqMeta(req) });
     return res.json({ success: true, source: newSource, unchanged: false });
@@ -435,7 +435,7 @@ router.post('/:id/submit-review', async (req: AuthenticatedRequest, res: Respons
 
     await db.update(journalEntries)
       .set({ status: 'pending_review' })
-      .where(eq(journalEntries.id, id));
+      .where(and(eq(journalEntries.id, id), eq(journalEntries.orgId, orgId)));
 
     createAuditLog({ orgId, userId, action: 'submit-review', entityType: 'journal-entry', entityId: id, oldValues: { status: 'draft' }, newValues: { status: 'pending_review' }, ...extractReqMeta(req) });
     return res.json({ success: true, status: 'pending_review' });
@@ -461,7 +461,7 @@ router.post('/:id/approve', requireRole('owner', 'accountant'), async (req: Auth
 
     await db.update(journalEntries)
       .set({ status: 'approved', approvedBy: userId })
-      .where(eq(journalEntries.id, id));
+      .where(and(eq(journalEntries.id, id), eq(journalEntries.orgId, orgId)));
 
     createAuditLog({ orgId, userId, action: 'approve', entityType: 'journal-entry', entityId: id, oldValues: { status: 'pending_review' }, newValues: { status: 'approved', approvedBy: userId }, ...extractReqMeta(req) });
     return res.json({ success: true, status: 'approved' });
@@ -496,7 +496,7 @@ router.post('/:id/post', requireRole('owner', 'accountant'), async (req: Authent
 
     await db.update(journalEntries)
       .set(updates)
-      .where(eq(journalEntries.id, id));
+      .where(and(eq(journalEntries.id, id), eq(journalEntries.orgId, orgId)));
 
     createAuditLog({ orgId, userId, action: 'post', entityType: 'journal-entry', entityId: id, oldValues: { status: entry.status }, newValues: { status: 'posted', postedBy: userId }, ...extractReqMeta(req) });
     return res.json({ success: true, status: 'posted' });
@@ -523,7 +523,7 @@ router.post('/:id/lock', requireRole('owner'), async (req: AuthenticatedRequest,
 
     await db.update(journalEntries)
       .set({ status: 'locked', lockedBy: userId })
-      .where(eq(journalEntries.id, id));
+      .where(and(eq(journalEntries.id, id), eq(journalEntries.orgId, orgId)));
 
     createAuditLog({ orgId, userId, action: 'lock', entityType: 'journal-entry', entityId: id, oldValues: { status: 'posted' }, newValues: { status: 'locked', lockedBy: userId }, ...extractReqMeta(req) });
     return res.json({ success: true, status: 'locked' });
@@ -551,7 +551,7 @@ router.post('/:id/cancel', async (req: AuthenticatedRequest, res: Response, next
 
     await db.update(journalEntries)
       .set({ status: 'cancelled', cancelledBy: userId })
-      .where(eq(journalEntries.id, id));
+      .where(and(eq(journalEntries.id, id), eq(journalEntries.orgId, orgId)));
 
     createAuditLog({ orgId, userId, action: 'cancel', entityType: 'journal-entry', entityId: id, oldValues: { status: entry.status }, newValues: { status: 'cancelled', cancelledBy: userId }, ...extractReqMeta(req) });
     return res.json({ success: true, status: 'cancelled' });

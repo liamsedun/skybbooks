@@ -214,7 +214,20 @@ export async function deleteObligation(orgId: string, userId: string, obligation
 
 // ── Schedules ──
 
-export async function getSchedules(obligationId: string): Promise<any[]> {
+export async function getSchedules(orgId: string, obligationId: string): Promise<any[]> {
+  // Verify the obligation belongs to the org via contract join
+  const [obligation] = await db
+    .select({ id: performanceObligations.id })
+    .from(performanceObligations)
+    .innerJoin(revenueContracts, eq(performanceObligations.contractId, revenueContracts.id))
+    .where(and(
+      eq(performanceObligations.id, obligationId),
+      eq(revenueContracts.orgId, orgId)
+    ))
+    .limit(1);
+
+  if (!obligation) throw new AppError('Obligation not found in this organization.', 404);
+
   return await db
     .select()
     .from(revenueSchedules)
@@ -321,7 +334,20 @@ function generatePocSchedule(data: any): any[] {
   }];
 }
 
-export async function addManualSchedule(obligationId: string, data: any): Promise<any> {
+export async function addManualSchedule(orgId: string, obligationId: string, data: any): Promise<any> {
+  // Verify the obligation belongs to the org via contract join
+  const [obligation] = await db
+    .select({ id: performanceObligations.id })
+    .from(performanceObligations)
+    .innerJoin(revenueContracts, eq(performanceObligations.contractId, revenueContracts.id))
+    .where(and(
+      eq(performanceObligations.id, obligationId),
+      eq(revenueContracts.orgId, orgId)
+    ))
+    .limit(1);
+
+  if (!obligation) throw new AppError('Obligation not found in this organization.', 404);
+
   const parsed = scheduleSchema.parse(data);
   const [schedule] = await db.insert(revenueSchedules).values({
     ...parsed,

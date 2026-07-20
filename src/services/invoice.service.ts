@@ -172,7 +172,7 @@ async function createInvoiceJournalEntry(invoiceId: string, orgId: string, userI
     const [item] = await tx
       .select()
       .from(items)
-      .where(eq(items.id, line.itemId))
+      .where(and(eq(items.id, line.itemId), eq(items.orgId, orgId)))
       .limit(1);
 
     if (!item || !item.trackInventory) continue;
@@ -192,7 +192,7 @@ async function createInvoiceJournalEntry(invoiceId: string, orgId: string, userI
     const lots = await tx
       .select()
       .from(inventoryLots)
-      .where(eq(inventoryLots.itemId, line.itemId))
+      .where(and(eq(inventoryLots.itemId, line.itemId), eq(inventoryLots.orgId, orgId)))
       .orderBy(inventoryLots.receivedDate);
 
     let remainingQty = qtyToSell;

@@ -92,14 +92,14 @@ router.delete('/obligations/:id', async (req: AuthenticatedRequest, res: Respons
 
 router.get('/obligations/:obligationId/schedules', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const schedules = await getSchedules(req.params.obligationId);
+    const schedules = await getSchedules(req.user!.orgId!, req.params.obligationId);
     res.json(schedules);
   } catch (err) { next(err); }
 });
 
 router.post('/obligations/:obligationId/schedules', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const schedule = await addManualSchedule(req.params.obligationId, req.body);
+    const schedule = await addManualSchedule(req.user!.orgId!, req.params.obligationId, req.body);
     res.status(201).json(schedule);
   } catch (err) { next(err); }
 });

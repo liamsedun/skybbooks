@@ -95,7 +95,7 @@ router.get('/coupons', async (req: AuthenticatedRequest, res: Response, next: Ne
 
 router.get('/coupons/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const coupon = await getCoupon(req.params.id);
+    const coupon = await getCoupon(req.params.id, req.user!.orgId!);
     res.json(coupon);
   } catch (err) { next(err); }
 });
@@ -110,7 +110,7 @@ router.post('/coupons', requireRole('admin'), async (req: AuthenticatedRequest, 
 router.post('/coupons/validate', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const { code, planId, amountKobo } = req.body;
-    const coupon = await validateCoupon(code, planId, amountKobo);
+    const coupon = await validateCoupon(code, req.user!.orgId!, planId, amountKobo);
     res.json(coupon);
   } catch (err) { next(err); }
 });
@@ -126,7 +126,7 @@ router.get('/promotions', async (req: AuthenticatedRequest, res: Response, next:
 
 router.get('/promotions/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const promotion = await getPromotion(req.params.id);
+    const promotion = await getPromotion(req.params.id, req.user!.orgId!);
     res.json(promotion);
   } catch (err) { next(err); }
 });

@@ -261,3 +261,8 @@ Maintain and enhance accounting features: fix kobo/naira display, parent-child a
 - Tax exemption types include: pioneer_status, export_exemption, agricultural_exemption, first_four_years_exemption, foreign_equity_exemption, and custom types
 - FIRS consolidated report generates all sub-reports (VAT, WHT, PAYE, CIT) and aggregates totals
 - Pre-existing VAT return at `/reports/vat-return` and CIT computation at `/reports/tax-computation` remain unchanged
+
+## Agent skills
+
+- **Issue tracker** (GitHub): `docs/agents/issue-tracker.md`
+- **Domain docs**: `docs/agents/domain.md`

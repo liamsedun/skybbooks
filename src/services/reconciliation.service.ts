@@ -552,7 +552,7 @@ export async function getBankReconciliationStatement(
   const outstandingDeposits = unreconciledItems.filter(t => t.type === 'credit').reduce((s, t) => s + t.amount, 0);
   const outstandingPayments = unreconciledItems.filter(t => t.type === 'debit').reduce((s, t) => s + t.amount, 0);
 
-  const glBalance = await getAccountBalance(ba.accountId, asOfDate);
+  const glBalance = await getAccountBalance(ba.orgId, ba.accountId, asOfDate);
   const latestTxn = allTxns.find(t => t.balanceAfter != null);
   const statementClosingBalance = latestTxn?.balanceAfter ?? ba.currentBalance;
   const adjustedBankBalance = statementClosingBalance + outstandingDeposits - outstandingPayments;

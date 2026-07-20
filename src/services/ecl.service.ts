@@ -275,11 +275,13 @@ export async function getEclHistory(orgId: string, limit = 20) {
     .limit(limit);
 }
 
-export async function getEclDetail(computationId: string) {
+export async function getEclDetail(computationId: string, orgId?: string) {
+  const conditions: any[] = [eq(eclComputations.id, computationId)];
+  if (orgId) conditions.push(eq(eclComputations.orgId, orgId));
   const [record] = await db
     .select()
     .from(eclComputations)
-    .where(eq(eclComputations.id, computationId));
+    .where(and(...conditions));
 
   if (!record) throw new AppError('ECL computation not found', 404);
   return record;

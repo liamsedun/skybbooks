@@ -84,7 +84,7 @@ router.post('/portal/redeem-coupon', asyncHandler(async (req: AuthenticatedReque
   const sub = await getOrgSubscription(orgId);
   if (!sub) throw new ValidationError('No active subscription.', {});
 
-  const coupon = await validateCoupon(code, sub.planId);
+  const coupon = await validateCoupon(code, orgId, sub.planId);
   if (!coupon) throw new ValidationError('Invalid or expired coupon code.', {});
 
   // If coupon is already on the subscription, reject

@@ -89,7 +89,7 @@ router.get('/history', async (req: AuthenticatedRequest, res: Response, next: Ne
 // GET /api/ecl/history/:id — get single ECL computation detail
 router.get('/history/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const result = await getEclDetail(req.params.id);
+    const result = await getEclDetail(req.params.id, req.user!.orgId!);
     res.json(result);
   } catch (err) { next(err); }
 });

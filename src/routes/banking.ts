@@ -306,7 +306,7 @@ router.patch('/accounts/:id', async (req: AuthenticatedRequest, res: Response, n
     const [updated] = await db
       .update(bankAccounts)
       .set(setData)
-      .where(eq(bankAccounts.id, id))
+      .where(and(eq(bankAccounts.id, id), eq(bankAccounts.orgId, orgId)))
       .returning();
 
     await createAuditLog({ orgId, userId: req.user!.userId, action: 'update', entityType: 'bank-account', entityId: id, newValues: body, ...extractReqMeta(req) });
@@ -435,7 +435,7 @@ router.patch('/accounts/:id/balance', async (req: AuthenticatedRequest, res: Res
       await db
         .update(bankAccounts)
         .set({ openingBalanceDate: new Date() })
-        .where(eq(bankAccounts.id, id));
+        .where(and(eq(bankAccounts.id, id), eq(bankAccounts.orgId, orgId)));
     }
 
     // Re-fetch to return updated currentBalance (updated by createJournalEntry)
@@ -1993,7 +1993,7 @@ router.patch('/rules/:id', async (req: AuthenticatedRequest, res: Response, next
     const [updated] = await db
       .update(bankRules)
       .set(body)
-      .where(eq(bankRules.id, id))
+      .where(and(eq(bankRules.id, id), eq(bankRules.orgId, orgId)))
       .returning();
 
     await createAuditLog({ orgId, userId: req.user!.userId, action: 'update', entityType: 'bank-rule', entityId: id, newValues: body, ...extractReqMeta(req) });
@@ -2022,7 +2022,7 @@ router.delete('/rules/:id', async (req: AuthenticatedRequest, res: Response, nex
 
     await db
       .delete(bankRules)
-      .where(eq(bankRules.id, id));
+      .where(and(eq(bankRules.id, id), eq(bankRules.orgId, orgId)));
 
     await createAuditLog({ orgId, userId: req.user!.userId, action: 'delete', entityType: 'bank-rule', entityId: id, ...extractReqMeta(req) });
 
@@ -2220,7 +2220,7 @@ router.patch('/transfers/:id', async (req: AuthenticatedRequest, res: Response, 
     const [updated] = await db
       .update(bankTransfers)
       .set(updateData)
-      .where(eq(bankTransfers.id, id))
+      .where(and(eq(bankTransfers.id, id), eq(bankTransfers.orgId, orgId)))
       .returning();
 
     await createAuditLog({ orgId, userId: req.user!.userId, action: 'update', entityType: 'transfer', entityId: id, newValues: body, ...extractReqMeta(req) });
@@ -2252,7 +2252,7 @@ router.delete('/transfers/:id', async (req: AuthenticatedRequest, res: Response,
     }
 
     // Delete the transfer record
-    await db.delete(bankTransfers).where(eq(bankTransfers.id, id));
+    await db.delete(bankTransfers).where(and(eq(bankTransfers.id, id), eq(bankTransfers.orgId, orgId)));
 
     await createAuditLog({ orgId, userId, action: 'void', entityType: 'transfer', entityId: id, newValues: { status: 'void' }, ...extractReqMeta(req) });
 
