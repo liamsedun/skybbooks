@@ -1816,6 +1816,15 @@ export const subscriptionApi = {
   recordUsage: async (data: { featureKey: string; count?: number }) => { const res = await api.post('/subscriptions/usage', data); return res.data; },
   getUsage: async (featureKey?: string) => { const res = await api.get('/subscriptions/usage', { params: { featureKey } }); return res.data; },
   checkUsageLimit: async (featureKey: string) => { const res = await api.get('/subscriptions/usage/check-limit', { params: { featureKey } }); return res.data; },
+
+  // Lifecycle methods
+  pause: async (id: string, pauseDays?: number) => { const res = await api.post(`/subscriptions/${id}/pause`, { pauseDays }); return res.data; },
+  resume: async (id: string) => { const res = await api.post(`/subscriptions/${id}/resume`); return res.data; },
+  cancelAtPeriodEnd: async (id: string, reason?: string) => { const res = await api.post(`/subscriptions/${id}/cancel`, { reason }); return res.data; },
+  cancelNow: async (id: string, reason?: string) => { const res = await api.post(`/subscriptions/${id}/cancel-now`, { reason }); return res.data; },
+  scheduleChange: async (id: string, planId: string, changeType: string) => { const res = await api.post(`/subscriptions/${id}/schedule-change`, { planId, changeType }); return res.data; },
+  getHistory: async (id: string) => { const res = await api.get(`/subscriptions/${id}/history`); return res.data; },
+  checkAccess: async (id: string) => { const res = await api.get(`/subscriptions/${id}/access`); return res.data; },
 };
 
 

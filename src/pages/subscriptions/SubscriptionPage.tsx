@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { CreditCard, Package, Users, HardDrive, Calendar, Check, X, AlertCircle, ChevronRight, History, Download, ExternalLink, Zap, Shield, Crown, Loader2, Building2, Globe, Headphones, FileText, Repeat, Banknote, PieChart, Brain, FileSearch, Star, Tag } from 'lucide-react';
+import {
+  CreditCard, Package, Users, HardDrive, Calendar, Check, X, AlertCircle, AlertTriangle, ChevronRight,
+  History, Download, ExternalLink, Zap, Shield, Crown, Loader2, Building2, Globe, Headphones, FileText,
+  Repeat, Banknote, PieChart, Brain, FileSearch, Star, Tag, Ban, Clock, XCircle, ArrowDown, ArrowUp,
+  PauseCircle, CheckCircle, ArrowLeft
+} from 'lucide-react';
 import { subscriptionApi } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
+
 function fmtNaira(v: number): string {
   const abs = Math.abs(v);
   const naira = Math.floor(abs / 100);
@@ -31,16 +37,34 @@ const limitFields = [
   { key: 'maxOcrDocuments', label: 'OCR Documents', icon: FileSearch },
 ];
 
+const statusConfig: Record<string, { color: string; label: string; icon: any }> = {
+  free_trial: { color: 'bg-blue-50 text-blue-700', label: 'Free Trial', icon: Star },
+  active: { color: 'bg-emerald-50 text-emerald-700', label: 'Active', icon: CheckCircle },
+  grace_period: { color: 'bg-amber-50 text-amber-700', label: 'Grace Period', icon: AlertTriangle },
+  suspended: { color: 'bg-red-50 text-red-600', label: 'Suspended', icon: Ban },
+  expired: { color: 'bg-slate-100 text-slate-600', label: 'Expired', icon: Clock },
+  cancelled: { color: 'bg-neutral-100 text-neutral-600', label: 'Cancelled', icon: XCircle },
+  pending_payment: { color: 'bg-yellow-50 text-yellow-700', label: 'Pending Payment', icon: Clock },
+  failed_payment: { color: 'bg-red-50 text-red-600', label: 'Failed Payment', icon: AlertTriangle },
+  renewing: { color: 'bg-purple-50 text-purple-700', label: 'Renewing...', icon: Loader2 },
+  downgraded: { color: 'bg-orange-50 text-orange-700', label: 'Downgrade Scheduled', icon: ArrowDown },
+  upgraded: { color: 'bg-indigo-50 text-indigo-700', label: 'Upgrade Scheduled', icon: ArrowUp },
+  paused: { color: 'bg-slate-50 text-slate-600', label: 'Paused', icon: PauseCircle },
+};
+
 export function SubscriptionPage() {
   const { user } = useAuth();
   const [subscription, setSubscription] = useState<any>(null);
   const [plans, setPlans] = useState<any[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
+  const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showChangePlan, setShowChangePlan] = useState(false);
   const [confirmChangePlan, setConfirmChangePlan] = useState<string | null>(null);
   const [changing, setChanging] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [showCancelOptions, setShowCancelOptions] = useState(false);
+  const [actionLoading, setActionLoading] = useState('');
 
   useEffect(() => {
     loadAll();
@@ -49,14 +73,18 @@ export function SubscriptionPage() {
   async function loadAll() {
     setLoading(true);
     try {
-      const [subData, plansData, invData] = await Promise.all([
-        subscriptionApi.getMySubscription(),
-        subscriptionApi.listPlans(true),
-        subscriptionApi.listInvoices(),
-      ]);
+      const subData = await subscriptionApi.getMySubscription();
       setSubscription(subData);
-      setPlans(plansData);
-      setInvoices(invData);
+      if (subData) {
+        const [plansData, invData, histData] = await Promise.all([
+          subscriptionApi.listPlans(true),
+          subscriptionApi.listInvoices(),
+          subscriptionApi.getHistory(subData.id),
+        ]);
+        setPlans(plansData);
+        setInvoices(invData);
+        setHistory(histData);
+      }
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
   }
@@ -76,36 +104,96 @@ export function SubscriptionPage() {
     } finally { setChanging(false); }
   }
 
-  async function handleCancel() {
+  async function handleCancel(reason?: string) {
     if (!subscription) return;
-    if (!confirm('Are you sure you want to cancel your subscription? Your subscription will remain active until the end of the current billing period.')) return;
-    setCancelling(true);
+    setActionLoading('cancel');
     try {
-      await subscriptionApi.cancelSubscription(subscription.id, true);
+      await subscriptionApi.cancelAtPeriodEnd(subscription.id, reason);
+      setShowCancelOptions(false);
       window.dispatchEvent(new CustomEvent('app:toast', { detail: { type: 'success', message: 'Subscription cancelled. It will remain active until the end of the billing period.' } }));
       loadAll();
     } catch (err) {
       console.error(err);
       window.dispatchEvent(new CustomEvent('app:toast', { detail: { type: 'error', message: 'Failed to cancel subscription' } }));
-    } finally { setCancelling(false); }
+    } finally { setActionLoading(''); }
+  }
+
+  async function handleCancelNow(reason?: string) {
+    if (!subscription) return;
+    setActionLoading('cancel-now');
+    try {
+      await subscriptionApi.cancelNow(subscription.id, reason);
+      setShowCancelOptions(false);
+      window.dispatchEvent(new CustomEvent('app:toast', { detail: { type: 'success', message: 'Subscription cancelled immediately.' } }));
+      loadAll();
+    } catch (err) {
+      console.error(err);
+      window.dispatchEvent(new CustomEvent('app:toast', { detail: { type: 'error', message: 'Failed to cancel subscription' } }));
+    } finally { setActionLoading(''); }
+  }
+
+  async function handlePause() {
+    if (!subscription) return;
+    setActionLoading('pause');
+    try {
+      await subscriptionApi.pause(subscription.id);
+      window.dispatchEvent(new CustomEvent('app:toast', { detail: { type: 'success', message: 'Subscription paused.' } }));
+      loadAll();
+    } catch (err) {
+      console.error(err);
+      window.dispatchEvent(new CustomEvent('app:toast', { detail: { type: 'error', message: 'Failed to pause subscription' } }));
+    } finally { setActionLoading(''); }
+  }
+
+  async function handleResume() {
+    if (!subscription) return;
+    setActionLoading('resume');
+    try {
+      await subscriptionApi.resume(subscription.id);
+      window.dispatchEvent(new CustomEvent('app:toast', { detail: { type: 'success', message: 'Subscription resumed.' } }));
+      loadAll();
+    } catch (err) {
+      console.error(err);
+      window.dispatchEvent(new CustomEvent('app:toast', { detail: { type: 'error', message: 'Failed to resume subscription' } }));
+    } finally { setActionLoading(''); }
+  }
+
+  async function handleRenew() {
+    if (!subscription) return;
+    setActionLoading('renew');
+    try {
+      await subscriptionApi.renewSubscription(subscription.id);
+      window.dispatchEvent(new CustomEvent('app:toast', { detail: { type: 'success', message: 'Subscription renewed.' } }));
+      loadAll();
+    } catch (err) {
+      console.error(err);
+      window.dispatchEvent(new CustomEvent('app:toast', { detail: { type: 'error', message: 'Failed to renew subscription' } }));
+    } finally { setActionLoading(''); }
+  }
+
+  async function handleScheduleChange(planId: string, changeType: string) {
+    if (!subscription) return;
+    setActionLoading('schedule');
+    try {
+      await subscriptionApi.scheduleChange(subscription.id, planId, changeType);
+      window.dispatchEvent(new CustomEvent('app:toast', { detail: { type: 'success', message: 'Plan change scheduled.' } }));
+      setShowChangePlan(false);
+      loadAll();
+    } catch (err) {
+      console.error(err);
+      window.dispatchEvent(new CustomEvent('app:toast', { detail: { type: 'error', message: 'Failed to schedule plan change' } }));
+    } finally { setActionLoading(''); }
   }
 
   const statusBadge = (status: string) => {
-    const colors: Record<string, string> = {
-      active: 'bg-emerald-50 text-emerald-700',
-      trialing: 'bg-blue-50 text-blue-700',
-      canceled: 'bg-slate-100 text-slate-600',
-      past_due: 'bg-red-50 text-red-600',
-      incomplete: 'bg-amber-50 text-amber-700',
-    };
-    const labels: Record<string, string> = {
-      active: 'Active',
-      trialing: 'Trialing',
-      canceled: 'Canceled',
-      past_due: 'Past Due',
-      incomplete: 'Incomplete',
-    };
-    return <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${colors[status] || 'bg-neutral-100 text-neutral-600'}`}>{labels[status] || status}</span>;
+    const cfg = statusConfig[status];
+    if (!cfg) return <span className="text-xs font-medium px-2.5 py-0.5 rounded-full bg-neutral-100 text-neutral-600">{status}</span>;
+    const Icon = cfg.icon;
+    return (
+      <span className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-0.5 rounded-full ${cfg.color}`}>
+        <Icon className="w-3 h-3" /> {cfg.label}
+      </span>
+    );
   };
 
   const invStatusBadge = (status: string) => {
@@ -128,6 +216,83 @@ export function SubscriptionPage() {
   }
 
   const plan = plans.find((p: any) => p.id === subscription?.planId);
+  const status = subscription?.status || '';
+  const currentPeriodEnd = subscription?.currentPeriodEnd;
+  const daysToRenewal = currentPeriodEnd ? Math.ceil((new Date(currentPeriodEnd).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 999;
+  const showRenewalBanner = daysToRenewal >= 0 && daysToRenewal <= 7 && status === 'active';
+
+  function renderActionButtons() {
+    const btn = (key: string, label: string, onClick: () => void, variant: 'primary' | 'danger' | 'secondary' = 'secondary') => {
+      const base = 'flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-colors';
+      const styles = {
+        primary: `${base} text-white bg-emerald-600 hover:bg-emerald-700`,
+        danger: `${base} text-red-600 bg-red-50 border border-red-200 hover:bg-red-100`,
+        secondary: `${base} text-slate-700 bg-white border border-slate-200 hover:bg-slate-50`,
+      };
+      return (
+        <button key={key} onClick={onClick} disabled={actionLoading !== ''} className={styles[variant]}>
+          {actionLoading === key && <Loader2 className="w-4 h-4 animate-spin" />}
+          {label}
+        </button>
+      );
+    };
+
+    switch (status) {
+      case 'active':
+      case 'free_trial':
+        return (
+          <div className="flex flex-wrap gap-3">
+            {btn('pause', 'Pause', handlePause)}
+            {btn('cancel', 'Cancel', () => setShowCancelOptions(true), 'danger')}
+            {btn('change-plan', 'Change Plan', () => setShowChangePlan(true))}
+          </div>
+        );
+      case 'paused':
+        return (
+          <div className="flex flex-wrap gap-3">
+            {btn('resume', 'Resume', handleResume, 'primary')}
+            {btn('cancel', 'Cancel', () => setShowCancelOptions(true), 'danger')}
+          </div>
+        );
+      case 'grace_period':
+        return (
+          <div className="flex flex-wrap gap-3">
+            {btn('renew', 'Pay Now', handleRenew, 'primary')}
+            {btn('cancel', 'Cancel', () => setShowCancelOptions(true), 'danger')}
+          </div>
+        );
+      case 'suspended':
+        return (
+          <div className="flex flex-wrap gap-3">
+            {btn('renew', 'Reactivate', handleRenew, 'primary')}
+          </div>
+        );
+      case 'expired':
+        return (
+          <div className="flex flex-wrap gap-3">
+            <a href="/plans" className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-xl hover:bg-emerald-700">
+              Resubscribe
+            </a>
+          </div>
+        );
+      case 'cancelled':
+        return (
+          <div className="flex flex-wrap gap-3">
+            {btn('renew', 'Reactivate', handleRenew, 'primary')}
+          </div>
+        );
+      case 'pending_payment':
+      case 'failed_payment':
+        return (
+          <div className="flex flex-wrap gap-3">
+            {btn('renew', 'Retry Payment', handleRenew, 'primary')}
+            {btn('cancel', 'Cancel', () => setShowCancelOptions(true), 'danger')}
+          </div>
+        );
+      default:
+        return null;
+    }
+  }
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
@@ -138,6 +303,14 @@ export function SubscriptionPage() {
           {subscription && statusBadge(subscription.status)}
         </div>
       </div>
+
+      {/* Renewal Reminder Banner */}
+      {showRenewalBanner && (
+        <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200">
+          <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
+          <p className="text-sm text-amber-800">Your subscription renews on {formatDate(subscription?.currentPeriodEnd)}</p>
+        </div>
+      )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -164,7 +337,7 @@ export function SubscriptionPage() {
             <div>
               <p className="text-sm font-medium text-slate-500">Status</p>
               <div className="flex items-center gap-2 mt-1">
-                <span className={`inline-block w-2.5 h-2.5 rounded-full ${subscription?.status === 'active' || subscription?.status === 'trialing' ? 'bg-emerald-500' : subscription?.status === 'past_due' ? 'bg-red-500' : subscription?.status === 'canceled' ? 'bg-slate-400' : 'bg-amber-500'}`} />
+                <span className={`inline-block w-2.5 h-2.5 rounded-full ${subscription?.status === 'active' || subscription?.status === 'free_trial' ? 'bg-emerald-500' : subscription?.status === 'suspended' || subscription?.status === 'failed_payment' ? 'bg-red-500' : subscription?.status === 'cancelled' || subscription?.status === 'expired' ? 'bg-slate-400' : 'bg-amber-500'}`} />
                 <p className="text-lg font-semibold text-slate-900 capitalize">{subscription?.status || 'Unknown'}</p>
               </div>
               {subscription?.trialEnd && new Date(subscription.trialEnd) > new Date() && (
@@ -206,6 +379,12 @@ export function SubscriptionPage() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="rounded-xl bg-white shadow-sm border border-slate-200 p-5">
+        <h2 className="text-sm font-semibold text-slate-900 mb-3">Actions</h2>
+        {renderActionButtons()}
       </div>
 
       {/* Plan Details */}
@@ -277,9 +456,34 @@ export function SubscriptionPage() {
         </div>
       )}
 
+      {/* Status History Timeline */}
+      {history.length > 0 && (
+        <div className="rounded-xl bg-white shadow-sm border border-slate-200 p-6">
+          <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+            <History className="w-5 h-5 text-slate-500" /> Status History
+          </h2>
+          <div className="relative">
+            {history.map((h: any, i: number) => (
+              <div key={h.id} className="flex gap-4 pb-4 last:pb-0">
+                <div className="flex flex-col items-center">
+                  <div className={`w-3 h-3 rounded-full mt-1.5 ${i === 0 ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                  {i < history.length - 1 && <div className="w-px flex-1 bg-slate-200 mt-1" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-slate-900 capitalize">{h.toStatus?.replace(/_/g, ' ')}</p>
+                  {h.fromStatus && <p className="text-xs text-slate-500">from {h.fromStatus.replace(/_/g, ' ')}</p>}
+                  {h.reason && <p className="text-xs text-slate-400 mt-0.5">{h.reason}</p>}
+                  <p className="text-xs text-slate-400 mt-0.5">{formatDate(h.createdAt)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Change Plan Modal */}
       {showChangePlan && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => { if (!changing) { setShowChangePlan(false); setConfirmChangePlan(null); } } }>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => { if (!changing && actionLoading !== 'schedule') { setShowChangePlan(false); setConfirmChangePlan(null); } } }>
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[80vh] overflow-y-auto m-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between p-6 border-b border-slate-100">
               <h3 className="text-lg font-semibold text-slate-900">Change Plan</h3>
@@ -293,8 +497,8 @@ export function SubscriptionPage() {
                   <p className="text-sm text-amber-800">Are you sure you want to switch to this plan? Any adjustments will be prorated for the current billing period.</p>
                 </div>
                 <div className="flex gap-3 justify-end">
-                  <button onClick={() => setConfirmChangePlan(null)} disabled={changing} className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50">Cancel</button>
-                  <button onClick={() => handleChangePlan(confirmChangePlan)} disabled={changing} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 disabled:opacity-50">
+                  <button onClick={() => setConfirmChangePlan(null)} disabled={changing || actionLoading !== ''} className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50">Cancel</button>
+                  <button onClick={() => handleChangePlan(confirmChangePlan)} disabled={changing || actionLoading !== ''} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 disabled:opacity-50">
                     {changing && <Loader2 className="w-4 h-4 animate-spin" />}
                     Confirm Change
                   </button>
@@ -325,6 +529,50 @@ export function SubscriptionPage() {
                 )}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Options Modal */}
+      {showCancelOptions && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => { if (actionLoading === '') setShowCancelOptions(false); }}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md m-4 p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-slate-900">Cancel Subscription</h3>
+              <button onClick={() => setShowCancelOptions(false)} className="p-1 rounded-lg hover:bg-slate-100 text-slate-400"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200 mb-4">
+              <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
+              <p className="text-sm text-amber-800">Choose how you'd like to cancel your subscription.</p>
+            </div>
+            <div className="space-y-3">
+              <button
+                onClick={() => handleCancel()}
+                disabled={actionLoading !== ''}
+                className="w-full text-left p-4 rounded-xl border border-slate-200 hover:border-amber-300 hover:bg-amber-50/30 transition-colors disabled:opacity-50"
+              >
+                <div className="flex items-center gap-3">
+                  <Calendar className="w-5 h-5 text-slate-400 shrink-0" />
+                  <div>
+                    <p className="font-semibold text-slate-900">Cancel at Period End</p>
+                    <p className="text-sm text-slate-500 mt-0.5">Your subscription remains active until {formatDate(subscription?.currentPeriodEnd)}</p>
+                  </div>
+                </div>
+              </button>
+              <button
+                onClick={() => handleCancelNow()}
+                disabled={actionLoading !== ''}
+                className="w-full text-left p-4 rounded-xl border border-red-200 hover:border-red-300 hover:bg-red-50/30 transition-colors disabled:opacity-50"
+              >
+                <div className="flex items-center gap-3">
+                  <XCircle className="w-5 h-5 text-red-500 shrink-0" />
+                  <div>
+                    <p className="font-semibold text-slate-900">Cancel Immediately</p>
+                    <p className="text-sm text-slate-500 mt-0.5">Access will be revoked right away</p>
+                  </div>
+                </div>
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -378,16 +626,20 @@ export function SubscriptionPage() {
         )}
       </div>
 
-      {/* Cancel Section */}
+      {/* Danger Zone */}
       <div className="rounded-xl bg-white shadow-sm border border-red-200 p-6">
         <div className="flex items-center gap-2 mb-1">
           <AlertCircle className="w-5 h-5 text-red-500" />
           <h2 className="text-lg font-semibold text-slate-900">Danger Zone</h2>
         </div>
         <p className="text-sm text-slate-600 mb-4">Cancel your subscription. Your data will be preserved and you can resubscribe at any time.</p>
-        <button onClick={handleCancel} disabled={cancelling || subscription?.status === 'canceled'} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-50 border border-red-200 rounded-xl hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed">
-          {cancelling && <Loader2 className="w-4 h-4 animate-spin" />}
-          {subscription?.status === 'canceled' ? 'Already Canceled' : 'Cancel Subscription'}
+        <button
+          onClick={() => setShowCancelOptions(true)}
+          disabled={actionLoading !== '' || status === 'cancelled' || status === 'expired'}
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-50 border border-red-200 rounded-xl hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {actionLoading === 'cancel' && <Loader2 className="w-4 h-4 animate-spin" />}
+          {status === 'cancelled' ? 'Already Cancelled' : status === 'expired' ? 'Already Expired' : 'Cancel Subscription'}
         </button>
       </div>
     </div>

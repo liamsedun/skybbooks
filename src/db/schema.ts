@@ -113,7 +113,7 @@ export const systemAccountRoleEnum = pgEnum('system_account_role', [
 ]);
 
 // ========== Subscription Management Enums ==========
-export const subscriptionStatusEnum = pgEnum('subscription_status', ['active', 'trialing', 'canceled', 'past_due', 'incomplete', 'incomplete_expired']);
+export const subscriptionStatusEnum = pgEnum('subscription_status', ['free_trial', 'active', 'grace_period', 'suspended', 'expired', 'cancelled', 'pending_payment', 'failed_payment', 'renewing', 'downgraded', 'upgraded', 'paused']);
 export const billingCycleEnum = pgEnum('billing_cycle', ['monthly', 'yearly', 'quarterly']);
 export const discountTypeEnum = pgEnum('discount_type', ['percentage', 'fixed_amount']);
 export const subInvoiceStatusEnum = pgEnum('sub_invoice_status', ['pending', 'paid', 'overdue', 'canceled', 'refunded']);
@@ -2284,16 +2284,28 @@ export const subscriptions = pgTable('subscriptions', {
   id: uuid('id').defaultRandom().primaryKey(),
   orgId: uuid('org_id').references(() => organisations.id).notNull(),
   planId: uuid('plan_id').references(() => subscriptionPlans.id).notNull(),
-  status: subscriptionStatusEnum('status').default('incomplete').notNull(),
+  status: subscriptionStatusEnum('status').default('active').notNull(),
   currentPeriodStart: timestamp('current_period_start').notNull(),
   currentPeriodEnd: timestamp('current_period_end').notNull(),
   trialStart: timestamp('trial_start'),
   trialEnd: timestamp('trial_end'),
+  gracePeriodEnd: timestamp('grace_period_end'),
+  suspendedAt: timestamp('suspended_at'),
+  pausedAt: timestamp('paused_at'),
+  pausedEnd: timestamp('paused_end'),
   canceledAt: timestamp('canceled_at'),
+  cancelAtPeriodEnd: boolean('cancel_at_period_end').default(false).notNull(),
   billingCycleAnchor: timestamp('billing_cycle_anchor').notNull(),
   couponId: uuid('coupon_id').references(() => coupons.id),
   promotionId: uuid('promotion_id').references(() => promotions.id),
   autoRenew: boolean('auto_renew').default(true).notNull(),
+  renewalCount: integer('renewal_count').default(0).notNull(),
+  lastRenewalAttempt: timestamp('last_renewal_attempt'),
+  paymentFailureCount: integer('payment_failure_count').default(0).notNull(),
+  expirationReminderSentAt: timestamp('expiration_reminder_sent_at'),
+  previousPlanId: uuid('previous_plan_id').references(() => subscriptionPlans.id),
+  nextPlanId: uuid('next_plan_id').references(() => subscriptionPlans.id),
+  scheduledChangeAt: timestamp('scheduled_change_at'),
   nextBillingDate: timestamp('next_billing_date'),
   lastPaymentDate: timestamp('last_payment_date'),
   metadata: jsonb('metadata').default({}),
@@ -2304,6 +2316,20 @@ export const subscriptions = pgTable('subscriptions', {
   subPlanIdx: index('idx_sub_plan').on(table.planId),
   subStatusIdx: index('idx_sub_status').on(table.status),
   subOrgStatusIdx: index('idx_sub_org_status').on(table.orgId, table.status),
+}));
+
+export const subscriptionStatusHistory = pgTable('subscription_status_history', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  subscriptionId: uuid('subscription_id').references(() => subscriptions.id).notNull(),
+  fromStatus: subscriptionStatusEnum('from_status'),
+  toStatus: subscriptionStatusEnum('to_status').notNull(),
+  reason: text('reason'),
+  changedBy: uuid('changed_by').references(() => users.id),
+  metadata: jsonb('metadata').default({}),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  histSubIdx: index('idx_ssh_sub').on(table.subscriptionId),
+  histCreatedIdx: index('idx_ssh_created').on(table.createdAt),
 }));
 
 export const coupons = pgTable('coupons', {
@@ -2505,6 +2531,12 @@ export const subscriptionsRelations = relations(subscriptions, ({ one, many }) =
   invoices: many(subscriptionInvoices),
   usage: many(subscriptionUsage),
   featureOverrides: many(subscriptionFeatureOverrides),
+  statusHistory: many(subscriptionStatusHistory),
+}));
+
+export const subscriptionStatusHistoryRelations = relations(subscriptionStatusHistory, ({ one }) => ({
+  subscription: one(subscriptions, { fields: [subscriptionStatusHistory.subscriptionId], references: [subscriptions.id] }),
+  changer: one(users, { fields: [subscriptionStatusHistory.changedBy], references: [users.id] }),
 }));
 
 export const couponsRelations = relations(coupons, ({ one }) => ({
@@ -3958,6 +3990,7 @@ export const db = drizzle(pool, {
     planFeatureFlagsRelations,
     orgFeatureFlagsRelations,
     userFeatureFlagsRelations,
+    subscriptionStatusHistoryRelations,
     subscriptionPlansRelations,
     subscriptionsRelations,
     couponsRelations,
@@ -4149,6 +4182,7 @@ export const schema = {
   subscriptionInvoices,
   subscriptionUsage,
   subscriptionFeatureOverrides,
+  subscriptionStatusHistory,
   approvalWorkflows,
   approvalHistory,
   ocrDocuments,

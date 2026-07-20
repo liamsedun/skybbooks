@@ -51,6 +51,7 @@ import passwordResetRouter from '../routes/passwordReset';
 import contactRouter from '../routes/contact';
 import featureFlagRouter from '../routes/featureFlags';
 import subscriptionRouter, { subscriptionWebhookRouter } from '../routes/subscriptions';
+import lifecycleRouter, { initLifecycleScheduler } from '../routes/subscriptionLifecycle';
 
 import { runMigration } from '../db/migrate';
 import { fetchLatestRates } from '../services/cbn.service';
@@ -178,6 +179,7 @@ async function startServer() {
   app.use('/api/contact', contactRouter);
   app.use('/api/feature-flags', featureFlagRouter);
   app.use('/api/subscriptions', subscriptionRouter);
+  app.use('/api/subscriptions', lifecycleRouter);
 
   app.get('/api/health', (req, res) => {
     res.json({ status: 'healthy', timestamp: new Date().toISOString() });
@@ -367,6 +369,9 @@ async function startServer() {
   httpServer.listen(PORT, '0.0.0.0', () => {
     logger.info(`FinanceOS core server running on port ${PORT}`);
   });
+
+  // Start subscription lifecycle scheduler
+  initLifecycleScheduler();
 }
 
 startServer().catch((err) => {

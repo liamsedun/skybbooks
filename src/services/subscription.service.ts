@@ -171,7 +171,7 @@ export async function getOrgSubscription(orgId: string): Promise<any> {
     .innerJoin(subscriptionPlans, eq(subscriptions.planId, subscriptionPlans.id))
     .where(and(
       eq(subscriptions.orgId, orgId),
-      inArray(subscriptions.status, ['active', 'trialing', 'past_due']),
+      inArray(subscriptions.status, ['active', 'free_trial', 'grace_period']),
     ))
     .orderBy(desc(subscriptions.createdAt))
     .limit(1);
@@ -715,7 +715,7 @@ export async function markInvoiceOverdue(invoiceId: string): Promise<any> {
   // Mark subscription as past_due
   if (updated.subscriptionId) {
     await db.update(subscriptions)
-      .set({ status: 'past_due', updatedAt: new Date() })
+      .set({ status: 'grace_period', updatedAt: new Date() })
       .where(eq(subscriptions.id, updated.subscriptionId));
   }
 

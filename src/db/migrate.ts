@@ -2701,12 +2701,34 @@ export async function runMigration() {
     // ----------------------------------------------------------------
     // Subscription Management System (SMS) — enums, tables, defaults
     // ----------------------------------------------------------------
+    // Create new enum and migrate existing data
     await db.execute(sql`
       DO $$ BEGIN
-        CREATE TYPE subscription_status AS ENUM ('active', 'trialing', 'canceled', 'past_due', 'incomplete', 'incomplete_expired');
+        CREATE TYPE subscription_status_new AS ENUM ('free_trial', 'active', 'grace_period', 'suspended', 'expired', 'cancelled', 'pending_payment', 'failed_payment', 'renewing', 'downgraded', 'upgraded', 'paused');
       EXCEPTION WHEN duplicate_object THEN NULL;
       END $$;
     `);
+    await db.execute(sql`ALTER TABLE subscriptions ALTER COLUMN status TYPE text`);
+    await db.execute(sql`
+      UPDATE subscriptions SET status = 'free_trial' WHERE status = 'trialing'
+    `);
+    await db.execute(sql`
+      UPDATE subscriptions SET status = 'grace_period' WHERE status = 'past_due'
+    `);
+    await db.execute(sql`
+      UPDATE subscriptions SET status = 'cancelled' WHERE status = 'canceled'
+    `);
+    await db.execute(sql`
+      UPDATE subscriptions SET status = 'pending_payment' WHERE status = 'incomplete'
+    `);
+    await db.execute(sql`
+      UPDATE subscriptions SET status = 'expired' WHERE status = 'incomplete_expired'
+    `);
+    await db.execute(sql`
+      ALTER TABLE subscriptions ALTER COLUMN status TYPE subscription_status_new USING status::text::subscription_status_new
+    `);
+    await db.execute(sql`DROP TYPE IF EXISTS subscription_status`);
+    await db.execute(sql`ALTER TYPE subscription_status_new RENAME TO subscription_status`);
     await db.execute(sql`
       DO $$ BEGIN
         CREATE TYPE billing_cycle AS ENUM ('monthly', 'yearly', 'quarterly');
@@ -2806,7 +2828,7 @@ export async function runMigration() {
         id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
         org_id uuid REFERENCES organisations(id) NOT NULL,
         plan_id uuid REFERENCES subscription_plans(id) NOT NULL,
-        status subscription_status DEFAULT 'incomplete' NOT NULL,
+        status subscription_status DEFAULT 'active' NOT NULL,
         current_period_start timestamp NOT NULL,
         current_period_end timestamp NOT NULL,
         trial_start timestamp,
@@ -2941,6 +2963,22 @@ export async function runMigration() {
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_foverride_plan ON subscription_feature_overrides(plan_id, feature_key)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_foverride_sub ON subscription_feature_overrides(subscription_id, feature_key)`);
 
+    // Subscription status history table
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS subscription_status_history (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        subscription_id uuid REFERENCES subscriptions(id) NOT NULL,
+        from_status subscription_status,
+        to_status subscription_status NOT NULL,
+        reason text,
+        changed_by uuid REFERENCES users(id),
+        metadata jsonb DEFAULT '{}'::jsonb,
+        created_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_ssh_sub ON subscription_status_history(subscription_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_ssh_created ON subscription_status_history(created_at)`);
+
     // Seed default plans
     await db.execute(sql`
       INSERT INTO subscription_plans (id, code, name, description, monthly_price_kobo, annual_price_kobo, currency, billing_cycle, trial_days, user_limit, max_companies, storage_limit_gb, api_requests, max_customers, max_vendors, max_products, max_invoices, max_transactions, max_bank_accounts, max_warehouses, max_projects, max_assets, max_reports, max_ai_requests, max_ocr_documents, support_level, popular_badge, recommended_badge, button_text, is_active, is_archived, sort_order, is_public)
@@ -2962,6 +3000,20 @@ export async function runMigration() {
       AND NOT EXISTS (SELECT 1 FROM subscriptions s WHERE s.org_id = o.id)
       ON CONFLICT DO NOTHING
     `);
+
+    // Add new columns to existing subscriptions table
+    await db.execute(sql`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS grace_period_end timestamp`);
+    await db.execute(sql`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS suspended_at timestamp`);
+    await db.execute(sql`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS paused_at timestamp`);
+    await db.execute(sql`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS paused_end timestamp`);
+    await db.execute(sql`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS cancel_at_period_end boolean DEFAULT false NOT NULL`);
+    await db.execute(sql`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS renewal_count integer DEFAULT 0 NOT NULL`);
+    await db.execute(sql`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS last_renewal_attempt timestamp`);
+    await db.execute(sql`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS payment_failure_count integer DEFAULT 0 NOT NULL`);
+    await db.execute(sql`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS expiration_reminder_sent_at timestamp`);
+    await db.execute(sql`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS previous_plan_id uuid REFERENCES subscription_plans(id)`);
+    await db.execute(sql`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS next_plan_id uuid REFERENCES subscription_plans(id)`);
+    await db.execute(sql`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS scheduled_change_at timestamp`);
 
     console.log('[Migration] Subscription Management System tables created.');
 
