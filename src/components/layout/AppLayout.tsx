@@ -144,6 +144,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     revenue_contracts: '/app/revenue/contracts', rep_revenue_recognition: '/app/revenue/recognition-report',
     subscription: '/app/subscription', subscription_plans: '/app/subscription/plans', subscription_coupons: '/app/subscription/coupons', subscription_portal: '/app/subscription/portal',
     subscription_addons: '/app/subscription/addons',
+    subscription_billing: '/app/subscription/billing',
     usage_monitor: '/app/reports/usage-monitor',
     set_organisation: '/app/settings/organisation', set_invites: '/app/settings/invites', set_roles: '/app/settings/roles',
     user_preferences: '/app/settings/user-preferences', set_integrations: '/app/settings/integrations',
@@ -215,6 +216,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     { title: 'BILLING', icon: CreditCard, items: [
       { name: 'Subscription', id: 'subscription', icon: CreditCard },
       { name: 'Portal', id: 'subscription_portal', icon: ExternalLink },
+      { name: 'Billing', id: 'subscription_billing', icon: Receipt },
       { name: 'Add-ons', id: 'subscription_addons', icon: Package },
       { name: 'Plans', id: 'subscription_plans', icon: CreditCard },
       { name: 'Coupons', id: 'subscription_coupons', icon: Tag },

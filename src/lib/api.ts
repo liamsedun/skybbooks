@@ -1921,6 +1921,25 @@ export const subscriptionApi = {
   updateAddonQuantity: async (id: string, quantity: number) => { const res = await api.put(`/subscriptions/addons/${id}/quantity`, { quantity }); return res.data; },
   toggleAddonAutoRenew: async (id: string, autoRenew: boolean) => { const res = await api.put(`/subscriptions/addons/${id}/auto-renew`, { autoRenew }); return res.data; },
   getEffectiveLimits: async () => { const res = await api.get('/subscriptions/addons/effective-limits'); return res.data; },
+
+  // Billing Engine
+  listBillingInvoices: async (params?: { status?: string }) => { const res = await api.get('/subscriptions/billing/invoices', { params }); return res.data; },
+  getBillingInvoice: async (id: string) => { const res = await api.get(`/subscriptions/billing/invoices/${id}`); return res.data; },
+  generateBillingInvoice: async (data: any) => { const res = await api.post('/subscriptions/billing/invoices/generate', data); return res.data; },
+  downloadBillingInvoicePdf: async (id: string) => { const res = await api.get(`/subscriptions/billing/invoices/${id}/pdf`, { responseType: 'blob' }); return res.data; },
+  emailBillingInvoice: async (id: string) => { const res = await api.post(`/subscriptions/billing/invoices/${id}/email`); return res.data; },
+  listBillingCreditNotes: async () => { const res = await api.get('/subscriptions/billing/credit-notes'); return res.data; },
+  createBillingCreditNote: async (data: { invoiceId?: string; subscriptionId?: string; reason: string; amountKobo: number; taxKobo?: number }) => { const res = await api.post('/subscriptions/billing/credit-notes', data); return res.data; },
+  refundBillingInvoice: async (invoiceId: string, reason: string, amountKobo?: number) => { const res = await api.post('/subscriptions/billing/refund', { invoiceId, reason, amountKobo }); return res.data; },
+  getBillingTaxRates: async () => { const res = await api.get('/subscriptions/billing/tax-rates'); return res.data; },
+  saveBillingTaxRate: async (data: { name: string; rate: number; type?: string; isDefault?: boolean; description?: string }) => { const res = await api.post('/subscriptions/billing/tax-rates', data); return res.data; },
+  deleteBillingTaxRate: async (id: string) => { const res = await api.delete(`/subscriptions/billing/tax-rates/${id}`); return res.data; },
+  getBillingOutstanding: async () => { const res = await api.get('/subscriptions/billing/outstanding'); return res.data; },
+  getBillingHistory: async () => { const res = await api.get('/subscriptions/billing/history'); return res.data; },
+  handleBillingInvoiceFailure: async (id: string) => { const res = await api.post(`/subscriptions/billing/invoices/${id}/handle-failure`); return res.data; },
+  generateBillingAccountingEntries: async (id: string) => { const res = await api.post(`/subscriptions/billing/invoices/${id}/accounting-entries`); return res.data; },
+  generateBillingRenewals: async () => { const res = await api.post('/subscriptions/billing/generate-renewals'); return res.data; },
+  calculateBillingProration: async (data: { oldMonthlyKobo: number; newMonthlyKobo: number; daysRemaining: number; daysInPeriod?: number }) => { const res = await api.post('/subscriptions/billing/calculate-proration', data); return res.data; },
 };
 
 

@@ -57,6 +57,7 @@ import nvidiaRouter from '../routes/nvidia';
 import usageMonitorRouter from '../routes/usageMonitor';
 import subscriptionPortalRouter from '../routes/subscriptionPortal';
 import addonMarketplaceRouter from '../routes/addonMarketplace';
+import subscriptionBillingEngineRouter from '../routes/subscriptionBillingEngine';
 
 import { runMigration } from '../db/migrate';
 import { fetchLatestRates } from '../services/cbn.service';
@@ -192,6 +193,7 @@ async function startServer() {
   app.use('/api/reports', usageMonitorRouter);
   app.use('/api/subscriptions', subscriptionPortalRouter);
   app.use('/api/subscriptions', addonMarketplaceRouter);
+  app.use('/api/subscriptions', subscriptionBillingEngineRouter);
 
   app.get('/api/health', (req, res) => {
     res.json({ status: 'healthy', timestamp: new Date().toISOString() });

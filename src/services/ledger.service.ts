@@ -378,7 +378,7 @@ export async function reverseJournalEntry(
       date,
       description: `Reversal of ${entry.entryNumber} - ${entry.description || ''}`,
       reference: entry.entryNumber,
-      source: entry.source,
+      source: entry.source as any,
       sourceId: entry.sourceId || undefined,
       createdBy,
       lines: reversedLines

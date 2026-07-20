@@ -56,7 +56,8 @@ export const journalSourceEnum = pgEnum('journal_source', [
   'revenue_recognition',
   'lease',
   'ecl_provision',
-  'fixed_asset'
+  'fixed_asset',
+  'subscription'
 ]);
 
 export const journalStatusEnum = pgEnum('journal_status', [
@@ -337,7 +338,12 @@ export const organisations = pgTable('organisations', {
   rcNumber: text('rc_number'),
   website: text('website'),
   settings: jsonb('settings').default({}).notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull()
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  nextInvoiceNumber: integer('next_invoice_number').default(1).notNull(),
+  nextCreditNoteNumber: integer('next_credit_note_number').default(1).notNull(),
+  invoicePrefix: text('invoice_prefix').default('INV'),
+  creditNotePrefix: text('credit_note_prefix').default('CN'),
+  defaultTaxRateId: uuid('default_tax_rate_id'),
 });
 
 export const users = pgTable('users', {
@@ -2696,6 +2702,72 @@ export const paymentReceipts = pgTable('payment_receipts', {
   prReceiptNumIdx: uniqueIndex('idx_pr_receipt_num').on(table.receiptNumber),
 }));
 
+// ========== Subscription Invoice Items ==========
+
+export const subscriptionInvoiceItems = pgTable('subscription_invoice_items', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  invoiceId: uuid('invoice_id').references(() => subscriptionInvoices.id).notNull(),
+  description: text('description').notNull(),
+  type: text('type').default('subscription').notNull(), // subscription, addon, credit, proration, tax
+  quantity: integer('quantity').default(1).notNull(),
+  unitPriceKobo: bigint('unit_price_kobo', { mode: 'number' }).default(0).notNull(),
+  amountKobo: bigint('amount_kobo', { mode: 'number' }).default(0).notNull(),
+  taxKobo: bigint('tax_kobo', { mode: 'number' }).default(0).notNull(),
+  totalKobo: bigint('total_kobo', { mode: 'number' }).default(0).notNull(),
+  metadata: jsonb('metadata').default({}),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  siiInvIdx: index('idx_sii_invoice').on(table.invoiceId),
+  siiOrgIdx: index('idx_sii_org').on(table.orgId),
+}));
+
+// ========== Subscription Credit Notes ==========
+
+export const subscriptionCreditNotes = pgTable('subscription_credit_notes', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  invoiceId: uuid('invoice_id').references(() => subscriptionInvoices.id),
+  subscriptionId: uuid('subscription_id').references(() => subscriptions.id),
+  creditNoteNumber: text('credit_note_number').notNull(),
+  reason: text('reason').notNull(),
+  amountKobo: bigint('amount_kobo', { mode: 'number' }).default(0).notNull(),
+  taxKobo: bigint('tax_kobo', { mode: 'number' }).default(0).notNull(),
+  totalKobo: bigint('total_kobo', { mode: 'number' }).default(0).notNull(),
+  status: text('status').default('issued').notNull(), // issued, applied, void
+  appliedAt: timestamp('applied_at'),
+  refundedAt: timestamp('refunded_at'),
+  refundPaymentId: uuid('refund_payment_id').references(() => subscriptionPayments.id),
+  createdBy: uuid('created_by'),
+  metadata: jsonb('metadata').default({}),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  scnOrgIdx: index('idx_scn_org').on(table.orgId),
+  scnInvIdx: index('idx_scn_invoice').on(table.invoiceId),
+  scnSubIdx: index('idx_scn_sub').on(table.subscriptionId),
+  scnNumIdx: uniqueIndex('idx_scn_number').on(table.creditNoteNumber),
+}));
+
+// ========== Subscription Tax Rates ==========
+
+export const subscriptionTaxRates = pgTable('subscription_tax_rates', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  name: text('name').notNull(),
+  rate: integer('rate').notNull(), // in basis points e.g. 750 = 7.5%
+  type: text('type').default('vat').notNull(), // vat, sales_tax, withholding, custom
+  isActive: boolean('is_active').default(true).notNull(),
+  isDefault: boolean('is_default').default(false).notNull(),
+  description: text('description'),
+  metadata: jsonb('metadata').default({}),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  strOrgIdx: index('idx_str_org').on(table.orgId),
+  strActiveIdx: index('idx_str_active').on(table.orgId, table.isActive, table.isDefault),
+}));
+
 // ========== Feature Flag System ==========
 export const featureFlagStateEnum = pgEnum('feature_flag_state', ['enabled', 'disabled', 'limited', 'unlimited']);
 
@@ -4317,6 +4389,9 @@ export const db = drizzle(pool, {
     paymentGatewayConfigs,
     subscriptionPayments,
     paymentReceipts,
+    subscriptionInvoiceItems,
+    subscriptionCreditNotes,
+    subscriptionTaxRates,
     promotionalCampaigns,
     referralCodes,
     partnerDiscounts,
@@ -4532,6 +4607,9 @@ export const schema = {
    paymentGatewayConfigs,
    subscriptionPayments,
    paymentReceipts,
+   subscriptionInvoiceItems,
+   subscriptionCreditNotes,
+   subscriptionTaxRates,
   promotionalCampaigns,
   referralCodes,
   partnerDiscounts,

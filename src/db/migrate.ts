@@ -3547,6 +3547,92 @@ export async function runMigration() {
       console.error('[Migration] Promotions Engine error:', err);
     }
 
+    // Subscription Billing Engine tables & columns
+    try {
+      await db.execute(sql`ALTER TYPE journal_source ADD VALUE IF NOT EXISTS 'subscription'`);
+      // Invoice number columns on organisations
+      const orgCols: [string, string][] = [
+        ['next_invoice_number', 'INTEGER DEFAULT 1 NOT NULL'],
+        ['next_credit_note_number', 'INTEGER DEFAULT 1 NOT NULL'],
+        ['invoice_prefix', 'TEXT DEFAULT \'INV\''],
+        ['credit_note_prefix', 'TEXT DEFAULT \'CN\''],
+        ['default_tax_rate_id', 'UUID'],
+      ];
+      for (const [col, dtype] of orgCols) {
+        await pool.query(`
+          DO $$ BEGIN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organisations' AND column_name = '${col}') THEN
+              ALTER TABLE organisations ADD COLUMN ${col} ${dtype};
+            END IF;
+          END $$;
+        `);
+      }
+
+      // subscription_invoice_items table
+      await pool.query(`CREATE TABLE IF NOT EXISTS subscription_invoice_items (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id UUID REFERENCES organisations(id) NOT NULL,
+        invoice_id UUID REFERENCES subscription_invoices(id) NOT NULL,
+        description TEXT NOT NULL,
+        type TEXT DEFAULT 'subscription' NOT NULL,
+        quantity INTEGER DEFAULT 1 NOT NULL,
+        unit_price_kobo BIGINT DEFAULT 0 NOT NULL,
+        amount_kobo BIGINT DEFAULT 0 NOT NULL,
+        tax_kobo BIGINT DEFAULT 0 NOT NULL,
+        total_kobo BIGINT DEFAULT 0 NOT NULL,
+        metadata JSONB DEFAULT '{}'::jsonb,
+        created_at TIMESTAMP DEFAULT now() NOT NULL
+      )`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_sii_invoice ON subscription_invoice_items(invoice_id)`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_sii_org ON subscription_invoice_items(org_id)`);
+
+      // subscription_credit_notes table
+      await pool.query(`CREATE TABLE IF NOT EXISTS subscription_credit_notes (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id UUID REFERENCES organisations(id) NOT NULL,
+        invoice_id UUID REFERENCES subscription_invoices(id),
+        subscription_id UUID REFERENCES subscriptions(id),
+        credit_note_number TEXT NOT NULL,
+        reason TEXT NOT NULL,
+        amount_kobo BIGINT DEFAULT 0 NOT NULL,
+        tax_kobo BIGINT DEFAULT 0 NOT NULL,
+        total_kobo BIGINT DEFAULT 0 NOT NULL,
+        status TEXT DEFAULT 'issued' NOT NULL,
+        applied_at TIMESTAMP,
+        refunded_at TIMESTAMP,
+        refund_payment_id UUID REFERENCES subscription_payments(id),
+        created_by UUID,
+        metadata JSONB DEFAULT '{}'::jsonb,
+        created_at TIMESTAMP DEFAULT now() NOT NULL,
+        updated_at TIMESTAMP DEFAULT now() NOT NULL
+      )`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_scn_org ON subscription_credit_notes(org_id)`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_scn_invoice ON subscription_credit_notes(invoice_id)`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_scn_sub ON subscription_credit_notes(subscription_id)`);
+      await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_scn_number ON subscription_credit_notes(credit_note_number)`);
+
+      // subscription_tax_rates table
+      await pool.query(`CREATE TABLE IF NOT EXISTS subscription_tax_rates (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id UUID REFERENCES organisations(id) NOT NULL,
+        name TEXT NOT NULL,
+        rate INTEGER NOT NULL,
+        type TEXT DEFAULT 'vat' NOT NULL,
+        is_active BOOLEAN DEFAULT true NOT NULL,
+        is_default BOOLEAN DEFAULT false NOT NULL,
+        description TEXT,
+        metadata JSONB DEFAULT '{}'::jsonb,
+        created_at TIMESTAMP DEFAULT now() NOT NULL,
+        updated_at TIMESTAMP DEFAULT now() NOT NULL
+      )`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_str_org ON subscription_tax_rates(org_id)`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_str_active ON subscription_tax_rates(org_id, is_active, is_default)`);
+
+      console.log('[Migration] Subscription Billing Engine tables created.');
+    } catch (err) {
+      console.error('[Migration] Subscription Billing Engine error:', err);
+    }
+
     // Add-on Marketplace tables & seed
     try {
       await pool.query(`CREATE TABLE IF NOT EXISTS addon_products (
