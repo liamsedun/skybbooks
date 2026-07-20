@@ -2299,6 +2299,7 @@ export const subscriptions = pgTable('subscriptions', {
   pausedEnd: timestamp('paused_end'),
   canceledAt: timestamp('canceled_at'),
   cancelAtPeriodEnd: boolean('cancel_at_period_end').default(false).notNull(),
+  billingCycle: text('billing_cycle').default('monthly').notNull(),
   billingCycleAnchor: timestamp('billing_cycle_anchor').notNull(),
   couponId: uuid('coupon_id').references(() => coupons.id),
   promotionId: uuid('promotion_id').references(() => promotions.id),
@@ -2529,6 +2530,9 @@ export const subscriptionInvoices = pgTable('subscription_invoices', {
   attemptCount: integer('attempt_count').default(0).notNull(),
   lastAttemptAt: timestamp('last_attempt_at'),
   receiptUrl: text('receipt_url'),
+  refundedAt: timestamp('refunded_at'),
+  refundedAmountKobo: bigint('refunded_amount_kobo', { mode: 'number' }).default(0),
+  refundReason: text('refund_reason'),
   metadata: jsonb('metadata').default({}),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -2553,6 +2557,29 @@ export const subscriptionUsage = pgTable('subscription_usage', {
 }, (table) => ({
   usageSubFeatureIdx: index('idx_usage_sub_feature').on(table.subscriptionId, table.featureKey),
   usageOrgPeriodIdx: index('idx_usage_org_period').on(table.orgId, table.periodStart, table.periodEnd),
+}));
+
+// ========== Subscription Add-ons ==========
+
+export const subscriptionAddons = pgTable('subscription_addons', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  subscriptionId: uuid('subscription_id').references(() => subscriptions.id).notNull(),
+  name: text('name').notNull(),
+  description: text('description'),
+  priceKobo: bigint('price_kobo', { mode: 'number' }).default(0).notNull(),
+  quantity: integer('quantity').default(1).notNull(),
+  billingCycle: text('billing_cycle').default('monthly').notNull(),
+  isActive: boolean('is_active').default(true).notNull(),
+  addedAt: timestamp('added_at').defaultNow().notNull(),
+  removedAt: timestamp('removed_at'),
+  metadata: jsonb('metadata').default({}),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  saOrgIdx: index('idx_sa_org').on(table.orgId),
+  saSubIdx: index('idx_sa_sub').on(table.subscriptionId),
+  saActiveIdx: index('idx_sa_active').on(table.subscriptionId, table.isActive),
 }));
 
 // ========== Payment Gateway Configs ==========
@@ -2601,6 +2628,9 @@ export const subscriptionPayments = pgTable('subscription_payments', {
   rawResponse: jsonb('raw_response').default({}),
   paidAt: timestamp('paid_at'),
   settledAt: timestamp('settled_at'),
+  refundedAt: timestamp('refunded_at'),
+  refundedAmountKobo: bigint('refunded_amount_kobo', { mode: 'number' }).default(0),
+  refundReason: text('refund_reason'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({

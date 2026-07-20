@@ -142,7 +142,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     rep_tax_engine: '/app/reports/tax-engine', rep_projects: '/app/reports/projects', rep_legacy: '/app/reports/legacy',
     rep_consolidation: '/app/reports/consolidation',
     revenue_contracts: '/app/revenue/contracts', rep_revenue_recognition: '/app/revenue/recognition-report',
-    subscription: '/app/subscription', subscription_plans: '/app/subscription/plans', subscription_coupons: '/app/subscription/coupons',
+    subscription: '/app/subscription', subscription_plans: '/app/subscription/plans', subscription_coupons: '/app/subscription/coupons', subscription_portal: '/app/subscription/portal',
     set_organisation: '/app/settings/organisation', set_invites: '/app/settings/invites', set_roles: '/app/settings/roles',
     user_preferences: '/app/settings/user-preferences', set_integrations: '/app/settings/integrations',
     feature_flags: '/app/settings/feature-flags', plan_features: '/app/settings/feature-flags/plans',
@@ -212,6 +212,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     ]},
     { title: 'BILLING', icon: CreditCard, items: [
       { name: 'Subscription', id: 'subscription', icon: CreditCard },
+      { name: 'Portal', id: 'subscription_portal', icon: ExternalLink },
       { name: 'Plans', id: 'subscription_plans', icon: Package },
       { name: 'Coupons', id: 'subscription_coupons', icon: Tag },
     ]},

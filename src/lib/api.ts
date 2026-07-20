@@ -1894,6 +1894,18 @@ export const subscriptionApi = {
   getPaymentHistory: async (subscriptionId?: string) => { const res = await api.get('/subscriptions/billing/payments', { params: { subscriptionId } }); return res.data; },
   getPaymentStats: async () => { const res = await api.get('/subscriptions/billing/payments/stats'); return res.data; },
   getReceiptUrl: (paymentId: string) => `/subscriptions/billing/receipts/${paymentId}`,
+
+  // Portal
+  getPortalDashboard: async () => { const res = await api.get('/subscriptions/portal/dashboard'); return res.data; },
+  changeBillingCycle: async (billingCycle: string) => { const res = await api.put('/subscriptions/portal/billing-cycle', { billingCycle }); return res.data; },
+  getPortalPaymentMethodLink: async () => { const res = await api.get('/subscriptions/portal/payment-method-link'); return res.data; },
+  redeemPortalCoupon: async (code: string) => { const res = await api.post('/subscriptions/portal/redeem-coupon', { code }); return res.data; },
+  downloadInvoice: async (id: string) => { const res = await api.get(`/subscriptions/portal/invoices/${id}/download`, { responseType: 'blob' }); return res.data; },
+  requestRefund: async (invoiceId: string, reason: string) => { const res = await api.post('/subscriptions/portal/refund', { invoiceId, reason }); return res.data; },
+  getPortalUsage: async () => { const res = await api.get('/subscriptions/portal/usage'); return res.data; },
+  listPortalAddons: async () => { const res = await api.get('/subscriptions/portal/addons'); return res.data; },
+  createPortalAddon: async (data: any) => { const res = await api.post('/subscriptions/portal/addons', data); return res.data; },
+  removePortalAddon: async (id: string) => { const res = await api.delete(`/subscriptions/portal/addons/${id}`); return res.data; },
 };
 
 
