@@ -49,6 +49,7 @@ import intercompanyRouter from '../routes/intercompany';
 import consolidationRouter from '../routes/consolidation';
 import passwordResetRouter from '../routes/passwordReset';
 import contactRouter from '../routes/contact';
+import featureFlagRouter from '../routes/featureFlags';
 import subscriptionRouter, { subscriptionWebhookRouter } from '../routes/subscriptions';
 
 import { runMigration } from '../db/migrate';
@@ -175,6 +176,7 @@ async function startServer() {
   app.use('/api/intercompany', intercompanyRouter);
   app.use('/api/reports/consolidation', consolidationRouter);
   app.use('/api/contact', contactRouter);
+  app.use('/api/feature-flags', featureFlagRouter);
   app.use('/api/subscriptions', subscriptionRouter);
 
   app.get('/api/health', (req, res) => {

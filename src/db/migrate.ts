@@ -2964,6 +2964,133 @@ export async function runMigration() {
     `);
 
     console.log('[Migration] Subscription Management System tables created.');
+
+    // ----------------------------------------------------------------
+    // Feature Flag System — tables and seed data
+    // ----------------------------------------------------------------
+    await db.execute(sql`
+      DO $$ BEGIN
+        CREATE TYPE feature_flag_state AS ENUM ('enabled', 'disabled', 'limited', 'unlimited');
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$;
+    `);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS feature_flags (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        code text NOT NULL UNIQUE,
+        name text NOT NULL,
+        description text,
+        category text DEFAULT 'general' NOT NULL,
+        default_state feature_flag_state DEFAULT 'disabled' NOT NULL,
+        is_active boolean DEFAULT true NOT NULL,
+        sort_order integer DEFAULT 0 NOT NULL,
+        created_at timestamp DEFAULT now() NOT NULL,
+        updated_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_ff_code ON feature_flags(code)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_ff_category ON feature_flags(category)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_ff_active ON feature_flags(is_active, sort_order)`);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS plan_feature_flags (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        plan_id uuid REFERENCES subscription_plans(id) NOT NULL,
+        feature_code text NOT NULL,
+        state feature_flag_state DEFAULT 'disabled' NOT NULL,
+        usage_limit integer DEFAULT 0,
+        created_at timestamp DEFAULT now() NOT NULL,
+        updated_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_pff_plan ON plan_feature_flags(plan_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_pff_code ON plan_feature_flags(feature_code)`);
+    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_pff_plan_feature ON plan_feature_flags(plan_id, feature_code)`);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS org_feature_flags (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        feature_code text NOT NULL,
+        state feature_flag_state,
+        usage_limit integer,
+        created_at timestamp DEFAULT now() NOT NULL,
+        updated_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_off_org ON org_feature_flags(org_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_off_code ON org_feature_flags(feature_code)`);
+    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_off_org_feature ON org_feature_flags(org_id, feature_code)`);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS user_feature_flags (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        user_id uuid REFERENCES users(id) NOT NULL,
+        feature_code text NOT NULL,
+        state feature_flag_state,
+        usage_limit integer,
+        created_at timestamp DEFAULT now() NOT NULL,
+        updated_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_uff_user ON user_feature_flags(user_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_uff_code ON user_feature_flags(feature_code)`);
+    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_uff_user_feature ON user_feature_flags(user_id, feature_code)`);
+
+    // Seed 21 default features
+    await db.execute(sql`
+      INSERT INTO feature_flags (id, code, name, description, category, default_state, sort_order)
+      VALUES
+        (gen_random_uuid(), 'inventory', 'Inventory', 'Inventory management with stock control, transfers, and adjustments', 'operations', 'limited', 10),
+        (gen_random_uuid(), 'payroll', 'Payroll', 'Payroll processing with PAYE, NHF, NSITF, ITF computations', 'hr', 'disabled', 20),
+        (gen_random_uuid(), 'fixed-assets', 'Fixed Assets', 'Fixed asset register with depreciation, revaluation, impairment', 'accounting', 'disabled', 30),
+        (gen_random_uuid(), 'projects', 'Projects', 'Project management with budgeting, time tracking, profitability', 'operations', 'disabled', 40),
+        (gen_random_uuid(), 'bank-feeds', 'Bank Feeds', 'Automatic bank reconciliation with feeds from Paystack/Flutterwave/Moniepoint', 'banking', 'enabled', 50),
+        (gen_random_uuid(), 'ocr', 'OCR', 'AI-powered OCR document scanning and data extraction', 'automation', 'disabled', 60),
+        (gen_random_uuid(), 'ai-assistant', 'AI Assistant', 'AI-powered accounting assistant for queries and automation', 'automation', 'disabled', 70),
+        (gen_random_uuid(), 'budgets', 'Budgets', 'Budget creation, tracking, and variance analysis', 'accounting', 'disabled', 80),
+        (gen_random_uuid(), 'forecasting', 'Forecasting', 'Financial forecasting and predictive analytics', 'analytics', 'disabled', 90),
+        (gen_random_uuid(), 'revenue-recognition', 'Revenue Recognition', 'IFRS 15 revenue recognition with contracts and schedules', 'accounting', 'disabled', 100),
+        (gen_random_uuid(), 'warehouse', 'Warehouse', 'Multi-warehouse inventory management', 'operations', 'disabled', 110),
+        (gen_random_uuid(), 'custom-roles', 'Custom Roles', 'Custom role-based access control for team members', 'admin', 'disabled', 120),
+        (gen_random_uuid(), 'approval-workflow', 'Approval Workflow', 'Multi-step approval workflows for transactions', 'admin', 'disabled', 130),
+        (gen_random_uuid(), 'api-access', 'API Access', 'REST API access for third-party integrations', 'admin', 'disabled', 140),
+        (gen_random_uuid(), 'dashboard-analytics', 'Dashboard Analytics', 'Advanced dashboard with charts and KPIs', 'analytics', 'enabled', 150),
+        (gen_random_uuid(), 'advanced-reports', 'Advanced Reports', 'Custom report builder with advanced filters and exports', 'reports', 'disabled', 160),
+        (gen_random_uuid(), 'audit-trail', 'Audit Trail', 'Detailed audit log of all user actions and changes', 'admin', 'enabled', 170),
+        (gen_random_uuid(), 'consolidation', 'Consolidation', 'Multi-entity financial consolidation with eliminations', 'accounting', 'disabled', 180),
+        (gen_random_uuid(), 'multi-currency', 'Multi Currency', 'Multi-currency transaction support with auto FX rates', 'accounting', 'disabled', 190),
+        (gen_random_uuid(), 'tax-automation', 'Tax Automation', 'Automated VAT, WHT, CIT, PAYE, ITF, NSITF computations', 'accounting', 'disabled', 200),
+        (gen_random_uuid(), 'business-intelligence', 'Business Intelligence', 'Advanced BI dashboards and data visualization', 'analytics', 'disabled', 210)
+      ON CONFLICT (code) DO NOTHING
+    `);
+
+    // Assign default feature flags to all existing plans
+    await db.execute(sql`
+      INSERT INTO plan_feature_flags (id, plan_id, feature_code, state, usage_limit)
+      SELECT gen_random_uuid(), sp.id, ff.code,
+        CASE
+          WHEN sp.code = 'free' AND ff.code IN ('bank-feeds', 'dashboard-analytics', 'audit-trail', 'inventory') THEN 'enabled'::feature_flag_state
+          WHEN sp.code = 'free' THEN 'disabled'::feature_flag_state
+          WHEN sp.code IN ('starter', 'professional') AND ff.code IN ('bank-feeds', 'dashboard-analytics', 'audit-trail', 'inventory', 'projects', 'budgets', 'fixed-assets', 'multi-currency', 'tax-automation', 'ocr', 'ai-assistant') THEN 'enabled'::feature_flag_state
+          WHEN sp.code IN ('starter', 'professional') AND ff.code = 'payroll' THEN 'limited'::feature_flag_state
+          WHEN sp.code = 'enterprise' THEN 'enabled'::feature_flag_state
+          ELSE ff.default_state::feature_flag_state
+        END,
+        CASE
+          WHEN sp.code = 'free' AND ff.code = 'inventory' THEN 50
+          WHEN sp.code = 'starter' AND ff.code = 'payroll' THEN 10
+          WHEN sp.code = 'professional' AND ff.code = 'payroll' THEN 50
+          ELSE 0
+        END
+      FROM subscription_plans sp
+      CROSS JOIN feature_flags ff
+      ON CONFLICT (plan_id, feature_code) DO NOTHING
+    `);
+
+    console.log('[Migration] Feature flag system created and seeded.');
+
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema setup:', err);

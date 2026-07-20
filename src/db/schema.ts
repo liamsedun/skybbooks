@@ -17,6 +17,7 @@ import {
   numeric,
   jsonb,
   index,
+  uniqueIndex,
   type AnyPgColumn
 } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -2394,6 +2395,86 @@ export const subscriptionUsage = pgTable('subscription_usage', {
   usageOrgPeriodIdx: index('idx_usage_org_period').on(table.orgId, table.periodStart, table.periodEnd),
 }));
 
+// ========== Feature Flag System ==========
+export const featureFlagStateEnum = pgEnum('feature_flag_state', ['enabled', 'disabled', 'limited', 'unlimited']);
+
+export const featureFlags = pgTable('feature_flags', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  code: text('code').notNull().unique(),
+  name: text('name').notNull(),
+  description: text('description'),
+  category: text('category').default('general').notNull(),
+  defaultState: featureFlagStateEnum('default_state').default('disabled').notNull(),
+  isActive: boolean('is_active').default(true).notNull(),
+  sortOrder: integer('sort_order').default(0).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  flagsCodeIdx: index('idx_ff_code').on(table.code),
+  flagsCategoryIdx: index('idx_ff_category').on(table.category),
+  flagsActiveIdx: index('idx_ff_active').on(table.isActive, table.sortOrder),
+}));
+
+export const planFeatureFlags = pgTable('plan_feature_flags', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  planId: uuid('plan_id').references(() => subscriptionPlans.id).notNull(),
+  featureCode: text('feature_code').notNull(),
+  state: featureFlagStateEnum('state').default('disabled').notNull(),
+  usageLimit: integer('usage_limit').default(0),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  planFeaturePlanIdx: index('idx_pff_plan').on(table.planId),
+  planFeatureCodeIdx: index('idx_pff_code').on(table.featureCode),
+  planFeatureUniqueIdx: uniqueIndex('idx_pff_plan_feature').on(table.planId, table.featureCode),
+}));
+
+export const orgFeatureFlags = pgTable('org_feature_flags', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  featureCode: text('feature_code').notNull(),
+  state: featureFlagStateEnum('state'),
+  usageLimit: integer('usage_limit'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  orgFlagOrgIdx: index('idx_off_org').on(table.orgId),
+  orgFlagCodeIdx: index('idx_off_code').on(table.featureCode),
+  orgFlagUniqueIdx: uniqueIndex('idx_off_org_feature').on(table.orgId, table.featureCode),
+}));
+
+export const userFeatureFlags = pgTable('user_feature_flags', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  featureCode: text('feature_code').notNull(),
+  state: featureFlagStateEnum('state'),
+  usageLimit: integer('usage_limit'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  userFlagUserIdx: index('idx_uff_user').on(table.userId),
+  userFlagCodeIdx: index('idx_uff_code').on(table.featureCode),
+  userFlagUniqueIdx: uniqueIndex('idx_uff_user_feature').on(table.userId, table.featureCode),
+}));
+
+export const featureFlagsRelations = relations(featureFlags, ({ many }) => ({
+  planFlags: many(planFeatureFlags),
+  orgFlags: many(orgFeatureFlags),
+  userFlags: many(userFeatureFlags),
+}));
+
+export const planFeatureFlagsRelations = relations(planFeatureFlags, ({ one }) => ({
+  plan: one(subscriptionPlans, { fields: [planFeatureFlags.planId], references: [subscriptionPlans.id] }),
+}));
+
+export const orgFeatureFlagsRelations = relations(orgFeatureFlags, ({ one }) => ({
+  organisation: one(organisations, { fields: [orgFeatureFlags.orgId], references: [organisations.id] }),
+}));
+
+export const userFeatureFlagsRelations = relations(userFeatureFlags, ({ one }) => ({
+  user: one(users, { fields: [userFeatureFlags.userId], references: [users.id] }),
+}));
+
 export const subscriptionFeatureOverrides = pgTable('subscription_feature_overrides', {
   id: uuid('id').defaultRandom().primaryKey(),
   planId: uuid('plan_id').references(() => subscriptionPlans.id),
@@ -2413,6 +2494,7 @@ export const subscriptionPlansRelations = relations(subscriptionPlans, ({ one, m
   organisation: one(organisations, { fields: [subscriptionPlans.orgId], references: [organisations.id] }),
   subscriptions: many(subscriptions),
   featureOverrides: many(subscriptionFeatureOverrides),
+  planFeatureFlags: many(planFeatureFlags),
 }));
 
 export const subscriptionsRelations = relations(subscriptions, ({ one, many }) => ({
@@ -2491,7 +2573,8 @@ export const organisationsRelations = relations(organisations, ({ many }) => ({
   intercompanyToTxns: many(intercompanyTransactions, { relationName: 'icToOrg' }),
   eliminationsFrom: many(intercompanyEliminations, { relationName: 'elimFromOrg' }),
   eliminationsTo: many(intercompanyEliminations, { relationName: 'elimToOrg' }),
-  userAccess: many(userOrganisationAccess)
+  userAccess: many(userOrganisationAccess),
+  featureFlags: many(orgFeatureFlags)
 }));
 
 export const usersRelations = relations(users, ({ one, many }) => ({
@@ -3871,6 +3954,10 @@ export const db = drizzle(pool, {
     subscriptionFeatureOverrides,
 
     // Relations
+    featureFlagsRelations,
+    planFeatureFlagsRelations,
+    orgFeatureFlagsRelations,
+    userFeatureFlagsRelations,
     subscriptionPlansRelations,
     subscriptionsRelations,
     couponsRelations,
@@ -4051,6 +4138,10 @@ export const schema = {
   leaseJournalEntries,
    eclParameters,
    eclComputations,
+  featureFlags,
+  planFeatureFlags,
+  orgFeatureFlags,
+  userFeatureFlags,
   subscriptionPlans,
   subscriptions,
   coupons,

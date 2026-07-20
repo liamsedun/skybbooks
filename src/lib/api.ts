@@ -1767,6 +1767,19 @@ export const ocrApi = {
   },
 };
 
+export const featureFlagApi = {
+  list: async (category?: string) => { const res = await api.get('/feature-flags', { params: { category } }); return res.data; },
+  get: async (code: string) => { const res = await api.get(`/feature-flags/${code}`); return res.data; },
+  evaluate: async (code: string, userId?: string) => { const res = await api.get(`/feature-flags/evaluate/${code}`, { params: { userId } }); return res.data; },
+  evaluateAll: async (userId?: string) => { const res = await api.get('/feature-flags/evaluate', { params: { userId } }); return res.data; },
+  getOrgOverrides: async () => { const res = await api.get('/feature-flags/org'); return res.data; },
+  setOrgOverride: async (code: string, data: { state?: string; usageLimit?: number }) => { const res = await api.put(`/feature-flags/org/${code}`, data); return res.data; },
+  resetOrgOverride: async (code: string) => { const res = await api.delete(`/feature-flags/org/${code}`); return res.data; },
+  getPlanFlags: async (planId: string) => { const res = await api.get(`/feature-flags/plan/${planId}`); return res.data; },
+  setPlanFlag: async (planId: string, code: string, data: { state: string; usageLimit?: number }) => { const res = await api.put(`/feature-flags/plan/${planId}/${code}`, data); return res.data; },
+  bulkSetPlanFlags: async (planId: string, flags: Array<{ featureCode: string; state: string; usageLimit?: number }>) => { const res = await api.put(`/feature-flags/plan/${planId}/bulk`, { flags }); return res.data; },
+};
+
 export const subscriptionApi = {
   // Plans
   listPlans: async (publicOnly?: boolean) => { const res = await api.get('/subscriptions/plans', { params: { publicOnly } }); return res.data; },
@@ -1804,5 +1817,7 @@ export const subscriptionApi = {
   getUsage: async (featureKey?: string) => { const res = await api.get('/subscriptions/usage', { params: { featureKey } }); return res.data; },
   checkUsageLimit: async (featureKey: string) => { const res = await api.get('/subscriptions/usage/check-limit', { params: { featureKey } }); return res.data; },
 };
+
+
 
 

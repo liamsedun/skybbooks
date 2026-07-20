@@ -12,7 +12,8 @@ import {
   ArrowRightLeft, TrendingDown, ReceiptText, AlertTriangle, Bot, Wifi,
   Star, Zap, ChevronRight, PanelLeftClose, PanelLeft,
   CircleUser, Command, Plus, LayoutList, Home, Landmark,
-  ShoppingCart, ShoppingBag, Receipt, Mail, Phone, ExternalLink, Video, RefreshCw, Tag
+  ShoppingCart, ShoppingBag, Receipt, Mail, Phone, ExternalLink, Video, RefreshCw, Tag,
+  ToggleLeft, SlidersHorizontal
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -77,7 +78,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({
     OVERVIEW: false, SALES: false, PROJECTS: true,
     PURCHASES: true, INVENTORY: true, PAYROLL: true,
-    BANKING: true, ACCOUNTANT: true, REPORTS: true, BILLING: true,
+    BANKING: true, ACCOUNTANT: true, REPORTS: true, BILLING: true, SYSTEM: false,
   });
   const [showHelpSubMenu, setShowHelpSubMenu] = useState(false);
   const [showMailForm, setShowMailForm] = useState(false);
@@ -144,6 +145,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     subscription: '/app/subscription', subscription_plans: '/app/subscription/plans', subscription_coupons: '/app/subscription/coupons',
     set_organisation: '/app/settings/organisation', set_invites: '/app/settings/invites', set_roles: '/app/settings/roles',
     user_preferences: '/app/settings/user-preferences', set_integrations: '/app/settings/integrations',
+    feature_flags: '/app/settings/feature-flags', plan_features: '/app/settings/feature-flags/plans',
   }), []);
 
   const navigation: NavGroup[] = useMemo(() => [
@@ -230,6 +232,10 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
       { name: 'Legacy Migration', id: 'rep_legacy', icon: History },
       { name: 'Consolidation', id: 'rep_consolidation', icon: Building },
       { name: 'Revenue Recognition', id: 'rep_revenue_recognition', icon: FileBarChart },
+    ]},
+    { title: 'SYSTEM', icon: Shield, items: [
+      { name: 'Feature Flags', id: 'feature_flags', icon: ToggleLeft },
+      { name: 'Plan Features', id: 'plan_features', icon: SlidersHorizontal },
     ]},
   ], []);
 
