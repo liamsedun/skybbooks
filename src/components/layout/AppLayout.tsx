@@ -115,7 +115,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
   }, [showUserMenu, showNotifications, showNewMenu, showHeaderSearch]);
 
   const pathMap: Record<string, string> = useMemo(() => ({
-    dashboard: '/app/dashboard', ai_assistant: '/app/ai/assistant',
+    dashboard: '/app/dashboard', ai_assistant: '/app/ai/assistant', ai_nvidia: '/app/ai/nvidia',
     customers: '/app/sales/customers', quotes: '/app/sales/quotes', sales_orders: '/app/sales/sales-orders',
     invoices: '/app/sales/invoices', receipts: '/app/sales/receipts', recurring_invoices: '/app/sales/recurring-invoices',
     payments_received: '/app/sales/payments', credit_notes: '/app/sales/credit-notes',
@@ -152,6 +152,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     { title: 'OVERVIEW', icon: LayoutDashboard, items: [
       { name: 'Dashboard', id: 'dashboard', icon: LayoutDashboard },
       { name: 'Smart Assistant', id: 'ai_assistant', icon: Bot },
+      { name: 'NVIDIA AI', id: 'ai_nvidia', icon: Zap },
     ]},
     { title: 'SALES', icon: ShoppingCart, items: [
       { name: 'Customers', id: 'customers', icon: Users },

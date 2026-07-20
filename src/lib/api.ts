@@ -1729,6 +1729,21 @@ export const approvalApi = {
   },
 };
 
+export const nvidiaApi = {
+  // AI Accounting Assistant — natural language financial queries
+  assistantQuery: async (query: string): Promise<any> => {
+    const res = await api.post('/nvidia/assistant/query', { query }); return res.data;
+  },
+  // Smart Invoice/Bill Categorization
+  categorise: async (description: string, amountKobo: number): Promise<any> => {
+    const res = await api.post('/nvidia/categorise', { description, amountKobo }); return res.data;
+  },
+  // Document OCR / Receipt Parsing
+  ocrExtract: async (rawText: string, mimeType?: string): Promise<any> => {
+    const res = await api.post('/nvidia/ocr/extract', { rawText, mimeType }); return res.data;
+  },
+};
+
 export const assistantApi = {
   query: async (query: string): Promise<any> => {
     const res = await api.post('/assistant/query', { query }); return res.data;

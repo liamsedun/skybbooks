@@ -53,6 +53,7 @@ import featureFlagRouter from '../routes/featureFlags';
 import subscriptionRouter, { subscriptionWebhookRouter } from '../routes/subscriptions';
 import lifecycleRouter, { initLifecycleScheduler } from '../routes/subscriptionLifecycle';
 import promotionsEngineRouter from '../routes/promotionsEngine';
+import nvidiaRouter from '../routes/nvidia';
 
 import { runMigration } from '../db/migrate';
 import { fetchLatestRates } from '../services/cbn.service';
@@ -184,6 +185,7 @@ async function startServer() {
   app.use('/api/subscriptions', lifecycleRouter);
   app.use('/api/subscriptions', (await import('../routes/subscriptionBilling')).default);
   app.use('/api/promotions', promotionsEngineRouter);
+  app.use('/api/nvidia', nvidiaRouter);
 
   app.get('/api/health', (req, res) => {
     res.json({ status: 'healthy', timestamp: new Date().toISOString() });

@@ -19,6 +19,7 @@ import { useAuth } from './hooks/useAuth';
 // ── Lazy-loaded page components ─────────────────────────────────────────
 const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
 const AccountingAssistant = lazy(() => import('./pages/ai/AccountingAssistant').then(m => ({ default: m.AccountingAssistant })));
+const NvidiaAiPage = lazy(() => import('./pages/ai/NvidiaAiPage').then(m => ({ default: m.NvidiaAiPage })));
 
 // Sales
 const InvoiceList = lazy(() => import('./pages/sales/InvoiceList').then(m => ({ default: m.InvoiceList })));
@@ -376,6 +377,7 @@ function AppRoutes() {
           <Route path="revenue" element={<Navigate to="/app/revenue/contracts" replace />} />
 
           <Route path="ai/assistant" element={<LazyRoute element={<AccountingAssistant />} />} />
+          <Route path="ai/nvidia" element={<LazyRoute element={<NvidiaAiPage />} />} />
           
           {/* Sales module routing */}
           <Route path="sales/customers" element={<LazyRoute element={<CustomersPage />} />} />
