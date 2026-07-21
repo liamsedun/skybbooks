@@ -107,6 +107,7 @@ const SubscriptionCouponsPage = lazy(() => import('./pages/subscriptions/Subscri
 const SubscriptionPortalPage = lazy(() => import('./pages/subscriptions/SubscriptionPortalPage').then(m => ({ default: m.SubscriptionPortalPage })));
 const UsageMonitorDashboardPage = lazy(() => import('./pages/reports/UsageMonitorDashboardPage').then(m => ({ default: m.UsageMonitorDashboardPage })));
 const SuperAdminDashboard = lazy(() => import('./pages/admin/SuperAdminDashboard').then(m => ({ default: m.SuperAdminDashboard })));
+const SaaSAnalyticsDashboard = lazy(() => import('./pages/admin/SaaSAnalyticsDashboard').then(m => ({ default: m.SaaSAnalyticsDashboard })));
 const AddonMarketplacePage = lazy(() => import('./pages/subscriptions/AddonMarketplacePage').then(m => ({ default: m.AddonMarketplacePage })));
 const SubscriptionBillingPage = lazy(() => import('./pages/subscriptions/SubscriptionBillingPage').then(m => ({ default: m.SubscriptionBillingPage })));
 
@@ -486,6 +487,7 @@ function AppRoutes() {
           <Route path="subscription/billing" element={<LazyRoute element={<SubscriptionBillingPage />} />} />
           <Route path="reports/usage-monitor" element={<LazyRoute element={<UsageMonitorDashboardPage />} />} />
           <Route path="admin" element={<LazyRoute element={<SuperAdminDashboard />} />} />
+          <Route path="admin/analytics" element={<LazyRoute element={<SaaSAnalyticsDashboard />} />} />
 
           {/* System metadata & account preferences */}
           <Route path="settings" element={<Suspense fallback={<PageLoader />}><SettingsLayout /></Suspense>}>

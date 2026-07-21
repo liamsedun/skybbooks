@@ -6,6 +6,7 @@ import {
   getPlans, createPlan, updatePlan, getCoupons, getSubscriptions,
   getGrowthMetrics, getUsageStats,
 } from '../services/superAdmin.service';
+import { getSaaSAnalytics } from '../services/saasAnalytics.service';
 
 const router = Router();
 router.use(authenticate);
@@ -125,6 +126,20 @@ router.get('/usage', async (req: AuthenticatedRequest, res: Response, next: Next
   try {
     const orgId = req.query.orgId as string | undefined;
     const data = await getUsageStats(orgId);
+    res.json({ success: true, data });
+  } catch (err) { next(err); }
+});
+
+router.get('/analytics', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const filters = {
+      startDate: req.query.startDate ? new Date(req.query.startDate as string) : undefined,
+      endDate: req.query.endDate ? new Date(req.query.endDate as string) : undefined,
+      planId: req.query.planId as string | undefined,
+      region: req.query.region as string | undefined,
+      billingCycle: req.query.billingCycle as string | undefined,
+    };
+    const data = await getSaaSAnalytics(filters);
     res.json({ success: true, data });
   } catch (err) { next(err); }
 });

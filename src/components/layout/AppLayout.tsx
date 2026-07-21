@@ -150,6 +150,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     user_preferences: '/app/settings/user-preferences', set_integrations: '/app/settings/integrations',
     feature_flags: '/app/settings/feature-flags', plan_features: '/app/settings/feature-flags/plans',
     admin: '/app/admin',
+    saas_analytics: '/app/admin/analytics',
   }), []);
 
   const navigation: NavGroup[] = useMemo(() => [
@@ -246,6 +247,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
       { name: 'Feature Flags', id: 'feature_flags', icon: ToggleLeft },
       { name: 'Plan Features', id: 'plan_features', icon: SlidersHorizontal },
       { name: 'Super Admin', id: 'admin', icon: Shield },
+      { name: 'SaaS Analytics', id: 'saas_analytics', icon: BarChart3 },
     ]},
   ], []);
 
