@@ -59,6 +59,7 @@ import subscriptionPortalRouter from '../routes/subscriptionPortal';
 import addonMarketplaceRouter from '../routes/addonMarketplace';
 import subscriptionBillingEngineRouter from '../routes/subscriptionBillingEngine';
 import superAdminRouter from '../routes/superAdmin';
+import subscriptionNotificationsRouter from '../routes/subscriptionNotifications';
 
 import { runMigration } from '../db/migrate';
 import { fetchLatestRates } from '../services/cbn.service';
@@ -196,6 +197,7 @@ async function startServer() {
   app.use('/api/subscriptions', addonMarketplaceRouter);
   app.use('/api/subscriptions', subscriptionBillingEngineRouter);
   app.use('/api/admin', superAdminRouter);
+  app.use('/api/subscription-notifications', subscriptionNotificationsRouter);
 
   app.get('/api/health', (req, res) => {
     res.json({ status: 'healthy', timestamp: new Date().toISOString() });

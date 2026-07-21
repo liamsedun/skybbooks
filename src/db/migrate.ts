@@ -3710,6 +3710,84 @@ export async function runMigration() {
       console.error('[Migration] Add-on Marketplace error:', err);
     }
 
+    try {
+      console.log('[Migration] Creating subscription notification tables...');
+      await pool.query(`DO $$ BEGIN
+        CREATE TYPE sub_notification_event AS ENUM (
+          'trial_started','trial_ending','subscription_activated','payment_successful','payment_failed',
+          'renewal_reminder','subscription_expired','plan_upgraded','plan_downgraded',
+          'coupon_applied','storage_limit_reached','user_limit_reached','feature_limit_reached'
+        );
+      EXCEPTION WHEN duplicate_object THEN NULL; END $$;`);
+      await pool.query(`DO $$ BEGIN
+        CREATE TYPE sub_notification_channel AS ENUM ('email','in_app','sms','whatsapp');
+      EXCEPTION WHEN duplicate_object THEN NULL; END $$;`);
+      await pool.query(`DO $$ BEGIN
+        CREATE TYPE sub_notification_status AS ENUM ('pending','sent','failed','scheduled');
+      EXCEPTION WHEN duplicate_object THEN NULL; END $$;`);
+
+      await pool.query(`CREATE TABLE IF NOT EXISTS sub_notification_templates (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id UUID REFERENCES organisations(id),
+        event_type sub_notification_event NOT NULL,
+        channel sub_notification_channel NOT NULL,
+        subject TEXT NOT NULL,
+        body TEXT NOT NULL,
+        is_active BOOLEAN DEFAULT true NOT NULL,
+        created_at TIMESTAMP DEFAULT now() NOT NULL,
+        updated_at TIMESTAMP DEFAULT now() NOT NULL
+      )`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_snt_org_event ON sub_notification_templates(org_id, event_type)`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_snt_channel ON sub_notification_templates(channel)`);
+
+      await pool.query(`CREATE TABLE IF NOT EXISTS sub_notification_log (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id UUID REFERENCES organisations(id) NOT NULL,
+        event_type sub_notification_event NOT NULL,
+        channel sub_notification_channel NOT NULL,
+        recipient TEXT,
+        subject TEXT,
+        body TEXT,
+        status sub_notification_status DEFAULT 'pending' NOT NULL,
+        error TEXT,
+        metadata JSONB DEFAULT '{}',
+        sent_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT now() NOT NULL
+      )`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_snl_org ON sub_notification_log(org_id)`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_snl_event ON sub_notification_log(event_type)`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_snl_status ON sub_notification_log(status)`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_snl_created ON sub_notification_log(created_at)`);
+
+      await pool.query(`CREATE TABLE IF NOT EXISTS sub_notification_preferences (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id UUID REFERENCES organisations(id) NOT NULL UNIQUE,
+        enabled_events sub_notification_event[] DEFAULT '{}' NOT NULL,
+        channels sub_notification_channel[] DEFAULT '{email,in_app}' NOT NULL,
+        email_recipients TEXT[] DEFAULT '{}',
+        created_at TIMESTAMP DEFAULT now() NOT NULL,
+        updated_at TIMESTAMP DEFAULT now() NOT NULL
+      )`);
+
+      await pool.query(`CREATE TABLE IF NOT EXISTS sub_notification_schedule (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id UUID REFERENCES organisations(id) NOT NULL,
+        subscription_id UUID REFERENCES subscriptions(id),
+        event_type sub_notification_event NOT NULL,
+        scheduled_at TIMESTAMP NOT NULL,
+        processed_at TIMESTAMP,
+        status sub_notification_status DEFAULT 'pending' NOT NULL,
+        metadata JSONB DEFAULT '{}',
+        created_at TIMESTAMP DEFAULT now() NOT NULL
+      )`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_sns_org ON sub_notification_schedule(org_id)`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_sns_scheduled ON sub_notification_schedule(scheduled_at, status)`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_sns_event ON sub_notification_schedule(event_type)`);
+      console.log('[Migration] Subscription notification tables created.');
+    } catch (err) {
+      console.error('[Migration] Subscription notification tables error:', err);
+    }
+
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema setup:', err);

@@ -317,6 +317,23 @@ export const paymentStatusEnum = pgEnum('payment_status', [
   'draft', 'pending_review', 'approved', 'posted', 'void'
 ]);
 
+export const subNotificationEventEnum = pgEnum('sub_notification_event', [
+  'trial_started', 'trial_ending', 'subscription_activated',
+  'payment_successful', 'payment_failed',
+  'renewal_reminder', 'subscription_expired',
+  'plan_upgraded', 'plan_downgraded',
+  'coupon_applied', 'storage_limit_reached',
+  'user_limit_reached', 'feature_limit_reached',
+]);
+
+export const subNotificationChannelEnum = pgEnum('sub_notification_channel', [
+  'email', 'in_app', 'sms', 'whatsapp',
+]);
+
+export const subNotificationStatusEnum = pgEnum('sub_notification_status', [
+  'pending', 'sent', 'failed', 'scheduled',
+]);
+
 // ==========================================
 // 2. SCHEMA TABLES DEFINITIONS
 // ==========================================
@@ -4285,6 +4302,69 @@ export const groupConsolidationRunsRelations = relations(groupConsolidationRuns,
   eliminations: many(intercompanyEliminations)
 }));
 
+// ========== Subscription Notification Tables ==========
+
+export const subNotificationTemplates = pgTable('sub_notification_templates', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id),
+  eventType: subNotificationEventEnum('event_type').notNull(),
+  channel: subNotificationChannelEnum('channel').notNull(),
+  subject: text('subject').notNull(),
+  body: text('body').notNull(),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  sntOrgEventIdx: index('idx_snt_org_event').on(table.orgId, table.eventType),
+  sntChannelIdx: index('idx_snt_channel').on(table.channel),
+}));
+
+export const subNotificationLog = pgTable('sub_notification_log', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  eventType: subNotificationEventEnum('event_type').notNull(),
+  channel: subNotificationChannelEnum('channel').notNull(),
+  recipient: text('recipient'),
+  subject: text('subject'),
+  body: text('body'),
+  status: subNotificationStatusEnum('status').default('pending').notNull(),
+  error: text('error'),
+  metadata: jsonb('metadata').default({}),
+  sentAt: timestamp('sent_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  snlOrgIdx: index('idx_snl_org').on(table.orgId),
+  snlEventIdx: index('idx_snl_event').on(table.eventType),
+  snlStatusIdx: index('idx_snl_status').on(table.status),
+  snlCreatedIdx: index('idx_snl_created').on(table.createdAt),
+}));
+
+export const subNotificationPreferences = pgTable('sub_notification_preferences', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull().unique(),
+  enabledEvents: subNotificationEventEnum('enabled_events').array().default([]).notNull(),
+  channels: subNotificationChannelEnum('channels').array().default(['email', 'in_app']).notNull(),
+  emailRecipients: text('email_recipients').array().default([]),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const subNotificationSchedule = pgTable('sub_notification_schedule', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  subscriptionId: uuid('subscription_id').references(() => subscriptions.id),
+  eventType: subNotificationEventEnum('event_type').notNull(),
+  scheduledAt: timestamp('scheduled_at').notNull(),
+  processedAt: timestamp('processed_at'),
+  status: subNotificationStatusEnum('status').default('pending').notNull(),
+  metadata: jsonb('metadata').default({}),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  snsOrgIdx: index('idx_sns_org').on(table.orgId),
+  snsScheduledIdx: index('idx_sns_scheduled').on(table.scheduledAt, table.status),
+  snsEventIdx: index('idx_sns_event').on(table.eventType),
+}));
+
 // ==========================================
 // 4. DATABASE INITIALIZATION & INSTANCE
 // ==========================================
@@ -4623,5 +4703,9 @@ export const schema = {
   intercompanyTransactions,
   intercompanyEliminations,
   groupConsolidationRuns,
+  subNotificationTemplates,
+  subNotificationLog,
+  subNotificationPreferences,
+  subNotificationSchedule,
 };
 
