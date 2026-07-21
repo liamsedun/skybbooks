@@ -119,7 +119,10 @@ async function generateInvoice(
   if (!sub) throw new AppError('Subscription not found.', 404);
 
   const plan = await getPlan(sub.planId);
-  const amountKobo = overrideAmountKobo != null ? overrideAmountKobo : (plan.monthlyPriceKobo || 0);
+  const amountKobo = overrideAmountKobo != null ? overrideAmountKobo
+    : sub.billingCycle === 'yearly' || sub.billingCycle === 'annual' ? (plan.annualPriceKobo || 0)
+    : sub.billingCycle === 'quarterly' ? ((plan.monthlyPriceKobo || 0) * 3)
+    : (plan.monthlyPriceKobo || 0);
 
   const { discountKobo, description: discountDesc } = calculateDiscount(
     amountKobo,

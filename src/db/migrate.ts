@@ -3711,6 +3711,118 @@ export async function runMigration() {
     }
 
     try {
+      console.log('[Migration] Creating enterprise subscription tables...');
+      await pool.query(`DO $$ BEGIN
+        CREATE TYPE region AS ENUM ('ng','gh','ke','za','rw','tz','ug','zm','other');
+      EXCEPTION WHEN duplicate_object THEN NULL; END $$;`);
+
+      await pool.query(`CREATE TABLE IF NOT EXISTS regional_pricing (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        plan_id UUID NOT NULL REFERENCES subscription_plans(id) ON DELETE CASCADE,
+        region region NOT NULL,
+        currency TEXT DEFAULT 'NGN' NOT NULL,
+        monthly_price_kobo BIGINT DEFAULT 0 NOT NULL,
+        annual_price_kobo BIGINT DEFAULT 0 NOT NULL,
+        is_active BOOLEAN DEFAULT true NOT NULL,
+        created_at TIMESTAMP DEFAULT now() NOT NULL,
+        updated_at TIMESTAMP DEFAULT now() NOT NULL
+      )`);
+      await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_rp_plan_region ON regional_pricing(plan_id, region)`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_rp_active ON regional_pricing(is_active)`);
+
+      await pool.query(`CREATE TABLE IF NOT EXISTS enterprise_contracts (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id UUID REFERENCES organisations(id) NOT NULL,
+        plan_id UUID REFERENCES subscription_plans(id),
+        contract_number TEXT NOT NULL UNIQUE,
+        name TEXT NOT NULL,
+        description TEXT,
+        contact_name TEXT,
+        contact_email TEXT,
+        negotiated_price_kobo BIGINT,
+        currency TEXT DEFAULT 'NGN' NOT NULL,
+        billing_cycle TEXT DEFAULT 'monthly' NOT NULL,
+        custom_features JSONB DEFAULT '{}',
+        usage_limits JSONB DEFAULT '{}',
+        start_date TIMESTAMP NOT NULL,
+        end_date TIMESTAMP,
+        auto_renew BOOLEAN DEFAULT true NOT NULL,
+        status TEXT DEFAULT 'active' NOT NULL,
+        signed_by_org TIMESTAMP,
+        signed_by_provider TIMESTAMP,
+        metadata JSONB DEFAULT '{}',
+        created_by UUID REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT now() NOT NULL,
+        updated_at TIMESTAMP DEFAULT now() NOT NULL
+      )`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_ec_org ON enterprise_contracts(org_id)`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_ec_status ON enterprise_contracts(status)`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_ec_end ON enterprise_contracts(end_date)`);
+
+      await pool.query(`CREATE TABLE IF NOT EXISTS reseller_contracts (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        reseller_org_id UUID REFERENCES organisations(id) NOT NULL,
+        plan_id UUID REFERENCES subscription_plans(id),
+        reseller_name TEXT NOT NULL,
+        reseller_code TEXT NOT NULL UNIQUE,
+        contact_name TEXT,
+        contact_email TEXT,
+        markup_percent INTEGER DEFAULT 0,
+        markup_amount_kobo BIGINT DEFAULT 0,
+        commission_percent INTEGER DEFAULT 0,
+        discount_percent INTEGER DEFAULT 0,
+        currency TEXT DEFAULT 'NGN' NOT NULL,
+        region_restrictions TEXT[],
+        max_customers INTEGER DEFAULT 0,
+        commission_kobo BIGINT DEFAULT 0,
+        start_date TIMESTAMP NOT NULL,
+        end_date TIMESTAMP,
+        status TEXT DEFAULT 'active' NOT NULL,
+        metadata JSONB DEFAULT '{}',
+        created_by UUID REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT now() NOT NULL,
+        updated_at TIMESTAMP DEFAULT now() NOT NULL
+      )`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_rc_org ON reseller_contracts(reseller_org_id)`);
+      await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_rc_code ON reseller_contracts(reseller_code)`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_rc_status ON reseller_contracts(status)`);
+
+      await pool.query(`CREATE TABLE IF NOT EXISTS subscription_config (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id UUID REFERENCES organisations(id) UNIQUE,
+        key TEXT NOT NULL,
+        value JSONB NOT NULL,
+        description TEXT,
+        created_at TIMESTAMP DEFAULT now() NOT NULL,
+        updated_at TIMESTAMP DEFAULT now() NOT NULL
+      )`);
+      await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_sc_org_key ON subscription_config(org_id, key)`);
+
+      await pool.query(`CREATE TABLE IF NOT EXISTS white_label_config (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id UUID REFERENCES organisations(id) NOT NULL UNIQUE,
+        brand_name TEXT,
+        logo_url TEXT,
+        favicon_url TEXT,
+        primary_color TEXT DEFAULT '#3b82f6',
+        secondary_color TEXT DEFAULT '#1e40af',
+        accent_color TEXT DEFAULT '#10b981',
+        custom_domain TEXT,
+        support_email TEXT,
+        support_phone TEXT,
+        footer_text TEXT,
+        is_active BOOLEAN DEFAULT true NOT NULL,
+        created_at TIMESTAMP DEFAULT now() NOT NULL,
+        updated_at TIMESTAMP DEFAULT now() NOT NULL
+      )`);
+      await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_wl_org ON white_label_config(org_id)`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_wl_domain ON white_label_config(custom_domain)`);
+      console.log('[Migration] Enterprise subscription tables created.');
+    } catch (err) {
+      console.error('[Migration] Enterprise subscription tables error:', err);
+    }
+
+    try {
       console.log('[Migration] Creating subscription notification tables...');
       await pool.query(`DO $$ BEGIN
         CREATE TYPE sub_notification_event AS ENUM (

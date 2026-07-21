@@ -109,6 +109,11 @@ const UsageMonitorDashboardPage = lazy(() => import('./pages/reports/UsageMonito
 const SuperAdminDashboard = lazy(() => import('./pages/admin/SuperAdminDashboard').then(m => ({ default: m.SuperAdminDashboard })));
 const SaaSAnalyticsDashboard = lazy(() => import('./pages/admin/SaaSAnalyticsDashboard').then(m => ({ default: m.SaaSAnalyticsDashboard })));
 const SubscriptionNotificationsPage = lazy(() => import('./pages/admin/SubscriptionNotificationsPage').then(m => ({ default: m.SubscriptionNotificationsPage })));
+const RegionalPricingPage = lazy(() => import('./pages/admin/RegionalPricingPage').then(m => ({ default: m.RegionalPricingPage })));
+const EnterpriseContractsPage = lazy(() => import('./pages/admin/EnterpriseContractsPage').then(m => ({ default: m.EnterpriseContractsPage })));
+const ResellerContractsPage = lazy(() => import('./pages/admin/ResellerContractsPage').then(m => ({ default: m.ResellerContractsPage })));
+const OrgConfigPage = lazy(() => import('./pages/admin/OrgConfigPage').then(m => ({ default: m.OrgConfigPage })));
+const WhiteLabelConfigPage = lazy(() => import('./pages/admin/WhiteLabelConfigPage').then(m => ({ default: m.WhiteLabelConfigPage })));
 const AddonMarketplacePage = lazy(() => import('./pages/subscriptions/AddonMarketplacePage').then(m => ({ default: m.AddonMarketplacePage })));
 const SubscriptionBillingPage = lazy(() => import('./pages/subscriptions/SubscriptionBillingPage').then(m => ({ default: m.SubscriptionBillingPage })));
 
@@ -490,6 +495,11 @@ function AppRoutes() {
           <Route path="admin" element={<LazyRoute element={<SuperAdminDashboard />} />} />
           <Route path="admin/analytics" element={<LazyRoute element={<SaaSAnalyticsDashboard />} />} />
           <Route path="admin/notifications" element={<LazyRoute element={<SubscriptionNotificationsPage />} />} />
+          <Route path="admin/regional-pricing" element={<LazyRoute element={<RegionalPricingPage />} />} />
+          <Route path="admin/enterprise-contracts" element={<LazyRoute element={<EnterpriseContractsPage />} />} />
+          <Route path="admin/reseller-contracts" element={<LazyRoute element={<ResellerContractsPage />} />} />
+          <Route path="admin/org-config" element={<LazyRoute element={<OrgConfigPage />} />} />
+          <Route path="admin/white-label" element={<LazyRoute element={<WhiteLabelConfigPage />} />} />
 
           {/* System metadata & account preferences */}
           <Route path="settings" element={<Suspense fallback={<PageLoader />}><SettingsLayout /></Suspense>}>

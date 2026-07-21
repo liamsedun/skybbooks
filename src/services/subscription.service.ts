@@ -3,6 +3,7 @@ import { eq, and, or, inArray, sql, desc, asc, lt, gt, lte, gte, isNull } from '
 import { db, subscriptionPlans, subscriptions, coupons, promotions, subscriptionInvoices, subscriptionUsage, subscriptionFeatureOverrides, organisations, users } from '../db/schema';
 import { AppError } from '../lib/errors';
 import { createAuditLog, extractReqMeta } from './audit.service';
+import { addDays, addBillingDuration, billingCycleToDays, formatDate } from './subscriptionHelpers';
 
 // ── Zod Schemas ──
 
@@ -266,8 +267,9 @@ export async function changePlan(subscriptionId: string, newPlanId: string, orgI
   if (!newPlan.isActive) throw new AppError('New plan is not active.', 400);
 
   const oldPlan = await getPlan(sub.planId);
-  const oldPrice = oldPlan.priceKobo;
-  const newPrice = newPlan.priceKobo;
+  const billingCycle = sub.billingCycle || oldPlan.billingCycle;
+  const oldPrice = billingCycle === 'yearly' || billingCycle === 'annual' ? Number(oldPlan.annualPriceKobo || 0) : Number(oldPlan.monthlyPriceKobo || 0);
+  const newPrice = billingCycle === 'yearly' || billingCycle === 'annual' ? Number(newPlan.annualPriceKobo || 0) : Number(newPlan.monthlyPriceKobo || 0);
 
   let credit = 0;
   let charge = 0;
@@ -283,7 +285,6 @@ export async function changePlan(subscriptionId: string, newPlanId: string, orgI
   }
 
   const now = new Date();
-  const billingCycle = oldPlan.billingCycle;
   const newPeriodEnd = addBillingDuration(now, billingCycle);
 
   const [updated] = await db.update(subscriptions)
@@ -641,7 +642,10 @@ export async function generateInvoice(
   if (!sub) throw new AppError('Subscription not found.', 404);
 
   const plan = await getPlan(sub.planId);
-  const amountKobo = overrideAmountKobo != null ? overrideAmountKobo : plan.monthlyPriceKobo;
+  const amountKobo = overrideAmountKobo != null ? overrideAmountKobo
+    : sub.billingCycle === 'yearly' ? (plan.annualPriceKobo || 0)
+    : sub.billingCycle === 'quarterly' ? ((plan.monthlyPriceKobo || 0) * 3)
+    : (plan.monthlyPriceKobo || 0);
 
   // Calculate discount
   const { discountKobo, description: discountDesc } = calculateDiscount(
@@ -970,31 +974,4 @@ export function prorateAmount(
 }
 
 // ── Internal Helpers ──
-
-function addDays(date: Date, days: number): Date {
-  const result = new Date(date);
-  result.setDate(result.getDate() + days);
-  return result;
-}
-
-function addBillingDuration(from: Date, cycle: string): Date {
-  switch (cycle) {
-    case 'monthly': return addDays(from, 30);
-    case 'quarterly': return addDays(from, 90);
-    case 'yearly': return addDays(from, 365);
-    default: return addDays(from, 30);
-  }
-}
-
-function billingCycleToDays(cycle: string): number {
-  switch (cycle) {
-    case 'monthly': return 30;
-    case 'quarterly': return 90;
-    case 'yearly': return 365;
-    default: return 30;
-  }
-}
-
-function formatDate(d: Date): string {
-  return d.toISOString().split('T')[0];
-}
+// (all shared helpers imported from subscriptionHelpers.ts)

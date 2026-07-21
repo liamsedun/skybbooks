@@ -13,7 +13,7 @@ import {
   Star, Zap, ChevronRight, PanelLeftClose, PanelLeft,
   CircleUser, Command, Plus, LayoutList, Home, Landmark,
   ShoppingCart, ShoppingBag, Receipt, Mail, Phone, ExternalLink, Video, RefreshCw, Tag,
-  ToggleLeft, SlidersHorizontal, BarChart3
+  ToggleLeft, SlidersHorizontal, BarChart3, Globe, Palette, Users2
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -152,6 +152,11 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     admin: '/app/admin',
     saas_analytics: '/app/admin/analytics',
     sub_notifications: '/app/admin/notifications',
+    regional_pricing: '/app/admin/regional-pricing',
+    enterprise_contracts: '/app/admin/enterprise-contracts',
+    reseller_contracts: '/app/admin/reseller-contracts',
+    org_config: '/app/admin/org-config',
+    white_label: '/app/admin/white-label',
   }), []);
 
   const navigation: NavGroup[] = useMemo(() => [
@@ -250,6 +255,11 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
       { name: 'Super Admin', id: 'admin', icon: Shield },
       { name: 'SaaS Analytics', id: 'saas_analytics', icon: BarChart3 },
       { name: 'Notifications Engine', id: 'sub_notifications', icon: Bell },
+      { name: 'Regional Pricing', id: 'regional_pricing', icon: Globe },
+      { name: 'Enterprise Contracts', id: 'enterprise_contracts', icon: Building },
+      { name: 'Reseller Contracts', id: 'reseller_contracts', icon: Users2 },
+      { name: 'Org Config', id: 'org_config', icon: Settings },
+      { name: 'White Label', id: 'white_label', icon: Palette },
     ]},
   ], []);
 

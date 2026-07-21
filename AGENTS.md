@@ -273,6 +273,17 @@ Maintain and enhance accounting features: fix kobo/naira display, parent-child a
 - FIRS consolidated report generates all sub-reports (VAT, WHT, PAYE, CIT) and aggregates totals
 - Pre-existing VAT return at `/reports/vat-return` and CIT computation at `/reports/tax-computation` remain unchanged
 
+### Session 4 — Enterprise Subscription Management Pages (Jul 2026)
+- **Regional Pricing Page** (`/app/admin/regional-pricing`): List, create, update, delete plan pricing per region/currency with plan selector, region dropdown, kobo price fields — `RegionalPricingPage.tsx`
+- **Enterprise Contracts Page** (`/app/admin/enterprise-contracts`): List with search, create/edit modal with org/plan selectors, negotiated price, billing cycle, status (active/expired/draft/terminated), auto-renew toggle, start/end dates — `EnterpriseContractsPage.tsx`
+- **Reseller Contracts Page** (`/app/admin/reseller-contracts`): List with search, create/edit with markup/commission percentage, org/plan selectors, currency, region restrictions, status, dates — `ResellerContractsPage.tsx`
+- **Org Config Page** (`/app/admin/org-config`): Key-value config management per org with org filter, raw value display, create form with key/value/description — `OrgConfigPage.tsx`
+- **White Label Config Page** (`/app/admin/white-label`): Brand config per org with color pickers (primary/secondary/accent), logo/favicon URLs, custom domain, support info, active toggle — `WhiteLabelConfigPage.tsx`
+- **Backend service functions**: All CRUD in `superAdmin.service.ts` (15 new functions: get/create/update/delete for each entity)
+- **Backend routes**: All under `/api/admin/` in `superAdmin.ts` (16 new route handlers: GET/POST/PUT/DELETE per entity)
+- **Wiring**: Lazy imports + routes in `App.tsx`, path map entries + nav items in `AppLayout.tsx` SYSTEM group using Globe/Building/Users2/Settings/Palette icons
+- **Build**: `npx tsc --noEmit --skipLibCheck` passes with 0 errors
+
 ## Agent skills
 
 - **Issue tracker** (GitHub): `docs/agents/issue-tracker.md`

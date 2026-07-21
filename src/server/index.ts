@@ -11,6 +11,15 @@ import helmet from 'helmet';
 import compression from 'compression';
 import winston from 'winston';
 import { apiLimiter, authLimiter, perUserLimiter, perOrgLimiter } from '../middleware/rateLimiters';
+
+// Global BigInt serialization for JSON responses (PostgreSQL bigint → number)
+if (!(BigInt.prototype as any).toJSON) {
+  (BigInt.prototype as any).toJSON = function () {
+    const n = Number(this);
+    return Number.isSafeInteger(n) ? n : this.toString();
+  };
+}
+
 import http from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 

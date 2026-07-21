@@ -4302,6 +4302,117 @@ export const groupConsolidationRunsRelations = relations(groupConsolidationRuns,
   eliminations: many(intercompanyEliminations)
 }));
 
+// ========== Enterprise Subscription Management Tables ==========
+
+export const regionPricingEnum = pgEnum('region', ['ng', 'gh', 'ke', 'za', 'rw', 'tz', 'ug', 'zm', 'other']);
+
+export const regionalPricing = pgTable('regional_pricing', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  planId: uuid('plan_id').references(() => subscriptionPlans.id).notNull(),
+  region: regionPricingEnum('region').notNull(),
+  currency: text('currency').default('NGN').notNull(),
+  monthlyPriceKobo: bigint('monthly_price_kobo', { mode: 'number' }).default(0).notNull(),
+  annualPriceKobo: bigint('annual_price_kobo', { mode: 'number' }).default(0).notNull(),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  rpPlanRegionIdx: uniqueIndex('idx_rp_plan_region').on(table.planId, table.region),
+  rpActiveIdx: index('idx_rp_active').on(table.isActive),
+}));
+
+export const enterpriseContracts = pgTable('enterprise_contracts', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  planId: uuid('plan_id').references(() => subscriptionPlans.id),
+  contractNumber: text('contract_number').notNull().unique(),
+  name: text('name').notNull(),
+  description: text('description'),
+  contactName: text('contact_name'),
+  contactEmail: text('contact_email'),
+  negotiatedPriceKobo: bigint('negotiated_price_kobo', { mode: 'number' }),
+  currency: text('currency').default('NGN').notNull(),
+  billingCycle: text('billing_cycle').default('monthly').notNull(),
+  customFeatures: jsonb('custom_features').default({}),
+  usageLimits: jsonb('usage_limits').default({}),
+  startDate: timestamp('start_date').notNull(),
+  endDate: timestamp('end_date'),
+  autoRenew: boolean('auto_renew').default(true).notNull(),
+  status: text('status').default('active').notNull(),
+  signedByOrg: timestamp('signed_by_org'),
+  signedByProvider: timestamp('signed_by_provider'),
+  metadata: jsonb('metadata').default({}),
+  createdBy: uuid('created_by').references(() => users.id),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  ecOrgIdx: index('idx_ec_org').on(table.orgId),
+  ecStatusIdx: index('idx_ec_status').on(table.status),
+  ecEndIdx: index('idx_ec_end').on(table.endDate),
+}));
+
+export const resellerContracts = pgTable('reseller_contracts', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  resellerOrgId: uuid('reseller_org_id').references(() => organisations.id).notNull(),
+  planId: uuid('plan_id').references(() => subscriptionPlans.id),
+  resellerName: text('reseller_name').notNull(),
+  resellerCode: text('reseller_code').notNull().unique(),
+  contactName: text('contact_name'),
+  contactEmail: text('contact_email'),
+  markupPercent: integer('markup_percent').default(0),
+  markupAmountKobo: bigint('markup_amount_kobo', { mode: 'number' }).default(0),
+  commissionPercent: integer('commission_percent').default(0),
+  discountPercent: integer('discount_percent').default(0),
+  currency: text('currency').default('NGN').notNull(),
+  regionRestrictions: text('region_restrictions').array(),
+  maxCustomers: integer('max_customers').default(0),
+  commissionKobo: bigint('commission_kobo', { mode: 'number' }).default(0),
+  startDate: timestamp('start_date').notNull(),
+  endDate: timestamp('end_date'),
+  status: text('status').default('active').notNull(),
+  metadata: jsonb('metadata').default({}),
+  createdBy: uuid('created_by').references(() => users.id),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  rcOrgIdx: index('idx_rc_org').on(table.resellerOrgId),
+  rcCodeIdx: uniqueIndex('idx_rc_code').on(table.resellerCode),
+  rcStatusIdx: index('idx_rc_status').on(table.status),
+}));
+
+export const subscriptionConfig = pgTable('subscription_config', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).unique(),
+  key: text('key').notNull(),
+  value: jsonb('value').notNull(),
+  description: text('description'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  scOrgKeyIdx: uniqueIndex('idx_sc_org_key').on(table.orgId, table.key),
+}));
+
+export const whiteLabelConfig = pgTable('white_label_config', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull().unique(),
+  brandName: text('brand_name'),
+  logoUrl: text('logo_url'),
+  faviconUrl: text('favicon_url'),
+  primaryColor: text('primary_color').default('#3b82f6'),
+  secondaryColor: text('secondary_color').default('#1e40af'),
+  accentColor: text('accent_color').default('#10b981'),
+  customDomain: text('custom_domain'),
+  supportEmail: text('support_email'),
+  supportPhone: text('support_phone'),
+  footerText: text('footer_text'),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  wlOrgIdx: uniqueIndex('idx_wl_org').on(table.orgId),
+  wlDomainIdx: index('idx_wl_domain').on(table.customDomain),
+}));
+
 // ========== Subscription Notification Tables ==========
 
 export const subNotificationTemplates = pgTable('sub_notification_templates', {
@@ -4703,6 +4814,11 @@ export const schema = {
   intercompanyTransactions,
   intercompanyEliminations,
   groupConsolidationRuns,
+  regionalPricing,
+  enterpriseContracts,
+  resellerContracts,
+  subscriptionConfig,
+  whiteLabelConfig,
   subNotificationTemplates,
   subNotificationLog,
   subNotificationPreferences,

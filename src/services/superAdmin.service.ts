@@ -1,5 +1,5 @@
-import { eq, and, or, sql, desc, asc, lt, gt, lte, gte, count, sum, avg, inArray } from 'drizzle-orm';
-import { db, organisations, users, subscriptions, subscriptionPlans, subscriptionInvoices, subscriptionPayments, subscriptionUsage, coupons, promotions, auditLog, journalEntries, journalLines, accounts, contacts, invoices, bills, chatMessages, chatConversations, documents } from '../db/schema';
+import { eq, and, or, sql, desc, asc, lt, gt, lte, gte, count, sum, avg, inArray, isNull } from 'drizzle-orm';
+import { db, organisations, users, subscriptions, subscriptionPlans, subscriptionInvoices, subscriptionPayments, subscriptionUsage, coupons, promotions, auditLog, journalEntries, journalLines, accounts, contacts, invoices, bills, chatMessages, chatConversations, documents, regionalPricing, enterpriseContracts, resellerContracts, subscriptionConfig, whiteLabelConfig } from '../db/schema';
 
 export interface DashboardData {
   kpis: {
@@ -311,11 +311,17 @@ export async function getCoupons() {
   return await db.select().from(coupons).orderBy(desc(coupons.createdAt));
 }
 
-export async function getSubscriptions(status?: string) {
+export async function getSubscriptions(page = 1, pageSize = 20, status?: string) {
   const conditions: any[] = [];
   if (status) conditions.push(eq(subscriptions.status, status as any));
 
-  return await db.select({
+  const [{ count }] = await db.select({ count: sql<number>`count(*)` })
+    .from(subscriptions)
+    .innerJoin(organisations, eq(subscriptions.orgId, organisations.id))
+    .innerJoin(subscriptionPlans, eq(subscriptions.planId, subscriptionPlans.id))
+    .where(conditions.length ? and(...conditions) : undefined);
+
+  const rows = await db.select({
     id: subscriptions.id,
     orgId: subscriptions.orgId,
     orgName: organisations.name,
@@ -330,7 +336,11 @@ export async function getSubscriptions(status?: string) {
     .innerJoin(organisations, eq(subscriptions.orgId, organisations.id))
     .innerJoin(subscriptionPlans, eq(subscriptions.planId, subscriptionPlans.id))
     .where(conditions.length ? and(...conditions) : undefined)
-    .orderBy(desc(subscriptions.createdAt));
+    .orderBy(desc(subscriptions.createdAt))
+    .limit(pageSize)
+    .offset((page - 1) * pageSize);
+
+  return { data: rows, total: Number(count), page, pageSize, totalPages: Math.ceil(Number(count) / pageSize) };
 }
 
 export async function getGrowthMetrics() {
@@ -381,4 +391,217 @@ export async function getUsageStats(orgId?: string) {
     .where(conditions.length ? and(...conditions) : undefined)
     .orderBy(desc(subscriptionUsage.usageCount))
     .limit(100);
+}
+
+// ══════════════════════════════════════════════════════════════
+// ENTERPRISE MANAGEMENT
+// ══════════════════════════════════════════════════════════════
+
+// ── Regional Pricing ──
+
+export async function getRegionalPricing() {
+  return await db.select({
+    id: regionalPricing.id,
+    planId: regionalPricing.planId,
+    planName: subscriptionPlans.name,
+    region: regionalPricing.region,
+    currency: regionalPricing.currency,
+    monthlyPriceKobo: regionalPricing.monthlyPriceKobo,
+    annualPriceKobo: regionalPricing.annualPriceKobo,
+    isActive: regionalPricing.isActive,
+    createdAt: regionalPricing.createdAt,
+  })
+    .from(regionalPricing)
+    .leftJoin(subscriptionPlans, eq(regionalPricing.planId, subscriptionPlans.id))
+    .orderBy(desc(regionalPricing.createdAt));
+}
+
+export async function createRegionalPricing(data: any) {
+  const [row] = await db.insert(regionalPricing).values(data).returning();
+  return row;
+}
+
+export async function updateRegionalPricing(id: string, data: any) {
+  const [row] = await db.update(regionalPricing).set({ ...data, updatedAt: new Date() } as any)
+    .where(eq(regionalPricing.id, id)).returning();
+  return row;
+}
+
+export async function deleteRegionalPricing(id: string) {
+  await db.delete(regionalPricing).where(eq(regionalPricing.id, id));
+}
+
+// ── Enterprise Contracts ──
+
+export async function getEnterpriseContracts(search?: string) {
+  const conditions: any[] = [];
+  if (search) conditions.push(sql`(${enterpriseContracts.name} ILIKE ${'%' + search + '%'} OR ${enterpriseContracts.contractNumber} ILIKE ${'%' + search + '%'})`);
+  return await db.select({
+    id: enterpriseContracts.id,
+    orgId: enterpriseContracts.orgId,
+    orgName: organisations.name,
+    planId: enterpriseContracts.planId,
+    planName: subscriptionPlans.name,
+    contractNumber: enterpriseContracts.contractNumber,
+    name: enterpriseContracts.name,
+    contactName: enterpriseContracts.contactName,
+    contactEmail: enterpriseContracts.contactEmail,
+    negotiatedPriceKobo: enterpriseContracts.negotiatedPriceKobo,
+    currency: enterpriseContracts.currency,
+    billingCycle: enterpriseContracts.billingCycle,
+    startDate: enterpriseContracts.startDate,
+    endDate: enterpriseContracts.endDate,
+    autoRenew: enterpriseContracts.autoRenew,
+    status: enterpriseContracts.status,
+    createdAt: enterpriseContracts.createdAt,
+  })
+    .from(enterpriseContracts)
+    .leftJoin(organisations, eq(enterpriseContracts.orgId, organisations.id))
+    .leftJoin(subscriptionPlans, eq(enterpriseContracts.planId, subscriptionPlans.id))
+    .where(conditions.length ? and(...conditions) : undefined)
+    .orderBy(desc(enterpriseContracts.createdAt));
+}
+
+export async function createEnterpriseContract(data: any) {
+  const [row] = await db.insert(enterpriseContracts).values(data).returning();
+  return row;
+}
+
+export async function updateEnterpriseContract(id: string, data: any) {
+  const [row] = await db.update(enterpriseContracts).set({ ...data, updatedAt: new Date() } as any)
+    .where(eq(enterpriseContracts.id, id)).returning();
+  return row;
+}
+
+export async function deleteEnterpriseContract(id: string) {
+  await db.delete(enterpriseContracts).where(eq(enterpriseContracts.id, id));
+}
+
+// ── Reseller Contracts ──
+
+export async function getResellerContracts(search?: string) {
+  const conditions: any[] = [];
+  if (search) conditions.push(sql`(${resellerContracts.resellerName} ILIKE ${'%' + search + '%'} OR ${resellerContracts.resellerCode} ILIKE ${'%' + search + '%'})`);
+  return await db.select({
+    id: resellerContracts.id,
+    resellerOrgId: resellerContracts.resellerOrgId,
+    resellerOrgName: organisations.name,
+    planId: resellerContracts.planId,
+    planName: subscriptionPlans.name,
+    resellerName: resellerContracts.resellerName,
+    resellerCode: resellerContracts.resellerCode,
+    contactName: resellerContracts.contactName,
+    contactEmail: resellerContracts.contactEmail,
+    markupPercent: resellerContracts.markupPercent,
+    commissionPercent: resellerContracts.commissionPercent,
+    commissionKobo: resellerContracts.commissionKobo,
+    currency: resellerContracts.currency,
+    regionRestrictions: resellerContracts.regionRestrictions,
+    startDate: resellerContracts.startDate,
+    endDate: resellerContracts.endDate,
+    status: resellerContracts.status,
+    createdAt: resellerContracts.createdAt,
+  })
+    .from(resellerContracts)
+    .leftJoin(organisations, eq(resellerContracts.resellerOrgId, organisations.id))
+    .leftJoin(subscriptionPlans, eq(resellerContracts.planId, subscriptionPlans.id))
+    .where(conditions.length ? and(...conditions) : undefined)
+    .orderBy(desc(resellerContracts.createdAt));
+}
+
+export async function createResellerContract(data: any) {
+  const [row] = await db.insert(resellerContracts).values(data).returning();
+  return row;
+}
+
+export async function updateResellerContract(id: string, data: any) {
+  const [row] = await db.update(resellerContracts).set({ ...data, updatedAt: new Date() } as any)
+    .where(eq(resellerContracts.id, id)).returning();
+  return row;
+}
+
+export async function deleteResellerContract(id: string) {
+  await db.delete(resellerContracts).where(eq(resellerContracts.id, id));
+}
+
+// ── Org Config ──
+
+export async function getOrgConfigs(orgId?: string) {
+  const conditions: any[] = [];
+  if (orgId) conditions.push(eq(subscriptionConfig.orgId, orgId));
+  return await db.select({
+    id: subscriptionConfig.id,
+    orgId: subscriptionConfig.orgId,
+    orgName: organisations.name,
+    key: subscriptionConfig.key,
+    value: subscriptionConfig.value,
+    description: subscriptionConfig.description,
+    createdAt: subscriptionConfig.createdAt,
+    updatedAt: subscriptionConfig.updatedAt,
+  })
+    .from(subscriptionConfig)
+    .leftJoin(organisations, eq(subscriptionConfig.orgId, organisations.id))
+    .where(conditions.length ? and(...conditions) : undefined)
+    .orderBy(desc(subscriptionConfig.createdAt));
+}
+
+export async function setOrgConfigKey(orgId: string, key: string, value: any, description?: string) {
+  const [existing] = await db.select().from(subscriptionConfig)
+    .where(and(eq(subscriptionConfig.orgId, orgId), eq(subscriptionConfig.key, key)))
+    .limit(1);
+  if (existing) {
+    const [row] = await db.update(subscriptionConfig).set({ value, updatedAt: new Date() } as any)
+      .where(eq(subscriptionConfig.id, existing.id)).returning();
+    return row;
+  }
+  const [row] = await db.insert(subscriptionConfig).values({ orgId, key, value, description } as any).returning();
+  return row;
+}
+
+export async function deleteOrgConfig(id: string) {
+  await db.delete(subscriptionConfig).where(eq(subscriptionConfig.id, id));
+}
+
+// ── White Label Config ──
+
+export async function getWhiteLabelConfigs(orgId?: string) {
+  const conditions: any[] = [];
+  if (orgId) conditions.push(eq(whiteLabelConfig.orgId, orgId));
+  return await db.select({
+    id: whiteLabelConfig.id,
+    orgId: whiteLabelConfig.orgId,
+    orgName: organisations.name,
+    brandName: whiteLabelConfig.brandName,
+    logoUrl: whiteLabelConfig.logoUrl,
+    faviconUrl: whiteLabelConfig.faviconUrl,
+    primaryColor: whiteLabelConfig.primaryColor,
+    secondaryColor: whiteLabelConfig.secondaryColor,
+    accentColor: whiteLabelConfig.accentColor,
+    customDomain: whiteLabelConfig.customDomain,
+    supportEmail: whiteLabelConfig.supportEmail,
+    supportPhone: whiteLabelConfig.supportPhone,
+    footerText: whiteLabelConfig.footerText,
+    isActive: whiteLabelConfig.isActive,
+    createdAt: whiteLabelConfig.createdAt,
+  })
+    .from(whiteLabelConfig)
+    .leftJoin(organisations, eq(whiteLabelConfig.orgId, organisations.id))
+    .where(conditions.length ? and(...conditions) : undefined)
+    .orderBy(desc(whiteLabelConfig.createdAt));
+}
+
+export async function upsertWhiteLabelConfig(data: any) {
+  const existing = await db.select().from(whiteLabelConfig)
+    .where(eq(whiteLabelConfig.orgId, data.orgId)).limit(1);
+  if (existing.length > 0) {
+    const [row] = await db.update(whiteLabelConfig).set({ ...data, updatedAt: new Date() } as any)
+      .where(eq(whiteLabelConfig.id, existing[0].id)).returning();
+    return row;
+  }
+  const [row] = await db.insert(whiteLabelConfig).values(data).returning();
+  return row;
+}
+
+export async function deleteWhiteLabelConfig(id: string) {
+  await db.delete(whiteLabelConfig).where(eq(whiteLabelConfig.id, id));
 }

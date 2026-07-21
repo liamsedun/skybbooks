@@ -97,6 +97,8 @@ router.get('/billing/receipts/:paymentId', async (req: AuthenticatedRequest, res
 
 // ── Webhook Routes (exported separately for raw body) ──
 
+import express from 'express';
+
 export const billingWebhookRouter = Router();
 
 billingWebhookRouter.post('/webhooks/paystack', async (req: Request, res: Response) => {
@@ -129,9 +131,23 @@ billingWebhookRouter.post('/webhooks/flutterwave', async (req: Request, res: Res
   }
 });
 
-billingWebhookRouter.post('/webhooks/stripe', async (req: Request, res: Response) => {
+// Stripe webhook needs raw body for signature verification
+billingWebhookRouter.post('/webhooks/stripe', express.raw({ type: 'application/json' }), async (req: Request, res: Response) => {
   try {
-    const result = await handlePaymentWebhook('stripe', req.headers, req.body);
+    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+    const sig = req.headers['stripe-signature'] as string;
+    const secret = process.env.STRIPE_WEBHOOK_SECRET || '';
+    let event: any;
+    if (secret) {
+      try {
+        event = stripe.webhooks.constructEvent(req.body, sig, secret);
+      } catch (err: any) {
+        console.error('[Billing Webhook] Stripe signature verification failed:', err.message);
+        return res.status(401).json({ error: 'Invalid signature' });
+      }
+    }
+    const payload = event || JSON.parse(req.body.toString());
+    const result = await handlePaymentWebhook('stripe', req.headers, payload);
     res.json(result);
   } catch (err: any) {
     console.error('[Billing Webhook] Stripe error:', err.message);
