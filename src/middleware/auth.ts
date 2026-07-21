@@ -74,6 +74,7 @@ export function requireRole(...roles: string[]) {
 
 /**
  * Middleware ensuring that the user is currently tied to a valid organisation.
+ * Super admins bypass this check since they operate without an org context.
  */
 export function requireOrg(
   req: AuthenticatedRequest,
@@ -84,9 +85,31 @@ export function requireOrg(
     return next(new AppError('Authentication context is missing.', 401));
   }
 
+  if (req.user.role === 'super_admin') {
+    return next();
+  }
+
   if (!req.user.orgId) {
     return next(new AppError('Bad Request: User does not have an active organisation context.', 400));
   }
 
+  return next();
+}
+
+/**
+ * Override role to super_admin if the user's email matches the configured list.
+ */
+export function resolveSuperAdmin(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): void {
+  if (req.user) {
+    const emails = process.env.SUPER_ADMIN_EMAILS || '';
+    const adminEmails = emails.split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+    if (adminEmails.includes(req.user.email?.toLowerCase())) {
+      req.user.role = 'super_admin';
+    }
+  }
   return next();
 }

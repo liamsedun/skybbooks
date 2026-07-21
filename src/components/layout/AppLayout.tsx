@@ -149,6 +149,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     set_organisation: '/app/settings/organisation', set_invites: '/app/settings/invites', set_roles: '/app/settings/roles',
     user_preferences: '/app/settings/user-preferences', set_integrations: '/app/settings/integrations',
     feature_flags: '/app/settings/feature-flags', plan_features: '/app/settings/feature-flags/plans',
+    admin: '/app/admin',
   }), []);
 
   const navigation: NavGroup[] = useMemo(() => [
@@ -244,6 +245,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     { title: 'SYSTEM', icon: Shield, items: [
       { name: 'Feature Flags', id: 'feature_flags', icon: ToggleLeft },
       { name: 'Plan Features', id: 'plan_features', icon: SlidersHorizontal },
+      { name: 'Super Admin', id: 'admin', icon: Shield },
     ]},
   ], []);
 
