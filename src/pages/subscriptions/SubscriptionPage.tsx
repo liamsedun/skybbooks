@@ -348,7 +348,7 @@ export function SubscriptionPage() {
           <h1 className="text-2xl font-bold text-slate-900">Subscription & Billing</h1>
           {subscription && statusBadge(subscription.status)}
         </div>
-        <a href="/settings/billing" className="flex items-center gap-1.5 text-sm font-medium text-emerald-600 hover:text-emerald-700">
+        <a href="/app/settings/billing" className="flex items-center gap-1.5 text-sm font-medium text-emerald-600 hover:text-emerald-700">
           <Settings className="w-4 h-4" /> Gateway Settings
         </a>
       </div>
