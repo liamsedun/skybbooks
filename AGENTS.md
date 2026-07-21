@@ -273,6 +273,15 @@ Maintain and enhance accounting features: fix kobo/naira display, parent-child a
 - FIRS consolidated report generates all sub-reports (VAT, WHT, PAYE, CIT) and aggregates totals
 - Pre-existing VAT return at `/reports/vat-return` and CIT computation at `/reports/tax-computation` remain unchanged
 
+### Session 5 — Signup → Tenant Provisioning → First-Use Flow (Jul 2026)
+- **`src/services/tenantProvisioning.service.ts`**: New provisioning service with `provisionTenant()` — creates org, owner user, subscription (with plan selection + trial), seeds chart of accounts, sends welcome email, all in a DB transaction
+- **`POST /auth/signup`**: Enhanced public registration endpoint accepting `planId`, `billingCycle`, `paymentReference`, `metadata` — returns tokens + user + org + subscription
+- **`GET /auth/plans`**: Public plans endpoint (no auth required) returning active/public plans with prices for the signup plan picker
+- **`useAuth.signup()`**: Hook method using the new signup endpoint, stores subscription in localStorage alongside tokens/user/org
+- **`RegisterPage`**: Updated with collapsible plan selection UI — show/hide plans, monthly/annual toggle with price switching, popular badge, free vs trial labeling on submit button
+- **Architecture**: API-first design — the marketing site can POST to `/auth/signup` directly. The frontend RegisterPage is a fallback for direct signups.
+- **Build**: `npx tsc --noEmit --skipLibCheck` passes with 0 errors. Committed at `ebfbffb`.
+
 ### Session 4 — Enterprise Subscription Management Pages (Jul 2026)
 - **Regional Pricing Page** (`/app/admin/regional-pricing`): List, create, update, delete plan pricing per region/currency with plan selector, region dropdown, kobo price fields — `RegionalPricingPage.tsx`
 - **Enterprise Contracts Page** (`/app/admin/enterprise-contracts`): List with search, create/edit modal with org/plan selectors, negotiated price, billing cycle, status (active/expired/draft/terminated), auto-renew toggle, start/end dates — `EnterpriseContractsPage.tsx`

@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../hooks/useAuth';
-import { SkyhouseLogo } from '../components/ui/SkyhouseLogo';
+
 import { api } from '../lib/api';
 import { 
   Shield, Sparkles, Building, Mail, Lock, User as UserIcon, 
@@ -71,7 +71,7 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 selection:bg-indigo-100 font-sans" id="auth-viewport-wrapper">
+    <div className="min-h-screen bg-slate-50 flex flex-col justify-start pt-8 px-4 sm:px-6 lg:px-8 selection:bg-indigo-100 font-sans" id="auth-viewport-wrapper">
       <div className="absolute top-4 right-4">
         <button
           onClick={handleDemo}
@@ -89,7 +89,7 @@ export function LoginPage() {
           
           <div className="space-y-4">
             <div className="flex items-center space-x-2.5">
-              <SkyhouseLogo className="w-10 h-10 drop-shadow-sm shrink-0" color="#FFFFFF" />
+              <img src="/images/skyhouse-logo.png" alt="SkyBooks" className="w-10 h-10 drop-shadow-sm shrink-0 object-contain" />
               <div>
                 <h3 className="text-md font-bold tracking-tight">SkyBooks</h3>
                 <span className="text-[9px] text-indigo-300 font-bold uppercase tracking-widest font-mono">Accounting Ledgers</span>
@@ -184,7 +184,7 @@ export function LoginPage() {
 
             <div className="flex items-center justify-between pt-1">
               <div className="flex items-center">
-                <input id="remember-me" name="remember-me" type="checkbox" className="h-4 w-4 text-indigo-650 focus:ring-indigo-500 border-slate-300 rounded cursor-pointer" />
+                <input id="remember-me" name="remember-me" type="checkbox" className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-slate-300 rounded cursor-pointer" />
                 <label htmlFor="remember-me" className="ml-2 block text-xs text-slate-500 font-semibold select-none cursor-pointer">Remember Me</label>
               </div>
 
@@ -210,7 +210,7 @@ export function LoginPage() {
           </form>
 
           <div className="mt-6 pt-5 border-t border-slate-100 text-center">
-            <Link to="/auth/register" id="ref-register-anchor" className="text-xs font-black text-indigo-650 text-indigo-650 hover:text-indigo-700">
+            <Link to="/auth/register" id="ref-register-anchor" className="text-xs font-black text-slate-800 hover:text-indigo-700">
               New company? Build Corporate Accounting Books
             </Link>
           </div>
@@ -327,7 +327,7 @@ export function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 selection:bg-indigo-100 font-sans">
+    <div className="min-h-screen bg-slate-50 flex flex-col justify-start pt-8 px-4 sm:px-6 lg:px-8 selection:bg-indigo-100 font-sans">
       <div className="mx-auto w-full max-w-5xl bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden grid grid-cols-1 md:grid-cols-12 min-h-[620px]">
         {/* Left Column - Graphic/Highlight Info */}
         <div className="hidden md:flex md:col-span-5 bg-gradient-to-br from-indigo-900 via-indigo-850 to-slate-900 p-8 flex-col justify-between text-white relative">
@@ -335,7 +335,7 @@ export function RegisterPage() {
           
           <div className="space-y-4">
             <div className="flex items-center space-x-2.5">
-              <SkyhouseLogo className="w-10 h-10 drop-shadow-sm shrink-0" color="#FFFFFF" />
+              <img src="/images/skyhouse-logo.png" alt="SkyBooks" className="w-10 h-10 drop-shadow-sm shrink-0 object-contain" />
               <div>
                 <h3 className="text-md font-bold tracking-tight">SkyBooks</h3>
                 <span className="text-[9px] text-indigo-300 font-bold uppercase tracking-widest font-mono">Accounting Ledgers</span>
@@ -601,7 +601,7 @@ export function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-slate-50 flex flex-col justify-start pt-8 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
         <span className="w-12 h-12 rounded-2xl bg-purple-600 text-white font-extrabold flex items-center justify-center text-xl shadow-lg shadow-purple-200 mx-auto mb-4 select-none">
           F

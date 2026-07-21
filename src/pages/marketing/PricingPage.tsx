@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check, X, ArrowRight, Plus, Minus } from 'lucide-react';
 import { SeoHead } from '../../components/seo/SeoHead';
@@ -49,7 +49,7 @@ const tiers: Tier[] = [
     integrations: '1 bank connection',
     advancedReports: false,
     accountingFeatures: [
-      'Up to 20 invoices/month',
+      'Up to 10 invoices/month',
       'Full expense management',
       'Bank reconciliation',
       'Multi-currency support',
@@ -110,8 +110,8 @@ const tiers: Tier[] = [
     savings: 'Save ₦40,000',
     description: 'For established businesses with advanced reporting and compliance needs.',
     popular: false,
-    cta: 'Contact Sales',
-    ctaLink: '/contact',
+    cta: 'Start Free Trial',
+    ctaLink: '/auth/register',
     maxUsers: 'Unlimited users',
     support: 'Dedicated account manager',
     storage: 'Unlimited',
@@ -143,6 +143,8 @@ export function PricingPage() {
   const [billing, setBilling] = useState<BillingPeriod>('monthly');
   const [compareOpen, setCompareOpen] = useState(false);
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
+
+  useEffect(() => { window.scrollTo(0, 0); }, []);
 
   return (
     <div className="min-h-screen bg-white">
@@ -288,6 +290,18 @@ export function PricingPage() {
                           {f}
                         </li>
                       ))}
+                      {tier.name === 'Starter' && (
+                        <li className="flex items-start gap-2.5 text-sm text-slate-500 italic">
+                          <span className="text-emerald-500 mt-0.5 shrink-0 font-bold">*</span>
+                          One user only
+                        </li>
+                      )}
+                      {tier.name === 'Professional' && (
+                        <li className="flex items-start gap-2.5 text-sm text-slate-500 italic">
+                          <span className="text-emerald-500 mt-0.5 shrink-0 font-bold">*</span>
+                          Up to 5 users
+                        </li>
+                      )}
                     </ul>
 
                     {/* Module indicators */}

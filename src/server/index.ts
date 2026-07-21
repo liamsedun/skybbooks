@@ -62,13 +62,21 @@ import featureFlagRouter from '../routes/featureFlags';
 import subscriptionRouter, { subscriptionWebhookRouter } from '../routes/subscriptions';
 import lifecycleRouter, { initLifecycleScheduler } from '../routes/subscriptionLifecycle';
 import promotionsEngineRouter from '../routes/promotionsEngine';
-import nvidiaRouter from '../routes/nvidia';
+
 import usageMonitorRouter from '../routes/usageMonitor';
+import apiKeysRouter from '../routes/apiKeys';
 import subscriptionPortalRouter from '../routes/subscriptionPortal';
 import addonMarketplaceRouter from '../routes/addonMarketplace';
 import subscriptionBillingEngineRouter from '../routes/subscriptionBillingEngine';
 import superAdminRouter from '../routes/superAdmin';
 import subscriptionNotificationsRouter from '../routes/subscriptionNotifications';
+import budgetRouter from '../routes/budget';
+import inventoryTrackingRouter from '../routes/inventoryTracking';
+import supportRouter from '../routes/support';
+import announcementsRouter from '../routes/announcements';
+import rateLimitAdminRouter from '../routes/rateLimitAdmin';
+import featureRolloutsRouter from '../routes/featureRollouts';
+import dunningRouter from '../routes/dunning';
 
 import { runMigration } from '../db/migrate';
 import { fetchLatestRates } from '../services/cbn.service';
@@ -169,9 +177,11 @@ async function startServer() {
   app.use('/api/banking', bankingRouter);
   app.use('/api/reports', reportsRouter);
   app.use('/api/inventory', inventoryRouter);
+  app.use('/api/inventory', inventoryTrackingRouter);
   app.use('/api/ai', aiRouter);
   app.use('/api/accountant', accountantRouter);
   app.use('/api/journals', journalsRouter);
+  app.use('/api/budgets', budgetRouter);
   app.use('/api/budgets', budgetsRouter);
   app.use('/api/fixed-assets', fixedAssetsRouter);
   app.use('/api/audit-log', auditLogRouter);
@@ -200,13 +210,20 @@ async function startServer() {
   app.use('/api/subscriptions', lifecycleRouter);
   app.use('/api/subscriptions', (await import('../routes/subscriptionBilling')).default);
   app.use('/api/promotions', promotionsEngineRouter);
-  app.use('/api/nvidia', nvidiaRouter);
+
   app.use('/api/reports', usageMonitorRouter);
   app.use('/api/subscriptions', subscriptionPortalRouter);
   app.use('/api/subscriptions', addonMarketplaceRouter);
   app.use('/api/subscriptions', subscriptionBillingEngineRouter);
   app.use('/api/admin', superAdminRouter);
   app.use('/api/subscription-notifications', subscriptionNotificationsRouter);
+  app.use('/api/api-keys', apiKeysRouter);
+  app.use('/api/support', supportRouter);
+  app.use('/api/announcements', announcementsRouter);
+  app.use('/api/admin/rate-limits', rateLimitAdminRouter);
+  app.use('/api/admin/feature-rollouts', featureRolloutsRouter);
+  app.use('/api/dunning', dunningRouter);
+  app.use('/api/admin', dunningRouter);
 
   app.get('/api/health', (req, res) => {
     res.json({ status: 'healthy', timestamp: new Date().toISOString() });

@@ -1,9 +1,10 @@
 import { z } from 'zod';
 import { eq, and, inArray, sql, desc, lte, gte, lt, gt, isNull } from 'drizzle-orm';
-import { db, subscriptions, subscriptionPlans, subscriptionStatusHistory, subscriptionInvoices, organisations } from '../db/schema';
+import { db, subscriptions, subscriptionPlans, subscriptionStatusHistory, subscriptionInvoices, organisations, users } from '../db/schema';
 import { AppError } from '../lib/errors';
 import { createAuditLog, extractReqMeta } from './audit.service';
 import { processAutoRenewalPayment } from './subscriptionBilling.service';
+import { sendOrgEmail } from './email.service';
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
   'free_trial': ['active', 'expired', 'cancelled', 'pending_payment'],
@@ -937,6 +938,71 @@ export async function sendRenewalReminders(): Promise<any[]> {
   return results;
 }
 
+export async function sendTrialExpirationReminders(): Promise<any[]> {
+  const now = new Date();
+  const threeDaysFromNow = addDays(now, 3);
+
+  const rows = await db
+    .select({
+      sub: subscriptions,
+      plan: subscriptionPlans,
+      org: organisations,
+      owner: users,
+    })
+    .from(subscriptions)
+    .innerJoin(subscriptionPlans, eq(subscriptions.planId, subscriptionPlans.id))
+    .innerJoin(organisations, eq(subscriptions.orgId, organisations.id))
+    .innerJoin(users, and(eq(users.organisationId, subscriptions.orgId), eq(users.role as any, 'owner' as any)))
+    .where(and(
+      eq(subscriptions.status as any, 'free_trial' as any),
+      lte(subscriptions.trialEnd, threeDaysFromNow),
+      gte(subscriptions.trialEnd, now),
+      isNull(subscriptions.expirationReminderSentAt),
+    ));
+
+  if (rows.length === 0) return [];
+
+  const ids = rows.map(r => r.sub.id);
+
+  await db.update(subscriptions)
+    .set({ expirationReminderSentAt: now, updatedAt: now })
+    .where(inArray(subscriptions.id, ids));
+
+  for (const row of rows) {
+    if (!row.sub.trialEnd) continue;
+    const daysLeft = Math.max(1, Math.floor((new Date(row.sub.trialEnd).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+    try {
+      await sendOrgEmail(row.sub.orgId, {
+        to: row.owner.email,
+        subject: `Your SkyBooks trial ends in ${daysLeft} day${daysLeft > 1 ? 's' : ''}`,
+        html: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto">
+          <h1 style="color:#1e40af">Trial Ending Soon</h1>
+          <p>Hi ${row.owner.fullName},</p>
+          <p>Your <strong>${row.plan.name}</strong> free trial on <strong>${row.org.name}</strong> will expire in <strong>${daysLeft} day${daysLeft > 1 ? 's' : ''}</strong>.</p>
+          <p>After your trial ends, you'll lose access to premium features. To keep using SkyBooks, subscribe before your trial expires.</p>
+          <p style="margin-top:24px">
+            <a href="https://skyaccounting.com.ng/app/subscription"
+               style="background:#1e40af;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600">
+              Subscribe Now
+            </a>
+          </p>
+          <p style="color:#6b7280;font-size:12px;margin-top:24px">SkyBooks — Accounting for African Businesses</p>
+        </div>`,
+      });
+    } catch (err: any) {
+      console.error(`[Lifecycle] Trial reminder email failed for org ${row.sub.orgId}:`, err.message);
+    }
+  }
+
+  return rows.map(r => ({
+    id: r.sub.id,
+    orgId: r.sub.orgId,
+    planName: r.plan.name,
+    trialEnd: r.sub.trialEnd,
+    daysRemaining: r.sub.trialEnd ? Math.max(1, Math.floor((new Date(r.sub.trialEnd).getTime() - now.getTime()) / (1000 * 60 * 60 * 24))) : 0,
+  }));
+}
+
 export async function getStatusHistory(subscriptionId: string): Promise<any[]> {
   return await db
     .select()
@@ -1016,12 +1082,25 @@ export function startLifecycleScheduler(intervalMs?: number): any {
     }
   }, hourMs);
 
+  const trialReminderInterval = setInterval(async () => {
+    try {
+      const trial = await sendTrialExpirationReminders();
+      if (trial.length > 0) {
+        console.log(`[Lifecycle] Sent ${trial.length} trial expiration reminder(s).`);
+      }
+    } catch (err: any) {
+      console.error('[Lifecycle] Trial reminder scheduler error:', err.message);
+    }
+  }, hourMs);
+
   const handle = {
     mainInterval,
     reminderInterval,
+    trialReminderInterval,
     stop() {
       clearInterval(this.mainInterval);
       clearInterval(this.reminderInterval);
+      clearInterval(this.trialReminderInterval);
     },
   };
 

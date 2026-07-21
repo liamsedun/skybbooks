@@ -3,15 +3,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { GoogleGenAI } from '@google/genai';
 import { eq, and, sql, gte, lte, desc, sum as drizzleSum } from 'drizzle-orm';
 import { db, accounts, journalEntries, journalLines, bankAccounts, contacts, invoices, bills, paymentsReceived, paymentsMade, auditLog } from '../db/schema';
 import { getTrialBalance, getProfitAndLoss, getBalanceSheet, getCashFlowStatement } from './ledger.service';
 import { getDashboardMetrics } from './dashboard.service';
 import { createAuditLog, extractReqMeta } from './audit.service';
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
-const MODEL = 'gemini-2.0-flash';
+const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || '';
+const DEEPSEEK_MODEL = 'deepseek-chat';
 
 function kobo(n: any): number {
   const v = Number(n);
@@ -56,35 +55,54 @@ function detectCapability(query: string): Capability {
 }
 
 export class AccountingAssistant {
-  private genAI: GoogleGenAI | null = null;
-
-  constructor() {
-    if (GEMINI_API_KEY) {
-      this.genAI = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
-    }
-  }
 
   private async callLLM(prompt: string, systemInstruction?: string): Promise<string> {
-    if (!this.genAI) {
-      return 'AI Assistant is not configured. Please set the GEMINI_API_KEY environment variable.';
+    if (!DEEPSEEK_API_KEY) {
+      return 'AI Assistant is not configured. Please set the DEEPSEEK_API_KEY environment variable.';
     }
-    try {
-      const result = await this.genAI.models.generateContent({
-        model: MODEL,
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        config: {
-          systemInstruction: systemInstruction
-            ? { role: 'user', parts: [{ text: systemInstruction }] }
-            : undefined,
-          temperature: 0.3,
-          maxOutputTokens: 4096,
-        },
-      });
-      return result.text || 'No response generated.';
-    } catch (err: any) {
-      console.error('Gemini API error:', err.message);
-      return `I encountered an error processing your request: ${err.message}. Please try again.`;
+
+    const messages: any[] = [];
+    if (systemInstruction) {
+      messages.push({ role: 'system', content: systemInstruction });
     }
+    messages.push({ role: 'user', content: prompt });
+
+    const maxRetries = 3;
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const res = await fetch('https://api.deepseek.com/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
+          },
+          body: JSON.stringify({
+            model: DEEPSEEK_MODEL,
+            messages,
+            temperature: 0.3,
+            max_tokens: 4096,
+          }),
+        });
+        if (!res.ok) {
+          const errBody = await res.text();
+          throw new Error(`DeepSeek API returned ${res.status}: ${errBody}`);
+        }
+        const data = await res.json();
+        return data.choices?.[0]?.message?.content || 'No response generated.';
+      } catch (err: any) {
+        const isQuota = err.message?.includes('429') || err.message?.includes('insufficient_quota') || err.message?.includes('rate limit');
+        if (isQuota && attempt < maxRetries - 1) {
+          const delay = Math.pow(2, attempt) * 1000;
+          await new Promise(r => setTimeout(r, delay));
+          continue;
+        }
+        console.error('DeepSeek API error:', err.message);
+        if (attempt === maxRetries - 1) {
+          return `I encountered an error processing your request: ${err.message}. Please try again.`;
+        }
+      }
+    }
+    return 'AI Assistant is temporarily unavailable. Please try again in a few minutes.';
   }
 
   async processQuery(

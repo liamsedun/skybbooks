@@ -3015,6 +3015,17 @@ export async function runMigration() {
     await db.execute(sql`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS next_plan_id uuid REFERENCES subscription_plans(id)`);
     await db.execute(sql`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS scheduled_change_at timestamp`);
 
+    // Update Professional and Enterprise plans: 7-day free trial, Enterprise gets Start Free Trial button
+    await db.execute(sql`
+      UPDATE subscription_plans SET trial_days = 7 WHERE code IN ('professional', 'enterprise') AND trial_days = 0
+    `);
+    await db.execute(sql`
+      UPDATE subscription_plans SET trial_days = 7 WHERE code = 'professional' AND trial_days = 14
+    `);
+    await db.execute(sql`
+      UPDATE subscription_plans SET button_text = 'Start Free Trial' WHERE code = 'enterprise' AND button_text = 'Contact Sales'
+    `);
+
     console.log('[Migration] Subscription Management System tables created.');
 
     // ----------------------------------------------------------------
@@ -3898,6 +3909,185 @@ export async function runMigration() {
       console.log('[Migration] Subscription notification tables created.');
     } catch (err) {
       console.error('[Migration] Subscription notification tables error:', err);
+    }
+
+    try {
+      console.log('[Migration] Creating platform infrastructure tables...');
+
+      await pool.query(`CREATE TABLE IF NOT EXISTS api_keys (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id UUID REFERENCES organisations(id) NOT NULL,
+        name TEXT NOT NULL,
+        key_hash TEXT NOT NULL,
+        prefix TEXT NOT NULL,
+        scopes TEXT[] DEFAULT '{}',
+        last_used_at TIMESTAMP,
+        expires_at TIMESTAMP,
+        is_active BOOLEAN DEFAULT true NOT NULL,
+        created_at TIMESTAMP DEFAULT now() NOT NULL
+      )`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_ak_org ON api_keys(org_id)`);
+      await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_ak_prefix ON api_keys(prefix)`);
+
+      await pool.query(`CREATE TABLE IF NOT EXISTS dunning_runs (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        subscription_id UUID REFERENCES subscriptions(id) NOT NULL,
+        org_id UUID REFERENCES organisations(id) NOT NULL,
+        stage TEXT DEFAULT 'warning' NOT NULL,
+        executed_at TIMESTAMP DEFAULT now() NOT NULL,
+        notified_at TIMESTAMP,
+        response TEXT,
+        metadata JSONB DEFAULT '{}'
+      )`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_dr_sub ON dunning_runs(subscription_id)`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_dr_stage ON dunning_runs(stage)`);
+
+      await pool.query(`CREATE TABLE IF NOT EXISTS budget_forecasts (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id UUID REFERENCES organisations(id) NOT NULL,
+        account_id UUID REFERENCES accounts(id) NOT NULL,
+        fiscal_year INTEGER NOT NULL,
+        month INTEGER NOT NULL,
+        forecast_amount_kobo BIGINT DEFAULT 0 NOT NULL,
+        actual_amount_kobo BIGINT DEFAULT 0 NOT NULL,
+        method TEXT DEFAULT 'linear' NOT NULL,
+        confidence INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT now()
+      )`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_bf_org_account ON budget_forecasts(org_id, account_id, fiscal_year)`);
+
+      await pool.query(`CREATE TABLE IF NOT EXISTS inventory_batches (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id UUID REFERENCES organisations(id) NOT NULL,
+        item_id UUID REFERENCES items(id) NOT NULL,
+        warehouse_id UUID REFERENCES warehouse_locations(id),
+        batch_number TEXT NOT NULL,
+        supplier_batch_number TEXT,
+        expiry_date TIMESTAMP,
+        manufacturing_date TIMESTAMP,
+        quantity_received INTEGER DEFAULT 0 NOT NULL,
+        quantity_remaining INTEGER DEFAULT 0 NOT NULL,
+        unit_cost_kobo BIGINT DEFAULT 0,
+        status TEXT DEFAULT 'active' NOT NULL,
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT now() NOT NULL
+      )`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_ib_org ON inventory_batches(org_id)`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_ib_item ON inventory_batches(item_id)`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_ib_batch ON inventory_batches(batch_number)`);
+
+      await pool.query(`CREATE TABLE IF NOT EXISTS inventory_serials (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id UUID REFERENCES organisations(id) NOT NULL,
+        item_id UUID REFERENCES items(id) NOT NULL,
+        warehouse_id UUID REFERENCES warehouse_locations(id),
+        serial_number TEXT NOT NULL,
+        batch_id UUID REFERENCES inventory_batches(id),
+        status TEXT DEFAULT 'in_stock' NOT NULL,
+        cost_price_kobo BIGINT DEFAULT 0,
+        selling_price_kobo BIGINT DEFAULT 0,
+        sold_at TIMESTAMP,
+        sold_to TEXT,
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT now() NOT NULL
+      )`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_is_org ON inventory_serials(org_id)`);
+      await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_is_serial ON inventory_serials(serial_number)`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_is_item ON inventory_serials(item_id)`);
+
+      await pool.query(`CREATE TABLE IF NOT EXISTS support_tickets (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id UUID REFERENCES organisations(id) NOT NULL,
+        user_id UUID REFERENCES users(id) NOT NULL,
+        subject TEXT NOT NULL,
+        message TEXT NOT NULL,
+        category TEXT DEFAULT 'general' NOT NULL,
+        priority TEXT DEFAULT 'normal' NOT NULL,
+        status TEXT DEFAULT 'open' NOT NULL,
+        assigned_to UUID REFERENCES users(id),
+        resolution TEXT,
+        closed_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT now() NOT NULL,
+        updated_at TIMESTAMP DEFAULT now() NOT NULL
+      )`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_st_org ON support_tickets(org_id)`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_st_status ON support_tickets(status)`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_st_assigned ON support_tickets(assigned_to)`);
+
+      await pool.query(`CREATE TABLE IF NOT EXISTS ticket_messages (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        ticket_id UUID REFERENCES support_tickets(id) NOT NULL,
+        user_id UUID REFERENCES users(id) NOT NULL,
+        message TEXT NOT NULL,
+        is_internal BOOLEAN DEFAULT false NOT NULL,
+        attachments JSONB DEFAULT '[]',
+        created_at TIMESTAMP DEFAULT now() NOT NULL
+      )`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_tm_ticket ON ticket_messages(ticket_id)`);
+
+      await pool.query(`CREATE TABLE IF NOT EXISTS announcements (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id UUID REFERENCES organisations(id),
+        user_id UUID REFERENCES users(id) NOT NULL,
+        title TEXT NOT NULL,
+        message TEXT NOT NULL,
+        type TEXT DEFAULT 'info' NOT NULL,
+        is_global BOOLEAN DEFAULT false NOT NULL,
+        starts_at TIMESTAMP DEFAULT now() NOT NULL,
+        ends_at TIMESTAMP,
+        is_dismissable BOOLEAN DEFAULT true NOT NULL,
+        created_at TIMESTAMP DEFAULT now() NOT NULL
+      )`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_ann_org ON announcements(org_id)`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_ann_active ON announcements(starts_at, ends_at)`);
+
+      await pool.query(`CREATE TABLE IF NOT EXISTS rate_limit_configs (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id UUID REFERENCES organisations(id),
+        endpoint TEXT NOT NULL,
+        method TEXT DEFAULT 'ALL' NOT NULL,
+        max_requests INTEGER DEFAULT 100 NOT NULL,
+        window_ms INTEGER DEFAULT 60000 NOT NULL,
+        is_active BOOLEAN DEFAULT true NOT NULL,
+        description TEXT,
+        created_at TIMESTAMP DEFAULT now() NOT NULL,
+        updated_at TIMESTAMP DEFAULT now() NOT NULL
+      )`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_rlc_endpoint ON rate_limit_configs(endpoint)`);
+      await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_rlc_org_endpoint ON rate_limit_configs(org_id, endpoint)`);
+
+      await pool.query(`CREATE TABLE IF NOT EXISTS feature_rollouts (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        feature_key TEXT NOT NULL UNIQUE,
+        name TEXT NOT NULL,
+        description TEXT,
+        rollout_percent INTEGER DEFAULT 0 NOT NULL,
+        is_active BOOLEAN DEFAULT false NOT NULL,
+        allowlist_org_ids TEXT[] DEFAULT '{}',
+        started_at TIMESTAMP,
+        ended_at TIMESTAMP,
+        created_by UUID REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT now() NOT NULL,
+        updated_at TIMESTAMP DEFAULT now() NOT NULL
+      )`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_fr_key ON feature_rollouts(feature_key)`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_fr_active ON feature_rollouts(is_active)`);
+
+      await pool.query(`CREATE TABLE IF NOT EXISTS feature_rollout_events (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        rollout_id UUID REFERENCES feature_rollouts(id) NOT NULL,
+        org_id UUID REFERENCES organisations(id) NOT NULL,
+        user_id UUID REFERENCES users(id),
+        event TEXT NOT NULL,
+        metadata JSONB DEFAULT '{}',
+        created_at TIMESTAMP DEFAULT now() NOT NULL
+      )`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_fre_rollout ON feature_rollout_events(rollout_id)`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_fre_org ON feature_rollout_events(org_id)`);
+
+      console.log('[Migration] Platform infrastructure tables created.');
+    } catch (err) {
+      console.error('[Migration] Platform infrastructure tables error:', err);
     }
 
     console.log('[Migration] Database is online. Migration/schema push complete!');

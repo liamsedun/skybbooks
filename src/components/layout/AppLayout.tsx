@@ -10,10 +10,11 @@ import {
   Menu, X, Building, Bell, ArrowRight, LogOut, User, Shield, CreditCard,
   FileBarChart, HelpCircle, FileInput, BookOpen, Package,
   ArrowRightLeft, TrendingDown, ReceiptText, AlertTriangle, Bot, Wifi,
-  Star, Zap, ChevronRight, PanelLeftClose, PanelLeft,
+  Star, ChevronRight, PanelLeftClose, PanelLeft,
   CircleUser, Command, Plus, LayoutList, Home, Landmark,
   ShoppingCart, ShoppingBag, Receipt, Mail, Phone, ExternalLink, Video, RefreshCw, Tag,
-  ToggleLeft, SlidersHorizontal, BarChart3, Globe, Palette, Users2
+  ToggleLeft, SlidersHorizontal, BarChart3, Globe, Palette, Users2,
+  LifeBuoy, Megaphone, Gauge, FlaskConical, Activity
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -115,7 +116,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
   }, [showUserMenu, showNotifications, showNewMenu, showHeaderSearch]);
 
   const pathMap: Record<string, string> = useMemo(() => ({
-    dashboard: '/app/dashboard', ai_assistant: '/app/ai/assistant', ai_nvidia: '/app/ai/nvidia',
+    dashboard: '/app/dashboard', ai_assistant: '/app/ai/assistant',
     customers: '/app/sales/customers', quotes: '/app/sales/quotes', sales_orders: '/app/sales/sales-orders',
     invoices: '/app/sales/invoices', receipts: '/app/sales/receipts', recurring_invoices: '/app/sales/recurring-invoices',
     payments_received: '/app/sales/payments', credit_notes: '/app/sales/credit-notes',
@@ -157,13 +158,18 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     reseller_contracts: '/app/admin/reseller-contracts',
     org_config: '/app/admin/org-config',
     white_label: '/app/admin/white-label',
+    support_tickets: '/app/admin/support-tickets',
+    announcements: '/app/admin/announcements',
+    rate_limits: '/app/admin/rate-limits',
+    feature_rollouts: '/app/admin/feature-rollouts',
+    system_health: '/app/admin/system-health',
   }), []);
 
   const navigation: NavGroup[] = useMemo(() => [
     { title: 'OVERVIEW', icon: LayoutDashboard, items: [
       { name: 'Dashboard', id: 'dashboard', icon: LayoutDashboard },
       { name: 'Smart Assistant', id: 'ai_assistant', icon: Bot },
-      { name: 'NVIDIA AI', id: 'ai_nvidia', icon: Zap },
+
     ]},
     { title: 'SALES', icon: ShoppingCart, items: [
       { name: 'Customers', id: 'customers', icon: Users },
@@ -260,6 +266,11 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
       { name: 'Reseller Contracts', id: 'reseller_contracts', icon: Users2 },
       { name: 'Org Config', id: 'org_config', icon: Settings },
       { name: 'White Label', id: 'white_label', icon: Palette },
+      { name: 'Support Tickets', id: 'support_tickets', icon: LifeBuoy },
+      { name: 'Announcements', id: 'announcements', icon: Megaphone },
+      { name: 'Rate Limits', id: 'rate_limits', icon: Gauge },
+      { name: 'Feature Rollouts', id: 'feature_rollouts', icon: FlaskConical },
+      { name: 'System Health', id: 'system_health', icon: Activity },
     ]},
   ], []);
 
@@ -502,7 +513,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
       </aside>
 
       {/* Main content area */}
-      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${
+      <div className={`flex-1 flex flex-col min-w-0 min-h-screen transition-all duration-300 ${
         sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-60'
       }`}>
         {/* Top header */}

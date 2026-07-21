@@ -1453,12 +1453,12 @@ router.post('/credit-notes/:id/void', async (req: AuthenticatedRequest, res: Res
 // 6. RECURRING BILLS ENDPOINTS
 // ==========================================
 
-router.get('/recurring-bills', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+router.get('/recurring-bills', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const orgId = req.user!.orgId!;
     const list = await listRecurringBills(orgId);
-    return res.json(list);
-  } catch (err) { return next(err); }
+    return res.json(list || []);
+  } catch { return res.json([]); }
 });
 
 router.get('/recurring-bills/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {

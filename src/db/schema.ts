@@ -4476,6 +4476,188 @@ export const subNotificationSchedule = pgTable('sub_notification_schedule', {
   snsEventIdx: index('idx_sns_event').on(table.eventType),
 }));
 
+export const apiKeys = pgTable('api_keys', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  name: text('name').notNull(),
+  keyHash: text('key_hash').notNull(),
+  prefix: text('prefix').notNull(),
+  scopes: text('scopes').array().default([]),
+  lastUsedAt: timestamp('last_used_at'),
+  expiresAt: timestamp('expires_at'),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  idxAkOrg: index('idx_ak_org').on(table.orgId),
+  idxAkPrefix: uniqueIndex('idx_ak_prefix').on(table.prefix),
+}));
+
+export const dunningRuns = pgTable('dunning_runs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  subscriptionId: uuid('subscription_id').references(() => subscriptions.id).notNull(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  stage: text('stage').default('warning').notNull(),
+  executedAt: timestamp('executed_at').defaultNow().notNull(),
+  notifiedAt: timestamp('notified_at'),
+  response: text('response'),
+  metadata: jsonb('metadata').default({}),
+}, (table) => ({
+  idxDrSub: index('idx_dr_sub').on(table.subscriptionId),
+  idxDrStage: index('idx_dr_stage').on(table.stage),
+}));
+
+export const budgetForecasts = pgTable('budget_forecasts', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  accountId: uuid('account_id').references(() => accounts.id).notNull(),
+  fiscalYear: integer('fiscal_year').notNull(),
+  month: integer('month').notNull(),
+  forecastAmountKobo: bigint('forecast_amount_kobo', { mode: 'number' }).default(0).notNull(),
+  actualAmountKobo: bigint('actual_amount_kobo', { mode: 'number' }).default(0).notNull(),
+  method: text('method').default('linear').notNull(),
+  confidence: integer('confidence').default(0),
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => ({
+  idxBfOrgAccount: index('idx_bf_org_account').on(table.orgId, table.accountId, table.fiscalYear),
+}));
+
+export const inventorySerials = pgTable('inventory_serials', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  itemId: uuid('item_id').references(() => items.id).notNull(),
+  warehouseId: uuid('warehouse_id'),
+  serialNumber: text('serial_number').notNull(),
+  batchId: uuid('batch_id').references(() => inventoryBatches.id),
+  status: text('status').default('in_stock').notNull(),
+  costPriceKobo: bigint('cost_price_kobo', { mode: 'number' }),
+  sellingPriceKobo: bigint('selling_price_kobo', { mode: 'number' }),
+  soldAt: timestamp('sold_at'),
+  soldTo: text('sold_to'),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  idxIsOrg: index('idx_is_org').on(table.orgId),
+  idxIsSerial: uniqueIndex('idx_is_serial').on(table.serialNumber),
+  idxIsItem: index('idx_is_item').on(table.itemId),
+}));
+
+export const inventoryBatches = pgTable('inventory_batches', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  itemId: uuid('item_id').references(() => items.id).notNull(),
+  warehouseId: uuid('warehouse_id'),
+  batchNumber: text('batch_number').notNull(),
+  supplierBatchNumber: text('supplier_batch_number'),
+  expiryDate: timestamp('expiry_date'),
+  manufacturingDate: timestamp('manufacturing_date'),
+  quantityReceived: integer('quantity_received').default(0).notNull(),
+  quantityRemaining: integer('quantity_remaining').default(0).notNull(),
+  unitCostKobo: bigint('unit_cost_kobo', { mode: 'number' }).default(0),
+  status: text('status').default('active').notNull(),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  idxIbOrg: index('idx_ib_org').on(table.orgId),
+  idxIbItem: index('idx_ib_item').on(table.itemId),
+  idxIbBatch: index('idx_ib_batch').on(table.batchNumber),
+}));
+
+export const supportTickets = pgTable('support_tickets', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  subject: text('subject').notNull(),
+  message: text('message').notNull(),
+  category: text('category').default('general').notNull(),
+  priority: text('priority').default('normal').notNull(),
+  status: text('status').default('open').notNull(),
+  assignedTo: uuid('assigned_to').references(() => users.id),
+  resolution: text('resolution'),
+  closedAt: timestamp('closed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  idxStOrg: index('idx_st_org').on(table.orgId),
+  idxStStatus: index('idx_st_status').on(table.status),
+  idxStAssigned: index('idx_st_assigned').on(table.assignedTo),
+}));
+
+export const ticketMessages = pgTable('ticket_messages', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  ticketId: uuid('ticket_id').references(() => supportTickets.id).notNull(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  message: text('message').notNull(),
+  isInternal: boolean('is_internal').default(false).notNull(),
+  attachments: jsonb('attachments').default([]),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  idxTmTicket: index('idx_tm_ticket').on(table.ticketId),
+}));
+
+export const announcements = pgTable('announcements', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  title: text('title').notNull(),
+  message: text('message').notNull(),
+  type: text('type').default('info').notNull(),
+  isGlobal: boolean('is_global').default(false).notNull(),
+  startsAt: timestamp('starts_at').defaultNow().notNull(),
+  endsAt: timestamp('ends_at'),
+  isDismissable: boolean('is_dismissable').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  idxAnnOrg: index('idx_ann_org').on(table.orgId),
+  idxAnnActive: index('idx_ann_active').on(table.startsAt, table.endsAt),
+}));
+
+export const rateLimitConfigs = pgTable('rate_limit_configs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id),
+  endpoint: text('endpoint').notNull(),
+  method: text('method').default('ALL').notNull(),
+  maxRequests: integer('max_requests').default(100).notNull(),
+  windowMs: integer('window_ms').default(60000).notNull(),
+  isActive: boolean('is_active').default(true).notNull(),
+  description: text('description'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  idxRlcEndpoint: index('idx_rlc_endpoint').on(table.endpoint),
+  idxRlcOrgEndpoint: uniqueIndex('idx_rlc_org_endpoint').on(table.orgId, table.endpoint),
+}));
+
+export const featureRollouts = pgTable('feature_rollouts', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  featureKey: text('feature_key').notNull().unique(),
+  name: text('name').notNull(),
+  description: text('description'),
+  rolloutPercent: integer('rollout_percent').default(0).notNull(),
+  isActive: boolean('is_active').default(false).notNull(),
+  allowlistOrgIds: text('allowlist_org_ids').array().default([]),
+  startedAt: timestamp('started_at'),
+  endedAt: timestamp('ended_at'),
+  createdBy: uuid('created_by').references(() => users.id),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  idxFrKey: index('idx_fr_key').on(table.featureKey),
+  idxFrActive: index('idx_fr_active').on(table.isActive),
+}));
+
+export const featureRolloutEvents = pgTable('feature_rollout_events', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  rolloutId: uuid('rollout_id').references(() => featureRollouts.id).notNull(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  userId: uuid('user_id').references(() => users.id),
+  event: text('event').notNull(),
+  metadata: jsonb('metadata').default({}),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  idxFreRollout: index('idx_fre_rollout').on(table.rolloutId),
+  idxFreOrg: index('idx_fre_org').on(table.orgId),
+}));
+
 // ==========================================
 // 4. DATABASE INITIALIZATION & INSTANCE
 // ==========================================
@@ -4587,6 +4769,17 @@ export const db = drizzle(pool, {
     referralCodes,
     partnerDiscounts,
     redemptionHistory,
+    announcements,
+    apiKeys,
+    budgetForecasts,
+    dunningRuns,
+    featureRolloutEvents,
+    featureRollouts,
+    inventoryBatches,
+    inventorySerials,
+    rateLimitConfigs,
+    supportTickets,
+    ticketMessages,
 
     // Relations
     featureFlagsRelations,

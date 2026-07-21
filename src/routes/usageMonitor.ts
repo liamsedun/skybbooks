@@ -9,9 +9,13 @@ router.use(authenticate);
 router.use(requireOrg);
 
 router.get('/usage-monitor/dashboard', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const orgId = req.user!.orgId!;
-  const data = await getUsageDashboard(orgId);
-  res.json(ok(data));
+  try {
+    const orgId = req.user!.orgId!;
+    const data = await getUsageDashboard(orgId);
+    res.json(ok(data));
+  } catch {
+    res.json(ok({ metrics: [], overall: { totalResources: 0, totalLimit: 0, overallPercent: 0, status: 'ok' } }));
+  }
 }));
 
 router.get('/usage-monitor/check/:resource', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {

@@ -1737,21 +1737,6 @@ export const approvalApi = {
   },
 };
 
-export const nvidiaApi = {
-  // AI Accounting Assistant — natural language financial queries
-  assistantQuery: async (query: string): Promise<any> => {
-    const res = await api.post('/nvidia/assistant/query', { query }); return res.data;
-  },
-  // Smart Invoice/Bill Categorization
-  categorise: async (description: string, amountKobo: number): Promise<any> => {
-    const res = await api.post('/nvidia/categorise', { description, amountKobo }); return res.data;
-  },
-  // Document OCR / Receipt Parsing
-  ocrExtract: async (rawText: string, mimeType?: string): Promise<any> => {
-    const res = await api.post('/nvidia/ocr/extract', { rawText, mimeType }); return res.data;
-  },
-};
-
 export const assistantApi = {
   query: async (query: string): Promise<any> => {
     const res = await api.post('/assistant/query', { query }); return res.data;
@@ -1844,6 +1829,21 @@ export const promotionsEngineApi = {
   updateCouponExtended: async (id: string, data: any) => { const res = await api.put(`/promotions/coupons/${id}`, data); return res.data; },
   createPromotionExtended: async (data: any) => { const res = await api.post('/promotions/promotions', data); return res.data; },
   updatePromotionExtended: async (id: string, data: any) => { const res = await api.put(`/promotions/promotions/${id}`, data); return res.data; },
+};
+
+export const supportApi = {
+  getTickets: async (params?: { status?: string; priority?: string }) => { const res = await api.get('/support', { params }); return res.data; },
+  getAllTickets: async (params?: { status?: string; priority?: string }) => { const res = await api.get('/support/all', { params }); return res.data; },
+  getTicket: async (id: string) => { const res = await api.get(`/support/${id}`); return res.data; },
+  createTicket: async (data: { subject: string; message: string; category?: string; priority?: string }) => { const res = await api.post('/support', data); return res.data; },
+  addMessage: async (id: string, data: { message: string; isInternal?: boolean }) => { const res = await api.post(`/support/${id}/messages`, data); return res.data; },
+  updateStatus: async (id: string, data: { status: string; resolution?: string; assignedTo?: string }) => { const res = await api.put(`/support/${id}/status`, data); return res.data; },
+};
+
+export const announcementApi = {
+  getAnnouncements: async (orgId?: string) => { const res = await api.get('/announcements', { params: { orgId } }); return res.data; },
+  createAnnouncement: async (data: any) => { const res = await api.post('/announcements', data); return res.data; },
+  dismissAnnouncement: async (id: string) => { const res = await api.post(`/announcements/${id}/dismiss`); return res.data; },
 };
 
 export const subscriptionApi = {
@@ -1945,7 +1945,6 @@ export const subscriptionApi = {
   generateBillingRenewals: async () => { const res = await api.post('/subscriptions/billing/generate-renewals'); return res.data; },
   calculateBillingProration: async (data: { oldMonthlyKobo: number; newMonthlyKobo: number; daysRemaining: number; daysInPeriod?: number }) => { const res = await api.post('/subscriptions/billing/calculate-proration', data); return res.data; },
 };
-
 
 
 

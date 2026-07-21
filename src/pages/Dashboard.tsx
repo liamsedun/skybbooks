@@ -137,7 +137,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (viewId: string) => void
   const { token } = useAuth();
   const [selectedPeriod, setSelectedPeriod] = useState<string>('6m');
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
 
   const getPeriodStart = useCallback(() => {
     const now = new Date();
@@ -158,22 +158,13 @@ export function Dashboard({ onNavigate }: { onNavigate: (viewId: string) => void
   const metricsQuery = useQuery({
     queryKey: ['dashboard-metrics', selectedPeriod],
     queryFn: () => reportsApi.getDashboardMetrics({ startDate: periodStartStr, endDate: nowStr }),
-    staleTime: 10 * 1000,
-    refetchInterval: autoRefresh ? 30 * 1000 : false,
+    staleTime: 5 * 60 * 1000,
+    refetchInterval: autoRefresh ? 5 * 60 * 1000 : false,
     enabled: !!token,
   });
 
   const data = metricsQuery.data?.data;
   const isLoading = metricsQuery.isLoading;
-
-  useEffect(() => {
-    if (autoRefresh) {
-      intervalRef.current = setInterval(() => {
-        queryClient.invalidateQueries({ queryKey: ['dashboard-metrics'] });
-      }, 30000);
-    }
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [autoRefresh, queryClient]);
 
   const [refreshing, setRefreshing] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);

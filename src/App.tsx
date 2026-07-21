@@ -114,6 +114,11 @@ const EnterpriseContractsPage = lazy(() => import('./pages/admin/EnterpriseContr
 const ResellerContractsPage = lazy(() => import('./pages/admin/ResellerContractsPage').then(m => ({ default: m.ResellerContractsPage })));
 const OrgConfigPage = lazy(() => import('./pages/admin/OrgConfigPage').then(m => ({ default: m.OrgConfigPage })));
 const WhiteLabelConfigPage = lazy(() => import('./pages/admin/WhiteLabelConfigPage').then(m => ({ default: m.WhiteLabelConfigPage })));
+const SupportTicketsPage = lazy(() => import('./pages/admin/SupportTicketsPage').then(m => ({ default: m.SupportTicketsPage })));
+const AnnouncementsPage = lazy(() => import('./pages/admin/AnnouncementsPage').then(m => ({ default: m.AnnouncementsPage })));
+const RateLimitsPage = lazy(() => import('./pages/admin/RateLimitsPage').then(m => ({ default: m.RateLimitsPage })));
+const FeatureRolloutsPage = lazy(() => import('./pages/admin/FeatureRolloutsPage').then(m => ({ default: m.FeatureRolloutsPage })));
+const SystemHealthPage = lazy(() => import('./pages/admin/SystemHealthPage').then(m => ({ default: m.SystemHealthPage })));
 const AddonMarketplacePage = lazy(() => import('./pages/subscriptions/AddonMarketplacePage').then(m => ({ default: m.AddonMarketplacePage })));
 const SubscriptionBillingPage = lazy(() => import('./pages/subscriptions/SubscriptionBillingPage').then(m => ({ default: m.SubscriptionBillingPage })));
 
@@ -500,6 +505,11 @@ function AppRoutes() {
           <Route path="admin/reseller-contracts" element={<LazyRoute element={<ResellerContractsPage />} />} />
           <Route path="admin/org-config" element={<LazyRoute element={<OrgConfigPage />} />} />
           <Route path="admin/white-label" element={<LazyRoute element={<WhiteLabelConfigPage />} />} />
+          <Route path="admin/support-tickets" element={<LazyRoute element={<SupportTicketsPage />} />} />
+          <Route path="admin/announcements" element={<LazyRoute element={<AnnouncementsPage />} />} />
+          <Route path="admin/rate-limits" element={<LazyRoute element={<RateLimitsPage />} />} />
+          <Route path="admin/feature-rollouts" element={<LazyRoute element={<FeatureRolloutsPage />} />} />
+          <Route path="admin/system-health" element={<LazyRoute element={<SystemHealthPage />} />} />
 
           {/* System metadata & account preferences */}
           <Route path="settings" element={<Suspense fallback={<PageLoader />}><SettingsLayout /></Suspense>}>

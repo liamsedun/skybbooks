@@ -7,8 +7,8 @@ import { ok } from '../lib/response';
 
 const router = Router();
 
-// All routes require auth + admin role
-router.use(requireAuth, requireRole('admin'));
+// All routes require auth
+router.use(requireAuth);
 
 // ── Campaigns ──
 
@@ -22,17 +22,17 @@ router.get('/campaigns/:id', asyncHandler(async (req: AuthenticatedRequest, res:
   res.json(ok(campaign));
 }));
 
-router.post('/campaigns', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+router.post('/campaigns', requireRole('admin'), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const campaign = await pe.createCampaign(req.body, req.user!.orgId!, req.user?.userId);
   res.status(201).json(ok(campaign));
 }));
 
-router.put('/campaigns/:id', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+router.put('/campaigns/:id', requireRole('admin'), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const campaign = await pe.updateCampaign(req.params.id, req.body, req.user!.orgId!, req.user?.userId);
   res.json(ok(campaign));
 }));
 
-router.delete('/campaigns/:id', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/campaigns/:id', requireRole('admin'), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   await pe.deleteCampaign(req.params.id, req.user!.orgId!);
   res.json(ok({ deleted: true }));
 }));
@@ -49,18 +49,18 @@ router.get('/referrals/:id', asyncHandler(async (req: AuthenticatedRequest, res:
   res.json(ok(referral));
 }));
 
-router.post('/referrals', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+router.post('/referrals', requireRole('admin'), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { orgId: _orgId, ...data } = req.body;
   const referral = await pe.createReferralCode(data, req.user!.orgId!, req.user?.userId);
   res.status(201).json(ok(referral));
 }));
 
-router.put('/referrals/:id', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+router.put('/referrals/:id', requireRole('admin'), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const referral = await pe.updateReferralCode(req.params.id, req.body, req.user!.orgId!);
   res.json(ok(referral));
 }));
 
-router.delete('/referrals/:id', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/referrals/:id', requireRole('admin'), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   await pe.deleteReferralCode(req.params.id, req.user!.orgId!);
   res.json(ok({ deleted: true }));
 }));
@@ -77,17 +77,17 @@ router.get('/partners/:id', asyncHandler(async (req: AuthenticatedRequest, res: 
   res.json(ok(partner));
 }));
 
-router.post('/partners', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+router.post('/partners', requireRole('admin'), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const partner = await pe.createPartnerDiscount(req.body, req.user!.orgId!, req.user?.userId);
   res.status(201).json(ok(partner));
 }));
 
-router.put('/partners/:id', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+router.put('/partners/:id', requireRole('admin'), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const partner = await pe.updatePartnerDiscount(req.params.id, req.body, req.user!.orgId!);
   res.json(ok(partner));
 }));
 
-router.delete('/partners/:id', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/partners/:id', requireRole('admin'), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   await pe.deletePartnerDiscount(req.params.id, req.user!.orgId!);
   res.json(ok({ deleted: true }));
 }));

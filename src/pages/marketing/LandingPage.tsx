@@ -41,8 +41,10 @@ export function LandingPage() {
       <Suspense fallback={<SectionSkeleton />}><BenefitsSection /></Suspense>
       <Suspense fallback={<SectionSkeleton />}><DashboardShowcase /></Suspense>
       <Suspense fallback={<SectionSkeleton />}><Screenshots /></Suspense>
-      <Suspense fallback={<SectionSkeleton />}><Automation /></Suspense>
-      <Suspense fallback={<SectionSkeleton />}><ArtificialIntelligence /></Suspense>
+      <div id="ai-automation">
+        <Suspense fallback={<SectionSkeleton />}><Automation /></Suspense>
+        <Suspense fallback={<SectionSkeleton />}><ArtificialIntelligence /></Suspense>
+      </div>
       <Suspense fallback={<SectionSkeleton />}><FeatureComparison /></Suspense>
       <Suspense fallback={<SectionSkeleton />}><TestimonialsSection /></Suspense>
       <Suspense fallback={<SectionSkeleton />}><CaseStudies /></Suspense>
