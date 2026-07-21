@@ -9,7 +9,7 @@ import bcrypt from 'bcryptjs';
 import multer from 'multer';
 import { eq, and } from 'drizzle-orm';
 import { db } from '../db/schema';
-import { users, organisations, sessions } from '../db/schema';
+import { users, organisations, sessions, subscriptionPlans } from '../db/schema';
 import { seedAccounts } from '../db/seedAccounts';
 import { AppError } from '../lib/errors';
 import {
@@ -20,6 +20,7 @@ import {
 } from '../lib/tokens';
 import { authenticate, AuthenticatedRequest } from '../middleware/auth';
 import { createAuditLog, extractReqMeta } from '../services/audit.service';
+import { provisionTenant } from '../services/tenantProvisioning.service';
 
 const router = Router();
 
@@ -33,6 +34,18 @@ const registerSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters long.'),
   fullName: z.string().min(1, 'Full name is required.'),
   phone: z.string().optional()
+});
+
+const signupSchema = z.object({
+  email: z.string().email('Invalid email address format.'),
+  password: z.string().min(6, 'Password must be at least 6 characters long.'),
+  fullName: z.string().min(1, 'Full name is required.'),
+  orgName: z.string().min(1, 'Organisation name is required.'),
+  phone: z.string().optional(),
+  planId: z.string().optional(),
+  billingCycle: z.enum(['monthly', 'yearly', 'quarterly']).optional(),
+  paymentReference: z.string().optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
 });
 
 const loginSchema = z.object({
@@ -140,6 +153,51 @@ router.post('/register', async (req: AuthenticatedRequest, res: Response, next: 
   } catch (error) {
     if (error instanceof z.ZodError) {
       return next(new AppError(error.issues[0]?.message || 'Validation failed', 400));
+    }
+    return next(error);
+  }
+});
+
+// ==========================================
+// 1b. GET /auth/plans (public — no auth required)
+// ==========================================
+router.get('/plans', async (_req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const plans = await db.select({
+      id: subscriptionPlans.id,
+      name: subscriptionPlans.name,
+      description: subscriptionPlans.description,
+      monthlyPriceKobo: subscriptionPlans.monthlyPriceKobo,
+      annualPriceKobo: subscriptionPlans.annualPriceKobo,
+      currency: subscriptionPlans.currency,
+      billingCycle: subscriptionPlans.billingCycle,
+      trialDays: subscriptionPlans.trialDays,
+      popularBadge: subscriptionPlans.popularBadge,
+      recommendedBadge: subscriptionPlans.recommendedBadge,
+      isActive: subscriptionPlans.isActive,
+      isPublic: subscriptionPlans.isPublic,
+    })
+      .from(subscriptionPlans)
+      .where(and(eq(subscriptionPlans.isActive, true), eq(subscriptionPlans.isPublic, true)))
+      .orderBy(subscriptionPlans.sortOrder);
+    res.json(plans);
+  } catch (err) { next(err); }
+});
+
+// ==========================================
+// 1c. POST /auth/signup (enhanced with plan selection)
+// ==========================================
+router.post('/signup', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const body = signupSchema.parse(req.body);
+    const result = await provisionTenant(body);
+    return res.status(201).json(result);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return next(new AppError(error.issues[0]?.message || 'Validation failed', 400));
+    }
+    if (error instanceof Error && error.message.includes('already exists')) {
+      return next(new AppError(error.message, 400));
     }
     return next(error);
   }

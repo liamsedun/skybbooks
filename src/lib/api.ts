@@ -172,6 +172,10 @@ export const authApi = {
     const res = await api.post('/auth/register', data);
     return res.data;
   },
+  signup: async (data: any) => {
+    const res = await api.post('/auth/signup', data);
+    return res.data;
+  },
   refresh: async (refreshToken: string) => {
     const res = await api.post('/auth/refresh', { refreshToken });
     return res.data;

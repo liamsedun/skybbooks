@@ -100,6 +100,34 @@ export function useAuth() {
     }
   };
 
+  const signup = async (input: any) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await authApi.signup(input);
+      
+      localStorage.setItem('accessToken', data.accessToken);
+      localStorage.setItem('refreshToken', data.refreshToken);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      localStorage.setItem('organisation', JSON.stringify(data.org || data.organisation));
+
+      if (data.subscription) {
+        localStorage.setItem('subscription', JSON.stringify(data.subscription));
+      }
+
+      setToken(data.accessToken);
+      setUser(data.user);
+      setOrganisation(data.org || data.organisation);
+      return data;
+    } catch (err: any) {
+      const errMsg = err.response?.data?.error || err.message || 'Signup failed';
+      setError(errMsg);
+      throw new Error(errMsg);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const logout = async () => {
     setIsLoading(true);
     try {
@@ -145,6 +173,7 @@ export function useAuth() {
     error,
     login,
     register,
+    signup,
     logout,
     refreshUser,
   };

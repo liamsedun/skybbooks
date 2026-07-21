@@ -5,8 +5,10 @@
 
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../hooks/useAuth';
 import { SkyhouseLogo } from '../components/ui/SkyhouseLogo';
+import { api } from '../lib/api';
 import { 
   Shield, Sparkles, Building, Mail, Lock, User as UserIcon, 
   HelpCircle, ChevronRight, CheckCircle, ArrowLeft, Plus, 
@@ -281,7 +283,7 @@ export function LoginPage() {
 }
 
 export function RegisterPage() {
-  const { register } = useAuth();
+  const { signup } = useAuth();
   const navigate = useNavigate();
   const [orgName, setOrgName] = useState('');
   const [fullName, setFullName] = useState('');
@@ -290,16 +292,35 @@ export function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [selectedPlanId, setSelectedPlanId] = useState<string | undefined>(undefined);
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
+  const [showPlans, setShowPlans] = useState(false);
+
+  const { data: plans } = useQuery({
+    queryKey: ['public-plans'],
+    queryFn: async () => {
+      const res = await api.get('/auth/plans');
+      return res.data as any[];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      await register({ orgName, fullName, email, password });
+      await signup({
+        orgName,
+        fullName,
+        email,
+        password,
+        planId: selectedPlanId || undefined,
+        billingCycle: selectedPlanId ? billingCycle : undefined,
+      });
       navigate('/app/dashboard');
     } catch (err: any) {
-      setError(err.message || 'Ledger instantiation failed.');
+      setError(err.message || 'Signup failed.');
     } finally {
       setLoading(false);
     }
@@ -434,6 +455,54 @@ export function RegisterPage() {
               </div>
             </div>
 
+            {/* Plan Selection */}
+            <div>
+              <button type="button" onClick={() => setShowPlans(!showPlans)}
+                className="flex items-center gap-2 text-[10px] font-bold text-indigo-600 uppercase tracking-wider hover:text-indigo-700">
+                {showPlans ? '−' : '+'} Select a plan {selectedPlanId ? '(1 selected)' : '(Free — skip)'}
+              </button>
+              {showPlans && (
+                <div className="mt-2 space-y-2">
+                  {plans?.filter((p: any) => p.isPublic || p.isActive).map((plan: any) => {
+                    const isSelected = selectedPlanId === plan.id;
+                    const price = billingCycle === 'yearly' ? Number(plan.annualPriceKobo) : Number(plan.monthlyPriceKobo);
+                    return (
+                      <div key={plan.id} onClick={() => setSelectedPlanId(isSelected ? undefined : plan.id)}
+                        className={`p-3 rounded-xl border cursor-pointer transition-all ${
+                          isSelected ? 'border-indigo-600 bg-indigo-50' : 'border-slate-200 hover:border-slate-300'
+                        }`}>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <span className="text-sm font-bold text-slate-900">{plan.name}</span>
+                            {plan.popularBadge && <span className="ml-2 text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">POPULAR</span>}
+                          </div>
+                          <div className="text-right">
+                            <div className="text-sm font-bold text-slate-900">
+                              {price === 0 ? 'Free' : `₦${(price / 100).toLocaleString()}`}
+                              {price > 0 && <span className="text-[10px] text-slate-400 font-normal">/{billingCycle === 'yearly' ? 'yr' : 'mo'}</span>}
+                            </div>
+                          </div>
+                        </div>
+                        <p className="text-[11px] text-slate-500 mt-1">{plan.description || ''}</p>
+                        {isSelected && price > 0 && (
+                          <div className="mt-2 flex gap-2">
+                            <button type="button" onClick={(e) => { e.stopPropagation(); setBillingCycle('monthly'); }}
+                              className={`px-3 py-1 text-[10px] rounded-lg border ${billingCycle === 'monthly' ? 'bg-indigo-600 text-white border-indigo-600' : 'border-slate-200'}`}>
+                              Monthly
+                            </button>
+                            <button type="button" onClick={(e) => { e.stopPropagation(); setBillingCycle('yearly'); }}
+                              className={`px-3 py-1 text-[10px] rounded-lg border ${billingCycle === 'yearly' ? 'bg-indigo-600 text-white border-indigo-600' : 'border-slate-200'}`}>
+                              Annual
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
             {error && (
               <div className="p-3 bg-rose-50 border border-rose-100 text-rose-700 text-xs font-semibold rounded-xl">
                 ⚠️ {error}
@@ -445,7 +514,7 @@ export function RegisterPage() {
               disabled={loading}
               className="w-full py-3 px-4 text-xs font-bold text-white bg-indigo-600 rounded-xl hover:bg-slate-900 focus:outline-none transition shadow-md shadow-indigo-100 flex justify-center items-center cursor-pointer"
             >
-              {loading ? 'Initializing ledger...' : 'Initialize New Ledger'}
+              {loading ? 'Creating your account...' : selectedPlanId ? 'Start Free Trial' : 'Create Free Account'}
             </button>
           </form>
 
