@@ -87,6 +87,17 @@ function formatNaira(kobo: number | null | undefined): string {
   return `₦${(kobo / 100).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+function fmtDual(cents: number | null | undefined, currency?: string, fxRate?: number | string | null): string {
+  if (cents == null) return '—';
+  const base = formatNaira(cents);
+  if (currency && currency !== 'NGN' && fxRate) {
+    const rate = Number(fxRate) || 1;
+    const orig = cents / rate / 100;
+    return `${currency} ${orig.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} • ${base}`;
+  }
+  return base;
+}
+
 function buildPayload(form: CustomerFormState) {
   return {
     name: form.name.trim(),
@@ -816,6 +827,11 @@ function CustomerDetail({ id }: { id: string }) {
                 {customer.phone}
               </a>
             )}
+            {customer.currency && customer.currency !== 'NGN' && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-indigo-50 text-indigo-700 text-xs font-semibold rounded-full">
+                {customer.currency}
+              </span>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -839,11 +855,11 @@ function CustomerDetail({ id }: { id: string }) {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
           <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Outstanding Balance</p>
-          <p className="text-xl font-bold text-slate-900 mt-1">{formatNaira((customer.balance || 0) + (customer.outstanding || 0))}</p>
+          <p className="text-xl font-bold text-slate-900 mt-1">{fmtDual((customer.balance || 0) + (customer.outstanding || 0), customer.currency)}</p>
         </div>
         <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
           <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Credit Limit</p>
-          <p className="text-xl font-bold text-slate-900 mt-1">{formatNaira(customer.creditLimit)}</p>
+          <p className="text-xl font-bold text-slate-900 mt-1">{fmtDual(customer.creditLimit, customer.currency)}</p>
         </div>
         <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
           <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Payment Terms</p>
@@ -922,13 +938,13 @@ function CustomerDetail({ id }: { id: string }) {
                     </td>
                     <td className="px-3 py-3 text-sm text-slate-500">{line.reference}</td>
                     <td className="px-3 py-3 text-sm text-right text-slate-700">
-                      {line.debit > 0 ? formatNaira(line.debit) : '—'}
+                      {line.debit > 0 ? fmtDual(line.debit, customer.currency) : '—'}
                     </td>
                     <td className="px-3 py-3 text-sm text-right text-slate-700">
-                      {line.credit > 0 ? formatNaira(line.credit) : '—'}
+                      {line.credit > 0 ? fmtDual(line.credit, customer.currency) : '—'}
                     </td>
                     <td className="px-3 py-3 text-sm text-right font-medium text-slate-900">
-                      {formatNaira(line.balance)}
+                      {fmtDual(line.balance, customer.currency)}
                     </td>
                   </tr>
                 );
@@ -1007,9 +1023,9 @@ function CustomerDetail({ id }: { id: string }) {
                   <td className="py-2 pr-3 text-sm text-slate-600 capitalize">{line.type.replace('_', ' ')}</td>
                   <td className="py-2 pr-3 text-sm font-mono text-slate-700">{line.number || '—'}</td>
                   <td className="py-2 pr-3 text-sm text-slate-500">{line.reference || '—'}</td>
-                  <td className="py-2 pr-3 text-sm text-right text-slate-700">{line.debit > 0 ? formatNaira(line.debit) : '—'}</td>
-                  <td className="py-2 pr-3 text-sm text-right text-slate-700">{line.credit > 0 ? formatNaira(line.credit) : '—'}</td>
-                  <td className="py-2 pr-3 text-sm text-right font-medium text-slate-900">{formatNaira(line.balance)}</td>
+                  <td className="py-2 pr-3 text-sm text-right text-slate-700">{line.debit > 0 ? fmtDual(line.debit, customer.currency) : '—'}</td>
+                  <td className="py-2 pr-3 text-sm text-right text-slate-700">{line.credit > 0 ? fmtDual(line.credit, customer.currency) : '—'}</td>
+                  <td className="py-2 pr-3 text-sm text-right font-medium text-slate-900">{fmtDual(line.balance, customer.currency)}</td>
                 </tr>
               ))}
             </tbody>

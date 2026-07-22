@@ -1081,21 +1081,21 @@ export function PaymentsReceivedPage() {
                         <div className="border-t border-slate-100 pt-3 space-y-1.5">
                           <div className="flex justify-between text-sm">
                             <span className="text-slate-500">Invoice Amount</span>
-                            <span className="font-mono text-slate-700">{formatNaira(detail.totalAllocated || detail.amount)}</span>
+                            <span className="font-mono text-slate-700">{fmtDual(detail.totalAllocated || detail.amount, detail.currency, detail.fxRate)}</span>
                           </div>
                           <div className="flex justify-between text-sm">
                             <span className="text-slate-500">Less: WHT Withheld by Customer</span>
-                            <span className="font-mono text-amber-600">− {formatNaira(detail.whtAmount!)}</span>
+                            <span className="font-mono text-amber-600">− {fmtDual(detail.whtAmount!, detail.currency, detail.fxRate)}</span>
                           </div>
                           <div className="flex justify-between items-center pt-1.5 border-t border-slate-100">
                             <span className="text-sm font-semibold text-slate-700">Net Amount Received</span>
-                            <span className="text-lg font-black text-emerald-700 font-mono">{formatNaira(detail.amount)}</span>
+                            <span className="text-lg font-black text-emerald-700 font-mono">{fmtDual(detail.amount, detail.currency, detail.fxRate)}</span>
                           </div>
                         </div>
                       ) : (
                         <div className="flex justify-between items-center py-3 border-t border-slate-100">
                           <span className="text-sm font-semibold text-slate-700">Total Received</span>
-                          <span className="text-lg font-black text-emerald-700 font-mono">{formatNaira(detail.amount)}</span>
+                          <span className="text-lg font-black text-emerald-700 font-mono">{fmtDual(detail.amount, detail.currency, detail.fxRate)}</span>
                         </div>
                       )}
                     </div>
@@ -1125,11 +1125,11 @@ export function PaymentsReceivedPage() {
                                   </div>
                                   {inv && (
                                     <p className="text-xs text-slate-400 mt-0.5">
-                                      Total {formatNaira(inv.total)} · Due {formatNaira(inv.balanceDue)}
+                                      Total {fmtDual(inv.total, inv.currency)} · Due {fmtDual(inv.balanceDue, inv.currency)}
                                     </p>
                                   )}
                                   <p className="text-xs font-medium text-emerald-700 mt-0.5">
-                                    Applied: {formatNaira(alloc.amount)}
+                                    Applied: {fmtDual(alloc.amount, detail.currency, detail.fxRate)}
                                   </p>
                                 </div>
                                 <button onClick={() => navigate(`/sales/invoices/${alloc.invoiceId}`)}

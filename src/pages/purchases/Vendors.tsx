@@ -99,6 +99,17 @@ function formatNaira(kobo: number | null | undefined): string {
   return '₦' + naira.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function fmtDual(cents: number | null | undefined, currency?: string, fxRate?: number | string | null): string {
+  if (cents == null) return '—';
+  const base = formatNaira(cents);
+  if (currency && currency !== 'NGN' && fxRate) {
+    const rate = Number(fxRate) || 1;
+    const orig = cents / rate / 100;
+    return `${currency} ${orig.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} • ${base}`;
+  }
+  return base;
+}
+
 interface StatementLine {
   id: string;
   date: string;
@@ -580,6 +591,11 @@ function VendorDetail({ id }: { id: string }) {
                 {vendor.phone}
               </a>
             )}
+            {vendor.currency && vendor.currency !== 'NGN' && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-indigo-50 text-indigo-700 text-xs font-semibold rounded-full">
+                {vendor.currency}
+              </span>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -605,7 +621,7 @@ function VendorDetail({ id }: { id: string }) {
         <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
           <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Creditor Balance</p>
           <p className="text-xl font-bold text-slate-900 mt-1">
-            {formatNaira((vendor.balance || 0) + (vendor.outstanding || 0))}
+            {fmtDual((vendor.balance || 0) + (vendor.outstanding || 0), vendor.currency)}
           </p>
         </div>
         <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
@@ -617,7 +633,7 @@ function VendorDetail({ id }: { id: string }) {
         <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
           <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Opening Balance</p>
           <p className="text-xl font-bold text-slate-900 mt-1">
-            {formatNaira(vendor.balance || 0)}
+            {fmtDual(vendor.balance || 0, vendor.currency)}
           </p>
         </div>
       </div>
@@ -709,13 +725,13 @@ function VendorDetail({ id }: { id: string }) {
                     </td>
                     <td className="py-2.5 pr-3 text-sm text-slate-500">{line.reference}</td>
                     <td className="py-2.5 pr-3 text-sm text-right text-slate-700">
-                      {line.debit > 0 ? formatNaira(line.debit) : '—'}
+                      {line.debit > 0 ? fmtDual(line.debit, vendor.currency) : '—'}
                     </td>
                     <td className="py-2.5 pr-3 text-sm text-right text-slate-700">
-                      {line.credit > 0 ? formatNaira(line.credit) : '—'}
+                      {line.credit > 0 ? fmtDual(line.credit, vendor.currency) : '—'}
                     </td>
                     <td className="py-2.5 pr-4 text-sm text-right font-medium text-slate-900">
-                      {formatNaira(line.balance)}
+                      {fmtDual(line.balance, vendor.currency)}
                     </td>
                   </tr>
                 );
@@ -838,11 +854,11 @@ function VendorDetail({ id }: { id: string }) {
           <div style={{ display: 'flex', gap: '24px', padding: '12px 16px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
             <div>
               <p style={{ fontSize: '9px', fontWeight: '600', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 2px 0' }}>Opening Balance</p>
-              <p style={{ fontSize: '14px', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>{formatNaira(vendor.balance || 0)}</p>
+              <p style={{ fontSize: '14px', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>{fmtDual(vendor.balance || 0, vendor.currency)}</p>
             </div>
             <div>
               <p style={{ fontSize: '9px', fontWeight: '600', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 2px 0' }}>Closing Balance</p>
-              <p style={{ fontSize: '14px', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>{formatNaira(statement?.closingCreditorBalance || 0)}</p>
+              <p style={{ fontSize: '14px', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>{fmtDual(statement?.closingCreditorBalance || 0, vendor.currency)}</p>
             </div>
             <div>
               <p style={{ fontSize: '9px', fontWeight: '600', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 2px 0' }}>Total Transactions</p>
@@ -857,9 +873,9 @@ function VendorDetail({ id }: { id: string }) {
                 <th style={{ padding: '10px 8px', textAlign: 'left', fontSize: '9px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Type</th>
                 <th style={{ padding: '10px 8px', textAlign: 'left', fontSize: '9px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Number</th>
                 <th style={{ padding: '10px 8px', textAlign: 'left', fontSize: '9px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Reference</th>
-                <th style={{ padding: '10px 8px', textAlign: 'right', fontSize: '9px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Debit (₦)</th>
-                <th style={{ padding: '10px 8px', textAlign: 'right', fontSize: '9px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Credit (₦)</th>
-                <th style={{ padding: '10px 8px', textAlign: 'right', fontSize: '9px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Balance (₦)</th>
+                <th style={{ padding: '10px 8px', textAlign: 'right', fontSize: '9px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Debit</th>
+                <th style={{ padding: '10px 8px', textAlign: 'right', fontSize: '9px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Credit</th>
+                <th style={{ padding: '10px 8px', textAlign: 'right', fontSize: '9px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Balance</th>
               </tr>
             </thead>
             <tbody>
@@ -884,9 +900,9 @@ function VendorDetail({ id }: { id: string }) {
                     </td>
                     <td style={{ padding: '8px', fontFamily: 'monospace', color: isDraft ? '#94a3b8' : '#334155', fontSize: '11px' }}>{line.number || '—'}</td>
                     <td style={{ padding: '8px', color: '#94a3b8', fontSize: '11px' }}>{line.reference || '—'}</td>
-                    <td style={{ padding: '8px', textAlign: 'right', color: '#dc2626', fontSize: '11px' }}>{line.debit > 0 ? formatNaira(line.debit) : '—'}</td>
-                    <td style={{ padding: '8px', textAlign: 'right', color: '#16a34a', fontSize: '11px' }}>{line.credit > 0 ? formatNaira(line.credit) : '—'}</td>
-                    <td style={{ padding: '8px', textAlign: 'right', fontWeight: '600', color: '#0f172a', fontSize: '11px' }}>{formatNaira(line.balance)}</td>
+                    <td style={{ padding: '8px', textAlign: 'right', color: '#dc2626', fontSize: '11px' }}>{line.debit > 0 ? fmtDual(line.debit, vendor.currency) : '—'}</td>
+                    <td style={{ padding: '8px', textAlign: 'right', color: '#16a34a', fontSize: '11px' }}>{line.credit > 0 ? fmtDual(line.credit, vendor.currency) : '—'}</td>
+                    <td style={{ padding: '8px', textAlign: 'right', fontWeight: '600', color: '#0f172a', fontSize: '11px' }}>{fmtDual(line.balance, vendor.currency)}</td>
                   </tr>
                 );
               })}
