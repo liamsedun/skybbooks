@@ -25,6 +25,7 @@ import http from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 
 import authRouter from '../routes/auth';
+import platformAuthRouter from '../routes/platformAuth';
 import organisationsRouter from '../routes/organisations';
 import salesRouter from '../routes/sales';
 import purchasesRouter from '../routes/purchases';
@@ -60,15 +61,11 @@ import consolidationRouter from '../routes/consolidation';
 import passwordResetRouter from '../routes/passwordReset';
 import contactRouter from '../routes/contact';
 import featureFlagRouter from '../routes/featureFlags';
-import subscriptionRouter, { subscriptionWebhookRouter } from '../routes/subscriptions';
-import lifecycleRouter, { initLifecycleScheduler } from '../routes/subscriptionLifecycle';
-import promotionsEngineRouter from '../routes/promotionsEngine';
+import platformSubscriptionRouter, { subscriptionWebhookRouter, billingWebhookRouter } from '../routes/platformSubscriptionsIndex';
+import { initLifecycleScheduler } from '../routes/subscriptionLifecycle';
 
 import usageMonitorRouter from '../routes/usageMonitor';
 import apiKeysRouter from '../routes/apiKeys';
-import subscriptionPortalRouter from '../routes/subscriptionPortal';
-import addonMarketplaceRouter from '../routes/addonMarketplace';
-import subscriptionBillingEngineRouter from '../routes/subscriptionBillingEngine';
 import superAdminRouter from '../routes/superAdmin';
 import subscriptionNotificationsRouter from '../routes/subscriptionNotifications';
 import budgetRouter from '../routes/budget';
@@ -160,7 +157,7 @@ async function startServer() {
   app.use('/api/webhooks/mono', (await import('../routes/monoWebhook')).default);
   app.use('/api/webhooks/gateway', (await import('../routes/bankingWebhooks')).default);
   app.use('/api/subscriptions', subscriptionWebhookRouter); // webhook before json parser
-  app.use('/api/subscriptions', (await import('../routes/subscriptionBilling')).billingWebhookRouter);
+  app.use('/api/subscriptions', billingWebhookRouter);
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -174,6 +171,7 @@ async function startServer() {
   // API ROUTES (must be before static files)
   // ==========================================
   app.use('/api/auth', authRouter);
+  app.use('/api/platform/auth', platformAuthRouter);
   app.use('/api/auth', passwordResetRouter);
   app.use('/api/org', organisationsRouter);
   app.use('/api/sales', salesRouter);
@@ -211,17 +209,10 @@ async function startServer() {
   app.use('/api/reports/consolidation', consolidationRouter);
   app.use('/api/contact', contactRouter);
   app.use('/api/feature-flags', featureFlagRouter);
-  app.use('/api/subscriptions', subscriptionRouter);
-  app.use('/api/subscriptions', lifecycleRouter);
-  app.use('/api/subscriptions', (await import('../routes/subscriptionBilling')).default);
-  app.use('/api/promotions', promotionsEngineRouter);
-
   app.use('/api/reports', usageMonitorRouter);
-  app.use('/api/subscriptions', subscriptionPortalRouter);
-  app.use('/api/subscriptions', addonMarketplaceRouter);
-  app.use('/api/subscriptions', subscriptionBillingEngineRouter);
+  app.use('/api/platform/subscriptions', platformSubscriptionRouter);
   app.use('/api/platform', superAdminRouter);
-  app.use('/api/subscription-notifications', subscriptionNotificationsRouter);
+  app.use('/api/platform/subscription-notifications', subscriptionNotificationsRouter);
   app.use('/api/api-keys', apiKeysRouter);
   app.use('/api/support', supportRouter);
   app.use('/api/announcements', announcementsRouter);

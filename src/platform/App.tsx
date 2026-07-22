@@ -10,17 +10,17 @@ import { useAuth } from '../hooks/useAuth';
 import { LogIn, ShieldAlert, Eye, EyeOff, AlertCircle, Mail, Lock } from 'lucide-react';
 
 const PlatformDashboardPage = lazy(() => import('../pages/admin/PlatformDashboardPage').then(m => ({ default: m.PlatformDashboardPage })));
-const SuperAdminDashboard = lazy(() => import('../pages/admin/SuperAdminDashboard').then(m => ({ default: m.SuperAdminDashboard })));
+const OrganizationsPage = lazy(() => import('../pages/admin/OrganizationsPage').then(m => ({ default: m.OrganizationsPage })));
+const PlatformUsersPage = lazy(() => import('../pages/admin/PlatformUsersPage').then(m => ({ default: m.PlatformUsersPage })));
+const PlatformRolesPage = lazy(() => import('../pages/admin/PlatformRolesPage').then(m => ({ default: m.PlatformRolesPage })));
+const PlatformApiKeysPage = lazy(() => import('../pages/admin/PlatformApiKeysPage').then(m => ({ default: m.PlatformApiKeysPage })));
+const PlatformAuditLogPage = lazy(() => import('../pages/admin/PlatformAuditLogPage').then(m => ({ default: m.PlatformAuditLogPage })));
+const PlatformProfilePage = lazy(() => import('../pages/admin/PlatformProfilePage').then(m => ({ default: m.PlatformProfilePage })));
+const PlatformSecurityPage = lazy(() => import('../pages/admin/PlatformSecurityPage').then(m => ({ default: m.PlatformSecurityPage })));
+const PlatformSystemSettingsPage = lazy(() => import('../pages/admin/PlatformSystemSettingsPage').then(m => ({ default: m.PlatformSystemSettingsPage })));
 const SaaSAnalyticsDashboard = lazy(() => import('../pages/admin/SaaSAnalyticsDashboard').then(m => ({ default: m.SaaSAnalyticsDashboard })));
-const SubscriptionNotificationsPage = lazy(() => import('../pages/admin/SubscriptionNotificationsPage').then(m => ({ default: m.SubscriptionNotificationsPage })));
-const RegionalPricingPage = lazy(() => import('../pages/admin/RegionalPricingPage').then(m => ({ default: m.RegionalPricingPage })));
-const EnterpriseContractsPage = lazy(() => import('../pages/admin/EnterpriseContractsPage').then(m => ({ default: m.EnterpriseContractsPage })));
-const ResellerContractsPage = lazy(() => import('../pages/admin/ResellerContractsPage').then(m => ({ default: m.ResellerContractsPage })));
-const OrgConfigPage = lazy(() => import('../pages/admin/OrgConfigPage').then(m => ({ default: m.OrgConfigPage })));
-const WhiteLabelConfigPage = lazy(() => import('../pages/admin/WhiteLabelConfigPage').then(m => ({ default: m.WhiteLabelConfigPage })));
 const SupportTicketsPage = lazy(() => import('../pages/admin/SupportTicketsPage').then(m => ({ default: m.SupportTicketsPage })));
 const AnnouncementsPage = lazy(() => import('../pages/admin/AnnouncementsPage').then(m => ({ default: m.AnnouncementsPage })));
-const RateLimitsPage = lazy(() => import('../pages/admin/RateLimitsPage').then(m => ({ default: m.RateLimitsPage })));
 const FeatureRolloutsPage = lazy(() => import('../pages/admin/FeatureRolloutsPage').then(m => ({ default: m.FeatureRolloutsPage })));
 const SystemHealthPage = lazy(() => import('../pages/admin/SystemHealthPage').then(m => ({ default: m.SystemHealthPage })));
 
@@ -193,7 +193,9 @@ function AdminRoutes() {
           <Route index element={<LazyRoute element={<PlatformDashboardPage />} />} />
 
           {/* Core Platform Management */}
-          <Route path="organizations" element={<LazyRoute element={<OrgConfigPage />} />} />
+          <Route path="organizations" element={<LazyRoute element={<OrganizationsPage />} />} />
+          <Route path="users" element={<LazyRoute element={<PlatformUsersPage />} />} />
+          <Route path="roles" element={<LazyRoute element={<PlatformRolesPage />} />} />
           <Route path="subscriptions" element={<LazyRoute element={<SubscriptionPage />} />} />
           <Route path="subscriptions/portal" element={<LazyRoute element={<SubscriptionPortalPage />} />} />
           <Route path="plans" element={<LazyRoute element={<SubscriptionPlansPage />} />} />
@@ -209,15 +211,13 @@ function AdminRoutes() {
           <Route path="announcements" element={<LazyRoute element={<AnnouncementsPage />} />} />
 
           {/* Platform Administration */}
-          <Route path="api-keys" element={<LazyRoute element={<RateLimitsPage />} />} />
+          <Route path="api-keys" element={<LazyRoute element={<PlatformApiKeysPage />} />} />
+          <Route path="audit" element={<LazyRoute element={<PlatformAuditLogPage />} />} />
           <Route path="feature-rollouts" element={<LazyRoute element={<FeatureRolloutsPage />} />} />
-          <Route path="audit" element={<LazyRoute element={<SubscriptionNotificationsPage />} />} />
-          <Route path="users" element={<LazyRoute element={<EnterpriseContractsPage />} />} />
-          <Route path="roles" element={<LazyRoute element={<ResellerContractsPage />} />} />
-          <Route path="system-settings" element={<LazyRoute element={<RateLimitsPage />} />} />
+          <Route path="system-settings" element={<LazyRoute element={<PlatformSystemSettingsPage />} />} />
           <Route path="system-health" element={<LazyRoute element={<SystemHealthPage />} />} />
-          <Route path="security" element={<LazyRoute element={<WhiteLabelConfigPage />} />} />
-          <Route path="profile" element={<LazyRoute element={<SuperAdminDashboard />} />} />
+          <Route path="security" element={<LazyRoute element={<PlatformSecurityPage />} />} />
+          <Route path="profile" element={<LazyRoute element={<PlatformProfilePage />} />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/platform" replace />} />

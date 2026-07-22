@@ -1,102 +1,99 @@
-import { Router, Response } from 'express';
+import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import * as pe from '../services/promotionsEngine.service';
-import { authenticate as requireAuth, requireRole, AuthenticatedRequest } from '../middleware/auth';
+import { requirePlatformPermission } from '../middleware/platformAuth';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { ok } from '../lib/response';
 
 const router = Router();
 
-// All routes require auth
-router.use(requireAuth);
-
 // ── Campaigns ──
 
-router.get('/campaigns', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const campaigns = await pe.getCampaigns(req.user!.orgId!);
+router.get('/campaigns', asyncHandler(async (req: Request, res: Response) => {
+  const campaigns = await pe.getCampaigns((req as any).user!.orgId!);
   res.json(ok(campaigns));
 }));
 
-router.get('/campaigns/:id', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const campaign = await pe.getCampaign(req.params.id, req.user!.orgId!);
+router.get('/campaigns/:id', asyncHandler(async (req: Request, res: Response) => {
+  const campaign = await pe.getCampaign(req.params.id, (req as any).user!.orgId!);
   res.json(ok(campaign));
 }));
 
-router.post('/campaigns', requireRole('admin'), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const campaign = await pe.createCampaign(req.body, req.user!.orgId!, req.user?.userId);
+router.post('/campaigns', requirePlatformPermission('subscriptions:manage'), asyncHandler(async (req: Request, res: Response) => {
+  const campaign = await pe.createCampaign(req.body, (req as any).user!.orgId!, (req as any).user?.userId);
   res.status(201).json(ok(campaign));
 }));
 
-router.put('/campaigns/:id', requireRole('admin'), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const campaign = await pe.updateCampaign(req.params.id, req.body, req.user!.orgId!, req.user?.userId);
+router.put('/campaigns/:id', requirePlatformPermission('subscriptions:manage'), asyncHandler(async (req: Request, res: Response) => {
+  const campaign = await pe.updateCampaign(req.params.id, req.body, (req as any).user!.orgId!, (req as any).user?.userId);
   res.json(ok(campaign));
 }));
 
-router.delete('/campaigns/:id', requireRole('admin'), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  await pe.deleteCampaign(req.params.id, req.user!.orgId!);
+router.delete('/campaigns/:id', requirePlatformPermission('subscriptions:manage'), asyncHandler(async (req: Request, res: Response) => {
+  await pe.deleteCampaign(req.params.id, (req as any).user!.orgId!);
   res.json(ok({ deleted: true }));
 }));
 
 // ── Referral Codes ──
 
-router.get('/referrals', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const referrals = await pe.getReferralCodes(req.user!.orgId!);
+router.get('/referrals', asyncHandler(async (req: Request, res: Response) => {
+  const referrals = await pe.getReferralCodes((req as any).user!.orgId!);
   res.json(ok(referrals));
 }));
 
-router.get('/referrals/:id', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const referral = await pe.getReferralCode(req.params.id, req.user!.orgId!);
+router.get('/referrals/:id', asyncHandler(async (req: Request, res: Response) => {
+  const referral = await pe.getReferralCode(req.params.id, (req as any).user!.orgId!);
   res.json(ok(referral));
 }));
 
-router.post('/referrals', requireRole('admin'), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+router.post('/referrals', requirePlatformPermission('subscriptions:manage'), asyncHandler(async (req: Request, res: Response) => {
   const { orgId: _orgId, ...data } = req.body;
-  const referral = await pe.createReferralCode(data, req.user!.orgId!, req.user?.userId);
+  const referral = await pe.createReferralCode(data, (req as any).user!.orgId!, (req as any).user?.userId);
   res.status(201).json(ok(referral));
 }));
 
-router.put('/referrals/:id', requireRole('admin'), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const referral = await pe.updateReferralCode(req.params.id, req.body, req.user!.orgId!);
+router.put('/referrals/:id', requirePlatformPermission('subscriptions:manage'), asyncHandler(async (req: Request, res: Response) => {
+  const referral = await pe.updateReferralCode(req.params.id, req.body, (req as any).user!.orgId!);
   res.json(ok(referral));
 }));
 
-router.delete('/referrals/:id', requireRole('admin'), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  await pe.deleteReferralCode(req.params.id, req.user!.orgId!);
+router.delete('/referrals/:id', requirePlatformPermission('subscriptions:manage'), asyncHandler(async (req: Request, res: Response) => {
+  await pe.deleteReferralCode(req.params.id, (req as any).user!.orgId!);
   res.json(ok({ deleted: true }));
 }));
 
 // ── Partner Discounts ──
 
-router.get('/partners', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const partners = await pe.getPartnerDiscounts(req.user!.orgId!);
+router.get('/partners', asyncHandler(async (req: Request, res: Response) => {
+  const partners = await pe.getPartnerDiscounts((req as any).user!.orgId!);
   res.json(ok(partners));
 }));
 
-router.get('/partners/:id', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const partner = await pe.getPartnerDiscount(req.params.id, req.user!.orgId!);
+router.get('/partners/:id', asyncHandler(async (req: Request, res: Response) => {
+  const partner = await pe.getPartnerDiscount(req.params.id, (req as any).user!.orgId!);
   res.json(ok(partner));
 }));
 
-router.post('/partners', requireRole('admin'), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const partner = await pe.createPartnerDiscount(req.body, req.user!.orgId!, req.user?.userId);
+router.post('/partners', requirePlatformPermission('subscriptions:manage'), asyncHandler(async (req: Request, res: Response) => {
+  const partner = await pe.createPartnerDiscount(req.body, (req as any).user!.orgId!, (req as any).user?.userId);
   res.status(201).json(ok(partner));
 }));
 
-router.put('/partners/:id', requireRole('admin'), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const partner = await pe.updatePartnerDiscount(req.params.id, req.body, req.user!.orgId!);
+router.put('/partners/:id', requirePlatformPermission('subscriptions:manage'), asyncHandler(async (req: Request, res: Response) => {
+  const partner = await pe.updatePartnerDiscount(req.params.id, req.body, (req as any).user!.orgId!);
   res.json(ok(partner));
 }));
 
-router.delete('/partners/:id', requireRole('admin'), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  await pe.deletePartnerDiscount(req.params.id, req.user!.orgId!);
+router.delete('/partners/:id', requirePlatformPermission('subscriptions:manage'), asyncHandler(async (req: Request, res: Response) => {
+  await pe.deletePartnerDiscount(req.params.id, (req as any).user!.orgId!);
   res.json(ok({ deleted: true }));
 }));
 
 // ── Redemption History ──
 
-router.get('/redemptions', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+router.get('/redemptions', asyncHandler(async (req: Request, res: Response) => {
   const { type, subscriptionId, invoiceId } = req.query;
-  const redemptions = await pe.getRedemptionHistory(req.user!.orgId!, {
+  const redemptions = await pe.getRedemptionHistory((req as any).user!.orgId!, {
     type: type as string | undefined,
     subscriptionId: subscriptionId as string | undefined,
     invoiceId: invoiceId as string | undefined,
@@ -106,23 +103,23 @@ router.get('/redemptions', asyncHandler(async (req: AuthenticatedRequest, res: R
 
 // ── Extended Coupon/Promotion Management ──
 
-router.post('/coupons', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const coupon = await pe.createCouponExtended(req.body, req.user!.orgId!, req.user?.userId);
+router.post('/coupons', asyncHandler(async (req: Request, res: Response) => {
+  const coupon = await pe.createCouponExtended(req.body, (req as any).user!.orgId!, (req as any).user?.userId);
   res.status(201).json(ok(coupon));
 }));
 
-router.put('/coupons/:id', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const coupon = await pe.updateCouponExtended(req.params.id, req.body, req.user!.orgId!);
+router.put('/coupons/:id', asyncHandler(async (req: Request, res: Response) => {
+  const coupon = await pe.updateCouponExtended(req.params.id, req.body, (req as any).user!.orgId!);
   res.json(ok(coupon));
 }));
 
-router.post('/promotions', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const promo = await pe.createPromotionExtended(req.body, req.user!.orgId!, req.user?.userId);
+router.post('/promotions', asyncHandler(async (req: Request, res: Response) => {
+  const promo = await pe.createPromotionExtended(req.body, (req as any).user!.orgId!, (req as any).user?.userId);
   res.status(201).json(ok(promo));
 }));
 
-router.put('/promotions/:id', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const promo = await pe.updatePromotionExtended(req.params.id, req.body, req.user!.orgId!);
+router.put('/promotions/:id', asyncHandler(async (req: Request, res: Response) => {
+  const promo = await pe.updatePromotionExtended(req.params.id, req.body, (req as any).user!.orgId!);
   res.json(ok(promo));
 }));
 
@@ -138,16 +135,16 @@ const applySchema = z.object({
   region: z.string().optional(),
 });
 
-router.post('/apply', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+router.post('/apply', asyncHandler(async (req: Request, res: Response) => {
   const parsed = applySchema.parse(req.body);
-  const result = await pe.applyDiscounts({ ...parsed, orgId: req.user!.orgId! });
+  const result = await pe.applyDiscounts({ ...parsed, orgId: (req as any).user!.orgId! });
   res.json(ok(result));
 }));
 
-router.post('/auto-apply', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+router.post('/auto-apply', asyncHandler(async (req: Request, res: Response) => {
   const { planId, amountKobo, isFirstOrder, region } = req.body;
   if (!planId || !amountKobo) throw new Error('planId and amountKobo are required');
-  const result = await pe.autoApplyPromotions({ orgId: req.user!.orgId!, planId, amountKobo, isFirstOrder, region });
+  const result = await pe.autoApplyPromotions({ orgId: (req as any).user!.orgId!, planId, amountKobo, isFirstOrder, region });
   res.json(ok(result));
 }));
 
@@ -168,9 +165,9 @@ const recordSchema = z.object({
   metadata: z.any().optional(),
 });
 
-router.post('/record', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+router.post('/record', asyncHandler(async (req: Request, res: Response) => {
   const parsed = recordSchema.parse(req.body);
-  const record = await pe.recordRedemption({ ...parsed, orgId: req.user!.orgId!, redeemedBy: req.user?.userId });
+  const record = await pe.recordRedemption({ ...parsed, orgId: (req as any).user!.orgId!, redeemedBy: (req as any).user?.userId });
   res.status(201).json(ok(record));
 }));
 

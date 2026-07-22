@@ -1,7 +1,7 @@
-import { Router, Response } from 'express';
+import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { eq, and } from 'drizzle-orm';
-import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
+import { requirePlatformPermission } from '../middleware/platformAuth';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { ok } from '../lib/response';
 import { ValidationError } from '../lib/errors';
@@ -15,13 +15,11 @@ import { getPlan } from '../services/subscription.service';
 import { createAuditLog, extractReqMeta } from '../services/audit.service';
 
 const router = Router();
-router.use(authenticate);
-router.use(requireOrg);
 
 // ── Portal Dashboard — full snapshot ──
 
-router.get('/portal/dashboard', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const orgId = req.user!.orgId!;
+router.get('/portal/dashboard', asyncHandler(async (req: Request, res: Response) => {
+  const orgId = (req as any).user!.orgId!;
   const sub = await getOrgSubscription(orgId);
   if (!sub) return res.json(ok({ subscription: null, plans: [], invoices: [], paymentHistory: [], usage: [], addons: [], entitlements: null }));
 
@@ -39,8 +37,8 @@ router.get('/portal/dashboard', asyncHandler(async (req: AuthenticatedRequest, r
 
 // ── Billing Cycle Change ──
 
-router.put('/portal/billing-cycle', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const orgId = req.user!.orgId!;
+router.put('/portal/billing-cycle', asyncHandler(async (req: Request, res: Response) => {
+  const orgId = (req as any).user!.orgId!;
   const { billingCycle } = z.object({ billingCycle: z.enum(['monthly', 'annual']) }).parse(req.body);
   const sub = await getOrgSubscription(orgId);
   if (!sub) throw new ValidationError('No active subscription.', {});
@@ -50,15 +48,15 @@ router.put('/portal/billing-cycle', asyncHandler(async (req: AuthenticatedReques
   if (!newPrice) throw new ValidationError('This plan does not support the selected billing cycle.', {});
 
   await db.update(subscriptions).set({ billingCycle, updatedAt: new Date() } as any).where(eq(subscriptions.id, sub.id));
-  await createAuditLog({ orgId, userId: req.user!.userId, action: 'BILLING_CYCLE_CHANGE', entityType: 'subscription', entityId: sub.id, newValues: { billingCycle }, ...extractReqMeta(req) });
+  await createAuditLog({ orgId, userId: (req as any).user!.userId, action: 'BILLING_CYCLE_CHANGE', entityType: 'subscription', entityId: sub.id, newValues: { billingCycle }, ...extractReqMeta(req) });
 
   res.json(ok({ billingCycle, newPriceKobo: newPrice }));
 }));
 
 // ── Update Payment Method (returns gateway link) ──
 
-router.get('/portal/payment-method-link', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const orgId = req.user!.orgId!;
+router.get('/portal/payment-method-link', asyncHandler(async (req: Request, res: Response) => {
+  const orgId = (req as any).user!.orgId!;
   const sub = await getOrgSubscription(orgId);
   if (!sub) throw new ValidationError('No active subscription.', {});
 
@@ -77,8 +75,8 @@ router.get('/portal/payment-method-link', asyncHandler(async (req: Authenticated
 
 // ── Redeem Coupon at Portal ──
 
-router.post('/portal/redeem-coupon', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const orgId = req.user!.orgId!;
+router.post('/portal/redeem-coupon', asyncHandler(async (req: Request, res: Response) => {
+  const orgId = (req as any).user!.orgId!;
   const { code } = z.object({ code: z.string().min(1) }).parse(req.body);
 
   const sub = await getOrgSubscription(orgId);
@@ -94,17 +92,17 @@ router.post('/portal/redeem-coupon', asyncHandler(async (req: AuthenticatedReque
   await promoEngine.recordRedemption({
     orgId, subscriptionId: sub.id, redemptionType: 'coupon', sourceId: coupon.id, sourceCode: coupon.code,
     discountType: coupon.discountType, discountValue: coupon.discountPercent || coupon.discountAmountKobo || 0,
-    discountKobo: 0, freeMonths: coupon.freeMonths || 0, originalAmountKobo: 0, finalAmountKobo: 0, redeemedBy: req.user?.userId,
+    discountKobo: 0, freeMonths: coupon.freeMonths || 0, originalAmountKobo: 0, finalAmountKobo: 0, redeemedBy: (req as any).user?.userId,
   });
-  await createAuditLog({ orgId, userId: req.user!.userId, action: 'COUPON_REDEEM', entityType: 'subscription', entityId: sub.id, newValues: { couponCode: code }, ...extractReqMeta(req) });
+  await createAuditLog({ orgId, userId: (req as any).user!.userId, action: 'COUPON_REDEEM', entityType: 'subscription', entityId: sub.id, newValues: { couponCode: code }, ...extractReqMeta(req) });
 
   res.json(ok({ coupon, message: `Coupon "${code}" applied!` }));
 }));
 
 // ── Invoice Download (HTML receipt) ──
 
-router.get('/portal/invoices/:id/download', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const orgId = req.user!.orgId!;
+router.get('/portal/invoices/:id/download', asyncHandler(async (req: Request, res: Response) => {
+  const orgId = (req as any).user!.orgId!;
   const [inv] = await db.select().from(subscriptionInvoices).where(and(eq(subscriptionInvoices.id, req.params.id), eq(subscriptionInvoices.orgId, orgId))).limit(1);
   if (!inv) throw new ValidationError('Invoice not found.', {});
 
@@ -120,8 +118,8 @@ router.get('/portal/invoices/:id/download', asyncHandler(async (req: Authenticat
 
 // ── Request Refund ──
 
-router.post('/portal/refund', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const orgId = req.user!.orgId!;
+router.post('/portal/refund', asyncHandler(async (req: Request, res: Response) => {
+  const orgId = (req as any).user!.orgId!;
   const { invoiceId, reason } = z.object({ invoiceId: z.string().uuid(), reason: z.string().min(1) }).parse(req.body);
 
   const [inv] = await db.select().from(subscriptionInvoices).where(and(eq(subscriptionInvoices.id, invoiceId), eq(subscriptionInvoices.orgId, orgId))).limit(1);
@@ -137,15 +135,15 @@ router.post('/portal/refund', asyncHandler(async (req: AuthenticatedRequest, res
   if (pay) {
     await db.update(subscriptionPayments).set({ status: 'refunded', refundedAt: now, refundedAmountKobo: pay.amountKobo, refundReason: reason, updatedAt: now } as any).where(eq(subscriptionPayments.id, pay.id));
   }
-  await createAuditLog({ orgId, userId: req.user!.userId, action: 'REFUND_REQUEST', entityType: 'subscription_invoice', entityId: invoiceId, newValues: { amountKobo: inv.totalKobo, reason }, ...extractReqMeta(req) });
+  await createAuditLog({ orgId, userId: (req as any).user!.userId, action: 'REFUND_REQUEST', entityType: 'subscription_invoice', entityId: invoiceId, newValues: { amountKobo: inv.totalKobo, reason }, ...extractReqMeta(req) });
 
   res.json(ok({ refunded: true, amountKobo: inv.totalKobo }));
 }));
 
 // ── Usage Dashboard ──
 
-router.get('/portal/usage', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const orgId = req.user!.orgId!;
+router.get('/portal/usage', asyncHandler(async (req: Request, res: Response) => {
+  const orgId = (req as any).user!.orgId!;
   const sub = await getOrgSubscription(orgId);
   if (!sub) return res.json(ok({ usage: [], entitlements: null }));
 
@@ -158,15 +156,15 @@ router.get('/portal/usage', asyncHandler(async (req: AuthenticatedRequest, res: 
 
 // ── Add-on CRUD at Portal ──
 
-router.get('/portal/addons', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const orgId = req.user!.orgId!;
+router.get('/portal/addons', asyncHandler(async (req: Request, res: Response) => {
+  const orgId = (req as any).user!.orgId!;
   const sub = await getOrgSubscription(orgId);
   const addons = sub ? await addonService.getAddons(orgId, sub.id) : [];
   res.json(ok(addons));
 }));
 
-router.post('/portal/addons', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const orgId = req.user!.orgId!;
+router.post('/portal/addons', asyncHandler(async (req: Request, res: Response) => {
+  const orgId = (req as any).user!.orgId!;
   const sub = await getOrgSubscription(orgId);
   if (!sub) throw new ValidationError('No active subscription.', {});
 
@@ -179,12 +177,12 @@ router.post('/portal/addons', asyncHandler(async (req: AuthenticatedRequest, res
   }).parse(req.body);
 
   const addon = await addonService.createAddon(orgId, { ...data, subscriptionId: sub.id });
-  await createAuditLog({ orgId, userId: req.user!.userId, action: 'ADDON_PURCHASE', entityType: 'subscription_addon', entityId: addon.id, newValues: data, ...extractReqMeta(req) });
+  await createAuditLog({ orgId, userId: (req as any).user!.userId, action: 'ADDON_PURCHASE', entityType: 'subscription_addon', entityId: addon.id, newValues: data, ...extractReqMeta(req) });
   res.status(201).json(ok(addon));
 }));
 
-router.delete('/portal/addons/:id', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const orgId = req.user!.orgId!;
+router.delete('/portal/addons/:id', asyncHandler(async (req: Request, res: Response) => {
+  const orgId = (req as any).user!.orgId!;
   const addon = await addonService.deactivateAddon(req.params.id, orgId);
   res.json(ok(addon));
 }));

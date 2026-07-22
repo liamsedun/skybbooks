@@ -137,7 +137,7 @@ export async function verifyPayment(orgId: string, reference: string, invoiceId:
   };
   if (verifyResult.success) {
     updateData.paidAt = now;
-    updateData.receiptUrl = `${FRONTEND_URL}/api/subscriptions/billing/receipts/${payment.id}`;
+    updateData.receiptUrl = `${FRONTEND_URL}/api/platform/subscriptions/billing/receipts/${payment.id}`;
   }
 
   const [updatedPayment] = await db.update(subscriptionPayments)

@@ -1,8 +1,7 @@
-import { Router, Response } from 'express';
+import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { eq, and, desc } from 'drizzle-orm';
-import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/auth';
-import { requireRole } from '../middleware/auth';
+import { requirePlatformPermission } from '../middleware/platformAuth';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { ok } from '../lib/response';
 import { ValidationError } from '../lib/errors';
@@ -11,13 +10,11 @@ import { db, subscriptionInvoices, subscriptionInvoiceItems, subscriptionCreditN
 import * as engine from '../services/subscriptionBillingEngine.service';
 
 const router = Router();
-router.use(authenticate);
-router.use(requireOrg);
 
 // ── Invoice List ──
 
-router.get('/billing/invoices', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const orgId = req.user!.orgId!;
+router.get('/billing/invoices', asyncHandler(async (req: Request, res: Response) => {
+  const orgId = (req as any).user!.orgId!;
   const status = req.query.status as string | undefined;
   const conditions: any[] = [eq(subscriptionInvoices.orgId, orgId)];
   if (status) conditions.push(eq(subscriptionInvoices.status, status as any));
@@ -31,8 +28,8 @@ router.get('/billing/invoices', asyncHandler(async (req: AuthenticatedRequest, r
 
 // ── Single Invoice ──
 
-router.get('/billing/invoices/:id', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const orgId = req.user!.orgId!;
+router.get('/billing/invoices/:id', asyncHandler(async (req: Request, res: Response) => {
+  const orgId = (req as any).user!.orgId!;
   const [inv] = await db.select().from(subscriptionInvoices).where(and(eq(subscriptionInvoices.id, req.params.id), eq(subscriptionInvoices.orgId, orgId))).limit(1);
   if (!inv) return res.status(404).json(ok({ error: 'Invoice not found' }));
   const items = await db.select().from(subscriptionInvoiceItems).where(eq(subscriptionInvoiceItems.invoiceId, inv.id));
@@ -41,8 +38,8 @@ router.get('/billing/invoices/:id', asyncHandler(async (req: AuthenticatedReques
 
 // ── Generate Invoice ──
 
-router.post('/billing/invoices/generate', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const orgId = req.user!.orgId!;
+router.post('/billing/invoices/generate', asyncHandler(async (req: Request, res: Response) => {
+  const orgId = (req as any).user!.orgId!;
   const data = z.object({
     subscriptionId: z.string().uuid(), description: z.string().optional(),
     items: z.array(z.object({
@@ -65,8 +62,8 @@ router.post('/billing/invoices/generate', asyncHandler(async (req: Authenticated
 
 // ── Download Invoice PDF ──
 
-router.get('/billing/invoices/:id/pdf', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const orgId = req.user!.orgId!;
+router.get('/billing/invoices/:id/pdf', asyncHandler(async (req: Request, res: Response) => {
+  const orgId = (req as any).user!.orgId!;
   const html = await engine.generateInvoiceHtml(req.params.id, orgId);
   res.setHeader('Content-Type', 'text/html');
   res.setHeader('Content-Disposition', `attachment; filename="invoice-${req.params.id}.html"`);
@@ -75,23 +72,23 @@ router.get('/billing/invoices/:id/pdf', asyncHandler(async (req: AuthenticatedRe
 
 // ── Email Invoice ──
 
-router.post('/billing/invoices/:id/email', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const orgId = req.user!.orgId!;
+router.post('/billing/invoices/:id/email', asyncHandler(async (req: Request, res: Response) => {
+  const orgId = (req as any).user!.orgId!;
   const sent = await engine.emailInvoice(orgId, req.params.id);
   res.json(ok({ sent }));
 }));
 
 // ── Credit Notes ──
 
-router.get('/billing/credit-notes', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const orgId = req.user!.orgId!;
+router.get('/billing/credit-notes', asyncHandler(async (req: Request, res: Response) => {
+  const orgId = (req as any).user!.orgId!;
   const notes = await db.select().from(subscriptionCreditNotes).where(eq(subscriptionCreditNotes.orgId, orgId)).orderBy(desc(subscriptionCreditNotes.createdAt));
   res.json(ok(notes));
 }));
 
-router.post('/billing/credit-notes', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const orgId = req.user!.orgId!;
-  const userId = req.user!.userId!;
+router.post('/billing/credit-notes', asyncHandler(async (req: Request, res: Response) => {
+  const orgId = (req as any).user!.orgId!;
+  const userId = (req as any).user!.userId!;
   const data = z.object({
     invoiceId: z.string().uuid().optional(), subscriptionId: z.string().uuid().optional(),
     reason: z.string().min(1), amountKobo: z.number().int().min(1), taxKobo: z.number().int().optional(),
@@ -102,9 +99,9 @@ router.post('/billing/credit-notes', asyncHandler(async (req: AuthenticatedReque
 
 // ── Refunds ──
 
-router.post('/billing/refund', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const orgId = req.user!.orgId!;
-  const userId = req.user!.userId!;
+router.post('/billing/refund', asyncHandler(async (req: Request, res: Response) => {
+  const orgId = (req as any).user!.orgId!;
+  const userId = (req as any).user!.userId!;
   const { invoiceId, reason, amountKobo } = z.object({
     invoiceId: z.string().uuid(), reason: z.string().min(1), amountKobo: z.number().int().optional(),
   }).parse(req.body);
@@ -114,66 +111,66 @@ router.post('/billing/refund', asyncHandler(async (req: AuthenticatedRequest, re
 
 // ── Tax Rates ──
 
-router.get('/billing/tax-rates', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const orgId = req.user!.orgId!;
+router.get('/billing/tax-rates', asyncHandler(async (req: Request, res: Response) => {
+  const orgId = (req as any).user!.orgId!;
   const rates = await engine.getOrgTaxRates(orgId);
   res.json(ok(rates));
 }));
 
-router.post('/billing/tax-rates', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const orgId = req.user!.orgId!;
+router.post('/billing/tax-rates', asyncHandler(async (req: Request, res: Response) => {
+  const orgId = (req as any).user!.orgId!;
   const data = z.object({ name: z.string().min(1), rate: z.number().int().min(0).max(10000), type: z.string().optional(), isDefault: z.boolean().optional(), description: z.string().optional() }).parse(req.body);
   const rate = await engine.saveTaxRate(orgId, data);
   res.status(201).json(ok(rate));
 }));
 
-router.delete('/billing/tax-rates/:id', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const orgId = req.user!.orgId!;
+router.delete('/billing/tax-rates/:id', asyncHandler(async (req: Request, res: Response) => {
+  const orgId = (req as any).user!.orgId!;
   await engine.deleteTaxRate(req.params.id, orgId);
   res.json(ok({ deleted: true }));
 }));
 
 // ── Outstanding Balances ──
 
-router.get('/billing/outstanding', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const orgId = req.user!.orgId!;
+router.get('/billing/outstanding', asyncHandler(async (req: Request, res: Response) => {
+  const orgId = (req as any).user!.orgId!;
   const balances = await engine.getOutstandingBalances(orgId);
   res.json(ok(balances));
 }));
 
 // ── Billing History ──
 
-router.get('/billing/history', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const orgId = req.user!.orgId!;
+router.get('/billing/history', asyncHandler(async (req: Request, res: Response) => {
+  const orgId = (req as any).user!.orgId!;
   const history = await engine.getBillingHistory(orgId);
   res.json(ok(history));
 }));
 
 // ── Handle Failed Payment (dunning) ──
 
-router.post('/billing/invoices/:id/handle-failure', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+router.post('/billing/invoices/:id/handle-failure', asyncHandler(async (req: Request, res: Response) => {
   const result = await engine.handleFailedPayment(req.params.id);
   res.json(ok(result));
 }));
 
 // ── Generate Accounting Entries ──
 
-router.post('/billing/invoices/:id/accounting-entries', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const orgId = req.user!.orgId!;
+router.post('/billing/invoices/:id/accounting-entries', asyncHandler(async (req: Request, res: Response) => {
+  const orgId = (req as any).user!.orgId!;
   const entries = await engine.generateAccountingEntries(orgId, req.params.id);
   res.json(ok(entries));
 }));
 
 // ── Admin: Generate renewal invoices ──
 
-router.post('/billing/generate-renewals', requireRole('admin'), asyncHandler(async (_req: AuthenticatedRequest, res: Response) => {
+router.post('/billing/generate-renewals', requirePlatformPermission('billing:manage'), asyncHandler(async (_req: Request, res: Response) => {
   const result = await engine.scheduleInvoiceGeneration();
   res.json(ok(result));
 }));
 
 // ── Proration calculator ──
 
-router.post('/billing/calculate-proration', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+router.post('/billing/calculate-proration', asyncHandler(async (req: Request, res: Response) => {
   const { oldMonthlyKobo, newMonthlyKobo, daysRemaining, daysInPeriod } = z.object({
     oldMonthlyKobo: z.number().int(), newMonthlyKobo: z.number().int(),
     daysRemaining: z.number().int(), daysInPeriod: z.number().int().default(30),

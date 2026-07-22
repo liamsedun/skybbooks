@@ -54,9 +54,9 @@ api.interceptors.request.use(
     const isAuthEndpoint = config.url && (
       config.url.includes('/auth/login') ||
       config.url.includes('/auth/register') ||
-      config.url.includes('/auth/platform-login') ||
-      config.url.includes('/auth/platform-refresh') ||
-      config.url.includes('/auth/platform-logout') ||
+      config.url.includes('/platform/auth/login') ||
+      config.url.includes('/platform/auth/refresh') ||
+      config.url.includes('/platform/auth/logout') ||
       config.url.includes('/auth/refresh') ||
       config.url.includes('/auth/logout') ||
       config.url.includes('/org/invite/')
@@ -129,7 +129,7 @@ api.interceptors.response.use(
       }
 
       try {
-        const refreshUrl = prefix === 'platform_' ? '/auth/platform-refresh' : '/auth/refresh';
+        const refreshUrl = prefix === 'platform_' ? '/platform/auth/refresh' : '/auth/refresh';
         const response = await axios.post(`${API_URL}${refreshUrl}`, { refreshToken });
         const { accessToken: newAccessToken, refreshToken: newRefreshToken } = response.data;
 
@@ -184,7 +184,7 @@ export const authApi = {
     return res.data;
   },
   platformLogin: async (data: any) => {
-    const res = await api.post('/auth/platform-login', data);
+    const res = await api.post('/platform/auth/login', data);
     return res.data;
   },
   register: async (data: any) => {
@@ -200,7 +200,7 @@ export const authApi = {
     return res.data;
   },
   platformRefresh: async (refreshToken: string) => {
-    const res = await api.post('/auth/platform-refresh', { refreshToken });
+    const res = await api.post('/platform/auth/refresh', { refreshToken });
     return res.data;
   },
   logout: async (refreshToken?: string) => {
@@ -209,7 +209,7 @@ export const authApi = {
     return res.data;
   },
   platformLogout: async (refreshToken?: string) => {
-    const res = await api.post('/auth/platform-logout', { refreshToken });
+    const res = await api.post('/platform/auth/logout', { refreshToken });
     clearAuthData();
     return res.data;
   },
@@ -1876,102 +1876,102 @@ export const announcementApi = {
 
 export const subscriptionApi = {
   // Plans
-  listPlans: async (publicOnly?: boolean) => { const res = await api.get('/subscriptions/plans', { params: { publicOnly } }); return res.data; },
-  getPlan: async (id: string) => { const res = await api.get(`/subscriptions/plans/${id}`); return res.data; },
-  createPlan: async (data: any) => { const res = await api.post('/subscriptions/plans', data); return res.data; },
-  updatePlan: async (id: string, data: any) => { const res = await api.put(`/subscriptions/plans/${id}`, data); return res.data; },
-  deletePlan: async (id: string) => { const res = await api.delete(`/subscriptions/plans/${id}`); return res.data; },
+  listPlans: async (publicOnly?: boolean) => { const res = await api.get('/platform/subscriptions/plans', { params: { publicOnly } }); return res.data; },
+  getPlan: async (id: string) => { const res = await api.get(`/platform/subscriptions/plans/${id}`); return res.data; },
+  createPlan: async (data: any) => { const res = await api.post('/platform/subscriptions/plans', data); return res.data; },
+  updatePlan: async (id: string, data: any) => { const res = await api.put(`/platform/subscriptions/plans/${id}`, data); return res.data; },
+  deletePlan: async (id: string) => { const res = await api.delete(`/platform/subscriptions/plans/${id}`); return res.data; },
 
   // Subscriptions
-  getMySubscription: async () => { const res = await api.get('/subscriptions/'); return res.data; },
-  createSubscription: async (data: { planId: string; couponCode?: string; promotionId?: string; billingCycle?: string }) => { const res = await api.post('/subscriptions/', data); return res.data; },
-  changePlan: async (id: string, data: { planId: string; prorate?: boolean }) => { const res = await api.put(`/subscriptions/${id}/plan`, data); return res.data; },
-  cancelSubscription: async (id: string, atPeriodEnd?: boolean) => { const res = await api.post(`/subscriptions/${id}/cancel`, { atPeriodEnd }); return res.data; },
-  renewSubscription: async (id: string) => { const res = await api.post(`/subscriptions/${id}/renew`); return res.data; },
+  getMySubscription: async () => { const res = await api.get('/platform/subscriptions/'); return res.data; },
+  createSubscription: async (data: { planId: string; couponCode?: string; promotionId?: string; billingCycle?: string }) => { const res = await api.post('/platform/subscriptions/', data); return res.data; },
+  changePlan: async (id: string, data: { planId: string; prorate?: boolean }) => { const res = await api.put(`/platform/subscriptions/${id}/plan`, data); return res.data; },
+  cancelSubscription: async (id: string, atPeriodEnd?: boolean) => { const res = await api.post(`/platform/subscriptions/${id}/cancel`, { atPeriodEnd }); return res.data; },
+  renewSubscription: async (id: string) => { const res = await api.post(`/platform/subscriptions/${id}/renew`); return res.data; },
 
   // Coupons
-  listCoupons: async () => { const res = await api.get('/subscriptions/coupons'); return res.data; },
-  getCoupon: async (id: string) => { const res = await api.get(`/subscriptions/coupons/${id}`); return res.data; },
-  createCoupon: async (data: any) => { const res = await api.post('/subscriptions/coupons', data); return res.data; },
-  validateCoupon: async (data: { code: string; planId?: string; amountKobo?: number }) => { const res = await api.post('/subscriptions/coupons/validate', data); return res.data; },
+  listCoupons: async () => { const res = await api.get('/platform/subscriptions/coupons'); return res.data; },
+  getCoupon: async (id: string) => { const res = await api.get(`/platform/subscriptions/coupons/${id}`); return res.data; },
+  createCoupon: async (data: any) => { const res = await api.post('/platform/subscriptions/coupons', data); return res.data; },
+  validateCoupon: async (data: { code: string; planId?: string; amountKobo?: number }) => { const res = await api.post('/platform/subscriptions/coupons/validate', data); return res.data; },
 
   // Promotions
-  listPromotions: async () => { const res = await api.get('/subscriptions/promotions'); return res.data; },
-  getPromotion: async (id: string) => { const res = await api.get(`/subscriptions/promotions/${id}`); return res.data; },
-  createPromotion: async (data: any) => { const res = await api.post('/subscriptions/promotions', data); return res.data; },
-  updatePromotion: async (id: string, data: any) => { const res = await api.put(`/subscriptions/promotions/${id}`, data); return res.data; },
+  listPromotions: async () => { const res = await api.get('/platform/subscriptions/promotions'); return res.data; },
+  getPromotion: async (id: string) => { const res = await api.get(`/platform/subscriptions/promotions/${id}`); return res.data; },
+  createPromotion: async (data: any) => { const res = await api.post('/platform/subscriptions/promotions', data); return res.data; },
+  updatePromotion: async (id: string, data: any) => { const res = await api.put(`/platform/subscriptions/promotions/${id}`, data); return res.data; },
 
   // Invoices
-  listInvoices: async (subscriptionId?: string) => { const res = await api.get('/subscriptions/invoices', { params: { subscriptionId } }); return res.data; },
+  listInvoices: async (subscriptionId?: string) => { const res = await api.get('/platform/subscriptions/invoices', { params: { subscriptionId } }); return res.data; },
 
   // Entitlements & Usage
-  getEntitlements: async () => { const res = await api.get('/subscriptions/entitlements'); return res.data; },
-  checkFeatureAccess: async (featureKey: string) => { const res = await api.get('/subscriptions/entitlements/check', { params: { featureKey } }); return res.data; },
-  recordUsage: async (data: { featureKey: string; count?: number }) => { const res = await api.post('/subscriptions/usage', data); return res.data; },
-  getUsage: async (featureKey?: string) => { const res = await api.get('/subscriptions/usage', { params: { featureKey } }); return res.data; },
-  checkUsageLimit: async (featureKey: string) => { const res = await api.get('/subscriptions/usage/check-limit', { params: { featureKey } }); return res.data; },
+  getEntitlements: async () => { const res = await api.get('/platform/subscriptions/entitlements'); return res.data; },
+  checkFeatureAccess: async (featureKey: string) => { const res = await api.get('/platform/subscriptions/entitlements/check', { params: { featureKey } }); return res.data; },
+  recordUsage: async (data: { featureKey: string; count?: number }) => { const res = await api.post('/platform/subscriptions/usage', data); return res.data; },
+  getUsage: async (featureKey?: string) => { const res = await api.get('/platform/subscriptions/usage', { params: { featureKey } }); return res.data; },
+  checkUsageLimit: async (featureKey: string) => { const res = await api.get('/platform/subscriptions/usage/check-limit', { params: { featureKey } }); return res.data; },
 
   // Lifecycle methods
-  pause: async (id: string, pauseDays?: number) => { const res = await api.post(`/subscriptions/${id}/pause`, { pauseDays }); return res.data; },
-  resume: async (id: string) => { const res = await api.post(`/subscriptions/${id}/resume`); return res.data; },
-  cancelAtPeriodEnd: async (id: string, reason?: string) => { const res = await api.post(`/subscriptions/${id}/cancel`, { reason }); return res.data; },
-  cancelNow: async (id: string, reason?: string) => { const res = await api.post(`/subscriptions/${id}/cancel-now`, { reason }); return res.data; },
-  scheduleChange: async (id: string, planId: string, changeType: string) => { const res = await api.post(`/subscriptions/${id}/schedule-change`, { planId, changeType }); return res.data; },
-  getHistory: async (id: string) => { const res = await api.get(`/subscriptions/${id}/history`); return res.data; },
-  checkAccess: async (id: string) => { const res = await api.get(`/subscriptions/${id}/access`); return res.data; },
+  pause: async (id: string, pauseDays?: number) => { const res = await api.post(`/platform/subscriptions/${id}/pause`, { pauseDays }); return res.data; },
+  resume: async (id: string) => { const res = await api.post(`/platform/subscriptions/${id}/resume`); return res.data; },
+  cancelAtPeriodEnd: async (id: string, reason?: string) => { const res = await api.post(`/platform/subscriptions/${id}/cancel`, { reason }); return res.data; },
+  cancelNow: async (id: string, reason?: string) => { const res = await api.post(`/platform/subscriptions/${id}/cancel-now`, { reason }); return res.data; },
+  scheduleChange: async (id: string, planId: string, changeType: string) => { const res = await api.post(`/platform/subscriptions/${id}/schedule-change`, { planId, changeType }); return res.data; },
+  getHistory: async (id: string) => { const res = await api.get(`/platform/subscriptions/${id}/history`); return res.data; },
+  checkAccess: async (id: string) => { const res = await api.get(`/platform/subscriptions/${id}/access`); return res.data; },
 
   // Billing/Payment methods
-  getGatewayConfigs: async () => { const res = await api.get('/subscriptions/billing/gateway-config'); return res.data; },
-  saveGatewayConfig: async (data: any) => { const res = await api.put('/subscriptions/billing/gateway-config', data); return res.data; },
-  getDefaultGateway: async () => { const res = await api.get('/subscriptions/billing/gateway-default'); return res.data; },
-  initializePayment: async (data: { invoiceId: string; gateway?: string; channels?: string[] }) => { const res = await api.post('/subscriptions/billing/initialize', data); return res.data; },
-  verifyPayment: async (data: { reference: string; invoiceId: string }) => { const res = await api.post('/subscriptions/billing/verify', data); return res.data; },
-  retryPayment: async (data: { invoiceId: string; gateway?: string; channels?: string[] }) => { const res = await api.post('/subscriptions/billing/retry', data); return res.data; },
-  getPaymentHistory: async (subscriptionId?: string) => { const res = await api.get('/subscriptions/billing/payments', { params: { subscriptionId } }); return res.data; },
-  getPaymentStats: async () => { const res = await api.get('/subscriptions/billing/payments/stats'); return res.data; },
-  getReceiptUrl: (paymentId: string) => `/subscriptions/billing/receipts/${paymentId}`,
+  getGatewayConfigs: async () => { const res = await api.get('/platform/subscriptions/billing/gateway-config'); return res.data; },
+  saveGatewayConfig: async (data: any) => { const res = await api.put('/platform/subscriptions/billing/gateway-config', data); return res.data; },
+  getDefaultGateway: async () => { const res = await api.get('/platform/subscriptions/billing/gateway-default'); return res.data; },
+  initializePayment: async (data: { invoiceId: string; gateway?: string; channels?: string[] }) => { const res = await api.post('/platform/subscriptions/billing/initialize', data); return res.data; },
+  verifyPayment: async (data: { reference: string; invoiceId: string }) => { const res = await api.post('/platform/subscriptions/billing/verify', data); return res.data; },
+  retryPayment: async (data: { invoiceId: string; gateway?: string; channels?: string[] }) => { const res = await api.post('/platform/subscriptions/billing/retry', data); return res.data; },
+  getPaymentHistory: async (subscriptionId?: string) => { const res = await api.get('/platform/subscriptions/billing/payments', { params: { subscriptionId } }); return res.data; },
+  getPaymentStats: async () => { const res = await api.get('/platform/subscriptions/billing/payments/stats'); return res.data; },
+  getReceiptUrl: (paymentId: string) => `/platform/subscriptions/billing/receipts/${paymentId}`,
 
   // Portal
-  getPortalDashboard: async () => { const res = await api.get('/subscriptions/portal/dashboard'); return res.data; },
-  changeBillingCycle: async (billingCycle: string) => { const res = await api.put('/subscriptions/portal/billing-cycle', { billingCycle }); return res.data; },
-  getPortalPaymentMethodLink: async () => { const res = await api.get('/subscriptions/portal/payment-method-link'); return res.data; },
-  redeemPortalCoupon: async (code: string) => { const res = await api.post('/subscriptions/portal/redeem-coupon', { code }); return res.data; },
-  downloadInvoice: async (id: string) => { const res = await api.get(`/subscriptions/portal/invoices/${id}/download`, { responseType: 'blob' }); return res.data; },
-  requestRefund: async (invoiceId: string, reason: string) => { const res = await api.post('/subscriptions/portal/refund', { invoiceId, reason }); return res.data; },
-  getPortalUsage: async () => { const res = await api.get('/subscriptions/portal/usage'); return res.data; },
-  listPortalAddons: async () => { const res = await api.get('/subscriptions/portal/addons'); return res.data; },
-  createPortalAddon: async (data: any) => { const res = await api.post('/subscriptions/portal/addons', data); return res.data; },
-  removePortalAddon: async (id: string) => { const res = await api.delete(`/subscriptions/portal/addons/${id}`); return res.data; },
+  getPortalDashboard: async () => { const res = await api.get('/platform/subscriptions/portal/dashboard'); return res.data; },
+  changeBillingCycle: async (billingCycle: string) => { const res = await api.put('/platform/subscriptions/portal/billing-cycle', { billingCycle }); return res.data; },
+  getPortalPaymentMethodLink: async () => { const res = await api.get('/platform/subscriptions/portal/payment-method-link'); return res.data; },
+  redeemPortalCoupon: async (code: string) => { const res = await api.post('/platform/subscriptions/portal/redeem-coupon', { code }); return res.data; },
+  downloadInvoice: async (id: string) => { const res = await api.get(`/platform/subscriptions/portal/invoices/${id}/download`, { responseType: 'blob' }); return res.data; },
+  requestRefund: async (invoiceId: string, reason: string) => { const res = await api.post('/platform/subscriptions/portal/refund', { invoiceId, reason }); return res.data; },
+  getPortalUsage: async () => { const res = await api.get('/platform/subscriptions/portal/usage'); return res.data; },
+  listPortalAddons: async () => { const res = await api.get('/platform/subscriptions/portal/addons'); return res.data; },
+  createPortalAddon: async (data: any) => { const res = await api.post('/platform/subscriptions/portal/addons', data); return res.data; },
+  removePortalAddon: async (id: string) => { const res = await api.delete(`/platform/subscriptions/portal/addons/${id}`); return res.data; },
 
   // Marketplace Add-ons
-  listMarketplaceAddons: async () => { const res = await api.get('/subscriptions/addons/marketplace'); return res.data; },
-  getMarketplaceAddon: async (id: string) => { const res = await api.get(`/subscriptions/addons/marketplace/${id}`); return res.data; },
-  listMyAddons: async () => { const res = await api.get('/subscriptions/addons/my'); return res.data; },
-  purchaseAddon: async (data: { productId: string; quantity?: number; billingCycle?: string; autoRenew?: boolean }) => { const res = await api.post('/subscriptions/addons/purchase', data); return res.data; },
-  cancelAddon: async (id: string) => { const res = await api.post(`/subscriptions/addons/${id}/cancel`); return res.data; },
-  reactivateAddon: async (id: string) => { const res = await api.post(`/subscriptions/addons/${id}/reactivate`); return res.data; },
-  updateAddonQuantity: async (id: string, quantity: number) => { const res = await api.put(`/subscriptions/addons/${id}/quantity`, { quantity }); return res.data; },
-  toggleAddonAutoRenew: async (id: string, autoRenew: boolean) => { const res = await api.put(`/subscriptions/addons/${id}/auto-renew`, { autoRenew }); return res.data; },
-  getEffectiveLimits: async () => { const res = await api.get('/subscriptions/addons/effective-limits'); return res.data; },
+  listMarketplaceAddons: async () => { const res = await api.get('/platform/subscriptions/addons/marketplace'); return res.data; },
+  getMarketplaceAddon: async (id: string) => { const res = await api.get(`/platform/subscriptions/addons/marketplace/${id}`); return res.data; },
+  listMyAddons: async () => { const res = await api.get('/platform/subscriptions/addons/my'); return res.data; },
+  purchaseAddon: async (data: { productId: string; quantity?: number; billingCycle?: string; autoRenew?: boolean }) => { const res = await api.post('/platform/subscriptions/addons/purchase', data); return res.data; },
+  cancelAddon: async (id: string) => { const res = await api.post(`/platform/subscriptions/addons/${id}/cancel`); return res.data; },
+  reactivateAddon: async (id: string) => { const res = await api.post(`/platform/subscriptions/addons/${id}/reactivate`); return res.data; },
+  updateAddonQuantity: async (id: string, quantity: number) => { const res = await api.put(`/platform/subscriptions/addons/${id}/quantity`, { quantity }); return res.data; },
+  toggleAddonAutoRenew: async (id: string, autoRenew: boolean) => { const res = await api.put(`/platform/subscriptions/addons/${id}/auto-renew`, { autoRenew }); return res.data; },
+  getEffectiveLimits: async () => { const res = await api.get('/platform/subscriptions/addons/effective-limits'); return res.data; },
 
   // Billing Engine
-  listBillingInvoices: async (params?: { status?: string }) => { const res = await api.get('/subscriptions/billing/invoices', { params }); return res.data; },
-  getBillingInvoice: async (id: string) => { const res = await api.get(`/subscriptions/billing/invoices/${id}`); return res.data; },
-  generateBillingInvoice: async (data: any) => { const res = await api.post('/subscriptions/billing/invoices/generate', data); return res.data; },
-  downloadBillingInvoicePdf: async (id: string) => { const res = await api.get(`/subscriptions/billing/invoices/${id}/pdf`, { responseType: 'blob' }); return res.data; },
-  emailBillingInvoice: async (id: string) => { const res = await api.post(`/subscriptions/billing/invoices/${id}/email`); return res.data; },
-  listBillingCreditNotes: async () => { const res = await api.get('/subscriptions/billing/credit-notes'); return res.data; },
-  createBillingCreditNote: async (data: { invoiceId?: string; subscriptionId?: string; reason: string; amountKobo: number; taxKobo?: number }) => { const res = await api.post('/subscriptions/billing/credit-notes', data); return res.data; },
-  refundBillingInvoice: async (invoiceId: string, reason: string, amountKobo?: number) => { const res = await api.post('/subscriptions/billing/refund', { invoiceId, reason, amountKobo }); return res.data; },
-  getBillingTaxRates: async () => { const res = await api.get('/subscriptions/billing/tax-rates'); return res.data; },
-  saveBillingTaxRate: async (data: { name: string; rate: number; type?: string; isDefault?: boolean; description?: string }) => { const res = await api.post('/subscriptions/billing/tax-rates', data); return res.data; },
-  deleteBillingTaxRate: async (id: string) => { const res = await api.delete(`/subscriptions/billing/tax-rates/${id}`); return res.data; },
-  getBillingOutstanding: async () => { const res = await api.get('/subscriptions/billing/outstanding'); return res.data; },
-  getBillingHistory: async () => { const res = await api.get('/subscriptions/billing/history'); return res.data; },
-  handleBillingInvoiceFailure: async (id: string) => { const res = await api.post(`/subscriptions/billing/invoices/${id}/handle-failure`); return res.data; },
-  generateBillingAccountingEntries: async (id: string) => { const res = await api.post(`/subscriptions/billing/invoices/${id}/accounting-entries`); return res.data; },
-  generateBillingRenewals: async () => { const res = await api.post('/subscriptions/billing/generate-renewals'); return res.data; },
-  calculateBillingProration: async (data: { oldMonthlyKobo: number; newMonthlyKobo: number; daysRemaining: number; daysInPeriod?: number }) => { const res = await api.post('/subscriptions/billing/calculate-proration', data); return res.data; },
+  listBillingInvoices: async (params?: { status?: string }) => { const res = await api.get('/platform/subscriptions/billing/invoices', { params }); return res.data; },
+  getBillingInvoice: async (id: string) => { const res = await api.get(`/platform/subscriptions/billing/invoices/${id}`); return res.data; },
+  generateBillingInvoice: async (data: any) => { const res = await api.post('/platform/subscriptions/billing/invoices/generate', data); return res.data; },
+  downloadBillingInvoicePdf: async (id: string) => { const res = await api.get(`/platform/subscriptions/billing/invoices/${id}/pdf`, { responseType: 'blob' }); return res.data; },
+  emailBillingInvoice: async (id: string) => { const res = await api.post(`/platform/subscriptions/billing/invoices/${id}/email`); return res.data; },
+  listBillingCreditNotes: async () => { const res = await api.get('/platform/subscriptions/billing/credit-notes'); return res.data; },
+  createBillingCreditNote: async (data: { invoiceId?: string; subscriptionId?: string; reason: string; amountKobo: number; taxKobo?: number }) => { const res = await api.post('/platform/subscriptions/billing/credit-notes', data); return res.data; },
+  refundBillingInvoice: async (invoiceId: string, reason: string, amountKobo?: number) => { const res = await api.post('/platform/subscriptions/billing/refund', { invoiceId, reason, amountKobo }); return res.data; },
+  getBillingTaxRates: async () => { const res = await api.get('/platform/subscriptions/billing/tax-rates'); return res.data; },
+  saveBillingTaxRate: async (data: { name: string; rate: number; type?: string; isDefault?: boolean; description?: string }) => { const res = await api.post('/platform/subscriptions/billing/tax-rates', data); return res.data; },
+  deleteBillingTaxRate: async (id: string) => { const res = await api.delete(`/platform/subscriptions/billing/tax-rates/${id}`); return res.data; },
+  getBillingOutstanding: async () => { const res = await api.get('/platform/subscriptions/billing/outstanding'); return res.data; },
+  getBillingHistory: async () => { const res = await api.get('/platform/subscriptions/billing/history'); return res.data; },
+  handleBillingInvoiceFailure: async (id: string) => { const res = await api.post(`/platform/subscriptions/billing/invoices/${id}/handle-failure`); return res.data; },
+  generateBillingAccountingEntries: async (id: string) => { const res = await api.post(`/platform/subscriptions/billing/invoices/${id}/accounting-entries`); return res.data; },
+  generateBillingRenewals: async () => { const res = await api.post('/platform/subscriptions/billing/generate-renewals'); return res.data; },
+  calculateBillingProration: async (data: { oldMonthlyKobo: number; newMonthlyKobo: number; daysRemaining: number; daysInPeriod?: number }) => { const res = await api.post('/platform/subscriptions/billing/calculate-proration', data); return res.data; },
 };
 
 
