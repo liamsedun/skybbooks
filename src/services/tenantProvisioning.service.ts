@@ -49,11 +49,13 @@ export async function provisionTenant(input: SignupInput): Promise<ProvisioningR
   const hasTrial = (selectedPlan?.trialDays || 0) > 0;
 
   const result = await db.transaction(async (tx) => {
-    const [newOrg] = await tx.insert(organisations).values({
-      name: input.orgName,
-      email: emailLower,
-      phone: input.phone || null,
-    }).returning();
+    // Use raw SQL to avoid Drizzle generating ALL columns (some may not yet exist if migration is still running)
+    const result = await tx.execute(sql`
+      INSERT INTO organisations (id, name, email, phone)
+      VALUES (gen_random_uuid(), ${input.orgName}, ${emailLower}, ${input.phone || null})
+      RETURNING id, name, email, phone, address, logo_url, base_currency, fiscal_year_start, live_gl_start_fiscal_year, legacy_system_name, vat_number, rc_number, website, settings, created_at
+    `);
+    const newOrg = (result as any).rows?.[0] || (result as any)[0];
 
     if (!newOrg) throw new Error('Failed to create organisation.');
 
