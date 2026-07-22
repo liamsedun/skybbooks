@@ -41,6 +41,7 @@ const NAV: NavGroup[] = [
       { label: 'Reminders', path: '/app/settings/reminders', icon: Bell },
       { label: 'Taxes (VAT)', path: '/app/settings/taxes', icon: Receipt },
       { label: 'Tax Configuration', path: '/app/settings/tax', icon: FileText },
+      { label: 'Subscription & Billing', path: '/app/settings/subscription', icon: CreditCard },
       { label: 'Posting Rules', path: '/app/settings/posting-rules', icon: GitPullRequestArrow },
       { label: 'Approval Workflows', path: '/app/settings/approval-workflows', icon: Shield },
       { label: 'Customer Portal', path: '/app/settings/customer-portal', icon: Store },

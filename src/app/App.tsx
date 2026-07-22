@@ -139,6 +139,7 @@ const EmailSettingsPage = lazy(() => import('../pages/settings/EmailSettingsPage
 const PostingRulesPage = lazy(() => import('../pages/settings/PostingRulesPage'));
 const ApprovalWorkflowsPage = lazy(() => import('../pages/settings/ApprovalWorkflowsPage'));
 const FeatureFlagsPage = lazy(() => import('../pages/settings/FeatureFlagsPage').then(m => ({ default: m.FeatureFlagsPage })));
+const CustomerSubscriptionPage = lazy(() => import('../pages/settings/CustomerSubscriptionPage').then(m => ({ default: m.CustomerSubscriptionPage })));
 
 const OcrProcessingPage = lazy(() => import('../pages/accountant/OcrProcessingPage').then(m => ({ default: m.OcrProcessingPage })));
 const HelpDocumentsPage = lazy(() => import('../pages/help/HelpDocumentsPage').then(m => ({ default: m.HelpDocumentsPage })));
@@ -463,6 +464,7 @@ function AppRoutes() {
             <Route path="vendor-credits" element={<LazyRoute element={<VendorCreditsSettingsPage />} />} />
             <Route path="custom-modules" element={<LazyRoute element={<CustomModulesPage />} />} />
             <Route path="feature-flags" element={<LazyRoute element={<FeatureFlagsPage />} />} />
+            <Route path="subscription" element={<LazyRoute element={<CustomerSubscriptionPage />} />} />
           </Route>
           <Route path="settings/invites" element={<LazyRoute element={<InvitesSettingsPage />} />} />
           <Route path="settings/integrations" element={<LazyRoute element={<IntegrationsSettingsPage />} />} />

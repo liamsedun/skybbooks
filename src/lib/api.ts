@@ -1974,6 +1974,13 @@ export const subscriptionApi = {
   calculateBillingProration: async (data: { oldMonthlyKobo: number; newMonthlyKobo: number; daysRemaining: number; daysInPeriod?: number }) => { const res = await api.post('/platform/subscriptions/billing/calculate-proration', data); return res.data; },
 };
 
+export const customerSubscriptionApi = {
+  listPlans: async () => { const res = await api.get('/customer-subscriptions/plans'); return res.data; },
+  getCurrent: async () => { const res = await api.get('/customer-subscriptions/current'); return res.data; },
+  changePlan: async (data: { subscriptionId: string; planId: string; prorate?: boolean }) => { const res = await api.put('/customer-subscriptions/change-plan', data); return res.data; },
+  getInvoices: async () => { const res = await api.get('/customer-subscriptions/invoices'); return res.data; },
+};
+
 export const platformUsersApi = {
   list: async (params?: { page?: number; pageSize?: number; search?: string; role?: string }) => {
     const res = await api.get('/platform/users', { params });
