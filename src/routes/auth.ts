@@ -24,16 +24,15 @@ import { provisionTenant } from '../services/tenantProvisioning.service';
 
 const router = Router();
 
-const COOKIE_OPTIONS = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'strict' as const,
-  path: '/',
-  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-};
-
-function setAppCookie(res: Response, token: string) {
-  res.cookie('app_token', token, COOKIE_OPTIONS);
+function setAppCookie(req: Request, res: Response, token: string) {
+  const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
+  res.cookie('app_token', token, {
+    httpOnly: true,
+    secure: isSecure,
+    sameSite: 'lax' as const,
+    path: '/',
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
 }
 
 function clearAuthCookies(res: Response) {
@@ -161,7 +160,7 @@ router.post('/register', async (req: AuthenticatedRequest, res: Response, next: 
 
     const { passwordHash: _, ...userResponse } = result.newUser;
 
-    setAppCookie(res, accessToken);
+    setAppCookie(req, res, accessToken);
 
     return res.status(201).json({
       accessToken,
@@ -211,7 +210,7 @@ router.post('/signup', async (req: AuthenticatedRequest, res: Response, next: Ne
     const body = signupSchema.parse(req.body);
     const result = await provisionTenant(body);
     if (result.accessToken) {
-      setAppCookie(res, result.accessToken);
+      setAppCookie(req, res, result.accessToken);
     }
     return res.status(201).json(result);
   } catch (error) {
@@ -302,7 +301,7 @@ router.post('/login', async (req: AuthenticatedRequest, res: Response, next: Nex
       userAgent: extractReqMeta(req).userAgent,
     });
 
-    setAppCookie(res, accessToken);
+    setAppCookie(req, res, accessToken);
 
     return res.status(200).json({
       accessToken,
@@ -388,7 +387,7 @@ router.post('/refresh', async (req: AuthenticatedRequest, res: Response, next: N
 
     console.info(`[Auth] Token refreshed successfully for userId=${user.id}`);
 
-    setAppCookie(res, newAccessToken);
+    setAppCookie(req, res, newAccessToken);
 
     return res.status(200).json({
       accessToken: newAccessToken,

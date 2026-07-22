@@ -22,16 +22,15 @@ const refreshSchema = z.object({
   refreshToken: z.string().min(1, 'Refresh token is required.')
 });
 
-const COOKIE_OPTIONS = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'strict' as const,
-  path: '/platform',
-  maxAge: 7 * 24 * 60 * 60 * 1000,
-};
-
-function setPlatformCookie(res: Response, token: string) {
-  res.cookie('platform_token', token, COOKIE_OPTIONS);
+function setPlatformCookie(req: Request, res: Response, token: string) {
+  const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
+  res.cookie('platform_token', token, {
+    httpOnly: true,
+    secure: isSecure,
+    sameSite: 'lax' as const,
+    path: '/platform',
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
 }
 
 // ── POST /platform/auth/login ──
@@ -87,7 +86,7 @@ router.post('/login', async (req: any, res: Response, next: NextFunction) => {
 
     const { passwordHash: _, ...userResponse } = platformUser;
 
-    setPlatformCookie(res, accessToken);
+    setPlatformCookie(req, res, accessToken);
 
     return res.status(200).json({
       accessToken,
@@ -169,7 +168,7 @@ router.post('/refresh', async (req: any, res: Response, next: NextFunction) => {
 
     console.info(`[Auth] Platform token refreshed successfully for platformUserId=${platformUser.id}`);
 
-    setPlatformCookie(res, newAccessToken);
+    setPlatformCookie(req, res, newAccessToken);
 
     return res.status(200).json({
       accessToken: newAccessToken,
