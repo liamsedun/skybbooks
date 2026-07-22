@@ -24,6 +24,27 @@ import { provisionTenant } from '../services/tenantProvisioning.service';
 
 const router = Router();
 
+const COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'strict' as const,
+  path: '/',
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+};
+
+function setAppCookie(res: Response, token: string) {
+  res.cookie('app_token', token, COOKIE_OPTIONS);
+}
+
+function setPlatformCookie(res: Response, token: string) {
+  res.cookie('platform_token', token, { ...COOKIE_OPTIONS, path: '/platform' });
+}
+
+function clearAuthCookies(res: Response) {
+  res.clearCookie('app_token', { path: '/' });
+  res.clearCookie('platform_token', { path: '/platform' });
+}
+
 // ==========================================
 // ZOD SCHEMAS FOR CONSTRAINTS VALIDATION
 // ==========================================
@@ -144,6 +165,8 @@ router.post('/register', async (req: AuthenticatedRequest, res: Response, next: 
 
     const { passwordHash: _, ...userResponse } = result.newUser;
 
+    setAppCookie(res, accessToken);
+
     return res.status(201).json({
       accessToken,
       refreshToken,
@@ -191,6 +214,9 @@ router.post('/signup', async (req: AuthenticatedRequest, res: Response, next: Ne
   try {
     const body = signupSchema.parse(req.body);
     const result = await provisionTenant(body);
+    if (result.accessToken) {
+      setAppCookie(res, result.accessToken);
+    }
     return res.status(201).json(result);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -262,6 +288,8 @@ router.post('/platform-login', async (req: AuthenticatedRequest, res: Response, 
     });
 
     const { passwordHash: _, ...userResponse } = user;
+
+    setPlatformCookie(res, accessToken);
 
     return res.status(200).json({
       accessToken,
@@ -352,6 +380,8 @@ router.post('/login', async (req: AuthenticatedRequest, res: Response, next: Nex
       userAgent: extractReqMeta(req).userAgent,
     });
 
+    setAppCookie(res, accessToken);
+
     return res.status(200).json({
       accessToken,
       refreshToken,
@@ -436,6 +466,14 @@ router.post('/refresh', async (req: AuthenticatedRequest, res: Response, next: N
 
     console.info(`[Auth] Token refreshed successfully for userId=${user.id}`);
 
+    const adminEmails = (process.env.SUPER_ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+    const isPlatformAdmin = adminEmails.includes(user.email.toLowerCase());
+    if (isPlatformAdmin) {
+      setPlatformCookie(res, newAccessToken);
+    } else {
+      setAppCookie(res, newAccessToken);
+    }
+
     return res.status(200).json({
       accessToken: newAccessToken,
       refreshToken: newRefreshToken
@@ -481,8 +519,11 @@ router.post('/logout', authenticate, async (req: AuthenticatedRequest, res: Resp
       });
     }
 
+    clearAuthCookies(res);
+
     return res.status(200).json({ message: 'Logged out successfully.' });
   } catch (error) {
+    clearAuthCookies(res);
     return next(error);
   }
 });

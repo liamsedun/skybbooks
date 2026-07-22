@@ -9,6 +9,7 @@ import path from 'path';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
+import cookieParser from 'cookie-parser';
 import winston from 'winston';
 import { apiLimiter, authLimiter, perUserLimiter, perOrgLimiter } from '../middleware/rateLimiters';
 
@@ -81,6 +82,7 @@ import dunningRouter from '../routes/dunning';
 import { runMigration } from '../db/migrate';
 import { fetchLatestRates } from '../services/cbn.service';
 import { requestId } from '../middleware/requestId';
+import { routeGuard } from '../middleware/routeGuard';
 import { AppError, ValidationError } from '../lib/errors';
 import { processPaymentReminders } from '../services/reminders.service';
 import { runDueRecurringBills } from '../services/recurring-bills.service';
@@ -148,6 +150,9 @@ async function startServer() {
 
   // Request ID for tracing
   app.use(requestId);
+
+  // Cookie parser for SPA route guard
+  app.use(cookieParser());
 
   // Body parsers
   // IMPORTANT: Webhook routes must be mounted BEFORE express.json()
@@ -260,6 +265,12 @@ async function startServer() {
 
     res.status(status).json(body);
   });
+
+  // ==========================================
+  // SPA Route Guards (before static file serving)
+  // ==========================================
+  app.use('/app', routeGuard);
+  app.use('/platform', routeGuard);
 
   // ==========================================
   // Serve uploaded files (logos etc)
