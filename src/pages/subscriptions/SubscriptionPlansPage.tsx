@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit3, Trash2, Check, X, DollarSign, Users, HardDrive, ToggleLeft, ToggleRight, Loader2, Crown, Star, Palette, Tag, Zap, Shield, Building2, Globe, Database, Layers, FileText, Repeat, Banknote, Warehouse, Briefcase, PieChart, Brain, FileSearch, Headphones, Package } from 'lucide-react';
 import { subscriptionApi } from '../../lib/api';
+import { useToast } from '../../contexts/ToastContext';
 function fmtNaira(v: number): string {
   const abs = Math.abs(v);
   const naira = Math.floor(abs / 100);
@@ -23,6 +24,7 @@ const defaultForm = {
 };
 
 export function SubscriptionPlansPage() {
+  const { toast } = useToast();
   const [plans, setPlans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -36,7 +38,9 @@ export function SubscriptionPlansPage() {
     try {
       const data = await subscriptionApi.listPlans();
       setPlans(data);
-    } catch (err) {
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || err?.message || 'Failed to load plans';
+      toast(msg, 'error');
       console.error('Failed to load plans:', err);
     } finally {
       setLoading(false);
@@ -55,8 +59,11 @@ export function SubscriptionPlansPage() {
       setShowForm(false);
       setEditingPlan(null);
       setFormData({ ...defaultForm });
+      toast(editingPlan ? 'Plan updated successfully' : 'Plan created successfully', 'success');
       loadPlans();
-    } catch (err) {
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || err?.message || 'Failed to save plan';
+      toast(msg, 'error');
       console.error('Failed to save plan:', err);
     }
   }
@@ -110,8 +117,11 @@ export function SubscriptionPlansPage() {
   async function toggleActive(plan: any) {
     try {
       await subscriptionApi.updatePlan(plan.id, { isActive: !plan.isActive });
+      toast(`Plan ${plan.isActive ? 'deactivated' : 'activated'}`, 'success');
       loadPlans();
-    } catch (err) {
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || err?.message || 'Failed to toggle plan';
+      toast(msg, 'error');
       console.error('Failed to toggle plan:', err);
     }
   }
@@ -120,8 +130,11 @@ export function SubscriptionPlansPage() {
     if (!confirm(`Deactivate plan "${plan.name}"?`)) return;
     try {
       await subscriptionApi.deletePlan(plan.id);
+      toast('Plan deactivated', 'success');
       loadPlans();
-    } catch (err) {
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || err?.message || 'Failed to deactivate plan';
+      toast(msg, 'error');
       console.error('Failed to delete plan:', err);
     }
   }
