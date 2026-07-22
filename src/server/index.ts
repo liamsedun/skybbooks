@@ -71,6 +71,7 @@ import subscriptionNotificationsRouter from '../routes/subscriptionNotifications
 import budgetRouter from '../routes/budget';
 import inventoryTrackingRouter from '../routes/inventoryTracking';
 import supportRouter from '../routes/support';
+import platformUsersRouter from '../routes/platformUsers';
 import announcementsRouter from '../routes/announcements';
 import rateLimitAdminRouter from '../routes/rateLimitAdmin';
 import featureRolloutsRouter from '../routes/featureRollouts';
@@ -218,6 +219,7 @@ async function startServer() {
   app.use('/api/announcements', announcementsRouter);
   app.use('/api/platform/rate-limits', rateLimitAdminRouter);
   app.use('/api/platform/feature-rollouts', featureRolloutsRouter);
+  app.use('/api/platform/users', platformUsersRouter);
   app.use('/api/dunning', dunningRouter);
 
   app.get('/api/health', (req, res) => {

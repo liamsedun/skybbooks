@@ -1974,5 +1974,28 @@ export const subscriptionApi = {
   calculateBillingProration: async (data: { oldMonthlyKobo: number; newMonthlyKobo: number; daysRemaining: number; daysInPeriod?: number }) => { const res = await api.post('/platform/subscriptions/billing/calculate-proration', data); return res.data; },
 };
 
+export const platformUsersApi = {
+  list: async (params?: { page?: number; pageSize?: number; search?: string; role?: string }) => {
+    const res = await api.get('/platform/users', { params });
+    return res.data;
+  },
+  create: async (data: { email: string; password: string; fullName: string; role: string; isActive?: boolean }) => {
+    const res = await api.post('/platform/users', data);
+    return res.data;
+  },
+  update: async (id: string, data: { fullName?: string; role?: string; isActive?: boolean }) => {
+    const res = await api.put(`/platform/users/${id}`, data);
+    return res.data;
+  },
+  updatePassword: async (id: string, password: string) => {
+    const res = await api.put(`/platform/users/${id}/password`, { password });
+    return res.data;
+  },
+  remove: async (id: string) => {
+    const res = await api.delete(`/platform/users/${id}`);
+    return res.data;
+  },
+};
+
 
 

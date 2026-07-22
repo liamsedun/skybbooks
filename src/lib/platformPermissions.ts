@@ -73,8 +73,28 @@ const allPermissions = Object.values(PlatformPermission) as PlatformPermission[]
 const rolePermissions: Record<string, PlatformPermission[]> = {
   super_admin: allPermissions,
 
+  admin: [
+    PlatformPermission.UsersRead, PlatformPermission.UsersCreate, PlatformPermission.UsersUpdate, PlatformPermission.UsersDelete,
+    PlatformPermission.OrgsRead, PlatformPermission.OrgsManage,
+    PlatformPermission.SubscriptionsRead, PlatformPermission.SubscriptionsManage,
+    PlatformPermission.PlansRead, PlatformPermission.PlansManage,
+    PlatformPermission.BillingRead, PlatformPermission.BillingManage,
+    PlatformPermission.AnalyticsRead, PlatformPermission.GrowthRead,
+    PlatformPermission.SystemRead, PlatformPermission.SystemManage,
+    PlatformPermission.FeatureFlagsManage,
+    PlatformPermission.AuditLogsRead,
+    PlatformPermission.SupportRead, PlatformPermission.SupportManage,
+    PlatformPermission.AnnouncementsManage,
+    PlatformPermission.RegionalPricingManage,
+    PlatformPermission.EnterpriseContractsManage,
+    PlatformPermission.ResellerContractsManage,
+    PlatformPermission.OrgConfigManage,
+    PlatformPermission.WhiteLabelManage,
+    PlatformPermission.ApiKeysManage,
+  ],
+
   ceo: [
-    PlatformPermission.UsersRead,
+    PlatformPermission.UsersRead, PlatformPermission.UsersCreate, PlatformPermission.UsersUpdate, PlatformPermission.UsersDelete,
     PlatformPermission.OrgsRead, PlatformPermission.OrgsManage,
     PlatformPermission.SubscriptionsRead, PlatformPermission.SubscriptionsManage,
     PlatformPermission.PlansRead,
