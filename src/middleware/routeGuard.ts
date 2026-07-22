@@ -39,7 +39,7 @@ function extractToken(req: Request): string | undefined {
     }
   }
   const cookies = (req as any).cookies || {};
-  if (req.path.startsWith('/platform')) {
+  if (req.baseUrl === '/platform') {
     return cookies.platform_token;
   }
   return cookies.app_token;
@@ -61,7 +61,7 @@ export function routeGuard(req: Request, res: Response, next: NextFunction): voi
   const requestId = (req as any).requestId || 'unknown';
   const ip = req.ip || req.socket.remoteAddress || 'unknown';
 
-  if (req.path === '/platform/login') {
+  if (req.path === '/login') {
     return next();
   }
 
