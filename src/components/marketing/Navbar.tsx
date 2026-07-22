@@ -104,13 +104,13 @@ export function Navbar() {
             ) : (
               <>
                 <button
-                  onClick={() => navigate('/auth/login')}
+                  onClick={() => navigate('/login')}
                   className="px-5 py-2 text-sm font-medium text-slate-700 hover:text-[#082F49] transition-colors rounded-lg"
                 >
                   Log in
                 </button>
                 <button
-                  onClick={() => navigate('/auth/register')}
+                  onClick={() => navigate('/register')}
                   className="px-5 py-2 text-sm font-semibold text-white bg-[#082F49] hover:bg-[#0C4A6E] rounded-lg transition-colors shadow-sm"
                 >
                   Sign Up
@@ -163,13 +163,13 @@ export function Navbar() {
             ) : (
               <>
                 <button
-                  onClick={() => navigate('/auth/login')}
+                  onClick={() => navigate('/login')}
                   className="w-full px-3 py-2.5 text-sm font-medium text-slate-700 hover:text-[#082F49] hover:bg-slate-50 rounded-lg transition-colors text-left"
                 >
                   Log in
                 </button>
                 <button
-                  onClick={() => navigate('/auth/register')}
+                  onClick={() => navigate('/register')}
                   className="w-full px-3 py-2.5 text-sm font-semibold text-white bg-[#082F49] hover:bg-[#0C4A6E] rounded-lg transition-colors mt-1"
                 >
                   Sign Up

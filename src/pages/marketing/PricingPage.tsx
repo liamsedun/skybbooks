@@ -40,7 +40,7 @@ const tiers: Tier[] = [
     description: 'Perfect for freelancers and micro-businesses just getting started.',
     popular: false,
     cta: 'Get Started',
-    ctaLink: '/auth/register',
+    ctaLink: '/register',
     maxUsers: '1 user',
     support: 'Email support',
     storage: '100 MB',
@@ -74,7 +74,7 @@ const tiers: Tier[] = [
     description: 'For growing businesses that need full accounting capabilities.',
     popular: true,
     cta: 'Start Free Trial',
-    ctaLink: '/auth/register',
+    ctaLink: '/register',
     maxUsers: '5 users',
     support: 'Priority email & chat',
     storage: '5 GB',
@@ -111,7 +111,7 @@ const tiers: Tier[] = [
     description: 'For established businesses with advanced reporting and compliance needs.',
     popular: false,
     cta: 'Start Free Trial',
-    ctaLink: '/auth/register',
+    ctaLink: '/register',
     maxUsers: 'Unlimited users',
     support: 'Dedicated account manager',
     storage: 'Unlimited',
@@ -175,7 +175,7 @@ export function PricingPage() {
             <span className="text-base font-bold text-[#082F49]">SkyBooks</span>
           </button>
           <button
-            onClick={() => navigate('/auth/register')}
+            onClick={() => navigate('/register')}
             className="px-5 py-2 text-sm font-semibold text-white bg-[#082F49] hover:bg-[#0C4A6E] rounded-lg transition-colors"
           >
             Sign Up
@@ -454,7 +454,7 @@ export function PricingPage() {
           <h2 className="text-3xl lg:text-4xl font-bold text-white leading-tight">Ready to get started?</h2>
           <p className="mt-4 text-lg text-white/70 max-w-xl mx-auto">Join 10,000+ Nigerian businesses already using SkyBooks. Start your free trial today.</p>
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <button onClick={() => navigate('/auth/register')} className="w-full sm:w-auto px-8 py-3.5 bg-white hover:bg-slate-100 text-[#082F49] font-semibold rounded-xl transition-all shadow-xl text-sm">
+            <button onClick={() => navigate('/register')} className="w-full sm:w-auto px-8 py-3.5 bg-white hover:bg-slate-100 text-[#082F49] font-semibold rounded-xl transition-all shadow-xl text-sm">
               Start Free Trial <ArrowRight size={16} className="inline ml-1" />
             </button>
             <button onClick={() => navigate('/contact')} className="w-full sm:w-auto px-8 py-3.5 border border-white/20 hover:border-white/40 text-white font-medium rounded-xl transition-all text-sm">

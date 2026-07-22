@@ -46,7 +46,7 @@ export function ContactPage() {
             <span className="text-base font-bold text-[#082F49]">SkyBooks</span>
           </button>
           <button
-            onClick={() => navigate('/auth/register')}
+            onClick={() => navigate('/register')}
             className="px-5 py-2 text-sm font-semibold text-white bg-[#082F49] hover:bg-[#0C4A6E] rounded-lg transition-colors"
           >
             Sign Up
@@ -218,7 +218,7 @@ export function ContactPage() {
           <h2 className="text-2xl font-bold text-white">Ready to simplify your accounting?</h2>
           <p className="mt-3 text-white/70 text-sm">Start your free trial today. No credit card required.</p>
           <button
-            onClick={() => navigate('/auth/register')}
+            onClick={() => navigate('/register')}
             className="mt-6 px-8 py-3 bg-white hover:bg-slate-100 text-[#082F49] font-semibold rounded-xl transition-all shadow-xl text-sm inline-flex items-center gap-2"
           >
             Start Free Trial <ArrowRight size={14} />

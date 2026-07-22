@@ -53,7 +53,7 @@ export function HeroSection() {
           {/* ─── Buttons ─── */}
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
             <button
-              onClick={() => navigate('/auth/register')}
+              onClick={() => navigate('/register')}
               className="group w-full sm:w-auto px-8 py-3.5 bg-[#082F49] hover:bg-[#0C4A6E] text-white font-semibold rounded-xl transition-all shadow-lg shadow-[#082F49]/20 hover:shadow-xl hover:shadow-[#082F49]/30 flex items-center justify-center gap-2 text-sm"
               aria-label="Start free trial"
             >
@@ -68,7 +68,7 @@ export function HeroSection() {
               <Calendar size={16} aria-hidden="true" /> Book a Demo
             </button>
             <button
-              onClick={() => navigate('/auth/login')}
+              onClick={() => navigate('/login')}
               className="w-full sm:w-auto px-8 py-3.5 border border-slate-200 hover:border-slate-300 text-slate-600 font-medium rounded-xl transition-all flex items-center justify-center gap-2 text-sm hover:bg-slate-50"
               aria-label="Log in to your account"
             >

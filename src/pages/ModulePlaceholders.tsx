@@ -189,7 +189,7 @@ export function LoginPage() {
               </div>
 
               <div className="text-xs font-bold">
-                <Link to="/auth/forgot-password" id="forgot-pass-anchor" className="text-indigo-600 hover:text-indigo-700">Forgot password?</Link>
+                <Link to="/forgot-password" id="forgot-pass-anchor" className="text-indigo-600 hover:text-indigo-700">Forgot password?</Link>
               </div>
             </div>
 
@@ -210,7 +210,7 @@ export function LoginPage() {
           </form>
 
           <div className="mt-6 pt-5 border-t border-slate-100 text-center">
-            <Link to="/auth/register" id="ref-register-anchor" className="text-xs font-black text-slate-800 hover:text-indigo-700">
+            <Link to="/register" id="ref-register-anchor" className="text-xs font-black text-slate-800 hover:text-indigo-700">
               New company? Build Corporate Accounting Books
             </Link>
           </div>
@@ -519,7 +519,7 @@ export function RegisterPage() {
           </form>
 
           <div className="mt-5 pt-4 border-t border-slate-100 text-center">
-            <Link to="/auth/login" id="back-signin-anchor" className="text-xs font-bold text-indigo-600 hover:text-indigo-700">
+            <Link to="/login" id="back-signin-anchor" className="text-xs font-bold text-indigo-600 hover:text-indigo-700">
               Already have active accounting books? Sign In
             </Link>
           </div>
@@ -622,7 +622,7 @@ export function ForgotPasswordPage() {
                 An authorization token has been sent to <strong>{email}</strong>. Open the link to verify credentials override.
               </p>
               <div className="pt-2">
-                <Link to="/auth/login" className="text-xs font-bold text-purple-600 hover:text-purple-700">Return to sign-in terminal</Link>
+                <Link to="/login" className="text-xs font-bold text-purple-600 hover:text-purple-700">Return to sign-in terminal</Link>
               </div>
             </div>
           ) : (
@@ -650,7 +650,7 @@ export function ForgotPasswordPage() {
               </button>
 
               <div className="text-center pt-2">
-                <Link to="/auth/login" className="text-xs font-bold text-slate-500 hover:text-slate-700">Cancel and return</Link>
+                <Link to="/login" className="text-xs font-bold text-slate-500 hover:text-slate-700">Cancel and return</Link>
               </div>
             </form>
           )}

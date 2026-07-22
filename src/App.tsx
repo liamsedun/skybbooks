@@ -51,11 +51,15 @@ function AppRoutes() {
         <Route path="/contact" element={<LazyRoute element={<ContactPage />} />} />
 
         <Route path="/login" element={<LazyRoute element={<LoginPage />} />} />
+        <Route path="/register" element={<LazyRoute element={<RegisterPage />} />} />
+        <Route path="/forgot-password" element={<LazyRoute element={<ForgotPasswordPage />} />} />
+        <Route path="/reset-password" element={<LazyRoute element={<ResetPasswordPage />} />} />
+        <Route path="/accept-invite" element={<LazyRoute element={<AcceptInvitePage />} />} />
         <Route path="/auth/login" element={<Navigate to="/login" replace />} />
-        <Route path="/auth/register" element={<LazyRoute element={<RegisterPage />} />} />
-        <Route path="/auth/forgot-password" element={<LazyRoute element={<ForgotPasswordPage />} />} />
-        <Route path="/auth/reset-password" element={<LazyRoute element={<ResetPasswordPage />} />} />
-        <Route path="/auth/accept-invite" element={<LazyRoute element={<AcceptInvitePage />} />} />
+        <Route path="/auth/register" element={<Navigate to="/register" replace />} />
+        <Route path="/auth/forgot-password" element={<Navigate to="/forgot-password" replace />} />
+        <Route path="/auth/reset-password" element={<Navigate to="/reset-password" replace />} />
+        <Route path="/auth/accept-invite" element={<Navigate to="/accept-invite" replace />} />
 
         <Route path="/help/documents" element={<LazyRoute element={<HelpDocumentsPage />} />} />
         <Route path="/help/faqs" element={<LazyRoute element={<FAQsPage />} />} />

@@ -47,7 +47,7 @@ export function PlatformLayout({ children }: { children?: React.ReactNode }) {
     );
   }, [searchQuery]);
 
-  const handleLogout = async () => { await logout(); navigate('/auth/login'); };
+  const handleLogout = async () => { await logout(); navigate('/platform/login'); };
 
   useEffect(() => {
     const handleClick = (event: MouseEvent) => {

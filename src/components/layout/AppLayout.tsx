@@ -296,7 +296,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     { label: 'New Manual Journal', icon: BookOpen, path: '/app/accountant/journals/new' },
   ], []);
 
-  const handleLogout = async () => { await logout(); navigate('/auth/login'); };
+  const handleLogout = async () => { await logout(); navigate('/login'); };
 
   const currentNavItem = useMemo(() =>
     navigation.flatMap(g => g.items).find(i => i.id === activeNavId),
