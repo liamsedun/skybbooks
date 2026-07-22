@@ -54,6 +54,8 @@ api.interceptors.request.use(
     const isAuthEndpoint = config.url && (
       config.url.includes('/auth/login') ||
       config.url.includes('/auth/register') ||
+      config.url.includes('/auth/signup') ||
+      config.url.includes('/auth/plans') ||
       config.url.includes('/platform/auth/login') ||
       config.url.includes('/platform/auth/refresh') ||
       config.url.includes('/platform/auth/logout') ||
