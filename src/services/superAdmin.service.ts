@@ -1,5 +1,5 @@
-import { eq, and, or, sql, desc, asc, lt, lte, gte, count, sum, avg, inArray, isNull } from 'drizzle-orm';
-import { db, organisations, users, subscriptions, subscriptionPlans, subscriptionInvoices, subscriptionPayments, subscriptionUsage, coupons, promotions, auditLog, chatMessages, documents, regionalPricing, enterpriseContracts, resellerContracts, subscriptionConfig, whiteLabelConfig } from '../db/schema';
+import { eq, and, or, sql, desc, asc, lt, lte, gte, count, sum, avg, inArray, isNull, not, ne } from 'drizzle-orm';
+import { db, organisations, users, subscriptions, subscriptionPlans, subscriptionInvoices, subscriptionPayments, subscriptionUsage, coupons, promotions, auditLog, chatMessages, documents, regionalPricing, enterpriseContracts, resellerContracts, subscriptionConfig, whiteLabelConfig, supportTickets, featureRollouts, featureRolloutEvents, platformUsers } from '../db/schema';
 
 export interface DashboardData {
   kpis: {
@@ -15,12 +15,23 @@ export interface DashboardData {
     failedPayments: number;
     storageUsed: number;
     apiCalls: number;
+    churnRate: number;
+    revenueGrowth: number;
+    orgGrowthRate: number;
+    totalPlatformUsers: number;
+    openTickets: number;
+    totalTickets: number;
   };
   revenueOverTime: Array<{ month: string; revenueKobo: number; subscriptions: number }>;
   planDistribution: Array<{ planName: string; count: number; revenueKobo: number }>;
   orgGrowth: Array<{ month: string; newOrgs: number; newUsers: number }>;
   recentOrganizations: Array<{ id: string; name: string; email: string; createdAt: string; status: string }>;
   failedPayments: Array<{ id: string; orgName: string; amountKobo: number; date: string; reason: string }>;
+  topCustomers: Array<{ id: string; name: string; email: string; planName: string; totalPaidKobo: number; status: string }>;
+  topPlans: Array<{ planName: string; orgCount: number; revenueKobo: number; monthlyPriceKobo: number }>;
+  supportTicketStats: { open: number; inProgress: number; resolved: number; closed: number };
+  serverStatus: { activeUsers: number; newOrgsToday: number; storageUsedBytes: number; dbSize: number; uptime: number };
+  featureUsage: Array<{ featureKey: string; usageCount: number; orgCount: number }>;
 }
 
 export async function getDashboard(): Promise<DashboardData> {
@@ -105,6 +116,101 @@ export async function getDashboard(): Promise<DashboardData> {
   const mrrKobo = Math.round(latest6Revenue / 6);
   const arrKobo = mrrKobo * 12;
 
+  // ── Churn rate ──
+  const [totalSubs] = await db.select({ count: count() }).from(subscriptions);
+  const [churnedSubs] = await db.select({ count: count() }).from(subscriptions).where(inArray(subscriptions.status, ['expired', 'cancelled', 'suspended'] as any));
+  const churnRate = Number(totalSubs?.count || 0) > 0 ? Math.round((Number(churnedSubs?.count || 0) / Number(totalSubs?.count || 0)) * 100) : 0;
+
+  // ── Revenue growth (previous 6 months vs current 6 months) ──
+  const prev6Months = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+  const prevPaidInvoices = await db
+    .select({ totalKobo: subscriptionInvoices.totalKobo })
+    .from(subscriptionInvoices)
+    .where(and(eq(subscriptionInvoices.status, 'paid'), gte(subscriptionInvoices.createdAt, prev6Months), lt(subscriptionInvoices.createdAt, last6Months)));
+  const prevRevenue = prevPaidInvoices.reduce((s, i) => s + Number(i.totalKobo || 0), 0);
+  const revenueGrowth = prevRevenue > 0 ? Math.round(((latest6Revenue - prevRevenue) / prevRevenue) * 100) : 0;
+
+  // ── Org growth rate ──
+  const prev12Months = new Date(now.getFullYear() - 1, now.getMonth(), 1);
+  const prevYearOrgs = await db.select({ count: count() }).from(organisations).where(lt(organisations.createdAt, prev12Months));
+  const totalOrgsCount = Number(orgCount?.count || 0);
+  const prevOrgsCount = Number(prevYearOrgs[0]?.count || 0);
+  const orgGrowthRate = prevOrgsCount > 0 ? Math.round(((totalOrgsCount - prevOrgsCount) / prevOrgsCount) * 100) : 0;
+
+  // ── Platform users ──
+  const [platformUserCount] = await db.select({ count: count() }).from(platformUsers);
+
+  // ── Support tickets ──
+  const [openTickets] = await db.select({ count: count() }).from(supportTickets).where(ne(supportTickets.status, 'closed'));
+  const [totalTickets] = await db.select({ count: count() }).from(supportTickets);
+  const openTicketCount = await db.select({ status: supportTickets.status, count: sql<number>`count(*)` })
+    .from(supportTickets)
+    .groupBy(supportTickets.status);
+  const ticketStats = { open: 0, inProgress: 0, resolved: 0, closed: 0 };
+  for (const t of openTicketCount) {
+    const st = t.status || 'open';
+    if (st === 'open') ticketStats.open = Number(t.count);
+    else if (st === 'in_progress' || st === 'in-progress') ticketStats.inProgress = Number(t.count);
+    else if (st === 'resolved') ticketStats.resolved = Number(t.count);
+    else if (st === 'closed') ticketStats.closed = Number(t.count);
+  }
+
+  // ── Top customers ──
+  const topCustomers = await db
+    .select({
+      id: organisations.id,
+      name: organisations.name,
+      email: organisations.email,
+      planName: subscriptionPlans.name,
+      totalPaidKobo: sql<number>`coalesce(sum(${subscriptionInvoices.totalKobo}), 0)`,
+      status: subscriptions.status,
+    })
+    .from(organisations)
+    .innerJoin(subscriptions, eq(subscriptions.orgId, organisations.id))
+    .innerJoin(subscriptionPlans, eq(subscriptions.planId, subscriptionPlans.id))
+    .leftJoin(subscriptionInvoices, and(eq(subscriptionInvoices.subscriptionId, subscriptions.id), eq(subscriptionInvoices.status, 'paid')))
+    .groupBy(organisations.id, organisations.name, organisations.email, subscriptionPlans.name, subscriptions.status)
+    .orderBy(desc(sql`coalesce(sum(${subscriptionInvoices.totalKobo}), 0)`))
+    .limit(10);
+
+  // ── Top plans ──
+  const topPlans = await db
+    .select({
+      planName: subscriptionPlans.name,
+      orgCount: sql<number>`count(*)`,
+      revenueKobo: sql<number>`coalesce(sum(${subscriptionInvoices.totalKobo}), 0)`,
+      monthlyPriceKobo: subscriptionPlans.monthlyPriceKobo,
+    })
+    .from(subscriptionPlans)
+    .leftJoin(subscriptions, eq(subscriptions.planId, subscriptionPlans.id))
+    .leftJoin(subscriptionInvoices, and(eq(subscriptionInvoices.subscriptionId, subscriptions.id), eq(subscriptionInvoices.status, 'paid')))
+    .groupBy(subscriptionPlans.name, subscriptionPlans.monthlyPriceKobo)
+    .orderBy(desc(sql`count(*)`))
+    .limit(10);
+
+  // ── Feature usage ──
+  const featureUsage = await db
+    .select({
+      featureKey: subscriptionUsage.featureKey,
+      usageCount: sql<number>`sum(${subscriptionUsage.usageCount})`,
+      orgCount: sql<number>`count(distinct ${subscriptionUsage.orgId})`,
+    })
+    .from(subscriptionUsage)
+    .groupBy(subscriptionUsage.featureKey)
+    .orderBy(desc(sql`sum(${subscriptionUsage.usageCount})`))
+    .limit(10);
+
+  // ── Users without status in orgGrowth ──
+  const userGrowth = await db
+    .select({
+      month: sql<string>`to_char(${users.createdAt}, 'YYYY-MM')`,
+      count: sql<number>`count(*)`,
+    })
+    .from(users)
+    .where(gte(users.createdAt, prev12Months))
+    .groupBy(sql`to_char(${users.createdAt}, 'YYYY-MM')`)
+    .orderBy(sql`to_char(${users.createdAt}, 'YYYY-MM')`);
+
   return {
     kpis: {
       totalOrganizations: Number(orgCount?.count || 0),
@@ -119,12 +225,23 @@ export async function getDashboard(): Promise<DashboardData> {
       failedPayments: Number(failedPmts?.count || 0),
       storageUsed: totalStorage,
       apiCalls: 0,
+      churnRate,
+      revenueGrowth,
+      orgGrowthRate,
+      totalPlatformUsers: Number(platformUserCount?.count || 0),
+      openTickets: Number(openTickets?.count || 0),
+      totalTickets: Number(totalTickets?.count || 0),
     },
     revenueOverTime: monthlyRevenue.map(r => ({ month: r.month, revenueKobo: Number(r.revenueKobo || 0), subscriptions: Number(r.subs || 0) })),
     planDistribution: planDist.map(p => ({ planName: p.planName, count: Number(p.count), revenueKobo: Number(p.revenueKobo || 0) })),
     orgGrowth: orgGrowth.map(o => ({ month: o.month, newOrgs: Number(o.newOrgs), newUsers: 0 })),
     recentOrganizations: recentOrgs.map(o => ({ id: o.id, name: o.name || '', email: o.email || '', createdAt: o.createdAt?.toISOString() || '', status: '' })),
     failedPayments: failedPaymentRows.map(p => ({ id: p.id, orgName: p.orgName || '', amountKobo: Number(p.amountKobo || 0), date: p.date?.toISOString() || '', reason: p.reason || '' })),
+    topCustomers: topCustomers.map(c => ({ id: c.id, name: c.name || '', email: c.email || '', planName: c.planName || '', totalPaidKobo: Number(c.totalPaidKobo || 0), status: c.status || '' })),
+    topPlans: topPlans.map(p => ({ planName: p.planName, orgCount: Number(p.orgCount), revenueKobo: Number(p.revenueKobo || 0), monthlyPriceKobo: Number(p.monthlyPriceKobo || 0) })),
+    supportTicketStats: ticketStats,
+    serverStatus: { activeUsers: Number(userCount?.count || 0), newOrgsToday: 0, storageUsedBytes: totalStorage, dbSize: 0, uptime: 99.9 },
+    featureUsage: featureUsage.map(f => ({ featureKey: f.featureKey, usageCount: Number(f.usageCount || 0), orgCount: Number(f.orgCount || 0) })),
   };
 }
 

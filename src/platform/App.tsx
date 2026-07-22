@@ -9,6 +9,7 @@ import { ToastProvider } from '../contexts/ToastContext';
 import { useAuth } from '../hooks/useAuth';
 import { LogIn, ShieldAlert, Eye, EyeOff, AlertCircle, Mail, Lock } from 'lucide-react';
 
+const PlatformDashboardPage = lazy(() => import('../pages/admin/PlatformDashboardPage').then(m => ({ default: m.PlatformDashboardPage })));
 const SuperAdminDashboard = lazy(() => import('../pages/admin/SuperAdminDashboard').then(m => ({ default: m.SuperAdminDashboard })));
 const SaaSAnalyticsDashboard = lazy(() => import('../pages/admin/SaaSAnalyticsDashboard').then(m => ({ default: m.SaaSAnalyticsDashboard })));
 const SubscriptionNotificationsPage = lazy(() => import('../pages/admin/SubscriptionNotificationsPage').then(m => ({ default: m.SubscriptionNotificationsPage })));
@@ -189,7 +190,7 @@ function AdminRoutes() {
         <Route path="/platform/login" element={<PlatformLoginPage />} />
 
         <Route path="/platform" element={<ProtectedPlatformRoute />}>
-          <Route index element={<LazyRoute element={<SuperAdminDashboard />} />} />
+          <Route index element={<LazyRoute element={<PlatformDashboardPage />} />} />
 
           {/* Core Platform Management */}
           <Route path="organizations" element={<LazyRoute element={<OrgConfigPage />} />} />
