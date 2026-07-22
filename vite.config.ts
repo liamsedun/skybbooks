@@ -17,6 +17,11 @@ export default defineConfig(() => {
       cssCodeSplit: true,
       sourcemap: false,
       rollupOptions: {
+        input: {
+          main: path.resolve(__dirname, 'index.html'),
+          app: path.resolve(__dirname, 'app.html'),
+          platform: path.resolve(__dirname, 'platform.html'),
+        },
         output: {
           manualChunks(id: string) {
             if (id.includes('node_modules/react-dom') || id.includes('node_modules/react/')) return 'react-vendor';

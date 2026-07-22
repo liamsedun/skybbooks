@@ -13,8 +13,7 @@ import {
   Star, ChevronRight, PanelLeftClose, PanelLeft,
   CircleUser, Command, Plus, LayoutList, Home, Landmark,
   ShoppingCart, ShoppingBag, Receipt, Mail, Phone, ExternalLink, Video, RefreshCw, Tag,
-  ToggleLeft, SlidersHorizontal, BarChart3, Globe, Palette, Users2,
-  LifeBuoy, Megaphone, Gauge, FlaskConical, Activity
+  BarChart3
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -150,19 +149,6 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     set_organisation: '/app/settings/organisation', set_invites: '/app/settings/invites', set_roles: '/app/settings/roles',
     user_preferences: '/app/settings/user-preferences', set_integrations: '/app/settings/integrations',
     feature_flags: '/app/settings/feature-flags', plan_features: '/app/settings/feature-flags/plans',
-    admin: '/app/admin',
-    saas_analytics: '/app/admin/analytics',
-    sub_notifications: '/app/admin/notifications',
-    regional_pricing: '/app/admin/regional-pricing',
-    enterprise_contracts: '/app/admin/enterprise-contracts',
-    reseller_contracts: '/app/admin/reseller-contracts',
-    org_config: '/app/admin/org-config',
-    white_label: '/app/admin/white-label',
-    support_tickets: '/app/admin/support-tickets',
-    announcements: '/app/admin/announcements',
-    rate_limits: '/app/admin/rate-limits',
-    feature_rollouts: '/app/admin/feature-rollouts',
-    system_health: '/app/admin/system-health',
   }), []);
 
   const navigation: NavGroup[] = useMemo(() => [
@@ -254,23 +240,6 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
       { name: 'Legacy Migration', id: 'rep_legacy', icon: History },
       { name: 'Consolidation', id: 'rep_consolidation', icon: Building },
       { name: 'Revenue Recognition', id: 'rep_revenue_recognition', icon: FileBarChart },
-    ]},
-    { title: 'SYSTEM', icon: Shield, items: [
-      { name: 'Feature Flags', id: 'feature_flags', icon: ToggleLeft },
-      { name: 'Plan Features', id: 'plan_features', icon: SlidersHorizontal },
-      { name: 'Super Admin', id: 'admin', icon: Shield },
-      { name: 'SaaS Analytics', id: 'saas_analytics', icon: BarChart3 },
-      { name: 'Notifications Engine', id: 'sub_notifications', icon: Bell },
-      { name: 'Regional Pricing', id: 'regional_pricing', icon: Globe },
-      { name: 'Enterprise Contracts', id: 'enterprise_contracts', icon: Building },
-      { name: 'Reseller Contracts', id: 'reseller_contracts', icon: Users2 },
-      { name: 'Org Config', id: 'org_config', icon: Settings },
-      { name: 'White Label', id: 'white_label', icon: Palette },
-      { name: 'Support Tickets', id: 'support_tickets', icon: LifeBuoy },
-      { name: 'Announcements', id: 'announcements', icon: Megaphone },
-      { name: 'Rate Limits', id: 'rate_limits', icon: Gauge },
-      { name: 'Feature Rollouts', id: 'feature_rollouts', icon: FlaskConical },
-      { name: 'System Health', id: 'system_health', icon: Activity },
     ]},
   ], []);
 

@@ -273,15 +273,44 @@ async function startServer() {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
-      appType: 'spa',
+      appType: 'custom',
     });
+
+    // Rewrite SPA routes to their HTML entry points before Vite middleware
+    // Only for non-file requests so static assets pass through unchanged
+    app.use((req, res, next) => {
+      if (req.path.startsWith('/app') && !req.path.includes('.')) {
+        req.url = '/app.html';
+      } else if (req.path.startsWith('/platform') && !req.path.includes('.')) {
+        req.url = '/platform.html';
+      }
+      next();
+    });
+
     app.use(vite.middlewares);
+
+    // SPA fallback for unmatched routes (Vite in 'custom' mode doesn't provide one)
+    app.use('*', (req, res) => {
+      if (req.path.startsWith('/app')) {
+        res.sendFile(path.join(process.cwd(), 'app.html'));
+      } else if (req.path.startsWith('/platform')) {
+        res.sendFile(path.join(process.cwd(), 'platform.html'));
+      } else {
+        res.sendFile(path.join(process.cwd(), 'index.html'));
+      }
+    });
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
-    // SPA fallback
+    // Multi-SPA fallback — serve correct HTML based on path prefix
     app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+      if (req.path.startsWith('/app')) {
+        res.sendFile(path.join(distPath, 'app.html'));
+      } else if (req.path.startsWith('/platform')) {
+        res.sendFile(path.join(distPath, 'platform.html'));
+      } else {
+        res.sendFile(path.join(distPath, 'index.html'));
+      }
     });
   }
 

@@ -27,6 +27,12 @@ export const api: AxiosInstance = axios.create({
   },
 });
 
+// ── Auth scope helpers (customer vs platform) ──
+function getAuthPrefix(): string {
+  if (typeof window === 'undefined') return '';
+  return window.location.pathname.startsWith('/platform') ? 'platform_' : '';
+}
+
 let isRefreshing = false;
 let failedQueue: Array<{ resolve: (token: string) => void; reject: (err: any) => void }> = [];
 
@@ -48,6 +54,7 @@ api.interceptors.request.use(
     const isAuthEndpoint = config.url && (
       config.url.includes('/auth/login') ||
       config.url.includes('/auth/register') ||
+      config.url.includes('/auth/platform-login') ||
       config.url.includes('/auth/refresh') ||
       config.url.includes('/org/invite/')
     );
@@ -56,9 +63,9 @@ api.interceptors.request.use(
       return config;
     }
 
-    const token = localStorage.getItem('accessToken');
+    const prefix = getAuthPrefix();
+    const token = localStorage.getItem(prefix + 'accessToken');
     if (!token) {
-      // Reject client-side to prevent sending unauthenticated requests to the server
       return Promise.reject(new axios.Cancel('No active session token available.'));
     }
 
@@ -86,6 +93,8 @@ api.interceptors.response.use(
     }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
+      const prefix = getAuthPrefix();
+
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
@@ -107,7 +116,7 @@ api.interceptors.response.use(
       originalRequest._retry = true;
       isRefreshing = true;
 
-      const refreshToken = localStorage.getItem('refreshToken');
+      const refreshToken = localStorage.getItem(prefix + 'refreshToken');
 
       if (!refreshToken) {
         isRefreshing = false;
@@ -120,8 +129,8 @@ api.interceptors.response.use(
         const response = await axios.post(`${API_URL}/auth/refresh`, { refreshToken });
         const { accessToken: newAccessToken, refreshToken: newRefreshToken } = response.data;
 
-        localStorage.setItem('accessToken', newAccessToken);
-        localStorage.setItem('refreshToken', newRefreshToken);
+        localStorage.setItem(prefix + 'accessToken', newAccessToken);
+        localStorage.setItem(prefix + 'refreshToken', newRefreshToken);
 
         api.defaults.headers.common['Authorization'] = `Bearer ${newAccessToken}`;
         if (originalRequest.headers) {
@@ -142,7 +151,8 @@ api.interceptors.response.use(
         isRefreshing = false;
         clearAuthData();
         window.dispatchEvent(new CustomEvent('auth:unauthorized'));
-        window.location.href = '/auth/login'; // Client-side router path
+        const loginUrl = prefix === 'platform_' ? '/platform/login' : '/login';
+        window.location.href = loginUrl;
         return Promise.reject(refreshError);
       }
     }
@@ -152,10 +162,11 @@ api.interceptors.response.use(
 );
 
 function clearAuthData() {
-  localStorage.removeItem('accessToken');
-  localStorage.removeItem('refreshToken');
-  localStorage.removeItem('user');
-  localStorage.removeItem('organisation');
+  const prefix = getAuthPrefix();
+  localStorage.removeItem(prefix + 'accessToken');
+  localStorage.removeItem(prefix + 'refreshToken');
+  localStorage.removeItem(prefix + 'user');
+  localStorage.removeItem(prefix + 'organisation');
 }
 
 // =========================================================================
@@ -166,6 +177,10 @@ function clearAuthData() {
 export const authApi = {
   login: async (data: any) => {
     const res = await api.post('/auth/login', data);
+    return res.data;
+  },
+  platformLogin: async (data: any) => {
+    const res = await api.post('/auth/platform-login', data);
     return res.data;
   },
   register: async (data: any) => {

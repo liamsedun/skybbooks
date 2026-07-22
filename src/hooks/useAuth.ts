@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import { useState, useEffect } from 'react';
 import { authApi } from '../lib/api';
 
@@ -11,7 +6,7 @@ export interface User {
   email: string;
   fullName: string;
   role: 'owner' | 'admin' | 'accountant' | 'manager' | 'employee';
-  organisationId: string;
+  organisationId?: string;
   isActive: boolean;
   lastLogin?: string;
   createdAt: string;
@@ -27,16 +22,26 @@ export interface Organisation {
   logoUrl?: string;
 }
 
+function getAuthPrefix(): string {
+  if (typeof window === 'undefined') return '';
+  return window.location.pathname.startsWith('/platform') ? 'platform_' : '';
+}
+
 export function useAuth() {
   const [user, setUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem('user');
+    const prefix = getAuthPrefix();
+    const saved = localStorage.getItem(prefix + 'user');
     return saved ? JSON.parse(saved) : null;
   });
   const [organisation, setOrganisation] = useState<Organisation | null>(() => {
-    const saved = localStorage.getItem('organisation');
+    const prefix = getAuthPrefix();
+    const saved = localStorage.getItem(prefix + 'organisation');
     return saved ? JSON.parse(saved) : null;
   });
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem('accessToken'));
+  const [token, setToken] = useState<string | null>(() => {
+    const prefix = getAuthPrefix();
+    return localStorage.getItem(prefix + 'accessToken');
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,23 +57,44 @@ export function useAuth() {
     };
   }, []);
 
+  function storeAuth(data: any) {
+    const prefix = getAuthPrefix();
+    localStorage.setItem(prefix + 'accessToken', data.accessToken);
+    localStorage.setItem(prefix + 'refreshToken', data.refreshToken);
+    localStorage.setItem(prefix + 'user', JSON.stringify(data.user));
+    if (data.organisation) {
+      localStorage.setItem(prefix + 'organisation', JSON.stringify(data.organisation));
+    }
+    setToken(data.accessToken);
+    setUser(data.user);
+    setOrganisation(data.organisation || null);
+  }
+
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     setError(null);
     try {
       const data = await authApi.login({ email, password });
-      
-      localStorage.setItem('accessToken', data.accessToken);
-      localStorage.setItem('refreshToken', data.refreshToken);
-      localStorage.setItem('user', JSON.stringify(data.user));
-      localStorage.setItem('organisation', JSON.stringify(data.organisation));
-
-      setToken(data.accessToken);
-      setUser(data.user);
-      setOrganisation(data.organisation);
+      storeAuth(data);
       return data;
     } catch (err: any) {
       const errMsg = err.response?.data?.error || err.message || 'Login failed';
+      setError(errMsg);
+      throw new Error(errMsg);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const platformLogin = async (email: string, password: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await authApi.platformLogin({ email, password });
+      storeAuth(data);
+      return data;
+    } catch (err: any) {
+      const errMsg = err.response?.data?.error || err.message || 'Platform login failed';
       setError(errMsg);
       throw new Error(errMsg);
     } finally {
@@ -81,15 +107,7 @@ export function useAuth() {
     setError(null);
     try {
       const data = await authApi.register(input);
-      
-      localStorage.setItem('accessToken', data.accessToken);
-      localStorage.setItem('refreshToken', data.refreshToken);
-      localStorage.setItem('user', JSON.stringify(data.user));
-      localStorage.setItem('organisation', JSON.stringify(data.organisation));
-
-      setToken(data.accessToken);
-      setUser(data.user);
-      setOrganisation(data.organisation);
+      storeAuth(data);
       return data;
     } catch (err: any) {
       const errMsg = err.response?.data?.error || err.message || 'Registration failed';
@@ -105,16 +123,14 @@ export function useAuth() {
     setError(null);
     try {
       const data = await authApi.signup(input);
-      
-      localStorage.setItem('accessToken', data.accessToken);
-      localStorage.setItem('refreshToken', data.refreshToken);
-      localStorage.setItem('user', JSON.stringify(data.user));
-      localStorage.setItem('organisation', JSON.stringify(data.org || data.organisation));
-
+      const prefix = getAuthPrefix();
+      localStorage.setItem(prefix + 'accessToken', data.accessToken);
+      localStorage.setItem(prefix + 'refreshToken', data.refreshToken);
+      localStorage.setItem(prefix + 'user', JSON.stringify(data.user));
+      localStorage.setItem(prefix + 'organisation', JSON.stringify(data.org || data.organisation));
       if (data.subscription) {
         localStorage.setItem('subscription', JSON.stringify(data.subscription));
       }
-
       setToken(data.accessToken);
       setUser(data.user);
       setOrganisation(data.org || data.organisation);
@@ -130,32 +146,37 @@ export function useAuth() {
 
   const logout = async () => {
     setIsLoading(true);
+    const prefix = getAuthPrefix();
+    const loginUrl = prefix === 'platform_' ? '/platform/login' : '/login';
     try {
-      const rToken = localStorage.getItem('refreshToken');
+      const rToken = localStorage.getItem(prefix + 'refreshToken');
       if (rToken) {
         await authApi.logout(rToken);
       }
     } catch (e) {
       console.warn('Backend logout failed or session expired', e);
     } finally {
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('user');
-      localStorage.removeItem('organisation');
+      localStorage.removeItem(prefix + 'accessToken');
+      localStorage.removeItem(prefix + 'refreshToken');
+      localStorage.removeItem(prefix + 'user');
+      localStorage.removeItem(prefix + 'organisation');
       localStorage.removeItem('demo_mode_active');
       setToken(null);
       setUser(null);
       setOrganisation(null);
       setIsLoading(false);
-      window.location.href = '/auth/login';
+      window.location.href = loginUrl;
     }
   };
 
   const refreshUser = async () => {
     try {
       const data = await authApi.getMe();
-      localStorage.setItem('user', JSON.stringify(data.user));
-      localStorage.setItem('organisation', JSON.stringify(data.organisation));
+      const prefix = getAuthPrefix();
+      localStorage.setItem(prefix + 'user', JSON.stringify(data.user));
+      if (data.organisation) {
+        localStorage.setItem(prefix + 'organisation', JSON.stringify(data.organisation));
+      }
       setUser(data.user);
       setOrganisation(data.organisation);
       return data;
@@ -172,6 +193,7 @@ export function useAuth() {
     isLoading,
     error,
     login,
+    platformLogin,
     register,
     signup,
     logout,

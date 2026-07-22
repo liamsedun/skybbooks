@@ -204,6 +204,79 @@ router.post('/signup', async (req: AuthenticatedRequest, res: Response, next: Ne
 });
 
 // ==========================================
+// 1d. POST /auth/platform-login (platform administrators only)
+// ==========================================
+router.post('/platform-login', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const body = loginSchema.parse(req.body);
+
+    const userList = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, body.email.toLowerCase()))
+      .limit(1);
+
+    const user = userList[0];
+    if (!user || !user.passwordHash) {
+      throw new AppError('Invalid email or password.', 401);
+    }
+
+    if (!user.isActive) {
+      throw new AppError('Your account has been deactivated.', 403);
+    }
+
+    const isMatch = await bcrypt.compare(body.password, user.passwordHash);
+    if (!isMatch) {
+      throw new AppError('Invalid email or password.', 401);
+    }
+
+    // Verify the user is a platform administrator
+    const emails = (process.env.SUPER_ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+    const isSuperAdmin = emails.includes(user.email.toLowerCase());
+    if (!isSuperAdmin) {
+      throw new AppError('Only platform administrators can use this login.', 403);
+    }
+
+    await db
+      .update(users)
+      .set({ lastLogin: new Date() })
+      .where(eq(users.id, user.id));
+
+    const payload = {
+      userId: user.id,
+      orgId: user.organisationId,
+      role: user.role,
+      email: user.email,
+    };
+
+    const accessToken = generateAccessToken(payload);
+    const refreshToken = generateRefreshToken(payload);
+
+    const rTokenHash = hashToken(refreshToken);
+    await db.insert(sessions).values({
+      userId: user.id,
+      refreshTokenHash: rTokenHash,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      ipAddress: req.ip || null,
+      userAgent: req.headers['user-agent'] || null,
+    });
+
+    const { passwordHash: _, ...userResponse } = user;
+
+    return res.status(200).json({
+      accessToken,
+      refreshToken,
+      user: userResponse,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return next(new AppError(error.issues[0]?.message || 'Validation failed', 400));
+    }
+    return next(error);
+  }
+});
+
+// ==========================================
 // 2. POST /auth/login
 // ==========================================
 router.post('/login', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
