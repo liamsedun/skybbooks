@@ -22,7 +22,7 @@ export function FeatureRolloutsPage() {
   const { data: rollouts, isLoading } = useQuery({
     queryKey: ['feature-rollouts'],
     queryFn: async () => {
-      const res = await api.get('/admin/feature-rollouts');
+      const res = await api.get('/platform/feature-rollouts');
       return res.data.data as any[];
     },
   });
@@ -31,19 +31,19 @@ export function FeatureRolloutsPage() {
     queryKey: ['rollout-events', showEvents],
     queryFn: async () => {
       if (!showEvents) return [];
-      const res = await api.get(`/admin/feature-rollouts/${showEvents}/events`);
+      const res = await api.get(`/platform/feature-rollouts/${showEvents}/events`);
       return res.data.data as any[];
     },
     enabled: !!showEvents,
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: any) => { const res = await api.post('/admin/feature-rollouts', data); return res.data.data; },
+    mutationFn: async (data: any) => { const res = await api.post('/platform/feature-rollouts', data); return res.data.data; },
     onSuccess: () => { setShowModal(null); resetForm(); queryClient.invalidateQueries({ queryKey: ['feature-rollouts'] }); },
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: any }) => { const res = await api.put(`/admin/feature-rollouts/${id}`, data); return res.data.data; },
+    mutationFn: async ({ id, data }: { id: string; data: any }) => { const res = await api.put(`/platform/feature-rollouts/${id}`, data); return res.data.data; },
     onSuccess: () => { setShowModal(null); setEditingId(null); resetForm(); queryClient.invalidateQueries({ queryKey: ['feature-rollouts'] }); },
   });
 

@@ -57,7 +57,7 @@ export function SuperAdminDashboard() {
   const { data: dashData, isLoading: dashLoading, refetch: refetchDash } = useQuery({
     queryKey: ['super-admin', 'dashboard'],
     queryFn: async () => {
-      const res = await api.get('/admin/dashboard');
+      const res = await api.get('/platform/dashboard');
       return res.data.data as DashboardData;
     },
     refetchInterval: 30000,
@@ -66,7 +66,7 @@ export function SuperAdminDashboard() {
   const { data: orgList, isLoading: orgsLoading } = useQuery({
     queryKey: ['super-admin', 'organizations'],
     queryFn: async () => {
-      const res = await api.get('/admin/organizations?pageSize=50');
+      const res = await api.get('/platform/organizations?pageSize=50');
       return res.data;
     },
     enabled: tab === 'organizations',
@@ -75,7 +75,7 @@ export function SuperAdminDashboard() {
   const { data: failedPmts, isLoading: pmtsLoading } = useQuery({
     queryKey: ['super-admin', 'failed-payments'],
     queryFn: async () => {
-      const res = await api.get('/admin/failed-payments?limit=50');
+      const res = await api.get('/platform/failed-payments?limit=50');
       return res.data.data as Array<any>;
     },
     enabled: tab === 'payments',
@@ -84,7 +84,7 @@ export function SuperAdminDashboard() {
   const { data: plans, isLoading: plansLoading } = useQuery({
     queryKey: ['super-admin', 'plans'],
     queryFn: async () => {
-      const res = await api.get('/admin/plans');
+      const res = await api.get('/platform/plans');
       return res.data.data as Array<any>;
     },
     enabled: tab === 'plans',

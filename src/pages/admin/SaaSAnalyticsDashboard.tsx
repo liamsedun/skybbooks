@@ -71,7 +71,7 @@ export function SaaSAnalyticsDashboard() {
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['super-admin', 'analytics', filters],
     queryFn: async () => {
-      const res = await api.get(`/admin/analytics?${filters}`);
+      const res = await api.get(`/platform/analytics?${filters}`);
       return res.data.data as AnalyticsData;
     },
   });
@@ -79,7 +79,7 @@ export function SaaSAnalyticsDashboard() {
   const { data: plans } = useQuery({
     queryKey: ['super-admin', 'plans-list'],
     queryFn: async () => {
-      const res = await api.get('/admin/plans');
+      const res = await api.get('/platform/plans');
       return res.data.data as Array<{ id: string; name: string }>;
     },
   });

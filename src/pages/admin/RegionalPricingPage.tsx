@@ -19,7 +19,7 @@ export function RegionalPricingPage() {
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['admin', 'regional-pricing'],
     queryFn: async () => {
-      const res = await api.get('/admin/regional-pricing');
+      const res = await api.get('/platform/regional-pricing');
       return res.data.data as any[];
     },
   });
@@ -27,21 +27,21 @@ export function RegionalPricingPage() {
   const { data: plans } = useQuery({
     queryKey: ['admin', 'plans'],
     queryFn: async () => {
-      const res = await api.get('/admin/plans');
+      const res = await api.get('/platform/plans');
       return res.data.data as any[];
     },
   });
 
   const createMut = useMutation({
-    mutationFn: async (payload: any) => { const r = await api.post('/admin/regional-pricing', payload); return r.data.data; },
+    mutationFn: async (payload: any) => { const r = await api.post('/platform/regional-pricing', payload); return r.data.data; },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin', 'regional-pricing'] }); setEditing(null); },
   });
   const updateMut = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: any }) => { const r = await api.put(`/admin/regional-pricing/${id}`, data); return r.data.data; },
+    mutationFn: async ({ id, data }: { id: string; data: any }) => { const r = await api.put(`/platform/regional-pricing/${id}`, data); return r.data.data; },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin', 'regional-pricing'] }); setEditing(null); },
   });
   const deleteMut = useMutation({
-    mutationFn: async (id: string) => { await api.delete(`/admin/regional-pricing/${id}`); },
+    mutationFn: async (id: string) => { await api.delete(`/platform/regional-pricing/${id}`); },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'regional-pricing'] }),
   });
 

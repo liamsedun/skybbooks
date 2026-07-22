@@ -19,22 +19,22 @@ export function OrgConfigPage() {
     queryFn: async () => {
       const params = new URLSearchParams();
       if (orgFilter) params.set('orgId', orgFilter);
-      const res = await api.get(`/admin/org-configs?${params.toString()}`);
+      const res = await api.get(`/platform/org-configs?${params.toString()}`);
       return res.data.data as any[];
     },
   });
 
   const { data: orgs } = useQuery({
     queryKey: ['admin', 'organizations-all'],
-    queryFn: async () => { const res = await api.get('/admin/organizations?pageSize=500'); return res.data.data as any[]; },
+    queryFn: async () => { const res = await api.get('/platform/organizations?pageSize=500'); return res.data.data as any[]; },
   });
 
   const createMut = useMutation({
-    mutationFn: async (payload: any) => { const r = await api.post('/admin/org-configs', payload); return r.data.data; },
+    mutationFn: async (payload: any) => { const r = await api.post('/platform/org-configs', payload); return r.data.data; },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin', 'org-configs'] }); setEditing(null); },
   });
   const deleteMut = useMutation({
-    mutationFn: async (id: string) => { await api.delete(`/admin/org-configs/${id}`); },
+    mutationFn: async (id: string) => { await api.delete(`/platform/org-configs/${id}`); },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'org-configs'] }),
   });
 

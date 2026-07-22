@@ -65,7 +65,7 @@ export function SystemHealthPage() {
     queryKey: ['system-health'],
     queryFn: async () => {
       try {
-        const res = await api.get('/admin/system-health');
+        const res = await api.get('/platform/system-health');
         return res.data.data as any;
       } catch {
         return null;

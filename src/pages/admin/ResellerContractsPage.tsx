@@ -20,31 +20,31 @@ export function ResellerContractsPage() {
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['admin', 'reseller-contracts', search],
     queryFn: async () => {
-      const res = await api.get(`/admin/reseller-contracts?search=${search}`);
+      const res = await api.get(`/platform/reseller-contracts?search=${search}`);
       return res.data.data as any[];
     },
   });
 
   const { data: plans } = useQuery({
     queryKey: ['admin', 'plans'],
-    queryFn: async () => { const res = await api.get('/admin/plans'); return res.data.data as any[]; },
+    queryFn: async () => { const res = await api.get('/platform/plans'); return res.data.data as any[]; },
   });
 
   const { data: orgs } = useQuery({
     queryKey: ['admin', 'organizations-all'],
-    queryFn: async () => { const res = await api.get('/admin/organizations?pageSize=500'); return res.data.data as any[]; },
+    queryFn: async () => { const res = await api.get('/platform/organizations?pageSize=500'); return res.data.data as any[]; },
   });
 
   const createMut = useMutation({
-    mutationFn: async (payload: any) => { const r = await api.post('/admin/reseller-contracts', payload); return r.data.data; },
+    mutationFn: async (payload: any) => { const r = await api.post('/platform/reseller-contracts', payload); return r.data.data; },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin', 'reseller-contracts'] }); setEditing(null); },
   });
   const updateMut = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: any }) => { const r = await api.put(`/admin/reseller-contracts/${id}`, data); return r.data.data; },
+    mutationFn: async ({ id, data }: { id: string; data: any }) => { const r = await api.put(`/platform/reseller-contracts/${id}`, data); return r.data.data; },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin', 'reseller-contracts'] }); setEditing(null); },
   });
   const deleteMut = useMutation({
-    mutationFn: async (id: string) => { await api.delete(`/admin/reseller-contracts/${id}`); },
+    mutationFn: async (id: string) => { await api.delete(`/platform/reseller-contracts/${id}`); },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'reseller-contracts'] }),
   });
 

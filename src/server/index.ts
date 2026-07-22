@@ -220,15 +220,14 @@ async function startServer() {
   app.use('/api/subscriptions', subscriptionPortalRouter);
   app.use('/api/subscriptions', addonMarketplaceRouter);
   app.use('/api/subscriptions', subscriptionBillingEngineRouter);
-  app.use('/api/admin', superAdminRouter);
+  app.use('/api/platform', superAdminRouter);
   app.use('/api/subscription-notifications', subscriptionNotificationsRouter);
   app.use('/api/api-keys', apiKeysRouter);
   app.use('/api/support', supportRouter);
   app.use('/api/announcements', announcementsRouter);
-  app.use('/api/admin/rate-limits', rateLimitAdminRouter);
-  app.use('/api/admin/feature-rollouts', featureRolloutsRouter);
+  app.use('/api/platform/rate-limits', rateLimitAdminRouter);
+  app.use('/api/platform/feature-rollouts', featureRolloutsRouter);
   app.use('/api/dunning', dunningRouter);
-  app.use('/api/admin', dunningRouter);
 
   app.get('/api/health', (req, res) => {
     res.json({ status: 'healthy', timestamp: new Date().toISOString() });

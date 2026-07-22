@@ -19,22 +19,22 @@ export function WhiteLabelConfigPage() {
     queryFn: async () => {
       const params = new URLSearchParams();
       if (orgFilter) params.set('orgId', orgFilter);
-      const res = await api.get(`/admin/white-label?${params.toString()}`);
+      const res = await api.get(`/platform/white-label?${params.toString()}`);
       return res.data.data as any[];
     },
   });
 
   const { data: orgs } = useQuery({
     queryKey: ['admin', 'organizations-all'],
-    queryFn: async () => { const res = await api.get('/admin/organizations?pageSize=500'); return res.data.data as any[]; },
+    queryFn: async () => { const res = await api.get('/platform/organizations?pageSize=500'); return res.data.data as any[]; },
   });
 
   const createMut = useMutation({
-    mutationFn: async (payload: any) => { const r = await api.post('/admin/white-label', payload); return r.data.data; },
+    mutationFn: async (payload: any) => { const r = await api.post('/platform/white-label', payload); return r.data.data; },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin', 'white-label'] }); setEditing(null); },
   });
   const deleteMut = useMutation({
-    mutationFn: async (id: string) => { await api.delete(`/admin/white-label/${id}`); },
+    mutationFn: async (id: string) => { await api.delete(`/platform/white-label/${id}`); },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'white-label'] }),
   });
 

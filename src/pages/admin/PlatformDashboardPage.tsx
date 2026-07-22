@@ -58,7 +58,7 @@ export function PlatformDashboardPage() {
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['platform-dashboard'],
     queryFn: async () => {
-      const res = await api.get('/admin/dashboard');
+      const res = await api.get('/platform/dashboard');
       return res.data.data as DashboardData;
     },
     refetchInterval: 60000,

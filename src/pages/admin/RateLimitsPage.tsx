@@ -17,23 +17,23 @@ export function RateLimitsPage() {
   const { data: configs, isLoading } = useQuery({
     queryKey: ['rate-limit-configs'],
     queryFn: async () => {
-      const res = await api.get('/admin/rate-limits');
+      const res = await api.get('/platform/rate-limits');
       return res.data.data as any[];
     },
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: any) => { const res = await api.post('/admin/rate-limits', data); return res.data.data; },
+    mutationFn: async (data: any) => { const res = await api.post('/platform/rate-limits', data); return res.data.data; },
     onSuccess: () => { setShowModal(null); resetForm(); queryClient.invalidateQueries({ queryKey: ['rate-limit-configs'] }); },
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: any }) => { const res = await api.put(`/admin/rate-limits/${id}`, data); return res.data.data; },
+    mutationFn: async ({ id, data }: { id: string; data: any }) => { const res = await api.put(`/platform/rate-limits/${id}`, data); return res.data.data; },
     onSuccess: () => { setShowModal(null); setEditingId(null); resetForm(); queryClient.invalidateQueries({ queryKey: ['rate-limit-configs'] }); },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => { const res = await api.delete(`/admin/rate-limits/${id}`); return res.data; },
+    mutationFn: async (id: string) => { const res = await api.delete(`/platform/rate-limits/${id}`); return res.data; },
     onSuccess: () => { setShowDelete(null); queryClient.invalidateQueries({ queryKey: ['rate-limit-configs'] }); },
   });
 

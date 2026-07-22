@@ -8,12 +8,12 @@ const router = Router();
 router.use(authenticate);
 router.use(requireOrg);
 
-router.get('/admin/dunning/runs', requireRole('admin'), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+router.get('/platform/dunning/runs', requireRole('admin'), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const runs = await getAllActiveDunningRuns();
   res.json(ok(runs));
 }));
 
-router.post('/admin/dunning/execute', requireRole('admin'), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+router.post('/platform/dunning/execute', requireRole('admin'), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const result = await executeDunningPipeline();
   res.json(ok(result));
 }));
