@@ -4,11 +4,18 @@
  */
 
 import { Response, NextFunction } from 'express';
+import { Request } from 'express';
 import { verifyAccessToken, TokenPayload } from '../lib/tokens';
 import { db, platformUsers } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import jwt from 'jsonwebtoken';
 import { AppError } from '../lib/errors';
+import {
+  hasPermission,
+  getPermissionsForRole,
+  isTenantUser,
+  PlatformPermission,
+} from '../lib/platformPermissions';
 
 const { TokenExpiredError, JsonWebTokenError } = jwt;
 
@@ -19,12 +26,14 @@ export interface PlatformAuthenticatedRequest extends Request {
     fullName: string | null;
     role: string;
     isActive: boolean;
+    permissions: string[];
   };
   tokenPayload?: TokenPayload;
 }
 
-import { Request } from 'express';
-
+/**
+ * Verifies JWT and ensures the token is a platform-type token.
+ */
 export function platformAuthenticate(
   req: PlatformAuthenticatedRequest,
   res: Response,
@@ -65,6 +74,10 @@ export function platformAuthenticate(
   }
 }
 
+/**
+ * Loads the platform user record from DB and attaches it to the request.
+ * Also computes the user's effective permissions based on role.
+ */
 export function platformUserGuard(
   req: PlatformAuthenticatedRequest,
   res: Response,
@@ -93,12 +106,47 @@ export function platformUserGuard(
       if (!user.isActive) {
         return next(new AppError('Platform account has been deactivated.', 403));
       }
-      req.platformUser = user;
+      req.platformUser = {
+        ...user,
+        permissions: getPermissionsForRole(user.role),
+      };
       next();
     })
     .catch(next);
 }
 
+/**
+ * Middleware factory: require a specific permission (or permissions).
+ * The user must have ALL specified permissions.
+ *
+ * Usage: router.get('/route', requirePlatformPermission('orgs:read'), handler)
+ *        router.get('/route', requirePlatformPermission(['orgs:read', 'billing:read']), handler)
+ */
+export function requirePlatformPermission(...permissions: PlatformPermission[]) {
+  return (req: PlatformAuthenticatedRequest, res: Response, next: NextFunction): void => {
+    if (!req.platformUser) {
+      return next(new AppError('Authentication context is missing.', 401));
+    }
+
+    for (const perm of permissions) {
+      if (!hasPermission(req.platformUser.role, perm)) {
+        return next(
+          new AppError(
+            `Forbidden: Missing required permission '${perm}'. Your '${req.platformUser.role}' role does not grant this access.`,
+            403
+          )
+        );
+      }
+    }
+
+    return next();
+  };
+}
+
+/**
+ * Deprecated: use requirePlatformPermission instead.
+ * Kept for backward compatibility during migration.
+ */
 export function requirePlatformRole(...roles: string[]) {
   return (req: PlatformAuthenticatedRequest, res: Response, next: NextFunction): void => {
     if (!req.platformUser) {

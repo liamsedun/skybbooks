@@ -12,6 +12,8 @@ export interface TokenPayload {
   role: string;
   email: string;
   type?: 'platform' | 'tenant';
+  impersonating?: boolean;
+  impersonatedBy?: string;
 }
 
 let privateKeyCache: string | null = null;
@@ -99,6 +101,19 @@ export function verifyRefreshToken(token: string): TokenPayload {
   const { publicKey } = getKeys();
   const decoded = jwt.verify(token, publicKey, { algorithms: ['RS256'] });
   return decoded as TokenPayload;
+}
+
+/**
+ * Generates a short-lived impersonation token for super admin access to tenant data.
+ * Expires in 5 minutes.
+ */
+export function generateImpersonationToken(payload: TokenPayload & { impersonating: true; impersonatedBy: string }): string {
+  const { privateKey } = getKeys();
+  const options: SignOptions = {
+    algorithm: 'RS256',
+    expiresIn: '5m'
+  };
+  return jwt.sign(payload, privateKey, options);
 }
 
 /**

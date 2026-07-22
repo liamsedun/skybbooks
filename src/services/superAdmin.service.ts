@@ -1,5 +1,5 @@
-import { eq, and, or, sql, desc, asc, lt, gt, lte, gte, count, sum, avg, inArray, isNull } from 'drizzle-orm';
-import { db, organisations, users, subscriptions, subscriptionPlans, subscriptionInvoices, subscriptionPayments, subscriptionUsage, coupons, promotions, auditLog, journalEntries, journalLines, accounts, contacts, invoices, bills, chatMessages, chatConversations, documents, regionalPricing, enterpriseContracts, resellerContracts, subscriptionConfig, whiteLabelConfig } from '../db/schema';
+import { eq, and, or, sql, desc, asc, lt, lte, gte, count, sum, avg, inArray, isNull } from 'drizzle-orm';
+import { db, organisations, users, subscriptions, subscriptionPlans, subscriptionInvoices, subscriptionPayments, subscriptionUsage, coupons, promotions, auditLog, chatMessages, documents, regionalPricing, enterpriseContracts, resellerContracts, subscriptionConfig, whiteLabelConfig } from '../db/schema';
 
 export interface DashboardData {
   kpis: {
@@ -175,11 +175,7 @@ export async function getOrganizationDetail(orgId: string) {
     .from(subscriptions).innerJoin(subscriptionPlans, eq(subscriptions.planId, subscriptionPlans.id))
     .where(eq(subscriptions.orgId, orgId)).limit(1);
 
-  const invCount = await db.select({ count: count() }).from(invoices).where(eq(invoices.orgId, orgId));
-  const billCount = await db.select({ count: count() }).from(bills).where(eq(bills.orgId, orgId));
-  const contactCount = await db.select({ count: count() }).from(contacts).where(eq(contacts.orgId, orgId));
-
-  return { org, users: userList, subscription: sub || null, stats: { invoices: Number(invCount[0]?.count || 0), bills: Number(billCount[0]?.count || 0), contacts: Number(contactCount[0]?.count || 0) } };
+  return { org, users: userList, subscription: sub || null };
 }
 
 export async function updateOrganizationStatus(orgId: string, status: string) {
@@ -240,21 +236,18 @@ export async function getFailedPayments(limit = 20) {
 export async function getSystemHealth() {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
   const [activeSessions] = await db.select({ count: count() }).from(users).where(eq(users.isActive, true));
   const todayOrgs = await db.select({ count: count() }).from(organisations).where(gte(organisations.createdAt, today));
   const storageRows = await db.select({ usage: documents.fileSize }).from(documents);
   const totalStorage = storageRows.reduce((acc, r) => acc + Number(r.usage || 0), 0);
   const totalChatMsgs = await db.select({ count: count() }).from(chatMessages);
-  const jeCount = await db.select({ count: count() }).from(journalEntries).where(gte(journalEntries.createdAt, thisMonth));
 
   return {
     activeUsers: Number(activeSessions?.count || 0),
     newOrgsToday: Number(todayOrgs[0]?.count || 0),
     storageUsedBytes: totalStorage,
     totalChatMessages: Number(totalChatMsgs[0]?.count || 0),
-    journalEntriesThisMonth: Number(jeCount[0]?.count || 0),
     dbSize: 0,
   };
 }

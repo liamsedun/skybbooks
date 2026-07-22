@@ -178,7 +178,7 @@ router.post('/:id/payments/batch', async (req: AuthenticatedRequest, res: Respon
     const userId = req.user!.userId;
     const orgId = req.user!.orgId!;
     const { upToPeriod } = req.body;
-    const results = await batchProcessPayments(req.params.id, userId, upToPeriod, orgId);
+    const results = await batchProcessPayments(req.params.id, userId, orgId, upToPeriod);
     createAuditLog({
       orgId, userId,
       action: 'create',
@@ -217,7 +217,7 @@ router.post('/:id/depreciation/batch', async (req: AuthenticatedRequest, res: Re
     const userId = req.user!.userId;
     const orgId = req.user!.orgId!;
     const { upToPeriod } = req.body;
-    const results = await batchPostDepreciation(req.params.id, userId, upToPeriod, orgId);
+    const results = await batchPostDepreciation(req.params.id, userId, orgId, upToPeriod);
     createAuditLog({
       orgId, userId,
       action: 'create',

@@ -1,6 +1,6 @@
 import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { authenticate, requireRole, AuthenticatedRequest } from '../middleware/auth';
+import { authenticate, requireOrg, requireRole, AuthenticatedRequest } from '../middleware/auth';
 import * as groupService from '../services/group.service';
 import { AppError } from '../lib/errors';
 import { createAuditLog, extractReqMeta } from '../services/audit.service';

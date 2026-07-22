@@ -137,15 +137,11 @@ export async function getLeases(orgId: string) {
     .orderBy(desc(leases.createdAt));
 }
 
-export async function getLease(leaseId: string, orgId?: string) {
-  const whereClause = orgId
-    ? and(eq(leases.id, leaseId), eq(leases.orgId, orgId))
-    : eq(leases.id, leaseId);
-
+export async function getLease(leaseId: string, orgId: string) {
   const [lease] = await db
     .select()
     .from(leases)
-    .where(whereClause);
+    .where(and(eq(leases.id, leaseId), eq(leases.orgId, orgId)));
 
   if (!lease) throw new AppError('Lease not found', 404);
 
@@ -158,7 +154,7 @@ export async function getLease(leaseId: string, orgId?: string) {
   return { ...lease, schedule };
 }
 
-export async function updateLease(leaseId: string, input: UpdateLeaseInput, orgId?: string) {
+export async function updateLease(leaseId: string, input: UpdateLeaseInput, orgId: string) {
   const updateData: any = {};
   if (input.lessorName !== undefined) updateData.lessorName = input.lessorName;
   if (input.description !== undefined) updateData.description = input.description;
@@ -167,9 +163,7 @@ export async function updateLease(leaseId: string, input: UpdateLeaseInput, orgI
   if (input.bankAccountId !== undefined) updateData.bankAccountId = input.bankAccountId;
   updateData.updatedAt = new Date();
 
-  const whereClause = orgId
-    ? and(eq(leases.id, leaseId), eq(leases.orgId, orgId))
-    : eq(leases.id, leaseId);
+  const whereClause = and(eq(leases.id, leaseId), eq(leases.orgId, orgId));
 
   const [updated] = await db
     .update(leases)
@@ -192,7 +186,7 @@ export async function updateLease(leaseId: string, input: UpdateLeaseInput, orgI
   return updated;
 }
 
-export async function processLeasePayment(leaseId: string, periodNumber: number, userId: string, paymentDate?: string, orgId?: string) {
+export async function processLeasePayment(leaseId: string, periodNumber: number, userId: string, paymentDate: string | undefined, orgId: string) {
   const lease = await getLease(leaseId, orgId);
 
   const scheduleRow = lease.schedule.find((s: any) => s.periodNumber === periodNumber);
@@ -262,7 +256,7 @@ export async function processLeasePayment(leaseId: string, periodNumber: number,
   return je;
 }
 
-export async function postLeaseDepreciation(leaseId: string, periodNumber: number, userId: string, orgId?: string) {
+export async function postLeaseDepreciation(leaseId: string, periodNumber: number, userId: string, orgId: string) {
   const lease = await getLease(leaseId, orgId);
 
   const periodExists = lease.schedule.find((s: any) => s.periodNumber === periodNumber);
@@ -317,7 +311,7 @@ function calculateMonthlyDepreciation(lease: any): number {
   return Math.round(deprBase / deprMonths);
 }
 
-export async function postCommencementEntry(leaseId: string, userId: string, orgId?: string) {
+export async function postCommencementEntry(leaseId: string, userId: string, orgId: string) {
   const lease = await getLease(leaseId, orgId);
 
   const lines: { accountId: string; debit: number; credit: number; description: string }[] = [];
@@ -400,7 +394,7 @@ export async function modifyLease(
     description: string;
   },
   userId: string,
-  orgId?: string
+  orgId: string
 ) {
   const lease = await getLease(leaseId, orgId);
   if (lease.status !== 'active') throw new AppError('Only active leases can be modified', 400);
@@ -529,7 +523,7 @@ export async function modifyLease(
   return je;
 }
 
-export async function terminateLease(leaseId: string, terminationDate: string, userId: string, orgId?: string) {
+export async function terminateLease(leaseId: string, terminationDate: string, userId: string, orgId: string) {
   const lease = await getLease(leaseId, orgId);
   if (lease.status !== 'active' && lease.status !== 'modified') {
     throw new AppError('Only active or modified leases can be terminated', 400);
@@ -653,7 +647,7 @@ export async function getLeaseReport(orgId: string) {
   };
 
   for (const lease of allLeases) {
-    const detail = await getLease(lease.id);
+    const detail = await getLease(lease.id, orgId);
     const unpaidSchedules = (detail.schedule || []).filter((s: any) => !s.isPaid);
     const outstandingLiability = unpaidSchedules.length > 0
       ? unpaidSchedules[0].outstandingBalance || 0
@@ -694,7 +688,7 @@ export async function getLeaseReport(orgId: string) {
   return report;
 }
 
-export async function batchProcessPayments(leaseId: string, userId: string, upToPeriod?: number, orgId?: string) {
+export async function batchProcessPayments(leaseId: string, userId: string, orgId: string, upToPeriod?: number) {
   const lease = await getLease(leaseId, orgId);
   const unpaid = (lease.schedule || []).filter((s: any) => !s.isPaid).sort((a: any, b: any) => a.periodNumber - b.periodNumber);
   const results: any[] = [];
@@ -708,7 +702,7 @@ export async function batchProcessPayments(leaseId: string, userId: string, upTo
   return results;
 }
 
-export async function batchPostDepreciation(leaseId: string, userId: string, upToPeriod?: number, orgId?: string) {
+export async function batchPostDepreciation(leaseId: string, userId: string, orgId: string, upToPeriod?: number) {
   const lease = await getLease(leaseId, orgId);
   const existingDepr = await db
     .select()
@@ -725,7 +719,7 @@ export async function batchPostDepreciation(leaseId: string, userId: string, upT
   for (const s of schedule) {
     if (upToPeriod && s.periodNumber > upToPeriod) break;
     if (postedPeriods.has(s.periodNumber)) continue;
-    const je = await postLeaseDepreciation(leaseId, s.periodNumber, userId);
+    const je = await postLeaseDepreciation(leaseId, s.periodNumber, userId, orgId);
     results.push({ periodNumber: s.periodNumber, journalEntryId: je.id });
   }
 

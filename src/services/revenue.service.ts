@@ -147,13 +147,17 @@ export async function getObligations(orgId: string, contractId: string): Promise
 
 export async function getObligation(orgId: string, obligationId: string): Promise<any> {
   const [row] = await db
-    .select()
+    .select({ obligation: performanceObligations })
     .from(performanceObligations)
-    .where(eq(performanceObligations.id, obligationId))
+    .innerJoin(revenueContracts, eq(performanceObligations.contractId, revenueContracts.id))
+    .where(and(
+      eq(performanceObligations.id, obligationId),
+      eq(revenueContracts.orgId, orgId)
+    ))
     .limit(1);
 
   if (!row) throw new AppError('Performance obligation not found.', 404);
-  return row;
+  return row.obligation;
 }
 
 export async function createObligation(orgId: string, userId: string, data: any): Promise<any> {
@@ -389,6 +393,7 @@ export async function recognizeRevenue(
     .limit(1);
 
   if (!contract) throw new AppError('Contract not found.', 404);
+  if (contract.orgId !== orgId) throw new AppError('Contract does not belong to this organization.', 403);
 
   const amount = schedule.amount;
   const timing = obligation.timing;
@@ -495,9 +500,12 @@ export async function recognizeRevenue(
 
 export async function recognizeAllPending(orgId: string, userId: string, asOfDate: Date, req?: any): Promise<any[]> {
   const pending = await db
-    .select()
+    .select({ schedule: revenueSchedules })
     .from(revenueSchedules)
+    .innerJoin(performanceObligations, eq(revenueSchedules.obligationId, performanceObligations.id))
+    .innerJoin(revenueContracts, eq(performanceObligations.contractId, revenueContracts.id))
     .where(and(
+      eq(revenueContracts.orgId, orgId),
       eq(revenueSchedules.status, 'pending'),
       sql`${revenueSchedules.scheduledDate} <= ${asOfDate}`
     ))
@@ -506,10 +514,10 @@ export async function recognizeAllPending(orgId: string, userId: string, asOfDat
   const results: any[] = [];
   for (const s of pending) {
     try {
-      const result = await recognizeRevenue(orgId, userId, s.id, asOfDate, req);
+      const result = await recognizeRevenue(orgId, userId, s.schedule.id, asOfDate, req);
       results.push(result);
     } catch (err: any) {
-      results.push({ scheduleId: s.id, error: err.message });
+      results.push({ scheduleId: s.schedule.id, error: err.message });
     }
   }
 
