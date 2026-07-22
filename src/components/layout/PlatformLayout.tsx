@@ -4,7 +4,7 @@ import {
   LayoutDashboard, BarChart3, Bell, Globe, Building, Users2, Settings,
   Palette, LifeBuoy, Megaphone, Gauge, FlaskConical, Activity, Shield,
   LogOut, Search, Menu, X, ChevronDown, PanelLeftClose, PanelLeft,
-  HelpCircle
+  HelpCircle, CreditCard, Receipt, Tag, Package, ExternalLink
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -28,6 +28,13 @@ const navItems: NavItem[] = [
   { name: 'Rate Limits', path: '/platform/rate-limits', icon: Gauge },
   { name: 'Feature Rollouts', path: '/platform/feature-rollouts', icon: FlaskConical },
   { name: 'System Health', path: '/platform/system-health', icon: Activity },
+  // Subscription Management
+  { name: 'Plans', path: '/platform/plans', icon: CreditCard },
+  { name: 'Subscriptions', path: '/platform/subscriptions', icon: Building },
+  { name: 'Subscription Portal', path: '/platform/subscriptions/portal', icon: ExternalLink },
+  { name: 'Billing', path: '/platform/subscriptions/billing', icon: Receipt },
+  { name: 'Coupons', path: '/platform/subscriptions/coupons', icon: Tag },
+  { name: 'Add-ons', path: '/platform/subscriptions/addons', icon: Package },
 ];
 
 export function PlatformLayout({ children }: { children?: React.ReactNode }) {

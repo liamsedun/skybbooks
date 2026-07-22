@@ -78,7 +78,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({
     OVERVIEW: false, SALES: false, PROJECTS: true,
     PURCHASES: true, INVENTORY: true, PAYROLL: true,
-    BANKING: true, ACCOUNTANT: true, REPORTS: true, BILLING: true, SYSTEM: false,
+    BANKING: true, ACCOUNTANT: true, REPORTS: true, SYSTEM: false,
   });
   const [showHelpSubMenu, setShowHelpSubMenu] = useState(false);
   const [showMailForm, setShowMailForm] = useState(false);
@@ -142,9 +142,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     rep_tax_engine: '/app/reports/tax-engine', rep_projects: '/app/reports/projects', rep_legacy: '/app/reports/legacy',
     rep_consolidation: '/app/reports/consolidation',
     revenue_contracts: '/app/revenue/contracts', rep_revenue_recognition: '/app/revenue/recognition-report',
-    subscription: '/app/subscription', subscription_plans: '/app/subscription/plans', subscription_coupons: '/app/subscription/coupons', subscription_portal: '/app/subscription/portal',
-    subscription_addons: '/app/subscription/addons',
-    subscription_billing: '/app/subscription/billing',
+
     usage_monitor: '/app/reports/usage-monitor',
     set_organisation: '/app/settings/organisation', set_invites: '/app/settings/invites', set_roles: '/app/settings/roles',
     user_preferences: '/app/settings/user-preferences', set_integrations: '/app/settings/integrations',
@@ -212,14 +210,6 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
       { name: 'ECL (IFRS 9)', id: 'ecl', icon: AlertTriangle },
       { name: 'OCR Processor', id: 'ocr', icon: FileText },
       { name: 'Intercompany Txns', id: 'intercompany', icon: ArrowRightLeft },
-    ]},
-    { title: 'BILLING', icon: CreditCard, items: [
-      { name: 'Subscription', id: 'subscription', icon: CreditCard },
-      { name: 'Portal', id: 'subscription_portal', icon: ExternalLink },
-      { name: 'Billing', id: 'subscription_billing', icon: Receipt },
-      { name: 'Add-ons', id: 'subscription_addons', icon: Package },
-      { name: 'Plans', id: 'subscription_plans', icon: CreditCard },
-      { name: 'Coupons', id: 'subscription_coupons', icon: Tag },
     ]},
     { title: 'REPORTS', icon: FileBarChart, items: [
       { name: 'Trial Balance', id: 'rep_trial_balance', icon: FileBarChart },

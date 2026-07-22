@@ -82,13 +82,7 @@ const MappingsPage = lazy(() => import('../pages/reports/MappingsPage').then(m =
 const RevenueContractsPage = lazy(() => import('../pages/revenue/RevenueContractsPage').then(m => ({ default: m.RevenueContractsPage })));
 const RevenueRecognitionReport = lazy(() => import('../pages/revenue/RevenueRecognitionReport').then(m => ({ default: m.RevenueRecognitionReport })));
 
-const SubscriptionPage = lazy(() => import('../pages/subscriptions/SubscriptionPage').then(m => ({ default: m.SubscriptionPage })));
-const SubscriptionPlansPage = lazy(() => import('../pages/subscriptions/SubscriptionPlansPage').then(m => ({ default: m.SubscriptionPlansPage })));
-const SubscriptionCouponsPage = lazy(() => import('../pages/subscriptions/SubscriptionCouponsPage').then(m => ({ default: m.SubscriptionCouponsPage })));
-const SubscriptionPortalPage = lazy(() => import('../pages/subscriptions/SubscriptionPortalPage').then(m => ({ default: m.SubscriptionPortalPage })));
 const UsageMonitorDashboardPage = lazy(() => import('../pages/reports/UsageMonitorDashboardPage').then(m => ({ default: m.UsageMonitorDashboardPage })));
-const AddonMarketplacePage = lazy(() => import('../pages/subscriptions/AddonMarketplacePage').then(m => ({ default: m.AddonMarketplacePage })));
-const SubscriptionBillingPage = lazy(() => import('../pages/subscriptions/SubscriptionBillingPage').then(m => ({ default: m.SubscriptionBillingPage })));
 
 const OrganisationProfilePage = lazy(() => import('../pages/settings/SettingsPages').then(m => ({ default: m.OrganisationProfilePage })));
 const BrandingPage = lazy(() => import('../pages/settings/SettingsPages').then(m => ({ default: m.BrandingPage })));
@@ -142,11 +136,9 @@ const CustomModulesPage = lazy(() => import('../pages/settings/SettingsPages').t
 const TaxesPage = lazy(() => import('../pages/settings/SettingsPages').then(m => ({ default: m.TaxesPage })));
 
 const EmailSettingsPage = lazy(() => import('../pages/settings/EmailSettingsPage'));
-const BillingSettingsPage = lazy(() => import('../pages/settings/BillingSettingsPage'));
 const PostingRulesPage = lazy(() => import('../pages/settings/PostingRulesPage'));
 const ApprovalWorkflowsPage = lazy(() => import('../pages/settings/ApprovalWorkflowsPage'));
 const FeatureFlagsPage = lazy(() => import('../pages/settings/FeatureFlagsPage').then(m => ({ default: m.FeatureFlagsPage })));
-const PlanFeatureFlagsPage = lazy(() => import('../pages/settings/PlanFeatureFlagsPage').then(m => ({ default: m.PlanFeatureFlagsPage })));
 
 const OcrProcessingPage = lazy(() => import('../pages/accountant/OcrProcessingPage').then(m => ({ default: m.OcrProcessingPage })));
 const HelpDocumentsPage = lazy(() => import('../pages/help/HelpDocumentsPage').then(m => ({ default: m.HelpDocumentsPage })));
@@ -413,13 +405,6 @@ function AppRoutes() {
           <Route path="revenue/contracts" element={<LazyRoute element={<RevenueContractsPage />} />} />
           <Route path="revenue/recognition-report" element={<LazyRoute element={<RevenueRecognitionReport />} />} />
 
-          <Route path="subscription" element={<LazyRoute element={<SubscriptionPage />} />} />
-          <Route path="subscription/plans" element={<LazyRoute element={<SubscriptionPlansPage />} />} />
-          <Route path="subscription/coupons" element={<LazyRoute element={<SubscriptionCouponsPage />} />} />
-          <Route path="subscription/portal" element={<LazyRoute element={<SubscriptionPortalPage />} />} />
-          <Route path="subscription/addons" element={<LazyRoute element={<AddonMarketplacePage />} />} />
-          <Route path="subscription/billing" element={<LazyRoute element={<SubscriptionBillingPage />} />} />
-
           <Route path="settings" element={<Suspense fallback={<PageLoader />}><SettingsLayout /></Suspense>}>
             <Route index element={<Navigate to="/app/settings/organisation" replace />} />
             <Route path="organisation" element={<LazyRoute element={<OrganisationProfilePage />} />} />
@@ -440,7 +425,6 @@ function AppRoutes() {
             <Route path="pdf-templates" element={<LazyRoute element={<PdfTemplatesPage />} />} />
             <Route path="email-notifications" element={<LazyRoute element={<EmailNotificationsPage />} />} />
             <Route path="email-settings" element={<LazyRoute element={<EmailSettingsPage />} />} />
-            <Route path="billing" element={<LazyRoute element={<BillingSettingsPage />} />} />
             <Route path="reporting-tags" element={<LazyRoute element={<ReportingTagsPage />} />} />
             <Route path="web-tabs" element={<LazyRoute element={<WebTabsPage />} />} />
             <Route path="workflow-rules" element={<LazyRoute element={<WorkflowRulesPage />} />} />
@@ -479,7 +463,6 @@ function AppRoutes() {
             <Route path="vendor-credits" element={<LazyRoute element={<VendorCreditsSettingsPage />} />} />
             <Route path="custom-modules" element={<LazyRoute element={<CustomModulesPage />} />} />
             <Route path="feature-flags" element={<LazyRoute element={<FeatureFlagsPage />} />} />
-            <Route path="feature-flags/plans" element={<LazyRoute element={<PlanFeatureFlagsPage />} />} />
           </Route>
           <Route path="settings/invites" element={<LazyRoute element={<InvitesSettingsPage />} />} />
           <Route path="settings/integrations" element={<LazyRoute element={<IntegrationsSettingsPage />} />} />

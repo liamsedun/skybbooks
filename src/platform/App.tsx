@@ -23,6 +23,14 @@ const RateLimitsPage = lazy(() => import('../pages/admin/RateLimitsPage').then(m
 const FeatureRolloutsPage = lazy(() => import('../pages/admin/FeatureRolloutsPage').then(m => ({ default: m.FeatureRolloutsPage })));
 const SystemHealthPage = lazy(() => import('../pages/admin/SystemHealthPage').then(m => ({ default: m.SystemHealthPage })));
 
+// Subscription management pages (moved from customer app)
+const SubscriptionPage = lazy(() => import('../pages/subscriptions/SubscriptionPage').then(m => ({ default: m.SubscriptionPage })));
+const SubscriptionPlansPage = lazy(() => import('../pages/subscriptions/SubscriptionPlansPage').then(m => ({ default: m.SubscriptionPlansPage })));
+const SubscriptionPortalPage = lazy(() => import('../pages/subscriptions/SubscriptionPortalPage').then(m => ({ default: m.SubscriptionPortalPage })));
+const SubscriptionCouponsPage = lazy(() => import('../pages/subscriptions/SubscriptionCouponsPage').then(m => ({ default: m.SubscriptionCouponsPage })));
+const SubscriptionBillingPage = lazy(() => import('../pages/subscriptions/SubscriptionBillingPage').then(m => ({ default: m.SubscriptionBillingPage })));
+const AddonMarketplacePage = lazy(() => import('../pages/subscriptions/AddonMarketplacePage').then(m => ({ default: m.AddonMarketplacePage })));
+
 function PageLoader() {
   return (
     <div className="min-h-[60vh] flex items-center justify-center">
@@ -195,6 +203,14 @@ function AdminRoutes() {
           <Route path="rate-limits" element={<LazyRoute element={<RateLimitsPage />} />} />
           <Route path="feature-rollouts" element={<LazyRoute element={<FeatureRolloutsPage />} />} />
           <Route path="system-health" element={<LazyRoute element={<SystemHealthPage />} />} />
+
+          {/* Subscription Management — Platform Admin Only */}
+          <Route path="plans" element={<LazyRoute element={<SubscriptionPlansPage />} />} />
+          <Route path="subscriptions" element={<LazyRoute element={<SubscriptionPage />} />} />
+          <Route path="subscriptions/portal" element={<LazyRoute element={<SubscriptionPortalPage />} />} />
+          <Route path="subscriptions/billing" element={<LazyRoute element={<SubscriptionBillingPage />} />} />
+          <Route path="subscriptions/coupons" element={<LazyRoute element={<SubscriptionCouponsPage />} />} />
+          <Route path="subscriptions/addons" element={<LazyRoute element={<AddonMarketplacePage />} />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/platform" replace />} />
