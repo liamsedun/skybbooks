@@ -1,10 +1,10 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import {
-  LayoutDashboard, BarChart3, Bell, Globe, Building, Users2, Settings,
-  Palette, LifeBuoy, Megaphone, Gauge, FlaskConical, Activity, Shield,
-  LogOut, Search, Menu, X, ChevronDown, PanelLeftClose, PanelLeft,
-  HelpCircle, CreditCard, Receipt, Tag, Package, ExternalLink
+  LayoutDashboard, Building, CreditCard, Tag, DollarSign, TrendingUp,
+  LifeBuoy, Megaphone, Key, FlaskConical, ScrollText, Shield, Users,
+  UserCog, Settings, Activity, Lock, User, LogOut, Search, Menu, X,
+  ChevronDown, PanelLeftClose, PanelLeft, HelpCircle, BarChart3, Receipt
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -16,25 +16,25 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { name: 'Dashboard', path: '/platform', icon: LayoutDashboard },
-  { name: 'SaaS Analytics', path: '/platform/analytics', icon: BarChart3 },
-  { name: 'Notifications Engine', path: '/platform/notifications', icon: Bell },
-  { name: 'Regional Pricing', path: '/platform/regional-pricing', icon: Globe },
-  { name: 'Enterprise Contracts', path: '/platform/enterprise-contracts', icon: Building },
-  { name: 'Reseller Contracts', path: '/platform/reseller-contracts', icon: Users2 },
-  { name: 'Org Config', path: '/platform/org-config', icon: Settings },
-  { name: 'White Label', path: '/platform/white-label', icon: Palette },
-  { name: 'Support Tickets', path: '/platform/support-tickets', icon: LifeBuoy },
-  { name: 'Announcements', path: '/platform/announcements', icon: Megaphone },
-  { name: 'Rate Limits', path: '/platform/rate-limits', icon: Gauge },
-  { name: 'Feature Rollouts', path: '/platform/feature-rollouts', icon: FlaskConical },
-  { name: 'System Health', path: '/platform/system-health', icon: Activity },
-  // Subscription Management
-  { name: 'Plans', path: '/platform/plans', icon: CreditCard },
-  { name: 'Subscriptions', path: '/platform/subscriptions', icon: Building },
-  { name: 'Subscription Portal', path: '/platform/subscriptions/portal', icon: ExternalLink },
-  { name: 'Billing', path: '/platform/subscriptions/billing', icon: Receipt },
+  { name: 'Organizations', path: '/platform/organizations', icon: Building },
+  { name: 'Subscriptions', path: '/platform/subscriptions', icon: CreditCard },
+  { name: 'Plans', path: '/platform/plans', icon: BarChart3 },
   { name: 'Coupons', path: '/platform/subscriptions/coupons', icon: Tag },
-  { name: 'Add-ons', path: '/platform/subscriptions/addons', icon: Package },
+  { name: 'Payments', path: '/platform/subscriptions/billing', icon: DollarSign },
+  { name: 'Revenue', path: '/platform/analytics', icon: TrendingUp },
+  { name: 'Support', path: '/platform/support-tickets', icon: LifeBuoy },
+  { name: 'Marketing', path: '/platform/announcements', icon: Megaphone },
+  { name: 'Announcements', path: '/platform/announcements', icon: Megaphone },
+  { name: 'API', path: '/platform/api-keys', icon: Key },
+  { name: 'Feature Flags', path: '/platform/feature-rollouts', icon: FlaskConical },
+  { name: 'Logs', path: '/platform/system-health', icon: ScrollText },
+  { name: 'Audit', path: '/platform/audit', icon: Shield },
+  { name: 'Users', path: '/platform/users', icon: Users },
+  { name: 'Roles', path: '/platform/roles', icon: UserCog },
+  { name: 'System Settings', path: '/platform/system-settings', icon: Settings },
+  { name: 'Monitoring', path: '/platform/system-health', icon: Activity },
+  { name: 'Security', path: '/platform/security', icon: Lock },
+  { name: 'Profile', path: '/platform/profile', icon: User },
 ];
 
 export function PlatformLayout({ children }: { children?: React.ReactNode }) {
@@ -69,14 +69,17 @@ export function PlatformLayout({ children }: { children?: React.ReactNode }) {
     return () => document.removeEventListener('click', handleClick);
   }, [showUserMenu]);
 
+  const isActive = (path: string) => {
+    if (path === '/platform') return location.pathname === '/platform';
+    return location.pathname.startsWith(path);
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex">
-      {/* Mobile overlay */}
       {isMobileOpen && (
         <div className="fixed inset-0 z-30 bg-slate-900/40 backdrop-blur-sm lg:hidden" onClick={() => setIsMobileOpen(false)} />
       )}
 
-      {/* Sidebar */}
       <aside className={`fixed top-0 left-0 z-40 h-screen flex flex-col bg-[#082F49] transition-all duration-300 ease-in-out ${
         sidebarCollapsed ? 'w-16' : 'w-60'
       } ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
@@ -124,7 +127,7 @@ export function PlatformLayout({ children }: { children?: React.ReactNode }) {
         <nav className="flex-1 overflow-y-auto px-2 py-2 space-y-0.5">
           {filteredNav.map(item => {
             const Icon = item.icon;
-            const active = location.pathname === item.path;
+            const active = isActive(item.path);
             return (
               <button
                 key={item.path}
@@ -160,11 +163,9 @@ export function PlatformLayout({ children }: { children?: React.ReactNode }) {
         )}
       </aside>
 
-      {/* Main area */}
       <div className={`flex-1 flex flex-col min-w-0 min-h-screen transition-all duration-300 ${
         sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-60'
       }`}>
-        {/* Top bar */}
         <header className="sticky top-0 z-20 h-14 md:h-16 bg-white border-b border-slate-200 flex items-center gap-3 px-3 md:px-5">
           <button onClick={() => setIsMobileOpen(true)} className="lg:hidden w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100">
             <Menu className="w-4.5 h-4.5" />
@@ -191,6 +192,13 @@ export function PlatformLayout({ children }: { children?: React.ReactNode }) {
                 </div>
                 <div className="p-1.5">
                   <button
+                    onClick={() => { setShowUserMenu(false); navigate('/platform/profile'); }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-slate-600 hover:bg-slate-50 transition-colors"
+                  >
+                    <User className="w-4 h-4" />
+                    Profile
+                  </button>
+                  <button
                     onClick={() => { setShowUserMenu(false); handleLogout(); }}
                     className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-red-600 hover:bg-red-50 transition-colors"
                   >
@@ -210,7 +218,6 @@ export function PlatformLayout({ children }: { children?: React.ReactNode }) {
           </div>
         </header>
 
-        {/* Content */}
         <main className="flex-1 p-4 sm:p-6 md:p-8 max-w-7xl mx-auto w-full">
           {children || <Outlet />}
         </main>

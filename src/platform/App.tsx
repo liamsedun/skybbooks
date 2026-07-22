@@ -23,7 +23,6 @@ const RateLimitsPage = lazy(() => import('../pages/admin/RateLimitsPage').then(m
 const FeatureRolloutsPage = lazy(() => import('../pages/admin/FeatureRolloutsPage').then(m => ({ default: m.FeatureRolloutsPage })));
 const SystemHealthPage = lazy(() => import('../pages/admin/SystemHealthPage').then(m => ({ default: m.SystemHealthPage })));
 
-// Subscription management pages (moved from customer app)
 const SubscriptionPage = lazy(() => import('../pages/subscriptions/SubscriptionPage').then(m => ({ default: m.SubscriptionPage })));
 const SubscriptionPlansPage = lazy(() => import('../pages/subscriptions/SubscriptionPlansPage').then(m => ({ default: m.SubscriptionPlansPage })));
 const SubscriptionPortalPage = lazy(() => import('../pages/subscriptions/SubscriptionPortalPage').then(m => ({ default: m.SubscriptionPortalPage })));
@@ -191,26 +190,33 @@ function AdminRoutes() {
 
         <Route path="/platform" element={<ProtectedPlatformRoute />}>
           <Route index element={<LazyRoute element={<SuperAdminDashboard />} />} />
-          <Route path="analytics" element={<LazyRoute element={<SaaSAnalyticsDashboard />} />} />
-          <Route path="notifications" element={<LazyRoute element={<SubscriptionNotificationsPage />} />} />
-          <Route path="regional-pricing" element={<LazyRoute element={<RegionalPricingPage />} />} />
-          <Route path="enterprise-contracts" element={<LazyRoute element={<EnterpriseContractsPage />} />} />
-          <Route path="reseller-contracts" element={<LazyRoute element={<ResellerContractsPage />} />} />
-          <Route path="org-config" element={<LazyRoute element={<OrgConfigPage />} />} />
-          <Route path="white-label" element={<LazyRoute element={<WhiteLabelConfigPage />} />} />
-          <Route path="support-tickets" element={<LazyRoute element={<SupportTicketsPage />} />} />
-          <Route path="announcements" element={<LazyRoute element={<AnnouncementsPage />} />} />
-          <Route path="rate-limits" element={<LazyRoute element={<RateLimitsPage />} />} />
-          <Route path="feature-rollouts" element={<LazyRoute element={<FeatureRolloutsPage />} />} />
-          <Route path="system-health" element={<LazyRoute element={<SystemHealthPage />} />} />
 
-          {/* Subscription Management — Platform Admin Only */}
-          <Route path="plans" element={<LazyRoute element={<SubscriptionPlansPage />} />} />
+          {/* Core Platform Management */}
+          <Route path="organizations" element={<LazyRoute element={<OrgConfigPage />} />} />
           <Route path="subscriptions" element={<LazyRoute element={<SubscriptionPage />} />} />
           <Route path="subscriptions/portal" element={<LazyRoute element={<SubscriptionPortalPage />} />} />
-          <Route path="subscriptions/billing" element={<LazyRoute element={<SubscriptionBillingPage />} />} />
+          <Route path="plans" element={<LazyRoute element={<SubscriptionPlansPage />} />} />
           <Route path="subscriptions/coupons" element={<LazyRoute element={<SubscriptionCouponsPage />} />} />
+          <Route path="subscriptions/billing" element={<LazyRoute element={<SubscriptionBillingPage />} />} />
           <Route path="subscriptions/addons" element={<LazyRoute element={<AddonMarketplacePage />} />} />
+
+          {/* Analytics & Revenue */}
+          <Route path="analytics" element={<LazyRoute element={<SaaSAnalyticsDashboard />} />} />
+
+          {/* Customer-facing Operations */}
+          <Route path="support-tickets" element={<LazyRoute element={<SupportTicketsPage />} />} />
+          <Route path="announcements" element={<LazyRoute element={<AnnouncementsPage />} />} />
+
+          {/* Platform Administration */}
+          <Route path="api-keys" element={<LazyRoute element={<RateLimitsPage />} />} />
+          <Route path="feature-rollouts" element={<LazyRoute element={<FeatureRolloutsPage />} />} />
+          <Route path="audit" element={<LazyRoute element={<SubscriptionNotificationsPage />} />} />
+          <Route path="users" element={<LazyRoute element={<EnterpriseContractsPage />} />} />
+          <Route path="roles" element={<LazyRoute element={<ResellerContractsPage />} />} />
+          <Route path="system-settings" element={<LazyRoute element={<RateLimitsPage />} />} />
+          <Route path="system-health" element={<LazyRoute element={<SystemHealthPage />} />} />
+          <Route path="security" element={<LazyRoute element={<WhiteLabelConfigPage />} />} />
+          <Route path="profile" element={<LazyRoute element={<SuperAdminDashboard />} />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/platform" replace />} />
