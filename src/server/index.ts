@@ -103,6 +103,9 @@ const logger = winston.createLogger({
 });
 
 async function startServer() {
+  // Default to production when NODE_ENV not set
+  if (!process.env.NODE_ENV) process.env.NODE_ENV = 'production';
+
   // Run migration in background so server starts immediately
   runMigration().catch(err => console.error('[Migration] Background migration failed:', err));
 
