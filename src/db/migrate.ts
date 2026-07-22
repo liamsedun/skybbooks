@@ -4146,6 +4146,40 @@ export async function runMigration() {
       console.error('[Migration] Platform infrastructure tables error:', err);
     }
 
+    // --- Tenant Role Permissions Migration ---
+    try {
+      // Add new user_role enum values (safe idempotent approach)
+      const newRoles = ['administrator', 'manager', 'sales', 'inventory', 'cashier', 'auditor', 'hr', 'purchasing'];
+      for (const role of newRoles) {
+        await pool.query(`
+          DO $$ BEGIN
+            ALTER TYPE user_role ADD VALUE '${role}';
+          EXCEPTION
+            WHEN duplicate_object THEN NULL;
+          END $$;
+        `);
+      }
+
+      // Create role_permissions table
+      await pool.query(`CREATE TABLE IF NOT EXISTS role_permissions (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id UUID REFERENCES organisations(id) NOT NULL,
+        role user_role NOT NULL,
+        permission TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT now() NOT NULL
+      )`);
+      try {
+        await pool.query(`CREATE INDEX IF NOT EXISTS idx_rp_org_role ON role_permissions(org_id, role)`);
+        await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_rp_org_perm ON role_permissions(org_id, role, permission)`);
+      } catch (e) {
+        // indexes might already exist
+      }
+
+      console.log('[Migration] Tenant role permissions ready.');
+    } catch (err) {
+      console.error('[Migration] Tenant role permissions error:', err);
+    }
+
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema setup:', err);

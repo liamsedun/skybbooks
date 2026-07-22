@@ -9,7 +9,7 @@ import { pgEnum } from 'drizzle-orm/pg-core';
 // 1. ENUMS DEFINITIONS
 // ==========================================
 
-export const userRoleEnum = pgEnum('user_role', ['owner', 'admin', 'accountant', 'staff']);
+export const userRoleEnum = pgEnum('user_role', ['owner', 'admin', 'accountant', 'staff', 'administrator', 'manager', 'sales', 'inventory', 'cashier', 'auditor', 'hr', 'purchasing']);
 
 export const platformRoleEnum = pgEnum('platform_role', [
   'super_admin', 'ceo', 'director', 'finance', 'support',

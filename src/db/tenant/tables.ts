@@ -1936,3 +1936,16 @@ export const apiKeys = pgTable('api_keys', {
   idxAkPrefix: uniqueIndex('idx_ak_prefix').on(table.prefix),
 }));
 
+// --- Role-Based Permissions (configurable per org) ---
+
+export const rolePermissions = pgTable('role_permissions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  role: userRoleEnum('role').notNull(),
+  permission: text('permission').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  idxRpOrgRole: index('idx_rp_org_role').on(table.orgId, table.role),
+  idxRpOrgPermission: uniqueIndex('idx_rp_org_perm').on(table.orgId, table.role, table.permission),
+}));
+

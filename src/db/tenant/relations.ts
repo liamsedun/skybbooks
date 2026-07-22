@@ -85,6 +85,7 @@ import {
   approvalHistory,
   ocrDocuments,
   projects,
+  rolePermissions,
 } from './tables';
 
 export const organisationsRelations = relations(organisations, ({ many }) => ({
@@ -1459,5 +1460,12 @@ export const ocrDocumentsRelations = relations(ocrDocuments, ({ one }) => ({
   journalEntry: one(journalEntries, {
     fields: [ocrDocuments.journalEntryId],
     references: [journalEntries.id]
+  }),
+}));
+
+export const rolePermissionsRelations = relations(rolePermissions, ({ one }) => ({
+  organisation: one(organisations, {
+    fields: [rolePermissions.orgId],
+    references: [organisations.id]
   }),
 }));
