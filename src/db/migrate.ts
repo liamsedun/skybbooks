@@ -2636,6 +2636,62 @@ export async function runMigration() {
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_password_reset_token_hash ON password_reset_tokens(token_hash)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_password_reset_user ON password_reset_tokens(user_id)`);
 
+    // Platform users table (separate from tenant users)
+    await db.execute(sql`
+      DO $$ BEGIN
+        CREATE TYPE platform_role AS ENUM ('ceo', 'director', 'super_admin', 'support', 'finance', 'marketing', 'developer', 'customer_success');
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$;
+    `);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS platform_users (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        email text NOT NULL,
+        password_hash text,
+        full_name text,
+        role platform_role DEFAULT 'super_admin' NOT NULL,
+        is_active boolean DEFAULT true NOT NULL,
+        avatar_url text,
+        last_login timestamp,
+        created_at timestamp DEFAULT now() NOT NULL,
+        updated_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_platform_users_email ON platform_users(email)`);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS platform_sessions (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        platform_user_id uuid REFERENCES platform_users(id) NOT NULL,
+        refresh_token_hash text NOT NULL,
+        expires_at timestamp NOT NULL,
+        ip_address text,
+        user_agent text,
+        created_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_platform_sessions_user ON platform_sessions(platform_user_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_platform_sessions_token ON platform_sessions(refresh_token_hash)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_platform_sessions_expires ON platform_sessions(expires_at)`);
+
+    // Seed initial platform admin from SUPER_ADMIN_EMAILS env var
+    const seedAdminEmail = process.env.SUPER_ADMIN_EMAILS?.split(',')[0]?.trim().toLowerCase();
+    if (seedAdminEmail) {
+      const existingAdmin = await db.execute(sql`SELECT id FROM platform_users WHERE email = ${seedAdminEmail} LIMIT 1`);
+      if (existingAdmin.rows.length === 0) {
+        const seedPassword = process.env.SEED_PLATFORM_ADMIN_PASSWORD || 'admin123';
+        const bcrypt = await import('bcryptjs');
+        const hashedPassword = await bcrypt.hash(seedPassword, 12);
+        await db.execute(sql`
+          INSERT INTO platform_users (email, password_hash, full_name, role, is_active)
+          VALUES (${seedAdminEmail}, ${hashedPassword}, 'Platform Administrator', 'super_admin', true)
+          ON CONFLICT DO NOTHING
+        `);
+        console.log(`[Migration] Seeded initial platform admin: ${seedAdminEmail}`);
+      }
+    }
+
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_audit_log_org ON audit_log(org_id)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_audit_log_entity ON audit_log(entity_type, entity_id)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_audit_log_created ON audit_log(org_id, created_at)`);

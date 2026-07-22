@@ -84,30 +84,30 @@ export function routeGuard(req: Request, res: Response, next: NextFunction): voi
   try {
     const decoded = verifyAccessToken(token);
 
-    if (req.path.startsWith('/platform') && decoded.role !== 'super_admin') {
+    if (req.path.startsWith('/platform') && decoded.type !== 'platform') {
       if (!checkRateLimited(ip, req.path)) {
-        logger.warn(`[${requestId}] FORBIDDEN ${req.method} ${req.url} — IP: ${ip} — role ${decoded.role} cannot access platform`);
+        logger.warn(`[${requestId}] FORBIDDEN ${req.method} ${req.url} — IP: ${ip} — type ${decoded.type || 'tenant'} cannot access platform`);
       }
       res.status(403).json({
         success: false,
         error: 'Forbidden: Platform administrator access required.',
         status: 403,
         requestId,
-        errorCode: 'FORBIDDEN_ROLE',
+        errorCode: 'FORBIDDEN_PLATFORM',
       });
       return;
     }
 
-    if (req.path.startsWith('/app') && !decoded.orgId) {
+    if (req.path.startsWith('/app') && decoded.type === 'platform') {
       if (!checkRateLimited(ip, req.path)) {
-        logger.warn(`[${requestId}] FORBIDDEN ${req.method} ${req.url} — IP: ${ip} — no org context`);
+        logger.warn(`[${requestId}] FORBIDDEN ${req.method} ${req.url} — IP: ${ip} — platform token on tenant route`);
       }
       res.status(403).json({
         success: false,
-        error: 'Forbidden: Active organisation context required.',
+        error: 'Forbidden: Platform tokens cannot access tenant application.',
         status: 403,
         requestId,
-        errorCode: 'FORBIDDEN_ORG',
+        errorCode: 'FORBIDDEN_TENANT',
       });
       return;
     }

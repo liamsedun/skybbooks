@@ -55,7 +55,10 @@ api.interceptors.request.use(
       config.url.includes('/auth/login') ||
       config.url.includes('/auth/register') ||
       config.url.includes('/auth/platform-login') ||
+      config.url.includes('/auth/platform-refresh') ||
+      config.url.includes('/auth/platform-logout') ||
       config.url.includes('/auth/refresh') ||
+      config.url.includes('/auth/logout') ||
       config.url.includes('/org/invite/')
     );
 
@@ -126,7 +129,8 @@ api.interceptors.response.use(
       }
 
       try {
-        const response = await axios.post(`${API_URL}/auth/refresh`, { refreshToken });
+        const refreshUrl = prefix === 'platform_' ? '/auth/platform-refresh' : '/auth/refresh';
+        const response = await axios.post(`${API_URL}${refreshUrl}`, { refreshToken });
         const { accessToken: newAccessToken, refreshToken: newRefreshToken } = response.data;
 
         localStorage.setItem(prefix + 'accessToken', newAccessToken);
@@ -195,8 +199,17 @@ export const authApi = {
     const res = await api.post('/auth/refresh', { refreshToken });
     return res.data;
   },
+  platformRefresh: async (refreshToken: string) => {
+    const res = await api.post('/auth/platform-refresh', { refreshToken });
+    return res.data;
+  },
   logout: async (refreshToken?: string) => {
     const res = await api.post('/auth/logout', { refreshToken });
+    clearAuthData();
+    return res.data;
+  },
+  platformLogout: async (refreshToken?: string) => {
+    const res = await api.post('/auth/platform-logout', { refreshToken });
     clearAuthData();
     return res.data;
   },

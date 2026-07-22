@@ -11,6 +11,7 @@ export interface TokenPayload {
   orgId: string | null;
   role: string;
   email: string;
+  type?: 'platform' | 'tenant';
 }
 
 let privateKeyCache: string | null = null;

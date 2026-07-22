@@ -41,6 +41,11 @@ export function authenticate(
 
   try {
     const decoded = verifyAccessToken(token);
+
+    if (decoded.type === 'platform') {
+      return next(new AppError('Platform tokens are not accepted on this endpoint.', 401, 'TOKEN_PLATFORM_NOT_ALLOWED'));
+    }
+
     req.user = decoded;
     return next();
   } catch (error) {

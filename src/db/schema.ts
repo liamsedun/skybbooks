@@ -29,6 +29,8 @@ import pg from 'pg';
 
 export const userRoleEnum = pgEnum('user_role', ['owner', 'admin', 'accountant', 'staff']);
 
+export const platformRoleEnum = pgEnum('platform_role', ['ceo', 'director', 'super_admin', 'support', 'finance', 'marketing', 'developer', 'customer_success']);
+
 export const accountTypeEnum = pgEnum('account_type', [
   'asset',
   'liability',
@@ -384,6 +386,29 @@ export const sessions = pgTable('sessions', {
   ipAddress: text('ip_address'),
   userAgent: text('user_agent'),
   createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+export const platformUsers = pgTable('platform_users', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  email: text('email').notNull(),
+  passwordHash: text('password_hash'),
+  fullName: text('full_name'),
+  role: platformRoleEnum('role').default('super_admin').notNull(),
+  isActive: boolean('is_active').default(true).notNull(),
+  avatarUrl: text('avatar_url'),
+  lastLogin: timestamp('last_login'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const platformSessions = pgTable('platform_sessions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  platformUserId: uuid('platform_user_id').references(() => platformUsers.id).notNull(),
+  refreshTokenHash: text('refresh_token_hash').notNull(),
+  expiresAt: timestamp('expires_at').notNull(),
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
 export const passwordResetTokens = pgTable('password_reset_tokens', {
@@ -3064,6 +3089,17 @@ export const sessionsRelations = relations(sessions, ({ one }) => ({
   })
 }));
 
+export const platformUsersRelations = relations(platformUsers, ({ many }) => ({
+  sessions: many(platformSessions),
+}));
+
+export const platformSessionsRelations = relations(platformSessions, ({ one }) => ({
+  platformUser: one(platformUsers, {
+    fields: [platformSessions.platformUserId],
+    references: [platformUsers.id]
+  })
+}));
+
 export const accountsRelations = relations(accounts, ({ one, many }) => ({
   organisation: one(organisations, {
     fields: [accounts.orgId],
@@ -4674,6 +4710,8 @@ export const db = drizzle(pool, {
     organisations,
     users,
     sessions,
+    platformUsers,
+    platformSessions,
     passwordResetTokens,
     accounts,
     journalEntries,
@@ -4895,6 +4933,8 @@ export const schema = {
   organisations,
   users,
   sessions,
+  platformUsers,
+  platformSessions,
   passwordResetTokens,
   accounts,
   journalEntries,

@@ -151,7 +151,11 @@ export function useAuth() {
     try {
       const rToken = localStorage.getItem(prefix + 'refreshToken');
       if (rToken) {
-        await authApi.logout(rToken);
+        if (prefix === 'platform_') {
+          await authApi.platformLogout(rToken);
+        } else {
+          await authApi.logout(rToken);
+        }
       }
     } catch (e) {
       console.warn('Backend logout failed or session expired', e);

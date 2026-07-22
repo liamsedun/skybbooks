@@ -106,6 +106,7 @@ export async function provisionTenant(input: SignupInput): Promise<ProvisioningR
     orgId: result.newOrg.id,
     role: result.newUser.role,
     email: result.newUser.email,
+    type: 'tenant' as const,
   };
 
   const accessToken = generateAccessToken(payload);

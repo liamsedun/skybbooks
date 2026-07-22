@@ -9,7 +9,7 @@ import bcrypt from 'bcryptjs';
 import multer from 'multer';
 import { eq, and } from 'drizzle-orm';
 import { db } from '../db/schema';
-import { users, organisations, sessions, subscriptionPlans } from '../db/schema';
+import { users, organisations, sessions, subscriptionPlans, platformUsers, platformSessions } from '../db/schema';
 import { seedAccounts } from '../db/seedAccounts';
 import { AppError } from '../lib/errors';
 import {
@@ -147,7 +147,8 @@ router.post('/register', async (req: AuthenticatedRequest, res: Response, next: 
       userId: result.newUser.id,
       orgId: result.newOrg.id,
       role: result.newUser.role,
-      email: result.newUser.email
+      email: result.newUser.email,
+      type: 'tenant' as const,
     };
 
     const accessToken = generateAccessToken(payload);
@@ -238,56 +239,50 @@ router.post('/platform-login', async (req: AuthenticatedRequest, res: Response, 
 
     const userList = await db
       .select()
-      .from(users)
-      .where(eq(users.email, body.email.toLowerCase()))
+      .from(platformUsers)
+      .where(eq(platformUsers.email, body.email.toLowerCase()))
       .limit(1);
 
-    const user = userList[0];
-    if (!user || !user.passwordHash) {
+    const platformUser = userList[0];
+    if (!platformUser || !platformUser.passwordHash) {
       throw new AppError('Invalid email or password.', 401);
     }
 
-    if (!user.isActive) {
-      throw new AppError('Your account has been deactivated.', 403);
+    if (!platformUser.isActive) {
+      throw new AppError('Your platform account has been deactivated.', 403);
     }
 
-    const isMatch = await bcrypt.compare(body.password, user.passwordHash);
+    const isMatch = await bcrypt.compare(body.password, platformUser.passwordHash);
     if (!isMatch) {
       throw new AppError('Invalid email or password.', 401);
     }
 
-    // Verify the user is a platform administrator
-    const emails = (process.env.SUPER_ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
-    const isSuperAdmin = emails.includes(user.email.toLowerCase());
-    if (!isSuperAdmin) {
-      throw new AppError('Only platform administrators can use this login.', 403);
-    }
-
     await db
-      .update(users)
+      .update(platformUsers)
       .set({ lastLogin: new Date() })
-      .where(eq(users.id, user.id));
+      .where(eq(platformUsers.id, platformUser.id));
 
     const payload = {
-      userId: user.id,
-      orgId: user.organisationId,
-      role: user.role,
-      email: user.email,
+      userId: platformUser.id,
+      orgId: null,
+      role: platformUser.role,
+      email: platformUser.email,
+      type: 'platform' as const,
     };
 
     const accessToken = generateAccessToken(payload);
     const refreshToken = generateRefreshToken(payload);
 
     const rTokenHash = hashToken(refreshToken);
-    await db.insert(sessions).values({
-      userId: user.id,
+    await db.insert(platformSessions).values({
+      platformUserId: platformUser.id,
       refreshTokenHash: rTokenHash,
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       ipAddress: req.ip || null,
       userAgent: req.headers['user-agent'] || null,
     });
 
-    const { passwordHash: _, ...userResponse } = user;
+    const { passwordHash: _, ...userResponse } = platformUser;
 
     setPlatformCookie(res, accessToken);
 
@@ -352,7 +347,8 @@ router.post('/login', async (req: AuthenticatedRequest, res: Response, next: Nex
       userId: user.id,
       orgId: user.organisationId,
       role: user.role,
-      email: user.email
+      email: user.email,
+      type: 'tenant' as const,
     };
 
     const accessToken = generateAccessToken(payload);
@@ -406,6 +402,10 @@ router.post('/refresh', async (req: AuthenticatedRequest, res: Response, next: N
     // 1. Verify token signature
     const payload = verifyRefreshToken(body.refreshToken);
 
+    if (payload.type === 'platform') {
+      throw new AppError('Platform tokens must use /auth/platform-refresh.', 401);
+    }
+
     // 2. Confirm token hash matches a session in our database
     const incomingHash = hashToken(body.refreshToken);
     const sessionList = await db
@@ -421,13 +421,12 @@ router.post('/refresh', async (req: AuthenticatedRequest, res: Response, next: N
     }
 
     if (session.expiresAt < new Date()) {
-      // Clean up expired session
       await db.delete(sessions).where(eq(sessions.id, session.id));
       console.info(`[Auth] Refresh: session expired for userId=${payload.userId}`);
       throw new AppError('Refresh token session has expired.', 401);
     }
 
-    // 3. Retrieve fresh user info to get latest role and active status
+    // 3. Retrieve fresh user info
     const freshUserList = await db
       .select()
       .from(users)
@@ -440,7 +439,7 @@ router.post('/refresh', async (req: AuthenticatedRequest, res: Response, next: N
       throw new AppError('User account is invalid or inactive.', 401);
     }
 
-    // 4. Rotate/Invalidate the current token session
+    // 4. Rotate session
     await db.delete(sessions).where(eq(sessions.id, session.id));
 
     // 5. Generate new pair
@@ -448,7 +447,8 @@ router.post('/refresh', async (req: AuthenticatedRequest, res: Response, next: N
       userId: user.id,
       orgId: user.organisationId,
       role: user.role,
-      email: user.email
+      email: user.email,
+      type: 'tenant' as const,
     };
 
     const newAccessToken = generateAccessToken(freshPayload);
@@ -459,20 +459,14 @@ router.post('/refresh', async (req: AuthenticatedRequest, res: Response, next: N
     await db.insert(sessions).values({
       userId: user.id,
       refreshTokenHash: newHash,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       ipAddress: req.ip || null,
       userAgent: req.headers['user-agent'] || null
     });
 
     console.info(`[Auth] Token refreshed successfully for userId=${user.id}`);
 
-    const adminEmails = (process.env.SUPER_ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
-    const isPlatformAdmin = adminEmails.includes(user.email.toLowerCase());
-    if (isPlatformAdmin) {
-      setPlatformCookie(res, newAccessToken);
-    } else {
-      setAppCookie(res, newAccessToken);
-    }
+    setAppCookie(res, newAccessToken);
 
     return res.status(200).json({
       accessToken: newAccessToken,
@@ -492,7 +486,114 @@ router.post('/refresh', async (req: AuthenticatedRequest, res: Response, next: N
 });
 
 // ==========================================
-// 4. POST /auth/logout (Authenticated)
+// 3b. POST /auth/platform-refresh (Platform users only)
+// ==========================================
+router.post('/platform-refresh', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const body = refreshSchema.parse(req.body);
+
+    const payload = verifyRefreshToken(body.refreshToken);
+
+    if (payload.type !== 'platform') {
+      throw new AppError('Tenant tokens must use /auth/refresh.', 401);
+    }
+
+    const incomingHash = hashToken(body.refreshToken);
+    const sessionList = await db
+      .select()
+      .from(platformSessions)
+      .where(eq(platformSessions.refreshTokenHash, incomingHash))
+      .limit(1);
+
+    const session = sessionList[0];
+    if (!session) {
+      console.warn(`[Auth] Platform refresh failed: session not found for platformUserId=${payload.userId}`);
+      throw new AppError('Refresh token is invalid or session has expired.', 401);
+    }
+
+    if (session.expiresAt < new Date()) {
+      await db.delete(platformSessions).where(eq(platformSessions.id, session.id));
+      console.info(`[Auth] Platform refresh: session expired for platformUserId=${payload.userId}`);
+      throw new AppError('Refresh token session has expired.', 401);
+    }
+
+    const freshUserList = await db
+      .select()
+      .from(platformUsers)
+      .where(eq(platformUsers.id, payload.userId))
+      .limit(1);
+
+    const platformUser = freshUserList[0];
+    if (!platformUser || !platformUser.isActive) {
+      console.warn(`[Auth] Platform refresh failed: account inactive or not found for platformUserId=${payload.userId}`);
+      throw new AppError('Platform account is invalid or inactive.', 401);
+    }
+
+    await db.delete(platformSessions).where(eq(platformSessions.id, session.id));
+
+    const freshPayload = {
+      userId: platformUser.id,
+      orgId: null,
+      role: platformUser.role,
+      email: platformUser.email,
+      type: 'platform' as const,
+    };
+
+    const newAccessToken = generateAccessToken(freshPayload);
+    const newRefreshToken = generateRefreshToken(freshPayload);
+
+    const newHash = hashToken(newRefreshToken);
+    await db.insert(platformSessions).values({
+      platformUserId: platformUser.id,
+      refreshTokenHash: newHash,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      ipAddress: req.ip || null,
+      userAgent: req.headers['user-agent'] || null,
+    });
+
+    console.info(`[Auth] Platform token refreshed successfully for platformUserId=${platformUser.id}`);
+
+    setPlatformCookie(res, newAccessToken);
+
+    return res.status(200).json({
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return next(new AppError(error.issues[0]?.message || 'Validation failed', 400));
+    }
+    if (error instanceof Error && (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError')) {
+      console.warn(`[Auth] Platform refresh failed: verifyRefreshToken threw ${error.name}`);
+      return next(new AppError('Invalid or expired refresh token.', 401));
+    }
+    return next(error);
+  }
+});
+
+// ==========================================
+// 4a. POST /auth/platform-logout (Platform users)
+// ==========================================
+router.post('/platform-logout', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { refreshToken } = req.body;
+
+    if (refreshToken) {
+      const hash = hashToken(refreshToken);
+      await db.delete(platformSessions).where(eq(platformSessions.refreshTokenHash, hash));
+    }
+
+    res.clearCookie('platform_token', { path: '/platform' });
+
+    return res.status(200).json({ message: 'Logged out successfully.' });
+  } catch (error) {
+    res.clearCookie('platform_token', { path: '/platform' });
+    return next(error);
+  }
+});
+
+// ==========================================
+// 4b. POST /auth/logout (Tenant users, authenticated)
 // ==========================================
 router.post('/logout', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
