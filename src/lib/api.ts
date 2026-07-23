@@ -532,6 +532,18 @@ export const bankingApi = {
     const res = await api.get('/banking/providers/status');
     return res.data;
   },
+  getGatewayConfig: async () => {
+    const res = await api.get('/banking/payment-gateway/config');
+    return res.data;
+  },
+  saveGatewayConfig: async (gateway: string, data: { publicKey?: string; secretKey?: string; webhookSecret?: string; environment?: string; isActive?: boolean; isDefault?: boolean }) => {
+    const res = await api.put(`/banking/payment-gateway/config/${gateway}`, data);
+    return res.data;
+  },
+  disconnectGateway: async (gateway: string) => {
+    const res = await api.delete(`/banking/payment-gateway/config/${gateway}`);
+    return res.data;
+  },
 };
 
 export const periodsApi = {

@@ -1,4 +1,4 @@
-import { db, bankAccounts, bankTransactions, bankConnections, paymentGatewayTransactions, organisations, journalEntries, journalLines, accounts } from '../db/schema';
+import { db, bankAccounts, bankTransactions, bankConnections, paymentGatewayTransactions, organisations, paymentGatewayConfigs, journalEntries, journalLines, accounts } from '../db/schema';
 import { eq, and, gte, lte, or, sql, desc, asc } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
 import { monoProvider } from './providers/mono.provider';
@@ -28,6 +28,65 @@ function getActiveProviders(orgId: string): { feed: string[]; gateway: string[] 
   if (FLW_SECRET_KEY) gateway.push('flutterwave');
   if (MONIEPOINT_API_KEY && MONIEPOINT_SECRET) gateway.push('moniepoint');
   return { feed, gateway };
+}
+
+export async function getOrgGatewayConfigs(orgId: string): Promise<Record<string, { publicKey: string; secretKey: string; webhookSecret: string; environment: string; isActive: boolean; isDefault: boolean }>> {
+  const rows = await db
+    .select()
+    .from(paymentGatewayConfigs)
+    .where(eq(paymentGatewayConfigs.orgId, orgId));
+  const result: Record<string, any> = {};
+  for (const row of rows) {
+    result[row.gateway] = {
+      publicKey: row.publicKey || '',
+      secretKey: row.secretKey || '',
+      webhookSecret: row.webhookSecret || '',
+      environment: row.environment || 'live',
+      isActive: row.isActive ?? true,
+      isDefault: row.isDefault ?? false,
+    };
+  }
+  return result;
+}
+
+export async function saveOrgGatewayConfig(orgId: string, gateway: string, data: {
+  publicKey?: string;
+  secretKey?: string;
+  webhookSecret?: string;
+  environment?: string;
+  isActive?: boolean;
+  isDefault?: boolean;
+}): Promise<void> {
+  await db
+    .insert(paymentGatewayConfigs)
+    .values({
+      orgId,
+      gateway,
+      publicKey: data.publicKey || null,
+      secretKey: data.secretKey || null,
+      webhookSecret: data.webhookSecret || null,
+      environment: data.environment || 'live',
+      isActive: data.isActive ?? true,
+      isDefault: data.isDefault ?? false,
+    })
+    .onConflictDoUpdate({
+      target: [paymentGatewayConfigs.orgId, paymentGatewayConfigs.gateway],
+      set: {
+        publicKey: data.publicKey || null,
+        secretKey: data.secretKey || null,
+        webhookSecret: data.webhookSecret || null,
+        environment: data.environment || 'live',
+        isActive: data.isActive ?? true,
+        isDefault: data.isDefault ?? false,
+        updatedAt: new Date(),
+      },
+    });
+}
+
+export async function deleteOrgGatewayConfig(orgId: string, gateway: string): Promise<void> {
+  await db
+    .delete(paymentGatewayConfigs)
+    .where(and(eq(paymentGatewayConfigs.orgId, orgId), eq(paymentGatewayConfigs.gateway, gateway)));
 }
 
 export async function getBankConnections(orgId: string) {

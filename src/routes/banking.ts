@@ -62,6 +62,9 @@ import {
   disconnectBankConnection,
   getGatewaySummary,
   getActiveProviders,
+  getOrgGatewayConfigs,
+  saveOrgGatewayConfig,
+  deleteOrgGatewayConfig,
 } from '../services/banking.service';
 import { monoProvider } from '../services/providers/mono.provider';
 import { paystackProvider } from '../services/providers/paystack.provider';
@@ -2393,13 +2396,20 @@ router.get('/payment-gateway/providers', async (req: AuthenticatedRequest, res: 
   try {
     const orgId = req.user!.orgId!;
     const { gateway } = getActiveProviders(orgId);
-    return res.status(200).json({
-      providers: gateway.map(p => ({
+    const orgConfigs = await getOrgGatewayConfigs(orgId);
+    const providers = ['paystack', 'flutterwave'].map(p => {
+      const envConfigured = p === 'paystack' ? !!process.env.PAYSTACK_SECRET_KEY : !!process.env.FLW_SECRET_KEY;
+      const orgConfig = orgConfigs[p];
+      const orgConfigured = !!orgConfig && !!orgConfig.secretKey;
+      return {
         provider: p,
-        configured: true,
-        publicKey: p === 'paystack' ? (process.env.PAYSTACK_PUBLIC_KEY || '') : p === 'flutterwave' ? (process.env.FLW_PUBLIC_KEY || '') : '',
-      })),
+        configured: envConfigured || orgConfigured,
+        publicKey: orgConfig?.publicKey || (p === 'paystack' ? (process.env.PAYSTACK_PUBLIC_KEY || '') : (process.env.FLW_PUBLIC_KEY || '')),
+        environment: orgConfig?.environment || (process.env.NODE_ENV === 'production' ? 'live' : 'test'),
+        connected: orgConfigured,
+      };
     });
+    return res.status(200).json({ providers });
   } catch (err) { next(err); }
 });
 
@@ -2572,6 +2582,50 @@ router.post('/disburse', async (req: AuthenticatedRequest, res: Response, next: 
     });
 
     return res.status(200).json(result);
+  } catch (err) { next(err); }
+});
+
+// GET org-level payment gateway config (API keys stored by the org)
+router.get('/payment-gateway/config', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const configs = await getOrgGatewayConfigs(orgId);
+    return res.status(200).json({ configs });
+  } catch (err) { next(err); }
+});
+
+// PUT save org-level payment gateway config
+router.put('/payment-gateway/config/:gateway', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { gateway } = req.params;
+    const valid = ['paystack', 'flutterwave'];
+    if (!valid.includes(gateway)) {
+      throw new AppError(`Unsupported gateway: ${gateway}. Supported: ${valid.join(', ')}`, 400);
+    }
+    const { publicKey, secretKey, webhookSecret, environment, isActive, isDefault } = req.body;
+    await saveOrgGatewayConfig(orgId, gateway, { publicKey, secretKey, webhookSecret, environment, isActive, isDefault });
+    await createAuditLog({
+      orgId, userId: req.user!.userId, action: 'update', entityType: 'payment-gateway-config',
+      newValues: { gateway, environment, isActive },
+      ...extractReqMeta(req),
+    });
+    return res.status(200).json({ success: true });
+  } catch (err) { next(err); }
+});
+
+// DELETE disconnect an org-level payment gateway
+router.delete('/payment-gateway/config/:gateway', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { gateway } = req.params;
+    await deleteOrgGatewayConfig(orgId, gateway);
+    await createAuditLog({
+      orgId, userId: req.user!.userId, action: 'delete', entityType: 'payment-gateway-config',
+      newValues: { gateway },
+      ...extractReqMeta(req),
+    });
+    return res.status(200).json({ success: true });
   } catch (err) { next(err); }
 });
 

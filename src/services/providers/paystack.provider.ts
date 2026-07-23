@@ -1,19 +1,18 @@
 import { PaymentGateway, PaymentGatewayTransaction, ProviderConfig } from './types';
 import { AppError } from '../../lib/errors';
 
-const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY || '';
-const PAYSTACK_PUBLIC_KEY = process.env.PAYSTACK_PUBLIC_KEY || '';
 const PAYSTACK_BASE = 'https://api.paystack.co';
 
 export class PaystackProvider {
   private config: ProviderConfig;
 
-  constructor() {
+  constructor(overrideConfig?: Partial<ProviderConfig>) {
     this.config = {
-      secretKey: PAYSTACK_SECRET_KEY,
-      publicKey: PAYSTACK_PUBLIC_KEY,
+      secretKey: process.env.PAYSTACK_SECRET_KEY || '',
+      publicKey: process.env.PAYSTACK_PUBLIC_KEY || '',
       baseUrl: PAYSTACK_BASE,
       environment: process.env.NODE_ENV === 'production' ? 'live' : 'test',
+      ...overrideConfig,
     };
   }
 

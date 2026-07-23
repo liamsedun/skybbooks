@@ -2,8 +2,6 @@ import { PaymentGateway, PaymentGatewayTransaction, BankFeedTransaction, Provide
 import { BaseBankFeedProvider } from './base.provider';
 import { AppError } from '../../lib/errors';
 
-const FLW_SECRET_KEY = process.env.FLW_SECRET_KEY || '';
-const FLW_PUBLIC_KEY = process.env.FLW_PUBLIC_KEY || '';
 const FLW_BASE = 'https://api.flutterwave.com/v3';
 
 /**
@@ -13,12 +11,13 @@ const FLW_BASE = 'https://api.flutterwave.com/v3';
 export class FlutterwavePaymentProvider {
   private config: ProviderConfig;
 
-  constructor() {
+  constructor(overrideConfig?: Partial<ProviderConfig>) {
     this.config = {
-      secretKey: FLW_SECRET_KEY,
-      publicKey: FLW_PUBLIC_KEY,
+      secretKey: process.env.FLW_SECRET_KEY || '',
+      publicKey: process.env.FLW_PUBLIC_KEY || '',
       baseUrl: FLW_BASE,
       environment: process.env.NODE_ENV === 'production' ? 'live' : 'test',
+      ...overrideConfig,
     };
   }
 

@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { periodsApi } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
 import { useOrgSettings } from '../../hooks/useOrgSettings';
-import { orgApi, authApi, accountantApi, api } from '../../lib/api';
+import { orgApi, authApi, accountantApi, api, bankingApi } from '../../lib/api';
 import { useToast } from '../../contexts/ToastContext';
 
 function useSettingsForm(key: string, defaults?: Record<string, any>) {
@@ -5434,62 +5434,132 @@ export function InventoryAdjustmentsPage() {
 
 // ─── Payment Gateways ──────────────────────────────────────────────────────
 export function PaymentGatewaysPage() {
-  const { form, setForm, field, toggle, handleSave, isPending, saved, error } = useSettingsForm('paymentGateways', {
-    flutterwaveConnected: true, paystackConnected: false,
-    redirectAfterCreation: true, allowPartialPayments: false, defaultGateway: 'flutterwave',
-  });
+  const [configs, setConfigs] = useState<Record<string, any>>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<string | null>(null);
+  const [error, setError] = useState('');
 
-  const toggleGateway = (gw: 'flutterwave' | 'paystack') => {
-    const key = gw === 'flutterwave' ? 'flutterwaveConnected' : 'paystackConnected';
-    setForm((p: any) => ({ ...p, [key]: !p[key] }));
-  };
+  useEffect(() => { loadConfigs(); }, []);
+
+  async function loadConfigs() {
+    setLoading(true);
+    try {
+      const { configs: data } = await bankingApi.getGatewayConfig();
+      setConfigs(data || {});
+    } catch { /* ignore */ } finally { setLoading(false); }
+  }
+
+  async function handleConnect(gw: string) {
+    setSaving(gw);
+    setError('');
+    try {
+      await bankingApi.saveGatewayConfig(gw, {
+        publicKey: '',
+        secretKey: '',
+        environment: 'live',
+        isActive: true,
+        isDefault: false,
+      });
+      await loadConfigs();
+    } catch (e: any) {
+      setError(e?.response?.data?.error || `Failed to connect ${gw}`);
+    } finally { setSaving(null); }
+  }
+
+  async function handleDisconnect(gw: string) {
+    setSaving(gw);
+    setError('');
+    try {
+      await bankingApi.disconnectGateway(gw);
+      await loadConfigs();
+    } catch (e: any) {
+      setError(e?.response?.data?.error || `Failed to disconnect ${gw}`);
+    } finally { setSaving(null); }
+  }
+
+  async function handleSaveConfig(gw: string, field: string, value: string) {
+    const cfg = configs[gw] || {};
+    try {
+      await bankingApi.saveGatewayConfig(gw, { ...cfg, [field]: value });
+      setConfigs((p: any) => ({ ...p, [gw]: { ...p[gw], [field]: value } }));
+    } catch (e: any) {
+      setError(e?.response?.data?.error || `Failed to update ${gw} config`);
+    }
+  }
+
+  if (loading) return <PageShell title="Payment Gateways" desc="Loading..." icon={Wallet}><p className="text-sm text-slate-400">Loading gateway configuration...</p></PageShell>;
+
+  const gateways = [
+    { key: 'flutterwave', label: 'Flutterwave', icon: 'FW', color: 'bg-purple-100 text-purple-600' },
+    { key: 'paystack', label: 'Paystack', icon: 'PS', color: 'bg-blue-100 text-blue-600' },
+  ];
 
   return (
-    <PageShell title="Payment Gateways" desc="Configure online payment gateway connections." icon={Wallet}>
+    <PageShell title="Payment Gateways" desc="Connect your own Flutterwave and Paystack accounts to process payments through SkyBooks." icon={Wallet}>
+      {error && <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">{error}</div>}
+
       <Section title="Connected Gateways">
-        <div className="space-y-3">
-          <div className="flex items-center justify-between border border-slate-200 rounded-lg p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center text-sm font-bold">FW</div>
-              <div>
-                <p className="text-sm font-semibold text-slate-800">Flutterwave</p>
-                <p className="text-xs text-slate-400">{form.flutterwaveConnected ? 'Connected · Live Mode' : 'Not connected'}</p>
+        <div className="space-y-4">
+          {gateways.map(gw => {
+            const cfg = configs[gw.key];
+            const connected = !!cfg && !!cfg.secretKey;
+            return (
+              <div key={gw.key} className="border border-slate-200 rounded-lg overflow-hidden">
+                <div className="flex items-center justify-between p-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-lg ${gw.color} flex items-center justify-center text-sm font-bold`}>{gw.icon}</div>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-800">{gw.label}</p>
+                      <p className="text-xs text-slate-400">{connected ? `Connected · ${cfg.environment === 'test' ? 'Test' : 'Live'} Mode` : 'Not connected'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {connected && <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-full uppercase">Active</span>}
+                    {connected ? (
+                      <button onClick={() => handleDisconnect(gw.key)} disabled={saving === gw.key} className="px-3 py-1.5 border border-red-300 text-red-600 text-xs font-medium rounded-lg hover:bg-red-50 disabled:opacity-50">
+                        {saving === gw.key ? '...' : 'Disconnect'}
+                      </button>
+                    ) : (
+                      <button onClick={() => handleConnect(gw.key)} disabled={saving === gw.key} className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50">
+                        {saving === gw.key ? '...' : 'Connect'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {connected && (
+                  <div className="border-t border-slate-100 bg-slate-50 p-4 space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 mb-1">Public Key</label>
+                      <input type="text" value={cfg.publicKey || ''} onChange={e => handleSaveConfig(gw.key, 'publicKey', e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder={`${gw.label} public key`} />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 mb-1">Secret Key</label>
+                      <input type="password" value={cfg.secretKey || ''} onChange={e => handleSaveConfig(gw.key, 'secretKey', e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder={`${gw.label} secret key`} />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 mb-1">Webhook Secret</label>
+                      <input type="password" value={cfg.webhookSecret || ''} onChange={e => handleSaveConfig(gw.key, 'webhookSecret', e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder={`${gw.label} webhook secret`} />
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <label className="text-xs font-medium text-slate-600">Environment</label>
+                      <select value={cfg.environment || 'live'} onChange={e => handleSaveConfig(gw.key, 'environment', e.target.value)} className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="live">Live</option>
+                        <option value="test">Test</option>
+                      </select>
+                    </div>
+                    <p className="text-[10px] text-slate-400">Keys are stored securely and used for payment processing. Get your keys from your {gw.label} dashboard.</p>
+                  </div>
+                )}
               </div>
-            </div>
-            {form.flutterwaveConnected ? (
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-full uppercase">Active</span>
-                <button onClick={() => toggleGateway('flutterwave')} className="px-3 py-1.5 border border-red-300 text-red-600 text-xs font-medium rounded-lg hover:bg-red-50">Disconnect</button>
-              </div>
-            ) : (
-              <button onClick={() => toggleGateway('flutterwave')} className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700">Connect</button>
-            )}
-          </div>
-          <div className="flex items-center justify-between border border-slate-200 rounded-lg p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-bold">PS</div>
-              <div>
-                <p className="text-sm font-semibold text-slate-800">Paystack</p>
-                <p className="text-xs text-slate-400">{form.paystackConnected ? 'Connected · Live Mode' : 'Not connected'}</p>
-              </div>
-            </div>
-            {form.paystackConnected ? (
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-full uppercase">Active</span>
-                <button onClick={() => toggleGateway('paystack')} className="px-3 py-1.5 border border-red-300 text-red-600 text-xs font-medium rounded-lg hover:bg-red-50">Disconnect</button>
-              </div>
-            ) : (
-              <button onClick={() => toggleGateway('paystack')} className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700">Connect</button>
-            )}
-          </div>
+            );
+          })}
         </div>
       </Section>
+
       <Section title="Payment Page Settings">
-        <ToggleRow label="Redirect to payment page after invoice creation" checked={form.redirectAfterCreation} onClick={toggle('redirectAfterCreation')} />
-        <ToggleRow label="Allow partial payments" checked={form.allowPartialPayments} onClick={toggle('allowPartialPayments')} />
-        <Select label="Default payment gateway" options={[{ value: 'flutterwave', label: 'Flutterwave' }, { value: 'paystack', label: 'Paystack' }]} value={form.defaultGateway || 'flutterwave'} onChange={field('defaultGateway')} />
+        {/* Payment page settings still use org settings blob */}
+        <p className="text-xs text-slate-400 mt-2">Additional payment page settings (redirect, partial payments, default gateway) are configured in your invoice settings.</p>
       </Section>
-      <SaveBar onSave={handleSave} isPending={isPending} saved={saved} error={error} />
     </PageShell>
   );
 }
