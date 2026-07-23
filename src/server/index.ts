@@ -77,6 +77,7 @@ import rateLimitAdminRouter from '../routes/rateLimitAdmin';
 import featureRolloutsRouter from '../routes/featureRollouts';
 import dunningRouter from '../routes/dunning';
 import customerSubscriptionsRouter from '../routes/customerSubscriptions';
+import promotionsEngineRouter from '../routes/promotionsEngine';
 
 import { runMigration } from '../db/migrate';
 import { fetchLatestRates } from '../services/cbn.service';
@@ -226,6 +227,7 @@ async function startServer() {
   app.use('/api/platform/users', platformUsersRouter);
   app.use('/api/dunning', dunningRouter);
   app.use('/api/customer-subscriptions', customerSubscriptionsRouter);
+  app.use('/api/promotions', promotionsEngineRouter);
 
   app.get('/api/health', (req, res) => {
     res.json({ status: 'healthy', timestamp: new Date().toISOString() });

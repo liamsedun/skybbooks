@@ -1,11 +1,28 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import * as pe from '../services/promotionsEngine.service';
+import { platformAuthenticate, platformUserGuard, PlatformAuthenticatedRequest } from '../middleware/platformAuth';
 import { requirePlatformPermission } from '../middleware/platformAuth';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { ok } from '../lib/response';
 
 const router = Router();
+
+// Platform auth for all promotions engine routes
+router.use(platformAuthenticate);
+router.use(platformUserGuard);
+
+// Map platform user context to req.user shim for backward compat
+router.use((req: PlatformAuthenticatedRequest, _res, next) => {
+  const orgId = (req.headers['x-org-id'] as string) || (req.query.orgId as string) || (req.body?.orgId as string);
+  (req as any).user = {
+    userId: req.platformUser?.id,
+    orgId: orgId || null,
+    role: req.platformUser?.role,
+    email: req.platformUser?.email,
+  };
+  next();
+});
 
 // ── Campaigns ──
 
