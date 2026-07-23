@@ -15,11 +15,11 @@ const STATUS_COLORS: Record<string, string> = {
   open: 'bg-blue-100 text-blue-700',
   in_progress: 'bg-amber-100 text-amber-700',
   resolved: 'bg-green-100 text-green-700',
-  closed: 'bg-gray-100 text-gray-600',
+  closed: 'bg-surface-hover text-ink-600',
 };
 
 const PRIORITY_COLORS: Record<string, string> = {
-  low: 'bg-gray-100 text-gray-600',
+  low: 'bg-surface-hover text-ink-600',
   normal: 'bg-blue-100 text-blue-700',
   high: 'bg-orange-100 text-orange-700',
   urgent: 'bg-red-100 text-red-700',
@@ -94,17 +94,17 @@ export function SupportTicketsPage() {
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button onClick={() => { setTab('all'); setSelectedId(null); }} className="text-sm text-gray-500 hover:text-gray-700">&larr; Back</button>
-            <h1 className="text-2xl font-bold text-gray-900">Ticket #{selectedId.slice(0, 8)}</h1>
+            <button onClick={() => { setTab('all'); setSelectedId(null); }} className="text-sm text-ink-500 hover:text-ink-700">&larr; Back</button>
+            <h1 className="text-2xl font-bold text-ink-900">Ticket #{selectedId.slice(0, 8)}</h1>
           </div>
-          <button onClick={() => refetchDetail()} className="flex items-center gap-2 px-3 py-2 text-sm bg-white border rounded-lg hover:bg-gray-50">
+          <button onClick={() => refetchDetail()} className="flex items-center gap-2 px-3 py-2 text-sm bg-surface border rounded-lg hover:bg-surface-subtle">
             <RefreshCw className="w-4 h-4" /> Refresh
           </button>
         </div>
 
         {ticketDetail && (
           <>
-            <div className="bg-white rounded-xl border p-5 space-y-3">
+            <div className="bg-surface rounded-xl border p-5 space-y-3">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold">{ticketDetail.ticket.subject}</h2>
                 <div className="flex items-center gap-2">
@@ -116,13 +116,13 @@ export function SupportTicketsPage() {
                   </span>
                 </div>
               </div>
-              <div className="flex items-center gap-4 text-xs text-gray-500">
+              <div className="flex items-center gap-4 text-xs text-ink-500">
                 <span className="flex items-center gap-1"><User className="w-3 h-3" /> {ticketDetail.user?.fullName || 'Unknown'}</span>
                 <span className="flex items-center gap-1"><Building2 className="w-3 h-3" /> {ticketDetail.orgName || '-'}</span>
                 <span className="flex items-center gap-1"><Flag className="w-3 h-3" /> {ticketDetail.ticket.category}</span>
                 <span>{fmtDate(ticketDetail.ticket.createdAt)}</span>
               </div>
-              <p className="text-sm text-gray-700 whitespace-pre-wrap">{ticketDetail.ticket.message}</p>
+              <p className="text-sm text-ink-700 whitespace-pre-wrap">{ticketDetail.ticket.message}</p>
               {ticketDetail.ticket.resolution && (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-800">
                   <strong>Resolution:</strong> {ticketDetail.ticket.resolution}
@@ -157,23 +157,23 @@ export function SupportTicketsPage() {
               )}
             </div>
 
-            <div className="bg-white rounded-xl border p-5">
-              <h3 className="text-sm font-semibold text-gray-700 mb-4">Messages ({ticketDetail.messages.length})</h3>
+            <div className="bg-surface rounded-xl border p-5">
+              <h3 className="text-sm font-semibold text-ink-700 mb-4">Messages ({ticketDetail.messages.length})</h3>
               <div className="space-y-4 mb-4 max-h-96 overflow-y-auto">
                 {ticketDetail.messages.map((msg: any) => (
-                  <div key={msg.id} className={`p-3 rounded-lg ${msg.isInternal ? 'bg-amber-50 border border-amber-200' : 'bg-gray-50 border'}`}>
+                  <div key={msg.id} className={`p-3 rounded-lg ${msg.isInternal ? 'bg-amber-50 border border-amber-200' : 'bg-surface-subtle border'}`}>
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-medium text-gray-700">{msg.user?.fullName || 'Unknown'}</span>
+                      <span className="text-xs font-medium text-ink-700">{msg.user?.fullName || 'Unknown'}</span>
                       <div className="flex items-center gap-2">
                         {msg.isInternal && <span className="px-1.5 py-0.5 text-xs rounded bg-amber-200 text-amber-800">Internal</span>}
-                        <span className="text-xs text-gray-400">{fmtDate(msg.createdAt)}</span>
+                        <span className="text-xs text-ink-400">{fmtDate(msg.createdAt)}</span>
                       </div>
                     </div>
-                    <p className="text-sm text-gray-700 whitespace-pre-wrap">{msg.message}</p>
+                    <p className="text-sm text-ink-700 whitespace-pre-wrap">{msg.message}</p>
                   </div>
                 ))}
                 {ticketDetail.messages.length === 0 && (
-                  <p className="text-sm text-gray-400 text-center py-4">No messages yet</p>
+                  <p className="text-sm text-ink-400 text-center py-4">No messages yet</p>
                 )}
               </div>
               <div className="flex gap-2">
@@ -182,7 +182,7 @@ export function SupportTicketsPage() {
                   className="flex-1 border rounded-lg p-2 text-sm resize-none h-20 outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div className="flex items-center justify-between mt-2">
-                <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                <label className="flex items-center gap-2 text-sm text-ink-600 cursor-pointer">
                   <input type="checkbox" checked={isInternal} onChange={e => setIsInternal(e.target.checked)} className="rounded" />
                   Internal note (not visible to requester)
                 </label>
@@ -203,15 +203,15 @@ export function SupportTicketsPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Support Tickets</h1>
-          <p className="text-sm text-gray-500 mt-1">Manage organisation support requests</p>
+          <h1 className="text-2xl font-bold text-ink-900">Support Tickets</h1>
+          <p className="text-sm text-ink-500 mt-1">Manage organisation support requests</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => setShowCreate(true)} className="flex items-center gap-2 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
             <Plus className="w-4 h-4" /> New Ticket
           </button>
           <button onClick={() => queryClient.invalidateQueries({ queryKey: ['support-tickets'] })}
-            className="flex items-center gap-2 px-3 py-2 text-sm bg-white border rounded-lg hover:bg-gray-50">
+            className="flex items-center gap-2 px-3 py-2 text-sm bg-surface border rounded-lg hover:bg-surface-subtle">
             <RefreshCw className="w-4 h-4" /> Refresh
           </button>
         </div>
@@ -236,35 +236,35 @@ export function SupportTicketsPage() {
         </select>
       </div>
 
-      <div className="bg-white rounded-xl border">
+      <div className="bg-surface rounded-xl border">
         {isLoading ? (
-          <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>
+          <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-ink-400" /></div>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b bg-gray-50">
-                <th className="text-left p-3 font-medium text-gray-600">Subject</th>
-                <th className="text-left p-3 font-medium text-gray-600">Org</th>
-                <th className="text-left p-3 font-medium text-gray-600">Requester</th>
-                <th className="text-left p-3 font-medium text-gray-600">Status</th>
-                <th className="text-left p-3 font-medium text-gray-600">Priority</th>
-                <th className="text-left p-3 font-medium text-gray-600">Date</th>
-                <th className="text-left p-3 font-medium text-gray-600">Action</th>
+              <tr className="border-b bg-surface-subtle">
+                <th className="text-left p-3 font-medium text-ink-600">Subject</th>
+                <th className="text-left p-3 font-medium text-ink-600">Org</th>
+                <th className="text-left p-3 font-medium text-ink-600">Requester</th>
+                <th className="text-left p-3 font-medium text-ink-600">Status</th>
+                <th className="text-left p-3 font-medium text-ink-600">Priority</th>
+                <th className="text-left p-3 font-medium text-ink-600">Date</th>
+                <th className="text-left p-3 font-medium text-ink-600">Action</th>
               </tr>
             </thead>
             <tbody>
               {tickets?.map((t: any) => (
-                <tr key={t.id} className="border-b hover:bg-gray-50">
-                  <td className="p-3 font-medium text-gray-900">{t.subject}</td>
-                  <td className="p-3 text-gray-500">{t.orgName || '-'}</td>
-                  <td className="p-3 text-gray-500">{t.user?.fullName || 'Unknown'}</td>
+                <tr key={t.id} className="border-b hover:bg-surface-subtle">
+                  <td className="p-3 font-medium text-ink-900">{t.subject}</td>
+                  <td className="p-3 text-ink-500">{t.orgName || '-'}</td>
+                  <td className="p-3 text-ink-500">{t.user?.fullName || 'Unknown'}</td>
                   <td className="p-3">
                     <span className={`px-2 py-0.5 text-xs rounded-full ${STATUS_COLORS[t.status] || ''}`}>{t.status}</span>
                   </td>
                   <td className="p-3">
                     <span className={`px-2 py-0.5 text-xs rounded-full ${PRIORITY_COLORS[t.priority] || ''}`}>{t.priority}</span>
                   </td>
-                  <td className="p-3 text-gray-500">{fmtDate(t.createdAt)}</td>
+                  <td className="p-3 text-ink-500">{fmtDate(t.createdAt)}</td>
                   <td className="p-3">
                     <button onClick={() => { setSelectedId(t.id); setTab('detail'); }}
                       className="text-blue-600 hover:text-blue-800 text-xs font-medium">
@@ -274,7 +274,7 @@ export function SupportTicketsPage() {
                 </tr>
               ))}
               {(!tickets || tickets.length === 0) && (
-                <tr><td colSpan={7} className="p-6 text-center text-gray-400">No tickets found</td></tr>
+                <tr><td colSpan={7} className="p-6 text-center text-ink-400">No tickets found</td></tr>
               )}
             </tbody>
           </table>
@@ -283,19 +283,19 @@ export function SupportTicketsPage() {
 
       {showCreate && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowCreate(false)}>
-          <div className="bg-white rounded-xl p-6 w-full max-w-lg mx-4" onClick={e => e.stopPropagation()}>
+          <div className="bg-surface rounded-xl p-6 w-full max-w-lg mx-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Create Ticket</h3>
-              <button onClick={() => setShowCreate(false)}><X className="w-5 h-5 text-gray-400" /></button>
+              <button onClick={() => setShowCreate(false)}><X className="w-5 h-5 text-ink-400" /></button>
             </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+                <label className="block text-sm font-medium text-ink-700 mb-1">Subject</label>
                 <input value={createForm.subject} onChange={e => setCreateForm(f => ({ ...f, subject: e.target.value }))}
                   className="w-full border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                <label className="block text-sm font-medium text-ink-700 mb-1">Category</label>
                 <select value={createForm.category} onChange={e => setCreateForm(f => ({ ...f, category: e.target.value }))}
                   className="w-full border rounded-lg px-3 py-2 text-sm">
                   <option value="general">General</option>
@@ -306,7 +306,7 @@ export function SupportTicketsPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                <label className="block text-sm font-medium text-ink-700 mb-1">Priority</label>
                 <select value={createForm.priority} onChange={e => setCreateForm(f => ({ ...f, priority: e.target.value }))}
                   className="w-full border rounded-lg px-3 py-2 text-sm">
                   <option value="low">Low</option>
@@ -316,7 +316,7 @@ export function SupportTicketsPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
+                <label className="block text-sm font-medium text-ink-700 mb-1">Message</label>
                 <textarea value={createForm.message} onChange={e => setCreateForm(f => ({ ...f, message: e.target.value }))}
                   className="w-full border rounded-lg px-3 py-2 text-sm resize-none h-24 outline-none focus:ring-2 focus:ring-blue-500" />
               </div>

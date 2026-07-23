@@ -194,14 +194,14 @@ export function SubscriptionPlansPage() {
       </div>
 
       {plans.length === 0 ? (
-        <div className="text-center py-16 bg-white border border-border-custom rounded-2xl">
+        <div className="text-center py-16 bg-surface border border-border-custom rounded-2xl">
           <DollarSign className="w-12 h-12 text-ink-300 mx-auto mb-3" />
           <p className="text-ink-500 text-sm">No subscription plans yet. Create your first plan.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {plans.map(plan => (
-            <div key={plan.id} className={`rounded-xl bg-white border shadow-sm overflow-hidden flex flex-col relative ${plan.isArchived ? 'opacity-60' : ''} ${plan.ribbonColor ? 'border-t-4' : 'border-border-custom'}`} style={plan.ribbonColor ? { borderTopColor: plan.ribbonColor } : {}}>
+            <div key={plan.id} className={`rounded-xl bg-surface border shadow-sm overflow-hidden flex flex-col relative ${plan.isArchived ? 'opacity-60' : ''} ${plan.ribbonColor ? 'border-t-4' : 'border-border-custom'}`} style={plan.ribbonColor ? { borderTopColor: plan.ribbonColor } : {}}>
               {plan.popularBadge && (
                 <div className="absolute top-3 right-3 flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
                   <Crown className="w-3 h-3" /> Popular
@@ -282,7 +282,7 @@ export function SubscriptionPlansPage() {
 
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={() => setShowForm(false)}>
-          <div className="bg-white rounded-2xl shadow-xl border border-border-custom w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+          <div className="bg-surface rounded-2xl shadow-xl border border-border-custom w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="p-6">
               <h2 className="text-lg font-semibold text-ink-900 mb-4">{editingPlan ? 'Edit Plan' : 'Create Plan'}</h2>
               <div className="space-y-5">

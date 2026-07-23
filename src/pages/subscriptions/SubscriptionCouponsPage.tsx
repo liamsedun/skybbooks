@@ -192,18 +192,18 @@ export function SubscriptionCouponsPage() {
 
   const CampaignStatusBadge = ({ status }: { status: string }) => {
     const colors: Record<string, string> = {
-      draft: 'bg-slate-100 text-slate-600',
+      draft: 'bg-surface-hover text-ink-600',
       active: 'bg-emerald-50 text-emerald-700',
       paused: 'bg-amber-50 text-amber-700',
       completed: 'bg-blue-50 text-blue-700',
       cancelled: 'bg-red-50 text-red-700',
     };
-    return <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${colors[status] || 'bg-slate-100 text-slate-600'}`}>{status}</span>;
+    return <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${colors[status] || 'bg-surface-hover text-ink-600'}`}>{status}</span>;
   };
 
   const tabClass = (key: TabKey) =>
     `px-3 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
-      activeTab === key ? 'bg-emerald-50 text-emerald-700' : 'bg-white text-slate-600 hover:bg-slate-50'
+      activeTab === key ? 'bg-emerald-50 text-emerald-700' : 'bg-surface text-ink-600 hover:bg-surface-hover'
     }`;
 
   // ── Render Modal Form ──
@@ -213,14 +213,14 @@ export function SubscriptionCouponsPage() {
     if (type === 'textarea') {
       return (
         <div key={field}>
-          <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
+          <label className="block text-sm font-medium text-ink-700 mb-1">{label}</label>
           <textarea value={val} onChange={e => onChange(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" rows={opts?.rows || 2} placeholder={opts?.placeholder} />
         </div>
       );
     }
     if (type === 'checkbox') {
       return (
-        <label key={field} className="flex items-center gap-2 text-sm text-slate-700">
+        <label key={field} className="flex items-center gap-2 text-sm text-ink-700">
           <input type="checkbox" checked={!!val} onChange={e => onChange(e.target.checked)} className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" />
           {label}
         </label>
@@ -229,7 +229,7 @@ export function SubscriptionCouponsPage() {
     if (type === 'select') {
       return (
         <div key={field}>
-          <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
+          <label className="block text-sm font-medium text-ink-700 mb-1">{label}</label>
           <select value={val} onChange={e => onChange(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
             {opts?.placeholder && <option value="">{opts.placeholder}</option>}
             {(opts as any)?.options?.map((o: string) => <option key={o} value={o}>{o}</option>)}
@@ -239,7 +239,7 @@ export function SubscriptionCouponsPage() {
     }
     return (
       <div key={field}>
-        <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
+        <label className="block text-sm font-medium text-ink-700 mb-1">{label}</label>
         <input type={type} min={opts?.min} max={opts?.max} value={val} onChange={e => onChange(type === 'number' ? Number(e.target.value) : e.target.value)}
           className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder={opts?.placeholder} />
       </div>
@@ -370,15 +370,15 @@ export function SubscriptionCouponsPage() {
 
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowModal(false)}>
-        <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-          <div className="flex items-center justify-between p-5 border-b border-slate-200">
-            <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
-            <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+        <div className="bg-surface rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+          <div className="flex items-center justify-between p-5 border-b border-border-custom">
+            <h3 className="text-lg font-semibold text-ink-900">{title}</h3>
+            <button onClick={() => setShowModal(false)} className="text-ink-400 hover:text-ink-600"><X className="w-5 h-5" /></button>
           </div>
           <form onSubmit={handleSave} className="p-5 space-y-4">
             {fields()}
             <div className="flex justify-end gap-3 pt-2">
-              <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50">Cancel</button>
+              <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-sm font-medium text-ink-700 bg-surface border border-slate-300 rounded-lg hover:bg-surface-hover">Cancel</button>
               <button type="submit" disabled={saving} className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50 flex items-center gap-2">
                 {saving && <Loader2 className="w-4 h-4 animate-spin" />}
                 {saving ? 'Saving...' : isEdit ? 'Update' : 'Create'}
@@ -392,7 +392,7 @@ export function SubscriptionCouponsPage() {
 
   // ── Render Tables ──
   const renderTable = () => {
-    if (loading) return <div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-slate-400" /></div>;
+    if (loading) return <div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-ink-400" /></div>;
 
     if (activeTab === 'coupons') return renderCouponsTable();
     if (activeTab === 'promotions') return renderPromotionsTable();
@@ -406,35 +406,35 @@ export function SubscriptionCouponsPage() {
   const renderCouponsTable = () => (
     <>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold text-slate-900">Coupons</h2>
+        <h2 className="text-xl font-semibold text-ink-900">Coupons</h2>
         <button onClick={() => openCreate('coupons')} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700">
           <Plus className="w-4 h-4" /> New Coupon
         </button>
       </div>
       {coupons.length === 0 ? (
-        <div className="text-center py-16 text-slate-400"><Tag className="w-12 h-12 mx-auto mb-3 opacity-50" /><p className="text-sm">No coupons yet.</p></div>
+        <div className="text-center py-16 text-ink-400"><Tag className="w-12 h-12 mx-auto mb-3 opacity-50" /><p className="text-sm">No coupons yet.</p></div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-slate-200">
+        <div className="overflow-x-auto rounded-xl border border-border-custom">
           <table className="w-full text-sm">
-            <thead className="bg-slate-50 border-b border-slate-200">
+            <thead className="bg-surface-subtle border-b border-border-custom">
               <tr>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Code</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Discount</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Type</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Uses</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Stack</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Expires</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Status</th>
-                <th className="text-right px-4 py-3 font-medium text-slate-600">Actions</th>
+                <th className="text-left px-4 py-3 font-medium text-ink-600">Code</th>
+                <th className="text-left px-4 py-3 font-medium text-ink-600">Discount</th>
+                <th className="text-left px-4 py-3 font-medium text-ink-600">Type</th>
+                <th className="text-left px-4 py-3 font-medium text-ink-600">Uses</th>
+                <th className="text-left px-4 py-3 font-medium text-ink-600">Stack</th>
+                <th className="text-left px-4 py-3 font-medium text-ink-600">Expires</th>
+                <th className="text-left px-4 py-3 font-medium text-ink-600">Status</th>
+                <th className="text-right px-4 py-3 font-medium text-ink-600">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {coupons.map((c: any) => (
-                <tr key={c.id} className="hover:bg-slate-50 transition-colors">
+                <tr key={c.id} className="hover:bg-surface-hover transition-colors">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <code className="text-sm font-mono bg-slate-100 px-2 py-0.5 rounded text-slate-800">{c.code}</code>
-                      <button onClick={() => copyCode(c.code)} className="text-slate-400 hover:text-slate-600"><Copy className="w-3.5 h-3.5" /></button>
+                      <code className="text-sm font-mono bg-surface-hover px-2 py-0.5 rounded text-ink-800">{c.code}</code>
+                      <button onClick={() => copyCode(c.code)} className="text-ink-400 hover:text-ink-600"><Copy className="w-3.5 h-3.5" /></button>
                     </div>
                   </td>
                   <td className="px-4 py-3"><DiscountBadge row={c} /></td>
@@ -444,9 +444,9 @@ export function SubscriptionCouponsPage() {
                       {c.discountType === 'percentage' ? '%' : c.discountType === 'free_months' ? 'Free' : 'Fixed'}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-slate-600">{c.currentRedemptions ?? 0} / {c.maxRedemptions === 0 ? '∞' : c.maxRedemptions}</td>
+                  <td className="px-4 py-3 text-ink-600">{c.currentRedemptions ?? 0} / {c.maxRedemptions === 0 ? '∞' : c.maxRedemptions}</td>
                   <td className="px-4 py-3">{c.isStackable ? <Check className="w-4 h-4 text-emerald-600" /> : <X className="w-4 h-4 text-slate-300" />}</td>
-                  <td className="px-4 py-3 text-slate-600"><Calendar className="w-3.5 h-3.5 inline mr-1 text-slate-400" />{formatDate(c.expiresAt)}</td>
+                  <td className="px-4 py-3 text-ink-600"><Calendar className="w-3.5 h-3.5 inline mr-1 text-ink-400" />{formatDate(c.expiresAt)}</td>
                   <td className="px-4 py-3"><StatusBadge active={c.isActive} /></td>
                   <td className="px-4 py-3 text-right">
                     <button onClick={() => openEdit(c, 'coupons')} className="text-sm text-indigo-600 hover:text-indigo-800 font-medium">Edit</button>
@@ -463,42 +463,42 @@ export function SubscriptionCouponsPage() {
   const renderPromotionsTable = () => (
     <>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold text-slate-900">Promotions</h2>
+        <h2 className="text-xl font-semibold text-ink-900">Promotions</h2>
         <button onClick={() => openCreate('promotions')} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700">
           <Plus className="w-4 h-4" /> New Promotion
         </button>
       </div>
       {promotions.length === 0 ? (
-        <div className="text-center py-16 text-slate-400"><Megaphone className="w-12 h-12 mx-auto mb-3 opacity-50" /><p className="text-sm">No promotions yet.</p></div>
+        <div className="text-center py-16 text-ink-400"><Megaphone className="w-12 h-12 mx-auto mb-3 opacity-50" /><p className="text-sm">No promotions yet.</p></div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-slate-200">
+        <div className="overflow-x-auto rounded-xl border border-border-custom">
           <table className="w-full text-sm">
-            <thead className="bg-slate-50 border-b border-slate-200">
+            <thead className="bg-surface-subtle border-b border-border-custom">
               <tr>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Name</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Discount</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Type</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Period</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Uses</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Budget</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Stack</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Status</th>
-                <th className="text-right px-4 py-3 font-medium text-slate-600">Actions</th>
+                <th className="text-left px-4 py-3 font-medium text-ink-600">Name</th>
+                <th className="text-left px-4 py-3 font-medium text-ink-600">Discount</th>
+                <th className="text-left px-4 py-3 font-medium text-ink-600">Type</th>
+                <th className="text-left px-4 py-3 font-medium text-ink-600">Period</th>
+                <th className="text-left px-4 py-3 font-medium text-ink-600">Uses</th>
+                <th className="text-left px-4 py-3 font-medium text-ink-600">Budget</th>
+                <th className="text-left px-4 py-3 font-medium text-ink-600">Stack</th>
+                <th className="text-left px-4 py-3 font-medium text-ink-600">Status</th>
+                <th className="text-right px-4 py-3 font-medium text-ink-600">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {promotions.map((p: any) => (
-                <tr key={p.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-4 py-3 font-medium text-slate-900">{p.name}</td>
+                <tr key={p.id} className="hover:bg-surface-hover transition-colors">
+                  <td className="px-4 py-3 font-medium text-ink-900">{p.name}</td>
                   <td className="px-4 py-3"><DiscountBadge row={p} /></td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${p.discountType === 'percentage' ? 'text-blue-600 bg-blue-50' : p.discountType === 'free_months' ? 'text-amber-600 bg-amber-50' : 'text-purple-600 bg-purple-50'}`}>
                       {p.discountType === 'percentage' ? <Percent className="w-3 h-3" /> : p.discountType === 'free_months' ? <Clock className="w-3 h-3" /> : <DollarSign className="w-3 h-3" />}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-slate-600 text-xs"><Calendar className="w-3.5 h-3.5 inline mr-1 text-slate-400" />{formatDate(p.startDate)} → {formatDate(p.endDate)}</td>
-                  <td className="px-4 py-3 text-slate-600">{p.currentRedemptions ?? 0} / {p.maxRedemptions === 0 ? '∞' : p.maxRedemptions}</td>
-                  <td className="px-4 py-3 text-slate-600">{p.budgetKobo ? fmtNaira(p.budgetKobo) : '∞'}</td>
+                  <td className="px-4 py-3 text-ink-600 text-xs"><Calendar className="w-3.5 h-3.5 inline mr-1 text-ink-400" />{formatDate(p.startDate)} → {formatDate(p.endDate)}</td>
+                  <td className="px-4 py-3 text-ink-600">{p.currentRedemptions ?? 0} / {p.maxRedemptions === 0 ? '∞' : p.maxRedemptions}</td>
+                  <td className="px-4 py-3 text-ink-600">{p.budgetKobo ? fmtNaira(p.budgetKobo) : '∞'}</td>
                   <td className="px-4 py-3">{p.isStackable ? <Check className="w-4 h-4 text-emerald-600" /> : <X className="w-4 h-4 text-slate-300" />}</td>
                   <td className="px-4 py-3"><StatusBadge active={p.isActive} /></td>
                   <td className="px-4 py-3 text-right">
@@ -516,40 +516,40 @@ export function SubscriptionCouponsPage() {
   const renderCampaignsTable = () => (
     <>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold text-slate-900">Campaigns</h2>
+        <h2 className="text-xl font-semibold text-ink-900">Campaigns</h2>
         <button onClick={() => openCreate('campaigns')} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700">
           <Plus className="w-4 h-4" /> New Campaign
         </button>
       </div>
       {campaigns.length === 0 ? (
-        <div className="text-center py-16 text-slate-400"><BarChart3 className="w-12 h-12 mx-auto mb-3 opacity-50" /><p className="text-sm">No campaigns yet.</p></div>
+        <div className="text-center py-16 text-ink-400"><BarChart3 className="w-12 h-12 mx-auto mb-3 opacity-50" /><p className="text-sm">No campaigns yet.</p></div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-slate-200">
+        <div className="overflow-x-auto rounded-xl border border-border-custom">
           <table className="w-full text-sm">
-            <thead className="bg-slate-50 border-b border-slate-200">
+            <thead className="bg-surface-subtle border-b border-border-custom">
               <tr>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Name</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Type</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Status</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Period</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Budget</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Spent</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Uses</th>
-                <th className="text-right px-4 py-3 font-medium text-slate-600">Actions</th>
+                <th className="text-left px-4 py-3 font-medium text-ink-600">Name</th>
+                <th className="text-left px-4 py-3 font-medium text-ink-600">Type</th>
+                <th className="text-left px-4 py-3 font-medium text-ink-600">Status</th>
+                <th className="text-left px-4 py-3 font-medium text-ink-600">Period</th>
+                <th className="text-left px-4 py-3 font-medium text-ink-600">Budget</th>
+                <th className="text-left px-4 py-3 font-medium text-ink-600">Spent</th>
+                <th className="text-left px-4 py-3 font-medium text-ink-600">Uses</th>
+                <th className="text-right px-4 py-3 font-medium text-ink-600">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {campaigns.map((c: any) => (
-                <tr key={c.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-4 py-3 font-medium text-slate-900">{c.name}</td>
-                  <td className="px-4 py-3 text-slate-600 text-xs capitalize">{c.type}</td>
+                <tr key={c.id} className="hover:bg-surface-hover transition-colors">
+                  <td className="px-4 py-3 font-medium text-ink-900">{c.name}</td>
+                  <td className="px-4 py-3 text-ink-600 text-xs capitalize">{c.type}</td>
                   <td className="px-4 py-3"><CampaignStatusBadge status={c.status} /></td>
-                  <td className="px-4 py-3 text-slate-600 text-xs">
+                  <td className="px-4 py-3 text-ink-600 text-xs">
                     {c.startDate || c.endDate ? `${formatDate(c.startDate)} → ${formatDate(c.endDate)}` : '—'}
                   </td>
-                  <td className="px-4 py-3 text-slate-600">{c.budgetKobo ? fmtNaira(c.budgetKobo) : '∞'}</td>
-                  <td className="px-4 py-3 text-slate-600">{c.spentKobo ? fmtNaira(c.spentKobo) : '₦0'}</td>
-                  <td className="px-4 py-3 text-slate-600">{c.currentRedemptions ?? 0} / {c.maxRedemptions === 0 ? '∞' : c.maxRedemptions}</td>
+                  <td className="px-4 py-3 text-ink-600">{c.budgetKobo ? fmtNaira(c.budgetKobo) : '∞'}</td>
+                  <td className="px-4 py-3 text-ink-600">{c.spentKobo ? fmtNaira(c.spentKobo) : '₦0'}</td>
+                  <td className="px-4 py-3 text-ink-600">{c.currentRedemptions ?? 0} / {c.maxRedemptions === 0 ? '∞' : c.maxRedemptions}</td>
                   <td className="px-4 py-3 text-right space-x-2">
                     <button onClick={() => openEdit(c, 'campaigns')} className="text-sm text-indigo-600 hover:text-indigo-800 font-medium">Edit</button>
                     <button onClick={() => handleDelete(c, 'campaigns')} className="text-sm text-red-600 hover:text-red-800 font-medium">Delete</button>
@@ -566,35 +566,35 @@ export function SubscriptionCouponsPage() {
   const renderReferralsTable = () => (
     <>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold text-slate-900">Referral Codes</h2>
+        <h2 className="text-xl font-semibold text-ink-900">Referral Codes</h2>
         <button onClick={() => openCreate('referrals')} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700">
           <Plus className="w-4 h-4" /> New Referral Code
         </button>
       </div>
       {referrals.length === 0 ? (
-        <div className="text-center py-16 text-slate-400"><Gift className="w-12 h-12 mx-auto mb-3 opacity-50" /><p className="text-sm">No referral codes yet.</p></div>
+        <div className="text-center py-16 text-ink-400"><Gift className="w-12 h-12 mx-auto mb-3 opacity-50" /><p className="text-sm">No referral codes yet.</p></div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-slate-200">
+        <div className="overflow-x-auto rounded-xl border border-border-custom">
           <table className="w-full text-sm">
-            <thead className="bg-slate-50 border-b border-slate-200">
+            <thead className="bg-surface-subtle border-b border-border-custom">
               <tr>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Code</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Reward</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Uses</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Expires</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Status</th>
-                <th className="text-right px-4 py-3 font-medium text-slate-600">Actions</th>
+                <th className="text-left px-4 py-3 font-medium text-ink-600">Code</th>
+                <th className="text-left px-4 py-3 font-medium text-ink-600">Reward</th>
+                <th className="text-left px-4 py-3 font-medium text-ink-600">Uses</th>
+                <th className="text-left px-4 py-3 font-medium text-ink-600">Expires</th>
+                <th className="text-left px-4 py-3 font-medium text-ink-600">Status</th>
+                <th className="text-right px-4 py-3 font-medium text-ink-600">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {referrals.map((r: any) => {
                 const active = r.isActive !== false;
                 return (
-                  <tr key={r.id} className="hover:bg-slate-50 transition-colors">
+                  <tr key={r.id} className="hover:bg-surface-hover transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <code className="text-sm font-mono bg-slate-100 px-2 py-0.5 rounded text-slate-800">{r.code}</code>
-                        <button onClick={() => copyCode(r.code)} className="text-slate-400 hover:text-slate-600"><Copy className="w-3.5 h-3.5" /></button>
+                        <code className="text-sm font-mono bg-surface-hover px-2 py-0.5 rounded text-ink-800">{r.code}</code>
+                        <button onClick={() => copyCode(r.code)} className="text-ink-400 hover:text-ink-600"><Copy className="w-3.5 h-3.5" /></button>
                       </div>
                     </td>
                     <td className="px-4 py-3">
@@ -602,8 +602,8 @@ export function SubscriptionCouponsPage() {
                         : r.rewardType === 'percentage' ? <span className="text-blue-600 font-medium">{r.rewardValue}%</span>
                         : <span className="text-purple-600 font-medium">{fmtNaira(r.rewardValue)}</span>}
                     </td>
-                    <td className="px-4 py-3 text-slate-600">{r.currentRedemptions ?? 0} / {r.maxRedemptions === 0 ? '∞' : r.maxRedemptions}</td>
-                    <td className="px-4 py-3 text-slate-600"><Calendar className="w-3.5 h-3.5 inline mr-1 text-slate-400" />{formatDate(r.expiresAt)}</td>
+                    <td className="px-4 py-3 text-ink-600">{r.currentRedemptions ?? 0} / {r.maxRedemptions === 0 ? '∞' : r.maxRedemptions}</td>
+                    <td className="px-4 py-3 text-ink-600"><Calendar className="w-3.5 h-3.5 inline mr-1 text-ink-400" />{formatDate(r.expiresAt)}</td>
                     <td className="px-4 py-3"><StatusBadge active={active} /></td>
                     <td className="px-4 py-3 text-right space-x-2">
                       <button onClick={() => openEdit(r, 'referrals')} className="text-sm text-indigo-600 hover:text-indigo-800 font-medium">Edit</button>
@@ -622,42 +622,42 @@ export function SubscriptionCouponsPage() {
   const renderPartnersTable = () => (
     <>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold text-slate-900">Partner Discounts</h2>
+        <h2 className="text-xl font-semibold text-ink-900">Partner Discounts</h2>
         <button onClick={() => openCreate('partners')} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700">
           <Plus className="w-4 h-4" /> New Partner Discount
         </button>
       </div>
       {partners.length === 0 ? (
-        <div className="text-center py-16 text-slate-400"><Handshake className="w-12 h-12 mx-auto mb-3 opacity-50" /><p className="text-sm">No partner discounts yet.</p></div>
+        <div className="text-center py-16 text-ink-400"><Handshake className="w-12 h-12 mx-auto mb-3 opacity-50" /><p className="text-sm">No partner discounts yet.</p></div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-slate-200">
+        <div className="overflow-x-auto rounded-xl border border-border-custom">
           <table className="w-full text-sm">
-            <thead className="bg-slate-50 border-b border-slate-200">
+            <thead className="bg-surface-subtle border-b border-border-custom">
               <tr>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Partner</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Code</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Discount</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Commission</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Uses</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Expires</th>
-                <th className="text-right px-4 py-3 font-medium text-slate-600">Actions</th>
+                <th className="text-left px-4 py-3 font-medium text-ink-600">Partner</th>
+                <th className="text-left px-4 py-3 font-medium text-ink-600">Code</th>
+                <th className="text-left px-4 py-3 font-medium text-ink-600">Discount</th>
+                <th className="text-left px-4 py-3 font-medium text-ink-600">Commission</th>
+                <th className="text-left px-4 py-3 font-medium text-ink-600">Uses</th>
+                <th className="text-left px-4 py-3 font-medium text-ink-600">Expires</th>
+                <th className="text-right px-4 py-3 font-medium text-ink-600">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {partners.map((p: any) => {
                 const active = p.isActive !== false;
                 return (
-                  <tr key={p.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-4 py-3 font-medium text-slate-900">{p.partnerName}</td>
-                    <td className="px-4 py-3"><code className="text-sm font-mono bg-slate-100 px-2 py-0.5 rounded text-slate-800">{p.partnerCode}</code></td>
+                  <tr key={p.id} className="hover:bg-surface-hover transition-colors">
+                    <td className="px-4 py-3 font-medium text-ink-900">{p.partnerName}</td>
+                    <td className="px-4 py-3"><code className="text-sm font-mono bg-surface-hover px-2 py-0.5 rounded text-ink-800">{p.partnerCode}</code></td>
                     <td className="px-4 py-3">
                       {p.discountType === 'free_months' ? <span className="text-amber-600 font-medium">{p.freeMonths}mo free</span>
                         : p.discountType === 'percentage' ? <span className="text-blue-600 font-medium">{p.discountPercent}%</span>
                         : <span className="text-purple-600 font-medium">{fmtNaira(p.discountAmountKobo)}</span>}
                     </td>
-                    <td className="px-4 py-3 text-slate-600">{p.commissionPercent ? `${p.commissionPercent}%` : p.commissionAmountKobo ? fmtNaira(p.commissionAmountKobo) : '—'}</td>
-                    <td className="px-4 py-3 text-slate-600">{p.currentRedemptions ?? 0} / {p.maxRedemptions === 0 ? '∞' : p.maxRedemptions}</td>
-                    <td className="px-4 py-3 text-slate-600"><Calendar className="w-3.5 h-3.5 inline mr-1 text-slate-400" />{formatDate(p.expiresAt)}</td>
+                    <td className="px-4 py-3 text-ink-600">{p.commissionPercent ? `${p.commissionPercent}%` : p.commissionAmountKobo ? fmtNaira(p.commissionAmountKobo) : '—'}</td>
+                    <td className="px-4 py-3 text-ink-600">{p.currentRedemptions ?? 0} / {p.maxRedemptions === 0 ? '∞' : p.maxRedemptions}</td>
+                    <td className="px-4 py-3 text-ink-600"><Calendar className="w-3.5 h-3.5 inline mr-1 text-ink-400" />{formatDate(p.expiresAt)}</td>
                     <td className="px-4 py-3 text-right space-x-2">
                       <button onClick={() => openEdit(p, 'partners')} className="text-sm text-indigo-600 hover:text-indigo-800 font-medium">Edit</button>
                       <button onClick={() => handleDelete(p, 'partners')} className="text-sm text-red-600 hover:text-red-800 font-medium">Delete</button>
@@ -675,45 +675,45 @@ export function SubscriptionCouponsPage() {
   const renderRedemptionsTable = () => (
     <>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold text-slate-900">Redemption History</h2>
-        <button onClick={loadRedemptions} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50">
+        <h2 className="text-xl font-semibold text-ink-900">Redemption History</h2>
+        <button onClick={loadRedemptions} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-ink-700 bg-surface border border-slate-300 rounded-lg hover:bg-surface-hover">
           <Loader2 className="w-4 h-4" /> Refresh
         </button>
       </div>
-      <div className="overflow-x-auto rounded-xl border border-slate-200">
+      <div className="overflow-x-auto rounded-xl border border-border-custom">
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 border-b border-slate-200">
+          <thead className="bg-surface-subtle border-b border-border-custom">
             <tr>
-              <th className="text-left px-4 py-3 font-medium text-slate-600">Date</th>
-              <th className="text-left px-4 py-3 font-medium text-slate-600">Type</th>
-              <th className="text-left px-4 py-3 font-medium text-slate-600">Source</th>
-              <th className="text-left px-4 py-3 font-medium text-slate-600">Discount</th>
-              <th className="text-left px-4 py-3 font-medium text-slate-600">Original</th>
-              <th className="text-left px-4 py-3 font-medium text-slate-600">Final</th>
-              <th className="text-left px-4 py-3 font-medium text-slate-600">Free Months</th>
+              <th className="text-left px-4 py-3 font-medium text-ink-600">Date</th>
+              <th className="text-left px-4 py-3 font-medium text-ink-600">Type</th>
+              <th className="text-left px-4 py-3 font-medium text-ink-600">Source</th>
+              <th className="text-left px-4 py-3 font-medium text-ink-600">Discount</th>
+              <th className="text-left px-4 py-3 font-medium text-ink-600">Original</th>
+              <th className="text-left px-4 py-3 font-medium text-ink-600">Final</th>
+              <th className="text-left px-4 py-3 font-medium text-ink-600">Free Months</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {redemptions.length === 0 ? (
-              <tr><td colSpan={7} className="px-4 py-12 text-center text-slate-400">No redemption history yet.</td></tr>
+              <tr><td colSpan={7} className="px-4 py-12 text-center text-ink-400">No redemption history yet.</td></tr>
             ) : (
               redemptions.map((r: any) => (
-                <tr key={r.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-4 py-3 text-slate-600 text-xs">{formatDate(r.createdAt)}</td>
+                <tr key={r.id} className="hover:bg-surface-hover transition-colors">
+                  <td className="px-4 py-3 text-ink-600 text-xs">{formatDate(r.createdAt)}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
                       r.redemptionType === 'coupon' ? 'bg-blue-50 text-blue-700' :
                       r.redemptionType === 'promotion' ? 'bg-purple-50 text-purple-700' :
                       r.redemptionType === 'referral' ? 'bg-amber-50 text-amber-700' :
                       r.redemptionType === 'partner' ? 'bg-green-50 text-green-700' :
-                      'bg-slate-50 text-slate-700'
+                      'bg-surface-subtle text-ink-700'
                     }`}>{r.redemptionType}</span>
                   </td>
-                  <td className="px-4 py-3"><code className="text-xs font-mono bg-slate-100 px-1.5 py-0.5 rounded text-slate-700">{r.sourceCode || r.sourceId?.slice(0, 8)}</code></td>
+                  <td className="px-4 py-3"><code className="text-xs font-mono bg-surface-hover px-1.5 py-0.5 rounded text-ink-700">{r.sourceCode || r.sourceId?.slice(0, 8)}</code></td>
                   <td className="px-4 py-3 font-medium text-emerald-600">{fmtNaira(r.discountKobo)}</td>
-                  <td className="px-4 py-3 text-slate-600">{fmtNaira(r.originalAmountKobo)}</td>
-                  <td className="px-4 py-3 text-slate-900 font-medium">{fmtNaira(r.finalAmountKobo)}</td>
-                  <td className="px-4 py-3 text-slate-600">{r.freeMonths ? `${r.freeMonths}mo` : '—'}</td>
+                  <td className="px-4 py-3 text-ink-600">{fmtNaira(r.originalAmountKobo)}</td>
+                  <td className="px-4 py-3 text-ink-900 font-medium">{fmtNaira(r.finalAmountKobo)}</td>
+                  <td className="px-4 py-3 text-ink-600">{r.freeMonths ? `${r.freeMonths}mo` : '—'}</td>
                 </tr>
               ))
             )}

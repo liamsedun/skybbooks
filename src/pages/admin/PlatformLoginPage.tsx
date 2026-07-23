@@ -52,14 +52,14 @@ export function PlatformLoginPage() {
 
       <div className="w-full max-w-sm relative">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-sm mb-4 ring-1 ring-white/10">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-surface/10 backdrop-blur-sm mb-4 ring-1 ring-white/10">
             <ShieldAlert className="w-8 h-8 text-indigo-400" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-white">Platform Admin</h1>
-          <p className="text-sm text-slate-400 mt-1">Sign in to SkyHouse administration</p>
+          <p className="text-sm text-ink-400 mt-1">Sign in to SkyHouse administration</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 shadow-2xl ring-1 ring-white/10 space-y-4">
+        <form onSubmit={handleSubmit} className="bg-surface/5 backdrop-blur-sm rounded-2xl p-6 shadow-2xl ring-1 ring-white/10 space-y-4">
           {loginError && (
             <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-xl px-3 py-2.5 flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
@@ -68,15 +68,15 @@ export function PlatformLoginPage() {
           )}
 
           <div>
-            <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">Email</label>
+            <label className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider block mb-1.5">Email</label>
             <div className="relative">
-              <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+              <Mail className="w-4 h-4 text-ink-500 absolute left-3 top-3" />
               <input
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 placeholder="admin@skyhouse.com"
-                className="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-900/60 border border-slate-700/60 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/50 transition-all"
+                className="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-900/60 border border-slate-700/60 rounded-xl text-white placeholder:text-ink-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/50 transition-all"
                 required
                 autoFocus
                 autoComplete="email"
@@ -86,15 +86,15 @@ export function PlatformLoginPage() {
           </div>
 
           <div>
-            <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">Password</label>
+            <label className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider block mb-1.5">Password</label>
             <div className="relative">
-              <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+              <Lock className="w-4 h-4 text-ink-500 absolute left-3 top-3" />
               <input
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 placeholder="Enter your password"
-                className="w-full pl-10 pr-10 py-2.5 text-sm bg-slate-900/60 border border-slate-700/60 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/50 transition-all"
+                className="w-full pl-10 pr-10 py-2.5 text-sm bg-slate-900/60 border border-slate-700/60 rounded-xl text-white placeholder:text-ink-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/50 transition-all"
                 required
                 autoComplete="current-password"
                 disabled={submitting}
@@ -102,7 +102,7 @@ export function PlatformLoginPage() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-2 top-2 text-slate-500 hover:text-slate-300 transition-colors p-1"
+                className="absolute right-2 top-2 text-ink-500 hover:text-slate-300 transition-colors p-1"
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
                 disabled={submitting}
               >
@@ -130,14 +130,14 @@ export function PlatformLoginPage() {
           </button>
 
           <div className="pt-2 text-center">
-            <a href="/login" className="text-xs text-slate-500 hover:text-slate-300 transition-colors inline-flex items-center gap-1">
+            <a href="/login" className="text-xs text-ink-500 hover:text-slate-300 transition-colors inline-flex items-center gap-1">
               <ArrowLeft className="w-3 h-3" />
               Back to tenant login
             </a>
           </div>
         </form>
 
-        <p className="text-center mt-6 text-xs text-slate-600">
+        <p className="text-center mt-6 text-xs text-ink-600">
           SkyHouse Platform Administration &middot; Authorized access only
         </p>
       </div>

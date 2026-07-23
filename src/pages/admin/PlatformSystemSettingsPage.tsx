@@ -4,8 +4,8 @@ export function PlatformSystemSettingsPage() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">System Settings</h1>
-        <p className="text-sm text-gray-500 mt-1">Platform-wide configuration and system preferences</p>
+        <h1 className="text-2xl font-bold text-ink-900">System Settings</h1>
+        <p className="text-sm text-ink-500 mt-1">Platform-wide configuration and system preferences</p>
       </div>
 
       <div className="border border-amber-200 bg-amber-50 rounded-lg p-4 flex items-start gap-3">
@@ -25,19 +25,19 @@ export function PlatformSystemSettingsPage() {
           { icon: Zap, label: 'Performance', desc: 'Caching, CDN, and performance optimization settings.' },
           { icon: Settings, label: 'Integration Settings', desc: 'Third-party integration configuration (payment gateways, email providers).' },
         ].map(({ icon: Icon, label, desc }) => (
-          <div key={label} className="bg-white rounded-xl border p-5 hover:border-gray-300 cursor-pointer transition-colors">
-            <div className="p-2 rounded-lg w-fit mb-3 bg-gray-100 text-gray-600"><Icon className="w-5 h-5" /></div>
-            <h3 className="text-sm font-semibold text-gray-900 mb-1">{label}</h3>
-            <p className="text-xs text-gray-500">{desc}</p>
+          <div key={label} className="bg-surface rounded-xl border p-5 hover:border-gray-300 cursor-pointer transition-colors">
+            <div className="p-2 rounded-lg w-fit mb-3 bg-surface-hover text-ink-600"><Icon className="w-5 h-5" /></div>
+            <h3 className="text-sm font-semibold text-ink-900 mb-1">{label}</h3>
+            <p className="text-xs text-ink-500">{desc}</p>
           </div>
         ))}
       </div>
 
-      <div className="bg-white rounded-xl border">
+      <div className="bg-surface rounded-xl border">
         <div className="px-5 py-4 border-b">
-          <h3 className="text-sm font-semibold text-gray-700">Environment</h3>
+          <h3 className="text-sm font-semibold text-ink-700">Environment</h3>
         </div>
-        <div className="p-5 text-sm text-gray-600">
+        <div className="p-5 text-sm text-ink-600">
           <p>All system-level configuration is read from environment variables at startup. The following variables are currently in use:</p>
           <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
             {[
@@ -51,8 +51,8 @@ export function PlatformSystemSettingsPage() {
               ['NODE_ENV', 'Environment (production/development)'],
             ].map(([key, desc]) => (
               <div key={key} className="flex items-center gap-2 text-xs">
-                <code className="bg-gray-100 px-1.5 py-0.5 rounded font-mono">{key}</code>
-                <span className="text-gray-400">— {desc}</span>
+                <code className="bg-surface-hover px-1.5 py-0.5 rounded font-mono">{key}</code>
+                <span className="text-ink-400">— {desc}</span>
               </div>
             ))}
           </div>

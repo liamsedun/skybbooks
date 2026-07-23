@@ -66,11 +66,11 @@ export function PlatformUsersPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Platform Users</h1>
-          <p className="text-sm text-gray-500 mt-1">Manage platform administrator accounts</p>
+          <h1 className="text-2xl font-bold text-ink-900">Platform Users</h1>
+          <p className="text-sm text-ink-500 mt-1">Manage platform administrator accounts</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => qc.invalidateQueries({ queryKey: ['platform-users'] })} className="flex items-center gap-2 px-3 py-2 text-sm bg-white border rounded-lg hover:bg-gray-50">
+          <button onClick={() => qc.invalidateQueries({ queryKey: ['platform-users'] })} className="flex items-center gap-2 px-3 py-2 text-sm bg-surface border rounded-lg hover:bg-surface-hover">
             <RefreshCw className="w-4 h-4" /> Refresh
           </button>
           <button onClick={() => setShowCreate(true)} className="flex items-center gap-2 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
@@ -81,49 +81,49 @@ export function PlatformUsersPage() {
 
       <div className="flex items-center gap-3">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-400" />
           <input type="text" placeholder="Search by name or email..." value={search}
             onChange={e => { setSearch(e.target.value); setPage(1); }}
             className="w-full pl-9 pr-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
         </div>
         <select value={roleFilter} onChange={e => { setRoleFilter(e.target.value); setPage(1); }}
-          className="px-3 py-2 text-sm border rounded-lg bg-white">
+          className="px-3 py-2 text-sm border rounded-lg bg-surface">
           <option value="">All roles</option>
           {PLATFORM_ROLES.map(r => <option key={r} value={r}>{r.replace(/_/g, ' ')}</option>)}
         </select>
       </div>
 
-      <div className="bg-white rounded-xl border">
+      <div className="bg-surface rounded-xl border">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b bg-gray-50">
-              <th className="text-left p-3 font-medium text-gray-600">Name</th>
-              <th className="text-left p-3 font-medium text-gray-600">Email</th>
-              <th className="text-left p-3 font-medium text-gray-600">Role</th>
-              <th className="text-left p-3 font-medium text-gray-600">Status</th>
-              <th className="text-left p-3 font-medium text-gray-600">Last Login</th>
-              <th className="text-left p-3 font-medium text-gray-600">Created</th>
-              <th className="text-right p-3 font-medium text-gray-600 w-20">Actions</th>
+            <tr className="border-b bg-surface-subtle">
+              <th className="text-left p-3 font-medium text-ink-600">Name</th>
+              <th className="text-left p-3 font-medium text-ink-600">Email</th>
+              <th className="text-left p-3 font-medium text-ink-600">Role</th>
+              <th className="text-left p-3 font-medium text-ink-600">Status</th>
+              <th className="text-left p-3 font-medium text-ink-600">Last Login</th>
+              <th className="text-left p-3 font-medium text-ink-600">Created</th>
+              <th className="text-right p-3 font-medium text-ink-600 w-20">Actions</th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
-              <tr><td colSpan={7} className="p-12 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto text-gray-400" /></td></tr>
+              <tr><td colSpan={7} className="p-12 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto text-ink-400" /></td></tr>
             ) : !data?.data?.length ? (
-              <tr><td colSpan={7} className="p-12 text-center text-gray-400">No platform users found</td></tr>
+              <tr><td colSpan={7} className="p-12 text-center text-ink-400">No platform users found</td></tr>
             ) : (
               data.data.map((u) => (
-                <tr key={u.id} className="border-b hover:bg-gray-50">
-                  <td className="p-3 font-medium flex items-center gap-2"><User className="w-4 h-4 text-gray-400" />{u.fullName || '—'}</td>
-                  <td className="p-3 text-gray-600">{u.email}</td>
-                  <td className="p-3"><span className="text-xs font-mono bg-gray-100 px-2 py-0.5 rounded">{u.role}</span></td>
+                <tr key={u.id} className="border-b hover:bg-surface-hover">
+                  <td className="p-3 font-medium flex items-center gap-2"><User className="w-4 h-4 text-ink-400" />{u.fullName || '—'}</td>
+                  <td className="p-3 text-ink-600">{u.email}</td>
+                  <td className="p-3"><span className="text-xs font-mono bg-surface-hover px-2 py-0.5 rounded">{u.role}</span></td>
                   <td className="p-3">{u.isActive ? <span className="text-xs text-emerald-600 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Active</span> : <span className="text-xs text-red-600 flex items-center gap-1"><XCircle className="w-3 h-3" /> Inactive</span>}</td>
-                  <td className="p-3 text-gray-500 text-xs">{u.lastLogin ? fmtDate(u.lastLogin) : 'Never'}</td>
-                  <td className="p-3 text-gray-500 text-xs">{fmtDate(u.createdAt)}</td>
+                  <td className="p-3 text-ink-500 text-xs">{u.lastLogin ? fmtDate(u.lastLogin) : 'Never'}</td>
+                  <td className="p-3 text-ink-500 text-xs">{fmtDate(u.createdAt)}</td>
                   <td className="p-3 text-right">
                     <div className="flex justify-end gap-1">
-                      <button onClick={() => setEditingUser(u)} className="p-1.5 hover:bg-gray-100 rounded" title="Edit"><Edit2 className="w-4 h-4 text-gray-500" /></button>
-                      <button onClick={() => setResettingPass(u.id)} className="p-1.5 hover:bg-gray-100 rounded" title="Reset password"><Lock className="w-4 h-4 text-gray-500" /></button>
+                      <button onClick={() => setEditingUser(u)} className="p-1.5 hover:bg-surface-hover rounded" title="Edit"><Edit2 className="w-4 h-4 text-ink-500" /></button>
+                      <button onClick={() => setResettingPass(u.id)} className="p-1.5 hover:bg-surface-hover rounded" title="Reset password"><Lock className="w-4 h-4 text-ink-500" /></button>
                       {u.role !== 'super_admin' && (
                         <button onClick={() => { if (confirm('Delete this platform user?')) deleteMut.mutate(u.id); }} className="p-1.5 hover:bg-red-50 rounded" title="Delete"><Trash2 className="w-4 h-4 text-red-400" /></button>
                       )}
@@ -136,10 +136,10 @@ export function PlatformUsersPage() {
         </table>
         {data && data.total > 20 && (
           <div className="px-3 py-3 border-t flex items-center justify-between">
-            <p className="text-xs text-gray-500">Showing {(page - 1) * 20 + 1}–{Math.min(page * 20, data.total)} of {data.total}</p>
+            <p className="text-xs text-ink-500">Showing {(page - 1) * 20 + 1}–{Math.min(page * 20, data.total)} of {data.total}</p>
             <div className="flex gap-1">
-              <button disabled={page === 1} onClick={() => setPage(p => p - 1)} className="px-3 py-1 text-sm border rounded hover:bg-gray-50 disabled:opacity-40">Previous</button>
-              <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} className="px-3 py-1 text-sm border rounded hover:bg-gray-50 disabled:opacity-40">Next</button>
+              <button disabled={page === 1} onClick={() => setPage(p => p - 1)} className="px-3 py-1 text-sm border rounded hover:bg-surface-hover disabled:opacity-40">Previous</button>
+              <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} className="px-3 py-1 text-sm border rounded hover:bg-surface-hover disabled:opacity-40">Next</button>
             </div>
           </div>
         )}
@@ -176,26 +176,26 @@ function CreateUserModal({ onClose }: { onClose: () => void }) {
   return (
     <Modal title="Create Platform User" onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div><label className="block text-xs font-medium text-gray-600 mb-1">Full Name</label>
+        <div><label className="block text-xs font-medium text-ink-600 mb-1">Full Name</label>
           <input type="text" required value={form.fullName} onChange={e => setForm(f => ({ ...f, fullName: e.target.value }))}
             className="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="Jane Doe" /></div>
-        <div><label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
+        <div><label className="block text-xs font-medium text-ink-600 mb-1">Email</label>
           <input type="email" required value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
             className="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="jane@example.com" /></div>
-        <div><label className="block text-xs font-medium text-gray-600 mb-1">Password</label>
+        <div><label className="block text-xs font-medium text-ink-600 mb-1">Password</label>
           <input type="password" required minLength={6} value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
             className="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="Min 6 characters" /></div>
-        <div><label className="block text-xs font-medium text-gray-600 mb-1">Role</label>
+        <div><label className="block text-xs font-medium text-ink-600 mb-1">Role</label>
           <select value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))}
-            className="w-full px-3 py-2 text-sm border rounded-lg bg-white">
+            className="w-full px-3 py-2 text-sm border rounded-lg bg-surface">
             {PLATFORM_ROLES.map(r => <option key={r} value={r}>{r.replace(/_/g, ' ')} — {ROLE_DESCRIPTIONS[r]}</option>)}
           </select></div>
         <div className="flex items-center gap-2">
           <input type="checkbox" id="active" checked={form.isActive} onChange={e => setForm(f => ({ ...f, isActive: e.target.checked }))} />
-          <label htmlFor="active" className="text-sm text-gray-600">Active on creation</label>
+          <label htmlFor="active" className="text-sm text-ink-600">Active on creation</label>
         </div>
         <div className="flex justify-end gap-2 pt-2">
-          <button type="button" onClick={onClose} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Cancel</button>
+          <button type="button" onClick={onClose} className="px-4 py-2 text-sm border rounded-lg hover:bg-surface-hover">Cancel</button>
           <button type="submit" disabled={submitting} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
             {submitting ? 'Creating...' : 'Create User'}
           </button>
@@ -229,20 +229,20 @@ function EditUserModal({ user, onClose }: { user: PlatformUser; onClose: () => v
   return (
     <Modal title={`Edit: ${user.fullName || user.email}`} onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div><label className="block text-xs font-medium text-gray-600 mb-1">Full Name</label>
+        <div><label className="block text-xs font-medium text-ink-600 mb-1">Full Name</label>
           <input type="text" value={form.fullName} onChange={e => setForm(f => ({ ...f, fullName: e.target.value }))}
             className="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500" /></div>
-        <div><label className="block text-xs font-medium text-gray-600 mb-1">Role</label>
+        <div><label className="block text-xs font-medium text-ink-600 mb-1">Role</label>
           <select value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))}
-            className="w-full px-3 py-2 text-sm border rounded-lg bg-white">
+            className="w-full px-3 py-2 text-sm border rounded-lg bg-surface">
             {PLATFORM_ROLES.map(r => <option key={r} value={r}>{r.replace(/_/g, ' ')}</option>)}
           </select></div>
         <div className="flex items-center gap-2">
           <input type="checkbox" id="edit-active" checked={form.isActive} onChange={e => setForm(f => ({ ...f, isActive: e.target.checked }))} />
-          <label htmlFor="edit-active" className="text-sm text-gray-600">Active</label>
+          <label htmlFor="edit-active" className="text-sm text-ink-600">Active</label>
         </div>
         <div className="flex justify-end gap-2 pt-2">
-          <button type="button" onClick={onClose} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Cancel</button>
+          <button type="button" onClick={onClose} className="px-4 py-2 text-sm border rounded-lg hover:bg-surface-hover">Cancel</button>
           <button type="submit" disabled={submitting} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
             {submitting ? 'Saving...' : 'Save'}
           </button>
@@ -275,11 +275,11 @@ function ResetPasswordModal({ userId, onClose }: { userId: string; onClose: () =
   return (
     <Modal title="Reset Password" onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div><label className="block text-xs font-medium text-gray-600 mb-1">New Password</label>
+        <div><label className="block text-xs font-medium text-ink-600 mb-1">New Password</label>
           <input type="password" required minLength={6} value={password} onChange={e => setPassword(e.target.value)}
             className="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="Min 6 characters" /></div>
         <div className="flex justify-end gap-2 pt-2">
-          <button type="button" onClick={onClose} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Cancel</button>
+          <button type="button" onClick={onClose} className="px-4 py-2 text-sm border rounded-lg hover:bg-surface-hover">Cancel</button>
           <button type="submit" disabled={submitting} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
             {submitting ? 'Updating...' : 'Update Password'}
           </button>
@@ -292,10 +292,10 @@ function ResetPasswordModal({ userId, onClose }: { userId: string; onClose: () =
 function Modal({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
+      <div className="bg-surface rounded-xl shadow-xl w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b">
-          <h2 className="text-lg font-bold text-gray-900">{title}</h2>
-          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded"><X className="w-5 h-5 text-gray-500" /></button>
+          <h2 className="text-lg font-bold text-ink-900">{title}</h2>
+          <button onClick={onClose} className="p-1 hover:bg-surface-hover rounded"><X className="w-5 h-5 text-ink-500" /></button>
         </div>
         <div className="p-5">{children}</div>
       </div>

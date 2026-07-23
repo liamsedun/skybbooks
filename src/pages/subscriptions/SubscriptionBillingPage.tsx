@@ -23,11 +23,11 @@ const STATUS_STYLES: Record<string, string> = {
   paid: 'bg-emerald-100 text-emerald-700',
   pending: 'bg-amber-100 text-amber-700',
   overdue: 'bg-red-100 text-red-700',
-  canceled: 'bg-slate-100 text-slate-500',
+  canceled: 'bg-surface-hover text-ink-500',
   refunded: 'bg-purple-100 text-purple-700',
   issued: 'bg-blue-100 text-blue-700',
   applied: 'bg-teal-100 text-teal-700',
-  void: 'bg-slate-100 text-slate-500',
+  void: 'bg-surface-hover text-ink-500',
   success: 'bg-emerald-100 text-emerald-700',
   failed: 'bg-red-100 text-red-700',
 };
@@ -49,36 +49,36 @@ function InvoiceDetailModal({ invoice, onClose }: { invoice: any; onClose: () =>
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-        <div className="sticky top-0 bg-white border-b border-slate-200 p-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+      <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="sticky top-0 bg-surface border-b border-border-custom p-4 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-ink-900 flex items-center gap-2">
             <FileText className="w-5 h-5 text-indigo-600" /> {invoice.invoiceNumber}
           </h2>
-          <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-lg"><X className="w-5 h-5" /></button>
+          <button onClick={onClose} className="p-1 hover:bg-surface-hover rounded-lg"><X className="w-5 h-5" /></button>
         </div>
         <div className="p-6 space-y-4">
           <div className="flex justify-between items-start">
             <div className="space-y-1 text-sm">
-              <p><span className="text-slate-500">Status:</span> <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[invoice.status] || ''}`}>{invoice.status}</span></p>
-              <p><span className="text-slate-500">Date:</span> {fmtDate(invoice.createdAt)}</p>
-              <p><span className="text-slate-500">Due:</span> {fmtDate(invoice.dueDate)}</p>
-              {invoice.periodStart && <p><span className="text-slate-500">Period:</span> {fmtDate(invoice.periodStart)} — {fmtDate(invoice.periodEnd)}</p>}
-              {invoice.paidAt && <p><span className="text-slate-500">Paid:</span> {fmtDate(invoice.paidAt)}</p>}
+              <p><span className="text-ink-500">Status:</span> <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[invoice.status] || ''}`}>{invoice.status}</span></p>
+              <p><span className="text-ink-500">Date:</span> {fmtDate(invoice.createdAt)}</p>
+              <p><span className="text-ink-500">Due:</span> {fmtDate(invoice.dueDate)}</p>
+              {invoice.periodStart && <p><span className="text-ink-500">Period:</span> {fmtDate(invoice.periodStart)} — {fmtDate(invoice.periodEnd)}</p>}
+              {invoice.paidAt && <p><span className="text-ink-500">Paid:</span> {fmtDate(invoice.paidAt)}</p>}
             </div>
-            <p className="text-2xl font-bold text-slate-900">{fmtNaira(invoice.totalKobo)}</p>
+            <p className="text-2xl font-bold text-ink-900">{fmtNaira(invoice.totalKobo)}</p>
           </div>
 
-          <p className="text-sm text-slate-600">{invoice.description}</p>
+          <p className="text-sm text-ink-600">{invoice.description}</p>
 
           {invoice.items?.length > 0 && (
             <div className="border rounded-xl overflow-hidden">
               <table className="w-full text-sm">
-                <thead className="bg-slate-50">
-                  <tr><th className="p-3 text-left font-medium text-slate-600">Item</th><th className="p-3 text-right font-medium text-slate-600">Qty</th><th className="p-3 text-right font-medium text-slate-600">Amount</th><th className="p-3 text-right font-medium text-slate-600">Tax</th><th className="p-3 text-right font-medium text-slate-600">Total</th></tr>
+                <thead className="bg-surface-subtle">
+                  <tr><th className="p-3 text-left font-medium text-ink-600">Item</th><th className="p-3 text-right font-medium text-ink-600">Qty</th><th className="p-3 text-right font-medium text-ink-600">Amount</th><th className="p-3 text-right font-medium text-ink-600">Tax</th><th className="p-3 text-right font-medium text-ink-600">Total</th></tr>
                 </thead>
                 <tbody>
                   {invoice.items.map((item: any, i: number) => (
-                    <tr key={i} className="border-t border-slate-100">
+                    <tr key={i} className="border-t border-border-custom">
                       <td className="p-3">{item.description}</td>
                       <td className="p-3 text-right">{item.quantity}</td>
                       <td className="p-3 text-right">{fmtNaira(item.amountKobo)}</td>
@@ -96,14 +96,14 @@ function InvoiceDetailModal({ invoice, onClose }: { invoice: any; onClose: () =>
           )}
 
           <div className="flex gap-2 flex-wrap">
-            <button onClick={() => subscriptionApi.downloadBillingInvoicePdf(invoice.id)} className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50">
+            <button onClick={() => subscriptionApi.downloadBillingInvoicePdf(invoice.id)} className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-ink-700 bg-surface border border-slate-300 rounded-lg hover:bg-surface-hover">
               <Download className="w-4 h-4" /> PDF
             </button>
-            <button onClick={() => emailMut.mutate()} disabled={emailMut.isPending} className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50">
+            <button onClick={() => emailMut.mutate()} disabled={emailMut.isPending} className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-ink-700 bg-surface border border-slate-300 rounded-lg hover:bg-surface-hover disabled:opacity-50">
               <Mail className="w-4 h-4" /> Email
             </button>
             {invoice.status === 'paid' && !invoice.refundedAt && (
-              <button onClick={() => refundMut.mutate()} disabled={refundMut.isPending} className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-red-700 bg-white border border-red-300 rounded-lg hover:bg-red-50 disabled:opacity-50">
+              <button onClick={() => refundMut.mutate()} disabled={refundMut.isPending} className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-red-700 bg-surface border border-red-300 rounded-lg hover:bg-red-50 disabled:opacity-50">
                 <RotateCcw className="w-4 h-4" /> Refund
               </button>
             )}
@@ -185,10 +185,10 @@ export function SubscriptionBillingPage() {
     <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-ink-900 flex items-center gap-2">
             <Receipt className="w-6 h-6 text-indigo-600" /> Billing
           </h1>
-          <p className="text-sm text-slate-500 mt-1">Subscription invoices, credit notes, and billing history</p>
+          <p className="text-sm text-ink-500 mt-1">Subscription invoices, credit notes, and billing history</p>
         </div>
       </div>
 
@@ -198,45 +198,45 @@ export function SubscriptionBillingPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               {outstanding.overdueCount > 0 ? <AlertCircle className="w-5 h-5 text-red-600" /> : <Clock className="w-5 h-5 text-amber-600" />}
-              <span className="font-semibold text-slate-900">
+              <span className="font-semibold text-ink-900">
                 {fmtNaira(outstanding.totalOutstanding)} outstanding
                 {outstanding.overdueCount > 0 && ` (${outstanding.overdueCount} overdue)`}
               </span>
             </div>
-            <span className="text-sm text-slate-500">{outstanding.pendingInvoices.length} pending invoice{(outstanding.pendingInvoices.length !== 1) && 's'}</span>
+            <span className="text-sm text-ink-500">{outstanding.pendingInvoices.length} pending invoice{(outstanding.pendingInvoices.length !== 1) && 's'}</span>
           </div>
         </div>
       )}
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="bg-white rounded-xl border border-slate-200 p-4">
+        <div className="bg-surface rounded-xl border border-border-custom p-4">
           <FileText className="w-5 h-5 text-indigo-600 mb-1" />
-          <p className="text-2xl font-bold text-slate-900">{invoices.length}</p>
-          <p className="text-xs text-slate-500">Total Invoices</p>
+          <p className="text-2xl font-bold text-ink-900">{invoices.length}</p>
+          <p className="text-xs text-ink-500">Total Invoices</p>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-4">
+        <div className="bg-surface rounded-xl border border-border-custom p-4">
           <CheckCircle2 className="w-5 h-5 text-emerald-600 mb-1" />
-          <p className="text-2xl font-bold text-slate-900">{invoices.filter(i => i.status === 'paid').length}</p>
-          <p className="text-xs text-slate-500">Paid</p>
+          <p className="text-2xl font-bold text-ink-900">{invoices.filter(i => i.status === 'paid').length}</p>
+          <p className="text-xs text-ink-500">Paid</p>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-4">
+        <div className="bg-surface rounded-xl border border-border-custom p-4">
           <AlertCircle className="w-5 h-5 text-amber-600 mb-1" />
-          <p className="text-2xl font-bold text-slate-900">{invoices.filter(i => i.status === 'pending').length}</p>
-          <p className="text-xs text-slate-500">Pending</p>
+          <p className="text-2xl font-bold text-ink-900">{invoices.filter(i => i.status === 'pending').length}</p>
+          <p className="text-xs text-ink-500">Pending</p>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-4">
+        <div className="bg-surface rounded-xl border border-border-custom p-4">
           <RotateCcw className="w-5 h-5 text-purple-600 mb-1" />
-          <p className="text-2xl font-bold text-slate-900">{creditNotes.length}</p>
-          <p className="text-xs text-slate-500">Credit Notes</p>
+          <p className="text-2xl font-bold text-ink-900">{creditNotes.length}</p>
+          <p className="text-xs text-ink-500">Credit Notes</p>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit flex-wrap">
+      <div className="flex gap-1 bg-surface-hover p-1 rounded-xl w-fit flex-wrap">
         {(['invoices', 'credit-notes', 'history', 'tax'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium capitalize transition-all ${tab === t ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+            className={`px-4 py-2 rounded-lg text-sm font-medium capitalize transition-all ${tab === t ? 'bg-surface text-ink-900 shadow-sm' : 'text-ink-500 hover:text-ink-700'}`}>
             {t === 'invoices' && <FileText className="w-4 h-4 inline mr-1.5" />}
             {t === 'credit-notes' && <RotateCcw className="w-4 h-4 inline mr-1.5" />}
             {t === 'history' && <Clock className="w-4 h-4 inline mr-1.5" />}
@@ -252,7 +252,7 @@ export function SubscriptionBillingPage() {
           <div className="flex gap-2 flex-wrap">
             {['', 'pending', 'paid', 'overdue', 'refunded', 'canceled'].map(s => (
               <button key={s} onClick={() => setFilterStatus(s)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${filterStatus === s ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-white text-slate-600 border-slate-200'}`}>
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${filterStatus === s ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-surface text-ink-600 border-border-custom'}`}>
                 {s || 'All'}
               </button>
             ))}
@@ -261,26 +261,26 @@ export function SubscriptionBillingPage() {
           {loading ? (
             <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-indigo-600" /></div>
           ) : invoices.length === 0 ? (
-            <div className="text-center py-12 text-slate-400"><FileText className="w-10 h-10 mx-auto mb-2" /><p>No invoices found.</p></div>
+            <div className="text-center py-12 text-ink-400"><FileText className="w-10 h-10 mx-auto mb-2" /><p>No invoices found.</p></div>
           ) : (
             <div className="space-y-2">
               {invoices.map(inv => (
                 <div key={inv.id} onClick={() => setSelectedInv(inv)}
-                  className="bg-white rounded-xl border border-slate-200 p-4 hover:shadow-md transition-shadow cursor-pointer flex items-center justify-between">
+                  className="bg-surface rounded-xl border border-border-custom p-4 hover:shadow-md transition-shadow cursor-pointer flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="p-2 rounded-lg bg-slate-50">
-                      <FileText className="w-5 h-5 text-slate-500" />
+                    <div className="p-2 rounded-lg bg-surface-subtle">
+                      <FileText className="w-5 h-5 text-ink-500" />
                     </div>
                     <div>
-                      <p className="font-semibold text-slate-900">{inv.invoiceNumber}</p>
-                      <p className="text-xs text-slate-500">{fmtDate(inv.createdAt)} {inv.description ? `— ${inv.description}` : ''}</p>
+                      <p className="font-semibold text-ink-900">{inv.invoiceNumber}</p>
+                      <p className="text-xs text-ink-500">{fmtDate(inv.createdAt)} {inv.description ? `— ${inv.description}` : ''}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_STYLES[inv.status] || ''}`}>
                       {inv.status}
                     </span>
-                    <span className="font-semibold text-slate-900">{fmtNaira(inv.totalKobo)}</span>
+                    <span className="font-semibold text-ink-900">{fmtNaira(inv.totalKobo)}</span>
                   </div>
                 </div>
               ))}
@@ -292,8 +292,8 @@ export function SubscriptionBillingPage() {
       {/* Credit Notes Tab */}
       {tab === 'credit-notes' && (
         <div className="space-y-4">
-          <details className="bg-white rounded-xl border border-slate-200">
-            <summary className="p-4 font-medium text-sm text-slate-700 cursor-pointer flex items-center gap-2 hover:bg-slate-50 rounded-xl">
+          <details className="bg-surface rounded-xl border border-border-custom">
+            <summary className="p-4 font-medium text-sm text-ink-700 cursor-pointer flex items-center gap-2 hover:bg-surface-hover rounded-xl">
               <Plus className="w-4 h-4" /> Issue Credit Note
             </summary>
             <div className="px-4 pb-4 space-y-3 border-t pt-3">
@@ -312,14 +312,14 @@ export function SubscriptionBillingPage() {
           {cnLoading ? (
             <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-indigo-600" /></div>
           ) : creditNotes.length === 0 ? (
-            <div className="text-center py-12 text-slate-400"><RotateCcw className="w-10 h-10 mx-auto mb-2" /><p>No credit notes.</p></div>
+            <div className="text-center py-12 text-ink-400"><RotateCcw className="w-10 h-10 mx-auto mb-2" /><p>No credit notes.</p></div>
           ) : (
             <div className="space-y-2">
               {creditNotes.map((cn: any) => (
-                <div key={cn.id} className="bg-white rounded-xl border border-slate-200 p-4 flex items-center justify-between">
+                <div key={cn.id} className="bg-surface rounded-xl border border-border-custom p-4 flex items-center justify-between">
                   <div>
-                    <p className="font-semibold text-slate-900">{cn.creditNoteNumber}</p>
-                    <p className="text-xs text-slate-500">{cn.reason} — {fmtDate(cn.createdAt)}</p>
+                    <p className="font-semibold text-ink-900">{cn.creditNoteNumber}</p>
+                    <p className="text-xs text-ink-500">{cn.reason} — {fmtDate(cn.createdAt)}</p>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_STYLES[cn.status] || ''}`}>{cn.status}</span>
@@ -340,23 +340,23 @@ export function SubscriptionBillingPage() {
           ) : (
             <div className="space-y-1">
               {history.map((item: any, i: number) => (
-                <div key={`${item.type}-${item.id}-${i}`} className="bg-white rounded-xl border border-slate-200 p-4 flex items-center justify-between">
+                <div key={`${item.type}-${item.id}-${i}`} className="bg-surface rounded-xl border border-border-custom p-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-lg ${item.type === 'payment' ? 'bg-emerald-50' : item.type === 'credit_note' ? 'bg-purple-50' : 'bg-slate-50'}`}>
-                      {item.type === 'payment' ? <CreditCard className="w-4 h-4 text-emerald-600" /> : item.type === 'credit_note' ? <RotateCcw className="w-4 h-4 text-purple-600" /> : <FileText className="w-4 h-4 text-slate-600" />}
+                    <div className={`p-2 rounded-lg ${item.type === 'payment' ? 'bg-emerald-50' : item.type === 'credit_note' ? 'bg-purple-50' : 'bg-surface-subtle'}`}>
+                      {item.type === 'payment' ? <CreditCard className="w-4 h-4 text-emerald-600" /> : item.type === 'credit_note' ? <RotateCcw className="w-4 h-4 text-purple-600" /> : <FileText className="w-4 h-4 text-ink-600" />}
                     </div>
                     <div>
-                      <p className="font-medium text-sm text-slate-900">{item.number}</p>
-                      <p className="text-xs text-slate-500">{item.description} — {fmtDate(item.date)}</p>
+                      <p className="font-medium text-sm text-ink-900">{item.number}</p>
+                      <p className="text-xs text-ink-500">{item.description} — {fmtDate(item.date)}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[item.status] || ''}`}>{item.status}</span>
-                    <span className="font-semibold text-slate-900">{item.type === 'credit_note' ? '-' : ''}{fmtNaira(item.totalKobo)}</span>
+                    <span className="font-semibold text-ink-900">{item.type === 'credit_note' ? '-' : ''}{fmtNaira(item.totalKobo)}</span>
                   </div>
                 </div>
               ))}
-              {history.length === 0 && <div className="text-center py-12 text-slate-400"><Clock className="w-10 h-10 mx-auto mb-2" /><p>No billing history.</p></div>}
+              {history.length === 0 && <div className="text-center py-12 text-ink-400"><Clock className="w-10 h-10 mx-auto mb-2" /><p>No billing history.</p></div>}
             </div>
           )}
         </>
@@ -365,29 +365,29 @@ export function SubscriptionBillingPage() {
       {/* Tax Tab */}
       {tab === 'tax' && (
         <div className="space-y-4">
-          <div className="bg-white rounded-xl border border-slate-200 p-5">
-            <h3 className="font-semibold text-slate-900 mb-4 flex items-center gap-2"><Percent className="w-5 h-5 text-indigo-600" /> Tax Rates</h3>
+          <div className="bg-surface rounded-xl border border-border-custom p-5">
+            <h3 className="font-semibold text-ink-900 mb-4 flex items-center gap-2"><Percent className="w-5 h-5 text-indigo-600" /> Tax Rates</h3>
             {taxLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
               <div className="space-y-2 mb-4">
                 {taxRates.map((r: any) => (
-                  <div key={r.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                  <div key={r.id} className="flex items-center justify-between p-3 bg-surface-subtle rounded-lg">
                     <div>
-                      <span className="font-medium text-sm text-slate-900">{r.name}</span>
-                      <span className="text-xs text-slate-500 ml-2">{(r.rate / 100).toFixed(1)}%</span>
+                      <span className="font-medium text-sm text-ink-900">{r.name}</span>
+                      <span className="text-xs text-ink-500 ml-2">{(r.rate / 100).toFixed(1)}%</span>
                       {r.isDefault && <span className="ml-2 text-[10px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-full">Default</span>}
                     </div>
-                    <span className="text-xs text-slate-400 capitalize">{r.type}</span>
+                    <span className="text-xs text-ink-400 capitalize">{r.type}</span>
                   </div>
                 ))}
-                {taxRates.length === 0 && <p className="text-sm text-slate-400">No tax rates configured.</p>}
+                {taxRates.length === 0 && <p className="text-sm text-ink-400">No tax rates configured.</p>}
               </div>
             )}
             <div className="border-t pt-4">
-              <h4 className="text-sm font-medium text-slate-700 mb-2">Add Tax Rate</h4>
+              <h4 className="text-sm font-medium text-ink-700 mb-2">Add Tax Rate</h4>
               <div className="flex gap-2 flex-wrap">
                 <input value={newTaxName} onChange={e => setNewTaxName(e.target.value)} placeholder="Name (e.g. VAT 7.5%)" className="flex-1 min-w-[160px] p-2 border border-slate-300 rounded-lg text-sm" />
                 <input value={newTaxRate} onChange={e => setNewTaxRate(e.target.value)} type="number" placeholder="Rate (e.g. 750 = 7.5%)" className="w-32 p-2 border border-slate-300 rounded-lg text-sm" />
-                <label className="flex items-center gap-1.5 text-sm text-slate-600">
+                <label className="flex items-center gap-1.5 text-sm text-ink-600">
                   <input type="checkbox" checked={newTaxDefault} onChange={e => setNewTaxDefault(e.target.checked)} className="w-4 h-4 rounded border-slate-300" /> Default
                 </label>
                 <button onClick={() => {
@@ -402,8 +402,8 @@ export function SubscriptionBillingPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl border border-slate-200 p-5">
-            <h3 className="font-semibold text-slate-900 mb-2 flex items-center gap-2"><Info className="w-5 h-5 text-indigo-600" /> Proration Calculator</h3>
+          <div className="bg-surface rounded-xl border border-border-custom p-5">
+            <h3 className="font-semibold text-ink-900 mb-2 flex items-center gap-2"><Info className="w-5 h-5 text-indigo-600" /> Proration Calculator</h3>
             <ProrationCalculator />
           </div>
         </div>
@@ -437,9 +437,9 @@ function ProrationCalculator() {
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-3 gap-3">
-        <div><label className="text-xs text-slate-500">Old price (₦)</label><input value={oldPrice} onChange={e => setOldPrice(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg text-sm" /></div>
-        <div><label className="text-xs text-slate-500">New price (₦)</label><input value={newPrice} onChange={e => setNewPrice(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg text-sm" /></div>
-        <div><label className="text-xs text-slate-500">Days remaining</label><input value={daysRemaining} onChange={e => setDaysRemaining(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg text-sm" /></div>
+        <div><label className="text-xs text-ink-500">Old price (₦)</label><input value={oldPrice} onChange={e => setOldPrice(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg text-sm" /></div>
+        <div><label className="text-xs text-ink-500">New price (₦)</label><input value={newPrice} onChange={e => setNewPrice(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg text-sm" /></div>
+        <div><label className="text-xs text-ink-500">Days remaining</label><input value={daysRemaining} onChange={e => setDaysRemaining(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg text-sm" /></div>
       </div>
       <button onClick={calc} disabled={calculating} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
         {calculating ? <Loader2 className="w-4 h-4 animate-spin inline" /> : 'Calculate'}

@@ -103,18 +103,18 @@ export function SuperAdminDashboard() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Super Admin Dashboard</h1>
-          <p className="text-sm text-gray-500 mt-1">Platform-wide oversight and analytics</p>
+          <h1 className="text-2xl font-bold text-ink-900">Super Admin Dashboard</h1>
+          <p className="text-sm text-ink-500 mt-1">Platform-wide oversight and analytics</p>
         </div>
-        <button onClick={() => refetchDash()} className="flex items-center gap-2 px-3 py-2 text-sm bg-white border rounded-lg hover:bg-gray-50">
+        <button onClick={() => refetchDash()} className="flex items-center gap-2 px-3 py-2 text-sm bg-surface border rounded-lg hover:bg-surface-hover">
           <RefreshCw className="w-4 h-4" /> Refresh
         </button>
       </div>
 
-      <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit">
+      <div className="flex gap-1 bg-surface-hover p-1 rounded-lg w-fit">
         {tabs.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
-            className={`flex items-center gap-2 px-4 py-2 text-sm rounded-md transition-colors ${tab === t.id ? 'bg-white shadow-sm text-gray-900 font-medium' : 'text-gray-500 hover:text-gray-700'}`}>
+            className={`flex items-center gap-2 px-4 py-2 text-sm rounded-md transition-colors ${tab === t.id ? 'bg-surface shadow-sm text-ink-900 font-medium' : 'text-ink-500 hover:text-ink-700'}`}>
             <t.icon className="w-4 h-4" /> {t.label}
           </button>
         ))}
@@ -123,7 +123,7 @@ export function SuperAdminDashboard() {
       {tab === 'overview' && (
         <>
           {dashLoading ? (
-            <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-gray-400" /></div>
+            <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-ink-400" /></div>
           ) : kpis ? (
             <>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -142,8 +142,8 @@ export function SuperAdminDashboard() {
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-white rounded-xl border p-5">
-                  <h3 className="text-sm font-semibold text-gray-700 mb-4">Revenue Trend (6 months)</h3>
+                <div className="bg-surface rounded-xl border p-5">
+                  <h3 className="text-sm font-semibold text-ink-700 mb-4">Revenue Trend (6 months)</h3>
                   <ResponsiveContainer width="100%" height={250}>
                     <AreaChart data={dashData.revenueOverTime}>
                       <defs><linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/><stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/></linearGradient></defs>
@@ -156,8 +156,8 @@ export function SuperAdminDashboard() {
                   </ResponsiveContainer>
                 </div>
 
-                <div className="bg-white rounded-xl border p-5">
-                  <h3 className="text-sm font-semibold text-gray-700 mb-4">Plan Distribution</h3>
+                <div className="bg-surface rounded-xl border p-5">
+                  <h3 className="text-sm font-semibold text-ink-700 mb-4">Plan Distribution</h3>
                   <ResponsiveContainer width="100%" height={250}>
                     <PieChart>
                       <Pie data={dashData.planDistribution} dataKey="count" nameKey="planName" cx="50%" cy="50%" outerRadius={80} label={(entry: any) => `${entry.planName}: ${entry.count}`}>
@@ -169,8 +169,8 @@ export function SuperAdminDashboard() {
                   </ResponsiveContainer>
                 </div>
 
-                <div className="bg-white rounded-xl border p-5">
-                  <h3 className="text-sm font-semibold text-gray-700 mb-4">Organization Growth (12 months)</h3>
+                <div className="bg-surface rounded-xl border p-5">
+                  <h3 className="text-sm font-semibold text-ink-700 mb-4">Organization Growth (12 months)</h3>
                   <ResponsiveContainer width="100%" height={250}>
                     <AreaChart data={dashData.orgGrowth}>
                       <defs><linearGradient id="orgGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/><stop offset="95%" stopColor="#10b981" stopOpacity={0}/></linearGradient></defs>
@@ -183,8 +183,8 @@ export function SuperAdminDashboard() {
                   </ResponsiveContainer>
                 </div>
 
-                <div className="bg-white rounded-xl border p-5">
-                  <h3 className="text-sm font-semibold text-gray-700 mb-4">Plan Revenue</h3>
+                <div className="bg-surface rounded-xl border p-5">
+                  <h3 className="text-sm font-semibold text-ink-700 mb-4">Plan Revenue</h3>
                   <ResponsiveContainer width="100%" height={250}>
                     <BarChart data={dashData.planDistribution}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -198,43 +198,43 @@ export function SuperAdminDashboard() {
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-white rounded-xl border p-5">
-                  <h3 className="text-sm font-semibold text-gray-700 mb-4">Recent Organizations</h3>
+                <div className="bg-surface rounded-xl border p-5">
+                  <h3 className="text-sm font-semibold text-ink-700 mb-4">Recent Organizations</h3>
                   <div className="space-y-3">
                     {dashData.recentOrganizations.slice(0, 5).map(org => (
                       <div key={org.id} className="flex items-center justify-between py-2 border-b last:border-0">
                         <div>
-                          <p className="text-sm font-medium text-gray-900">{org.name}</p>
-                          <p className="text-xs text-gray-500">{org.email}</p>
+                          <p className="text-sm font-medium text-ink-900">{org.name}</p>
+                          <p className="text-xs text-ink-500">{org.email}</p>
                         </div>
                         <div className="text-right">
-                          <span className={`inline-block px-2 py-0.5 text-xs rounded-full ${org.status === 'active' ? 'bg-green-100 text-green-700' : org.status === 'free_trial' ? 'bg-blue-100 text-blue-700' : org.status === 'expired' ? 'bg-red-100 text-red-700' : org.status === 'suspended' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'}`}>
+                          <span className={`inline-block px-2 py-0.5 text-xs rounded-full ${org.status === 'active' ? 'bg-green-100 text-green-700' : org.status === 'free_trial' ? 'bg-blue-100 text-blue-700' : org.status === 'expired' ? 'bg-red-100 text-red-700' : org.status === 'suspended' ? 'bg-amber-100 text-amber-700' : 'bg-surface-hover text-ink-600'}`}>
                             {org.status || 'N/A'}
                           </span>
-                          <p className="text-xs text-gray-400 mt-1">{fmtDate(org.createdAt)}</p>
+                          <p className="text-xs text-ink-400 mt-1">{fmtDate(org.createdAt)}</p>
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                <div className="bg-white rounded-xl border p-5">
-                  <h3 className="text-sm font-semibold text-gray-700 mb-4">Recent Failed Payments</h3>
+                <div className="bg-surface rounded-xl border p-5">
+                  <h3 className="text-sm font-semibold text-ink-700 mb-4">Recent Failed Payments</h3>
                   <div className="space-y-3">
                     {dashData.failedPayments.slice(0, 5).map(p => (
                       <div key={p.id} className="flex items-center justify-between py-2 border-b last:border-0">
                         <div>
-                          <p className="text-sm font-medium text-gray-900">{p.orgName}</p>
-                          <p className="text-xs text-gray-500">{p.reason || 'No reason'}</p>
+                          <p className="text-sm font-medium text-ink-900">{p.orgName}</p>
+                          <p className="text-xs text-ink-500">{p.reason || 'No reason'}</p>
                         </div>
                         <div className="text-right">
                           <p className="text-sm font-medium text-red-600">{fmtNaira(p.amountKobo)}</p>
-                          <p className="text-xs text-gray-400">{fmtDate(p.date)}</p>
+                          <p className="text-xs text-ink-400">{fmtDate(p.date)}</p>
                         </div>
                       </div>
                     ))}
                     {dashData.failedPayments.length === 0 && (
-                      <p className="text-sm text-gray-400 text-center py-4">No failed payments</p>
+                      <p className="text-sm text-ink-400 text-center py-4">No failed payments</p>
                     )}
                   </div>
                 </div>
@@ -245,36 +245,36 @@ export function SuperAdminDashboard() {
       )}
 
       {tab === 'organizations' && (
-        <div className="bg-white rounded-xl border">
+        <div className="bg-surface rounded-xl border">
           <div className="p-4 border-b flex items-center gap-3">
-            <Search className="w-4 h-4 text-gray-400" />
+            <Search className="w-4 h-4 text-ink-400" />
             <input placeholder="Search organizations..." className="flex-1 text-sm outline-none" />
           </div>
           {orgsLoading ? (
-            <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>
+            <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-ink-400" /></div>
           ) : (
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b bg-gray-50">
-                  <th className="text-left p-3 font-medium text-gray-600">Name</th>
-                  <th className="text-left p-3 font-medium text-gray-600">Email</th>
-                  <th className="text-left p-3 font-medium text-gray-600">Plan</th>
-                  <th className="text-left p-3 font-medium text-gray-600">Status</th>
-                  <th className="text-left p-3 font-medium text-gray-600">Created</th>
+                <tr className="border-b bg-surface-subtle">
+                  <th className="text-left p-3 font-medium text-ink-600">Name</th>
+                  <th className="text-left p-3 font-medium text-ink-600">Email</th>
+                  <th className="text-left p-3 font-medium text-ink-600">Plan</th>
+                  <th className="text-left p-3 font-medium text-ink-600">Status</th>
+                  <th className="text-left p-3 font-medium text-ink-600">Created</th>
                 </tr>
               </thead>
               <tbody>
                 {orgList?.data?.map((org: any) => (
-                  <tr key={org.id} className="border-b hover:bg-gray-50">
+                  <tr key={org.id} className="border-b hover:bg-surface-hover">
                     <td className="p-3 font-medium">{org.name}</td>
-                    <td className="p-3 text-gray-500">{org.email}</td>
+                    <td className="p-3 text-ink-500">{org.email}</td>
                     <td className="p-3">{org.planName || '-'}</td>
                     <td className="p-3">
-                      <span className={`inline-block px-2 py-0.5 text-xs rounded-full ${org.status === 'active' ? 'bg-green-100 text-green-700' : org.status === 'free_trial' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>
+                      <span className={`inline-block px-2 py-0.5 text-xs rounded-full ${org.status === 'active' ? 'bg-green-100 text-green-700' : org.status === 'free_trial' ? 'bg-blue-100 text-blue-700' : 'bg-surface-hover text-ink-600'}`}>
                         {org.status || 'N/A'}
                       </span>
                     </td>
-                    <td className="p-3 text-gray-500">{fmtDate(org.createdAt)}</td>
+                    <td className="p-3 text-ink-500">{fmtDate(org.createdAt)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -284,32 +284,32 @@ export function SuperAdminDashboard() {
       )}
 
       {tab === 'payments' && (
-        <div className="bg-white rounded-xl border">
+        <div className="bg-surface rounded-xl border">
           {pmtsLoading ? (
-            <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>
+            <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-ink-400" /></div>
           ) : (
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b bg-gray-50">
-                  <th className="text-left p-3 font-medium text-gray-600">Organization</th>
-                  <th className="text-left p-3 font-medium text-gray-600">Amount</th>
-                  <th className="text-left p-3 font-medium text-gray-600">Gateway</th>
-                  <th className="text-left p-3 font-medium text-gray-600">Reason</th>
-                  <th className="text-left p-3 font-medium text-gray-600">Date</th>
+                <tr className="border-b bg-surface-subtle">
+                  <th className="text-left p-3 font-medium text-ink-600">Organization</th>
+                  <th className="text-left p-3 font-medium text-ink-600">Amount</th>
+                  <th className="text-left p-3 font-medium text-ink-600">Gateway</th>
+                  <th className="text-left p-3 font-medium text-ink-600">Reason</th>
+                  <th className="text-left p-3 font-medium text-ink-600">Date</th>
                 </tr>
               </thead>
               <tbody>
                 {failedPmts?.map((p: any) => (
-                  <tr key={p.id} className="border-b hover:bg-gray-50">
+                  <tr key={p.id} className="border-b hover:bg-surface-hover">
                     <td className="p-3 font-medium">{p.orgName}</td>
                     <td className="p-3 text-red-600 font-medium">{fmtNaira(p.amountKobo)}</td>
-                    <td className="p-3 text-gray-500">{p.gateway}</td>
-                    <td className="p-3 text-gray-500 max-w-[200px] truncate">{p.failureReason || '-'}</td>
-                    <td className="p-3 text-gray-500">{fmtDate(p.createdAt)}</td>
+                    <td className="p-3 text-ink-500">{p.gateway}</td>
+                    <td className="p-3 text-ink-500 max-w-[200px] truncate">{p.failureReason || '-'}</td>
+                    <td className="p-3 text-ink-500">{fmtDate(p.createdAt)}</td>
                   </tr>
                 ))}
                 {(!failedPmts || failedPmts.length === 0) && (
-                  <tr><td colSpan={5} className="p-6 text-center text-gray-400">No failed payments found</td></tr>
+                  <tr><td colSpan={5} className="p-6 text-center text-ink-400">No failed payments found</td></tr>
                 )}
               </tbody>
             </table>
@@ -319,19 +319,19 @@ export function SuperAdminDashboard() {
 
       {tab === 'plans' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white rounded-xl border p-5">
-            <h3 className="text-sm font-semibold text-gray-700 mb-4">Subscription Plans</h3>
+          <div className="bg-surface rounded-xl border p-5">
+            <h3 className="text-sm font-semibold text-ink-700 mb-4">Subscription Plans</h3>
             {plansLoading ? (
-              <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>
+              <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-ink-400" /></div>
             ) : (
               <div className="space-y-3">
                 {plans?.map((plan: any) => (
                   <div key={plan.id} className="flex items-center justify-between p-3 border rounded-lg">
                     <div>
-                      <p className="text-sm font-medium text-gray-900">{plan.name}</p>
-                      <p className="text-xs text-gray-500">{plan.code} · {fmtNaira(plan.amountKobo)}/{plan.interval}</p>
+                      <p className="text-sm font-medium text-ink-900">{plan.name}</p>
+                      <p className="text-xs text-ink-500">{plan.code} · {fmtNaira(plan.amountKobo)}/{plan.interval}</p>
                     </div>
-                    <span className={`px-2 py-0.5 text-xs rounded-full ${plan.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                    <span className={`px-2 py-0.5 text-xs rounded-full ${plan.isActive ? 'bg-green-100 text-green-700' : 'bg-surface-hover text-ink-500'}`}>
                       {plan.isActive ? 'Active' : 'Inactive'}
                     </span>
                   </div>
@@ -339,9 +339,9 @@ export function SuperAdminDashboard() {
               </div>
             )}
           </div>
-          <div className="bg-white rounded-xl border p-5">
-            <h3 className="text-sm font-semibold text-gray-700 mb-4">Recent Successful Payments</h3>
-            <p className="text-sm text-gray-400 text-center py-10">Payment history available in subscriptions billing section</p>
+          <div className="bg-surface rounded-xl border p-5">
+            <h3 className="text-sm font-semibold text-ink-700 mb-4">Recent Successful Payments</h3>
+            <p className="text-sm text-ink-400 text-center py-10">Payment history available in subscriptions billing section</p>
           </div>
         </div>
       )}
@@ -355,16 +355,16 @@ function KpiCard({ icon: Icon, label, value, color }: { icon: any; label: string
     green: 'bg-green-50 text-green-600',
     amber: 'bg-amber-50 text-amber-600',
     red: 'bg-red-50 text-red-600',
-    gray: 'bg-gray-50 text-gray-600',
+    gray: 'bg-surface-subtle text-ink-600',
   };
   return (
-    <div className="bg-white rounded-xl border p-4 flex items-start gap-3">
+    <div className="bg-surface rounded-xl border p-4 flex items-start gap-3">
       <div className={`p-2 rounded-lg ${colorMap[color] || colorMap.blue}`}>
         <Icon className="w-5 h-5" />
       </div>
       <div>
-        <p className="text-xs text-gray-500">{label}</p>
-        <p className="text-lg font-bold text-gray-900 mt-0.5">{value}</p>
+        <p className="text-xs text-ink-500">{label}</p>
+        <p className="text-lg font-bold text-ink-900 mt-0.5">{value}</p>
       </div>
     </div>
   );

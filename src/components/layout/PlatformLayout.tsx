@@ -75,9 +75,9 @@ export function PlatformLayout({ children }: { children?: React.ReactNode }) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="min-h-screen bg-surface-subtle flex">
       {isMobileOpen && (
-        <div className="fixed inset-0 z-30 bg-slate-900/40 backdrop-blur-sm lg:hidden" onClick={() => setIsMobileOpen(false)} />
+        <div className="fixed inset-0 z-30 bg-ink-900/40 backdrop-blur-sm lg:hidden" onClick={() => setIsMobileOpen(false)} />
       )}
 
       <aside className={`fixed top-0 left-0 z-40 h-screen flex flex-col bg-[#082F49] transition-all duration-300 ease-in-out ${
@@ -166,8 +166,8 @@ export function PlatformLayout({ children }: { children?: React.ReactNode }) {
       <div className={`flex-1 flex flex-col min-w-0 min-h-screen transition-all duration-300 ${
         sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-60'
       }`}>
-        <header className="sticky top-0 z-20 h-14 md:h-16 bg-white border-b border-slate-200 flex items-center gap-3 px-3 md:px-5">
-          <button onClick={() => setIsMobileOpen(true)} className="lg:hidden w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100">
+        <header className="sticky top-0 z-20 h-14 md:h-16 bg-surface border-b border-border-custom flex items-center gap-3 px-3 md:px-5">
+          <button onClick={() => setIsMobileOpen(true)} className="lg:hidden w-8 h-8 flex items-center justify-center rounded-lg text-ink-500 hover:bg-surface-hover">
             <Menu className="w-4.5 h-4.5" />
           </button>
 
@@ -184,30 +184,30 @@ export function PlatformLayout({ children }: { children?: React.ReactNode }) {
             {showUserMenu && (
               <div
                 id="platform-profile-dropdown"
-                className="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden z-50"
+                className="absolute right-0 top-full mt-2 w-56 bg-surface rounded-2xl shadow-xl border border-border-custom overflow-hidden z-50"
               >
-                <div className="px-4 py-3 border-b border-slate-100">
-                  <div className="text-sm font-bold text-slate-800 truncate">{user?.fullName || user?.email}</div>
-                  <div className="text-[11px] text-slate-500 capitalize">Administrator</div>
+                <div className="px-4 py-3 border-b border-border-custom">
+                  <div className="text-sm font-bold text-ink-800 truncate">{user?.fullName || user?.email}</div>
+                  <div className="text-[11px] text-ink-500 capitalize">Administrator</div>
                 </div>
                 <div className="p-1.5">
                   <button
                     onClick={() => { setShowUserMenu(false); navigate('/platform/profile'); }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-slate-600 hover:bg-slate-50 transition-colors"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-ink-600 hover:bg-surface-hover transition-colors"
                   >
                     <User className="w-4 h-4" />
                     Profile
                   </button>
                   <button
                     onClick={() => { setShowUserMenu(false); handleLogout(); }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-red-600 hover:bg-red-50 transition-colors"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-red-600 hover:bg-danger-bg transition-colors"
                   >
                     <LogOut className="w-4 h-4" />
                     Log Out Session
                   </button>
                   <button
                     onClick={() => { setShowUserMenu(false); window.open('/help/documents', '_blank'); }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-slate-600 hover:bg-slate-50 transition-colors"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-ink-600 hover:bg-surface-hover transition-colors"
                   >
                     <HelpCircle className="w-4 h-4" />
                     Help & Support

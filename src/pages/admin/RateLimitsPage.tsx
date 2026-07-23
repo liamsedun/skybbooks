@@ -60,46 +60,46 @@ export function RateLimitsPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Rate Limit Configuration</h1>
-          <p className="text-sm text-gray-500 mt-1">Manage API rate limiting per endpoint</p>
+          <h1 className="text-2xl font-bold text-ink-900">Rate Limit Configuration</h1>
+          <p className="text-sm text-ink-500 mt-1">Manage API rate limiting per endpoint</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => { resetForm(); setShowModal('create'); }} className="flex items-center gap-2 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
             <Plus className="w-4 h-4" /> Add Rule
           </button>
           <button onClick={() => queryClient.invalidateQueries({ queryKey: ['rate-limit-configs'] })}
-            className="flex items-center gap-2 px-3 py-2 text-sm bg-white border rounded-lg hover:bg-gray-50">
+            className="flex items-center gap-2 px-3 py-2 text-sm bg-surface border rounded-lg hover:bg-surface-subtle">
             <RefreshCw className="w-4 h-4" /> Refresh
           </button>
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border">
+      <div className="bg-surface rounded-xl border">
         {isLoading ? (
-          <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>
+          <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-ink-400" /></div>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b bg-gray-50">
-                <th className="text-left p-3 font-medium text-gray-600">Endpoint</th>
-                <th className="text-left p-3 font-medium text-gray-600">Method</th>
-                <th className="text-left p-3 font-medium text-gray-600">Max Requests</th>
-                <th className="text-left p-3 font-medium text-gray-600">Window</th>
-                <th className="text-left p-3 font-medium text-gray-600">Active</th>
-                <th className="text-left p-3 font-medium text-gray-600">Actions</th>
+              <tr className="border-b bg-surface-subtle">
+                <th className="text-left p-3 font-medium text-ink-600">Endpoint</th>
+                <th className="text-left p-3 font-medium text-ink-600">Method</th>
+                <th className="text-left p-3 font-medium text-ink-600">Max Requests</th>
+                <th className="text-left p-3 font-medium text-ink-600">Window</th>
+                <th className="text-left p-3 font-medium text-ink-600">Active</th>
+                <th className="text-left p-3 font-medium text-ink-600">Actions</th>
               </tr>
             </thead>
             <tbody>
               {configs?.map((c: any) => (
-                <tr key={c.id} className="border-b hover:bg-gray-50">
-                  <td className="p-3 font-medium text-gray-900 font-mono text-xs">{c.endpoint}</td>
+                <tr key={c.id} className="border-b hover:bg-surface-subtle">
+                  <td className="p-3 font-medium text-ink-900 font-mono text-xs">{c.endpoint}</td>
                   <td className="p-3">
-                    <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-700 rounded font-mono">{c.method}</span>
+                    <span className="px-2 py-0.5 text-xs bg-surface-hover text-ink-700 rounded font-mono">{c.method}</span>
                   </td>
                   <td className="p-3">{c.maxRequests}</td>
-                  <td className="p-3 text-gray-500">{fmtWindow(c.windowMs)}</td>
+                  <td className="p-3 text-ink-500">{fmtWindow(c.windowMs)}</td>
                   <td className="p-3">
-                    <span className={`px-2 py-0.5 text-xs rounded-full ${c.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                    <span className={`px-2 py-0.5 text-xs rounded-full ${c.isActive ? 'bg-green-100 text-green-700' : 'bg-surface-hover text-ink-500'}`}>
                       {c.isActive ? 'Active' : 'Inactive'}
                     </span>
                   </td>
@@ -112,7 +112,7 @@ export function RateLimitsPage() {
                 </tr>
               ))}
               {(!configs || configs.length === 0) && (
-                <tr><td colSpan={6} className="p-6 text-center text-gray-400">No rate limit rules configured</td></tr>
+                <tr><td colSpan={6} className="p-6 text-center text-ink-400">No rate limit rules configured</td></tr>
               )}
             </tbody>
           </table>
@@ -121,20 +121,20 @@ export function RateLimitsPage() {
 
       {(showModal === 'create' || showModal === 'edit') && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => { setShowModal(null); setEditingId(null); }}>
-          <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
+          <div className="bg-surface rounded-xl p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">{showModal === 'create' ? 'Add Rate Limit Rule' : 'Edit Rate Limit Rule'}</h3>
-              <button onClick={() => { setShowModal(null); setEditingId(null); }}><X className="w-5 h-5 text-gray-400" /></button>
+              <button onClick={() => { setShowModal(null); setEditingId(null); }}><X className="w-5 h-5 text-ink-400" /></button>
             </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Endpoint pattern</label>
+                <label className="block text-sm font-medium text-ink-700 mb-1">Endpoint pattern</label>
                 <input value={form.endpoint} onChange={e => setForm(f => ({ ...f, endpoint: e.target.value }))}
                   className="w-full border rounded-lg px-3 py-2 text-sm font-mono outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="/api/accounts/*" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">HTTP Method</label>
+                <label className="block text-sm font-medium text-ink-700 mb-1">HTTP Method</label>
                 <select value={form.method} onChange={e => setForm(f => ({ ...f, method: e.target.value }))}
                   className="w-full border rounded-lg px-3 py-2 text-sm">
                   <option value="ALL">ALL</option>
@@ -146,22 +146,22 @@ export function RateLimitsPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Max Requests</label>
+                  <label className="block text-sm font-medium text-ink-700 mb-1">Max Requests</label>
                   <input type="number" value={form.maxRequests} onChange={e => setForm(f => ({ ...f, maxRequests: Number(e.target.value) }))}
                     className="w-full border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500" min={1} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Window (ms)</label>
+                  <label className="block text-sm font-medium text-ink-700 mb-1">Window (ms)</label>
                   <input type="number" value={form.windowMs} onChange={e => setForm(f => ({ ...f, windowMs: Number(e.target.value) }))}
                     className="w-full border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500" min={1000} step={1000} />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <label className="block text-sm font-medium text-ink-700 mb-1">Description</label>
                 <input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
                   className="w-full border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
-              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+              <label className="flex items-center gap-2 text-sm text-ink-700 cursor-pointer">
                 <input type="checkbox" checked={form.isActive} onChange={e => setForm(f => ({ ...f, isActive: e.target.checked }))} className="rounded" />
                 Active
               </label>
@@ -179,11 +179,11 @@ export function RateLimitsPage() {
 
       {showDelete && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowDelete(null)}>
-          <div className="bg-white rounded-xl p-6 w-full max-w-sm mx-4" onClick={e => e.stopPropagation()}>
+          <div className="bg-surface rounded-xl p-6 w-full max-w-sm mx-4" onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-semibold mb-2">Delete Rate Limit Rule</h3>
-            <p className="text-sm text-gray-600 mb-4">Are you sure you want to delete this rate limit rule? This action cannot be undone.</p>
+            <p className="text-sm text-ink-600 mb-4">Are you sure you want to delete this rate limit rule? This action cannot be undone.</p>
             <div className="flex justify-end gap-2">
-              <button onClick={() => setShowDelete(null)} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Cancel</button>
+              <button onClick={() => setShowDelete(null)} className="px-4 py-2 text-sm border rounded-lg hover:bg-surface-subtle">Cancel</button>
               <button onClick={() => deleteMutation.mutate(showDelete)} className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700">
                 {deleteMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Delete'}
               </button>

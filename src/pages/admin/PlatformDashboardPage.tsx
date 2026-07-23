@@ -67,14 +67,14 @@ export function PlatformDashboardPage() {
   const k = data?.kpis;
 
   const SummaryCards = [
-    { label: 'MRR', value: k ? fmtK(k.mrrKobo) : '—', icon: TrendingUp, color: 'indigo', sub: k ? `${k.revenueGrowth >= 0 ? '+' : ''}${k.revenueGrowth}% vs prev` : '' },
-    { label: 'ARR', value: k ? fmtK(k.arrKobo) : '—', icon: DollarSign, color: 'indigo', sub: 'Annual Run Rate' },
-    { label: 'Active Orgs', value: k ? k.activeSubscriptions.toLocaleString() : '—', icon: Building2, color: 'emerald', sub: `${k ? k.orgGrowthRate + '% growth' : ''}` },
-    { label: 'Trial Orgs', value: k ? k.trialAccounts.toLocaleString() : '—', icon: Clock, color: 'amber', sub: `${k ? ((k.trialAccounts / Math.max(k.totalOrganizations, 1)) * 100).toFixed(0) : 0}% of total` },
-    { label: 'Expired', value: k ? k.expiredAccounts.toLocaleString() : '—', icon: XCircle, color: 'red', sub: `Churn: ${k ? k.churnRate : 0}%` },
-    { label: 'Total Revenue', value: k ? fmtK(k.totalRevenueKobo) : '—', icon: CreditCard, color: 'emerald', sub: 'Lifetime' },
-    { label: 'Total Users', value: k ? k.totalUsers.toLocaleString() : '—', icon: Users, color: 'blue', sub: `${k ? k.totalPlatformUsers : 0} platform admins` },
-    { label: 'Failed Payments', value: k ? k.failedPayments.toLocaleString() : '—', icon: AlertTriangle, color: 'red', sub: 'Requires attention' },
+    { label: 'MRR', value: k ? fmtK(k.mrrKobo) : '\u2014', icon: TrendingUp, color: 'indigo', sub: k ? `${k.revenueGrowth >= 0 ? '+' : ''}${k.revenueGrowth}% vs prev` : '' },
+    { label: 'ARR', value: k ? fmtK(k.arrKobo) : '\u2014', icon: DollarSign, color: 'indigo', sub: 'Annual Run Rate' },
+    { label: 'Active Orgs', value: k ? k.activeSubscriptions.toLocaleString() : '\u2014', icon: Building2, color: 'emerald', sub: `${k ? k.orgGrowthRate + '% growth' : ''}` },
+    { label: 'Trial Orgs', value: k ? k.trialAccounts.toLocaleString() : '\u2014', icon: Clock, color: 'amber', sub: `${k ? ((k.trialAccounts / Math.max(k.totalOrganizations, 1)) * 100).toFixed(0) : 0}% of total` },
+    { label: 'Expired', value: k ? k.expiredAccounts.toLocaleString() : '\u2014', icon: XCircle, color: 'red', sub: `Churn: ${k ? k.churnRate : 0}%` },
+    { label: 'Total Revenue', value: k ? fmtK(k.totalRevenueKobo) : '\u2014', icon: CreditCard, color: 'emerald', sub: 'Lifetime' },
+    { label: 'Total Users', value: k ? k.totalUsers.toLocaleString() : '\u2014', icon: Users, color: 'blue', sub: `${k ? k.totalPlatformUsers : 0} platform admins` },
+    { label: 'Failed Payments', value: k ? k.failedPayments.toLocaleString() : '\u2014', icon: AlertTriangle, color: 'red', sub: 'Requires attention' },
   ];
 
   if (isLoading) {
@@ -82,7 +82,7 @@ export function PlatformDashboardPage() {
       <div className="flex items-center justify-center py-32">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
-          <span className="text-sm text-slate-400 font-medium">Loading platform intelligence...</span>
+          <span className="text-sm text-ink-400 font-medium">Loading platform intelligence...</span>
         </div>
       </div>
     );
@@ -92,10 +92,10 @@ export function PlatformDashboardPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Platform Dashboard</h1>
-          <p className="text-sm text-slate-500 mt-1">Executive overview of your entire SaaS ecosystem</p>
+          <h1 className="text-2xl font-bold text-ink-900">Platform Dashboard</h1>
+          <p className="text-sm text-ink-500 mt-1">Executive overview of your entire SaaS ecosystem</p>
         </div>
-        <button onClick={() => refetch()} className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">
+        <button onClick={() => refetch()} className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-ink-600 bg-surface border border-border-custom rounded-xl hover:bg-surface-hover transition-colors">
           <RefreshCw className="w-4 h-4" /> Refresh
         </button>
       </div>
@@ -109,7 +109,7 @@ export function PlatformDashboardPage() {
             blue: 'bg-blue-50 text-blue-600',
           };
           return (
-            <div key={card.label} className="bg-white rounded-xl border border-slate-200 p-4 hover:shadow-sm transition-shadow">
+            <div key={card.label} className="bg-surface rounded-xl border border-border-custom p-4 hover:shadow-sm transition-shadow">
               <div className="flex items-start justify-between">
                 <div className={`p-2 rounded-lg ${colorMap[card.color] || 'bg-indigo-50 text-indigo-600'}`}>
                   <card.icon className="w-4 h-4" />
@@ -121,9 +121,9 @@ export function PlatformDashboardPage() {
                   </span>
                 )}
               </div>
-              <p className="text-xs text-slate-500 mt-3">{card.label}</p>
-              <p className="text-lg font-bold text-slate-900 mt-0.5">{card.value}</p>
-              {card.sub && <p className="text-[11px] text-slate-400 mt-0.5">{card.sub}</p>}
+              <p className="text-xs text-ink-500 mt-3">{card.label}</p>
+              <p className="text-lg font-bold text-ink-900 mt-0.5">{card.value}</p>
+              {card.sub && <p className="text-[11px] text-ink-400 mt-0.5">{card.sub}</p>}
             </div>
           );
         })}
@@ -132,10 +132,10 @@ export function PlatformDashboardPage() {
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Revenue Trend */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
+        <div className="bg-surface rounded-xl border border-border-custom p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-slate-700">Revenue Trend</h3>
-            <span className="text-[11px] text-slate-400">Last 6 months</span>
+            <h3 className="text-sm font-semibold text-ink-700">Revenue Trend</h3>
+            <span className="text-[11px] text-ink-400">Last 6 months</span>
           </div>
           <ResponsiveContainer width="100%" height={260}>
             <AreaChart data={data?.revenueOverTime || []}>
@@ -145,11 +145,11 @@ export function PlatformDashboardPage() {
                   <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#94a3b8' }} />
-              <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} tickFormatter={(v: number) => `₦${(v / 100_000_000).toFixed(0)}M`} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-custom)" />
+              <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'var(--color-ink-400)' }} />
+              <YAxis tick={{ fontSize: 11, fill: 'var(--color-ink-400)' }} tickFormatter={(v: number) => `\u20A6${(v / 100_000_000).toFixed(0)}M`} />
               <Tooltip
-                contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 13 }}
+                contentStyle={{ borderRadius: 12, border: '1px solid var(--color-border-custom)', fontSize: 13, background: 'var(--color-surface)' }}
                 formatter={(v: any) => [fmtNaira(Number(v)), 'Revenue']}
               />
               <Area type="monotone" dataKey="revenueKobo" stroke="#6366f1" fill="url(#revGrad)" strokeWidth={2} />
@@ -158,10 +158,10 @@ export function PlatformDashboardPage() {
         </div>
 
         {/* Organization Growth */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
+        <div className="bg-surface rounded-xl border border-border-custom p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-slate-700">Organization Growth</h3>
-            <span className="text-[11px] text-slate-400">12 months</span>
+            <h3 className="text-sm font-semibold text-ink-700">Organization Growth</h3>
+            <span className="text-[11px] text-ink-400">12 months</span>
           </div>
           <ResponsiveContainer width="100%" height={260}>
             <AreaChart data={data?.orgGrowth || []}>
@@ -171,11 +171,11 @@ export function PlatformDashboardPage() {
                   <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#94a3b8' }} />
-              <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-custom)" />
+              <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'var(--color-ink-400)' }} />
+              <YAxis tick={{ fontSize: 11, fill: 'var(--color-ink-400)' }} />
               <Tooltip
-                contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 13 }}
+                contentStyle={{ borderRadius: 12, border: '1px solid var(--color-border-custom)', fontSize: 13, background: 'var(--color-surface)' }}
                 formatter={(v: any) => [Number(v).toLocaleString(), 'New Orgs']}
               />
               <Area type="monotone" dataKey="newOrgs" stroke="#10b981" fill="url(#orgGrad)" strokeWidth={2} />
@@ -187,8 +187,8 @@ export function PlatformDashboardPage() {
       {/* Middle Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Plan Distribution */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
-          <h3 className="text-sm font-semibold text-slate-700 mb-4">Plan Distribution</h3>
+        <div className="bg-surface rounded-xl border border-border-custom p-5">
+          <h3 className="text-sm font-semibold text-ink-700 mb-4">Plan Distribution</h3>
           <ResponsiveContainer width="100%" height={220}>
             <RePieChart>
               <Pie
@@ -199,36 +199,36 @@ export function PlatformDashboardPage() {
               >
                 {(data?.planDistribution || []).map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
               </Pie>
-              <Tooltip />
+              <Tooltip contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border-custom)', borderRadius: 8 }} />
             </RePieChart>
           </ResponsiveContainer>
         </div>
 
         {/* Support Tickets */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
+        <div className="bg-surface rounded-xl border border-border-custom p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-slate-700">Support Tickets</h3>
-            <LifeBuoy className="w-4 h-4 text-slate-400" />
+            <h3 className="text-sm font-semibold text-ink-700">Support Tickets</h3>
+            <LifeBuoy className="w-4 h-4 text-ink-400" />
           </div>
           <div className="grid grid-cols-2 gap-3 mb-4">
-            <div className="bg-red-50 rounded-lg p-3 text-center">
+            <div className="bg-danger-bg rounded-lg p-3 text-center">
               <p className="text-2xl font-bold text-red-600">{data?.supportTicketStats.open || 0}</p>
               <p className="text-xs text-red-500">Open</p>
             </div>
-            <div className="bg-amber-50 rounded-lg p-3 text-center">
+            <div className="bg-warning-bg rounded-lg p-3 text-center">
               <p className="text-2xl font-bold text-amber-600">{data?.supportTicketStats.inProgress || 0}</p>
               <p className="text-xs text-amber-500">In Progress</p>
             </div>
-            <div className="bg-blue-50 rounded-lg p-3 text-center">
+            <div className="bg-info-bg rounded-lg p-3 text-center">
               <p className="text-2xl font-bold text-blue-600">{data?.supportTicketStats.resolved || 0}</p>
               <p className="text-xs text-blue-500">Resolved</p>
             </div>
-            <div className="bg-emerald-50 rounded-lg p-3 text-center">
+            <div className="bg-success-bg rounded-lg p-3 text-center">
               <p className="text-2xl font-bold text-emerald-600">{data?.supportTicketStats.closed || 0}</p>
               <p className="text-xs text-emerald-500">Closed</p>
             </div>
           </div>
-          <div className="flex items-center justify-between text-xs text-slate-500">
+          <div className="flex items-center justify-between text-xs text-ink-500">
             <span>Total: {data?.kpis.totalTickets || 0}</span>
             <span>{(data?.kpis.openTickets || 0) > 0
               ? `${((data?.supportTicketStats.closed || 0) / Math.max(data?.kpis.totalTickets || 1, 1) * 100).toFixed(0)}% resolved`
@@ -237,38 +237,38 @@ export function PlatformDashboardPage() {
         </div>
 
         {/* Platform Health */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
+        <div className="bg-surface rounded-xl border border-border-custom p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-slate-700">Platform Health</h3>
-            <Server className="w-4 h-4 text-slate-400" />
+            <h3 className="text-sm font-semibold text-ink-700">Platform Health</h3>
+            <Server className="w-4 h-4 text-ink-400" />
           </div>
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                <span className="text-sm text-slate-600">Server Status</span>
+                <span className="text-sm text-ink-600">Server Status</span>
               </div>
               <span className="text-sm font-semibold text-emerald-600">Operational</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-600">Uptime</span>
-              <span className="text-sm font-semibold text-slate-800">{data?.serverStatus.uptime || 99.9}%</span>
+              <span className="text-sm text-ink-600">Uptime</span>
+              <span className="text-sm font-semibold text-ink-800">{data?.serverStatus.uptime || 99.9}%</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-600">Active Users</span>
-              <span className="text-sm font-semibold text-slate-800">{fmtCompact(data?.serverStatus.activeUsers || 0)}</span>
+              <span className="text-sm text-ink-600">Active Users</span>
+              <span className="text-sm font-semibold text-ink-800">{fmtCompact(data?.serverStatus.activeUsers || 0)}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-600">Storage</span>
-              <span className="text-sm font-semibold text-slate-800">{formatBytes(data?.serverStatus.storageUsedBytes || 0)}</span>
+              <span className="text-sm text-ink-600">Storage</span>
+              <span className="text-sm font-semibold text-ink-800">{formatBytes(data?.serverStatus.storageUsedBytes || 0)}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-600">DB Size</span>
-              <span className="text-sm font-semibold text-slate-800">{formatBytes(data?.serverStatus.dbSize || 0)}</span>
+              <span className="text-sm text-ink-600">DB Size</span>
+              <span className="text-sm font-semibold text-ink-800">{formatBytes(data?.serverStatus.dbSize || 0)}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-600">Platform Admins</span>
-              <span className="text-sm font-semibold text-slate-800">{data?.kpis.totalPlatformUsers || 0}</span>
+              <span className="text-sm text-ink-600">Platform Admins</span>
+              <span className="text-sm font-semibold text-ink-800">{data?.kpis.totalPlatformUsers || 0}</span>
             </div>
           </div>
         </div>
@@ -276,39 +276,39 @@ export function PlatformDashboardPage() {
 
       {/* Feature Usage + Top Plans */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
+        <div className="bg-surface rounded-xl border border-border-custom p-5">
           <div className="flex items-center gap-2 mb-4">
             <Zap className="w-4 h-4 text-indigo-500" />
-            <h3 className="text-sm font-semibold text-slate-700">Feature Usage</h3>
+            <h3 className="text-sm font-semibold text-ink-700">Feature Usage</h3>
           </div>
           <div className="space-y-2">
             {data?.featureUsage.slice(0, 8).map(f => (
               <div key={f.featureKey} className="flex items-center justify-between py-1.5">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-slate-700 capitalize">{f.featureKey.replace(/_/g, ' ')}</span>
-                  <span className="text-[11px] text-slate-400">({f.orgCount} orgs)</span>
+                  <span className="text-xs font-medium text-ink-700 capitalize">{f.featureKey.replace(/_/g, ' ')}</span>
+                  <span className="text-[11px] text-ink-400">({f.orgCount} orgs)</span>
                 </div>
-                <span className="text-xs font-semibold text-slate-800">{fmtCompact(f.usageCount)}</span>
+                <span className="text-xs font-semibold text-ink-800">{fmtCompact(f.usageCount)}</span>
               </div>
             ))}
             {(!data?.featureUsage || data.featureUsage.length === 0) && (
-              <p className="text-sm text-slate-400 text-center py-4">No feature usage data yet</p>
+              <p className="text-sm text-ink-400 text-center py-4">No feature usage data yet</p>
             )}
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
+        <div className="bg-surface rounded-xl border border-border-custom p-5">
           <div className="flex items-center gap-2 mb-4">
             <BarChart3 className="w-4 h-4 text-indigo-500" />
-            <h3 className="text-sm font-semibold text-slate-700">Top Plans by Revenue</h3>
+            <h3 className="text-sm font-semibold text-ink-700">Top Plans by Revenue</h3>
           </div>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={data?.topPlans || []} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis type="number" tick={{ fontSize: 11, fill: '#94a3b8' }} tickFormatter={(v: number) => `₦${(v / 100_000_000).toFixed(0)}M`} />
-              <YAxis dataKey="planName" type="category" tick={{ fontSize: 11, fill: '#94a3b8' }} width={100} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-custom)" />
+              <XAxis type="number" tick={{ fontSize: 11, fill: 'var(--color-ink-400)' }} tickFormatter={(v: number) => `\u20A6${(v / 100_000_000).toFixed(0)}M`} />
+              <YAxis dataKey="planName" type="category" tick={{ fontSize: 11, fill: 'var(--color-ink-400)' }} width={100} />
               <Tooltip
-                contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0' }}
+                contentStyle={{ borderRadius: 12, border: '1px solid var(--color-border-custom)', background: 'var(--color-surface)' }}
                 formatter={(v: any) => [fmtNaira(Number(v)), 'Revenue']}
               />
               <Bar dataKey="revenueKobo" fill="#6366f1" radius={[0, 4, 4, 0]} />
@@ -319,20 +319,20 @@ export function PlatformDashboardPage() {
 
       {/* Top Customers & Recent Registrations */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
+        <div className="bg-surface rounded-xl border border-border-custom p-5">
           <div className="flex items-center gap-2 mb-4">
             <Users className="w-4 h-4 text-indigo-500" />
-            <h3 className="text-sm font-semibold text-slate-700">Top Customers by Revenue</h3>
+            <h3 className="text-sm font-semibold text-ink-700">Top Customers by Revenue</h3>
           </div>
           <div className="space-y-1">
             {data?.topCustomers.slice(0, 8).map(c => (
-              <div key={c.id} className="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
+              <div key={c.id} className="flex items-center justify-between py-2 border-b border-border-custom last:border-0">
                 <div>
-                  <p className="text-sm font-medium text-slate-800">{c.name}</p>
-                  <p className="text-xs text-slate-400">{c.planName}</p>
+                  <p className="text-sm font-medium text-ink-800">{c.name}</p>
+                  <p className="text-xs text-ink-400">{c.planName}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-semibold text-slate-800">{fmtNaira(c.totalPaidKobo)}</p>
+                  <p className="text-sm font-semibold text-ink-800">{fmtNaira(c.totalPaidKobo)}</p>
                   <span className={`text-[11px] ${c.status === 'active' ? 'text-emerald-600' : c.status === 'free_trial' ? 'text-amber-600' : 'text-red-500'}`}>
                     {c.status}
                   </span>
@@ -340,30 +340,30 @@ export function PlatformDashboardPage() {
               </div>
             ))}
             {(!data?.topCustomers || data.topCustomers.length === 0) && (
-              <p className="text-sm text-slate-400 text-center py-4">No customer data yet</p>
+              <p className="text-sm text-ink-400 text-center py-4">No customer data yet</p>
             )}
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
+        <div className="bg-surface rounded-xl border border-border-custom p-5">
           <div className="flex items-center gap-2 mb-4">
             <UserPlus className="w-4 h-4 text-indigo-500" />
-            <h3 className="text-sm font-semibold text-slate-700">Recent Registrations</h3>
+            <h3 className="text-sm font-semibold text-ink-700">Recent Registrations</h3>
           </div>
           <div className="space-y-1">
             {data?.recentOrganizations.slice(0, 10).map(org => (
-              <div key={org.id} className="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
+              <div key={org.id} className="flex items-center justify-between py-2 border-b border-border-custom last:border-0">
                 <div>
-                  <p className="text-sm font-medium text-slate-800">{org.name}</p>
-                  <p className="text-xs text-slate-400">{org.email}</p>
+                  <p className="text-sm font-medium text-ink-800">{org.name}</p>
+                  <p className="text-xs text-ink-400">{org.email}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs text-slate-400">{fmtDate(org.createdAt)}</p>
+                  <p className="text-xs text-ink-400">{fmtDate(org.createdAt)}</p>
                 </div>
               </div>
             ))}
             {(!data?.recentOrganizations || data.recentOrganizations.length === 0) && (
-              <p className="text-sm text-slate-400 text-center py-4">No recent registrations</p>
+              <p className="text-sm text-ink-400 text-center py-4">No recent registrations</p>
             )}
           </div>
         </div>

@@ -4,8 +4,8 @@ export function PlatformApiKeysPage() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">API Keys</h1>
-        <p className="text-sm text-gray-500 mt-1">Platform API key management and documentation</p>
+        <h1 className="text-2xl font-bold text-ink-900">API Keys</h1>
+        <p className="text-sm text-ink-500 mt-1">Platform API key management and documentation</p>
       </div>
 
       <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
@@ -25,19 +25,19 @@ export function PlatformApiKeysPage() {
           { icon: Shield, label: 'Authentication', desc: 'API keys use Bearer token authentication. Include in the Authorization header as "Bearer &lt;key&gt;".', color: 'purple' },
           { icon: ExternalLink, label: 'Documentation', desc: 'Full API documentation with endpoints, request/response examples, and webhook guides.', color: 'green' },
         ].map(({ icon: Icon, label, desc, color }) => (
-          <div key={label} className="bg-white rounded-xl border p-5">
+          <div key={label} className="bg-surface rounded-xl border p-5">
             <div className={`p-2 rounded-lg w-fit mb-3 bg-${color}-50 text-${color}-600`}><Icon className="w-5 h-5" /></div>
-            <h3 className="text-sm font-semibold text-gray-900 mb-1">{label}</h3>
-            <p className="text-xs text-gray-500">{desc}</p>
+            <h3 className="text-sm font-semibold text-ink-900 mb-1">{label}</h3>
+            <p className="text-xs text-ink-500">{desc}</p>
           </div>
         ))}
       </div>
 
-      <div className="bg-white rounded-xl border">
+      <div className="bg-surface rounded-xl border">
         <div className="px-5 py-4 border-b">
-          <h3 className="text-sm font-semibold text-gray-700">API Key Usage Guidelines</h3>
+          <h3 className="text-sm font-semibold text-ink-700">API Key Usage Guidelines</h3>
         </div>
-        <div className="p-5 space-y-4 text-sm text-gray-600">
+        <div className="p-5 space-y-4 text-sm text-ink-600">
           <p><span className="font-medium">Rate Limiting:</span> API requests are rate-limited per key. Default limits are configurable per plan tier.</p>
           <p><span className="font-medium">Key Rotation:</span> Rotate keys periodically for security. Each org can have up to 5 active keys.</p>
           <p><span className="font-medium">Scoping:</span> Tenant API keys can be scoped to specific modules (e.g., read-only, sales, purchases).</p>

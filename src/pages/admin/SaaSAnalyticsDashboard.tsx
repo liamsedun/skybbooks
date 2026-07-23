@@ -103,32 +103,32 @@ export function SaaSAnalyticsDashboard() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">SaaS Analytics Dashboard</h1>
-          <p className="text-sm text-gray-500 mt-1">Platform-wide subscription & revenue analytics</p>
+          <h1 className="text-2xl font-bold text-ink-900">SaaS Analytics Dashboard</h1>
+          <p className="text-sm text-ink-500 mt-1">Platform-wide subscription & revenue analytics</p>
         </div>
-        <button onClick={() => refetch()} className="flex items-center gap-2 px-3 py-2 text-sm bg-white border rounded-lg hover:bg-gray-50">
+        <button onClick={() => refetch()} className="flex items-center gap-2 px-3 py-2 text-sm bg-surface border rounded-lg hover:bg-surface-hover">
           <RefreshCw className="w-4 h-4" /> Refresh
         </button>
       </div>
 
-      <div className="bg-white rounded-xl border p-4">
+      <div className="bg-surface rounded-xl border p-4">
         <div className="flex items-center gap-2 mb-3">
-          <Filter className="w-4 h-4 text-gray-500" />
-          <span className="text-sm font-medium text-gray-700">Filters</span>
+          <Filter className="w-4 h-4 text-ink-500" />
+          <span className="text-sm font-medium text-ink-700">Filters</span>
         </div>
         <div className="flex flex-wrap gap-3">
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Start Date</label>
+            <label className="block text-xs text-ink-500 mb-1">Start Date</label>
             <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
               className="border rounded-lg px-3 py-1.5 text-sm" />
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">End Date</label>
+            <label className="block text-xs text-ink-500 mb-1">End Date</label>
             <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
               className="border rounded-lg px-3 py-1.5 text-sm" />
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Plan</label>
+            <label className="block text-xs text-ink-500 mb-1">Plan</label>
             <select value={planFilter} onChange={e => setPlanFilter(e.target.value)}
               className="border rounded-lg px-3 py-1.5 text-sm">
               <option value="">All Plans</option>
@@ -136,7 +136,7 @@ export function SaaSAnalyticsDashboard() {
             </select>
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Billing Cycle</label>
+            <label className="block text-xs text-ink-500 mb-1">Billing Cycle</label>
             <select value={billingFilter} onChange={e => setBillingFilter(e.target.value)}
               className="border rounded-lg px-3 py-1.5 text-sm">
               <option value="">All Cycles</option>
@@ -146,7 +146,7 @@ export function SaaSAnalyticsDashboard() {
             </select>
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Region</label>
+            <label className="block text-xs text-ink-500 mb-1">Region</label>
             <input type="text" value={regionFilter} onChange={e => setRegionFilter(e.target.value)}
               placeholder="Filter by country..." className="border rounded-lg px-3 py-1.5 text-sm w-40" />
           </div>
@@ -154,12 +154,12 @@ export function SaaSAnalyticsDashboard() {
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-gray-400" /></div>
+        <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-ink-400" /></div>
       ) : data ? (
         <>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             {kpiCards.map(k => (
-              <div key={k.label} className="bg-white rounded-xl border p-3">
+              <div key={k.label} className="bg-surface rounded-xl border p-3">
                 <div className="flex items-center gap-2 mb-1">
                   <div className={`p-1.5 rounded-lg ${
                     k.color === 'red' ? 'bg-red-50 text-red-600' :
@@ -169,16 +169,16 @@ export function SaaSAnalyticsDashboard() {
                   }`}>
                     <k.icon className="w-3.5 h-3.5" />
                   </div>
-                  <span className="text-xs text-gray-500">{k.label}</span>
+                  <span className="text-xs text-ink-500">{k.label}</span>
                 </div>
-                <p className="text-base font-bold text-gray-900">{k.value}</p>
+                <p className="text-base font-bold text-ink-900">{k.value}</p>
               </div>
             ))}
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white rounded-xl border p-5">
-              <h3 className="text-sm font-semibold text-gray-700 mb-4">MRR by Plan</h3>
+            <div className="bg-surface rounded-xl border p-5">
+              <h3 className="text-sm font-semibold text-ink-700 mb-4">MRR by Plan</h3>
               <ResponsiveContainer width="100%" height={260}>
                 <BarChart data={data.planBreakdown}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -190,8 +190,8 @@ export function SaaSAnalyticsDashboard() {
               </ResponsiveContainer>
             </div>
 
-            <div className="bg-white rounded-xl border p-5">
-              <h3 className="text-sm font-semibold text-gray-700 mb-4">Revenue by Plan (All Time)</h3>
+            <div className="bg-surface rounded-xl border p-5">
+              <h3 className="text-sm font-semibold text-ink-700 mb-4">Revenue by Plan (All Time)</h3>
               <ResponsiveContainer width="100%" height={260}>
                 <RePieChart>
                   <Pie data={data.revenueByPlan} dataKey="revenueKobo" nameKey="planName" cx="50%" cy="50%" outerRadius={90} label={(e: any) => `${e.planName}`}>
@@ -202,8 +202,8 @@ export function SaaSAnalyticsDashboard() {
               </ResponsiveContainer>
             </div>
 
-            <div className="bg-white rounded-xl border p-5">
-              <h3 className="text-sm font-semibold text-gray-700 mb-4">Growth Trends (12 months)</h3>
+            <div className="bg-surface rounded-xl border p-5">
+              <h3 className="text-sm font-semibold text-ink-700 mb-4">Growth Trends (12 months)</h3>
               <ResponsiveContainer width="100%" height={260}>
                 <AreaChart data={data.growthTrends}>
                   <defs>
@@ -222,8 +222,8 @@ export function SaaSAnalyticsDashboard() {
               </ResponsiveContainer>
             </div>
 
-            <div className="bg-white rounded-xl border p-5">
-              <h3 className="text-sm font-semibold text-gray-700 mb-4">Revenue by Country</h3>
+            <div className="bg-surface rounded-xl border p-5">
+              <h3 className="text-sm font-semibold text-ink-700 mb-4">Revenue by Country</h3>
               <ResponsiveContainer width="100%" height={260}>
                 <BarChart data={data.revenueByCountry} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -236,32 +236,32 @@ export function SaaSAnalyticsDashboard() {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl border">
+          <div className="bg-surface rounded-xl border">
             <div className="p-4 border-b">
-              <h3 className="text-sm font-semibold text-gray-700">Top Paying Customers</h3>
+              <h3 className="text-sm font-semibold text-ink-700">Top Paying Customers</h3>
             </div>
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b bg-gray-50">
-                  <th className="text-left p-3 font-medium text-gray-600">Organization</th>
-                  <th className="text-left p-3 font-medium text-gray-600">Email</th>
-                  <th className="text-right p-3 font-medium text-gray-600">Total Revenue</th>
-                  <th className="text-right p-3 font-medium text-gray-600">Invoices</th>
-                  <th className="text-right p-3 font-medium text-gray-600">Last Payment</th>
+                <tr className="border-b bg-surface-subtle">
+                  <th className="text-left p-3 font-medium text-ink-600">Organization</th>
+                  <th className="text-left p-3 font-medium text-ink-600">Email</th>
+                  <th className="text-right p-3 font-medium text-ink-600">Total Revenue</th>
+                  <th className="text-right p-3 font-medium text-ink-600">Invoices</th>
+                  <th className="text-right p-3 font-medium text-ink-600">Last Payment</th>
                 </tr>
               </thead>
               <tbody>
                 {data.topCustomers.map(c => (
-                  <tr key={c.orgId} className="border-b hover:bg-gray-50">
+                  <tr key={c.orgId} className="border-b hover:bg-surface-hover">
                     <td className="p-3 font-medium">{c.orgName}</td>
-                    <td className="p-3 text-gray-500">{c.orgEmail}</td>
+                    <td className="p-3 text-ink-500">{c.orgEmail}</td>
                     <td className="p-3 text-right font-medium text-green-600">{fmtNaira(c.totalRevenueKobo)}</td>
-                    <td className="p-3 text-right text-gray-500">{c.invoiceCount}</td>
-                    <td className="p-3 text-right text-gray-500">{fmtDate(c.lastPayment)}</td>
+                    <td className="p-3 text-right text-ink-500">{c.invoiceCount}</td>
+                    <td className="p-3 text-right text-ink-500">{fmtDate(c.lastPayment)}</td>
                   </tr>
                 ))}
                 {data.topCustomers.length === 0 && (
-                  <tr><td colSpan={5} className="p-6 text-center text-gray-400">No data found</td></tr>
+                  <tr><td colSpan={5} className="p-6 text-center text-ink-400">No data found</td></tr>
                 )}
               </tbody>
             </table>

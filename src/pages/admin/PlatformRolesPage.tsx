@@ -35,8 +35,8 @@ export function PlatformRolesPage() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Platform Roles & Permissions</h1>
-        <p className="text-sm text-gray-500 mt-1">Role-based access control for platform administrators</p>
+        <h1 className="text-2xl font-bold text-ink-900">Platform Roles & Permissions</h1>
+        <p className="text-sm text-ink-500 mt-1">Role-based access control for platform administrators</p>
       </div>
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
@@ -45,12 +45,12 @@ export function PlatformRolesPage() {
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-xs bg-white rounded-xl border">
+        <table className="w-full text-xs bg-surface rounded-xl border">
           <thead>
-            <tr className="border-b bg-gray-50">
-              <th className="text-left p-2 font-medium text-gray-600 min-w-[120px]">Permission</th>
+            <tr className="border-b bg-surface-subtle">
+              <th className="text-left p-2 font-medium text-ink-600 min-w-[120px]">Permission</th>
               {Object.keys(ROLE_PERMISSIONS).map(role => (
-                <th key={role} className="text-center p-2 font-medium text-gray-600 min-w-[80px]">
+                <th key={role} className="text-center p-2 font-medium text-ink-600 min-w-[80px]">
                   <div className="text-[10px] uppercase tracking-wider">{role.replace(/_/g, '\n')}</div>
                 </th>
               ))}
@@ -59,14 +59,14 @@ export function PlatformRolesPage() {
           <tbody>
             {Object.entries(PLATFORM_PERMISSIONS).map(([domain, { perms }]) => (
               <>
-                <tr key={domain} className="border-b bg-gray-50/50">
-                  <td className="p-2 font-semibold text-gray-700" colSpan={Object.keys(ROLE_PERMISSIONS).length + 1}>
+                <tr key={domain} className="border-b bg-surface-subtle/50">
+                  <td className="p-2 font-semibold text-ink-700" colSpan={Object.keys(ROLE_PERMISSIONS).length + 1}>
                     {domain}
                   </td>
                 </tr>
                 {perms.map(perm => (
-                  <tr key={perm} className="border-b hover:bg-gray-50">
-                    <td className="p-2 pl-4 font-mono text-gray-700">{perm}</td>
+                  <tr key={perm} className="border-b hover:bg-surface-hover">
+                    <td className="p-2 pl-4 font-mono text-ink-700">{perm}</td>
                     {Object.entries(ROLE_PERMISSIONS).map(([role, rolePerms]) => (
                       <td key={role} className="text-center p-2">
                         {rolePerms.includes(perm) ? (
