@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../hooks/useAuth';
 
@@ -23,7 +23,6 @@ import {
 
 export function LoginPage() {
   const { login, isAuthenticated } = useAuth();
-  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -32,9 +31,9 @@ export function LoginPage() {
 
   React.useEffect(() => {
     if (isAuthenticated) {
-      navigate('/app/dashboard');
+      window.location.href = '/app/dashboard';
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,7 +41,7 @@ export function LoginPage() {
     setLoading(true);
     try {
       await login(email, password);
-      navigate('/app/dashboard');
+      window.location.href = '/app/dashboard';
     } catch (err: any) {
       setError(err.message || 'Authentication failed. Please verify credentials.');
     } finally {
@@ -284,7 +283,6 @@ export function LoginPage() {
 
 export function RegisterPage() {
   const { signup } = useAuth();
-  const navigate = useNavigate();
   const [orgName, setOrgName] = useState('');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -318,7 +316,7 @@ export function RegisterPage() {
         planId: selectedPlanId || undefined,
         billingCycle: selectedPlanId ? billingCycle : undefined,
       });
-      navigate('/app/dashboard');
+      window.location.href = '/app/dashboard';
     } catch (err: any) {
       setError(err.message || 'Signup failed.');
     } finally {
