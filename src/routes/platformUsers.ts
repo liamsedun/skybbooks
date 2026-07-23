@@ -24,7 +24,7 @@ const updateSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
-router.get('/', requirePlatformPermission('UsersRead'), asyncHandler(async (req: any, res: Response) => {
+router.get('/', requirePlatformPermission('users:read'), asyncHandler(async (req: any, res: Response) => {
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const pageSize = Math.min(50, Math.max(1, parseInt(req.query.pageSize) || 20));
   const search = (req.query.search || '') as string;
@@ -53,7 +53,7 @@ router.get('/', requirePlatformPermission('UsersRead'), asyncHandler(async (req:
   res.json(paginated(safe, total, page, pageSize));
 }));
 
-router.post('/', requirePlatformPermission('UsersCreate'), asyncHandler(async (req: any, res: Response) => {
+router.post('/', requirePlatformPermission('users:create'), asyncHandler(async (req: any, res: Response) => {
   const body = createSchema.parse(req.body);
   const email = body.email.toLowerCase();
 
@@ -73,7 +73,7 @@ router.post('/', requirePlatformPermission('UsersCreate'), asyncHandler(async (r
   res.status(201).json(ok(safe));
 }));
 
-router.put('/:id', requirePlatformPermission('UsersUpdate'), asyncHandler(async (req: any, res: Response) => {
+router.put('/:id', requirePlatformPermission('users:update'), asyncHandler(async (req: any, res: Response) => {
   const body = updateSchema.parse(req.body);
   const { id } = req.params;
 
@@ -87,7 +87,7 @@ router.put('/:id', requirePlatformPermission('UsersUpdate'), asyncHandler(async 
   res.json(ok(safe));
 }));
 
-router.put('/:id/password', requirePlatformPermission('UsersUpdate'), asyncHandler(async (req: any, res: Response) => {
+router.put('/:id/password', requirePlatformPermission('users:update'), asyncHandler(async (req: any, res: Response) => {
   const { password } = z.object({ password: z.string().min(6) }).parse(req.body);
   const { id } = req.params;
 
@@ -99,7 +99,7 @@ router.put('/:id/password', requirePlatformPermission('UsersUpdate'), asyncHandl
   res.json(ok({ message: 'Password updated successfully.' }));
 }));
 
-router.delete('/:id', requirePlatformPermission('UsersDelete'), asyncHandler(async (req: any, res: Response) => {
+router.delete('/:id', requirePlatformPermission('users:delete'), asyncHandler(async (req: any, res: Response) => {
   const { id } = req.params;
 
   const existing = await db.select({ id: platformUsers.id, role: platformUsers.role }).from(platformUsers).where(eq(platformUsers.id, id)).limit(1);
