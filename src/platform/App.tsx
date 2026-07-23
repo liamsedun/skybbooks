@@ -24,7 +24,6 @@ const AnnouncementsPage = lazy(() => import('../pages/admin/AnnouncementsPage').
 const FeatureRolloutsPage = lazy(() => import('../pages/admin/FeatureRolloutsPage').then(m => ({ default: m.FeatureRolloutsPage })));
 const SystemHealthPage = lazy(() => import('../pages/admin/SystemHealthPage').then(m => ({ default: m.SystemHealthPage })));
 
-const SubscriptionPage = lazy(() => import('../pages/subscriptions/SubscriptionPage').then(m => ({ default: m.SubscriptionPage })));
 const SubscriptionPlansPage = lazy(() => import('../pages/subscriptions/SubscriptionPlansPage').then(m => ({ default: m.SubscriptionPlansPage })));
 const SubscriptionPortalPage = lazy(() => import('../pages/subscriptions/SubscriptionPortalPage').then(m => ({ default: m.SubscriptionPortalPage })));
 const SubscriptionCouponsPage = lazy(() => import('../pages/subscriptions/SubscriptionCouponsPage').then(m => ({ default: m.SubscriptionCouponsPage })));
@@ -83,7 +82,7 @@ function AdminRoutes() {
           <Route path="organizations" element={<LazyRoute element={<OrganizationsPage />} />} />
           <Route path="users" element={<LazyRoute element={<PlatformUsersPage />} />} />
           <Route path="roles" element={<LazyRoute element={<PlatformRolesPage />} />} />
-          <Route path="subscriptions" element={<LazyRoute element={<SubscriptionPage />} />} />
+          <Route path="subscriptions" element={<Navigate to="/platform/organizations" replace />} />
           <Route path="subscriptions/portal" element={<LazyRoute element={<SubscriptionPortalPage />} />} />
           <Route path="plans" element={<LazyRoute element={<SubscriptionPlansPage />} />} />
           <Route path="subscriptions/coupons" element={<LazyRoute element={<SubscriptionCouponsPage />} />} />

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import {
-  LayoutDashboard, Building, CreditCard, Tag, DollarSign, TrendingUp,
+  LayoutDashboard, Building, Tag, DollarSign, TrendingUp,
   LifeBuoy, Megaphone, Key, FlaskConical, ScrollText, Shield, Users,
   UserCog, Settings, Activity, Lock, User, LogOut, Search, Menu, X,
   ChevronDown, PanelLeftClose, PanelLeft, HelpCircle, BarChart3, Receipt
@@ -17,7 +17,6 @@ interface NavItem {
 const navItems: NavItem[] = [
   { name: 'Dashboard', path: '/platform', icon: LayoutDashboard },
   { name: 'Organizations', path: '/platform/organizations', icon: Building },
-  { name: 'Subscriptions', path: '/platform/subscriptions', icon: CreditCard },
   { name: 'Plans', path: '/platform/plans', icon: BarChart3 },
   { name: 'Coupons', path: '/platform/subscriptions/coupons', icon: Tag },
   { name: 'Payments', path: '/platform/subscriptions/billing', icon: DollarSign },
