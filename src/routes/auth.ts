@@ -213,7 +213,7 @@ router.post('/signup', async (req: AuthenticatedRequest, res: Response, next: Ne
       setAppCookie(req, res, result.accessToken);
     }
     return res.status(201).json(result);
-  } catch (error) {
+  } catch (error: any) {
     if (error instanceof z.ZodError) {
       return next(new AppError(error.issues[0]?.message || 'Validation failed', 400));
     }

@@ -65,6 +65,12 @@ export function routeGuard(req: Request, res: Response, next: NextFunction): voi
     return next();
   }
 
+  // SPA page loads (GET, no file extension) — let through; React handles auth client-side
+  // Note: req.path is relative to the mount point (Express strips /app or /platform prefix)
+  if (req.method === 'GET' && !req.path.includes('.')) {
+    return next();
+  }
+
   const token = extractToken(req);
 
   if (!token) {
@@ -84,7 +90,7 @@ export function routeGuard(req: Request, res: Response, next: NextFunction): voi
   try {
     const decoded = verifyAccessToken(token);
 
-    if (req.path.startsWith('/platform') && decoded.type !== 'platform') {
+    if (req.baseUrl === '/platform' && decoded.type !== 'platform') {
       if (!checkRateLimited(ip, req.path)) {
         logger.warn(`[${requestId}] FORBIDDEN ${req.method} ${req.url} — IP: ${ip} — type ${decoded.type || 'tenant'} cannot access platform`);
       }
@@ -98,7 +104,7 @@ export function routeGuard(req: Request, res: Response, next: NextFunction): voi
       return;
     }
 
-    if (req.path.startsWith('/app') && decoded.type === 'platform') {
+    if (req.baseUrl === '/app' && decoded.type === 'platform') {
       if (!checkRateLimited(ip, req.path)) {
         logger.warn(`[${requestId}] FORBIDDEN ${req.method} ${req.url} — IP: ${ip} — platform token on tenant route`);
       }

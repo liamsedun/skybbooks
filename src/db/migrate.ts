@@ -2700,21 +2700,16 @@ export async function runMigration() {
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_bank_transactions_date ON bank_transactions(bank_account_id, date)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_bank_transactions_status ON bank_transactions(bank_account_id, status)`);
 
-    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_recon_matches_account ON reconciliation_matches(bank_account_id)`);
-    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_recon_matches_tx ON reconciliation_matches(bank_transaction_id)`);
-    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_recon_matches_jl ON reconciliation_matches(journal_line_id)`);
-
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_fixed_assets_org ON fixed_assets(org_id)`);
-    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_fixed_assets_account ON fixed_assets(asset_account_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_fixed_assets_account ON fixed_assets(account_id)`);
 
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_leases_org ON leases(org_id)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_revenue_contracts_org ON revenue_contracts(org_id)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_rev_obligations_contract ON performance_obligations(contract_id)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_rev_schedules_obligation ON revenue_schedules(obligation_id)`);
 
-    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_ecl_provisions_org ON ecl_provisions(org_id)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_payroll_runs_org ON payroll_runs(org_id)`);
-    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_inventory_adjustments_item ON inventory_adjustments(item_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_inv_adjustment_items_item ON inventory_adjustment_items(item_id)`);
 
     // --------------------------------
     // Recurring Bills table
@@ -2758,33 +2753,39 @@ export async function runMigration() {
     // Subscription Management System (SMS) — enums, tables, defaults
     // ----------------------------------------------------------------
     // Create new enum and migrate existing data
+    // Note: the subscription_status type may not exist on fresh databases — the
+    // status migration block below is wrapped in try/catch so it won't crash on first run.
     await db.execute(sql`
       DO $$ BEGIN
         CREATE TYPE subscription_status_new AS ENUM ('free_trial', 'active', 'grace_period', 'suspended', 'expired', 'cancelled', 'pending_payment', 'failed_payment', 'renewing', 'downgraded', 'upgraded', 'paused');
       EXCEPTION WHEN duplicate_object THEN NULL;
       END $$;
     `);
-    await db.execute(sql`ALTER TABLE subscriptions ALTER COLUMN status TYPE text`);
-    await db.execute(sql`
-      UPDATE subscriptions SET status = 'free_trial' WHERE status = 'trialing'
-    `);
-    await db.execute(sql`
-      UPDATE subscriptions SET status = 'grace_period' WHERE status = 'past_due'
-    `);
-    await db.execute(sql`
-      UPDATE subscriptions SET status = 'cancelled' WHERE status = 'canceled'
-    `);
-    await db.execute(sql`
-      UPDATE subscriptions SET status = 'pending_payment' WHERE status = 'incomplete'
-    `);
-    await db.execute(sql`
-      UPDATE subscriptions SET status = 'expired' WHERE status = 'incomplete_expired'
-    `);
-    await db.execute(sql`
-      ALTER TABLE subscriptions ALTER COLUMN status TYPE subscription_status_new USING status::text::subscription_status_new
-    `);
-    await db.execute(sql`DROP TYPE IF EXISTS subscription_status`);
-    await db.execute(sql`ALTER TYPE subscription_status_new RENAME TO subscription_status`);
+    try {
+      await db.execute(sql`ALTER TABLE subscriptions ALTER COLUMN status TYPE text`);
+      await db.execute(sql`
+        UPDATE subscriptions SET status = 'free_trial' WHERE status = 'trialing'
+      `);
+      await db.execute(sql`
+        UPDATE subscriptions SET status = 'grace_period' WHERE status = 'past_due'
+      `);
+      await db.execute(sql`
+        UPDATE subscriptions SET status = 'cancelled' WHERE status = 'canceled'
+      `);
+      await db.execute(sql`
+        UPDATE subscriptions SET status = 'pending_payment' WHERE status = 'incomplete'
+      `);
+      await db.execute(sql`
+        UPDATE subscriptions SET status = 'expired' WHERE status = 'incomplete_expired'
+      `);
+      await db.execute(sql`
+        ALTER TABLE subscriptions ALTER COLUMN status TYPE subscription_status_new USING status::text::subscription_status_new
+      `);
+      await db.execute(sql`DROP TYPE IF EXISTS subscription_status`);
+      await db.execute(sql`ALTER TYPE subscription_status_new RENAME TO subscription_status`);
+    } catch (err) {
+      console.log('[Migration] Subscription status migration skipped (table may not exist on fresh database)');
+    }
     await db.execute(sql`
       DO $$ BEGIN
         CREATE TYPE billing_cycle AS ENUM ('monthly', 'yearly', 'quarterly');
@@ -2878,35 +2879,15 @@ export async function runMigration() {
     await db.execute(sql`ALTER TABLE subscription_plans DROP COLUMN IF EXISTS storage_limit_mb`);
     await db.execute(sql`ALTER TABLE subscription_plans DROP COLUMN IF EXISTS price_kobo`);
 
-    // Subscriptions
+    // Ensure subscription_status type exists (in case status migration was skipped on fresh DB)
     await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS subscriptions (
-        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-        org_id uuid REFERENCES organisations(id) NOT NULL,
-        plan_id uuid REFERENCES subscription_plans(id) NOT NULL,
-        status subscription_status DEFAULT 'active' NOT NULL,
-        current_period_start timestamp NOT NULL,
-        current_period_end timestamp NOT NULL,
-        trial_start timestamp,
-        trial_end timestamp,
-        canceled_at timestamp,
-        billing_cycle_anchor timestamp NOT NULL,
-        coupon_id uuid REFERENCES coupons(id),
-        promotion_id uuid REFERENCES promotions(id),
-        auto_renew boolean DEFAULT true NOT NULL,
-        next_billing_date timestamp,
-        last_payment_date timestamp,
-        metadata jsonb DEFAULT '{}'::jsonb,
-        created_at timestamp DEFAULT now() NOT NULL,
-        updated_at timestamp DEFAULT now() NOT NULL
-      )
+      DO $$ BEGIN
+        CREATE TYPE subscription_status AS ENUM ('free_trial', 'active', 'grace_period', 'suspended', 'expired', 'cancelled', 'pending_payment', 'failed_payment', 'renewing', 'downgraded', 'upgraded', 'paused');
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$;
     `);
-    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_sub_org ON subscriptions(org_id)`);
-    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_sub_plan ON subscriptions(plan_id)`);
-    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_sub_status ON subscriptions(status)`);
-    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_sub_org_status ON subscriptions(org_id, status)`);
 
-    // Coupons
+    // Coupons (must be created before subscriptions which references it)
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS coupons (
         id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -2954,6 +2935,34 @@ export async function runMigration() {
       )
     `);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_promo_active ON promotions(is_active, start_date, end_date)`);
+
+    // Subscriptions (must be created after subscription_plans, coupons, promotions)
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS subscriptions (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id uuid REFERENCES organisations(id) NOT NULL,
+        plan_id uuid REFERENCES subscription_plans(id) NOT NULL,
+        status subscription_status DEFAULT 'active' NOT NULL,
+        current_period_start timestamp NOT NULL,
+        current_period_end timestamp NOT NULL,
+        trial_start timestamp,
+        trial_end timestamp,
+        canceled_at timestamp,
+        billing_cycle_anchor timestamp NOT NULL,
+        coupon_id uuid REFERENCES coupons(id),
+        promotion_id uuid REFERENCES promotions(id),
+        auto_renew boolean DEFAULT true NOT NULL,
+        next_billing_date timestamp,
+        last_payment_date timestamp,
+        metadata jsonb DEFAULT '{}'::jsonb,
+        created_at timestamp DEFAULT now() NOT NULL,
+        updated_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_sub_org ON subscriptions(org_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_sub_plan ON subscriptions(plan_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_sub_status ON subscriptions(status)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_sub_org_status ON subscriptions(org_id, status)`);
 
     // Subscription invoices
     await db.execute(sql`
