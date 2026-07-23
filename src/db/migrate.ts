@@ -4189,6 +4189,31 @@ export async function runMigration() {
       console.error('[Migration] Tenant role permissions error:', err);
     }
 
+    // Ensure every org has a subscription record (Free plan fallback)
+    try {
+      const orphanOrgs = await pool.query(`
+        SELECT o.id, o.name, o.created_at FROM organisations o
+        LEFT JOIN subscriptions s ON s.org_id = o.id
+        WHERE s.id IS NULL
+      `);
+      if (orphanOrgs.rows.length > 0) {
+        const freePlan = await pool.query(`SELECT id FROM subscription_plans WHERE monthly_price_kobo = 0 AND is_active = true LIMIT 1`);
+        if (freePlan.rows.length > 0) {
+          const freePlanId = freePlan.rows[0].id;
+          for (const org of orphanOrgs.rows) {
+            await pool.query(`
+              INSERT INTO subscriptions (org_id, plan_id, status, current_period_start, current_period_end, billing_cycle_anchor, billing_cycle, auto_renew)
+              VALUES ($1, $2, 'active', $3, $3 + interval '1 month', $3, 'monthly', true)
+              ON CONFLICT DO NOTHING
+            `, [org.id, freePlanId, org.created_at || new Date()]);
+          }
+          console.log(`[Migration] Backfilled subscriptions for ${orphanOrgs.rows.length} org(s) missing subscription records.`);
+        }
+      }
+    } catch (e) {
+      console.error('[Migration] Error backfilling subscriptions:', e);
+    }
+
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema setup:', err);

@@ -40,6 +40,13 @@ export async function provisionTenant(input: SignupInput): Promise<ProvisioningR
     const plans = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.id, input.planId)).limit(1);
     selectedPlan = plans[0] || null;
   }
+  // If no plan selected, auto-assign the Free plan so a subscription record is always created
+  if (!selectedPlan) {
+    const freePlans = await db.select().from(subscriptionPlans)
+      .where(and(eq(subscriptionPlans.monthlyPriceKobo, 0), eq(subscriptionPlans.isActive, true)))
+      .limit(1);
+    selectedPlan = freePlans[0] || null;
+  }
 
   const saltRounds = 12;
   const hashedPassword = await bcrypt.hash(input.password, saltRounds);
@@ -74,7 +81,7 @@ export async function provisionTenant(input: SignupInput): Promise<ProvisioningR
     if (selectedPlan) {
       const status = selectedPlan.monthlyPriceKobo === 0 ? 'active'
         : input.paymentReference ? 'active'
-        : hasTrial ? 'trialing' : 'incomplete';
+        : hasTrial ? 'free_trial' : 'pending_payment';
 
       const periodEnd = addBillingDuration(now, billingCycle);
 
