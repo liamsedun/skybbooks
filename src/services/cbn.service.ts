@@ -112,7 +112,7 @@ export async function fetchLatestRates(orgId?: string): Promise<Record<string, n
       }
     }
   } catch (dbError: any) {
-    console.error(`Failed to store currency rates in database: ${dbError.message}`);
+    console.error(`Failed to store currency rates in database: ${dbError.message} cause=${dbError.cause?.message || ''} code=${dbError.cause?.code || ''}`);
   }
 
   return ratesCache!.rates;

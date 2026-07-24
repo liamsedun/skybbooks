@@ -3079,6 +3079,7 @@ export async function runMigration() {
     await db.execute(sql`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS previous_plan_id uuid REFERENCES subscription_plans(id)`);
     await db.execute(sql`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS next_plan_id uuid REFERENCES subscription_plans(id)`);
     await db.execute(sql`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS scheduled_change_at timestamp`);
+    await db.execute(sql`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS billing_cycle text DEFAULT 'monthly' NOT NULL`);
 
     // Update Professional and Enterprise plans: 7-day free trial, Enterprise gets Start Free Trial button
     await db.execute(sql`
@@ -4217,9 +4218,62 @@ export async function runMigration() {
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema setup:', err);
-  } finally {
-    await pool.end();
   }
+
+  // ── Ensure platform support tables exist ──
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS support_tickets (
+      id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+      org_id UUID,
+      user_id UUID,
+      subject TEXT NOT NULL,
+      message TEXT NOT NULL,
+      category TEXT DEFAULT 'general' NOT NULL,
+      priority TEXT DEFAULT 'normal' NOT NULL,
+      status TEXT DEFAULT 'open' NOT NULL,
+      assigned_to UUID,
+      resolution TEXT,
+      closed_at TIMESTAMP,
+      created_at TIMESTAMP DEFAULT now() NOT NULL,
+      updated_at TIMESTAMP DEFAULT now() NOT NULL
+    )`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_st_org ON support_tickets(org_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_st_status ON support_tickets(status)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_st_assigned ON support_tickets(assigned_to)`);
+
+    await pool.query(`CREATE TABLE IF NOT EXISTS ticket_messages (
+      id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+      ticket_id UUID NOT NULL,
+      user_id UUID NOT NULL,
+      message TEXT NOT NULL,
+      is_internal BOOLEAN DEFAULT false NOT NULL,
+      attachments JSONB DEFAULT '[]',
+      created_at TIMESTAMP DEFAULT now() NOT NULL
+    )`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_tm_ticket ON ticket_messages(ticket_id)`);
+
+    await pool.query(`CREATE TABLE IF NOT EXISTS announcements (
+      id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+      org_id UUID,
+      title TEXT NOT NULL,
+      content TEXT NOT NULL,
+      priority TEXT DEFAULT 'normal' NOT NULL,
+      target_roles TEXT DEFAULT 'all',
+      starts_at TIMESTAMP DEFAULT now() NOT NULL,
+      ends_at TIMESTAMP,
+      is_active BOOLEAN DEFAULT true NOT NULL,
+      created_by UUID,
+      created_at TIMESTAMP DEFAULT now() NOT NULL,
+      updated_at TIMESTAMP DEFAULT now() NOT NULL
+    )`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_ann_org ON announcements(org_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_ann_active ON announcements(is_active)`);
+    console.log('[Migration] Platform support tables verified.');
+  } catch (e) {
+    console.warn('[Migration] Could not create platform support tables:', (e as Error).message);
+  }
+
+  await pool.end();
 }
 
 // Run if called directly

@@ -39,14 +39,17 @@ export function OrganizationsPage() {
   const [showFilter, setShowFilter] = useState(false);
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['platform-organizations', page, search, statusFilter],
     queryFn: async () => {
       const params: any = { page, pageSize: 20 };
       if (search) params.search = search;
       if (statusFilter) params.status = statusFilter;
       const res = await api.get('/platform/organizations', { params });
-      return res.data.data as { data: OrgRow[]; total: number; page: number; pageSize: number };
+      const body = res.data;
+      console.log('[OrganizationsPage] API response:', JSON.stringify(body));
+      const items = Array.isArray(body) ? body : (Array.isArray(body.data) ? body.data : []);
+      return { data: items as OrgRow[], total: body.total ?? items.length, page: body.page ?? page, pageSize: body.pageSize ?? 20 };
     },
   });
 
@@ -125,6 +128,8 @@ export function OrganizationsPage() {
           <tbody>
             {isLoading ? (
               <tr><td colSpan={6} className="p-12 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto text-ink-400" /></td></tr>
+            ) : error ? (
+              <tr><td colSpan={6} className="p-12 text-center text-red-500">Error: {(error as any)?.message || 'Failed to load'}</td></tr>
             ) : !data?.data?.length ? (
               <tr><td colSpan={6} className="p-12 text-center text-ink-400">No organizations found</td></tr>
             ) : (

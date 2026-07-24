@@ -141,18 +141,25 @@ export async function getDashboard(): Promise<DashboardData> {
   const [platformUserCount] = await db.select({ count: count() }).from(platformUsers);
 
   // ── Support tickets ──
-  const [openTickets] = await db.select({ count: count() }).from(supportTickets).where(ne(supportTickets.status, 'closed'));
-  const [totalTickets] = await db.select({ count: count() }).from(supportTickets);
-  const openTicketCount = await db.select({ status: supportTickets.status, count: sql<number>`count(*)` })
-    .from(supportTickets)
-    .groupBy(supportTickets.status);
-  const ticketStats = { open: 0, inProgress: 0, resolved: 0, closed: 0 };
-  for (const t of openTicketCount) {
-    const st = t.status || 'open';
-    if (st === 'open') ticketStats.open = Number(t.count);
-    else if (st === 'in_progress' || st === 'in-progress') ticketStats.inProgress = Number(t.count);
-    else if (st === 'resolved') ticketStats.resolved = Number(t.count);
-    else if (st === 'closed') ticketStats.closed = Number(t.count);
+  let openTicketCountRow: { count: number } | undefined;
+  let totalTicketCountRow: { count: number } | undefined;
+  let ticketStats = { open: 0, inProgress: 0, resolved: 0, closed: 0 };
+  try {
+    [openTicketCountRow] = await db.select({ count: count() }).from(supportTickets).where(ne(supportTickets.status, 'closed'));
+    [totalTicketCountRow] = await db.select({ count: count() }).from(supportTickets);
+    const openTicketCount = await db.select({ status: supportTickets.status, count: sql<number>`count(*)` })
+      .from(supportTickets)
+      .groupBy(supportTickets.status);
+    ticketStats = { open: 0, inProgress: 0, resolved: 0, closed: 0 };
+    for (const t of openTicketCount) {
+      const st = t.status || 'open';
+      if (st === 'open') ticketStats.open = Number(t.count);
+      else if (st === 'in_progress' || st === 'in-progress') ticketStats.inProgress = Number(t.count);
+      else if (st === 'resolved') ticketStats.resolved = Number(t.count);
+      else if (st === 'closed') ticketStats.closed = Number(t.count);
+    }
+  } catch (_e) {
+    console.warn('[Dashboard] support_tickets table not available, skipping ticket stats');
   }
 
   // ── Top customers ──
@@ -229,8 +236,8 @@ export async function getDashboard(): Promise<DashboardData> {
       revenueGrowth,
       orgGrowthRate,
       totalPlatformUsers: Number(platformUserCount?.count || 0),
-      openTickets: Number(openTickets?.count || 0),
-      totalTickets: Number(totalTickets?.count || 0),
+      openTickets: Number(openTicketCountRow?.count || 0),
+      totalTickets: Number(totalTicketCountRow?.count || 0),
     },
     revenueOverTime: monthlyRevenue.map(r => ({ month: r.month, revenueKobo: Number(r.revenueKobo || 0), subscriptions: Number(r.subs || 0) })),
     planDistribution: planDist.map(p => ({ planName: p.planName, count: Number(p.count), revenueKobo: Number(p.revenueKobo || 0) })),
@@ -281,7 +288,7 @@ export async function getOrganizationDetail(orgId: string) {
   const [org] = await db.select().from(organisations).where(eq(organisations.id, orgId)).limit(1);
   if (!org) throw new Error('Organization not found');
 
-  const userList = await db.select({ id: users.id, name: users.fullName, email: users.email, role: users.role, isActive: users.isActive, createdAt: users.createdAt })
+  const userList = await db.select({ id: users.id, fullName: users.fullName, email: users.email, role: users.role, isActive: users.isActive, createdAt: users.createdAt })
     .from(users).where(eq(users.organisationId, orgId)).orderBy(desc(users.createdAt));
 
   const [sub] = await db.select({
