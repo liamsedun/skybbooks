@@ -103,6 +103,14 @@ const logger = winston.createLogger({
   ]
 });
 
+// Prevent crashes from unhandled promise rejections and exceptions
+process.on('unhandledRejection', (reason) => {
+  console.error('[Server] Unhandled rejection:', reason instanceof Error ? reason.message : reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('[Server] Uncaught exception:', err.message);
+});
+
 async function startServer() {
   // Default to production when NODE_ENV not set
   if (!process.env.NODE_ENV) process.env.NODE_ENV = 'production';
@@ -447,6 +455,14 @@ async function startServer() {
         io.to(orgRoom).emit('presence:update', { onlineUserIds: onlineIds2 });
       }
     });
+  });
+
+  httpServer.on('error', (err: NodeJS.ErrnoException) => {
+    if (err.code === 'EADDRINUSE') {
+      logger.error(`Port ${PORT} is already in use. Kill the old process or change PORT in .env`);
+    } else {
+      logger.error('HTTP server error:', err);
+    }
   });
 
   httpServer.listen(PORT, '0.0.0.0', () => {
