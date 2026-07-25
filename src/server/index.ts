@@ -116,8 +116,9 @@ async function startServer() {
   // Default to production when NODE_ENV not set
   if (!process.env.NODE_ENV) process.env.NODE_ENV = 'production';
 
-  // Run migration in background so server starts immediately
-  runMigration().catch(err => console.error('[Migration] Background migration failed:', err));
+  // Run migration before accepting requests to ensure schema is up to date
+  await runMigration();
+  console.log('[Server] Migration complete.');
 
   // Auto-refresh currency rates on startup and every hour
   fetchLatestRates().catch(() => {});
