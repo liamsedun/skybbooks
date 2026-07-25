@@ -3426,13 +3426,11 @@ export async function runMigration() {
       // Update discount_type enum to add new values
       await pool.query(`
         DO $$ BEGIN
-          IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'discount_type' AND pg_enum.enumlabel = 'free_months')
-          THEN
-            ALTER TYPE discount_type ADD VALUE IF NOT EXISTS 'free_months';
-            ALTER TYPE discount_type ADD VALUE IF NOT EXISTS 'referral_reward';
-            ALTER TYPE discount_type ADD VALUE IF NOT EXISTS 'partner_commission';
-          END IF;
+          ALTER TYPE discount_type ADD VALUE IF NOT EXISTS 'free_months';
+          ALTER TYPE discount_type ADD VALUE IF NOT EXISTS 'referral_reward';
+          ALTER TYPE discount_type ADD VALUE IF NOT EXISTS 'partner_commission';
         EXCEPTION WHEN duplicate_object THEN NULL;
+        WHEN undefined_object THEN NULL;
         END $$;
       `);
 
@@ -3618,6 +3616,13 @@ export async function runMigration() {
         CREATE INDEX IF NOT EXISTS idx_promo_campaign ON promotions(campaign_id);
         CREATE INDEX IF NOT EXISTS idx_coupon_campaign ON coupons(campaign_id)
       `);
+
+      // Drop FK constraints on created_by (platform users not in users table)
+      await pool.query(`ALTER TABLE coupons DROP CONSTRAINT IF EXISTS coupons_created_by_fkey`);
+      await pool.query(`ALTER TABLE promotions DROP CONSTRAINT IF EXISTS promotions_created_by_fkey`);
+      await pool.query(`ALTER TABLE promotional_campaigns DROP CONSTRAINT IF EXISTS promotional_campaigns_created_by_fkey`);
+      await pool.query(`ALTER TABLE referral_codes DROP CONSTRAINT IF EXISTS referral_codes_created_by_fkey`);
+      await pool.query(`ALTER TABLE partner_discounts DROP CONSTRAINT IF EXISTS partner_discounts_created_by_fkey`);
 
       console.log('[Migration] Promotions Engine tables created.');
     } catch (err) {
@@ -4132,7 +4137,7 @@ export async function runMigration() {
         allowlist_org_ids TEXT[] DEFAULT '{}',
         started_at TIMESTAMP,
         ended_at TIMESTAMP,
-        created_by UUID REFERENCES users(id),
+        created_by UUID,
         created_at TIMESTAMP DEFAULT now() NOT NULL,
         updated_at TIMESTAMP DEFAULT now() NOT NULL
       )`);
@@ -4143,7 +4148,7 @@ export async function runMigration() {
         id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
         rollout_id UUID REFERENCES feature_rollouts(id) NOT NULL,
         org_id UUID REFERENCES organisations(id) NOT NULL,
-        user_id UUID REFERENCES users(id),
+        user_id UUID,
         event TEXT NOT NULL,
         metadata JSONB DEFAULT '{}',
         created_at TIMESTAMP DEFAULT now() NOT NULL
@@ -4271,6 +4276,100 @@ export async function runMigration() {
     console.log('[Migration] Platform support tables verified.');
   } catch (e) {
     console.warn('[Migration] Could not create platform support tables:', (e as Error).message);
+  }
+
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS platform_role_permissions (
+      id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+      role TEXT NOT NULL UNIQUE,
+      permissions TEXT[] DEFAULT '{}',
+      created_at TIMESTAMP DEFAULT now() NOT NULL,
+      updated_at TIMESTAMP DEFAULT now() NOT NULL
+    )`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_prp_role ON platform_role_permissions(role)`);
+
+    const roleRows = await pool.query(`SELECT role FROM platform_role_permissions`);
+    if (roleRows.rows.length === 0) {
+      const defaults: Record<string, string[]> = {
+        super_admin: [
+          'users:read','users:create','users:update','users:delete',
+          'orgs:read','orgs:manage',
+          'subscriptions:read','subscriptions:manage',
+          'plans:read','plans:manage',
+          'billing:read','billing:manage',
+          'analytics:read','growth:read',
+          'system:read','system:manage','feature_flags:manage','audit_logs:read',
+          'support:read','support:manage',
+          'announcements:manage',
+          'marketing:manage',
+          'regional_pricing:manage','enterprise_contracts:manage','reseller_contracts:manage',
+          'org_config:manage','white_label:manage',
+          'api_keys:manage','impersonation:use',
+        ],
+        admin: [
+          'users:read','users:create','users:update','users:delete',
+          'orgs:read','orgs:manage',
+          'subscriptions:read','subscriptions:manage',
+          'plans:read','plans:manage',
+          'billing:read','billing:manage',
+          'analytics:read','growth:read',
+          'system:read','system:manage','feature_flags:manage','audit_logs:read',
+          'support:read','support:manage',
+          'announcements:manage',
+          'regional_pricing:manage','enterprise_contracts:manage','reseller_contracts:manage',
+          'org_config:manage','white_label:manage','api_keys:manage',
+        ],
+        billing_manager: [
+          'orgs:read','subscriptions:read','subscriptions:manage',
+          'plans:read','plans:manage',
+          'billing:read','billing:manage',
+          'analytics:read','growth:read','audit_logs:read',
+        ],
+        support_manager: [
+          'users:read','orgs:read','subscriptions:read','billing:read',
+          'support:read','support:manage','audit_logs:read','impersonation:use',
+        ],
+        analyst: ['orgs:read','analytics:read','growth:read','announcements:manage','marketing:manage'],
+        developer: [
+          'users:read','orgs:read','system:read','system:manage',
+          'feature_flags:manage','api_keys:manage','audit_logs:read',
+        ],
+        security_auditor: [
+          'orgs:read','subscriptions:read','plans:read','billing:read',
+          'enterprise_contracts:manage','reseller_contracts:manage',
+        ],
+        marketing_manager: ['users:read','orgs:read','subscriptions:read','support:read'],
+        onboarding_specialist: [
+          'users:read','orgs:read','subscriptions:read','plans:read',
+          'billing:read','analytics:read','system:read','audit_logs:read',
+        ],
+        compliance_officer: ['orgs:read','system:read','system:manage','feature_flags:manage','api_keys:manage','audit_logs:read'],
+        viewer: [],
+      };
+      for (const [role, perms] of Object.entries(defaults)) {
+        await pool.query(
+          `INSERT INTO platform_role_permissions (role, permissions) VALUES ($1, $2) ON CONFLICT (role) DO NOTHING`,
+          [role, perms]
+        );
+      }
+      console.log('[Migration] Platform role permissions seeded.');
+    }
+  } catch (e) {
+    console.warn('[Migration] Could not create role permissions table:', (e as Error).message);
+  }
+
+  try {
+    await pool.query(`ALTER TABLE platform_users ADD COLUMN IF NOT EXISTS preferences JSONB DEFAULT '{}'`);
+    console.log('[Migration] Platform users preferences column verified.');
+  } catch (e) {
+    console.warn('[Migration] Could not add preferences column:', (e as Error).message);
+  }
+
+  try {
+    await pool.query(`ALTER TABLE support_tickets ALTER COLUMN org_id DROP NOT NULL`);
+    console.log('[Migration] Support tickets org_id made nullable.');
+  } catch (e) {
+    console.warn('[Migration] Could not alter support_tickets.org_id:', (e as Error).message);
   }
 
   await pool.end();

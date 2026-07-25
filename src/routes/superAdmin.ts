@@ -1,4 +1,5 @@
 import { Router, Response, NextFunction } from 'express';
+import { z } from 'zod';
 import {
   getDashboard, getOrganizations, getOrganizationDetail, updateOrganizationStatus,
   getRevenueAnalytics, getFailedPayments, getSystemHealth, getAuditLogs,
@@ -9,6 +10,12 @@ import {
   getResellerContracts, createResellerContract, updateResellerContract, deleteResellerContract,
   getOrgConfigs, setOrgConfigKey, deleteOrgConfig,
   getWhiteLabelConfigs, upsertWhiteLabelConfig, deleteWhiteLabelConfig,
+} from '../services/superAdmin.service';
+import {
+  getAllRolePermissions, updateRolePermissions, createRole, deleteRole,
+} from '../services/rolePermissions.service';
+import {
+  getPlatformConfig, setPlatformConfig, PLATFORM_CONFIG_DEFAULTS,
 } from '../services/superAdmin.service';
 import { getSaaSAnalytics } from '../services/saasAnalytics.service';
 import { startImpersonation, stopImpersonation } from '../middleware/impersonation';
@@ -88,8 +95,9 @@ router.get('/audit-logs', requirePlatformPermission(PlatformPermission.AuditLogs
     const page = Number(req.query.page) || 1;
     const pageSize = Number(req.query.pageSize) || 50;
     const action = req.query.action as string | undefined;
-    const data = await getAuditLogs(page, pageSize, action);
-    res.json({ success: true, ...data });
+    const search = req.query.search as string | undefined;
+    const data = await getAuditLogs(page, pageSize, action, search);
+    res.json({ success: true, data });
   })
 );
 
@@ -301,5 +309,61 @@ router.delete('/white-label/:id', requirePlatformPermission(PlatformPermission.W
 // ── Impersonation ──
 router.post('/impersonate', requirePlatformPermission(PlatformPermission.ImpersonationUse), startImpersonation);
 router.post('/impersonate/stop', requirePlatformPermission(PlatformPermission.ImpersonationUse), stopImpersonation);
+
+// ── Role Permissions ──
+router.get('/roles', requirePlatformPermission(PlatformPermission.SystemManage),
+  asyncHandler(async (_req: PlatformAuthenticatedRequest, res: Response) => {
+    const data = await getAllRolePermissions();
+    res.json({ success: true, data });
+  })
+);
+
+router.put('/roles/:role', requirePlatformPermission(PlatformPermission.SystemManage),
+  asyncHandler(async (req: PlatformAuthenticatedRequest, res: Response) => {
+    const { permissions } = z.object({
+      permissions: z.array(z.string()),
+    }).parse(req.body);
+    const data = await updateRolePermissions(req.params.role, permissions);
+    res.json({ success: true, data });
+  })
+);
+
+router.post('/roles', requirePlatformPermission(PlatformPermission.SystemManage),
+  asyncHandler(async (req: PlatformAuthenticatedRequest, res: Response) => {
+    const { role, permissions } = z.object({
+      role: z.string().min(1),
+      permissions: z.array(z.string()),
+    }).parse(req.body);
+    const data = await createRole(role, permissions);
+    res.status(201).json({ success: true, data });
+  })
+);
+
+router.delete('/roles/:role', requirePlatformPermission(PlatformPermission.SystemManage),
+  asyncHandler(async (req: PlatformAuthenticatedRequest, res: Response) => {
+    await deleteRole(req.params.role);
+    res.json({ success: true });
+  })
+);
+
+// ── Platform-Wide Config ──
+router.get('/platform-config', requirePlatformPermission(PlatformPermission.SystemManage),
+  asyncHandler(async (_req: PlatformAuthenticatedRequest, res: Response) => {
+    const rows = await getPlatformConfig();
+    const configMap: Record<string, any> = {};
+    for (const row of rows) {
+      configMap[row.key] = row.value;
+    }
+    res.json({ success: true, data: configMap, defaults: PLATFORM_CONFIG_DEFAULTS });
+  })
+);
+
+router.put('/platform-config/:key', requirePlatformPermission(PlatformPermission.SystemManage),
+  asyncHandler(async (req: PlatformAuthenticatedRequest, res: Response) => {
+    const { value } = z.object({ value: z.any() }).parse(req.body);
+    const data = await setPlatformConfig(req.params.key, value);
+    res.json({ success: true, data });
+  })
+);
 
 export default router;

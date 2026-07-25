@@ -864,7 +864,7 @@ export const dunningRuns = pgTable('dunning_runs', {
 
 export const supportTickets = pgTable('support_tickets', {
   id: uuid('id').defaultRandom().primaryKey(),
-  orgId: uuid('org_id').notNull(),
+  orgId: uuid('org_id'),
   userId: uuid('user_id').notNull(),
   subject: text('subject').notNull(),
   message: text('message').notNull(),
@@ -978,6 +978,7 @@ export const platformUsers = pgTable('platform_users', {
   role: platformRoleEnum('role').default('super_admin').notNull(),
   isActive: boolean('is_active').default(true).notNull(),
   avatarUrl: text('avatar_url'),
+  preferences: jsonb('preferences').default({}),
   lastLogin: timestamp('last_login'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -991,4 +992,14 @@ export const platformSessions = pgTable('platform_sessions', {
   ipAddress: text('ip_address'),
   userAgent: text('user_agent'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// ========== Role Permissions ==========
+
+export const platformRolePermissions = pgTable('platform_role_permissions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  role: text('role').notNull().unique(),
+  permissions: text('permissions').array().notNull().default([]),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

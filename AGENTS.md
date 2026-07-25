@@ -10,6 +10,8 @@ Maintain and enhance accounting features: fix kobo/naira display, parent-child a
 
 ## Progress
 ### Done
+- **Coupon/Promotion form validation fix**: `couponSchemaExtended` / `promotionSchemaExtended` in `promotionsEngine.service.ts` made `discountAmountKobo`, `discountPercent`, `minPlanId`, `maxPlanId`, `campaignId` nullable (`.nullable()`) to accept null from frontend; `SubscriptionCouponsPage.tsx` cleans empty UUID strings (`delete payload.minPlanId` etc.) and uses `delete` instead of `= null` for discount fields before POST
+- **Coupon INSERT fix**: Frontend now cleans empty `expiresAt`/`startDate`/`endDate` before POST (prevents PostgreSQL `'' → timestamp` cast error); backend `createCouponExtended`/`createPromotionExtended` fallback to `data.orgId` when JWT orgId is undefined (platform super admin); migration ALTER TYPE query fixed (broken `pg_type`/`pg_enum` cross-join) so Promotions Engine tables/columns actually get created
 - **Chart of Accounts `fmtNaira` fix**: Both positive and negative balance formatting now divide by 100 (kobo→naira), matching Trial Balance implementation
 - **Parent-child aggregation**: `computeAggregateBalances()` in Chart of Accounts and backend rollup in `getTrialBalance()` sum child balances into parent accounts recursively
 - **Debit/Credit columns**: Replaced single Balance column with separate Debit/Credit columns in Chart of Accounts; added totals footer row excluding parent accounts

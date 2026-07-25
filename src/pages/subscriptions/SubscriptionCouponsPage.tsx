@@ -130,8 +130,15 @@ export function SubscriptionCouponsPage() {
       if (payload.targetRegions?.length === 0) delete payload.targetRegions;
       if (payload.regionRestrictions?.length === 0) delete payload.regionRestrictions;
 
-      if (payload.discountType === 'fixed_amount') { payload.discountPercent = null; }
-      else { payload.discountAmountKobo = null; }
+      if (payload.discountType === 'fixed_amount') { delete payload.discountPercent; }
+      else { delete payload.discountAmountKobo; }
+
+      if (!payload.minPlanId) delete payload.minPlanId;
+      if (!payload.maxPlanId) delete payload.maxPlanId;
+      if (!payload.campaignId) delete payload.campaignId;
+      if (!payload.expiresAt) delete payload.expiresAt;
+      if (!payload.startDate) delete payload.startDate;
+      if (!payload.endDate) delete payload.endDate;
 
       if (payload.orgId === '') delete payload.orgId;
 

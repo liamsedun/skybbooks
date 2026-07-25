@@ -4,11 +4,13 @@ import bcrypt from 'bcryptjs';
 import { eq, like, or, sql, desc } from 'drizzle-orm';
 import { db, platformUsers } from '../db/schema';
 import { AppError } from '../lib/errors';
-import { requirePlatformPermission } from '../middleware/platformAuth';
+import { platformAuthenticate, platformUserGuard, requirePlatformPermission } from '../middleware/platformAuth';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { ok, paginated } from '../lib/response';
 
 const router = Router();
+router.use(platformAuthenticate);
+router.use(platformUserGuard);
 
 const createSchema = z.object({
   email: z.string().email(),

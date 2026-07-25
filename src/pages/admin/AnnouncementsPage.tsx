@@ -41,7 +41,11 @@ export function AnnouncementsPage() {
       title: string; message: string; type: string; isGlobal: boolean;
       startsAt?: string; endsAt?: string; orgId?: string;
     }) => {
-      const res = await api.post('/announcements', data);
+      const payload = { ...data };
+      if (!payload.startsAt) delete payload.startsAt;
+      if (!payload.endsAt) delete payload.endsAt;
+      if (!payload.orgId) delete payload.orgId;
+      const res = await api.post('/announcements', payload);
       return res.data.data;
     },
     onSuccess: () => {

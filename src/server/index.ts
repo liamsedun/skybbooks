@@ -72,6 +72,7 @@ import budgetRouter from '../routes/budget';
 import inventoryTrackingRouter from '../routes/inventoryTracking';
 import supportRouter from '../routes/support';
 import platformUsersRouter from '../routes/platformUsers';
+import platformProfileRouter from '../routes/platformProfile';
 import announcementsRouter from '../routes/announcements';
 import rateLimitAdminRouter from '../routes/rateLimitAdmin';
 import featureRolloutsRouter from '../routes/featureRollouts';
@@ -233,6 +234,7 @@ async function startServer() {
   app.use('/api/platform/rate-limits', rateLimitAdminRouter);
   app.use('/api/platform/feature-rollouts', featureRolloutsRouter);
   app.use('/api/platform/users', platformUsersRouter);
+  app.use('/api/platform/profile', platformProfileRouter);
   app.use('/api/dunning', dunningRouter);
   app.use('/api/customer-subscriptions', customerSubscriptionsRouter);
   app.use('/api/promotions', promotionsEngineRouter);

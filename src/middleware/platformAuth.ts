@@ -6,7 +6,7 @@
 import { Response, NextFunction } from 'express';
 import { Request } from 'express';
 import { verifyAccessToken, TokenPayload } from '../lib/tokens';
-import { db, platformUsers } from '../db/schema';
+import { db, platformUsers, platformRolePermissions } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import jwt from 'jsonwebtoken';
 import { AppError } from '../lib/errors';
@@ -78,41 +78,55 @@ export function platformAuthenticate(
  * Loads the platform user record from DB and attaches it to the request.
  * Also computes the user's effective permissions based on role.
  */
-export function platformUserGuard(
+export async function platformUserGuard(
   req: PlatformAuthenticatedRequest,
   res: Response,
   next: NextFunction
-): void {
+): Promise<void> {
   const payload = req.tokenPayload;
   if (!payload) {
     return next(new AppError('Authentication context is missing.', 401));
   }
 
-  db.select({
-    id: platformUsers.id,
-    email: platformUsers.email,
-    fullName: platformUsers.fullName,
-    role: platformUsers.role,
-    isActive: platformUsers.isActive,
-  })
-    .from(platformUsers)
-    .where(eq(platformUsers.id, payload.userId))
-    .limit(1)
-    .then((rows) => {
-      const user = rows[0];
-      if (!user) {
-        return next(new AppError('Platform user not found.', 401));
-      }
-      if (!user.isActive) {
-        return next(new AppError('Platform account has been deactivated.', 403));
-      }
-      req.platformUser = {
-        ...user,
-        permissions: getPermissionsForRole(user.role),
-      };
-      next();
+  try {
+    const rows = await db.select({
+      id: platformUsers.id,
+      email: platformUsers.email,
+      fullName: platformUsers.fullName,
+      role: platformUsers.role,
+      isActive: platformUsers.isActive,
     })
-    .catch(next);
+      .from(platformUsers)
+      .where(eq(platformUsers.id, payload.userId))
+      .limit(1);
+
+    const user = rows[0];
+    if (!user) {
+      return next(new AppError('Platform user not found.', 401));
+    }
+    if (!user.isActive) {
+      return next(new AppError('Platform account has been deactivated.', 403));
+    }
+
+    let permissions: string[];
+    try {
+      const [permRow] = await db.select({ permissions: platformRolePermissions.permissions })
+        .from(platformRolePermissions)
+        .where(eq(platformRolePermissions.role, user.role))
+        .limit(1);
+      permissions = (permRow?.permissions as string[]) || getPermissionsForRole(user.role);
+    } catch {
+      permissions = getPermissionsForRole(user.role);
+    }
+
+    req.platformUser = {
+      ...user,
+      permissions,
+    };
+    next();
+  } catch (err) {
+    next(err);
+  }
 }
 
 /**
@@ -128,8 +142,9 @@ export function requirePlatformPermission(...permissions: PlatformPermission[]) 
       return next(new AppError('Authentication context is missing.', 401));
     }
 
+    const userPerms = req.platformUser.permissions || [];
     for (const perm of permissions) {
-      if (!hasPermission(req.platformUser.role, perm)) {
+      if (!userPerms.includes(perm)) {
         return next(
           new AppError(
             `Forbidden: Missing required permission '${perm}'. Your '${req.platformUser.role}' role does not grant this access.`,

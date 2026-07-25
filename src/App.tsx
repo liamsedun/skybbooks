@@ -7,12 +7,12 @@ import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './contexts/ToastContext';
 
-const LoginPage = lazy(() => import('./pages/ModulePlaceholders').then(m => ({ default: m.LoginPage })));
-const RegisterPage = lazy(() => import('./pages/ModulePlaceholders').then(m => ({ default: m.RegisterPage })));
-const ForgotPasswordPage = lazy(() => import('./pages/ModulePlaceholders').then(m => ({ default: m.ForgotPasswordPage })));
+const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m.LoginPage })));
+const RegisterPage = lazy(() => import('./pages/RegisterPage').then(m => ({ default: m.RegisterPage })));
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage').then(m => ({ default: m.ForgotPasswordPage })));
 const ResetPasswordPage = lazy(() => import('./pages/AuthPages').then(m => ({ default: m.ResetPasswordPage })));
 const AcceptInvitePage = lazy(() => import('./pages/AuthPages').then(m => ({ default: m.AcceptInvitePage })));
-const NotFoundPage = lazy(() => import('./pages/ModulePlaceholders').then(m => ({ default: m.NotFoundPage })));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then(m => ({ default: m.NotFoundPage })));
 
 const MarketingLandingPage = lazy(() => import('./pages/marketing/LandingPage').then(m => ({ default: m.LandingPage })));
 const PricingPage = lazy(() => import('./pages/marketing/PricingPage').then(m => ({ default: m.PricingPage })));

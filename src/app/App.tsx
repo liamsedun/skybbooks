@@ -30,46 +30,46 @@ const PaymentGatewayPage = lazy(() => import('../pages/banking/PaymentGatewayPag
 const ProjectsPage = lazy(() => import('../pages/sales/ProjectsPage').then(m => ({ default: m.ProjectsPage })));
 const ProjectDetailPage = lazy(() => import('../pages/sales/ProjectDetailPage').then(m => ({ default: m.ProjectDetailPage })));
 
-const CustomersPage = lazy(() => import('../pages/ModulePlaceholders').then(m => ({ default: m.CustomersPage })));
-const QuotesPage = lazy(() => import('../pages/ModulePlaceholders').then(m => ({ default: m.QuotesPage })));
-const PaymentsPage = lazy(() => import('../pages/ModulePlaceholders').then(m => ({ default: m.PaymentsPage })));
-const VendorsPage = lazy(() => import('../pages/ModulePlaceholders').then(m => ({ default: m.VendorsPage })));
-const ExpensesPage = lazy(() => import('../pages/ModulePlaceholders').then(m => ({ default: m.ExpensesPage })));
-const BillsPage = lazy(() => import('../pages/ModulePlaceholders').then(m => ({ default: m.BillsPage })));
-const PaymentsMadePage = lazy(() => import('../pages/ModulePlaceholders').then(m => ({ default: m.PaymentsMadePage })));
-const InventoryPage = lazy(() => import('../pages/ModulePlaceholders').then(m => ({ default: m.InventoryPage })));
-const InventoryAdjustmentsPage = lazy(() => import('../pages/ModulePlaceholders').then(m => ({ default: m.InventoryAdjustmentsPage })));
-const InventoryManagementPage = lazy(() => import('../pages/ModulePlaceholders').then(m => ({ default: m.InventoryManagementPage })));
-const ChartOfAccountsPage = lazy(() => import('../pages/ModulePlaceholders').then(m => ({ default: m.ChartOfAccountsPage })));
-const JournalsPage = lazy(() => import('../pages/ModulePlaceholders').then(m => ({ default: m.JournalsPage })));
-const BudgetsPage = lazy(() => import('../pages/ModulePlaceholders').then(m => ({ default: m.BudgetsPage })));
-const FixedAssetsPage = lazy(() => import('../pages/ModulePlaceholders').then(m => ({ default: m.FixedAssetsPage })));
-const DepreciationPage = lazy(() => import('../pages/ModulePlaceholders').then(m => ({ default: m.DepreciationPage })));
-const LeasesPage = lazy(() => import('../pages/ModulePlaceholders').then(m => ({ default: m.LeasesPage })));
-const EclPage = lazy(() => import('../pages/ModulePlaceholders').then(m => ({ default: m.EclPage })));
-const TrialBalancePage = lazy(() => import('../pages/ModulePlaceholders').then(m => ({ default: m.TrialBalancePage })));
-const IncomeStatementPage = lazy(() => import('../pages/ModulePlaceholders').then(m => ({ default: m.IncomeStatementPage })));
-const BalanceSheetPage = lazy(() => import('../pages/ModulePlaceholders').then(m => ({ default: m.BalanceSheetPage })));
-const CashFlowPage = lazy(() => import('../pages/ModulePlaceholders').then(m => ({ default: m.CashFlowPage })));
-const StatementOfChangesInEquityPage = lazy(() => import('../pages/ModulePlaceholders').then(m => ({ default: m.StatementOfChangesInEquityPage })));
-const GeneralLedgerPage = lazy(() => import('../pages/ModulePlaceholders').then(m => ({ default: m.GeneralLedgerPage })));
-const VATReturnPage = lazy(() => import('../pages/ModulePlaceholders').then(m => ({ default: m.VATReturnPage })));
-const AgedReceivablesPage = lazy(() => import('../pages/ModulePlaceholders').then(m => ({ default: m.AgedReceivablesPage })));
-const AgedPayablesPage = lazy(() => import('../pages/ModulePlaceholders').then(m => ({ default: m.AgedPayablesPage })));
-const SalesOrdersPage = lazy(() => import('../pages/ModulePlaceholders').then(m => ({ default: m.SalesOrdersPage })));
-const ReceiptsPage = lazy(() => import('../pages/ModulePlaceholders').then(m => ({ default: m.ReceiptsPage })));
-const RecurringExpensesPage = lazy(() => import('../pages/ModulePlaceholders').then(m => ({ default: m.RecurringExpensesPage })));
-const PurchaseOrdersPage = lazy(() => import('../pages/ModulePlaceholders').then(m => ({ default: m.PurchaseOrdersPage })));
-const PurchaseCreditNotesPage = lazy(() => import('../pages/ModulePlaceholders').then(m => ({ default: m.PurchaseCreditNotesPage })));
-const CurrencyRatesPage = lazy(() => import('../pages/ModulePlaceholders').then(m => ({ default: m.CurrencyRatesPage })));
-const AuditLogsPage = lazy(() => import('../pages/ModulePlaceholders').then(m => ({ default: m.AuditLogsPage })));
-const ProjectsReportPage = lazy(() => import('../pages/ModulePlaceholders').then(m => ({ default: m.ProjectsReportPage })));
-const CustomReportsPage = lazy(() => import('../pages/ModulePlaceholders').then(m => ({ default: m.CustomReportsPage })));
-const TaxComputationPage = lazy(() => import('../pages/ModulePlaceholders').then(m => ({ default: m.TaxComputationPage })));
-const TaxEnginePage = lazy(() => import('../pages/ModulePlaceholders').then(m => ({ default: m.TaxEnginePage })));
-const LegacyMigrationPage = lazy(() => import('../pages/ModulePlaceholders').then(m => ({ default: m.LegacyMigrationPage })));
-const InvitesSettingsPage = lazy(() => import('../pages/ModulePlaceholders').then(m => ({ default: m.InvitesSettingsPage })));
-const IntegrationsSettingsPage = lazy(() => import('../pages/ModulePlaceholders').then(m => ({ default: m.IntegrationsSettingsPage })));
+const CustomersPage = lazy(() => import('../pages/sales/Customers').then(m => ({ default: m.CustomersPage })));
+const QuotesPage = lazy(() => import('../pages/sales/Quotes').then(m => ({ default: m.QuotesPage })));
+const PaymentsPage = lazy(() => import('../pages/sales/PaymentsReceived').then(m => ({ default: m.PaymentsReceivedPage })));
+const VendorsPage = lazy(() => import('../pages/purchases/Vendors').then(m => ({ default: m.VendorsPage })));
+const ExpensesPage = lazy(() => import('../pages/purchases/Expenses').then(m => ({ default: m.ExpensesPage })));
+const BillsPage = lazy(() => import('../pages/purchases/Bills').then(m => ({ default: m.BillsPage })));
+const PaymentsMadePage = lazy(() => import('../pages/purchases/PaymentsMade').then(m => ({ default: m.PaymentsMadePage })));
+const InventoryPage = lazy(() => import('../pages/inventory/Items').then(m => ({ default: m.ItemsPage })));
+const InventoryAdjustmentsPage = lazy(() => import('../pages/inventory/InventoryAdjustmentsPage'));
+const InventoryManagementPage = lazy(() => import('../pages/inventory/InventoryManagementPage'));
+const ChartOfAccountsPage = lazy(() => import('../pages/accountant/ChartOfAccounts').then(m => ({ default: m.ChartOfAccountsPage })));
+const JournalsPage = lazy(() => import('../pages/accountant/JournalsPage').then(m => ({ default: m.JournalsPage })));
+const BudgetsPage = lazy(() => import('../pages/accountant/BudgetsPage').then(m => ({ default: m.BudgetsPage })));
+const FixedAssetsPage = lazy(() => import('../pages/accountant/FixedAssetsPage').then(m => ({ default: m.FixedAssetsPage })));
+const DepreciationPage = lazy(() => import('../pages/accountant/DepreciationPage').then(m => ({ default: m.DepreciationPage })));
+const LeasesPage = lazy(() => import('../pages/accountant/LeasesPage').then(m => ({ default: m.LeasesPage })));
+const EclPage = lazy(() => import('../pages/accountant/EclPage').then(m => ({ default: m.EclPage })));
+const TrialBalancePage = lazy(() => import('../pages/reports/ReportsPage').then(m => ({ default: m.TrialBalancePage })));
+const IncomeStatementPage = lazy(() => import('../pages/reports/ReportsPage').then(m => ({ default: m.IncomeStatementPage })));
+const BalanceSheetPage = lazy(() => import('../pages/reports/ReportsPage').then(m => ({ default: m.BalanceSheetPage })));
+const CashFlowPage = lazy(() => import('../pages/reports/ReportsPage').then(m => ({ default: m.CashFlowPage })));
+const StatementOfChangesInEquityPage = lazy(() => import('../pages/reports/ReportsPage').then(m => ({ default: m.StatementOfChangesInEquityPage })));
+const GeneralLedgerPage = lazy(() => import('../pages/reports/ReportsPage').then(m => ({ default: m.GeneralLedgerPage })));
+const VATReturnPage = lazy(() => import('../pages/reports/ReportsPage').then(m => ({ default: m.VATReturnPage })));
+const AgedReceivablesPage = lazy(() => import('../pages/reports/ReportsPage').then(m => ({ default: m.AgedReceivablesPage })));
+const AgedPayablesPage = lazy(() => import('../pages/reports/ReportsPage').then(m => ({ default: m.AgedPayablesPage })));
+const SalesOrdersPage = lazy(() => import('../pages/sales/SalesOrders').then(m => ({ default: m.SalesOrdersPage })));
+const ReceiptsPage = lazy(() => import('../pages/sales/PaymentsReceived').then(m => ({ default: m.PaymentsReceivedPage })));
+const RecurringExpensesPage = lazy(() => import('../pages/purchases/RecurringExpenses').then(m => ({ default: m.RecurringExpensesPage })));
+const PurchaseOrdersPage = lazy(() => import('../pages/purchases/PurchaseOrders').then(m => ({ default: m.PurchaseOrdersPage })));
+const PurchaseCreditNotesPage = lazy(() => import('../pages/purchases/PurchaseCreditNotes').then(m => ({ default: m.PurchaseCreditNotesPage })));
+const CurrencyRatesPage = lazy(() => import('../pages/banking/CurrencyRatesPage').then(m => ({ default: m.CurrencyRatesPage })));
+const AuditLogsPage = lazy(() => import('../pages/reports/AuditLogsPage').then(m => ({ default: m.AuditLogsPage })));
+const ProjectsReportPage = lazy(() => import('../pages/reports/ReportsPage').then(m => ({ default: m.ProjectsReportPage })));
+const CustomReportsPage = lazy(() => import('../pages/reports/CustomReportsPage').then(m => ({ default: m.CustomReportsPage })));
+const TaxComputationPage = lazy(() => import('../pages/reports/ReportsPage').then(m => ({ default: m.TaxComputationPage })));
+const TaxEnginePage = lazy(() => import('../pages/tax/TaxEnginePage'));
+const LegacyMigrationPage = lazy(() => import('../pages/reports/LegacyMigrationPage').then(m => ({ default: m.LegacyMigrationPage })));
+const InvitesSettingsPage = lazy(() => import('../pages/settings/InvitesPage').then(m => ({ default: m.InvitesSettingsPage })));
+const IntegrationsSettingsPage = lazy(() => import('../pages/settings/IntegrationsPage').then(m => ({ default: m.IntegrationsSettingsPage })));
 
 const GroupManagementPage = lazy(() => import('../pages/settings/GroupManagementPage').then(m => ({ default: m.GroupManagementPage })));
 const RecurringBillsPage = lazy(() => import('../pages/purchases/RecurringBillsPage').then(m => ({ default: m.RecurringBillsPage })));
@@ -482,7 +482,7 @@ function AppRoutes() {
   );
 }
 
-const NotFoundPage = lazy(() => import('../pages/ModulePlaceholders').then(m => ({ default: m.NotFoundPage })));
+const NotFoundPage = lazy(() => import('../pages/NotFoundPage').then(m => ({ default: m.NotFoundPage })));
 
 export default function App() {
   return (

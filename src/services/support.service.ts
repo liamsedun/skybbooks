@@ -54,7 +54,7 @@ export async function getAllTickets(status?: string, priority?: string) {
     .orderBy(desc(supportTickets.createdAt));
 }
 
-export async function createTicket(orgId: string, userId: string, data: any) {
+export async function createTicket(orgId: string | null, userId: string, data: any) {
   const [ticket] = await db.insert(supportTickets).values({
     orgId, userId, subject: data.subject, message: data.message,
     category: data.category || 'general', priority: data.priority || 'normal',

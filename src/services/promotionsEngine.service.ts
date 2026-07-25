@@ -52,17 +52,17 @@ export const couponSchemaExtended = z.object({
   code: z.string().min(1),
   description: z.string().optional(),
   discountType: z.enum(['percentage', 'fixed_amount', 'free_months']).default('percentage'),
-  discountPercent: z.number().int().min(0).max(100).optional(),
-  discountAmountKobo: z.number().int().min(0).optional(),
+  discountPercent: z.number().int().min(0).max(100).optional().nullable(),
+  discountAmountKobo: z.number().int().min(0).optional().nullable(),
   freeMonths: z.number().int().min(0).default(0),
   maxRedemptions: z.number().int().min(0).default(0),
   minAmountKobo: z.number().int().min(0).optional(),
   maxAmountKobo: z.number().int().min(0).optional(),
   applicablePlanIds: z.array(z.string().uuid()).optional(),
-  minPlanId: z.string().uuid().optional(),
-  maxPlanId: z.string().uuid().optional(),
+  minPlanId: z.string().uuid().optional().nullable(),
+  maxPlanId: z.string().uuid().optional().nullable(),
   regionRestrictions: z.array(z.string()).optional(),
-  campaignId: z.string().uuid().optional(),
+  campaignId: z.string().uuid().optional().nullable(),
   isStackable: z.boolean().default(false),
   priority: z.number().int().default(0),
   requireMinimumPayment: z.boolean().default(false),
@@ -74,14 +74,14 @@ export const promotionSchemaExtended = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
   discountType: z.enum(['percentage', 'fixed_amount', 'free_months']).default('percentage'),
-  discountPercent: z.number().int().min(0).max(100).optional(),
-  discountAmountKobo: z.number().int().min(0).optional(),
+  discountPercent: z.number().int().min(0).max(100).optional().nullable(),
+  discountAmountKobo: z.number().int().min(0).optional().nullable(),
   freeMonths: z.number().int().min(0).default(0),
   applicablePlanIds: z.array(z.string().uuid()).optional(),
-  minPlanId: z.string().uuid().optional(),
-  maxPlanId: z.string().uuid().optional(),
+  minPlanId: z.string().uuid().optional().nullable(),
+  maxPlanId: z.string().uuid().optional().nullable(),
   regionRestrictions: z.array(z.string()).optional(),
-  campaignId: z.string().uuid().optional(),
+  campaignId: z.string().uuid().optional().nullable(),
   isStackable: z.boolean().default(false),
   priority: z.number().int().default(0),
   budgetKobo: z.number().int().min(0).optional(),
@@ -250,11 +250,11 @@ export async function getRedemptionHistory(orgId: string, filters?: { type?: str
 
 // ── Extended Coupon/Promotion CRUD ──
 
-export async function createCouponExtended(data: any, orgId: string, userId?: string): Promise<any> {
+export async function createCouponExtended(data: any, orgId?: string, userId?: string): Promise<any> {
   const parsed = couponSchemaExtended.parse(data);
   const [coupon] = await db.insert(coupons).values({
     ...parsed,
-    orgId,
+    orgId: orgId || data.orgId || null,
     expiresAt: parsed.expiresAt ? new Date(parsed.expiresAt) : null,
     createdBy: userId || null,
   } as any).returning();
@@ -271,11 +271,11 @@ export async function updateCouponExtended(couponId: string, data: any, orgId?: 
   return updated;
 }
 
-export async function createPromotionExtended(data: any, orgId: string, userId?: string): Promise<any> {
+export async function createPromotionExtended(data: any, orgId?: string, userId?: string): Promise<any> {
   const parsed = promotionSchemaExtended.parse(data);
   const [promo] = await db.insert(promotions).values({
     ...parsed,
-    orgId,
+    orgId: orgId || data.orgId || null,
     createdBy: userId || null,
   } as any).returning();
   return promo;
