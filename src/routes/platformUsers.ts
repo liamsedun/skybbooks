@@ -7,6 +7,7 @@ import { AppError } from '../lib/errors';
 import { platformAuthenticate, platformUserGuard, requirePlatformPermission } from '../middleware/platformAuth';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { ok, paginated } from '../lib/response';
+import { sendPlatformEmail } from '../services/email.service';
 
 const router = Router();
 router.use(platformAuthenticate);
@@ -70,6 +71,18 @@ router.post('/', requirePlatformPermission('users:create'), asyncHandler(async (
     role: body.role as any,
     isActive: body.isActive,
   }).returning();
+
+  sendPlatformEmail({
+    to: email,
+    subject: 'Your SkyBooks Platform Account',
+    html: `<p>Hello ${body.fullName},</p>
+<p>A SkyBooks platform administrator account has been created for you.</p>
+<p><strong>Email:</strong> ${email}<br/>
+<strong>Password:</strong> (the password set by your administrator)</p>
+<p>You can log in at the <a href="${process.env.FRONTEND_URL || 'https://skybooks-api-ik5m.onrender.com'}/platform/login">Platform Login</a> page.</p>
+<p>If you did not expect this email, please contact your administrator.</p>`,
+    fromName: 'SkyBooks',
+  }).catch(err => console.error('[PlatformUsers] Welcome email failed:', err));
 
   const { passwordHash: _, ...safe } = user;
   res.status(201).json(ok(safe));

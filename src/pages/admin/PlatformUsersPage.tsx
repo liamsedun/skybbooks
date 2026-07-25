@@ -50,7 +50,7 @@ export function PlatformUsersPage() {
     queryKey: ['platform-users', page, search, roleFilter],
     queryFn: async () => {
       const res = await platformUsersApi.list({ page, pageSize: 20, search: search || undefined, role: roleFilter || undefined });
-      return res.data as { data: PlatformUser[]; total: number; page: number; pageSize: number };
+      return { data: (res.data || []) as PlatformUser[], total: (res as any).meta?.total || 0, page: (res as any).meta?.page || 1, pageSize: (res as any).meta?.pageSize || 20 };
     },
   });
 

@@ -14,6 +14,36 @@ interface SendEmailOptions {
 }
 
 /**
+ * Sends an email directly (no org context) using the platform-wide Resend account.
+ * Used for platform-level notifications like user invites, alerts, etc.
+ */
+export async function sendPlatformEmail(
+  options: SendEmailOptions
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  const apiKey = process.env.RESEND_API_KEY;
+  const fromEmail = process.env.FROM_EMAIL || 'delivered@resend.dev';
+
+  if (!apiKey) {
+    return { success: false, error: 'RESEND_API_KEY is not configured.' };
+  }
+
+  try {
+    const resend = new Resend(apiKey);
+    const result = await resend.emails.send({
+      from: `${options.fromName || 'SkyBooks'} <${fromEmail}>`,
+      to: options.to,
+      subject: options.subject,
+      html: options.html,
+      ...(options.text && { text: options.text }),
+    });
+    return { success: true, messageId: (result as any)?.id };
+  } catch (err: any) {
+    console.error('[EmailService] Platform email failed:', err?.message || err);
+    return { success: false, error: err?.message || 'Platform email failed.' };
+  }
+}
+
+/**
  * Sends an email on behalf of an organisation, respecting their configured
  * protocol (http = built-in Resend, smtp = their own SMTP server).
  *
