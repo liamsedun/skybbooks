@@ -4127,32 +4127,6 @@ export async function runMigration() {
       await pool.query(`CREATE INDEX IF NOT EXISTS idx_rlc_endpoint ON rate_limit_configs(endpoint)`);
       await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_rlc_org_endpoint ON rate_limit_configs(org_id, endpoint)`);
 
-      await pool.query(`CREATE TABLE IF NOT EXISTS feature_rollouts (
-        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-        feature_key TEXT NOT NULL UNIQUE,
-        name TEXT NOT NULL,
-        description TEXT,
-        rollout_percent INTEGER DEFAULT 0 NOT NULL,
-        is_active BOOLEAN DEFAULT false NOT NULL,
-        allowlist_org_ids TEXT[] DEFAULT '{}',
-        started_at TIMESTAMP,
-        ended_at TIMESTAMP,
-        created_by UUID,
-        created_at TIMESTAMP DEFAULT now() NOT NULL,
-        updated_at TIMESTAMP DEFAULT now() NOT NULL
-      )`);
-      await pool.query(`CREATE INDEX IF NOT EXISTS idx_fr_key ON feature_rollouts(feature_key)`);
-      await pool.query(`CREATE INDEX IF NOT EXISTS idx_fr_active ON feature_rollouts(is_active)`);
-
-      await pool.query(`CREATE TABLE IF NOT EXISTS feature_rollout_events (
-        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-        rollout_id UUID REFERENCES feature_rollouts(id) NOT NULL,
-        org_id UUID REFERENCES organisations(id) NOT NULL,
-        user_id UUID,
-        event TEXT NOT NULL,
-        metadata JSONB DEFAULT '{}',
-        created_at TIMESTAMP DEFAULT now() NOT NULL
-      )`);
       await pool.query(`CREATE INDEX IF NOT EXISTS idx_fre_rollout ON feature_rollout_events(rollout_id)`);
       await pool.query(`CREATE INDEX IF NOT EXISTS idx_fre_org ON feature_rollout_events(org_id)`);
 
@@ -4257,22 +4231,21 @@ export async function runMigration() {
     )`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_tm_ticket ON ticket_messages(ticket_id)`);
 
-    await pool.query(`CREATE TABLE IF NOT EXISTS announcements (
-      id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-      org_id UUID,
-      title TEXT NOT NULL,
-      content TEXT NOT NULL,
-      priority TEXT DEFAULT 'normal' NOT NULL,
-      target_roles TEXT DEFAULT 'all',
-      starts_at TIMESTAMP DEFAULT now() NOT NULL,
-      ends_at TIMESTAMP,
-      is_active BOOLEAN DEFAULT true NOT NULL,
-      created_by UUID,
-      created_at TIMESTAMP DEFAULT now() NOT NULL,
-      updated_at TIMESTAMP DEFAULT now() NOT NULL
-    )`);
+      await pool.query(`CREATE TABLE IF NOT EXISTS announcements (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id UUID REFERENCES organisations(id),
+        user_id UUID NOT NULL,
+        title TEXT NOT NULL,
+        message TEXT NOT NULL,
+        type TEXT DEFAULT 'info' NOT NULL,
+        is_global BOOLEAN DEFAULT false NOT NULL,
+        starts_at TIMESTAMP DEFAULT now() NOT NULL,
+        ends_at TIMESTAMP,
+        is_dismissable BOOLEAN DEFAULT true NOT NULL,
+        created_at TIMESTAMP DEFAULT now() NOT NULL
+      )`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_ann_org ON announcements(org_id)`);
-    await pool.query(`CREATE INDEX IF NOT EXISTS idx_ann_active ON announcements(is_active)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_ann_active ON announcements(starts_at, ends_at)`);
     console.log('[Migration] Platform support tables verified.');
   } catch (e) {
     console.warn('[Migration] Could not create platform support tables:', (e as Error).message);
@@ -4370,6 +4343,58 @@ export async function runMigration() {
     console.log('[Migration] Support tickets org_id made nullable.');
   } catch (e) {
     console.warn('[Migration] Could not alter support_tickets.org_id:', (e as Error).message);
+  }
+
+  // Sync announcements table columns with Drizzle schema
+  try {
+    await pool.query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS user_id UUID`);
+    await pool.query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS message TEXT`);
+    await pool.query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS type TEXT DEFAULT 'info' NOT NULL`);
+    await pool.query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS is_global BOOLEAN DEFAULT false NOT NULL`);
+    await pool.query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS is_dismissable BOOLEAN DEFAULT true NOT NULL`);
+    await pool.query(`ALTER TABLE announcements DROP COLUMN IF EXISTS content`);
+    await pool.query(`ALTER TABLE announcements DROP COLUMN IF EXISTS priority`);
+    await pool.query(`ALTER TABLE announcements DROP COLUMN IF EXISTS target_roles`);
+    await pool.query(`ALTER TABLE announcements DROP COLUMN IF EXISTS is_active`);
+    await pool.query(`ALTER TABLE announcements DROP COLUMN IF EXISTS created_by`);
+    await pool.query(`ALTER TABLE announcements DROP COLUMN IF EXISTS updated_at`);
+    console.log('[Migration] Announcements table synced with Drizzle schema.');
+  } catch (e) {
+    console.warn('[Migration] Could not sync announcements columns:', (e as Error).message);
+  }
+
+  // Ensure feature_rollouts table exists (standalone, in case main block failed)
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS feature_rollouts (
+      id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+      feature_key TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL,
+      description TEXT,
+      rollout_percent INTEGER DEFAULT 0 NOT NULL,
+      is_active BOOLEAN DEFAULT false NOT NULL,
+      allowlist_org_ids TEXT[] DEFAULT '{}',
+      started_at TIMESTAMP,
+      ended_at TIMESTAMP,
+      created_by UUID,
+      created_at TIMESTAMP DEFAULT now() NOT NULL,
+      updated_at TIMESTAMP DEFAULT now() NOT NULL
+    )`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_fr_key ON feature_rollouts(feature_key)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_fr_active ON feature_rollouts(is_active)`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS feature_rollout_events (
+      id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+      rollout_id UUID REFERENCES feature_rollouts(id) NOT NULL,
+      org_id UUID REFERENCES organisations(id) NOT NULL,
+      user_id UUID,
+      event TEXT NOT NULL,
+      metadata JSONB DEFAULT '{}',
+      created_at TIMESTAMP DEFAULT now() NOT NULL
+    )`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_fre_rollout ON feature_rollout_events(rollout_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_fre_org ON feature_rollout_events(org_id)`);
+    console.log('[Migration] Feature rollouts tables verified.');
+  } catch (e) {
+    console.warn('[Migration] Could not create feature rollouts tables:', (e as Error).message);
   }
 
   await pool.end();
