@@ -1,16 +1,8 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
-import { eq, and, sql, gte, lte, desc, sum as drizzleSum } from 'drizzle-orm';
-import { db, accounts, journalEntries, journalLines, bankAccounts, contacts, invoices, bills, paymentsReceived, paymentsMade, auditLog } from '../db/schema';
+import { eq, and, sql, gte, lte, desc } from 'drizzle-orm';
+import { db, accounts, journalEntries, journalLines, paymentsMade } from '../db/schema';
 import { getTrialBalance, getProfitAndLoss, getBalanceSheet, getCashFlowStatement } from './ledger.service';
 import { getDashboardMetrics } from './dashboard.service';
-import { createAuditLog, extractReqMeta } from './audit.service';
-
-const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || '';
-const DEEPSEEK_MODEL = 'deepseek-chat';
+import { createAuditLog } from './audit.service';
 
 function kobo(n: any): number {
   const v = Number(n);
@@ -18,12 +10,20 @@ function kobo(n: any): number {
 }
 
 function fmtNaira(v: number): string {
-  return `₦${(v / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
+  return `\u20A6${(v / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
 }
 
 function fmtDate(d: Date | string): string {
   const dt = typeof d === 'string' ? new Date(d) : d;
   return dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function pct(a: number, b: number): string {
+  return b > 0 ? ((a / b) * 100).toFixed(1) : '0';
+}
+
+function direction(v: number): string {
+  return v >= 0 ? '+' : '';
 }
 
 type Capability =
@@ -56,55 +56,6 @@ function detectCapability(query: string): Capability {
 
 export class AccountingAssistant {
 
-  private async callLLM(prompt: string, systemInstruction?: string): Promise<string> {
-    if (!DEEPSEEK_API_KEY) {
-      return 'AI Assistant is not configured. Please set the DEEPSEEK_API_KEY environment variable.';
-    }
-
-    const messages: any[] = [];
-    if (systemInstruction) {
-      messages.push({ role: 'system', content: systemInstruction });
-    }
-    messages.push({ role: 'user', content: prompt });
-
-    const maxRetries = 3;
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      try {
-        const res = await fetch('https://api.deepseek.com/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
-          },
-          body: JSON.stringify({
-            model: DEEPSEEK_MODEL,
-            messages,
-            temperature: 0.3,
-            max_tokens: 4096,
-          }),
-        });
-        if (!res.ok) {
-          const errBody = await res.text();
-          throw new Error(`DeepSeek API returned ${res.status}: ${errBody}`);
-        }
-        const data = await res.json();
-        return data.choices?.[0]?.message?.content || 'No response generated.';
-      } catch (err: any) {
-        const isQuota = err.message?.includes('429') || err.message?.includes('insufficient_quota') || err.message?.includes('rate limit');
-        if (isQuota && attempt < maxRetries - 1) {
-          const delay = Math.pow(2, attempt) * 1000;
-          await new Promise(r => setTimeout(r, delay));
-          continue;
-        }
-        console.error('DeepSeek API error:', err.message);
-        if (attempt === maxRetries - 1) {
-          return `I encountered an error processing your request: ${err.message}. Please try again.`;
-        }
-      }
-    }
-    return 'AI Assistant is temporarily unavailable. Please try again in a few minutes.';
-  }
-
   async processQuery(
     orgId: string,
     userId: string,
@@ -119,37 +70,37 @@ export class AccountingAssistant {
 
       switch (capability) {
         case 'explain-financials':
-          { const r = await this.explainFinancials(orgId, userId, query); response = r.response; data = r.data; }
+          { const r = await this.explainFinancials(orgId); response = r.response; data = r.data; }
           break;
         case 'explain-trial-balance':
-          { const r = await this.explainTrialBalance(orgId, userId, query); response = r.response; data = r.data; }
+          { const r = await this.explainTrialBalance(orgId); response = r.response; data = r.data; }
           break;
         case 'predict-cash-flow':
-          { const r = await this.predictCashFlow(orgId, userId, query); response = r.response; data = r.data; }
+          { const r = await this.predictCashFlow(orgId); response = r.response; data = r.data; }
           break;
         case 'detect-fraud':
-          { const r = await this.detectFraud(orgId, userId, query); response = r.response; data = r.data; }
+          { const r = await this.detectFraud(orgId); response = r.response; data = r.data; }
           break;
         case 'detect-duplicates':
-          { const r = await this.detectDuplicates(orgId, userId, query); response = r.response; data = r.data; }
+          { const r = await this.detectDuplicates(orgId); response = r.response; data = r.data; }
           break;
         case 'generate-report':
-          { const r = await this.generateManagementReport(orgId, userId, query); response = r.response; data = r.data; }
+          { const r = await this.generateManagementReport(orgId); response = r.response; data = r.data; }
           break;
         case 'suggest-journal':
-          { const r = await this.suggestJournalEntry(orgId, userId, query); response = r.response; data = r.data; }
+          { const r = await this.suggestJournalEntry(orgId, query); response = r.response; data = r.data; }
           break;
         case 'explain-ifrs':
-          { const r = await this.explainIFRS(orgId, userId, query); response = r.response; data = r.data; }
+          { const r = await this.explainIFRS(orgId); response = r.response; data = r.data; }
           break;
         case 'summarize-month':
-          { const r = await this.summarizeMonthly(orgId, userId, query); response = r.response; data = r.data; }
+          { const r = await this.summarizeMonthly(orgId); response = r.response; data = r.data; }
           break;
         case 'executive-insights':
-          { const r = await this.executiveInsights(orgId, userId, query); response = r.response; data = r.data; }
+          { const r = await this.executiveInsights(orgId); response = r.response; data = r.data; }
           break;
         default:
-          { const r = await this.queryData(orgId, userId, query); response = r.response; data = r.data; }
+          { const r = await this.queryData(orgId); response = r.response; data = r.data; }
       }
 
       await createAuditLog({
@@ -176,9 +127,7 @@ export class AccountingAssistant {
     }
   }
 
-  // ─── Capability Handlers ───
-
-  private async explainFinancials(orgId: string, userId: string, query: string): Promise<{ response: string; data: any }> {
+  private async explainFinancials(orgId: string): Promise<{ response: string; data: any }> {
     const now = new Date();
     const startDate = new Date(now.getFullYear(), 0, 1);
     const endDate = now;
@@ -188,62 +137,65 @@ export class AccountingAssistant {
     const bs = await getBalanceSheet(orgId, endDate);
     const cf = await getCashFlowStatement(orgId, startDate, endDate);
 
-    const financialContext = `
-INCOME STATEMENT (${fmtDate(startDate)} – ${fmtDate(endDate)}):
-- Total Revenue: ${fmtNaira(kobo(current.totalRevenue))}
-- Cost of Sales: ${fmtNaira(kobo(current.costOfSales?.total))}
-- Gross Profit: ${fmtNaira(kobo(current.grossProfit))}
-- Operating Expenses: ${fmtNaira(kobo(current.totalOperatingExpenses))}
-- Operating Profit: ${fmtNaira(kobo(current.operatingProfit))}
-- Net Profit: ${fmtNaira(kobo(current.netProfit))}
-- Gross Margin: ${current.totalRevenue > 0 ? ((kobo(current.grossProfit) / kobo(current.totalRevenue)) * 100).toFixed(1) : '0'}%
-- Net Margin: ${current.totalRevenue > 0 ? ((kobo(current.netProfit) / kobo(current.totalRevenue)) * 100).toFixed(1) : '0'}%
+    const rev = kobo(current.totalRevenue);
+    const cos = kobo(current.costOfSales?.total);
+    const gp = kobo(current.grossProfit);
+    const opex = kobo(current.totalOperatingExpenses);
+    const np = kobo(current.netProfit);
 
-BALANCE SHEET (as at ${fmtDate(endDate)}):
-${this.formatBalanceSheetSections(bs)}
+    const response = `Your financial position for the period ${fmtDate(startDate)} through ${fmtDate(endDate)}:
 
-CASH FLOW (${fmtDate(startDate)} – ${fmtDate(endDate)}):
-${this.formatCashFlow(cf)}
-`;
+INCOME STATEMENT
+Revenue: ${fmtNaira(rev)}
+Cost of Sales: ${fmtNaira(cos)}
+Gross Profit: ${fmtNaira(gp)} (${pct(gp, rev)}% margin)
+Operating Expenses: ${fmtNaira(opex)}
+Net Profit: ${fmtNaira(np)} (${pct(np, rev)}% net margin)
 
-    const systemPrompt = 'You are a professional accountant and financial analyst. Explain the financial statements clearly in simple terms. Focus on key takeaways, trends, and areas needing attention. Use Nigerian Naira (₦) amounts.';
-    const llmPrompt = `The user asks: "${query}"\n\nHere is the financial data:\n${financialContext}\n\nProvide a clear, insightful explanation of these financial statements addressing the user's question.`;
-    const response = await this.callLLM(llmPrompt, systemPrompt);
+BALANCE SHEET HIGHLIGHTS
+${bs?.sections ? bs.sections.map((s: any) => `${s.label}: ${fmtNaira(kobo(s.total))}`).join('\n') : 'No balance sheet data available.'}
+
+CASH FLOW SUMMARY
+${cf?.current ? `Operating: ${fmtNaira(kobo(cf.current.netCashFromOperatingActivities))}
+Investing: ${fmtNaira(kobo(cf.current.netCashFromInvestingActivities))}
+Financing: ${fmtNaira(kobo(cf.current.netCashFromFinancingActivities))}
+Net Change: ${fmtNaira(kobo(cf.current.netCashChange))}` : 'No cash flow data available.'}`;
+
     return { response, data: { pnl: current, balanceSheet: bs, cashFlow: cf } };
   }
 
-  private async explainTrialBalance(orgId: string, userId: string, query: string): Promise<{ response: string; data: any }> {
+  private async explainTrialBalance(orgId: string): Promise<{ response: string; data: any }> {
     const now = new Date();
     const startDate = new Date('2000-01-01');
     const tbRows = await getTrialBalance(orgId, startDate, now);
 
     const totalDr = tbRows.reduce((s: number, r: any) => s + kobo(r.closingDebit), 0);
     const totalCr = tbRows.reduce((s: number, r: any) => s + kobo(r.closingCredit), 0);
-    const difference = totalDr - totalCr;
+    const diff = totalDr - totalCr;
 
     const topRows = tbRows
       .filter((r: any) => Math.abs(kobo(r.closingDebit) - kobo(r.closingCredit)) > 0)
-      .slice(0, 30)
-      .map((r: any) => `${r.accountCode} ${r.accountName}: Dr ${fmtNaira(kobo(r.closingDebit))} | Cr ${fmtNaira(kobo(r.closingCredit))} | Balance ${fmtNaira(kobo(r.closingDebit) - kobo(r.closingCredit))}`)
-      .join('\n');
+      .slice(0, 15)
+      .map((r: any) => `${r.accountCode} ${r.accountName}: ${fmtNaira(kobo(r.closingDebit) - kobo(r.closingCredit))}`);
 
-    const tbContext = `
-TRIAL BALANCE SUMMARY:
+    const balanceNote = Math.abs(diff) < 1
+      ? 'Your trial balance is in balance — total debits equal total credits.'
+      : `Your trial balance has a difference of ${fmtNaira(Math.abs(diff))} (${diff >= 0 ? 'debit' : 'credit'} side larger). This may indicate a posting error or missing entry.`;
+
+    const response = `${balanceNote}
+
+TRIAL BALANCE SUMMARY
 Total Debits: ${fmtNaira(totalDr)}
 Total Credits: ${fmtNaira(totalCr)}
-Difference: ${fmtNaira(Math.abs(difference))} (${difference >= 0 ? 'Debit' : 'Credit'} side larger)
+Account Count: ${tbRows.length}
 
-TOP ACCOUNTS (by balance):
-${topRows}
-`;
+TOP ACCOUNTS BY BALANCE
+${topRows.join('\n') || 'No accounts with balances found.'}`;
 
-    const systemPrompt = 'You are a professional accountant. Analyze the trial balance and explain any differences, unusual balances, or notable items. Provide actionable insights.';
-    const llmPrompt = `The user asks: "${query}"\n\nHere is the Trial Balance data:\n${tbContext}\n\nAnalyze the trial balance and explain what the user is asking about.`;
-    const response = await this.callLLM(llmPrompt, systemPrompt);
-    return { response, data: { totalDr, totalCr, difference, accountCount: tbRows.length } };
+    return { response, data: { totalDr, totalCr, difference: diff, accountCount: tbRows.length } };
   }
 
-  private async predictCashFlow(orgId: string, userId: string, query: string): Promise<{ response: string; data: any }> {
+  private async predictCashFlow(orgId: string): Promise<{ response: string; data: any }> {
     const now = new Date();
     const startDate = new Date(now.getFullYear(), now.getMonth() - 6, 1);
     const endDate = now;
@@ -255,40 +207,36 @@ ${topRows}
     const avgOutflow = metrics.expenseTrend.length > 0
       ? metrics.expenseTrend.reduce((s: any, t: any) => s + kobo(t.value), 0) / metrics.expenseTrend.length
       : 0;
+    const netMonthly = avgInflow - avgOutflow;
     const cashRunway = avgOutflow > 0 && metrics.cashPosition > 0
       ? Math.round(metrics.cashPosition / (avgOutflow / 30))
       : 0;
 
-    const cashContext = `
-CURRENT CASH POSITION: ${fmtNaira(metrics.cashPosition)}
-WORKING CAPITAL: ${fmtNaira(metrics.workingCapital)}
-CASH FLOW (operating): ${fmtNaira(metrics.cashFlow)}
-AVERAGE MONTHLY INFLOW: ${fmtNaira(Math.round(avgInflow))}
-AVERAGE MONTHLY OUTFLOW: ${fmtNaira(Math.round(avgOutflow))}
-NET MONTHLY BURN: ${fmtNaira(Math.round(avgInflow - avgOutflow))}
-ESTIMATED CASH RUNWAY: ${cashRunway} days
-AR DAYS: ${metrics.arDays}
-AP DAYS: ${metrics.apDays}
-INVENTORY DAYS: ${metrics.inventoryDays}
-CASH CONVERSION CYCLE: ${metrics.cashConversionCycle} days
+    const response = `CASH FLOW ANALYSIS
 
-CASH FORECAST (next 6 months):
-${(metrics.cashForecast || []).map((m: any) => `  ${m.month}: In ${fmtNaira(m.inflows)} | Out ${fmtNaira(m.outflows)} | Net ${fmtNaira(m.net)} | Balance ${fmtNaira(m.balance)}`).join('\n')}
-`;
+Current Position: You have ${fmtNaira(metrics.cashPosition)} in cash with working capital of ${fmtNaira(metrics.workingCapital)}.
 
-    const systemPrompt = 'You are a financial analyst specializing in cash flow forecasting. Provide clear analysis of the cash position and future projections. Highlight risks and opportunities.';
-    const llmPrompt = `The user asks: "${query}"\n\nHere is the cash flow data:\n${cashContext}\n\nProvide a cash flow analysis and forecast addressing the user's question.`;
-    const response = await this.callLLM(llmPrompt, systemPrompt);
+Monthly Trends: Average monthly inflow is ${fmtNaira(Math.round(avgInflow))}, average outflow is ${fmtNaira(Math.round(avgOutflow))}, resulting in a net ${netMonthly >= 0 ? 'surplus' : 'burn'} of ${fmtNaira(Math.round(Math.abs(netMonthly)))} per month.
+
+Runway: At your current burn rate, you have approximately ${cashRunway} days of cash runway remaining.
+
+Efficiency Metrics:
+- AR Days: ${metrics.arDays} days to collect receivables
+- AP Days: ${metrics.apDays} days to pay suppliers
+- Cash Conversion Cycle: ${metrics.cashConversionCycle} days
+
+CASH FORECAST
+${(metrics.cashForecast || []).map((m: any) => `${m.month}: In ${fmtNaira(m.inflows)} / Out ${fmtNaira(m.outflows)} / Balance ${fmtNaira(m.balance)}`).join('\n') || 'No forecast data available.'}`;
+
     return { response, data: { cashPosition: metrics.cashPosition, cashFlow: metrics.cashFlow, forecast: metrics.cashForecast, cashRunway } };
   }
 
-  private async detectFraud(orgId: string, userId: string, query: string): Promise<{ response: string; data: any }> {
+  private async detectFraud(orgId: string): Promise<{ response: string; data: any }> {
     const now = new Date();
     const startDate = new Date(now.getFullYear(), now.getMonth() - 3, 1);
     const findings: string[] = [];
     let totalFlags = 0;
 
-    // 1. Round amount transactions
     const roundTxns = await db
       .select({ count: sql<number>`count(*)`, total: sql<number>`coalesce(sum(${journalLines.debitAmount}), 0)` })
       .from(journalLines)
@@ -303,17 +251,12 @@ ${(metrics.cashForecast || []).map((m: any) => `  ${m.month}: In ${fmtNaira(m.in
         )
       );
     if (kobo(roundTxns[0]?.count) > 10) {
-      findings.push(`Found ${roundTxns[0]?.count} round-amount transactions totaling ${fmtNaira(kobo(roundTxns[0]?.total))} (amounts in round hundreds of thousands) in the last 3 months.`);
+      findings.push(`Round-amount transactions: ${roundTxns[0]?.count} transactions totaling ${fmtNaira(kobo(roundTxns[0]?.total))} in round hundreds of thousands.`);
       totalFlags += kobo(roundTxns[0]?.count);
     }
 
-    // 2. Duplicate journal entries (same amount on same day)
     const dupJEs = await db
-      .select({
-        count: sql<number>`count(*)`,
-        date: journalEntries.date,
-        amount: journalLines.debitAmount,
-      })
+      .select({ count: sql<number>`count(*)`, date: journalEntries.date, amount: journalLines.debitAmount })
       .from(journalLines)
       .innerJoin(journalEntries, eq(journalLines.entryId, journalEntries.id))
       .where(
@@ -328,11 +271,10 @@ ${(metrics.cashForecast || []).map((m: any) => `  ${m.month}: In ${fmtNaira(m.in
       .groupBy(journalEntries.date, journalLines.debitAmount)
       .having(sql`count(*) > 3`);
     if (dupJEs.length > 0) {
-      findings.push(`Found ${dupJEs.length} instances of multiple entries with identical amounts on the same date — potential duplicate posting.`);
+      findings.push(`Duplicate journal entries: ${dupJEs.length} instances of identical amounts posted on the same date.`);
       totalFlags += dupJEs.length;
     }
 
-    // 3. Weekend/holiday transactions
     const weekendTxns = await db
       .select({ count: sql<number>`count(*)`, total: sql<number>`coalesce(sum(${journalLines.debitAmount}), 0)` })
       .from(journalLines)
@@ -342,17 +284,16 @@ ${(metrics.cashForecast || []).map((m: any) => `  ${m.month}: In ${fmtNaira(m.in
           eq(journalEntries.orgId, orgId),
           gte(journalEntries.date, startDate),
           lte(journalEntries.date, now),
-          sql`EXTRACT(DOW FROM ${journalEntries.date}) IN (0, 6)`, // Sunday=0, Saturday=6
+          sql`EXTRACT(DOW FROM ${journalEntries.date}) IN (0, 6)`,
           sql`${journalLines.debitAmount} > 0`,
           sql`${journalEntries.status} NOT IN ('draft', 'pending_review', 'cancelled', 'reversed')`
         )
       );
     if (kobo(weekendTxns[0]?.count) > 5) {
-      findings.push(`Found ${weekendTxns[0]?.count} transactions (${fmtNaira(kobo(weekendTxns[0]?.total))}) posted on weekends.`);
+      findings.push(`Weekend transactions: ${weekendTxns[0]?.count} transactions (${fmtNaira(kobo(weekendTxns[0]?.total))}) posted on weekends.`);
       totalFlags += kobo(weekendTxns[0]?.count);
     }
 
-    // 4. Unusual large transactions (> 2x average)
     const avgResult = await db
       .select({ avg: sql<number>`coalesce(avg(${journalLines.debitAmount}), 0)` })
       .from(journalLines)
@@ -383,35 +324,31 @@ ${(metrics.cashForecast || []).map((m: any) => `  ${m.month}: In ${fmtNaira(m.in
           )
         );
       if (kobo(largeResult?.count) > 0) {
-        findings.push(`Found ${largeResult?.count} transactions exceeding ${fmtNaira(Math.round(largeThreshold))} (2x average transaction size).`);
+        findings.push(`Large transactions: ${largeResult?.count} transactions exceeding ${fmtNaira(Math.round(largeThreshold))} (2x average).`);
         totalFlags += kobo(largeResult?.count);
       }
     }
 
-    const fraudContext = `FRAUD DETECTION ANALYSIS (last 3 months):
-Total flags raised: ${totalFlags}
-${findings.map((f, i) => `${i + 1}. ${f}`).join('\n')}
-${findings.length === 0 ? 'No suspicious patterns detected.' : ''}`;
+    const summary = findings.length === 0
+      ? 'No suspicious patterns were detected in your transactions over the last 3 months. Your accounts appear clean.'
+      : `I detected ${totalFlags} potential red flags that may warrant review:
 
-    const systemPrompt = 'You are a forensic accountant specializing in fraud detection. Analyze potential red flags and provide risk assessment. Be professional and precise.';
-    const llmPrompt = `The user asks: "${query}"\n\n${fraudContext}\n\nProvide a fraud risk assessment addressing the user's question.`;
-    const response = await this.callLLM(llmPrompt, systemPrompt);
-    return { response, data: { findings, totalFlags } };
+${findings.map((f, i) => `${i + 1}. ${f}`).join('\n')}
+
+Recommendation: Review each flagged item and investigate further if needed.`;
+
+    return { response: `FRAUD DETECTION ANALYSIS (last 3 months)
+
+${summary}`, data: { findings, totalFlags } };
   }
 
-  private async detectDuplicates(orgId: string, userId: string, query: string): Promise<{ response: string; data: any }> {
+  private async detectDuplicates(orgId: string): Promise<{ response: string; data: any }> {
     const now = new Date();
     const startDate = new Date(now.getFullYear(), now.getMonth() - 6, 1);
     const duplicates: any[] = [];
 
-    // Check expenses for same amount + similar description in close timeframe
     const recentExpenses = await db
-      .select({
-        id: paymentsMade.id,
-        amount: paymentsMade.amount,
-        date: paymentsMade.date,
-        reference: paymentsMade.reference,
-      })
+      .select({ id: paymentsMade.id, amount: paymentsMade.amount, date: paymentsMade.date, reference: paymentsMade.reference })
       .from(paymentsMade)
       .where(
         and(
@@ -430,72 +367,68 @@ ${findings.length === 0 ? 'No suspicious patterns detected.' : ''}`;
         const amountDiff = Math.abs(kobo(a.amount) - kobo(b.amount));
         const daysDiff = Math.abs(new Date(a.date).getTime() - new Date(b.date).getTime()) / (1000 * 60 * 60 * 24);
         if (amountDiff <= 100000 && daysDiff <= 7) {
-          duplicates.push({
-            id1: a.id, id2: b.id,
-            amount1: kobo(a.amount), amount2: kobo(b.amount),
-            date1: fmtDate(a.date), date2: fmtDate(b.date),
-            ref1: a.reference || '', ref2: b.reference || '',
-            similarity: 'high',
-          });
+          duplicates.push({ amount1: kobo(a.amount), amount2: kobo(b.amount), date1: fmtDate(a.date), date2: fmtDate(b.date), ref1: a.reference || '', ref2: b.reference || '' });
           if (duplicates.length >= 15) break;
         }
       }
       if (duplicates.length >= 15) break;
     }
 
-    const dupContext = `DUPLICATE EXPENSE ANALYSIS (last 6 months):
-Found ${duplicates.length} potential duplicate payment(s).
-${duplicates.slice(0, 10).map((d, i) =>
-  `  ${i + 1}. ${fmtNaira(d.amount1)} on ${d.date1} vs ${fmtNaira(d.amount2)} on ${d.date2} — ${d.daysDiff.toFixed(0)} days apart`).join('\n')}
-${duplicates.length === 0 ? 'No potential duplicate expenses detected.' : ''}`;
+    const response = duplicates.length === 0
+      ? `DUPLICATE EXPENSE ANALYSIS (last 6 months)
 
-    const systemPrompt = 'You are an accounting analyst. Identify and explain potential duplicate expenses, providing recommendations for investigation and prevention.';
-    const llmPrompt = `The user asks: "${query}"\n\n${dupContext}\n\nAnalyze the duplicate expense findings and address the user's question.`;
-    const response = await this.callLLM(llmPrompt, systemPrompt);
+No potential duplicate expenses were found in your payment records. Your expense data looks clean.`
+      : `DUPLICATE EXPENSE ANALYSIS (last 6 months)
+
+Found ${duplicates.length} potential duplicate payment(s):
+
+${duplicates.slice(0, 10).map((d, i) => `${i + 1}. ${fmtNaira(d.amount1)} on ${d.date1} and ${fmtNaira(d.amount2)} on ${d.date2}`).join('\n')}
+
+Recommendation: Review these pairs and reverse any that are confirmed duplicates.`;
+
     return { response, data: { duplicatesFound: duplicates.length, duplicates: duplicates.slice(0, 10) } };
   }
 
-  private async generateManagementReport(orgId: string, userId: string, query: string): Promise<{ response: string; data: any }> {
+  private async generateManagementReport(orgId: string): Promise<{ response: string; data: any }> {
     const now = new Date();
-    const startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const endDate = now;
     const fyStart = new Date(now.getFullYear(), 0, 1);
 
     const pnl = await getProfitAndLoss(orgId, fyStart, endDate);
     const current = pnl?.current || {};
-    const metrics = await getDashboardMetrics(orgId, startDate, endDate);
+    const metrics = await getDashboardMetrics(orgId, fyStart, endDate);
 
-    const reportContext = `
-MANAGEMENT REPORT — ${fmtDate(fyStart)} to ${fmtDate(endDate)}
+    const rev = kobo(current.totalRevenue);
+    const gp = kobo(current.grossProfit);
+    const np = kobo(current.netProfit);
 
-FINANCIAL HIGHLIGHTS:
-- Revenue: ${fmtNaira(kobo(current.totalRevenue))}
-- Cost of Sales: ${fmtNaira(kobo(current.costOfSales?.total))}
-- Gross Profit: ${fmtNaira(kobo(current.grossProfit))} (${current.totalRevenue > 0 ? ((kobo(current.grossProfit) / kobo(current.totalRevenue)) * 100).toFixed(1) : 0}%)
-- Operating Expenses: ${fmtNaira(kobo(current.totalOperatingExpenses))}
-- Net Profit: ${fmtNaira(kobo(current.netProfit))} (${current.totalRevenue > 0 ? ((kobo(current.netProfit) / kobo(current.totalRevenue)) * 100).toFixed(1) : 0}%)
+    const response = `MANAGEMENT REPORT — ${fmtDate(fyStart)} to ${fmtDate(endDate)}
 
-KEY RATIOS:
-- Current Ratio: ${metrics.currentRatio?.toFixed(2) || 'N/A'}
-- Quick Ratio: ${metrics.quickRatio?.toFixed(2) || 'N/A'}
-- AR Days: ${metrics.arDays || 'N/A'}
-- AP Days: ${metrics.apDays || 'N/A'}
-- Cash Conversion Cycle: ${metrics.cashConversionCycle || 'N/A'} days
+EXECUTIVE SUMMARY
+Revenue: ${fmtNaira(rev)}
+Gross Profit: ${fmtNaira(gp)} (${pct(gp, rev)}% margin)
+Net Profit: ${fmtNaira(np)} (${pct(np, rev)}% net margin)
 
-CASH POSITION: ${fmtNaira(metrics.cashPosition)}
-WORKING CAPITAL: ${fmtNaira(metrics.workingCapital)}
-TAX PAYABLE: ${fmtNaira(metrics.taxPayable)}
-OUTSTANDING INVOICES: ${metrics.outstandingInvoices?.count || 0} (${fmtNaira(metrics.outstandingInvoices?.total || 0)})
-OUTSTANDING BILLS: ${metrics.outstandingBills?.count || 0} (${fmtNaira(metrics.outstandingBills?.total || 0)})
-`;
+KEY FINANCIAL RATIOS
+Current Ratio: ${metrics.currentRatio?.toFixed(2) || 'N/A'}
+Quick Ratio: ${metrics.quickRatio?.toFixed(2) || 'N/A'}
+AR Days: ${metrics.arDays || 'N/A'} days
+AP Days: ${metrics.apDays || 'N/A'} days
+Cash Conversion Cycle: ${metrics.cashConversionCycle || 'N/A'} days
 
-    const systemPrompt = 'You are a management accountant preparing an executive report. Generate a professional, concise management report with clear sections: Executive Summary, Financial Performance, Key Ratios, Cash Position, and Recommendations. Use Nigerian context.';
-    const llmPrompt = `The user asks: "${query}"\n\nHere is the financial data:\n${reportContext}\n\nGenerate a comprehensive management report addressing the user's request.`;
-    const response = await this.callLLM(llmPrompt, systemPrompt);
+CASH & WORKING CAPITAL
+Cash Position: ${fmtNaira(metrics.cashPosition)}
+Working Capital: ${fmtNaira(metrics.workingCapital)}
+Tax Payable: ${fmtNaira(metrics.taxPayable)}
+
+OUTSTANDING ITEMS
+Invoices: ${metrics.outstandingInvoices?.count || 0} (${fmtNaira(metrics.outstandingInvoices?.total || 0)})
+Bills: ${metrics.outstandingBills?.count || 0} (${fmtNaira(metrics.outstandingBills?.total || 0)})`;
+
     return { response, data: { pnl: current, metrics } };
   }
 
-  private async suggestJournalEntry(orgId: string, userId: string, query: string): Promise<{ response: string; data: any }> {
+  private async suggestJournalEntry(orgId: string, query: string): Promise<{ response: string; data: any }> {
     const orgAccounts = await db
       .select({ id: accounts.id, code: accounts.code, name: accounts.name, type: accounts.type, subType: accounts.subType })
       .from(accounts)
@@ -503,27 +436,30 @@ OUTSTANDING BILLS: ${metrics.outstandingBills?.count || 0} (${fmtNaira(metrics.o
 
     const accountsList = orgAccounts
       .filter(a => a.code && a.name)
-      .slice(0, 100)
-      .map(a => `${a.code} ${a.name} (${a.type}${a.subType ? ' — ' + a.subType : ''})`)
+      .slice(0, 60)
+      .map(a => `  ${a.code} ${a.name} (${a.type}${a.subType ? ' — ' + a.subType : ''})`)
       .join('\n');
 
-    const journalContext = `
-AVAILABLE ACCOUNTS (${orgAccounts.length} total, showing first 100):
-${accountsList}
+    const response = `JOURNAL ENTRY SUGGESTION
 
-The user wants a journal entry for: "${query}"
-`;
+Based on your request: "${query}"
 
-    const systemPrompt = 'You are a professional accountant. Suggest appropriate journal entries based on the user\'s description. Include: Date, Accounts to Debit and Credit (with codes), Amounts in Naira (₦), and a clear narrative explanation. Ensure entries follow double-entry bookkeeping and IFRS standards.';
-    const llmPrompt = `${journalContext}\n\nSuggest appropriate journal entries for the user's request.`;
-    const response = await this.callLLM(llmPrompt, systemPrompt);
+Your chart of accounts has ${orgAccounts.length} accounts. Here are the available accounts to construct your journal entry:
+
+${accountsList || 'No accounts available.'}
+
+To create a journal entry, you need:
+1. A date for the transaction
+2. At least one account to debit and one to credit
+3. The amount(s) in Naira
+4. A clear narrative description
+
+You can create this journal entry manually from the Journals page, or provide more details about the transaction type (e.g., purchase, sale, depreciation, expense accrual) and I can give a more specific suggestion.`;
+
     return { response, data: { accountsCount: orgAccounts.length } };
   }
 
-  private async explainIFRS(orgId: string, userId: string, query: string): Promise<{ response: string; data: any }> {
-    const now = new Date();
-    const startDate = new Date('2000-01-01');
-    const tbRows = await getTrialBalance(orgId, startDate, now);
+  private async explainIFRS(orgId: string): Promise<{ response: string; data: any }> {
     const orgAccounts = await db
       .select()
       .from(accounts)
@@ -539,30 +475,29 @@ The user wants a journal entry for: "${query}"
     const hasRevenueRecognition = orgAccounts.some((a: any) => a.code === '101050' || a.systemAccountRole === 'contract_asset');
     const hasEcl = orgAccounts.some((a: any) => a.code?.startsWith('206'));
 
-    const ifrsContext = `
-ORGANISATION ACCOUNT STRUCTURE:
-Total accounts: ${orgAccounts.length}
+    const features = [
+      hasLease ? '- IFRS 16 Leases: Your organisation has lease accounts set up (ROU assets and lease liabilities). Ensure lease contracts are recognised on the balance sheet with corresponding depreciation and interest expense.' : '- IFRS 16 Leases: No lease accounts detected. If you have leases, consider setting up the lease accounting module.',
+      hasRevenueRecognition ? '- IFRS 15 Revenue Recognition: Contract asset accounts are present. Ensure revenue from contracts with customers is recognised when performance obligations are satisfied.' : '- IFRS 15 Revenue Recognition: No contract asset accounts detected. Review if you have long-term contracts requiring revenue recognition over time.',
+      hasEcl ? '- IFRS 9 ECL: Impairment accounts are present. Ensure expected credit losses are measured on your financial assets.' : '- IFRS 9 ECL: No impairment accounts detected. Review if you need to provide for expected credit losses.',
+    ];
+
+    const response = `IFRS REPORTING IMPACT ANALYSIS
+
+Your organisation has ${orgAccounts.length} accounts configured across these categories:
 ${Object.entries(accountTypes).map(([t, c]) => `  ${t}: ${c}`).join('\n')}
 
-IFRS-RELEVANT FEATURES DETECTED:
-${hasLease ? '- IFRS 16 Leases: ROU asset and lease liability accounts present' : '- No IFRS 16 lease accounts detected'}
-${hasRevenueRecognition ? '- IFRS 15 Revenue Recognition: Contract asset account present' : '- No IFRS 15 revenue recognition accounts detected'}
-${hasEcl ? '- IFRS 9 ECL: Impairment/allowance accounts present' : '- No IFRS 9 ECL accounts detected'}
+RELEVANT IFRS STANDARDS
+${features.join('\n')}
 
-The user asks: "${query}"
-`;
+For specific guidance on any IFRS standard, please consult a professional accountant. This analysis is based on your account structure and not a full compliance review.`;
 
-    const systemPrompt = 'You are an IFRS expert accountant. Explain International Financial Reporting Standards impacts clearly, relating them to the organisation\'s specific account structure. Provide practical guidance on compliance and implementation.';
-    const llmPrompt = `${ifrsContext}\n\nExplain the IFRS impacts relevant to this organisation addressing the user's question.`;
-    const response = await this.callLLM(llmPrompt, systemPrompt);
     return { response, data: { accountTypes, hasLease, hasRevenueRecognition } };
   }
 
-  private async summarizeMonthly(orgId: string, userId: string, query: string): Promise<{ response: string; data: any }> {
+  private async summarizeMonthly(orgId: string): Promise<{ response: string; data: any }> {
     const now = new Date();
     const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const priorMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const fyStart = new Date(now.getFullYear(), 0, 1);
 
     const currentPnl = await getProfitAndLoss(orgId, currentMonthStart, now);
     const priorPnl = await getProfitAndLoss(orgId, priorMonthStart, currentMonthStart);
@@ -570,93 +505,84 @@ The user asks: "${query}"
     const prior = priorPnl?.current || {};
     const metrics = await getDashboardMetrics(orgId, currentMonthStart, now);
 
-    const monthContext = `
-MONTHLY PERFORMANCE SUMMARY
-Period: ${fmtDate(currentMonthStart)} – ${fmtDate(now)}
+    const cRev = kobo(current.totalRevenue);
+    const cExp = kobo(current.totalOperatingExpenses);
+    const cNp = kobo(current.netProfit);
+    const pRev = kobo(prior.totalRevenue);
+    const pNp = kobo(prior.netProfit);
 
-CURRENT MONTH:
-- Revenue: ${fmtNaira(kobo(current.totalRevenue))}
-- Expenses: ${fmtNaira(kobo(current.totalOperatingExpenses))}
-- Net Profit: ${fmtNaira(kobo(current.netProfit))}
+    const revChange = pRev > 0 ? ((cRev - pRev) / pRev * 100).toFixed(1) : 'N/A';
+    const npChange = pNp > 0 ? ((cNp - pNp) / pNp * 100).toFixed(1) : 'N/A';
 
-PRIOR MONTH:
-- Revenue: ${fmtNaira(kobo(prior.totalRevenue))}
-- Expenses: ${fmtNaira(kobo(prior.totalOperatingExpenses))}
-- Net Profit: ${fmtNaira(kobo(prior.netProfit))}
+    const response = `MONTHLY PERFORMANCE SUMMARY
+Period: ${fmtDate(currentMonthStart)} — ${fmtDate(now)}
 
-MONTH-OVER-MONTH CHANGE:
-- Revenue: ${prior.totalRevenue > 0 ? (((kobo(current.totalRevenue) - kobo(prior.totalRevenue)) / kobo(prior.totalRevenue)) * 100).toFixed(1) : 'N/A'}%
-- Net Profit: ${prior.netProfit > 0 ? (((kobo(current.netProfit) - kobo(prior.netProfit)) / kobo(prior.netProfit)) * 100).toFixed(1) : 'N/A'}%
+CURRENT MONTH
+Revenue: ${fmtNaira(cRev)}
+Expenses: ${fmtNaira(cExp)}
+Net Profit: ${fmtNaira(cNp)}
 
-YEAR TO DATE:
-- Revenue: ${fmtNaira(kobo(current.totalRevenue))}
-- Net Profit: ${fmtNaira(kobo(current.netProfit))}
+VS PRIOR MONTH
+Revenue Change: ${revChange === 'N/A' ? 'N/A' : `${direction(cRev - pRev)}${revChange}%`}
+Profit Change: ${npChange === 'N/A' ? 'N/A' : `${direction(cNp - pNp)}${npChange}%`}
 
-CASH POSITION: ${fmtNaira(metrics.cashPosition)}
-WORKING CAPITAL: ${fmtNaira(metrics.workingCapital)}
-`;
+CASH POSITION
+Cash: ${fmtNaira(metrics.cashPosition)}
+Working Capital: ${fmtNaira(metrics.workingCapital)}`;
 
-    const systemPrompt = 'You are a management accountant. Provide a concise monthly performance summary comparing current vs prior month, with key highlights, trends, and actionable recommendations.';
-    const llmPrompt = `The user asks: "${query}"\n\n${monthContext}\n\nProvide a monthly performance summary addressing the user's question.`;
-    const response = await this.callLLM(llmPrompt, systemPrompt);
     return { response, data: { current, prior, metrics } };
   }
 
-  private async executiveInsights(orgId: string, userId: string, query: string): Promise<{ response: string; data: any }> {
+  private async executiveInsights(orgId: string): Promise<{ response: string; data: any }> {
     const now = new Date();
-    const startDate = new Date(now.getFullYear(), now.getMonth() - 6, 1);
     const fyStart = new Date(now.getFullYear(), 0, 1);
 
     const metrics = await getDashboardMetrics(orgId, fyStart, now);
     const pnl = await getProfitAndLoss(orgId, fyStart, now);
     const current = pnl?.current || {};
 
+    const rev = kobo(current.totalRevenue);
+    const np = kobo(current.netProfit);
+    const margin = rev > 0 ? (np / rev * 100).toFixed(1) : '0';
+
     const trends = metrics.profitTrend?.slice(-6) || [];
     const profitGrowth = trends.length >= 2
       ? ((kobo(trends[trends.length - 1]?.value) - kobo(trends[0]?.value)) / (Math.abs(kobo(trends[0]?.value)) || 1)) * 100
       : 0;
 
-    const insightContext = `
-EXECUTIVE INSIGHTS — ${fmtDate(fyStart)} to ${fmtDate(now)}
+    const response = `EXECUTIVE INSIGHTS — ${fmtDate(fyStart)} to ${fmtDate(now)}
 
-FINANCIAL HEALTH:
-- Revenue: ${fmtNaira(kobo(current.totalRevenue))}
-- Net Profit: ${fmtNaira(kobo(current.netProfit))}
-- Net Margin: ${current.totalRevenue > 0 ? ((kobo(current.netProfit) / kobo(current.totalRevenue)) * 100).toFixed(1) : '0'}%
-- Profit Trend (6mo): ${profitGrowth >= 0 ? '+' : ''}${profitGrowth.toFixed(1)}%
+FINANCIAL HEALTH
+Revenue: ${fmtNaira(rev)}
+Net Profit: ${fmtNaira(np)}
+Net Margin: ${margin}%
+Profit Trend (6mo): ${profitGrowth >= 0 ? '+' : ''}${profitGrowth.toFixed(1)}%
 
-LIQUIDITY:
-- Cash Position: ${fmtNaira(metrics.cashPosition)}
-- Working Capital: ${fmtNaira(metrics.workingCapital)}
-- Current Ratio: ${metrics.currentRatio?.toFixed(2) || 'N/A'}
-- Quick Ratio: ${metrics.quickRatio?.toFixed(2) || 'N/A'}
+LIQUIDITY
+Cash Position: ${fmtNaira(metrics.cashPosition)}
+Working Capital: ${fmtNaira(metrics.workingCapital)}
+Current Ratio: ${metrics.currentRatio?.toFixed(2) || 'N/A'}
 
-EFFICIENCY:
-- AR Days: ${metrics.arDays || 'N/A'}
-- AP Days: ${metrics.apDays || 'N/A'}
-- Inventory Days: ${metrics.inventoryDays || 'N/A'}
-- Cash Conversion Cycle: ${metrics.cashConversionCycle || 'N/A'} days
+EFFICIENCY
+AR Days: ${metrics.arDays || 'N/A'} days to collect
+AP Days: ${metrics.apDays || 'N/A'} days to pay
+Cash Conversion Cycle: ${metrics.cashConversionCycle || 'N/A'} days
 
-RISK:
-- Tax Payable: ${fmtNaira(metrics.taxPayable)}
-- Overdue Customers: ${metrics.overdueCustomers?.length || 0}
-- Upcoming Bills: ${metrics.upcomingBills?.length || 0}
-- Outstanding Receivables: ${fmtNaira(metrics.totalReceivables)}
-- Outstanding Payables: ${fmtNaira(metrics.totalPayables)}
-`;
+RISK INDICATORS
+Tax Payable: ${fmtNaira(metrics.taxPayable)}
+Overdue Customers: ${metrics.overdueCustomers?.length || 0}
+Upcoming Bills: ${metrics.upcomingBills?.length || 0}
+Outstanding Receivables: ${fmtNaira(metrics.totalReceivables)}
+Outstanding Payables: ${fmtNaira(metrics.totalPayables)}`;
 
-    const systemPrompt = 'You are a CFO-level strategic advisor. Generate high-level executive insights with a focus on strategic direction, risk assessment, and growth opportunities. Be concise and impactful.';
-    const llmPrompt = `The user asks: "${query}"\n\n${insightContext}\n\nProvide executive-level strategic insights addressing the user's question.`;
-    const response = await this.callLLM(llmPrompt, systemPrompt);
     return { response, data: { metrics, profitGrowth } };
   }
 
-  private async queryData(orgId: string, userId: string, query: string): Promise<{ response: string; data: any }> {
+  private async queryData(orgId: string): Promise<{ response: string; data: any }> {
     const now = new Date();
     const startDate = new Date(now.getFullYear(), 0, 1);
     const endDate = now;
 
-    // Fetch context data for general Q&A
     const metrics = await getDashboardMetrics(orgId, startDate, endDate);
     const pnl = await getProfitAndLoss(orgId, startDate, endDate);
     const current = pnl?.current || {};
@@ -665,61 +591,29 @@ RISK:
     const totalDr = tbRows.reduce((s: number, r: any) => s + kobo(r.closingDebit), 0);
     const totalCr = tbRows.reduce((s: number, r: any) => s + kobo(r.closingCredit), 0);
 
-    const context = `
-COMPREHENSIVE FINANCIAL DATA:
+    const response = `Here is a snapshot of your accounting data for ${fmtDate(startDate)} to ${fmtDate(endDate)}:
 
-INCOME STATEMENT (${fmtDate(startDate)} – ${fmtDate(endDate)}):
-- Revenue: ${fmtNaira(kobo(current.totalRevenue))}
-- Gross Profit: ${fmtNaira(kobo(current.grossProfit))}
-- Net Profit: ${fmtNaira(kobo(current.netProfit))}
+INCOME STATEMENT
+Revenue: ${fmtNaira(kobo(current.totalRevenue))}
+Gross Profit: ${fmtNaira(kobo(current.grossProfit))}
+Net Profit: ${fmtNaira(kobo(current.netProfit))}
 
-BALANCE SHEET HIGHLIGHTS:
-- Cash: ${fmtNaira(metrics.cashPosition)}
-- Receivables: ${fmtNaira(metrics.totalReceivables)}
-- Payables: ${fmtNaira(metrics.totalPayables)}
-- Working Capital: ${fmtNaira(metrics.workingCapital)}
+BALANCE SHEET HIGHLIGHTS
+Cash: ${fmtNaira(metrics.cashPosition)}
+Receivables: ${fmtNaira(metrics.totalReceivables)}
+Payables: ${fmtNaira(metrics.totalPayables)}
+Working Capital: ${fmtNaira(metrics.workingCapital)}
 
-KEY METRICS:
-- Current Ratio: ${metrics.currentRatio?.toFixed(2) || 'N/A'}
-- Gross Margin: ${metrics.grossMargin?.toFixed(1) || 'N/A'}%
-- Net Margin: ${metrics.netMargin?.toFixed(1) || 'N/A'}%
-- AR Days: ${metrics.arDays || 'N/A'}
-- AP Days: ${metrics.apDays || 'N/A'}
-- Cash Conversion Cycle: ${metrics.cashConversionCycle || 'N/A'} days
+KEY METRICS
+Current Ratio: ${metrics.currentRatio?.toFixed(2) || 'N/A'}
+Gross Margin: ${metrics.grossMargin?.toFixed(1) || 'N/A'}%
+AR Days: ${metrics.arDays || 'N/A'} days
+AP Days: ${metrics.apDays || 'N/A'} days
 
-TRIAL BALANCE: Total Debits ${fmtNaira(totalDr)} = Total Credits ${fmtNaira(totalCr)}
-OUTSTANDING INVOICES: ${metrics.outstandingInvoices?.count || 0} worth ${fmtNaira(metrics.outstandingInvoices?.total || 0)}
-OUTSTANDING BILLS: ${metrics.outstandingBills?.count || 0} worth ${fmtNaira(metrics.outstandingBills?.total || 0)}
-TAX PAYABLE: ${fmtNaira(metrics.taxPayable)}
-`;
-
-    const systemPrompt = 'You are an AI accounting assistant integrated into a SaaS accounting system. Answer the user\'s question based on the provided financial data. If you don\'t know something, say so. Use Nigerian Naira (₦) for amounts. Provide clear, professional responses.';
-    const llmPrompt = `The user asks: "${query}"\n\nHere is the current financial data for context:\n${context}\n\nAnswer the user's question based on this data.`;
-    const response = await this.callLLM(llmPrompt, systemPrompt);
+TRIAL BALANCE: ${fmtNaira(totalDr)} Debits = ${fmtNaira(totalCr)} Credits
+Outstanding Invoices: ${metrics.outstandingInvoices?.count || 0} worth ${fmtNaira(metrics.outstandingInvoices?.total || 0)}
+Outstanding Bills: ${metrics.outstandingBills?.count || 0} worth ${fmtNaira(metrics.outstandingBills?.total || 0)}`;
     return { response, data: { metrics } };
-  }
-
-  // ─── Helpers ───
-
-  private formatBalanceSheetSections(bs: any): string {
-    if (!bs?.sections) return 'No balance sheet data available.';
-    return bs.sections.map((s: any) => {
-      const subs = (s.subSections || [])
-        .map((ss: any) => `    ${ss.label}: ${fmtNaira(kobo(ss.total))}`)
-        .join('\n');
-      return `  ${s.label}: ${fmtNaira(kobo(s.total))}\n${subs}`;
-    }).join('\n');
-  }
-
-  private formatCashFlow(cf: any): string {
-    if (!cf?.current) return 'No cash flow data available.';
-    const c = cf.current;
-    return [
-      `  Operating Activities: ${fmtNaira(kobo(c.netCashFromOperatingActivities))}`,
-      `  Investing Activities: ${fmtNaira(kobo(c.netCashFromInvestingActivities))}`,
-      `  Financing Activities: ${fmtNaira(kobo(c.netCashFromFinancingActivities))}`,
-      `  Net Cash Change: ${fmtNaira(kobo(c.netCashChange))}`,
-    ].join('\n');
   }
 }
 
