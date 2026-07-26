@@ -40,7 +40,10 @@ export function useAuth() {
   });
   const [token, setToken] = useState<string | null>(() => {
     const prefix = getAuthPrefix();
-    return localStorage.getItem(prefix + 'accessToken');
+    const stored = localStorage.getItem(prefix + 'accessToken');
+    if (stored) return stored;
+    if (localStorage.getItem('demo_mode_active') === 'true') return 'demo-token';
+    return null;
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

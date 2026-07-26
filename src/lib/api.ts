@@ -98,6 +98,9 @@ api.interceptors.response.use(
     }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
+      if (typeof window !== 'undefined' && localStorage.getItem('demo_mode_active') === 'true') {
+        return Promise.reject(error);
+      }
       const prefix = getAuthPrefix();
 
       if (isRefreshing) {
