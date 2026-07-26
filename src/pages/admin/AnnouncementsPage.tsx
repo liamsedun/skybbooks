@@ -5,6 +5,7 @@ import {
   Info, AlertTriangle, AlertOctagon, Wrench,
 } from 'lucide-react';
 import { api } from '../../lib/api';
+import { useToast } from '../../contexts/ToastContext';
 
 function fmtDate(d: string) {
   return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -27,6 +28,7 @@ const TYPE_COLORS: Record<string, string> = {
 export function AnnouncementsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const queryClient = useQueryClient();
+  const toast = useToast();
 
   const { data: announcements, isLoading } = useQuery({
     queryKey: ['announcements'],
@@ -53,6 +55,7 @@ export function AnnouncementsPage() {
       setCreateForm({ title: '', message: '', type: 'info', isGlobal: true, startsAt: '', endsAt: '', orgId: '' });
       queryClient.invalidateQueries({ queryKey: ['announcements'] });
     },
+    onError: (err: any) => toast.toast(err.response?.data?.error || 'Failed to create announcement', 'error'),
   });
 
   const [createForm, setCreateForm] = useState({

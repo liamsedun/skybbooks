@@ -4358,6 +4358,7 @@ export async function runMigration() {
     await pool.query(`ALTER TABLE announcements DROP COLUMN IF EXISTS is_active`);
     await pool.query(`ALTER TABLE announcements DROP COLUMN IF EXISTS created_by`);
     await pool.query(`ALTER TABLE announcements DROP COLUMN IF EXISTS updated_at`);
+    await pool.query(`ALTER TABLE announcements DROP CONSTRAINT IF EXISTS announcements_user_id_fkey`);
     console.log('[Migration] Announcements table synced with Drizzle schema.');
   } catch (e) {
     console.warn('[Migration] Could not sync announcements columns:', (e as Error).message);
