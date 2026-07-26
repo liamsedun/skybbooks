@@ -147,6 +147,7 @@ const HelpDocumentsPage = lazy(() => import('../pages/help/HelpDocumentsPage').t
 const FAQsPage = lazy(() => import('../pages/help/FAQsPage').then(m => ({ default: m.FAQsPage })));
 const VideoTutorialsPage = lazy(() => import('../pages/help/VideoTutorialsPage').then(m => ({ default: m.VideoTutorialsPage })));
 const MigrationGuidePage = lazy(() => import('../pages/help/MigrationGuidePage').then(m => ({ default: m.MigrationGuidePage })));
+const HelpPage = lazy(() => import('../pages/help/HelpPage').then(m => ({ default: m.HelpPage })));
 
 const EmployeesPageReal = lazy(() => import('../pages/payroll/EmployeesPage').then(m => ({ default: m.EmployeesPage })));
 const PayrollRunsPage = lazy(() => import('../pages/payroll/PayrollRunsPage').then(m => ({ default: m.PayrollRunsPage })));
@@ -483,7 +484,7 @@ function AppRoutes() {
         <Route path="/help/faqs" element={<LazyRoute element={<FAQsPage />} />} />
         <Route path="/help/videos" element={<LazyRoute element={<VideoTutorialsPage />} />} />
         <Route path="/help/migration-guide" element={<LazyRoute element={<MigrationGuidePage />} />} />
-        <Route path="/help" element={<Navigate to="/app/help/documents" replace />} />
+        <Route path="/help" element={<LazyRoute element={<HelpPage />} />} />
 
         <Route path="*" element={<LazyRoute element={<NotFoundPage />} />} />
       </Routes>

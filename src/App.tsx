@@ -24,6 +24,7 @@ const HelpDocumentsPage = lazy(() => import('./pages/help/HelpDocumentsPage').th
 const FAQsPage = lazy(() => import('./pages/help/FAQsPage').then(m => ({ default: m.FAQsPage })));
 const VideoTutorialsPage = lazy(() => import('./pages/help/VideoTutorialsPage').then(m => ({ default: m.VideoTutorialsPage })));
 const MigrationGuidePage = lazy(() => import('./pages/help/MigrationGuidePage').then(m => ({ default: m.MigrationGuidePage })));
+const HelpPage = lazy(() => import('./pages/help/HelpPage').then(m => ({ default: m.HelpPage })));
 
 function PageLoader() {
   return (
@@ -65,7 +66,7 @@ function AppRoutes() {
         <Route path="/help/faqs" element={<LazyRoute element={<FAQsPage />} />} />
         <Route path="/help/videos" element={<LazyRoute element={<VideoTutorialsPage />} />} />
         <Route path="/help/migration-guide" element={<LazyRoute element={<MigrationGuidePage />} />} />
-        <Route path="/help" element={<Navigate to="/help/documents" replace />} />
+        <Route path="/help" element={<LazyRoute element={<HelpPage />} />} />
 
         <Route path="*" element={<LazyRoute element={<NotFoundPage />} />} />
       </Routes>
