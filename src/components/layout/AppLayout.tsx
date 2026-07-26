@@ -13,7 +13,7 @@ import {
   Star, ChevronRight, PanelLeftClose, PanelLeft,
   CircleUser, Command, Plus, LayoutList, Home, Landmark,
   ShoppingCart, ShoppingBag, Receipt, Mail, Phone, ExternalLink, Video, RefreshCw, Tag,
-  BarChart3
+  BarChart3, LifeBuoy
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -147,6 +147,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     set_organisation: '/app/settings/organisation', set_invites: '/app/settings/invites', set_roles: '/app/settings/roles',
     user_preferences: '/app/settings/user-preferences', set_integrations: '/app/settings/integrations',
     feature_flags: '/app/settings/feature-flags', plan_features: '/app/settings/feature-flags/plans',
+    support_tickets: '/app/support/tickets',
   }), []);
 
   const navigation: NavGroup[] = useMemo(() => [
@@ -230,6 +231,9 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
       { name: 'Legacy Migration', id: 'rep_legacy', icon: History },
       { name: 'Consolidation', id: 'rep_consolidation', icon: Building },
       { name: 'Revenue Recognition', id: 'rep_revenue_recognition', icon: FileBarChart },
+    ]},
+    { title: 'SUPPORT', icon: LifeBuoy, items: [
+      { name: 'Support Tickets', id: 'support_tickets', icon: LifeBuoy },
     ]},
   ], []);
 

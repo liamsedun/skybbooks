@@ -81,6 +81,7 @@ const NotesPage = lazy(() => import('../pages/reports/NotesPage').then(m => ({ d
 const MappingsPage = lazy(() => import('../pages/reports/MappingsPage').then(m => ({ default: m.MappingsPage })));
 const RevenueContractsPage = lazy(() => import('../pages/revenue/RevenueContractsPage').then(m => ({ default: m.RevenueContractsPage })));
 const RevenueRecognitionReport = lazy(() => import('../pages/revenue/RevenueRecognitionReport').then(m => ({ default: m.RevenueRecognitionReport })));
+const SupportTicketsPage = lazy(() => import('../pages/support/SupportTicketsPage').then(m => ({ default: m.SupportTicketsPage })));
 
 const UsageMonitorDashboardPage = lazy(() => import('../pages/reports/UsageMonitorDashboardPage').then(m => ({ default: m.UsageMonitorDashboardPage })));
 
@@ -412,6 +413,7 @@ function AppRoutes() {
           <Route path="reports/usage-monitor" element={<LazyRoute element={<UsageMonitorDashboardPage />} />} />
           <Route path="revenue/contracts" element={<LazyRoute element={<RevenueContractsPage />} />} />
           <Route path="revenue/recognition-report" element={<LazyRoute element={<RevenueRecognitionReport />} />} />
+          <Route path="support/tickets" element={<LazyRoute element={<SupportTicketsPage />} />} />
 
           <Route path="settings" element={<Suspense fallback={<PageLoader />}><SettingsLayout /></Suspense>}>
             <Route index element={<Navigate to="/app/settings/organisation" replace />} />
