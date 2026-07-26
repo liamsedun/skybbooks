@@ -56,15 +56,33 @@ export default function ChatWidget() {
 
   return (
     <>
+      <style>{`
+        @keyframes chat-alert-pulse {
+          0% { box-shadow: 0 0 0 0 rgba(239,68,68,0.5); }
+          70% { box-shadow: 0 0 0 14px rgba(239,68,68,0); }
+          100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+        }
+        @keyframes chat-alert-ring {
+          0% { transform: scale(1); opacity: 0.5; }
+          50% { transform: scale(1.08); opacity: 0.8; }
+          100% { transform: scale(1); opacity: 0.5; }
+        }
+      `}</style>
+
       {/* Toggle button */}
       <button
         onClick={toggleChat}
-        className="fixed bottom-5 right-5 z-50 w-12 h-12 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all cursor-pointer"
-        title="Team Chat"
+        className={`fixed bottom-5 right-5 z-50 w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all cursor-pointer ${
+          unreadTotal > 0
+            ? 'bg-red-500 hover:bg-red-600 animate-[chat-alert-ring_2s_ease-in-out_infinite]'
+            : 'bg-indigo-600 hover:bg-indigo-700'
+        }`}
+        title={unreadTotal > 0 ? `${unreadTotal} unread message${unreadTotal > 1 ? 's' : ''}` : 'Team Chat'}
+        style={unreadTotal > 0 ? { animation: 'chat-alert-pulse 2s ease-in-out infinite', boxShadow: '0 0 0 0 rgba(239,68,68,0.5)' } : {}}
       >
         <MessageCircle className="w-5 h-5" />
         {unreadTotal > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 border-2 border-white">
+          <span className="absolute -top-1 -right-1 bg-white text-red-600 text-[9px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 border-2 border-red-500 shadow-sm">
             {unreadTotal > 99 ? '99+' : unreadTotal}
           </span>
         )}

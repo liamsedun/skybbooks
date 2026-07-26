@@ -25,6 +25,7 @@ import { useFavorites } from '../../hooks/useFavorites';
 import { useRecentActivity } from '../../hooks/useRecentActivity';
 import { api, setPrintOrgInfo } from '../../lib/api';
 import ChatWidget from '../chat/ChatWidget';
+import { useChat } from '../../contexts/ChatContext';
 import { CommandPalette } from './CommandPalette';
 import { QuickActionsBar } from './QuickActionsBar';
 import { Breadcrumbs } from './Breadcrumbs';
@@ -55,6 +56,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
   const { notifications, unreadCount } = useNotifications();
   const { favorites, toggleFavorite, isFavorite } = useFavorites();
   const { addActivity } = useRecentActivity();
+  const { toggleChat, unreadTotal } = useChat();
 
   const totalUnread = unreadCount;
   const navigate = useNavigate();
@@ -233,6 +235,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
       { name: 'Revenue Recognition', id: 'rep_revenue_recognition', icon: FileBarChart },
     ]},
     { title: 'SUPPORT', icon: LifeBuoy, items: [
+      { name: 'Team Chat', id: 'support_chat', icon: MessageCircle },
       { name: 'Support Tickets', id: 'support_tickets', icon: LifeBuoy },
     ]},
   ], []);
@@ -260,13 +263,18 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
   }, [location.pathname, pathMap]);
 
   const handleNavigation = useCallback((id: string) => {
+    if (id === 'support_chat') {
+      toggleChat();
+      setIsMobileOpen(false);
+      return;
+    }
     const path = pathMap[id];
     if (!path) return;
     addActivity({ id, path, label: navigation.flatMap(g => g.items).find(i => i.id === id)?.name || id });
     navigate(path);
     setIsMobileOpen(false);
     if (onViewChange) onViewChange(id);
-  }, [pathMap, navigate, onViewChange, addActivity, navigation]);
+  }, [pathMap, navigate, onViewChange, addActivity, navigation, toggleChat]);
 
   const isActive = (id: string) => {
     if (activeNavId === id) return true;
@@ -420,6 +428,11 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
                       {!sidebarCollapsed && (
                         <>
                           <span className="truncate text-[13px] sidebar-text">{item.name}</span>
+                          {item.id === 'support_chat' && unreadTotal > 0 && (
+                            <span className="ml-auto bg-red-500 text-white text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
+                              {unreadTotal > 99 ? '99+' : unreadTotal}
+                            </span>
+                          )}
                           {fav && <Star className="w-3 h-3 sidebar-fav-star ml-auto" />}
                         </>
                       )}
