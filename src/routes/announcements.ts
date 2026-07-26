@@ -4,12 +4,18 @@ import { authenticate, requireOrg, AuthenticatedRequest } from '../middleware/au
 import { platformAuthenticate, platformUserGuard, PlatformAuthenticatedRequest } from '../middleware/platformAuth';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { ok } from '../lib/response';
-import { getAllAnnouncements, createAnnouncement, dismissAnnouncement } from '../services/announcement.service';
+import { getAnnouncements, getAllAnnouncements, createAnnouncement, dismissAnnouncement } from '../services/announcement.service';
 
 const router = Router();
 
 router.get('/', platformAuthenticate, platformUserGuard, asyncHandler(async (_req: PlatformAuthenticatedRequest, res: Response) => {
   const data = await getAllAnnouncements();
+  res.json(ok(data));
+}));
+
+router.get('/active', authenticate, requireOrg, asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const orgId = req.user!.orgId!;
+  const data = await getAnnouncements(orgId);
   res.json(ok(data));
 }));
 

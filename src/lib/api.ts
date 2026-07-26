@@ -1887,6 +1887,7 @@ export const supportApi = {
 
 export const announcementApi = {
   getAnnouncements: async (orgId?: string) => { const res = await api.get('/announcements', { params: { orgId } }); return res.data; },
+  getActiveAnnouncements: async () => { const res = await api.get('/announcements/active'); return res.data; },
   createAnnouncement: async (data: any) => { const res = await api.post('/announcements', data); return res.data; },
   dismissAnnouncement: async (id: string) => { const res = await api.post(`/announcements/${id}/dismiss`); return res.data; },
 };

@@ -29,6 +29,7 @@ import { useChat } from '../../contexts/ChatContext';
 import { CommandPalette } from './CommandPalette';
 import { QuickActionsBar } from './QuickActionsBar';
 import { Breadcrumbs } from './Breadcrumbs';
+import { AnnouncementBanner } from '../ui/AnnouncementBanner';
 
 interface AppLayoutProps {
   currentView?: string;
@@ -754,6 +755,8 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
             </div>
           </div>
         </header>
+
+        <AnnouncementBanner />
 
         {/* Main content */}
         <main className={`flex-1 ${isSettingsPage ? '' : 'p-4 sm:p-6 md:p-8 max-w-7xl mx-auto w-full'}`}>
