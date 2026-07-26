@@ -63,7 +63,7 @@ export function AnnouncementsPage() {
   const now = new Date();
 
   const active = announcements?.filter(a => new Date(a.startsAt) <= now && (!a.endsAt || new Date(a.endsAt) >= now)) || [];
-  const past = announcements?.filter(a => new Date(a.endsAt) < now || (!a.endsAt && new Date(a.startsAt) < now)) || [];
+  const past = announcements?.filter(a => a.endsAt && new Date(a.endsAt) < now) || [];
 
   return (
     <div className="p-6 space-y-6">
