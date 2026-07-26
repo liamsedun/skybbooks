@@ -106,50 +106,50 @@ export function SupportTicketsPage() {
           <>
             <div className="bg-surface rounded-xl border p-5 space-y-3">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold">{ticketDetail.ticket.subject}</h2>
+                <h2 className="text-lg font-semibold">{ticketDetail.subject}</h2>
                 <div className="flex items-center gap-2">
-                  <span className={`px-2 py-0.5 text-xs rounded-full ${STATUS_COLORS[ticketDetail.ticket.status] || ''}`}>
-                    {ticketDetail.ticket.status}
+                  <span className={`px-2 py-0.5 text-xs rounded-full ${STATUS_COLORS[ticketDetail.status] || ''}`}>
+                    {ticketDetail.status}
                   </span>
-                  <span className={`px-2 py-0.5 text-xs rounded-full ${PRIORITY_COLORS[ticketDetail.ticket.priority] || ''}`}>
-                    {ticketDetail.ticket.priority}
+                  <span className={`px-2 py-0.5 text-xs rounded-full ${PRIORITY_COLORS[ticketDetail.priority] || ''}`}>
+                    {ticketDetail.priority}
                   </span>
                 </div>
               </div>
               <div className="flex items-center gap-4 text-xs text-ink-500">
-                <span className="flex items-center gap-1"><User className="w-3 h-3" /> {ticketDetail.user?.fullName || 'Unknown'}</span>
+                <span className="flex items-center gap-1"><User className="w-3 h-3" /> {ticketDetail.userName || 'Unknown'}</span>
                 <span className="flex items-center gap-1"><Building2 className="w-3 h-3" /> {ticketDetail.orgName || '-'}</span>
-                <span className="flex items-center gap-1"><Flag className="w-3 h-3" /> {ticketDetail.ticket.category}</span>
-                <span>{fmtDate(ticketDetail.ticket.createdAt)}</span>
+                <span className="flex items-center gap-1"><Flag className="w-3 h-3" /> {ticketDetail.category}</span>
+                <span>{fmtDate(ticketDetail.createdAt)}</span>
               </div>
-              <p className="text-sm text-ink-700 whitespace-pre-wrap">{ticketDetail.ticket.message}</p>
-              {ticketDetail.ticket.resolution && (
+              <p className="text-sm text-ink-700 whitespace-pre-wrap">{ticketDetail.message}</p>
+              {ticketDetail.resolution && (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-800">
-                  <strong>Resolution:</strong> {ticketDetail.ticket.resolution}
+                  <strong>Resolution:</strong> {ticketDetail.resolution}
                 </div>
               )}
             </div>
 
             <div className="flex items-center gap-2">
-              {ticketDetail.ticket.status === 'open' && (
+              {ticketDetail.status === 'open' && (
                 <button onClick={() => statusMutation.mutate({ status: 'in_progress' })}
                   className="px-3 py-1.5 text-sm bg-amber-500 text-white rounded-lg hover:bg-amber-600">
                   Start Progress
                 </button>
               )}
-              {ticketDetail.ticket.status === 'in_progress' && (
+              {ticketDetail.status === 'in_progress' && (
                 <button onClick={() => statusMutation.mutate({ status: 'resolved' })}
                   className="px-3 py-1.5 text-sm bg-green-500 text-white rounded-lg hover:bg-green-600">
                   Mark Resolved
                 </button>
               )}
-              {ticketDetail.ticket.status === 'resolved' && (
+              {ticketDetail.status === 'resolved' && (
                 <button onClick={() => statusMutation.mutate({ status: 'closed' })}
                   className="px-3 py-1.5 text-sm bg-gray-500 text-white rounded-lg hover:bg-gray-600">
                   Close Ticket
                 </button>
               )}
-              {(ticketDetail.ticket.status === 'open' || ticketDetail.ticket.status === 'in_progress') && (
+              {(ticketDetail.status === 'open' || ticketDetail.status === 'in_progress') && (
                 <button onClick={() => statusMutation.mutate({ status: 'closed' })}
                   className="px-3 py-1.5 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600">
                   Close Without Resolution
@@ -163,7 +163,7 @@ export function SupportTicketsPage() {
                 {ticketDetail.messages.map((msg: any) => (
                   <div key={msg.id} className={`p-3 rounded-lg ${msg.isInternal ? 'bg-amber-50 border border-amber-200' : 'bg-surface-subtle border'}`}>
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-medium text-ink-700">{msg.user?.fullName || 'Unknown'}</span>
+                      <span className="text-xs font-medium text-ink-700">{msg.userName || 'Unknown'}</span>
                       <div className="flex items-center gap-2">
                         {msg.isInternal && <span className="px-1.5 py-0.5 text-xs rounded bg-amber-200 text-amber-800">Internal</span>}
                         <span className="text-xs text-ink-400">{fmtDate(msg.createdAt)}</span>
