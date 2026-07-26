@@ -94,13 +94,13 @@ export function Navbar() {
 
           <div className="hidden md:flex items-center gap-3">
             {isAuthenticated ? (
-              <button
-                onClick={() => navigate('/app/dashboard')}
+              <a
+                href="/app/dashboard"
                 className="px-5 py-2 text-sm font-semibold text-white bg-[#082F49] hover:bg-[#0C4A6E] rounded-lg transition-colors shadow-sm flex items-center gap-1.5"
                 aria-label="Go to dashboard"
               >
                 <LayoutDashboard size={14} aria-hidden="true" /> Dashboard
-              </button>
+              </a>
             ) : (
               <>
                 <button
@@ -154,12 +154,12 @@ export function Navbar() {
             )}
             <hr className="my-3 border-slate-100" />
             {isAuthenticated ? (
-              <button
-                onClick={() => navigate('/app/dashboard')}
-                className="w-full px-3 py-2.5 text-sm font-semibold text-white bg-[#082F49] hover:bg-[#0C4A6E] rounded-lg transition-colors text-center"
+              <a
+                href="/app/dashboard"
+                className="block w-full px-3 py-2.5 text-sm font-semibold text-white bg-[#082F49] hover:bg-[#0C4A6E] rounded-lg transition-colors text-center"
               >
                 Dashboard
-              </button>
+              </a>
             ) : (
               <>
                 <button
