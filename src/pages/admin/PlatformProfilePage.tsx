@@ -115,7 +115,7 @@ export function PlatformProfilePage() {
               {u.avatarUrl ? (
                 <img src={u.avatarUrl} alt="" className="w-full h-full object-cover" />
               ) : (
-                <User className="w-10 h-10 text-blue-600" />
+                <span className="text-xl font-bold text-blue-600">{u.fullName?.charAt(0)?.toUpperCase() || '?'}</span>
               )}
             </div>
             <button onClick={() => fileInputRef.current?.click()}

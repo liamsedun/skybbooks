@@ -91,7 +91,7 @@ export function PlatformRolesPage() {
   const togglePerm = useCallback((role: string, perm: string) => {
     setEdits(prev => {
       const current = prev[role];
-      const base = current !== null ? current : (roles?.find(r => r.role === role)?.permissions || []);
+      const base = current != null ? current : (roles?.find(r => r.role === role)?.permissions || []);
       const next = base.includes(perm)
         ? base.filter(p => p !== perm)
         : [...base, perm];
@@ -102,7 +102,7 @@ export function PlatformRolesPage() {
   const toggleAll = useCallback((role: string, perms: string[], on: boolean) => {
     setEdits(prev => {
       const current = prev[role];
-      const base = current !== null ? current : (roles?.find(r => r.role === role)?.permissions || []);
+      const base = current != null ? current : (roles?.find(r => r.role === role)?.permissions || []);
       const next = on
         ? [...new Set([...base, ...perms])]
         : base.filter(p => !perms.includes(p));
@@ -139,9 +139,9 @@ export function PlatformRolesPage() {
             <tr className="border-b bg-surface-subtle">
               <th className="text-left p-2 font-medium text-ink-600 min-w-[140px] sticky left-0 bg-surface-subtle z-10">Permission</th>
               {roles?.map(r => (
-                <th key={r.role} className={`text-center p-2 font-medium min-w-[90px] ${edits[r.role] !== null ? 'bg-amber-50' : ''}`}>
+                <th key={r.role} className={`text-center p-2 font-medium min-w-[90px] ${edits[r.role] != null ? 'bg-amber-50' : ''}`}>
                   <div className="text-[10px] uppercase tracking-wider leading-tight">{r.role.replace(/_/g, ' ')}</div>
-                  {edits[r.role] !== null && (
+                  {edits[r.role] != null && (
                     <div className="mt-1 flex justify-center gap-1">
                       <button onClick={() => saveMut.mutate({ role: r.role, permissions: edits[r.role]! })}
                         disabled={saveMut.isPending}
@@ -176,7 +176,7 @@ export function PlatformRolesPage() {
               <tr key={perm} className="border-b hover:bg-surface-hover">
                 <td className="p-2 pl-4 font-mono text-ink-700 sticky left-0 bg-surface z-10">{permLabel(perm)}</td>
                 {roles?.map(r => {
-                  const edited = edits[r.role] !== null;
+                  const edited = edits[r.role] != null;
                   const currentPerms = edited ? edits[r.role]! : r.permissions;
                   const has = currentPerms.includes(perm);
                   return (
@@ -191,7 +191,7 @@ export function PlatformRolesPage() {
             <tr className="sticky bottom-0 bg-surface border-t">
               <td className="p-2 font-medium text-ink-700 sticky left-0 bg-surface z-10">Actions</td>
               {roles?.map(r => {
-                const edited = edits[r.role] !== null;
+                const edited = edits[r.role] != null;
                 const currentPerms = edited ? edits[r.role]! : r.permissions;
                 const isBuiltin = BUILTIN_ROLES.includes(r.role);
                 return (

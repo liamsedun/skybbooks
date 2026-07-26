@@ -31,7 +31,6 @@ const navItems: NavItem[] = [
   { name: 'Roles', path: '/platform/roles', icon: UserCog },
   { name: 'System Settings', path: '/platform/system-settings', icon: Settings },
   { name: 'Security', path: '/platform/security', icon: Lock },
-  { name: 'Security', path: '/platform/security', icon: Lock },
   { name: 'Profile', path: '/platform/profile', icon: User },
 ];
 
