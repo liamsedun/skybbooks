@@ -30,11 +30,16 @@ export function AnnouncementsPage() {
   const queryClient = useQueryClient();
   const toast = useToast();
 
-  const { data: announcements, isLoading } = useQuery({
+  const { data: announcements, isLoading, error } = useQuery({
     queryKey: ['announcements'],
     queryFn: async () => {
       const res = await api.get('/announcements');
-      return res.data.data as any[];
+      const list = res.data?.data;
+      if (!Array.isArray(list)) {
+        console.error('[Announcements] Unexpected API response:', res.data);
+        return [];
+      }
+      return list as any[];
     },
   });
 
@@ -65,8 +70,16 @@ export function AnnouncementsPage() {
 
   const now = new Date();
 
-  const active = announcements?.filter(a => new Date(a.startsAt) <= now && (!a.endsAt || new Date(a.endsAt) >= now)) || [];
-  const past = announcements?.filter(a => a.endsAt && new Date(a.endsAt) < now) || [];
+  const active = announcements?.filter(a => {
+    try {
+      return new Date(a.startsAt) <= now && (!a.endsAt || new Date(a.endsAt) >= now);
+    } catch { return false; }
+  }) || [];
+  const past = announcements?.filter(a => {
+    try {
+      return a.endsAt && new Date(a.endsAt) < now;
+    } catch { return false; }
+  }) || [];
 
   return (
     <div className="p-6 space-y-6">
@@ -86,13 +99,23 @@ export function AnnouncementsPage() {
         </div>
       </div>
 
-      <div className="bg-surface rounded-xl border p-5">
-        <h3 className="text-sm font-semibold text-ink-700 mb-4">Active Announcements</h3>
-        {isLoading ? (
-          <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-ink-400" /></div>
-        ) : active.length === 0 ? (
-          <p className="text-sm text-ink-400 text-center py-4">No active announcements</p>
-        ) : (
+        <div className="bg-surface rounded-xl border p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-ink-700">Active Announcements</h3>
+              {!isLoading && announcements && (
+                <span className="text-[11px] text-ink-400">{active.length} active / {announcements.length} total</span>
+              )}
+            </div>
+            {error && (
+              <p className="text-sm text-red-500 text-center py-2">Error loading: {(error as any)?.message || 'Unknown error'}</p>
+            )}
+            {isLoading ? (
+              <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-ink-400" /></div>
+            ) : !announcements ? (
+              <p className="text-sm text-ink-400 text-center py-4">Could not load announcements</p>
+            ) : active.length === 0 ? (
+              <p className="text-sm text-ink-400 text-center py-4">No active announcements</p>
+            ) : (
           <div className="space-y-3">
             {active.map((a: any) => {
               const TypeIcon = TYPE_ICONS[a.type] || Info;
