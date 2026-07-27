@@ -28,6 +28,7 @@ const NAV: NavGroup[] = [
     items: [
       { label: 'Users', path: '/app/settings/users', icon: Users },
       { label: 'Roles', path: '/app/settings/roles', icon: Shield },
+      { label: 'CRM Access', path: '/app/settings/crm-access', icon: Shield },
       { label: 'User Preferences', path: '/app/settings/user-preferences', icon: UserCog },
     ],
   },

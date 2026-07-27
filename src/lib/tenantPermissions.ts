@@ -96,6 +96,12 @@ export const TenantPermission = {
 
   // Audit Log
   AuditLogRead: 'audit_log:read',
+
+  // CRM
+  CrmRead: 'crm:read',
+  CrmCreate: 'crm:create',
+  CrmUpdate: 'crm:update',
+  CrmDelete: 'crm:delete',
 } as const;
 
 export type TenantPermission = (typeof TenantPermission)[keyof typeof TenantPermission];
@@ -125,6 +131,10 @@ const readOnlyPermissions: TenantPermission[] = [
   TenantPermission.BudgetsRead,
   TenantPermission.TaxRead,
   TenantPermission.AuditLogRead,
+  TenantPermission.CrmRead,
+  TenantPermission.CrmCreate,
+  TenantPermission.CrmUpdate,
+  TenantPermission.CrmDelete,
 ];
 
 const defaultRolePermissions: Record<string, TenantPermission[]> = {
@@ -152,6 +162,7 @@ const defaultRolePermissions: Record<string, TenantPermission[]> = {
     TenantPermission.AuditLogRead,
     TenantPermission.BudgetsRead, TenantPermission.BudgetsManage,
     TenantPermission.ProjectsRead, TenantPermission.ProjectsManage,
+    TenantPermission.CrmRead, TenantPermission.CrmCreate, TenantPermission.CrmUpdate,
   ],
 
   manager: [
@@ -169,6 +180,7 @@ const defaultRolePermissions: Record<string, TenantPermission[]> = {
     TenantPermission.ProjectsRead, TenantPermission.ProjectsManage,
     TenantPermission.BudgetsRead,
     TenantPermission.TaxRead,
+    TenantPermission.CrmRead,
   ],
 
   sales: [
@@ -176,6 +188,7 @@ const defaultRolePermissions: Record<string, TenantPermission[]> = {
     TenantPermission.SalesRead, TenantPermission.SalesCreate, TenantPermission.SalesUpdate,
     TenantPermission.ReportsRead,
     TenantPermission.ContactsRead, TenantPermission.ContactsCreate, TenantPermission.ContactsUpdate,
+    TenantPermission.CrmRead, TenantPermission.CrmCreate, TenantPermission.CrmUpdate,
   ],
 
   inventory: [

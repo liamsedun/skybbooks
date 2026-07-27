@@ -2035,6 +2035,8 @@ export const crmApi = {
   updateActivity: async (id: string, data: any): Promise<any> => { const r = await api.put(`/crm/activities/${id}`, data); return r.data; },
   deleteActivity: async (id: string): Promise<any> => { const r = await api.delete(`/crm/activities/${id}`); return r.data; },
   getDashboard: async (): Promise<any> => { const r = await api.get('/crm/dashboard'); return r.data; },
+  getRolePermissions: async (): Promise<any> => { const r = await api.get('/crm/role-permissions'); return r.data; },
+  updateRolePermissions: async (role: string, permissions: string[]): Promise<any> => { const r = await api.put('/crm/role-permissions', { role, permissions }); return r.data; },
 };
 
 

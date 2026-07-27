@@ -92,6 +92,7 @@ const LocationsPage = lazy(() => import('../pages/settings/SettingsPages').then(
 const UsersPage = lazy(() => import('../pages/settings/SettingsPages').then(m => ({ default: m.UsersPage })));
 const RolesPage = lazy(() => import('../pages/settings/SettingsPages').then(m => ({ default: m.RolesPage })));
 const UserPreferencesPage = lazy(() => import('../pages/settings/SettingsPages').then(m => ({ default: m.UserPreferencesPage })));
+const CrmSettingsPage = lazy(() => import('../pages/settings/CrmSettingsPage').then(m => ({ default: m.CrmSettingsPage })));
 const GeneralPage = lazy(() => import('../pages/settings/SettingsPages').then(m => ({ default: m.GeneralPage })));
 const CurrenciesPage = lazy(() => import('../pages/settings/SettingsPages').then(m => ({ default: m.CurrenciesPage })));
 const PaymentTermsPage = lazy(() => import('../pages/settings/SettingsPages').then(m => ({ default: m.PaymentTermsPage })));
@@ -436,6 +437,7 @@ function AppRoutes() {
             <Route path="locations" element={<LazyRoute element={<LocationsPage />} />} />
             <Route path="users" element={<LazyRoute element={<UsersPage />} />} />
             <Route path="roles" element={<LazyRoute element={<RolesPage />} />} />
+            <Route path="crm-access" element={<LazyRoute element={<CrmSettingsPage />} />} />
             <Route path="user-preferences" element={<LazyRoute element={<UserPreferencesPage />} />} />
             <Route path="general" element={<LazyRoute element={<GeneralPage />} />} />
             <Route path="currencies" element={<LazyRoute element={<CurrenciesPage />} />} />
