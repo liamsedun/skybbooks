@@ -1,0 +1,82 @@
+﻿import { useMemo } from 'react';
+import { Clock, Plus, Download, Upload, FileText, Edit3, Trash2, Eye, CheckCircle2, XCircle } from 'lucide-react';
+import { useHrPageState } from '../../../hooks/useHrPageState';
+import { HrPageShell } from '../../../components/hr/HrPageShell';
+import { HrStatCards } from '../../../components/hr/HrStatCards';
+import { HrFilterBar } from '../../../components/hr/HrFilterBar';
+import { HrDataTable, Column } from '../../../components/hr/HrDataTable';
+import { HrFormModal } from '../../../components/hr/HrFormModal';
+import { HrConfirmDialog } from '../../../components/hr/HrConfirmDialog';
+import { HrViewDrawer } from '../../../components/hr/HrViewDrawer';
+import { exportToCsv, exportToPdf, statusColor, formatDate } from '../../../lib/hrExport';
+import { useToast } from '../../../contexts/ToastContext';
+
+interface AttendanceItem { id: string; employeeName: string; date: string; clockIn: string; clockOut: string; hours: string; status: string; }
+const MOCK: AttendanceItem[] = [
+  { id: 'AT1', employeeName: 'Chioma Okafor', date: '2026-07-27', clockIn: '08:05', clockOut: '17:10', hours: '8.5', status: 'present' },
+  { id: 'AT2', employeeName: 'Segun Adebayo', date: '2026-07-27', clockIn: '08:30', clockOut: '17:15', hours: '8.0', status: 'late' },
+  { id: 'AT3', employeeName: 'Amina Bello', date: '2026-07-27', clockIn: '07:55', clockOut: '16:50', hours: '8.0', status: 'present' },
+  { id: 'AT4', employeeName: 'Tunde Bakare', date: '2026-07-27', clockIn: '09:15', clockOut: '17:30', hours: '7.5', status: 'late' },
+  { id: 'AT5', employeeName: 'Ngozi Eze', date: '2026-07-26', clockIn: '08:00', clockOut: '17:00', hours: '8.0', status: 'present' },
+  { id: 'AT6', employeeName: 'Femi Ogunlade', date: '2026-07-26', clockIn: '07:50', clockOut: '16:45', hours: '7.5', status: 'present' },
+  { id: 'AT7', employeeName: 'Zainab Abdullah', date: '2026-07-26', clockIn: '--', clockOut: '--', hours: '0.0', status: 'absent' },
+  { id: 'AT8', employeeName: 'Chinedu Okonkwo', date: '2026-07-26', clockIn: '08:10', clockOut: '17:05', hours: '8.0', status: 'present' },
+  { id: 'AT9', employeeName: 'Yemi Lawson', date: '2026-07-27', clockIn: '08:00', clockOut: '17:00', hours: '8.0', status: 'present' },
+  { id: 'AT10', employeeName: 'Adaeze Obi', date: '2026-07-27', clockIn: '07:45', clockOut: '16:30', hours: '8.0', status: 'present' },
+];
+export function OpsAttendancePage() {
+  const { success: showSuccess } = useToast();
+  const ps = useHrPageState({ data: MOCK, initialSortKey: 'employeeName', searchKeys: ['employeeName', 'status'], pageSize: 10 });
+  const stats = useMemo(() => [
+    { label: 'Total Records', value: ps.filtered.length.toString(), icon: <Clock className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
+    { label: 'Present', value: ps.filtered.filter(i => i.status === 'present').length.toString(), icon: <CheckCircle2 className="w-4 h-4" />, color: 'emerald' as const, active: ps.statusFilter === 'present', onClick: () => ps.setStatusFilter('present') },
+    { label: 'Late', value: ps.filtered.filter(i => i.status === 'late').length.toString(), icon: <Clock className="w-4 h-4" />, color: 'amber' as const, active: ps.statusFilter === 'late', onClick: () => ps.setStatusFilter('late') },
+    { label: 'Absent', value: ps.filtered.filter(i => i.status === 'absent').length.toString(), icon: <XCircle className="w-4 h-4" />, color: 'rose' as const, active: ps.statusFilter === 'absent', onClick: () => ps.setStatusFilter('absent') },
+  ], [ps.filtered]);
+  const columns: Column<AttendanceItem>[] = [
+    { key: 'employeeName', label: 'Employee', sortable: true, render: (i) => <span className="font-medium text-ink-900">{i.employeeName}</span> },
+    { key: 'date', label: 'Date', sortable: true, render: (i) => <span className="text-ink-500">{formatDate(i.date)}</span> },
+    { key: 'clockIn', label: 'Clock In' },
+    { key: 'clockOut', label: 'Clock Out' },
+    { key: 'hours', label: 'Hours', sortable: true },
+    { key: 'status', label: 'Status', render: (i) => <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${statusColor(i.status)}`}>{i.status}</span> },
+    { key: 'actions', label: '', render: (i) => (
+      <div className="flex items-center justify-end gap-1" onClick={e => e.stopPropagation()}>
+        <button onClick={() => ps.openViewDrawer(i.id)} className="w-7 h-7 flex items-center justify-center rounded-lg text-ink-400 hover:text-primary hover:bg-primary/10 transition-colors" title="View"><Eye className="w-3.5 h-3.5" /></button>
+        <button onClick={() => ps.openEditModal(i.id)} className="w-7 h-7 flex items-center justify-center rounded-lg text-ink-400 hover:text-amber-600 hover:bg-amber-50 transition-colors" title="Edit"><Edit3 className="w-3.5 h-3.5" /></button>
+        <button onClick={() => ps.openConfirmDelete(i.id)} className="w-7 h-7 flex items-center justify-center rounded-lg text-ink-400 hover:text-rose-600 hover:bg-rose-50 transition-colors" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+      </div>
+    ), className: 'text-right' },
+  ];
+  return (
+    <HrPageShell title="Attendance" description="Daily attendance tracking, late arrivals, early departures, and monthly summaries."
+      pageKey="attendance"
+      headerActions={<><button onClick={ps.openAddModal} className="h-8 px-3.5 text-xs font-medium bg-primary text-white rounded-xl hover:bg-primary-hover transition-colors inline-flex items-center gap-1.5"><Plus className="w-3.5 h-3.5" />Add Record</button><button onClick={() => ps.setImportOpen(true)} className="h-8 px-3.5 text-xs font-medium bg-surface text-ink-700 border border-border-custom rounded-xl hover:bg-ink-50 transition-colors inline-flex items-center gap-1.5"><Upload className="w-3.5 h-3.5" />Import</button><button onClick={() => exportToCsv(ps.filtered, 'attendance.csv')} className="h-8 px-3.5 text-xs font-medium bg-surface text-ink-700 border border-border-custom rounded-xl hover:bg-ink-50 transition-colors inline-flex items-center gap-1.5"><Download className="w-3.5 h-3.5" />Export</button></>}>
+      <HrStatCards items={stats} columns={4} />
+      <HrFilterBar search={ps.search} onSearchChange={ps.setSearch} searchPlaceholder="Search attendance..."
+        statusFilter={ps.statusFilter} onStatusChange={ps.setStatusFilter}
+        statusOptions={[{ label: 'All', value: 'all' }, { label: 'Present', value: 'present' }, { label: 'Late', value: 'late' }, { label: 'Absent', value: 'absent' }]}
+        onClear={ps.clearFilters} hasActiveFilters={ps.hasActiveFilters} />
+      <HrDataTable columns={columns} data={ps.paginated} keyExtractor={i => i.id}
+        sortKey={ps.sortKey as string} sortDir={ps.sortDir} onSort={(k) => ps.handleSort(k as any)}
+        selectedIds={ps.selectedIds} onSelectOne={ps.handleSelectOne} onSelectAll={ps.handleSelectAll}
+        page={ps.page} totalPages={ps.totalPages} onPageChange={ps.setPage} pageSize={ps.pageSize} totalItems={ps.filtered.length}
+        from={(ps.page - 1) * ps.pageSize + 1} to={Math.min(ps.page * ps.pageSize, ps.filtered.length)}
+        emptyMessage="No attendance records found" emptyAction={<button onClick={ps.openAddModal} className="text-xs font-medium text-primary hover:text-primary-hover">Add your first record</button>} />
+      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Record' : 'Add Record'} onSubmit={(e) => { e.preventDefault(); showSuccess(ps.editingId ? 'Record updated' : 'Record created'); ps.closeModal(); }}>
+        <div><label className="block text-xs font-medium text-ink-500 mb-1">Employee Name</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
+        <div><label className="block text-xs font-medium text-ink-500 mb-1">Date</label><input type="date" className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
+        <div><label className="block text-xs font-medium text-ink-500 mb-1">Clock In</label><input type="time" className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
+        <div><label className="block text-xs font-medium text-ink-500 mb-1">Clock Out</label><input type="time" className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
+      </HrFormModal>
+      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showSuccess('Record deleted'); ps.closeConfirmDelete(); }} title="Delete Record" message="Are you sure you want to delete this attendance record?" confirmLabel="Delete" variant="danger" />
+      <HrViewDrawer open={ps.viewDrawerOpen} onClose={ps.closeViewDrawer} title="Attendance Details"><div className="space-y-3 text-sm text-ink-600"><p>Details content</p></div></HrViewDrawer>
+      <HrFormModal open={ps.importOpen} onClose={() => ps.setImportOpen(false)} title="Import Attendance" onSubmit={(e) => { e.preventDefault(); showSuccess('Records imported'); ps.setImportOpen(false); }} submitLabel="Import">
+        <p className="text-sm text-ink-400 mb-3">Upload a CSV file with attendance data.</p>
+        <input type="file" accept=".csv" className="block w-full text-sm text-ink-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-primary/10 file:text-primary hover:file:bg-primary/20 transition-all" />
+      </HrFormModal>
+    </HrPageShell>
+  );
+}
+
+

@@ -2875,6 +2875,7 @@ export async function runMigration() {
     await db.execute(sql`ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS ribbon_color text`);
     await db.execute(sql`ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS button_text text DEFAULT 'Subscribe' NOT NULL`);
     await db.execute(sql`ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS is_archived boolean DEFAULT false NOT NULL`);
+    await db.execute(sql`ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS modules text[] DEFAULT '{}' NOT NULL`);
     await db.execute(sql`ALTER TABLE subscription_plans DROP COLUMN IF EXISTS features`);
     await db.execute(sql`ALTER TABLE subscription_plans DROP COLUMN IF EXISTS storage_limit_mb`);
     await db.execute(sql`ALTER TABLE subscription_plans DROP COLUMN IF EXISTS price_kobo`);
@@ -3046,12 +3047,12 @@ export async function runMigration() {
 
     // Seed default plans
     await db.execute(sql`
-      INSERT INTO subscription_plans (id, code, name, description, monthly_price_kobo, annual_price_kobo, currency, billing_cycle, trial_days, user_limit, max_companies, storage_limit_gb, api_requests, max_customers, max_vendors, max_products, max_invoices, max_transactions, max_bank_accounts, max_warehouses, max_projects, max_assets, max_reports, max_ai_requests, max_ocr_documents, support_level, popular_badge, recommended_badge, button_text, is_active, is_archived, sort_order, is_public)
+      INSERT INTO subscription_plans (id, code, name, description, monthly_price_kobo, annual_price_kobo, currency, billing_cycle, trial_days, modules, user_limit, max_companies, storage_limit_gb, api_requests, max_customers, max_vendors, max_products, max_invoices, max_transactions, max_bank_accounts, max_warehouses, max_projects, max_assets, max_reports, max_ai_requests, max_ocr_documents, support_level, popular_badge, recommended_badge, button_text, is_active, is_archived, sort_order, is_public)
       VALUES
-        (gen_random_uuid(), 'free', 'Free', 'For small businesses getting started', 0, 0, 'NGN', 'monthly', 0, 1, 1, 1, 100, 50, 25, 10, 50, 500, 2, 0, 0, 0, 5, 10, 10, 'community', false, false, 'Get Started', true, false, 1, true),
-        (gen_random_uuid(), 'starter', 'Starter', 'For growing businesses', 1500000, 15000000, 'NGN', 'monthly', 14, 3, 3, 5, 1000, 500, 250, 100, 500, 5000, 5, 1, 5, 5, 20, 50, 50, 'email', true, false, 'Start Free Trial', true, false, 2, true),
-        (gen_random_uuid(), 'professional', 'Professional', 'For established businesses', 3500000, 35000000, 'NGN', 'monthly', 14, 10, 10, 20, 10000, 2000, 1000, 500, 2000, 25000, 10, 5, 20, 20, 50, 200, 200, 'priority', false, true, 'Start Free Trial', true, false, 3, true),
-        (gen_random_uuid(), 'enterprise', 'Enterprise', 'For large organisations', 10000000, 100000000, 'NGN', 'monthly', 0, 100, 100, 100, 0, 10000, 5000, 2000, 10000, 0, 50, 20, 50, 50, 200, 500, 500, 'dedicated', false, false, 'Contact Sales', true, false, 4, true)
+        (gen_random_uuid(), 'free', 'Free', 'For small businesses getting started', 0, 0, 'NGN', 'monthly', 0, '{}', 1, 1, 1, 100, 50, 25, 10, 50, 500, 2, 0, 0, 0, 5, 10, 10, 'community', false, false, 'Get Started', true, false, 1, true),
+        (gen_random_uuid(), 'starter', 'Starter', 'For growing businesses', 900000, 9000000, 'NGN', 'monthly', 14, '{}', 3, 3, 5, 1000, 500, 250, 100, 500, 5000, 5, 1, 5, 5, 20, 50, 50, 'email', false, false, 'Start Free Trial', true, false, 2, true),
+        (gen_random_uuid(), 'professional', 'Professional', 'For established businesses', 1500000, 15000000, 'NGN', 'monthly', 14, '{crm,hrm}', 10, 10, 20, 10000, 2000, 1000, 500, 2000, 25000, 10, 5, 20, 20, 50, 200, 200, 'priority', true, false, 'Start Free Trial', true, false, 3, true),
+        (gen_random_uuid(), 'enterprise', 'Enterprise', 'For large organisations', 2500000, 25000000, 'NGN', 'monthly', 14, '{crm,hrm}', 100, 100, 100, 0, 10000, 5000, 2000, 10000, 0, 50, 20, 50, 50, 200, 500, 500, 'dedicated', false, false, 'Contact Sales', true, false, 4, true)
       ON CONFLICT (code) DO NOTHING
     `);
 
@@ -4253,6 +4254,42 @@ export async function runMigration() {
       console.log('[Migration] CRM tables ready.');
     } catch (err) {
       console.error('[Migration] CRM tables error:', err);
+    }
+
+    // HRM tables + seed default data
+    try {
+      const allOrgs = await pool.query(`SELECT id FROM organisations`);
+      for (const org of allOrgs.rows) {
+        // Seed default leave types
+        const existingLeaveTypes = await pool.query(`SELECT COUNT(*) as cnt FROM hr_leave_types WHERE org_id = $1`, [org.id]);
+        if (Number(existingLeaveTypes.rows[0].cnt) === 0) {
+          const defaultLeaveTypes = [
+            { name: 'Annual Leave', days: 20, color: '#3b82f6', requiresAttachment: false },
+            { name: 'Sick Leave', days: 10, color: '#ef4444', requiresAttachment: true },
+            { name: 'Personal Leave', days: 5, color: '#f59e0b', requiresAttachment: false },
+            { name: 'Maternity Leave', days: 90, color: '#ec4899', requiresAttachment: true },
+            { name: 'Paternity Leave', days: 14, color: '#8b5cf6', requiresAttachment: true },
+            { name: 'Study Leave', days: 30, color: '#06b6d4', requiresAttachment: true },
+          ];
+          for (const lt of defaultLeaveTypes) {
+            await pool.query(
+              `INSERT INTO hr_leave_types (org_id, name, default_days_per_year, color, requires_attachment, carry_forward, carry_forward_limit) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+              [org.id, lt.name, lt.days, lt.color, lt.requiresAttachment, false, 0]
+            );
+          }
+        }
+        // Seed default HR settings
+        const existingSettings = await pool.query(`SELECT COUNT(*) as cnt FROM hr_settings WHERE org_id = $1`, [org.id]);
+        if (Number(existingSettings.rows[0].cnt) === 0) {
+          await pool.query(
+            `INSERT INTO hr_settings (org_id, work_week_start, work_week_end, daily_work_hours, probation_period_days, notice_period_days, overtime_rate, auto_approve_leave, enable_clock_in, enable_timesheets) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+            [org.id, 1, 5, 8, 90, 30, 1.5, false, true, true]
+          );
+        }
+      }
+      console.log('[Migration] HRM tables ready.');
+    } catch (err) {
+      console.error('[Migration] HRM tables error:', err);
     }
 
     // Ensure every org has a subscription record (Free plan fallback)

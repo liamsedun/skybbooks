@@ -370,3 +370,26 @@ export const crmActivityTypeEnum = pgEnum('crm_activity_type', ['call', 'meeting
 export const crmActivityStatusEnum = pgEnum('crm_activity_status', ['pending', 'completed']);
 export const crmDealStatusEnum = pgEnum('crm_deal_status', ['open', 'won', 'lost']);
 export const crmDealSourceEnum = pgEnum('crm_deal_source', ['referral', 'website', 'cold_call', 'social_media', 'email_campaign', 'walk_in', 'partner', 'other']);
+
+// --- HRM Enums ---
+
+export const hrGenderEnum = pgEnum('hr_gender', ['male', 'female', 'other']);
+export const hrMaritalStatusEnum = pgEnum('hr_marital_status', ['single', 'married', 'divorced', 'widowed']);
+export const hrEmploymentStatusEnum = pgEnum('hr_employment_status', ['active', 'suspended', 'terminated', 'resigned', 'retired']);
+export const hrContractTypeEnum = pgEnum('hr_contract_type', ['permanent', 'contract', 'internship', 'temporary', 'probation']);
+export const hrLeaveStatusEnum = pgEnum('hr_leave_status', ['pending', 'approved', 'rejected', 'cancelled']);
+export const hrAttendanceStatusEnum = pgEnum('hr_attendance_status', ['present', 'absent', 'late', 'half_day', 'on_leave']);
+export const hrShiftTypeEnum = pgEnum('hr_shift_type', ['morning', 'afternoon', 'night', 'general']);
+export const hrReviewStatusEnum = pgEnum('hr_review_status', ['draft', 'pending_review', 'completed', 'cancelled']);
+export const hrApplicationStatusEnum = pgEnum('hr_application_status', ['new', 'screened', 'interviewed', 'offered', 'hired', 'rejected', 'withdrawn']);
+export const hrJobStatusEnum = pgEnum('hr_job_status', ['draft', 'open', 'paused', 'filled', 'closed']);
+export const hrTravelStatusEnum = pgEnum('hr_travel_status', ['draft', 'submitted', 'approved', 'declined', 'cancelled', 'completed']);
+export const hrExpenseStatusEnum = pgEnum('hr_expense_status', ['draft', 'submitted', 'approved', 'reimbursed', 'declined']);
+export const hrPriorityEnum = pgEnum('hr_priority', ['low', 'medium', 'high', 'urgent']);
+export const hrApprovalStatusEnum = pgEnum('hr_approval_status', ['pending', 'approved', 'rejected', 'cancelled']);
+export const hrTicketStatusEnum = pgEnum('hr_ticket_status', ['open', 'in_progress', 'resolved', 'closed']);
+export const hrSurveyStatusEnum = pgEnum('hr_survey_status', ['draft', 'active', 'closed']);
+export const hrOkrTypeEnum = pgEnum('hr_okr_type', ['committed', 'aspirational']);
+export const hrCourseLevelEnum = pgEnum('hr_course_level', ['beginner', 'intermediate', 'advanced']);
+export const hrCourseStatusEnum = pgEnum('hr_course_status', ['draft', 'published', 'archived']);
+export const hrLetterTypeEnum = pgEnum('hr_letter_type', ['offer_letter', 'appointment', 'confirmation', 'warning', 'termination', 'promotion', 'transfer', 'resignation_acceptance', 'experience', 'other']);

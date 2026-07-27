@@ -10,6 +10,7 @@ import { ToastProvider } from '../contexts/ToastContext';
 
 import { AppLayout } from '../components/layout/AppLayout';
 import { useAuth } from '../hooks/useAuth';
+import { RequireHrPermission } from '../components/hr/RequireHrPermission';
 
 const Dashboard = lazy(() => import('../pages/Dashboard').then(m => ({ default: m.Dashboard })));
 const AccountingAssistant = lazy(() => import('../pages/ai/AccountingAssistant').then(m => ({ default: m.AccountingAssistant })));
@@ -150,6 +151,109 @@ const DealsPipeline = lazy(() => import('../pages/crm/DealsPipeline').then(m => 
 const DealsTable = lazy(() => import('../pages/crm/DealsTable').then(m => ({ default: m.DealsTable })));
 const CrmContactsPage = lazy(() => import('../pages/crm/CrmContactsPage').then(m => ({ default: m.CrmContactsPage })));
 const ActivitiesPage = lazy(() => import('../pages/crm/ActivitiesPage').then(m => ({ default: m.ActivitiesPage })));
+
+const HrDashboardPage = lazy(() => import('../pages/hr/employees/HrDashboardPage').then(m => ({ default: m.HrDashboardPage })));
+const ManageSkyHRMPage = lazy(() => import('../pages/hr/ManageSkyHRMPage').then(m => ({ default: m.ManageSkyHRMPage })));
+const HomeLayout = lazy(() => import('../pages/hr/home/HomeLayout').then(m => ({ default: m.HomeLayout })));
+const HomeOverviewPage = lazy(() => import('../pages/hr/home/HomeOverviewPage').then(m => ({ default: m.HomeOverviewPage })));
+const HomeDashboardPage = lazy(() => import('../pages/hr/home/HomeDashboardPage').then(m => ({ default: m.HomeDashboardPage })));
+const HomeCalendarPage = lazy(() => import('../pages/hr/home/HomeCalendarPage').then(m => ({ default: m.HomeCalendarPage })));
+const HomeDelegationPage = lazy(() => import('../pages/hr/home/HomeDelegationPage').then(m => ({ default: m.HomeDelegationPage })));
+const ServicesLayout = lazy(() => import('../pages/hr/services/ServicesLayout').then(m => ({ default: m.ServicesLayout })));
+const PreferencesPage = lazy(() => import('../pages/hr/services/PreferencesPage').then(m => ({ default: m.PreferencesPage })));
+const HrServicesPerformancePage = lazy(() => import('../pages/hr/services/PerformancePage').then(m => ({ default: m.PerformancePage })));
+const HrServicesFilesPage = lazy(() => import('../pages/hr/services/FilesPage').then(m => ({ default: m.FilesPage })));
+const EmployeeEngagementPage = lazy(() => import('../pages/hr/services/EmployeeEngagementPage').then(m => ({ default: m.EmployeeEngagementPage })));
+const HRLettersPage = lazy(() => import('../pages/hr/services/HRLettersPage').then(m => ({ default: m.HRLettersPage })));
+const HrServicesTravelPage = lazy(() => import('../pages/hr/services/TravelPage').then(m => ({ default: m.TravelPage })));
+const HrServicesTasksPage = lazy(() => import('../pages/hr/services/TasksPage').then(m => ({ default: m.TasksPage })));
+const HrServicesCompensationPage = lazy(() => import('../pages/hr/services/CompensationPage').then(m => ({ default: m.CompensationPage })));
+const HrServicesGeneralPage = lazy(() => import('../pages/hr/services/GeneralPage').then(m => ({ default: m.GeneralPage })));
+const OperationsLayout = lazy(() => import('../pages/hr/operations/OperationsLayout').then(m => ({ default: m.OperationsLayout })));
+const OpsServicesPage = lazy(() => import('../pages/hr/operations/ServicesPage').then(m => ({ default: m.OpsServicesPage })));
+const OpsOnboardingPage = lazy(() => import('../pages/hr/operations/OnboardingPage').then(m => ({ default: m.OpsOnboardingPage })));
+const OpsEmployeeInformationPage = lazy(() => import('../pages/hr/operations/EmployeeInformationPage').then(m => ({ default: m.OpsEmployeeInformationPage })));
+const OpsLeaveTrackerPage = lazy(() => import('../pages/hr/operations/LeaveTrackerPage').then(m => ({ default: m.OpsLeaveTrackerPage })));
+const OpsAttendancePage = lazy(() => import('../pages/hr/operations/AttendancePage').then(m => ({ default: m.OpsAttendancePage })));
+const OpsShiftPage = lazy(() => import('../pages/hr/operations/ShiftPage').then(m => ({ default: m.OpsShiftPage })));
+const OpsTimeTrackerPage = lazy(() => import('../pages/hr/operations/TimeTrackerPage').then(m => ({ default: m.OpsTimeTrackerPage })));
+const OpsPerformancePage = lazy(() => import('../pages/hr/operations/PerformancePage').then(m => ({ default: m.OpsPerformancePage })));
+const OpsFilesPage = lazy(() => import('../pages/hr/operations/FilesPage').then(m => ({ default: m.OpsFilesPage })));
+const OpsEmployeeEngagementPage = lazy(() => import('../pages/hr/operations/EmployeeEngagementPage').then(m => ({ default: m.OpsEmployeeEngagementPage })));
+const OpsHRLettersPage = lazy(() => import('../pages/hr/operations/HRLettersPage').then(m => ({ default: m.OpsHRLettersPage })));
+const OpsTravelPage = lazy(() => import('../pages/hr/operations/TravelPage').then(m => ({ default: m.OpsTravelPage })));
+const OpsTasksPage = lazy(() => import('../pages/hr/operations/TasksPage').then(m => ({ default: m.OpsTasksPage })));
+const OpsGeneralPage = lazy(() => import('../pages/hr/operations/GeneralPage').then(m => ({ default: m.OpsGeneralPage })));
+const OpsOffboardingPage = lazy(() => import('../pages/hr/operations/OffboardingPage').then(m => ({ default: m.OpsOffboardingPage })));
+const OpsOKRPage = lazy(() => import('../pages/hr/operations/OKRPage').then(m => ({ default: m.OpsOKRPage })));
+const OpsApprovalsPage = lazy(() => import('../pages/hr/operations/ApprovalsPage').then(m => ({ default: m.OpsApprovalsPage })));
+const OpsDataAdministrationPage = lazy(() => import('../pages/hr/operations/DataAdministrationPage').then(m => ({ default: m.OpsDataAdministrationPage })));
+const ManageLayout = lazy(() => import('../pages/hr/manage/ManageLayout').then(m => ({ default: m.ManageLayout })));
+const ManageUsersPage = lazy(() => import('../pages/hr/manage/UsersPage').then(m => ({ default: m.UsersPage })));
+const EmployeeProfilesPage = lazy(() => import('../pages/hr/manage/EmployeeProfilesPage').then(m => ({ default: m.EmployeeProfilesPage })));
+const OrganisationSection = lazy(() => import('../pages/hr/manage/OrganisationSection').then(m => ({ default: m.OrganisationSection })));
+const UserAccessSection = lazy(() => import('../pages/hr/manage/UserAccessSection').then(m => ({ default: m.UserAccessSection })));
+const ApprovalsSection = lazy(() => import('../pages/hr/manage/ApprovalsSection').then(m => ({ default: m.ApprovalsSection })));
+const ServicesSection = lazy(() => import('../pages/hr/manage/ServicesSection').then(m => ({ default: m.ServicesSection })));
+const EmployeeList = lazy(() => import('../pages/hr/employees/EmployeeList').then(m => ({ default: m.EmployeeList })));
+const EmployeeDetail = lazy(() => import('../pages/hr/employees/EmployeeDetail').then(m => ({ default: m.EmployeeDetail })));
+const EmployeeForm = lazy(() => import('../pages/hr/employees/EmployeeForm').then(m => ({ default: m.EmployeeForm })));
+const DepartmentsPage = lazy(() => import('../pages/hr/employees/DepartmentsPage').then(m => ({ default: m.DepartmentsPage })));
+const DesignationsPage = lazy(() => import('../pages/hr/employees/DesignationsPage').then(m => ({ default: m.DesignationsPage })));
+const LeaveLayout = lazy(() => import('../pages/hr/leave/LeaveLayout').then(m => ({ default: m.LeaveLayout })));
+const LeaveSummaryPage = lazy(() => import('../pages/hr/leave/LeaveSummaryPage').then(m => ({ default: m.LeaveSummaryPage })));
+const LeaveShiftPage = lazy(() => import('../pages/hr/leave/ShiftPage').then(m => ({ default: m.LeaveShiftPage })));
+const LeaveRequestsPage = lazy(() => import('../pages/hr/leave/LeaveRequestsPage').then(m => ({ default: m.LeaveRequestsPage })));
+const LeaveTypesPage = lazy(() => import('../pages/hr/leave/LeaveTypesPage').then(m => ({ default: m.LeaveTypesPage })));
+const AttendanceLayout = lazy(() => import('../pages/hr/attendance/AttendanceLayout').then(m => ({ default: m.AttendanceLayout })));
+const AttendanceSummaryPage = lazy(() => import('../pages/hr/attendance/AttendanceSummaryPage').then(m => ({ default: m.AttendanceSummaryPage })));
+const AttendanceShiftPage = lazy(() => import('../pages/hr/attendance/ShiftPage').then(m => ({ default: m.AttendanceShiftPage })));
+const ShiftsPage = lazy(() => import('../pages/hr/attendance/ShiftsPage').then(m => ({ default: m.ShiftsPage })));
+const TimesheetsLayout = lazy(() => import('../pages/hr/time/TimesheetsLayout').then(m => ({ default: m.TimesheetsLayout })));
+const TimeLogsPage = lazy(() => import('../pages/hr/time/TimeLogsPage').then(m => ({ default: m.TimeLogsPage })));
+const TimesheetsListPage = lazy(() => import('../pages/hr/time/TimesheetsListPage').then(m => ({ default: m.TimesheetsListPage })));
+const OnboardingLayout = lazy(() => import('../pages/hr/recruitment/OnboardingLayout').then(m => ({ default: m.OnboardingLayout })));
+const AddCandidatePage = lazy(() => import('../pages/hr/recruitment/AddCandidatePage').then(m => ({ default: m.AddCandidatePage })));
+const JobOpeningsPage = lazy(() => import('../pages/hr/recruitment/JobOpeningsPage').then(m => ({ default: m.JobOpeningsPage })));
+const CandidatesPage = lazy(() => import('../pages/hr/recruitment/CandidatesPage').then(m => ({ default: m.CandidatesPage })));
+const JobsPage = lazy(() => import('../pages/hr/JobsPage').then(m => ({ default: m.JobsPage })));
+const HrProjectsPage = lazy(() => import('../pages/hr/ProjectsPage').then(m => ({ default: m.ProjectsPage })));
+const JobSchedulePage = lazy(() => import('../pages/hr/JobSchedulePage').then(m => ({ default: m.JobSchedulePage })));
+const PerformanceReviewsPage = lazy(() => import('../pages/hr/performance/PerformanceReviewsPage').then(m => ({ default: m.PerformanceReviewsPage })));
+const CoursesPage = lazy(() => import('../pages/hr/courses/CoursesPage').then(m => ({ default: m.CoursesPage })));
+const SurveysPage = lazy(() => import('../pages/hr/surveys/SurveysPage').then(m => ({ default: m.SurveysPage })));
+const AnnouncementsPage = lazy(() => import('../pages/hr/announcements/AnnouncementsPage').then(m => ({ default: m.AnnouncementsPage })));
+const RecognitionPage = lazy(() => import('../pages/hr/recognition/RecognitionPage').then(m => ({ default: m.RecognitionPage })));
+const GoalsPage = lazy(() => import('../pages/hr/goals/GoalsPage').then(m => ({ default: m.GoalsPage })));
+const LettersPage = lazy(() => import('../pages/hr/letters/LettersPage').then(m => ({ default: m.LettersPage })));
+const LetterTemplatesPage = lazy(() => import('../pages/hr/letters/LetterTemplatesPage').then(m => ({ default: m.LetterTemplatesPage })));
+const TravelRequestsPage = lazy(() => import('../pages/hr/travel/TravelRequestsPage').then(m => ({ default: m.TravelRequestsPage })));
+const ExpenseReportsPage = lazy(() => import('../pages/hr/expenses/ExpenseReportsPage').then(m => ({ default: m.ExpenseReportsPage })));
+const CompensationPage = lazy(() => import('../pages/hr/compensation/CompensationPage').then(m => ({ default: m.CompensationPage })));
+const BenefitsPage = lazy(() => import('../pages/hr/compensation/BenefitsPage').then(m => ({ default: m.BenefitsPage })));
+const TasksPage = lazy(() => import('../pages/hr/tasks/TasksPage').then(m => ({ default: m.TasksPage })));
+const WorkflowsPage = lazy(() => import('../pages/hr/workflows/WorkflowsPage').then(m => ({ default: m.WorkflowsPage })));
+const OffboardingPage = lazy(() => import('../pages/hr/offboarding/OffboardingPage').then(m => ({ default: m.OffboardingPage })));
+const HelpDeskPage = lazy(() => import('../pages/hr/helpdesk/HelpDeskPage').then(m => ({ default: m.HelpDeskPage })));
+const ApprovalsPage = lazy(() => import('../pages/hr/approvals/ApprovalsPage').then(m => ({ default: m.ApprovalsPage })));
+const ReportsLayout = lazy(() => import('../pages/hr/reports/ReportsLayout').then(m => ({ default: m.ReportsLayout })));
+const MyReportsPage = lazy(() => import('../pages/hr/reports/sub/MyReportsPage').then(m => ({ default: m.MyReportsPage })));
+const ReportsEmployeeInformationPage = lazy(() => import('../pages/hr/reports/sub/EmployeeInformationPage').then(m => ({ default: m.ReportsEmployeeInformationPage })));
+const CareerHistoryPage = lazy(() => import('../pages/hr/reports/sub/CareerHistoryPage').then(m => ({ default: m.CareerHistoryPage })));
+const LeaveBalancePage = lazy(() => import('../pages/hr/reports/sub/LeaveBalancePage').then(m => ({ default: m.LeaveBalancePage })));
+const ReportsAttendancePage = lazy(() => import('../pages/hr/reports/sub/AttendancePage').then(m => ({ default: m.ReportsAttendancePage })));
+const EarlyCheckInPage = lazy(() => import('../pages/hr/reports/sub/EarlyCheckInPage').then(m => ({ default: m.EarlyCheckInPage })));
+const LateCheckInPage = lazy(() => import('../pages/hr/reports/sub/LateCheckInPage').then(m => ({ default: m.LateCheckInPage })));
+const EarlyCheckOutPage = lazy(() => import('../pages/hr/reports/sub/EarlyCheckOutPage').then(m => ({ default: m.EarlyCheckOutPage })));
+const LateCheckOutPage = lazy(() => import('../pages/hr/reports/sub/LateCheckOutPage').then(m => ({ default: m.LateCheckOutPage })));
+const PresenceHoursPage = lazy(() => import('../pages/hr/reports/sub/PresenceHoursPage').then(m => ({ default: m.PresenceHoursPage })));
+const TeamReportsPage = lazy(() => import('../pages/hr/reports/sub/TeamReportsPage').then(m => ({ default: m.TeamReportsPage })));
+const OrganizationReportsPage = lazy(() => import('../pages/hr/reports/sub/OrganizationReportsPage').then(m => ({ default: m.OrganizationReportsPage })));
+const ReportsAnalyticsPage = lazy(() => import('../pages/hr/reports/sub/AnalyticsPage').then(m => ({ default: m.AnalyticsPage })));
+const ReportsSchedulesPage = lazy(() => import('../pages/hr/reports/sub/SchedulesPage').then(m => ({ default: m.ReportsSchedulesPage })));
+const PoliciesPage = lazy(() => import('../pages/hr/administration/PoliciesPage').then(m => ({ default: m.PoliciesPage })));
+const HrSettingsPage = lazy(() => import('../pages/hr/administration/HrSettingsPage').then(m => ({ default: m.HrSettingsPage })));
+
 const HelpDocumentsPage = lazy(() => import('../pages/help/HelpDocumentsPage').then(m => ({ default: m.HelpDocumentsPage })));
 const FAQsPage = lazy(() => import('../pages/help/FAQsPage').then(m => ({ default: m.FAQsPage })));
 const VideoTutorialsPage = lazy(() => import('../pages/help/VideoTutorialsPage').then(m => ({ default: m.VideoTutorialsPage })));
@@ -317,6 +421,12 @@ function LazyRoute({ element }: { element: React.ReactNode }) {
   return <Suspense fallback={<PageLoader />}>{element}</Suspense>;
 }
 
+type HrAction = 'hr:read' | 'hr:create' | 'hr:update' | 'hr:delete' | 'hr:approve' | 'hr:export' | 'hr:reports' | 'hr:admin' | 'hr:manage';
+
+function HrGuard({ perm, children }: { perm: HrAction; children: React.ReactNode }) {
+  return <RequireHrPermission permission={perm}>{children}</RequireHrPermission>;
+}
+
 function AppRoutes() {
   return (
     <BrowserRouter>
@@ -333,6 +443,7 @@ function AppRoutes() {
           <Route path="reports" element={<Navigate to="/app/reports/trial-balance" replace />} />
           <Route path="revenue" element={<Navigate to="/app/revenue/contracts" replace />} />
           <Route path="crm" element={<Navigate to="/app/crm/dashboard" replace />} />
+          <Route path="hr" element={<Navigate to="/app/hr/home" replace />} />
 
           <Route path="ai/assistant" element={<LazyRoute element={<AccountingAssistant />} />} />
           <Route path="ai/nvidia" element={<LazyRoute element={<NvidiaAiPage />} />} />
@@ -428,6 +539,174 @@ function AppRoutes() {
           <Route path="crm/deals" element={<LazyRoute element={<DealsTable />} />} />
           <Route path="crm/contacts" element={<LazyRoute element={<CrmContactsPage />} />} />
           <Route path="crm/activities" element={<LazyRoute element={<ActivitiesPage />} />} />
+
+          <Route path="hr/home" element={<HrGuard perm="hr:read"><Suspense fallback={<PageLoader />}><HomeLayout /></Suspense></HrGuard>}>
+            <Route index element={<Navigate to="/app/hr/home/overview" replace />} />
+            <Route path="overview" element={<LazyRoute element={<HomeOverviewPage />} />} />
+            <Route path="dashboard" element={<LazyRoute element={<HomeDashboardPage />} />} />
+            <Route path="calendar" element={<LazyRoute element={<HomeCalendarPage />} />} />
+            <Route path="delegation" element={<LazyRoute element={<HomeDelegationPage />} />} />
+          </Route>
+          <Route path="hr/manage" element={<HrGuard perm="hr:admin"><Suspense fallback={<PageLoader />}><ManageLayout /></Suspense></HrGuard>}>
+            <Route index element={<Navigate to="/app/hr/manage/users" replace />} />
+            <Route path="users" element={<LazyRoute element={<ManageUsersPage />} />} />
+            <Route path="employees" element={<LazyRoute element={<EmployeeProfilesPage />} />} />
+            <Route path="organisation" element={<Navigate to="/app/hr/manage/organisation/policy" replace />} />
+            <Route path="organisation/policy" element={<LazyRoute element={<OrganisationSection />} />} />
+            <Route path="organisation/structure" element={<LazyRoute element={<OrganisationSection />} />} />
+            <Route path="organisation/locations" element={<LazyRoute element={<OrganisationSection />} />} />
+            <Route path="organisation/departments" element={<LazyRoute element={<OrganisationSection />} />} />
+            <Route path="organisation/designations" element={<LazyRoute element={<OrganisationSection />} />} />
+            <Route path="organisation/domains" element={<LazyRoute element={<OrganisationSection />} />} />
+            <Route path="organisation/from-address" element={<LazyRoute element={<OrganisationSection />} />} />
+            <Route path="organisation/email-auth" element={<LazyRoute element={<OrganisationSection />} />} />
+            <Route path="access" element={<Navigate to="/app/hr/manage/access/general" replace />} />
+            <Route path="access/general" element={<LazyRoute element={<UserAccessSection />} />} />
+            <Route path="access/specific" element={<LazyRoute element={<UserAccessSection />} />} />
+            <Route path="access/assignments" element={<LazyRoute element={<UserAccessSection />} />} />
+            <Route path="access/permissions" element={<LazyRoute element={<UserAccessSection />} />} />
+            <Route path="access/administrator" element={<LazyRoute element={<UserAccessSection />} />} />
+            <Route path="approvals" element={<Navigate to="/app/hr/manage/approvals/details" replace />} />
+            <Route path="approvals/details" element={<LazyRoute element={<ApprovalsSection />} />} />
+            <Route path="approvals/criteria" element={<LazyRoute element={<ApprovalsSection />} />} />
+            <Route path="approvals/list" element={<LazyRoute element={<ApprovalsSection />} />} />
+            <Route path="approvals/messages" element={<LazyRoute element={<ApprovalsSection />} />} />
+            <Route path="services" element={<Navigate to="/app/hr/manage/services/onboarding" replace />} />
+            <Route path="services/onboarding" element={<LazyRoute element={<ServicesSection />} />} />
+            <Route path="services/candidate" element={<LazyRoute element={<ServicesSection />} />} />
+            <Route path="services/employee-information" element={<LazyRoute element={<ServicesSection />} />} />
+            <Route path="services/employee" element={<LazyRoute element={<ServicesSection />} />} />
+            <Route path="services/department" element={<LazyRoute element={<ServicesSection />} />} />
+            <Route path="services/designation" element={<LazyRoute element={<ServicesSection />} />} />
+            <Route path="services/holidays" element={<LazyRoute element={<ServicesSection />} />} />
+            <Route path="services/leave" element={<LazyRoute element={<ServicesSection />} />} />
+            <Route path="services/compensatory-request" element={<LazyRoute element={<ServicesSection />} />} />
+            <Route path="services/attendance" element={<LazyRoute element={<ServicesSection />} />} />
+            <Route path="services/time-tracker" element={<LazyRoute element={<ServicesSection />} />} />
+            <Route path="services/clients" element={<LazyRoute element={<ServicesSection />} />} />
+            <Route path="services/projects" element={<LazyRoute element={<ServicesSection />} />} />
+            <Route path="services/jobs" element={<LazyRoute element={<ServicesSection />} />} />
+            <Route path="services/self-appraisal" element={<LazyRoute element={<ServicesSection />} />} />
+            <Route path="services/performance-appraisal" element={<LazyRoute element={<ServicesSection />} />} />
+            <Route path="services/goals" element={<LazyRoute element={<ServicesSection />} />} />
+            <Route path="services/multi-rater-review" element={<LazyRoute element={<ServicesSection />} />} />
+            <Route path="services/organization-files" element={<LazyRoute element={<ServicesSection />} />} />
+            <Route path="services/employee-files" element={<LazyRoute element={<ServicesSection />} />} />
+            <Route path="services/announcements" element={<LazyRoute element={<ServicesSection />} />} />
+            <Route path="services/address-proof" element={<LazyRoute element={<ServicesSection />} />} />
+            <Route path="services/bonafide-letter" element={<LazyRoute element={<ServicesSection />} />} />
+            <Route path="services/experience-letter" element={<LazyRoute element={<ServicesSection />} />} />
+            <Route path="services/travel-request" element={<LazyRoute element={<ServicesSection />} />} />
+            <Route path="services/travel-expense" element={<LazyRoute element={<ServicesSection />} />} />
+            <Route path="services/tasks" element={<LazyRoute element={<ServicesSection />} />} />
+            <Route path="services/task" element={<LazyRoute element={<ServicesSection />} />} />
+            <Route path="services/compensation" element={<LazyRoute element={<ServicesSection />} />} />
+            <Route path="services/exit-details" element={<LazyRoute element={<ServicesSection />} />} />
+            <Route path="services/offboarding" element={<LazyRoute element={<ServicesSection />} />} />
+            <Route path="services/okr" element={<LazyRoute element={<ServicesSection />} />} />
+            <Route path="services/courses" element={<LazyRoute element={<ServicesSection />} />} />
+            <Route path="services/hr-help-desk" element={<LazyRoute element={<ServicesSection />} />} />
+          </Route>
+          <Route path="hr/onboarding" element={<HrGuard perm="hr:create"><Suspense fallback={<PageLoader />}><OnboardingLayout /></Suspense></HrGuard>}>
+            <Route index element={<Navigate to="/app/hr/onboarding/add-candidate" replace />} />
+            <Route path="add-candidate" element={<LazyRoute element={<AddCandidatePage />} />} />
+          </Route>
+          <Route path="hr/leave" element={<HrGuard perm="hr:read"><Suspense fallback={<PageLoader />}><LeaveLayout /></Suspense></HrGuard>}>
+            <Route index element={<Navigate to="/app/hr/leave/summary" replace />} />
+            <Route path="summary" element={<LazyRoute element={<LeaveSummaryPage />} />} />
+            <Route path="requests" element={<LazyRoute element={<LeaveRequestsPage />} />} />
+            <Route path="shift" element={<LazyRoute element={<LeaveShiftPage />} />} />
+          </Route>
+          <Route path="hr/attendance" element={<HrGuard perm="hr:read"><Suspense fallback={<PageLoader />}><AttendanceLayout /></Suspense></HrGuard>}>
+            <Route index element={<Navigate to="/app/hr/attendance/summary" replace />} />
+            <Route path="summary" element={<LazyRoute element={<AttendanceSummaryPage />} />} />
+            <Route path="shift" element={<LazyRoute element={<AttendanceShiftPage />} />} />
+          </Route>
+          <Route path="hr/timesheets" element={<HrGuard perm="hr:read"><Suspense fallback={<PageLoader />}><TimesheetsLayout /></Suspense></HrGuard>}>
+            <Route index element={<Navigate to="/app/hr/timesheets/logs" replace />} />
+            <Route path="logs" element={<LazyRoute element={<TimeLogsPage />} />} />
+            <Route path="sheets" element={<LazyRoute element={<TimesheetsListPage />} />} />
+          </Route>
+          <Route path="hr/services" element={<HrGuard perm="hr:read"><Suspense fallback={<PageLoader />}><ServicesLayout /></Suspense></HrGuard>}>
+            <Route index element={<Navigate to="/app/hr/services/preferences" replace />} />
+            <Route path="preferences" element={<LazyRoute element={<PreferencesPage />} />} />
+            <Route path="performance" element={<LazyRoute element={<HrServicesPerformancePage />} />} />
+            <Route path="files" element={<LazyRoute element={<HrServicesFilesPage />} />} />
+            <Route path="engagement" element={<LazyRoute element={<EmployeeEngagementPage />} />} />
+            <Route path="hr-letters" element={<LazyRoute element={<HRLettersPage />} />} />
+            <Route path="travel" element={<LazyRoute element={<HrServicesTravelPage />} />} />
+            <Route path="tasks" element={<LazyRoute element={<HrServicesTasksPage />} />} />
+            <Route path="compensation" element={<LazyRoute element={<HrServicesCompensationPage />} />} />
+            <Route path="system" element={<LazyRoute element={<HrServicesGeneralPage />} />} />
+          </Route>
+          <Route path="hr/operations" element={<HrGuard perm="hr:read"><Suspense fallback={<PageLoader />}><OperationsLayout /></Suspense></HrGuard>}>
+            <Route index element={<Navigate to="/app/hr/operations/services" replace />} />
+            <Route path="services" element={<LazyRoute element={<OpsServicesPage />} />} />
+            <Route path="onboarding" element={<LazyRoute element={<OpsOnboardingPage />} />} />
+            <Route path="employee-info" element={<LazyRoute element={<OpsEmployeeInformationPage />} />} />
+            <Route path="leave" element={<LazyRoute element={<OpsLeaveTrackerPage />} />} />
+            <Route path="attendance" element={<LazyRoute element={<OpsAttendancePage />} />} />
+            <Route path="shift" element={<LazyRoute element={<OpsShiftPage />} />} />
+            <Route path="time-tracker" element={<LazyRoute element={<OpsTimeTrackerPage />} />} />
+            <Route path="performance" element={<LazyRoute element={<OpsPerformancePage />} />} />
+            <Route path="files" element={<LazyRoute element={<OpsFilesPage />} />} />
+            <Route path="engagement" element={<LazyRoute element={<OpsEmployeeEngagementPage />} />} />
+            <Route path="hr-letters" element={<LazyRoute element={<OpsHRLettersPage />} />} />
+            <Route path="travel" element={<LazyRoute element={<OpsTravelPage />} />} />
+            <Route path="tasks" element={<LazyRoute element={<OpsTasksPage />} />} />
+            <Route path="system" element={<LazyRoute element={<OpsGeneralPage />} />} />
+            <Route path="offboarding" element={<LazyRoute element={<OpsOffboardingPage />} />} />
+            <Route path="okr" element={<LazyRoute element={<OpsOKRPage />} />} />
+            <Route path="approvals" element={<LazyRoute element={<OpsApprovalsPage />} />} />
+            <Route path="data-admin" element={<LazyRoute element={<OpsDataAdministrationPage />} />} />
+          </Route>
+          <Route path="hr/reports" element={<HrGuard perm="hr:reports"><Suspense fallback={<PageLoader />}><ReportsLayout /></Suspense></HrGuard>}>
+            <Route index element={<Navigate to="/app/hr/reports/my-reports" replace />} />
+            <Route path="my-reports" element={<LazyRoute element={<MyReportsPage />} />} />
+            <Route path="employee-info" element={<LazyRoute element={<ReportsEmployeeInformationPage />} />} />
+            <Route path="career-history" element={<LazyRoute element={<CareerHistoryPage />} />} />
+            <Route path="leave-balance" element={<LazyRoute element={<LeaveBalancePage />} />} />
+            <Route path="attendance" element={<LazyRoute element={<ReportsAttendancePage />} />} />
+            <Route path="early-check-in" element={<LazyRoute element={<EarlyCheckInPage />} />} />
+            <Route path="late-check-in" element={<LazyRoute element={<LateCheckInPage />} />} />
+            <Route path="early-check-out" element={<LazyRoute element={<EarlyCheckOutPage />} />} />
+            <Route path="late-check-out" element={<LazyRoute element={<LateCheckOutPage />} />} />
+            <Route path="presence-hours" element={<LazyRoute element={<PresenceHoursPage />} />} />
+            <Route path="team-reports" element={<LazyRoute element={<TeamReportsPage />} />} />
+            <Route path="org-reports" element={<LazyRoute element={<OrganizationReportsPage />} />} />
+            <Route path="analytics" element={<LazyRoute element={<ReportsAnalyticsPage />} />} />
+            <Route path="schedules" element={<LazyRoute element={<ReportsSchedulesPage />} />} />
+          </Route>
+          <Route path="hr/employees" element={<HrGuard perm="hr:read"><LazyRoute element={<EmployeeList />} /></HrGuard>} />
+          <Route path="hr/employees/new" element={<HrGuard perm="hr:create"><LazyRoute element={<EmployeeForm />} /></HrGuard>} />
+          <Route path="hr/employees/:id" element={<HrGuard perm="hr:read"><LazyRoute element={<EmployeeDetail />} /></HrGuard>} />
+          <Route path="hr/departments" element={<HrGuard perm="hr:read"><LazyRoute element={<DepartmentsPage />} /></HrGuard>} />
+          <Route path="hr/designations" element={<HrGuard perm="hr:read"><LazyRoute element={<DesignationsPage />} /></HrGuard>} />
+          <Route path="hr/leave-types" element={<HrGuard perm="hr:read"><LazyRoute element={<LeaveTypesPage />} /></HrGuard>} />
+          <Route path="hr/shifts" element={<HrGuard perm="hr:read"><LazyRoute element={<ShiftsPage />} /></HrGuard>} />
+          <Route path="hr/candidates" element={<HrGuard perm="hr:read"><LazyRoute element={<CandidatesPage />} /></HrGuard>} />
+          <Route path="hr/performance" element={<HrGuard perm="hr:read"><LazyRoute element={<PerformanceReviewsPage />} /></HrGuard>} />
+          <Route path="hr/courses" element={<HrGuard perm="hr:read"><LazyRoute element={<CoursesPage />} /></HrGuard>} />
+          <Route path="hr/surveys" element={<HrGuard perm="hr:read"><LazyRoute element={<SurveysPage />} /></HrGuard>} />
+          <Route path="hr/announcements" element={<HrGuard perm="hr:read"><LazyRoute element={<AnnouncementsPage />} /></HrGuard>} />
+          <Route path="hr/recognition" element={<HrGuard perm="hr:read"><LazyRoute element={<RecognitionPage />} /></HrGuard>} />
+          <Route path="hr/goals" element={<HrGuard perm="hr:read"><LazyRoute element={<GoalsPage />} /></HrGuard>} />
+          <Route path="hr/letters" element={<HrGuard perm="hr:read"><LazyRoute element={<LettersPage />} /></HrGuard>} />
+          <Route path="hr/letter-templates" element={<HrGuard perm="hr:read"><LazyRoute element={<LetterTemplatesPage />} /></HrGuard>} />
+          <Route path="hr/travel" element={<HrGuard perm="hr:read"><LazyRoute element={<TravelRequestsPage />} /></HrGuard>} />
+          <Route path="hr/expenses" element={<HrGuard perm="hr:read"><LazyRoute element={<ExpenseReportsPage />} /></HrGuard>} />
+          <Route path="hr/compensation" element={<HrGuard perm="hr:read"><LazyRoute element={<CompensationPage />} /></HrGuard>} />
+          <Route path="hr/benefits" element={<HrGuard perm="hr:read"><LazyRoute element={<BenefitsPage />} /></HrGuard>} />
+          <Route path="hr/tasks" element={<HrGuard perm="hr:read"><LazyRoute element={<TasksPage />} /></HrGuard>} />
+          <Route path="hr/workflows" element={<HrGuard perm="hr:read"><LazyRoute element={<WorkflowsPage />} /></HrGuard>} />
+          <Route path="hr/offboarding" element={<HrGuard perm="hr:read"><LazyRoute element={<OffboardingPage />} /></HrGuard>} />
+          <Route path="hr/helpdesk" element={<HrGuard perm="hr:read"><LazyRoute element={<HelpDeskPage />} /></HrGuard>} />
+          <Route path="hr/approvals" element={<HrGuard perm="hr:approve"><LazyRoute element={<ApprovalsPage />} /></HrGuard>} />
+          <Route path="hr/policies" element={<HrGuard perm="hr:read"><LazyRoute element={<PoliciesPage />} /></HrGuard>} />
+          <Route path="hr/settings" element={<HrGuard perm="hr:admin"><LazyRoute element={<HrSettingsPage />} /></HrGuard>} />
+          <Route path="hr/jobs" element={<HrGuard perm="hr:read"><LazyRoute element={<JobsPage />} /></HrGuard>} />
+          <Route path="hr/projects" element={<HrGuard perm="hr:read"><LazyRoute element={<HrProjectsPage />} /></HrGuard>} />
+          <Route path="hr/job-schedule" element={<HrGuard perm="hr:read"><LazyRoute element={<JobSchedulePage />} /></HrGuard>} />
 
           <Route path="settings" element={<Suspense fallback={<PageLoader />}><SettingsLayout /></Suspense>}>
             <Route index element={<Navigate to="/app/settings/organisation" replace />} />

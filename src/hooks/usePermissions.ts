@@ -2,7 +2,7 @@ import { useAuth } from './useAuth';
 
 export type UserRole = 'owner' | 'admin' | 'accountant' | 'manager' | 'staff' | 'administrator' | 'sales' | 'inventory' | 'cashier' | 'auditor' | 'hr' | 'purchasing' | 'employee';
 
-type ModuleName = 'overview' | 'sales' | 'purchases' | 'payroll' | 'banking' | 'reports' | 'settings' | 'inventory' | 'contacts' | 'accounting' | 'tax' | 'fixed_assets' | 'projects' | 'budgets';
+type ModuleName = 'overview' | 'sales' | 'purchases' | 'payroll' | 'banking' | 'reports' | 'settings' | 'inventory' | 'contacts' | 'accounting' | 'tax' | 'fixed_assets' | 'projects' | 'budgets' | 'hrm';
 
 type ActionName = 'all' |
   'create:invoice' | 'update:invoice' | 'void:invoice' |
@@ -15,19 +15,20 @@ type ActionName = 'all' |
   'create:journal' | 'post:journal' |
   'export:report' |
   'manage:coa' |
-  'adjust:inventory';
+  'adjust:inventory' |
+  'hr:read' | 'hr:create' | 'hr:update' | 'hr:delete' | 'hr:approve' | 'hr:export' | 'hr:reports' | 'hr:admin' | 'hr:manage';
 
 const ROLE_PERMISSIONS: Record<UserRole, { modules: ModuleName[]; actions: ActionName[] }> = {
   owner: {
-    modules: ['overview', 'sales', 'purchases', 'payroll', 'banking', 'reports', 'settings', 'inventory', 'contacts', 'accounting', 'tax', 'fixed_assets', 'projects', 'budgets'],
+    modules: ['overview', 'sales', 'purchases', 'payroll', 'banking', 'reports', 'settings', 'inventory', 'contacts', 'accounting', 'tax', 'fixed_assets', 'projects', 'budgets', 'hrm'],
     actions: ['all'],
   },
   admin: {
-    modules: ['overview', 'sales', 'purchases', 'payroll', 'banking', 'reports', 'settings', 'inventory', 'contacts', 'accounting', 'tax', 'fixed_assets', 'projects', 'budgets'],
+    modules: ['overview', 'sales', 'purchases', 'payroll', 'banking', 'reports', 'settings', 'inventory', 'contacts', 'accounting', 'tax', 'fixed_assets', 'projects', 'budgets', 'hrm'],
     actions: ['all'],
   },
   administrator: {
-    modules: ['overview', 'sales', 'purchases', 'payroll', 'banking', 'reports', 'settings', 'inventory', 'contacts', 'accounting', 'tax', 'fixed_assets', 'projects', 'budgets'],
+    modules: ['overview', 'sales', 'purchases', 'payroll', 'banking', 'reports', 'settings', 'inventory', 'contacts', 'accounting', 'tax', 'fixed_assets', 'projects', 'budgets', 'hrm'],
     actions: ['all'],
   },
   accountant: {
@@ -83,9 +84,11 @@ const ROLE_PERMISSIONS: Record<UserRole, { modules: ModuleName[]; actions: Actio
     ],
   },
   hr: {
-    modules: ['overview', 'payroll', 'settings'],
+    modules: ['overview', 'payroll', 'settings', 'hrm'],
     actions: [
       'run:payroll', 'pay:payroll',
+      'hr:read', 'hr:create', 'hr:update', 'hr:delete',
+      'hr:approve', 'hr:export', 'hr:reports', 'hr:admin', 'hr:manage',
     ],
   },
   purchasing: {

@@ -47,6 +47,7 @@ export const subscriptionPlans = pgTable('subscription_plans', {
   currency: text('currency').default('NGN').notNull(),
   billingCycle: billingCycleEnum('billing_cycle').default('monthly').notNull(),
   trialDays: integer('trial_days').default(0).notNull(),
+  modules: text('modules').array().default([]).notNull(),
   userLimit: integer('user_limit').default(1).notNull(),
   maxCompanies: integer('max_companies').default(1).notNull(),
   storageLimitGb: integer('storage_limit_gb').default(1).notNull(),

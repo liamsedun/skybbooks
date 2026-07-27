@@ -79,6 +79,12 @@ import featureRolloutsRouter from '../routes/featureRollouts';
 import dunningRouter from '../routes/dunning';
 import customerSubscriptionsRouter from '../routes/customerSubscriptions';
 import crmRouter from '../routes/crm';
+import hrEmployeesRouter from '../routes/hr/employees';
+import hrRecruitmentRouter from '../routes/hr/recruitment';
+import hrLeaveTimeRouter from '../routes/hr/leave-time';
+import hrPeopleRouter from '../routes/hr/people';
+import hrOperationsRouter from '../routes/hr/operations';
+import hrSupportRouter from '../routes/hr/support';
 import promotionsEngineRouter from '../routes/promotionsEngine';
 
 import { runMigration } from '../db/migrate';
@@ -241,6 +247,12 @@ async function startServer() {
   app.use('/api/customer-subscriptions', customerSubscriptionsRouter);
   app.use('/api/promotions', promotionsEngineRouter);
   app.use('/api/crm', crmRouter);
+  app.use('/api/hr', hrEmployeesRouter);
+  app.use('/api/hr', hrRecruitmentRouter);
+  app.use('/api/hr', hrLeaveTimeRouter);
+  app.use('/api/hr', hrPeopleRouter);
+  app.use('/api/hr', hrOperationsRouter);
+  app.use('/api/hr', hrSupportRouter);
 
   app.get('/api/health', (req, res) => {
     res.json({ status: 'healthy', timestamp: new Date().toISOString() });

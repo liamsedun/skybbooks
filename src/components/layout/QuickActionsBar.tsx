@@ -15,6 +15,9 @@ import {
   Receipt,
   BookOpen,
   ArrowRightLeft,
+  UserCheck,
+  Clock,
+  UserPlus,
 } from 'lucide-react';
 
 interface QuickAction {
@@ -32,6 +35,9 @@ const actions: QuickAction[] = [
   { label: 'Record Expense', icon: Receipt, path: '/app/purchases/expenses/new' },
   { label: 'Manual Journal', icon: BookOpen, path: '/app/accountant/journals/new' },
   { label: 'Bank Transfer', icon: ArrowRightLeft, path: '/app/banking/transfers' },
+  { label: 'Approve Leave', icon: UserCheck, path: '/app/hr/approvals' },
+  { label: 'Clock In', icon: Clock, path: '/app/hr/attendance' },
+  { label: 'Add Employee', icon: UserPlus, path: '/app/hr/employees/new' },
 ];
 
 export function QuickActionsBar() {

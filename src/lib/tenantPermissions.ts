@@ -102,6 +102,17 @@ export const TenantPermission = {
   CrmCreate: 'crm:create',
   CrmUpdate: 'crm:update',
   CrmDelete: 'crm:delete',
+
+  // HRM
+  HrRead: 'hr:read',
+  HrCreate: 'hr:create',
+  HrUpdate: 'hr:update',
+  HrDelete: 'hr:delete',
+  HrApprove: 'hr:approve',
+  HrExport: 'hr:export',
+  HrReports: 'hr:reports',
+  HrAdmin: 'hr:admin',
+  HrManage: 'hr:manage',
 } as const;
 
 export type TenantPermission = (typeof TenantPermission)[keyof typeof TenantPermission];
@@ -135,6 +146,7 @@ const readOnlyPermissions: TenantPermission[] = [
   TenantPermission.CrmCreate,
   TenantPermission.CrmUpdate,
   TenantPermission.CrmDelete,
+  TenantPermission.HrRead,
 ];
 
 const defaultRolePermissions: Record<string, TenantPermission[]> = {
@@ -212,8 +224,10 @@ const defaultRolePermissions: Record<string, TenantPermission[]> = {
   hr: [
     TenantPermission.DashboardRead,
     TenantPermission.PayrollRead, TenantPermission.PayrollCreate,
-    TenantPermission.ReportsRead,
+    TenantPermission.ReportsRead, TenantPermission.ReportsExport,
     TenantPermission.SettingsRead,
+    TenantPermission.HrRead, TenantPermission.HrCreate, TenantPermission.HrUpdate, TenantPermission.HrDelete,
+    TenantPermission.HrApprove, TenantPermission.HrExport, TenantPermission.HrReports, TenantPermission.HrAdmin,
   ],
 
   purchasing: [

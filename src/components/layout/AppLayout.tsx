@@ -13,10 +13,12 @@ import {
   Star, ChevronRight, PanelLeftClose, PanelLeft,
   CircleUser, Command, Plus, LayoutList, Home, Landmark,
   ShoppingCart, ShoppingBag, Receipt, Mail, Phone, ExternalLink, Video, RefreshCw, Tag,
-  BarChart3, LifeBuoy, Building2, Kanban, Target, CheckSquare
+  BarChart3, LifeBuoy, Building2, Kanban, Target, CheckSquare,
+  Calendar, Clock, Award, Heart, Plane, UserPlus, ClipboardList, Headphones, CheckCircle, DoorOpen, UserCheck, Timer, LayoutGrid
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { usePermissions } from '../../hooks/usePermissions';
+import { useHrPermissions } from '../../hooks/useHrPermissions';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { Footer } from './Footer';
 import { usePlatformBranding } from '../../hooks/usePlatformBranding';
@@ -42,17 +44,20 @@ interface NavItem {
   id: string;
   icon: React.ComponentType<{ className?: string }>;
   roleRequirement?: string;
+  permission?: string;
 }
 
 interface NavGroup {
   title: string;
   icon: React.ComponentType<{ className?: string }>;
   items: NavItem[];
+  moduleName?: string;
 }
 
 export function AppLayout({ currentView, onViewChange, children }: AppLayoutProps) {
   const { user, organisation, logout } = useAuth();
-  const { role, hasModuleAccess } = usePermissions();
+  const { role, hasModuleAccess, hasActionPermission } = usePermissions();
+  const { can: canHr } = useHrPermissions();
   const { developerLogoUrl } = usePlatformBranding();
   const { notifications, unreadCount } = useNotifications();
   const { favorites, toggleFavorite, isFavorite } = useFavorites();
@@ -80,7 +85,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({
     OVERVIEW: false, SALES: false, PROJECTS: true,
-    PURCHASES: true, CRM: true, INVENTORY: true, PAYROLL: true,
+    PURCHASES: true, CRM: true, SKYHRM: true, INVENTORY: true, PAYROLL: true,
     BANKING: true, ACCOUNTANT: true, REPORTS: true, SYSTEM: false,
   });
   const [showHelpSubMenu, setShowHelpSubMenu] = useState(false);
@@ -120,6 +125,9 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
   const pathMap: Record<string, string> = useMemo(() => ({
     dashboard: '/app/dashboard', ai_assistant: '/app/ai/assistant',
     crm_dashboard: '/app/crm/dashboard', crm_pipeline: '/app/crm/pipeline', crm_deals: '/app/crm/deals', crm_contacts: '/app/crm/contacts', crm_activities: '/app/crm/activities',
+    hr_manage: '/app/hr/manage', hr_home: '/app/hr/home', hr_onboarding: '/app/hr/onboarding',
+    hr_leave: '/app/hr/leave', hr_attendance: '/app/hr/attendance', hr_time: '/app/hr/timesheets',
+    hr_services: '/app/hr/services', hr_operations: '/app/hr/operations', hr_reports: '/app/hr/reports',
     customers: '/app/sales/customers', quotes: '/app/sales/quotes', sales_orders: '/app/sales/sales-orders',
     invoices: '/app/sales/invoices', receipts: '/app/sales/receipts', recurring_invoices: '/app/sales/recurring-invoices',
     payments_received: '/app/sales/payments', credit_notes: '/app/sales/credit-notes',
@@ -223,6 +231,17 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
       { name: 'OCR Processor', id: 'ocr', icon: FileText },
       { name: 'Intercompany Txns', id: 'intercompany', icon: ArrowRightLeft },
     ]},
+    { title: 'SKYHRM', icon: UserCheck, moduleName: 'hrm', items: [
+      { name: 'Manage SkyHRM', id: 'hr_manage', icon: Settings, permission: 'hr:admin' },
+      { name: 'Home', id: 'hr_home', icon: LayoutDashboard, permission: 'hr:read' },
+      { name: 'Onboarding', id: 'hr_onboarding', icon: UserPlus, permission: 'hr:create' },
+      { name: 'Leave Tracker', id: 'hr_leave', icon: Calendar, permission: 'hr:read' },
+      { name: 'Attendance', id: 'hr_attendance', icon: Clock, permission: 'hr:read' },
+      { name: 'Time Tracker', id: 'hr_time', icon: Timer, permission: 'hr:read' },
+      { name: 'More Services', id: 'hr_services', icon: LayoutGrid, permission: 'hr:read' },
+      { name: 'Operations', id: 'hr_operations', icon: Briefcase, permission: 'hr:read' },
+      { name: 'Reports', id: 'hr_reports', icon: FileBarChart, permission: 'hr:reports' },
+    ]},
     { title: 'REPORTS', icon: FileBarChart, items: [
       { name: 'Trial Balance', id: 'rep_trial_balance', icon: FileBarChart },
       { name: 'Income Statement', id: 'rep_income_statement', icon: FileBarChart },
@@ -250,18 +269,35 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
   ], []);
 
   const filteredNavigation = useMemo(() => {
-    if (!searchQuery) return navigation;
-    const q = searchQuery.toLowerCase();
-    return navigation
-      .map(group => ({
-        ...group,
-        items: group.items.filter(item =>
-          item.name.toLowerCase().includes(q) ||
-          item.id.toLowerCase().includes(q)
-        ),
-      }))
-      .filter(group => group.items.length > 0);
-  }, [navigation, searchQuery]);
+    let result = navigation;
+    if (hasModuleAccess) {
+      result = result.filter(group => {
+        if (!group.moduleName) return true;
+        return hasModuleAccess(group.moduleName);
+      });
+    }
+    result = result.map(group => ({
+      ...group,
+      items: group.items.filter(item => {
+        if (!item.permission) return true;
+        if (item.permission.startsWith('hr:')) return canHr(item.permission as 'hr:read' | 'hr:create' | 'hr:update' | 'hr:delete' | 'hr:approve' | 'hr:export' | 'hr:reports' | 'hr:admin' | 'hr:manage');
+        return hasActionPermission(item.permission);
+      }),
+    })).filter(group => group.items.length > 0);
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      result = result
+        .map(group => ({
+          ...group,
+          items: group.items.filter(item =>
+            item.name.toLowerCase().includes(q) ||
+            item.id.toLowerCase().includes(q)
+          ),
+        }))
+        .filter(group => group.items.length > 0);
+    }
+    return result;
+  }, [navigation, searchQuery, hasModuleAccess, hasActionPermission, canHr]);
 
   const isSettingsPage = location.pathname.startsWith('/app/settings');
 
@@ -305,6 +341,9 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     { label: 'Employee', icon: Users, path: '/app/payroll/employees' },
     { label: 'Payroll Run', icon: FileText, path: '/app/payroll/runs' },
     { label: 'New Manual Journal', icon: BookOpen, path: '/app/accountant/journals/new' },
+    { label: 'New Employee', icon: UserPlus, path: '/app/hr/employees/new' },
+    { label: 'Leave Request', icon: Calendar, path: '/app/hr/leave' },
+    { label: 'Candidate', icon: Users, path: '/app/hr/candidates' },
   ], []);
 
   const handleLogout = async () => { await logout(); navigate('/login'); };

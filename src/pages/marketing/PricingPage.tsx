@@ -1,168 +1,107 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Check, X, ArrowRight, Plus, Minus } from 'lucide-react';
+import { Check, X, ArrowRight, Plus, Minus, Loader2 } from 'lucide-react';
 import { SeoHead } from '../../components/seo/SeoHead';
 
 type BillingPeriod = 'monthly' | 'annual';
 
-interface Tier {
-  name: string;
-  monthlyPrice: string;
-  annualPrice: string;
-  annualPerMonth: string;
-  savings: string;
-  description: string;
-  popular: boolean;
-  cta: string;
-  ctaLink: string;
-  maxUsers: string;
-  support: string;
-  storage: string;
-  apiAccess: boolean;
-  aiAccess: boolean;
-  integrations: string;
-  advancedReports: boolean;
-  accountingFeatures: string[];
-  taxFeatures: string[];
-  inventory: boolean;
-  projects: boolean;
-  payroll: boolean;
-  analytics: string;
+function fmtNaira(v: number): string {
+  const abs = Math.abs(v);
+  const naira = Math.floor(abs / 100);
+  const kobo = abs % 100;
+  const formatted = naira.toLocaleString('en-US') + '.' + String(kobo).padStart(2, '0');
+  return (v < 0 ? '-₦' : '₦') + formatted;
 }
 
-const tiers: Tier[] = [
-  {
-    name: 'Starter',
-    monthlyPrice: '₦0',
-    annualPrice: '₦0',
-    annualPerMonth: '₦0',
-    savings: '',
-    description: 'Perfect for freelancers and micro-businesses just getting started.',
-    popular: false,
-    cta: 'Get Started',
-    ctaLink: '/register',
-    maxUsers: '1 user',
-    support: 'Email support',
-    storage: '100 MB',
-    apiAccess: false,
-    aiAccess: false,
-    integrations: '1 bank connection',
-    advancedReports: false,
-    accountingFeatures: [
-      'Up to 10 invoices/month',
-      'Full expense management',
-      'Bank reconciliation',
-      'Multi-currency support',
-      'Financial reports (P&L, BS, CF)',
-      'Inventory management',
-    ],
-    taxFeatures: [
-      'VAT computation',
-      'WHT computation',
-    ],
-    inventory: true,
-    projects: false,
-    payroll: false,
-    analytics: 'Basic dashboard',
-  },
-  {
-    name: 'Professional',
-    monthlyPrice: '₦9,000',
-    annualPrice: '₦90,000',
-    annualPerMonth: '₦7,500',
-    savings: 'Save ₦18,000',
-    description: 'For growing businesses that need full accounting capabilities.',
-    popular: true,
-    cta: 'Start Free Trial',
-    ctaLink: '/register',
-    maxUsers: '5 users',
-    support: 'Priority email & chat',
-    storage: '5 GB',
-    apiAccess: true,
-    aiAccess: true,
-    integrations: 'Unlimited bank connections',
-    advancedReports: true,
-    accountingFeatures: [
-      'Bank feed connection',
-      'Unlimited invoices & quotes',
-      'Full expense management',
-      'Bank reconciliation',
-      'Multi-currency support',
-      'Financial reports (P&L, BS, CF)',
-      'Inventory management',
-    ],
-    taxFeatures: [
-      'VAT computation',
-      'WHT computation',
-      'Payroll management',
-      'Tax engine (VAT, WHT, PAYE, CIT)',
-    ],
-    inventory: true,
-    projects: true,
-    payroll: true,
-    analytics: 'Financial reports (P&L, BS, CF)',
-  },
-  {
-    name: 'Enterprise',
-    monthlyPrice: '₦20,000',
-    annualPrice: '₦200,000',
-    annualPerMonth: '₦16,667',
-    savings: 'Save ₦40,000',
-    description: 'For established businesses with advanced reporting and compliance needs.',
-    popular: false,
-    cta: 'Start Free Trial',
-    ctaLink: '/register',
-    maxUsers: 'Unlimited users',
-    support: 'Dedicated account manager',
-    storage: 'Unlimited',
-    apiAccess: true,
-    aiAccess: true,
-    integrations: 'Unlimited + webhooks',
-    advancedReports: true,
-    accountingFeatures: [
-      'Everything in Professional',
-      'Payroll management',
-      'Multi-entity consolidation',
-      'Custom reports & integrations',
-      'IFRS 15 & 16 compliance',
-      'SLA guarantee',
-    ],
-    taxFeatures: [
-      'Tax engine (VAT, WHT, PAYE, CIT)',
-      'Auto tax journal posting',
-    ],
-    inventory: true,
-    projects: true,
-    payroll: true,
-    analytics: 'Custom reports & dashboards',
-  },
-];
+const MODULE_LABELS: Record<string, string> = {
+  crm: 'SkyCRM',
+  hrm: 'SkyHRM',
+};
+
+const MODULE_DESCRIPTIONS: Record<string, string> = {
+  crm: 'Customer Relationship Management',
+  hrm: 'Human Resource Management',
+};
+
+// Feature sections mapped from plan limits
+function getFeatures(plan: any) {
+  const features: { label: string; included: boolean }[] = [
+    { label: `Up to ${plan.userLimit || 1} user${(plan.userLimit || 1) > 1 ? 's' : ''}`, included: true },
+    { label: 'Bank feed connection', included: plan.apiRequests > 0 },
+    { label: 'Bank reconciliation', included: true },
+    { label: 'Multi-currency support', included: true },
+    { label: 'Financial reports (P&L, BS, CF)', included: true },
+    { label: 'Inventory management', included: (plan.maxWarehouses ?? 0) > 0 },
+    { label: 'Projects', included: (plan.maxProjects ?? 0) > 0 },
+    { label: 'API access', included: plan.apiRequests > 0 },
+    { label: `${plan.storageLimitGb || 1} GB storage`, included: true },
+  ];
+  return features;
+}
+
+function getTaxFeatures(plan: any) {
+  return [
+    { label: 'VAT computation', included: true },
+    { label: 'WHT computation', included: true },
+    ...(plan.maxAiRequests > 0 ? [{ label: 'Tax engine (VAT, WHT, PAYE, CIT)', included: true }] : []),
+  ];
+}
+
+function computeSavings(monthlyKobo: number, annualKobo: number): string | null {
+  if (!monthlyKobo || !annualKobo) return null;
+  const monthlyTotal = monthlyKobo * 12;
+  const saving = monthlyTotal - annualKobo;
+  if (saving <= 0) return null;
+  return `Save ${fmtNaira(saving)}`;
+}
+
+function computeAnnualPerMonth(annualKobo: number): string | null {
+  if (!annualKobo) return null;
+  const perMonth = Math.round(annualKobo / 12);
+  return fmtNaira(perMonth);
+}
 
 export function PricingPage() {
   const navigate = useNavigate();
   const [billing, setBilling] = useState<BillingPeriod>('monthly');
   const [compareOpen, setCompareOpen] = useState(false);
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
+  const [plans, setPlans] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => { window.scrollTo(0, 0); }, []);
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    fetch('/api/auth/plans')
+      .then(r => r.json())
+      .then(data => {
+        const active = (Array.isArray(data) ? data : []).filter((p: any) => p.isActive && p.isPublic);
+        setPlans(active);
+      })
+      .catch(err => console.error('Failed to load plans:', err))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const jsonLdOffers = plans.map((p: any) => ({
+    '@type': 'Offer',
+    name: p.name,
+    price: String(Math.round((p.monthlyPriceKobo || 0) / 100)),
+    priceCurrency: p.currency || 'NGN',
+    description: p.description || '',
+  }));
 
   return (
     <div className="min-h-screen bg-white">
       <SeoHead
         title="Pricing"
-        description="Simple, transparent pricing for Nigerian SMEs. Start free, upgrade as you grow. Plans from ₦0 to ₦20,000/month."
+        description="Simple, transparent pricing for Nigerian SMEs. Start free, upgrade as you grow."
         canonical="https://skyaccounting.com.ng/pricing"
         jsonLd={{
-          "@context": "https://schema.org",
-          "@type": "Product",
-          "name": "SkyBooks Accounting Platform",
-          "description": "Cloud-based accounting software for Nigerian SMEs with invoicing, expense tracking, payroll, bank reconciliation, and tax compliance.",
-          "brand": { "@type": "Brand", "name": "SkyBooks" },
-          "offers": [
-            { "@type": "Offer", "name": "Starter", "price": "0", "priceCurrency": "NGN", "description": "Free plan for small businesses" },
-            { "@type": "Offer", "name": "Professional", "price": "9000", "priceCurrency": "NGN", "description": "₦9,000/month billed monthly" },
-            { "@type": "Offer", "name": "Enterprise", "price": "20000", "priceCurrency": "NGN", "description": "₦20,000/month billed monthly" }
-          ]
+          '@context': 'https://schema.org',
+          '@type': 'Product',
+          'name': 'SkyBooks Accounting Platform',
+          'description': 'Cloud-based accounting software for Nigerian SMEs with invoicing, expense tracking, payroll, bank reconciliation, and tax compliance.',
+          'brand': { '@type': 'Brand', 'name': 'SkyBooks' },
+          'offers': jsonLdOffers,
         }}
       />
       {/* Simple nav */}
@@ -220,111 +159,113 @@ export function PricingPage() {
       {/* ─── Pricing Cards ─── */}
       <section className="pb-16 lg:pb-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-3 gap-6 lg:gap-8 max-w-5xl mx-auto">
-            {tiers.map((tier) => {
-              const price = billing === 'monthly' ? tier.monthlyPrice : tier.annualPrice;
-              const period = billing === 'monthly' ? '/month' : '/year';
-              const perMonth = billing === 'annual' ? tier.annualPerMonth : null;
-              const showSavings = billing === 'annual' && tier.savings;
+          {loading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="w-6 h-6 text-slate-400 animate-spin" />
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8 max-w-6xl mx-auto">
+              {plans.map((plan: any) => {
+                const isPopular = plan.popularBadge;
+                const monthlyKobo = plan.monthlyPriceKobo || 0;
+                const annualKobo = plan.annualPriceKobo || 0;
+                const price = billing === 'monthly' ? fmtNaira(monthlyKobo) : fmtNaira(annualKobo);
+                const period = billing === 'monthly' ? '/month' : '/year';
+                const perMonth = billing === 'annual' ? computeAnnualPerMonth(annualKobo) : null;
+                const savings = billing === 'annual' ? computeSavings(monthlyKobo, annualKobo) : null;
+                const modules: string[] = plan.modules ?? [];
+                const features = getFeatures(plan);
+                const taxFeatures = getTaxFeatures(plan);
 
-              return (
-                <div
-                  key={tier.name}
-                  className={`relative flex flex-col bg-white rounded-2xl border transition-all duration-300 ${
-                    tier.popular
-                      ? 'border-[#0EA5E9] shadow-xl shadow-[#0EA5E9]/10 ring-1 ring-[#0EA5E9]/20 scale-[1.02]'
-                      : 'border-slate-200 hover:border-slate-300 shadow-sm hover:shadow-md'
-                  }`}
-                >
-                  {tier.popular && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-[#0EA5E9] text-white text-xs font-semibold rounded-full whitespace-nowrap">
-                      Most Popular
-                    </div>
-                  )}
-
-                  <div className="p-6 lg:p-8 flex flex-col flex-1">
-                    <h3 className={`text-lg font-semibold text-center ${tier.popular ? 'text-[#0EA5E9]' : 'text-[#082F49]'}`}>{tier.name}</h3>
-                    <p className="text-sm text-slate-500 text-center mt-2">{tier.description}</p>
-
-                    {/* Price */}
-                    <div className="mt-6 text-center">
-                      <div className="flex items-baseline justify-center gap-1">
-                        <span className="text-3xl lg:text-4xl font-extrabold text-[#082F49]">{price}</span>
-                        <span className="text-sm text-slate-400">{period}</span>
+                return (
+                  <div
+                    key={plan.id}
+                    className={`relative flex flex-col bg-white rounded-2xl border transition-all duration-300 ${
+                      isPopular
+                        ? 'border-[#0EA5E9] shadow-xl shadow-[#0EA5E9]/10 ring-1 ring-[#0EA5E9]/20 scale-[1.02]'
+                        : 'border-slate-200 hover:border-slate-300 shadow-sm hover:shadow-md'
+                    }`}
+                  >
+                    {isPopular && (
+                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-[#0EA5E9] text-white text-xs font-semibold rounded-full whitespace-nowrap">
+                        Most Popular
                       </div>
-                      {perMonth && (
-                        <div className="text-xs text-slate-400 mt-1">{perMonth}/month billed annually</div>
-                      )}
-                      {showSavings && (
-                        <div className="mt-2 inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded">
-                          <Check size={12} /> {tier.savings}
+                    )}
+
+                    <div className="p-6 lg:p-8 flex flex-col flex-1">
+                      <h3 className={`text-lg font-semibold text-center ${isPopular ? 'text-[#0EA5E9]' : 'text-[#082F49]'}`}>{plan.name}</h3>
+                      <p className="text-sm text-slate-500 text-center mt-2">{plan.description}</p>
+
+                      {/* Price */}
+                      <div className="mt-6 text-center">
+                        <div className="flex items-baseline justify-center gap-1">
+                          <span className="text-3xl lg:text-4xl font-extrabold text-[#082F49]">{price}</span>
+                          <span className="text-sm text-slate-400">{period}</span>
+                        </div>
+                        {perMonth && (
+                          <div className="text-xs text-slate-400 mt-1">{perMonth}/month billed annually</div>
+                        )}
+                        {savings && (
+                          <div className="mt-2 inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded">
+                            <Check size={12} /> {savings}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* CTA */}
+                      <button
+                        onClick={() => navigate('/register')}
+                        className={`mt-6 w-full py-3 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 ${
+                          isPopular
+                            ? 'bg-[#082F49] text-white hover:bg-[#0C4A6E] shadow-lg shadow-[#082F49]/20'
+                            : plan.code === 'free'
+                              ? 'border border-slate-200 text-slate-700 hover:border-[#0EA5E9]/40 hover:bg-sky-50'
+                              : 'border border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        {plan.monthlyPriceKobo === 0 ? 'Get Started' : 'Start Free Trial'} <ArrowRight size={14} />
+                      </button>
+
+                      {/* Module badges */}
+                      {modules.length > 0 && (
+                        <div className="mt-4 flex flex-wrap items-center justify-center gap-1.5">
+                          {modules.map((m: string) => (
+                            <span
+                              key={m}
+                              className="text-[11px] font-semibold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-full"
+                              title={MODULE_DESCRIPTIONS[m] || m}
+                            >
+                              {MODULE_LABELS[m] || m.toUpperCase()}
+                            </span>
+                          ))}
                         </div>
                       )}
-                    </div>
 
-                    {/* CTA */}
-                    <button
-                      onClick={() => navigate(tier.ctaLink)}
-                      className={`mt-6 w-full py-3 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 ${
-                        tier.popular
-                          ? 'bg-[#082F49] text-white hover:bg-[#0C4A6E] shadow-lg shadow-[#082F49]/20'
-                          : tier.name === 'Starter'
-                            ? 'border border-slate-200 text-slate-700 hover:border-[#0EA5E9]/40 hover:bg-sky-50'
-                            : 'border border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50'
-                      }`}
-                    >
-                      {tier.cta} <ArrowRight size={14} />
-                    </button>
-
-                    {/* Feature list */}
-                    <ul className="mt-6 space-y-3 flex-1">
-                      {tier.accountingFeatures.map((f) => (
-                        <li key={f} className="flex items-start gap-2.5 text-sm text-slate-600">
-                          <Check size={14} className="text-emerald-500 mt-0.5 shrink-0" />
-                          {f}
-                        </li>
-                      ))}
-                      {tier.taxFeatures.map((f) => (
-                        <li key={f} className="flex items-start gap-2.5 text-sm text-slate-600">
-                          <Check size={14} className="text-emerald-500 mt-0.5 shrink-0" />
-                          {f}
-                        </li>
-                      ))}
-                      {tier.name === 'Starter' && (
-                        <li className="flex items-start gap-2.5 text-sm text-slate-500 italic">
-                          <span className="text-emerald-500 mt-0.5 shrink-0 font-bold">*</span>
-                          One user only
-                        </li>
-                      )}
-                      {tier.name === 'Professional' && (
-                        <li className="flex items-start gap-2.5 text-sm text-slate-500 italic">
-                          <span className="text-emerald-500 mt-0.5 shrink-0 font-bold">*</span>
-                          Up to 5 users
-                        </li>
-                      )}
-                    </ul>
-
-                    {/* Module indicators */}
-                    <div className="mt-6 pt-5 border-t border-slate-100 space-y-2">
-                      {([
-                        ['Unlimited users & roles', tier.maxUsers === 'Unlimited users'],
-                        ['Inventory', tier.inventory],
-                        ['Payroll', tier.payroll],
-                        ['API access', tier.apiAccess],
-                        ['Dedicated account manager', tier.support === 'Dedicated account manager'],
-                        ['SLA guarantee', false],
-                      ] as const).filter(([, included]) => included).map(([label]) => (
-                        <div key={label} className="flex items-center gap-2 text-xs text-slate-600">
-                          <Check size={12} className="text-emerald-500 shrink-0" />
-                          {label}
-                        </div>
-                      ))}
+                      {/* Feature list */}
+                      <ul className="mt-6 space-y-3 flex-1">
+                        {features.map((f) => (
+                          <li key={f.label} className={`flex items-start gap-2.5 text-sm ${f.included ? 'text-slate-600' : 'text-slate-400'}`}>
+                            {f.included ? (
+                              <Check size={14} className="text-emerald-500 mt-0.5 shrink-0" />
+                            ) : (
+                              <X size={14} className="text-slate-300 mt-0.5 shrink-0" />
+                            )}
+                            {f.label}
+                          </li>
+                        ))}
+                        {taxFeatures.map((f) => (
+                          <li key={f.label} className="flex items-start gap-2.5 text-sm text-slate-600">
+                            <Check size={14} className="text-emerald-500 mt-0.5 shrink-0" />
+                            {f.label}
+                          </li>
+                        ))}
+                      </ul>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </section>
 
@@ -340,27 +281,27 @@ export function PricingPage() {
             </button>
           </div>
 
-          {compareOpen && (
+          {compareOpen && !loading && (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-200">
                     <th className="text-left py-3 px-4 font-semibold text-[#082F49] w-48">Feature</th>
-                    {tiers.map((t) => (
-                      <th key={t.name} className={`py-3 px-3 text-center font-semibold text-[11px] ${t.popular ? 'text-[#0EA5E9]' : 'text-[#082F49]'}`}>
-                        {t.name}
+                    {plans.map((p: any) => (
+                      <th key={p.id} className={`py-3 px-3 text-center font-semibold text-[11px] ${p.popularBadge ? 'text-[#0EA5E9]' : 'text-[#082F49]'}`}>
+                        {p.name}
                       </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   <tr className="bg-slate-50">
-                    <td colSpan={4} className="py-2 px-4 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Users & Support</td>
+                    <td colSpan={plans.length + 1} className="py-2 px-4 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Users & Support</td>
                   </tr>
                   {[
-                    { label: 'Maximum Users', vals: tiers.map(t => t.maxUsers) },
-                    { label: 'Support', vals: tiers.map(t => t.support) },
-                    { label: 'Storage', vals: tiers.map(t => t.storage) },
+                    { label: 'Maximum Users', vals: plans.map((p: any) => p.userLimit === 0 ? 'Unlimited' : String(p.userLimit)) },
+                    { label: 'Support', vals: plans.map((p: any) => p.supportLevel || 'community') },
+                    { label: 'Storage', vals: plans.map((p: any) => `${p.storageLimitGb || 1} GB`) },
                   ].map((row) => (
                     <tr key={row.label} className="border-b border-slate-100">
                       <td className="py-2.5 px-4 text-[12px] text-slate-700">{row.label}</td>
@@ -371,12 +312,12 @@ export function PricingPage() {
                   ))}
 
                   <tr className="bg-slate-50">
-                    <td colSpan={4} className="py-2 px-4 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Platform</td>
+                    <td colSpan={plans.length + 1} className="py-2 px-4 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Platform</td>
                   </tr>
                   {[
-                    { label: 'API Access', vals: tiers.map(t => t.apiAccess) },
-                    { label: 'Integrations', vals: tiers.map(t => t.integrations) },
-                    { label: 'Advanced Reports', vals: tiers.map(t => t.advancedReports) },
+                    { label: 'API Access', vals: plans.map((p: any) => p.apiRequests > 0) },
+                    { label: 'Integrations', vals: plans.map((p: any) => p.apiRequests === 0 ? '1 bank connection' : 'Unlimited bank connections') },
+                    { label: 'Advanced Reports', vals: plans.map((p: any) => (p.maxReports ?? 0) > 10) },
                   ].map((row) => (
                     <tr key={row.label} className="border-b border-slate-100">
                       <td className="py-2.5 px-4 text-[12px] text-slate-700">{row.label}</td>
@@ -393,20 +334,24 @@ export function PricingPage() {
                   ))}
 
                   <tr className="bg-slate-50">
-                    <td colSpan={4} className="py-2 px-4 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Modules</td>
+                    <td colSpan={plans.length + 1} className="py-2 px-4 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Modules</td>
                   </tr>
                   {[
-                    { label: 'Inventory', vals: tiers.map(t => t.inventory) },
-                    { label: 'Projects', vals: tiers.map(t => t.projects) },
-                    { label: 'Payroll', vals: tiers.map(t => t.payroll) },
+                    { label: 'Inventory', key: 'maxWarehouses', fn: (v: number) => v > 0 },
+                    { label: 'Projects', key: 'maxProjects', fn: (v: number) => v > 0 },
+                    { label: 'SkyCRM', key: 'modules', fn: (v: string[]) => (v ?? []).includes('crm') },
+                    { label: 'SkyHRM', key: 'modules', fn: (v: string[]) => (v ?? []).includes('hrm') },
                   ].map((row) => (
                     <tr key={row.label} className="border-b border-slate-100">
                       <td className="py-2.5 px-4 text-[12px] text-slate-700">{row.label}</td>
-                      {row.vals.map((v, i) => (
-                        <td key={i} className="py-2.5 px-3 text-center">
-                          {v ? <Check size={14} className="mx-auto text-emerald-500" /> : <X size={14} className="mx-auto text-slate-300" />}
-                        </td>
-                      ))}
+                      {plans.map((p: any) => {
+                        const included = row.fn(p[row.key]);
+                        return (
+                          <td key={p.id} className="py-2.5 px-3 text-center">
+                            {included ? <Check size={14} className="mx-auto text-emerald-500" /> : <X size={14} className="mx-auto text-slate-300" />}
+                          </td>
+                        );
+                      })}
                     </tr>
                   ))}
                 </tbody>

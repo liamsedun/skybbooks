@@ -4,6 +4,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { journalsApi, accountantApi, printWindow, orgApi } from '../../lib/api';
 import { AccountSearchSelect } from '../../components/ui/AccountSearchSelect';
 import { PageLoader } from '../../components/ui/PageLoader';
+import { StatusBadge } from '../../components/shared/StatusBadge';
+import { Button } from '../../components/shared/Button';
 import { Plus, X, Loader2, AlertCircle, CheckCircle2, Eye, Download, Upload, Printer, ExternalLink, ArrowLeft, RotateCcw, Trash2, Pencil, FileText, ChevronDown } from 'lucide-react';
 import { exportToCsv } from '../../lib/csvTemplates';
 import { useToast } from '../../contexts/ToastContext';
@@ -18,25 +20,6 @@ function fmtNairaRaw(v: number): string {
 
 function fmtDate(d: string): string {
   return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-}
-
-const STATUS_STYLE: Record<string, { bg: string; text: string; border: string; label: string }> = {
-  draft: { bg: 'bg-slate-100', text: 'text-slate-600', border: 'border-slate-200/60', label: 'Draft' },
-  pending_review: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200/60', label: 'Pending Review' },
-  approved: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200/60', label: 'Approved' },
-  posted: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200/60', label: 'Posted' },
-  locked: { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200/60', label: 'Locked' },
-  reversed: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200/60', label: 'Reversed' },
-  cancelled: { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200/60', label: 'Cancelled' },
-};
-
-function StatusBadge({ status }: { status: string }) {
-  const s = STATUS_STYLE[status] || { bg: 'bg-slate-100', text: 'text-slate-600', border: 'border-slate-200/60', label: status };
-  return (
-    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${s.bg} ${s.text} ${s.border}`}>
-      {s.label}
-    </span>
-  );
 }
 
 function sourceDocLink(source: string, sourceId?: string): string | null {
@@ -339,7 +322,7 @@ export function JournalsPage() {
                   <td className="px-4 py-3 text-right font-mono font-medium tabular-nums text-slate-800">{tDebits > 0 ? fmtNaira(tDebits) : '—'}</td>
                   <td className="px-4 py-3 text-right font-mono font-medium tabular-nums text-slate-800">{tCredits > 0 ? fmtNaira(tCredits) : '—'}</td>
                   <td className="px-4 py-3 text-center">
-                    <StatusBadge status={entryStatus} />
+                    <StatusBadge status={entryStatus} dot={false} />
                   </td>
                   <td className="px-4 py-3 text-right">
                     <button onClick={() => setViewId(entry.id)} className="text-blue-600 hover:text-blue-800"><Eye className="w-4 h-4" /></button>
@@ -529,7 +512,7 @@ function JournalDetailView({ journalId, onBack, onEdit }: { journalId: string; o
           <div>
             <div className="flex items-center gap-3 mb-1">
               <h2 className="text-xl font-bold text-slate-900 font-mono">{entry.entryNumber}</h2>
-              <StatusBadge status={entry.status || 'posted'} />
+              <StatusBadge status={entry.status || 'posted'} dot={false} />
             </div>
             <p className="text-sm text-slate-500">{entry.description || 'No description'}</p>
           </div>

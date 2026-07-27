@@ -8,11 +8,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, orgApi } from '../../lib/api';
 import {
   Plus,
-  Search,
   Pencil,
-  X,
-  Loader2,
-  AlertCircle,
   ArrowLeft,
   Users,
   Mail,
@@ -23,9 +19,17 @@ import {
   Upload,
   Download,
   Printer,
-  CheckCircle,
 } from 'lucide-react';
 import { CsvImportModal } from '../../components/ui/CsvImportModal';
+import { PageHeader } from '../../components/shared/PageHeader';
+import { Button } from '../../components/shared/Button';
+import { SearchBar } from '../../components/shared/SearchBar';
+import { StatusBadge } from '../../components/shared/StatusBadge';
+import { EmptyState } from '../../components/shared/EmptyState';
+import { TableSkeleton } from '../../components/shared/Skeleton';
+import { Card } from '../../components/shared/Card';
+import { FormModal } from '../../components/shared/Modal';
+import { exportToCsv, exportToPdf } from '../../lib/exportUtils';
 
 interface Customer {
   id: string;
@@ -143,54 +147,22 @@ function exportCustomersCSV(customers: Customer[]) {
     c.outstanding ? `₦${(c.outstanding/100).toLocaleString('en-NG')}` : '',
     c.currency, c.notes||'', c.isActive ? 'Active' : 'Inactive'
   ]);
-  const csv = [headers,...rows].map(r => r.map(val => `"${val}"`).join(',')).join('\n');
-  const blob = new Blob([csv],{type:'text/csv'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href=url;
-  a.download=`customers-${new Date().toISOString().split('T')[0]}.csv`;
-  a.click(); URL.revokeObjectURL(url);
+  exportToCsv(headers, rows, 'customers');
 }
 
 function exportCustomersPDF(customers: Customer[]) {
-  const rows = customers.map(c => `
-    <tr>
-      <td><strong>${c.name}</strong>${c.notes ? `<br><small style="color:#64748b">${c.notes}</small>` : ''}</td>
-      <td style="font-family:monospace;font-size:11px;color:#64748b">${c.customerCode||'\u2014'}</td>
-      <td>${c.email||'\u2014'}<br>${c.phone||'\u2014'}</td>
-      <td>${[c.city,c.state,c.country].filter(Boolean).join(', ')||'\u2014'}</td>
-      <td>${c.taxPin||'\u2014'}</td>
-      <td>${c.paymentTerms ? `Net ${c.paymentTerms}` : '\u2014'}</td>
-      <td>${c.creditLimit ? `₦${(c.creditLimit/100).toLocaleString('en-NG')}` : '\u2014'}</td>
-      <td><span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;background:${c.isActive?'#dcfce7':'#f1f5f9'};color:${c.isActive?'#166534':'#64748b'}">${c.isActive?'Active':'Inactive'}</span></td>
-    </tr>`).join('');
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Customers</title>
-  <style>
-    *{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:'Segoe UI',sans-serif;color:#1e293b;padding:40px;font-size:13px}
-    .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px;padding-bottom:20px;border-bottom:2px solid #0f172a}
-    .company{font-size:22px;font-weight:800;color:#0f172a}
-    .subtitle{font-size:11px;color:#64748b;margin-top:4px}
-    .title{font-size:18px;font-weight:700;color:#0f172a}
-    .date{font-size:11px;color:#64748b;margin-top:4px}
-    table{width:100%;border-collapse:collapse;margin-top:16px}
-    th{background:#0f172a;color:#fff;padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.05em}
-    td{padding:10px 12px;border-bottom:1px solid #e2e8f0;font-size:12px;vertical-align:top}
-    tr:nth-child(even) td{background:#f8fafc}
-    .footer{margin-top:40px;text-align:center;font-size:10px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:16px}
-    @media print{body{padding:20px}}
-  </style></head><body>
-  <div class="header">
-    <div><div class="company">SkyBooks</div><div class="subtitle">By Skyhouse Accountants &amp; Technologies</div></div>
-    <div style="text-align:right"><div class="title">Customer Directory</div><div class="date">Generated: ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}</div><div class="date">${customers.length} customers</div></div>
-  </div>
-  <table>
-    <thead><tr><th>Customer</th><th>Code</th><th>Contact</th><th>Location</th><th>Tax PIN</th><th>Terms</th><th>Credit Limit</th><th>Status</th></tr></thead>
-    <tbody>${rows}</tbody>
-  </table>
-  <div class="footer">SkyBooks By Skyhouse Accountants &amp; Technologies (Olalekan Williams Edun) &bull; Confidential</div>
-  </body></html>`;
-  const w = window.open('','_blank');
-  if (w) { w.document.write(html); w.document.close(); setTimeout(()=>w.print(),500); }
+  const headers = ['Customer','Code','Contact','Location','Tax PIN','Terms','Credit Limit','Status'];
+  const rows = customers.map(c => [
+    `${c.name}${c.notes ? ` (${c.notes})` : ''}`,
+    c.customerCode||'\u2014',
+    [c.email,c.phone].filter(Boolean).join(' / ')||'\u2014',
+    [c.city,c.state,c.country].filter(Boolean).join(', ')||'\u2014',
+    c.taxPin||'\u2014',
+    c.paymentTerms ? `Net ${c.paymentTerms}` : '\u2014',
+    c.creditLimit ? `₦${(c.creditLimit/100).toLocaleString('en-NG')}` : '\u2014',
+    c.isActive ? 'Active' : 'Inactive',
+  ]);
+  exportToPdf('Customer Directory', headers, rows, 'customers');
 }
 
 export function CustomersPage() {
@@ -306,102 +278,48 @@ function CustomerList() {
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-2">
-          <button onClick={() => exportCustomersCSV(filtered)} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white text-emerald-700 text-xs font-medium border border-slate-200 rounded-xl hover:bg-emerald-50 transition-all duration-200">
-            <Download size={14} /> CSV
-          </button>
-          <button onClick={() => exportCustomersPDF(filtered)} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white text-indigo-700 text-xs font-medium border border-slate-200 rounded-xl hover:bg-indigo-50 transition-all duration-200">
-            <FileText size={14} /> PDF
-          </button>
-          <button onClick={() => setImportOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white text-amber-700 text-xs font-medium border border-slate-200 rounded-xl hover:bg-amber-50 transition-all duration-200">
-            <Upload size={14} /> Import CSV
-          </button>
-          <button
-            onClick={openAddModal}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-xs font-medium rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200 shadow-sm"
-          >
-            <Plus size={14} />New
-          </button>
-        </div>
-      </div>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+      <PageHeader title="Customers" description={`${customers?.length || 0} total customers`}
+        actions={
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" size="sm" icon={<Download className="w-3.5 h-3.5" />} onClick={() => exportCustomersCSV(filtered)}>CSV</Button>
+            <Button variant="secondary" size="sm" icon={<FileText className="w-3.5 h-3.5" />} onClick={() => exportCustomersPDF(filtered)}>PDF</Button>
+            <Button variant="secondary" size="sm" icon={<Upload className="w-3.5 h-3.5" />} onClick={() => setImportOpen(true)}>Import</Button>
+            <Button variant="primary" size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={openAddModal}>New</Button>
+          </div>
+        }
+      />
 
       <div className="flex flex-wrap gap-2">
-        <button
-          onClick={() => setStatusFilter('all')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all duration-200 border shadow-sm ${
-            statusFilter === 'all'
-              ? 'bg-gradient-to-br from-slate-800 to-slate-900 text-white border-slate-700 shadow-md ring-2 ring-slate-300'
-              : 'bg-gradient-to-br from-slate-50 to-slate-100/80 text-slate-700 border-slate-200/70 hover:shadow-md hover:border-slate-300'
-          }`}
-        >
-          <Users size={14} />
-          <span>All <span className={`${statusFilter === 'all' ? 'text-white/70' : 'text-slate-400'}`}>({counts.all})</span></span>
-        </button>
-        <button
+        <Button variant={statusFilter === 'all' ? 'primary' : 'secondary'} size="sm"
+          onClick={() => setStatusFilter('all')} icon={<Users className="w-3.5 h-3.5" />}>
+          All ({counts.all})
+        </Button>
+        <Button variant={statusFilter === 'active' ? 'primary' : 'secondary'} size="sm"
           onClick={() => setStatusFilter('active')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all duration-200 border shadow-sm ${
-            statusFilter === 'active'
-              ? 'bg-gradient-to-br from-emerald-600 to-emerald-700 text-white border-emerald-500 shadow-md ring-2 ring-emerald-300'
-              : 'bg-gradient-to-br from-emerald-50 to-emerald-100/80 text-emerald-700 border-emerald-200/70 hover:shadow-md hover:border-emerald-300'
-          }`}
-        >
-          <CheckCircle size={14} />
-          <span>Active <span className={`${statusFilter === 'active' ? 'text-white/70' : 'text-emerald-400'}`}>({counts.active})</span></span>
-        </button>
-        <button
+          className={statusFilter === 'active' ? '!bg-emerald-600 !text-white' : ''}>
+          Active ({counts.active})
+        </Button>
+        <Button variant={statusFilter === 'inactive' ? 'primary' : 'secondary'} size="sm"
           onClick={() => setStatusFilter('inactive')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all duration-200 border shadow-sm ${
-            statusFilter === 'inactive'
-              ? 'bg-gradient-to-br from-rose-600 to-rose-700 text-white border-rose-500 shadow-md ring-2 ring-rose-300'
-              : 'bg-gradient-to-br from-rose-50 to-rose-100/80 text-rose-700 border-rose-200/70 hover:shadow-md hover:border-rose-300'
-          }`}
-        >
-          <X size={14} />
-          <span>Inactive <span className={`${statusFilter === 'inactive' ? 'text-white/70' : 'text-rose-400'}`}>({counts.inactive})</span></span>
-        </button>
-        <button
-          onClick={() => setStatusFilter('all')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all duration-200 border shadow-sm ${
-            false
-              ? 'bg-gradient-to-br from-indigo-600 to-indigo-700 text-white border-indigo-500 shadow-md ring-2 ring-indigo-300'
-              : 'bg-gradient-to-br from-indigo-50 to-indigo-100/80 text-indigo-700 border-indigo-200/70 hover:shadow-md hover:border-indigo-300'
-          }`}
-        >
-          <Users size={14} />
-          <span>New <span className="text-indigo-400">({counts.newThisMonth})</span></span>
-        </button>
+          className={statusFilter === 'inactive' ? '!bg-rose-600 !text-white' : ''}>
+          Inactive ({counts.inactive})
+        </Button>
+        <Button variant="secondary" size="sm" onClick={() => setStatusFilter('all')}>
+          New ({counts.newThisMonth})
+        </Button>
       </div>
 
-      <div className="relative">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-        <input
-          type="text"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="Search by name, email, or phone..."
-          className="w-full px-9 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
-        />
-      </div>
+      <SearchBar value={searchTerm} onChange={setSearchTerm} placeholder="Search by name, email, or phone..." />
 
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+      <Card padding={false}>
         {isLoading ? (
-          <div className="flex items-center justify-center py-16 text-slate-400">
-            <Loader2 size={20} className="animate-spin mr-2" />
-            Loading customers...
-          </div>
+          <TableSkeleton rows={5} columns={6} />
         ) : isError ? (
-          <div className="flex items-center justify-center gap-2 py-16 text-rose-500 text-sm">
-            <AlertCircle size={16} />
-            Failed to load customers. Check the API route.
-          </div>
+          <EmptyState icon={<FileText className="w-8 h-8" />} title="Failed to load" message="Could not load customers. Check the API route." />
         ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center px-4">
-            <Users size={28} className="text-slate-300 mb-3" />
-            <p className="text-sm font-medium text-slate-600">No customers yet</p>
-            <p className="text-xs text-slate-400 mt-1">Add your first customer to start invoicing.</p>
-          </div>
+          <EmptyState icon={<Users className="w-8 h-8" />} title="No customers yet" message="Add your first customer to start invoicing."
+            action={<Button variant="primary" icon={<Plus className="w-4 h-4" />} onClick={openAddModal}>Add Customer</Button>} />
         ) : (
           <table className="w-full">
             <thead>
@@ -437,30 +355,15 @@ function CustomerList() {
                   </td>
                   <td className="py-2.5 pr-3 text-sm text-slate-700">{formatNaira((c.balance || 0) + (c.outstanding || 0))}</td>
                   <td className="py-2.5 pr-3">
-                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${c.isActive ? 'text-emerald-700 bg-emerald-50 border-emerald-100/50' : 'text-slate-500 bg-slate-100 border-slate-200/50'}`}>
-                      {c.isActive ? 'Active' : 'Inactive'}
-                    </span>
+                    <StatusBadge status={c.isActive ? 'active' : 'inactive'} />
                   </td>
                   <td className="py-2.5 pr-2 text-right">
                     <div className="opacity-0 group-hover:opacity-100 flex items-center justify-end gap-1 transition-opacity">
-                      <button
-                        onClick={(e) => openEditModal(c, e)}
-                        className="p-1.5 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100"
-                        aria-label="Edit customer"
-                      >
-                        <Pencil size={14} />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleActiveMutation.mutate({ id: c.id, isActive: !c.isActive });
-                        }}
-                        className="p-1.5 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100"
-                        aria-label={c.isActive ? 'Deactivate customer' : 'Reactivate customer'}
-                        title={c.isActive ? 'Deactivate' : 'Reactivate'}
-                      >
-                        <Power size={14} />
-                      </button>
+                      <Button variant="ghost" size="sm" icon={<Pencil className="w-3.5 h-3.5" />}
+                        onClick={(e) => { e.stopPropagation(); openEditModal(c, e as any); }} aria-label="Edit customer" />
+                      <Button variant="ghost" size="sm" icon={<Power className="w-3.5 h-3.5" />}
+                        onClick={(e) => { e.stopPropagation(); toggleActiveMutation.mutate({ id: c.id, isActive: !c.isActive }); }}
+                        aria-label={c.isActive ? 'Deactivate' : 'Reactivate'} />
                     </div>
                   </td>
                 </tr>
@@ -477,19 +380,82 @@ function CustomerList() {
             )}
           </table>
         )}
-      </div>
+      </Card>
 
-      {modalOpen && (
-        <CustomerFormModal
-          mode={editingId ? 'edit' : 'add'}
-          form={form}
-          setForm={setForm}
-          formError={formError}
-          isSaving={isSaving}
-          onSubmit={handleSubmit}
-          onClose={closeModal}
-        />
-      )}
+      <FormModal open={modalOpen} onClose={closeModal} title={editingId ? 'Edit Customer' : 'Add Customer'}
+        onSubmit={handleSubmit} error={formError} loading={isSaving} submitLabel={editingId ? 'Save Changes' : 'Add Customer'}>
+        <div>
+          <label className="block text-xs font-medium text-slate-500 mb-1">Customer Code</label>
+          <input value={form.customerCode || (editingId ? '' : 'Auto-generated')} readOnly
+            className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl bg-slate-50 text-slate-400 cursor-not-allowed" />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-slate-500 mb-1">Customer Name *</label>
+          <input value={form.name} onChange={e => setForm({...form, name: e.target.value})}
+            className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1">Email</label>
+            <input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})}
+              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1">Phone</label>
+            <input value={form.phone} onChange={e => setForm({...form, phone: e.target.value})}
+              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+          </div>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-slate-500 mb-1">Address</label>
+          <input value={form.address} onChange={e => setForm({...form, address: e.target.value})}
+            className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1">City</label>
+            <input value={form.city} onChange={e => setForm({...form, city: e.target.value})}
+              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1">State</label>
+            <input value={form.state} onChange={e => setForm({...form, state: e.target.value})}
+              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1">Country</label>
+            <input value={form.country} onChange={e => setForm({...form, country: e.target.value})}
+              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1">Tax PIN</label>
+            <input value={form.taxPin} onChange={e => setForm({...form, taxPin: e.target.value})}
+              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1">Payment Terms (days)</label>
+            <input type="number" value={form.paymentTerms} onChange={e => setForm({...form, paymentTerms: e.target.value})} placeholder="30"
+              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1">Credit Limit (₦)</label>
+            <input type="number" step="0.01" value={form.creditLimit} onChange={e => setForm({...form, creditLimit: e.target.value})}
+              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+          </div>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-slate-500 mb-1">Opening Balance (₦)</label>
+          <input type="number" step="0.01" value={form.balance} onChange={e => setForm({...form, balance: e.target.value})} placeholder="0.00"
+            className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-slate-500 mb-1">Notes</label>
+          <textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={2}
+            className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+        </div>
+      </FormModal>
       {importOpen && (
         <CsvImportModal
           entity="customers"
@@ -521,180 +487,7 @@ function CustomerList() {
   );
 }
 
-// =========================================================================
-// SHARED ADD/EDIT MODAL
-// =========================================================================
 
-function CustomerFormModal({
-  mode,
-  form,
-  setForm,
-  formError,
-  isSaving,
-  onSubmit,
-  onClose,
-}: {
-  mode: 'add' | 'edit';
-  form: CustomerFormState;
-  setForm: (f: CustomerFormState) => void;
-  formError: string | null;
-  isSaving: boolean;
-  onSubmit: (e: React.FormEvent) => void;
-  onClose: () => void;
-}) {
-  return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 px-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 shrink-0">
-          <h2 className="text-base font-semibold text-slate-900">{mode === 'add' ? 'Add Customer' : 'Edit Customer'}</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors">
-            <X size={18} />
-          </button>
-        </div>
-        <form onSubmit={onSubmit} className="px-5 py-4 space-y-3 overflow-y-auto">
-          {formError && (
-            <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2">{formError}</div>
-          )}
-          <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Customer Code</label>
-            <input
-              value={form.customerCode || (mode === 'add' ? 'Auto-generated' : '')}
-              readOnly
-              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl bg-slate-50 text-slate-400 cursor-not-allowed"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Customer Name</label>
-            <input
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">Email</label>
-              <input
-                type="email"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">Phone</label>
-              <input
-                value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Address</label>
-            <input
-              value={form.address}
-              onChange={(e) => setForm({ ...form, address: e.target.value })}
-              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
-            />
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">City</label>
-              <input
-                value={form.city}
-                onChange={(e) => setForm({ ...form, city: e.target.value })}
-                className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">State</label>
-              <input
-                value={form.state}
-                onChange={(e) => setForm({ ...form, state: e.target.value })}
-                className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">Country</label>
-              <input
-                value={form.country}
-                onChange={(e) => setForm({ ...form, country: e.target.value })}
-                className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">Tax PIN</label>
-              <input
-                value={form.taxPin}
-                onChange={(e) => setForm({ ...form, taxPin: e.target.value })}
-                className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">Payment Terms (days)</label>
-              <input
-                type="number"
-                value={form.paymentTerms}
-                onChange={(e) => setForm({ ...form, paymentTerms: e.target.value })}
-                placeholder="30"
-                className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">Credit Limit (₦)</label>
-              <input
-                type="number"
-                step="0.01"
-                value={form.creditLimit}
-                onChange={(e) => setForm({ ...form, creditLimit: e.target.value })}
-                className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Opening Balance (₦)</label>
-            <input
-              type="number"
-              step="0.01"
-              value={form.balance}
-              onChange={(e) => setForm({ ...form, balance: e.target.value })}
-              placeholder="0.00"
-              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Notes</label>
-            <textarea
-              value={form.notes}
-              onChange={(e) => setForm({ ...form, notes: e.target.value })}
-              rows={2}
-              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow"
-            />
-          </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-xl transition-all duration-200"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSaving}
-              className="px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50 transition-all duration-200 shadow-sm"
-            >
-              {isSaving ? 'Saving...' : mode === 'add' ? 'Add Customer' : 'Save Changes'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
 
 // =========================================================================
 // DETAIL VIEW (contact info + account statement)
@@ -954,17 +747,43 @@ function CustomerDetail({ id }: { id: string }) {
         )}
       </div>
 
-      {modalOpen && (
-        <CustomerFormModal
-          mode="edit"
-          form={form}
-          setForm={setForm}
-          formError={formError}
-          isSaving={updateMutation.isPending}
-          onSubmit={handleSubmit}
-          onClose={() => setModalOpen(false)}
-        />
-      )}
+      <FormModal open={modalOpen} onClose={() => setModalOpen(false)} title="Edit Customer"
+        onSubmit={handleSubmit} error={formError} loading={updateMutation.isPending} submitLabel="Save Changes">
+        <div>
+          <label className="block text-xs font-medium text-slate-500 mb-1">Customer Code</label>
+          <input value={form.customerCode || ''} readOnly
+            className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl bg-slate-50 text-slate-400 cursor-not-allowed" />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-slate-500 mb-1">Customer Name *</label>
+          <input value={form.name} onChange={e => setForm({...form, name: e.target.value})}
+            className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div><label className="block text-xs font-medium text-slate-500 mb-1">Email</label>
+            <input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})}
+              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" /></div>
+          <div><label className="block text-xs font-medium text-slate-500 mb-1">Phone</label>
+            <input value={form.phone} onChange={e => setForm({...form, phone: e.target.value})}
+              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" /></div>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-slate-500 mb-1">Address</label>
+          <input value={form.address} onChange={e => setForm({...form, address: e.target.value})}
+            className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" />
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <div><label className="block text-xs font-medium text-slate-500 mb-1">City</label>
+            <input value={form.city} onChange={e => setForm({...form, city: e.target.value})}
+              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" /></div>
+          <div><label className="block text-xs font-medium text-slate-500 mb-1">State</label>
+            <input value={form.state} onChange={e => setForm({...form, state: e.target.value})}
+              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" /></div>
+          <div><label className="block text-xs font-medium text-slate-500 mb-1">Country</label>
+            <input value={form.country} onChange={e => setForm({...form, country: e.target.value})}
+              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow" /></div>
+        </div>
+      </FormModal>
 
       {/* Print container for customer statement PDF */}
       <div id="customer-statement-pdf-container" className="bg-white" style={{ display: 'none' }}>

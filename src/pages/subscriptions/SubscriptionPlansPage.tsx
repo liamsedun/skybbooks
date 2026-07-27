@@ -20,6 +20,7 @@ const defaultForm = {
   maxAssets: 0, maxReports: 0, maxAiRequests: 0, maxOcrDocuments: 0,
   supportLevel: 'community', popularBadge: false, recommendedBadge: false,
   ribbonColor: '', buttonText: 'Subscribe',
+  modules: [] as string[],
   isActive: true, isArchived: false, sortOrder: 0, isPublic: true,
 };
 
@@ -79,6 +80,7 @@ export function SubscriptionPlansPage() {
       currency: plan.currency || 'NGN',
       billingCycle: plan.billingCycle || 'monthly',
       trialDays: plan.trialDays ?? 0,
+      modules: plan.modules ?? [],
       userLimit: plan.userLimit ?? 1,
       maxCompanies: plan.maxCompanies ?? 1,
       storageLimitGb: plan.storageLimitGb ?? 1,
@@ -252,6 +254,16 @@ export function SubscriptionPlansPage() {
                   )}
                 </div>
 
+                {(plan.modules?.length > 0) && (
+                  <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                    {(plan.modules as string[]).map((m: string) => (
+                      <span key={m} className="text-[11px] font-medium text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full capitalize">
+                        Sky{m === 'hrm' ? 'HRM' : m.toUpperCase()}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
                 {plan.isArchived && (
                   <span className="inline-block mt-2 text-xs font-medium text-neutral-500 bg-neutral-100 px-2 py-0.5 rounded-full">Archived</span>
                 )}
@@ -384,6 +396,35 @@ export function SubscriptionPlansPage() {
                       <input type="checkbox" className="rounded border-border-custom text-emerald-600 focus:ring-emerald-500" checked={formData.recommendedBadge ?? false} onChange={e => setFormData({...formData, recommendedBadge: e.target.checked})} />
                       <span className="text-xs font-medium text-ink-600">Recommended Badge</span>
                     </label>
+                  </div>
+                </div>
+
+                {/* Modules */}
+                <div className="border-t border-border-custom pt-4">
+                  <h3 className="text-sm font-semibold text-ink-900 mb-3">Modules</h3>
+                  <p className="text-xs text-ink-400 mb-3">Select which add-on modules are included in this plan.</p>
+                  <div className="flex flex-wrap items-center gap-4">
+                    {['crm', 'hrm'].map(mod => {
+                      const checked = (formData.modules ?? []).includes(mod);
+                      const label = mod === 'hrm' ? 'HRM' : mod.toUpperCase();
+                      const fullName = mod === 'crm' ? 'SkyCRM (Customer Relationship Management)' : 'SkyHRM (Human Resource Management)';
+                      return (
+                        <label key={mod} className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            className="rounded border-border-custom text-indigo-600 focus:ring-indigo-500"
+                            checked={checked}
+                            onChange={e => {
+                              const updated = e.target.checked
+                                ? [...(formData.modules ?? []), mod]
+                                : (formData.modules ?? []).filter((m: string) => m !== mod);
+                              setFormData({...formData, modules: updated});
+                            }}
+                          />
+                          <span className="text-sm font-medium text-ink-700">{fullName}</span>
+                        </label>
+                      );
+                    })}
                   </div>
                 </div>
 

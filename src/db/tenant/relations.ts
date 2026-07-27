@@ -89,6 +89,51 @@ import {
   crmStages,
   crmDeals,
   crmActivities,
+  hrDepartments,
+  hrDesignations,
+  hrEmployees,
+  hrEmployeeDocuments,
+  hrEmergencyContacts,
+  hrJobOpenings,
+  hrCandidates,
+  hrCandidateApplications,
+  hrOnboardingTasks,
+  hrLeaveTypes,
+  hrLeaveRequests,
+  hrLeaveBalances,
+  hrAttendanceRecords,
+  hrShifts,
+  hrTimesheets,
+  hrTimesheetEntries,
+  hrPerformanceReviews,
+  hrCourses,
+  hrEnrollments,
+  hrPulseSurveys,
+  hrSurveyResponses,
+  hrAnnouncements,
+  hrRecognition,
+  hrLetterTemplates,
+  hrLetters,
+  hrTravelRequests,
+  hrExpenseReports,
+  hrExpenseEntries,
+  hrCompensationBands,
+  hrEmployeeCompensation,
+  hrBenefits,
+  hrEmployeeBenefits,
+  hrTasks,
+  hrWorkflowTemplates,
+  hrGoalCycles,
+  hrOkrs,
+  hrKeyResults,
+  hrOffboardingTasks,
+  hrExitInterviews,
+  hrHelpTickets,
+  hrTicketResponses,
+  hrApprovalConfigs,
+  hrApprovalRequests,
+  hrSettings,
+  hrPolicies,
 } from './tables';
 
 export const organisationsRelations = relations(organisations, ({ many }) => ({
@@ -1500,4 +1545,292 @@ export const crmActivitiesRelations = relations(crmActivities, ({ one }) => ({
   deal: one(crmDeals, { fields: [crmActivities.dealId], references: [crmDeals.id] }),
   contact: one(contacts, { fields: [crmActivities.contactId], references: [contacts.id] }),
   assignee: one(users, { fields: [crmActivities.assignedTo], references: [users.id] }),
+}));
+
+// ================================================================
+// HRM Relations
+// ================================================================
+
+export const hrDepartmentsRelations = relations(hrDepartments, ({ one, many }) => ({
+  organisation: one(organisations, { fields: [hrDepartments.orgId], references: [organisations.id] }),
+  head: one(hrEmployees, { fields: [hrDepartments.headEmployeeId], references: [hrEmployees.id], relationName: 'deptHead' }),
+  parent: one(hrDepartments, { fields: [hrDepartments.parentId], references: [hrDepartments.id], relationName: 'deptParent' }),
+  children: many(hrDepartments, { relationName: 'deptParent' }),
+  designations: many(hrDesignations),
+  employees: many(hrEmployees, { relationName: 'empDepartment' }),
+  jobOpenings: many(hrJobOpenings),
+}));
+
+export const hrDesignationsRelations = relations(hrDesignations, ({ one, many }) => ({
+  organisation: one(organisations, { fields: [hrDesignations.orgId], references: [organisations.id] }),
+  department: one(hrDepartments, { fields: [hrDesignations.departmentId], references: [hrDepartments.id] }),
+  employees: many(hrEmployees, { relationName: 'empDesignation' }),
+  compensationBands: many(hrCompensationBands),
+}));
+
+export const hrEmployeesRelations = relations(hrEmployees, ({ one, many }) => ({
+  organisation: one(organisations, { fields: [hrEmployees.orgId], references: [organisations.id] }),
+  department: one(hrDepartments, { fields: [hrEmployees.departmentId], references: [hrDepartments.id] }),
+  designation: one(hrDesignations, { fields: [hrEmployees.designationId], references: [hrDesignations.id] }),
+  supervisor: one(hrEmployees, { fields: [hrEmployees.supervisorId], references: [hrEmployees.id], relationName: 'empSupervisor' }),
+  subordinates: many(hrEmployees, { relationName: 'empSupervisor' }),
+  user: one(users, { fields: [hrEmployees.userId], references: [users.id] }),
+  documents: many(hrEmployeeDocuments),
+  emergencyContacts: many(hrEmergencyContacts),
+  leaveRequests: many(hrLeaveRequests),
+  leaveBalances: many(hrLeaveBalances),
+  attendanceRecords: many(hrAttendanceRecords),
+  timesheets: many(hrTimesheets),
+  performanceReviews: many(hrPerformanceReviews),
+  enrollments: many(hrEnrollments),
+  surveyResponses: many(hrSurveyResponses),
+  givenRecognition: many(hrRecognition, { relationName: 'recognitionGiven' }),
+  receivedRecognition: many(hrRecognition, { relationName: 'recognitionReceived' }),
+  letters: many(hrLetters),
+  travelRequests: many(hrTravelRequests),
+  expenseReports: many(hrExpenseReports),
+  compensation: many(hrEmployeeCompensation),
+  employeeBenefits: many(hrEmployeeBenefits),
+  tasks: many(hrTasks),
+  okrs: many(hrOkrs),
+  onboardingTasks: many(hrOnboardingTasks),
+  offboardingTasks: many(hrOffboardingTasks),
+  exitInterviews: many(hrExitInterviews),
+  helpTickets: many(hrHelpTickets),
+  ticketResponses: many(hrTicketResponses),
+  approvalRequests: many(hrApprovalRequests, { relationName: 'approvalsRequested' }),
+  approvalsAsApprover: many(hrApprovalRequests, { relationName: 'approvalsApproved' }),
+}));
+
+export const hrEmployeeDocumentsRelations = relations(hrEmployeeDocuments, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrEmployeeDocuments.orgId], references: [organisations.id] }),
+  employee: one(hrEmployees, { fields: [hrEmployeeDocuments.employeeId], references: [hrEmployees.id] }),
+}));
+
+export const hrEmergencyContactsRelations = relations(hrEmergencyContacts, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrEmergencyContacts.orgId], references: [organisations.id] }),
+  employee: one(hrEmployees, { fields: [hrEmergencyContacts.employeeId], references: [hrEmployees.id] }),
+}));
+
+export const hrJobOpeningsRelations = relations(hrJobOpenings, ({ one, many }) => ({
+  organisation: one(organisations, { fields: [hrJobOpenings.orgId], references: [organisations.id] }),
+  department: one(hrDepartments, { fields: [hrJobOpenings.departmentId], references: [hrDepartments.id] }),
+  designation: one(hrDesignations, { fields: [hrJobOpenings.designationId], references: [hrDesignations.id] }),
+  applications: many(hrCandidateApplications),
+}));
+
+export const hrCandidatesRelations = relations(hrCandidates, ({ one, many }) => ({
+  organisation: one(organisations, { fields: [hrCandidates.orgId], references: [organisations.id] }),
+  applications: many(hrCandidateApplications),
+}));
+
+export const hrCandidateApplicationsRelations = relations(hrCandidateApplications, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrCandidateApplications.orgId], references: [organisations.id] }),
+  candidate: one(hrCandidates, { fields: [hrCandidateApplications.candidateId], references: [hrCandidates.id] }),
+  jobOpening: one(hrJobOpenings, { fields: [hrCandidateApplications.jobOpeningId], references: [hrJobOpenings.id] }),
+}));
+
+export const hrOnboardingTasksRelations = relations(hrOnboardingTasks, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrOnboardingTasks.orgId], references: [organisations.id] }),
+  employee: one(hrEmployees, { fields: [hrOnboardingTasks.employeeId], references: [hrEmployees.id] }),
+}));
+
+export const hrLeaveTypesRelations = relations(hrLeaveTypes, ({ one, many }) => ({
+  organisation: one(organisations, { fields: [hrLeaveTypes.orgId], references: [organisations.id] }),
+  requests: many(hrLeaveRequests),
+  balances: many(hrLeaveBalances),
+}));
+
+export const hrLeaveRequestsRelations = relations(hrLeaveRequests, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrLeaveRequests.orgId], references: [organisations.id] }),
+  employee: one(hrEmployees, { fields: [hrLeaveRequests.employeeId], references: [hrEmployees.id] }),
+  leaveType: one(hrLeaveTypes, { fields: [hrLeaveRequests.leaveTypeId], references: [hrLeaveTypes.id] }),
+  approver: one(hrEmployees, { fields: [hrLeaveRequests.approvedBy], references: [hrEmployees.id], relationName: 'leaveApprover' }),
+}));
+
+export const hrLeaveBalancesRelations = relations(hrLeaveBalances, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrLeaveBalances.orgId], references: [organisations.id] }),
+  employee: one(hrEmployees, { fields: [hrLeaveBalances.employeeId], references: [hrEmployees.id] }),
+  leaveType: one(hrLeaveTypes, { fields: [hrLeaveBalances.leaveTypeId], references: [hrLeaveTypes.id] }),
+}));
+
+export const hrAttendanceRecordsRelations = relations(hrAttendanceRecords, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrAttendanceRecords.orgId], references: [organisations.id] }),
+  employee: one(hrEmployees, { fields: [hrAttendanceRecords.employeeId], references: [hrEmployees.id] }),
+}));
+
+export const hrShiftsRelations = relations(hrShifts, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrShifts.orgId], references: [organisations.id] }),
+}));
+
+export const hrTimesheetsRelations = relations(hrTimesheets, ({ one, many }) => ({
+  organisation: one(organisations, { fields: [hrTimesheets.orgId], references: [organisations.id] }),
+  employee: one(hrEmployees, { fields: [hrTimesheets.employeeId], references: [hrEmployees.id] }),
+  entries: many(hrTimesheetEntries),
+}));
+
+export const hrTimesheetEntriesRelations = relations(hrTimesheetEntries, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrTimesheetEntries.orgId], references: [organisations.id] }),
+  timesheet: one(hrTimesheets, { fields: [hrTimesheetEntries.timesheetId], references: [hrTimesheets.id] }),
+}));
+
+export const hrPerformanceReviewsRelations = relations(hrPerformanceReviews, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrPerformanceReviews.orgId], references: [organisations.id] }),
+  employee: one(hrEmployees, { fields: [hrPerformanceReviews.employeeId], references: [hrEmployees.id] }),
+  reviewer: one(users, { fields: [hrPerformanceReviews.reviewerId], references: [users.id] }),
+}));
+
+export const hrCoursesRelations = relations(hrCourses, ({ one, many }) => ({
+  organisation: one(organisations, { fields: [hrCourses.orgId], references: [organisations.id] }),
+  creator: one(users, { fields: [hrCourses.createdBy], references: [users.id] }),
+  enrollments: many(hrEnrollments),
+}));
+
+export const hrEnrollmentsRelations = relations(hrEnrollments, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrEnrollments.orgId], references: [organisations.id] }),
+  employee: one(hrEmployees, { fields: [hrEnrollments.employeeId], references: [hrEmployees.id] }),
+  course: one(hrCourses, { fields: [hrEnrollments.courseId], references: [hrCourses.id] }),
+}));
+
+export const hrPulseSurveysRelations = relations(hrPulseSurveys, ({ one, many }) => ({
+  organisation: one(organisations, { fields: [hrPulseSurveys.orgId], references: [organisations.id] }),
+  creator: one(users, { fields: [hrPulseSurveys.createdBy], references: [users.id] }),
+  responses: many(hrSurveyResponses),
+}));
+
+export const hrSurveyResponsesRelations = relations(hrSurveyResponses, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrSurveyResponses.orgId], references: [organisations.id] }),
+  survey: one(hrPulseSurveys, { fields: [hrSurveyResponses.surveyId], references: [hrPulseSurveys.id] }),
+  employee: one(hrEmployees, { fields: [hrSurveyResponses.employeeId], references: [hrEmployees.id] }),
+}));
+
+export const hrAnnouncementsRelations = relations(hrAnnouncements, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrAnnouncements.orgId], references: [organisations.id] }),
+  author: one(users, { fields: [hrAnnouncements.authorId], references: [users.id] }),
+}));
+
+export const hrRecognitionRelations = relations(hrRecognition, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrRecognition.orgId], references: [organisations.id] }),
+  giver: one(hrEmployees, { fields: [hrRecognition.giverId], references: [hrEmployees.id], relationName: 'recognitionGiven' }),
+  receiver: one(hrEmployees, { fields: [hrRecognition.receiverId], references: [hrEmployees.id], relationName: 'recognitionReceived' }),
+}));
+
+export const hrLetterTemplatesRelations = relations(hrLetterTemplates, ({ one, many }) => ({
+  organisation: one(organisations, { fields: [hrLetterTemplates.orgId], references: [organisations.id] }),
+  letters: many(hrLetters),
+}));
+
+export const hrLettersRelations = relations(hrLetters, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrLetters.orgId], references: [organisations.id] }),
+  employee: one(hrEmployees, { fields: [hrLetters.employeeId], references: [hrEmployees.id] }),
+  template: one(hrLetterTemplates, { fields: [hrLetters.templateId], references: [hrLetterTemplates.id] }),
+  generator: one(users, { fields: [hrLetters.generatedBy], references: [users.id] }),
+  signer: one(users, { fields: [hrLetters.signedBy], references: [users.id], relationName: 'letterSigner' }),
+}));
+
+export const hrTravelRequestsRelations = relations(hrTravelRequests, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrTravelRequests.orgId], references: [organisations.id] }),
+  employee: one(hrEmployees, { fields: [hrTravelRequests.employeeId], references: [hrEmployees.id] }),
+  approver: one(hrEmployees, { fields: [hrTravelRequests.approvedBy], references: [hrEmployees.id], relationName: 'travelApprover' }),
+}));
+
+export const hrExpenseReportsRelations = relations(hrExpenseReports, ({ one, many }) => ({
+  organisation: one(organisations, { fields: [hrExpenseReports.orgId], references: [organisations.id] }),
+  employee: one(hrEmployees, { fields: [hrExpenseReports.employeeId], references: [hrEmployees.id] }),
+  entries: many(hrExpenseEntries),
+}));
+
+export const hrExpenseEntriesRelations = relations(hrExpenseEntries, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrExpenseEntries.orgId], references: [organisations.id] }),
+  report: one(hrExpenseReports, { fields: [hrExpenseEntries.reportId], references: [hrExpenseReports.id] }),
+}));
+
+export const hrCompensationBandsRelations = relations(hrCompensationBands, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrCompensationBands.orgId], references: [organisations.id] }),
+  designation: one(hrDesignations, { fields: [hrCompensationBands.designationId], references: [hrDesignations.id] }),
+}));
+
+export const hrEmployeeCompensationRelations = relations(hrEmployeeCompensation, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrEmployeeCompensation.orgId], references: [organisations.id] }),
+  employee: one(hrEmployees, { fields: [hrEmployeeCompensation.employeeId], references: [hrEmployees.id] }),
+}));
+
+export const hrBenefitsRelations = relations(hrBenefits, ({ one, many }) => ({
+  organisation: one(organisations, { fields: [hrBenefits.orgId], references: [organisations.id] }),
+  employeeBenefits: many(hrEmployeeBenefits),
+}));
+
+export const hrEmployeeBenefitsRelations = relations(hrEmployeeBenefits, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrEmployeeBenefits.orgId], references: [organisations.id] }),
+  employee: one(hrEmployees, { fields: [hrEmployeeBenefits.employeeId], references: [hrEmployees.id] }),
+  benefit: one(hrBenefits, { fields: [hrEmployeeBenefits.benefitId], references: [hrBenefits.id] }),
+}));
+
+export const hrTasksRelations = relations(hrTasks, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrTasks.orgId], references: [organisations.id] }),
+  assignee: one(hrEmployees, { fields: [hrTasks.assignedTo], references: [hrEmployees.id] }),
+  assigner: one(users, { fields: [hrTasks.assignedBy], references: [users.id] }),
+}));
+
+export const hrWorkflowTemplatesRelations = relations(hrWorkflowTemplates, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrWorkflowTemplates.orgId], references: [organisations.id] }),
+}));
+
+export const hrGoalCyclesRelations = relations(hrGoalCycles, ({ one, many }) => ({
+  organisation: one(organisations, { fields: [hrGoalCycles.orgId], references: [organisations.id] }),
+  okrs: many(hrOkrs),
+}));
+
+export const hrOkrsRelations = relations(hrOkrs, ({ one, many }) => ({
+  organisation: one(organisations, { fields: [hrOkrs.orgId], references: [organisations.id] }),
+  cycle: one(hrGoalCycles, { fields: [hrOkrs.cycleId], references: [hrGoalCycles.id] }),
+  owner: one(hrEmployees, { fields: [hrOkrs.ownerId], references: [hrEmployees.id] }),
+  keyResults: many(hrKeyResults),
+}));
+
+export const hrKeyResultsRelations = relations(hrKeyResults, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrKeyResults.orgId], references: [organisations.id] }),
+  okr: one(hrOkrs, { fields: [hrKeyResults.okrId], references: [hrOkrs.id] }),
+}));
+
+export const hrOffboardingTasksRelations = relations(hrOffboardingTasks, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrOffboardingTasks.orgId], references: [organisations.id] }),
+  employee: one(hrEmployees, { fields: [hrOffboardingTasks.employeeId], references: [hrEmployees.id] }),
+}));
+
+export const hrExitInterviewsRelations = relations(hrExitInterviews, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrExitInterviews.orgId], references: [organisations.id] }),
+  employee: one(hrEmployees, { fields: [hrExitInterviews.employeeId], references: [hrEmployees.id] }),
+  interviewer: one(users, { fields: [hrExitInterviews.conductedBy], references: [users.id] }),
+}));
+
+export const hrHelpTicketsRelations = relations(hrHelpTickets, ({ one, many }) => ({
+  organisation: one(organisations, { fields: [hrHelpTickets.orgId], references: [organisations.id] }),
+  employee: one(hrEmployees, { fields: [hrHelpTickets.employeeId], references: [hrEmployees.id] }),
+  responses: many(hrTicketResponses),
+}));
+
+export const hrTicketResponsesRelations = relations(hrTicketResponses, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrTicketResponses.orgId], references: [organisations.id] }),
+  ticket: one(hrHelpTickets, { fields: [hrTicketResponses.ticketId], references: [hrHelpTickets.id] }),
+  employee: one(hrEmployees, { fields: [hrTicketResponses.employeeId], references: [hrEmployees.id] }),
+}));
+
+export const hrApprovalConfigsRelations = relations(hrApprovalConfigs, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrApprovalConfigs.orgId], references: [organisations.id] }),
+}));
+
+export const hrApprovalRequestsRelations = relations(hrApprovalRequests, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrApprovalRequests.orgId], references: [organisations.id] }),
+  requester: one(hrEmployees, { fields: [hrApprovalRequests.requesterId], references: [hrEmployees.id], relationName: 'approvalsRequested' }),
+  approver: one(hrEmployees, { fields: [hrApprovalRequests.approverId], references: [hrEmployees.id], relationName: 'approvalsApproved' }),
+}));
+
+export const hrSettingsRelations = relations(hrSettings, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrSettings.orgId], references: [organisations.id] }),
+}));
+
+export const hrPoliciesRelations = relations(hrPolicies, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrPolicies.orgId], references: [organisations.id] }),
+  creator: one(users, { fields: [hrPolicies.createdBy], references: [users.id] }),
 }));

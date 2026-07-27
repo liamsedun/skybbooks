@@ -18,6 +18,17 @@ import {
   BookOpen,
   BarChart3,
   Lock,
+  UserCheck,
+  Settings,
+  UserPlus,
+  Calendar,
+  Clock,
+  Timer,
+  LayoutGrid,
+  Briefcase,
+  FileBarChart,
+  Award,
+  ShieldCheck,
 } from 'lucide-react';
 
 interface Command {
@@ -85,6 +96,28 @@ export function CommandPalette() {
     { id: 'new-vendor', label: 'New Vendor', icon: Building2, category: 'Actions', action: () => navigate('/app/purchases/vendors?new=1') },
     { id: 'record-payment', label: 'Record Payment', icon: CreditCard, category: 'Actions', action: () => navigate('/app/sales/payments') },
     { id: 'lock-screen', label: 'Lock Screen', icon: Lock, category: 'Quick', action: () => {} },
+    // HR Navigation
+    { id: 'hr-home', label: 'Go to HR Home', icon: UserCheck, category: 'Human Resources', action: () => navigate('/app/hr/home') },
+    { id: 'hr-manage', label: 'Go to Manage SkyHRM', icon: Settings, category: 'Human Resources', action: () => navigate('/app/hr/manage') },
+    { id: 'hr-onboarding', label: 'Go to Onboarding', icon: UserPlus, category: 'Human Resources', action: () => navigate('/app/hr/onboarding') },
+    { id: 'hr-leave', label: 'Go to Leave Tracker', icon: Calendar, category: 'Human Resources', action: () => navigate('/app/hr/leave') },
+    { id: 'hr-attendance', label: 'Go to Attendance', icon: Clock, category: 'Human Resources', action: () => navigate('/app/hr/attendance') },
+    { id: 'hr-timesheets', label: 'Go to Time Tracker', icon: Timer, category: 'Human Resources', action: () => navigate('/app/hr/timesheets') },
+    { id: 'hr-services', label: 'Go to More Services', icon: LayoutGrid, category: 'Human Resources', action: () => navigate('/app/hr/services') },
+    { id: 'hr-operations', label: 'Go to Operations', icon: Briefcase, category: 'Human Resources', action: () => navigate('/app/hr/operations') },
+    { id: 'hr-reports', label: 'Go to HR Reports', icon: FileBarChart, category: 'Human Resources', action: () => navigate('/app/hr/reports') },
+    { id: 'hr-employees', label: 'Go to Employees', icon: Users, category: 'Human Resources', action: () => navigate('/app/hr/employees') },
+    { id: 'hr-jobs', label: 'Go to Jobs', icon: Briefcase, category: 'Human Resources', action: () => navigate('/app/hr/jobs') },
+    { id: 'hr-projects', label: 'Go to Projects', icon: Briefcase, category: 'Human Resources', action: () => navigate('/app/hr/projects') },
+    { id: 'hr-approvals', label: 'Go to Approvals', icon: ShieldCheck, category: 'Human Resources', action: () => navigate('/app/hr/approvals') },
+    // HR Actions
+    { id: 'hr-new-employee', label: 'New Employee', icon: UserPlus, category: 'HR Actions', action: () => navigate('/app/hr/employees/new') },
+    { id: 'hr-new-leave-request', label: 'New Leave Request', icon: Calendar, category: 'HR Actions', action: () => navigate('/app/hr/leave') },
+    { id: 'hr-add-candidate', label: 'Add Candidate', icon: UserPlus, category: 'HR Actions', action: () => navigate('/app/hr/onboarding/add-candidate') },
+    { id: 'hr-clock-in', label: 'Clock In', icon: Clock, category: 'HR Actions', action: () => navigate('/app/hr/attendance') },
+    { id: 'hr-new-timesheet', label: 'New Timesheet Entry', icon: Timer, category: 'HR Actions', action: () => navigate('/app/hr/timesheets/logs') },
+    { id: 'hr-performance', label: 'View Performance Reviews', icon: Award, category: 'HR Actions', action: () => navigate('/app/hr/performance') },
+    { id: 'hr-settings', label: 'HR Settings', icon: Settings, category: 'HR Actions', action: () => navigate('/app/hr/settings') },
   ], [navigate]);
 
   const filteredGroups = useMemo(() => {
