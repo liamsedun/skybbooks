@@ -13,7 +13,7 @@ import {
   Star, ChevronRight, PanelLeftClose, PanelLeft,
   CircleUser, Command, Plus, LayoutList, Home, Landmark,
   ShoppingCart, ShoppingBag, Receipt, Mail, Phone, ExternalLink, Video, RefreshCw, Tag,
-  BarChart3, LifeBuoy
+  BarChart3, LifeBuoy, Building2, Kanban, Target, CheckSquare
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -80,7 +80,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({
     OVERVIEW: false, SALES: false, PROJECTS: true,
-    PURCHASES: true, INVENTORY: true, PAYROLL: true,
+    PURCHASES: true, CRM: true, INVENTORY: true, PAYROLL: true,
     BANKING: true, ACCOUNTANT: true, REPORTS: true, SYSTEM: false,
   });
   const [showHelpSubMenu, setShowHelpSubMenu] = useState(false);
@@ -119,6 +119,7 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
 
   const pathMap: Record<string, string> = useMemo(() => ({
     dashboard: '/app/dashboard', ai_assistant: '/app/ai/assistant',
+    crm_dashboard: '/app/crm/dashboard', crm_pipeline: '/app/crm/pipeline', crm_deals: '/app/crm/deals', crm_contacts: '/app/crm/contacts', crm_activities: '/app/crm/activities',
     customers: '/app/sales/customers', quotes: '/app/sales/quotes', sales_orders: '/app/sales/sales-orders',
     invoices: '/app/sales/invoices', receipts: '/app/sales/receipts', recurring_invoices: '/app/sales/recurring-invoices',
     payments_received: '/app/sales/payments', credit_notes: '/app/sales/credit-notes',
@@ -171,6 +172,13 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
     ]},
     { title: 'PROJECTS', icon: Briefcase, items: [
       { name: 'All Projects', id: 'projects', icon: Briefcase },
+    ]},
+    { title: 'CRM', icon: Building2, items: [
+      { name: 'Dashboard', id: 'crm_dashboard', icon: LayoutDashboard },
+      { name: 'Pipeline', id: 'crm_pipeline', icon: Kanban },
+      { name: 'Deals', id: 'crm_deals', icon: Target },
+      { name: 'Contacts', id: 'crm_contacts', icon: Users },
+      { name: 'Activities', id: 'crm_activities', icon: CheckSquare },
     ]},
     { title: 'PURCHASES', icon: ShoppingBag, items: [
       { name: 'Vendors', id: 'vendors', icon: Building },

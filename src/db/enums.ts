@@ -363,3 +363,10 @@ export const leaseStatusEnum = pgEnum('lease_status', [
 export const featureFlagStateEnum = pgEnum('feature_flag_state', ['enabled', 'disabled', 'limited', 'unlimited']);
 
 export const regionPricingEnum = pgEnum('region', ['ng', 'gh', 'ke', 'za', 'rw', 'tz', 'ug', 'zm', 'other']);
+
+// --- CRM Enums ---
+
+export const crmActivityTypeEnum = pgEnum('crm_activity_type', ['call', 'meeting', 'email', 'task', 'note']);
+export const crmActivityStatusEnum = pgEnum('crm_activity_status', ['pending', 'completed']);
+export const crmDealStatusEnum = pgEnum('crm_deal_status', ['open', 'won', 'lost']);
+export const crmDealSourceEnum = pgEnum('crm_deal_source', ['referral', 'website', 'cold_call', 'social_media', 'email_campaign', 'walk_in', 'partner', 'other']);

@@ -78,6 +78,10 @@ import {
   leaseStatusEnum,
   ocrDocTypeEnum,
   ocrDocStatusEnum,
+  crmActivityTypeEnum,
+  crmActivityStatusEnum,
+  crmDealStatusEnum,
+  crmDealSourceEnum,
 } from '../enums';
 
 // ==========================================
@@ -1947,5 +1951,65 @@ export const rolePermissions = pgTable('role_permissions', {
 }, (table) => ({
   idxRpOrgRole: index('idx_rp_org_role').on(table.orgId, table.role),
   idxRpOrgPermission: uniqueIndex('idx_rp_org_perm').on(table.orgId, table.role, table.permission),
+}));
+
+// --- CRM Tables ---
+
+export const crmStages = pgTable('crm_stages', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  name: text('name').notNull(),
+  order: integer('order').notNull(),
+  color: text('color').default('#6366f1'),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+}, (table) => ({
+  idxCrmStagesOrg: index('idx_crm_stages_org').on(table.orgId),
+}));
+
+export const crmDeals = pgTable('crm_deals', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  title: text('title').notNull(),
+  contactId: uuid('contact_id').references(() => contacts.id),
+  value: bigint('value', { mode: 'number' }).default(0).notNull(),
+  currency: text('currency').default('NGN').notNull(),
+  stageId: uuid('stage_id').references(() => crmStages.id).notNull(),
+  assignedTo: uuid('assigned_to').references(() => users.id),
+  source: crmDealSourceEnum('source').default('other'),
+  expectedCloseDate: timestamp('expected_close_date'),
+  probability: integer('probability').default(0),
+  notes: text('notes'),
+  status: crmDealStatusEnum('status').default('open').notNull(),
+  lostReason: text('lost_reason'),
+  wonAt: timestamp('won_at'),
+  lostAt: timestamp('lost_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+}, (table) => ({
+  idxCrmDealsOrg: index('idx_crm_deals_org').on(table.orgId),
+  idxCrmDealsStage: index('idx_crm_deals_stage').on(table.stageId),
+  idxCrmDealsContact: index('idx_crm_deals_contact').on(table.contactId),
+  idxCrmDealsAssignee: index('idx_crm_deals_assignee').on(table.assignedTo),
+}));
+
+export const crmActivities = pgTable('crm_activities', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  type: crmActivityTypeEnum('type').notNull(),
+  subject: text('subject').notNull(),
+  description: text('description'),
+  dealId: uuid('deal_id').references(() => crmDeals.id),
+  contactId: uuid('contact_id').references(() => contacts.id),
+  assignedTo: uuid('assigned_to').references(() => users.id),
+  dueDate: timestamp('due_date'),
+  completedAt: timestamp('completed_at'),
+  status: crmActivityStatusEnum('status').default('pending').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+}, (table) => ({
+  idxCrmActivitiesOrg: index('idx_crm_activities_org').on(table.orgId),
+  idxCrmActivitiesDeal: index('idx_crm_activities_deal').on(table.dealId),
+  idxCrmActivitiesContact: index('idx_crm_activities_contact').on(table.contactId),
+  idxCrmActivitiesAssignee: index('idx_crm_activities_assignee').on(table.assignedTo),
 }));
 

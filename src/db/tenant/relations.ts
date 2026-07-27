@@ -86,6 +86,9 @@ import {
   ocrDocuments,
   projects,
   rolePermissions,
+  crmStages,
+  crmDeals,
+  crmActivities,
 } from './tables';
 
 export const organisationsRelations = relations(organisations, ({ many }) => ({
@@ -123,6 +126,9 @@ export const organisationsRelations = relations(organisations, ({ many }) => ({
   eliminationsFrom: many(intercompanyEliminations, { relationName: 'elimFromOrg' }),
   eliminationsTo: many(intercompanyEliminations, { relationName: 'elimToOrg' }),
   userAccess: many(userOrganisationAccess),
+  crmStages: many(crmStages),
+  crmDeals: many(crmDeals),
+  crmActivities: many(crmActivities),
 }));
 
 export const usersRelations = relations(users, ({ one, many }) => ({
@@ -151,7 +157,9 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   organisationAccess: many(userOrganisationAccess),
   intercompanyTxnsCreated: many(intercompanyTransactions, { relationName: 'icCreatedBy' }),
   eliminationsCreated: many(intercompanyEliminations, { relationName: 'elimCreatedBy' }),
-  consolidationsCreated: many(groupConsolidationRuns, { relationName: 'consolCreatedBy' })
+  consolidationsCreated: many(groupConsolidationRuns, { relationName: 'consolCreatedBy' }),
+  assignedDeals: many(crmDeals, { relationName: 'dealAssignee' }),
+  assignedActivities: many(crmActivities, { relationName: 'activityAssignee' }),
 }));
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({
@@ -240,7 +248,9 @@ export const contactsRelations = relations(contacts, ({ one, many }) => ({
   paymentsMade: many(paymentsMade),
   vendorCredits: many(vendorCredits),
   vendorExpenses: many(expenses, { relationName: 'vendorId' }),
-  customerExpenses: many(expenses, { relationName: 'customerId' })
+  customerExpenses: many(expenses, { relationName: 'customerId' }),
+  crmDeals: many(crmDeals),
+  crmActivities: many(crmActivities),
 }));
 
 export const itemsRelations = relations(items, ({ one, many }) => ({
@@ -1468,4 +1478,26 @@ export const rolePermissionsRelations = relations(rolePermissions, ({ one }) => 
     fields: [rolePermissions.orgId],
     references: [organisations.id]
   }),
+}));
+
+// --- CRM Relations ---
+
+export const crmStagesRelations = relations(crmStages, ({ one, many }) => ({
+  organisation: one(organisations, { fields: [crmStages.orgId], references: [organisations.id] }),
+  deals: many(crmDeals),
+}));
+
+export const crmDealsRelations = relations(crmDeals, ({ one, many }) => ({
+  organisation: one(organisations, { fields: [crmDeals.orgId], references: [organisations.id] }),
+  contact: one(contacts, { fields: [crmDeals.contactId], references: [contacts.id] }),
+  stage: one(crmStages, { fields: [crmDeals.stageId], references: [crmStages.id] }),
+  assignee: one(users, { fields: [crmDeals.assignedTo], references: [users.id] }),
+  activities: many(crmActivities),
+}));
+
+export const crmActivitiesRelations = relations(crmActivities, ({ one }) => ({
+  organisation: one(organisations, { fields: [crmActivities.orgId], references: [organisations.id] }),
+  deal: one(crmDeals, { fields: [crmActivities.dealId], references: [crmDeals.id] }),
+  contact: one(contacts, { fields: [crmActivities.contactId], references: [contacts.id] }),
+  assignee: one(users, { fields: [crmActivities.assignedTo], references: [users.id] }),
 }));

@@ -4169,6 +4169,92 @@ export async function runMigration() {
       console.error('[Migration] Tenant role permissions error:', err);
     }
 
+    // CRM tables
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS crm_stages (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          org_id UUID NOT NULL REFERENCES organisations(id),
+          name TEXT NOT NULL,
+          "order" INTEGER NOT NULL,
+          color TEXT DEFAULT '#6366f1',
+          is_active BOOLEAN DEFAULT true NOT NULL,
+          created_at TIMESTAMP DEFAULT now() NOT NULL
+        );
+      `);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_crm_stages_org ON crm_stages(org_id)`);
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS crm_deals (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          org_id UUID NOT NULL REFERENCES organisations(id),
+          title TEXT NOT NULL,
+          contact_id UUID REFERENCES contacts(id),
+          value BIGINT DEFAULT 0 NOT NULL,
+          currency TEXT DEFAULT 'NGN' NOT NULL,
+          stage_id UUID NOT NULL REFERENCES crm_stages(id),
+          assigned_to UUID REFERENCES users(id),
+          source TEXT DEFAULT 'other',
+          expected_close_date TIMESTAMP,
+          probability INTEGER DEFAULT 0,
+          notes TEXT,
+          status TEXT DEFAULT 'open' NOT NULL,
+          lost_reason TEXT,
+          won_at TIMESTAMP,
+          lost_at TIMESTAMP,
+          created_at TIMESTAMP DEFAULT now() NOT NULL,
+          updated_at TIMESTAMP DEFAULT now() NOT NULL
+        );
+      `);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_crm_deals_org ON crm_deals(org_id)`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_crm_deals_stage ON crm_deals(stage_id)`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_crm_deals_contact ON crm_deals(contact_id)`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_crm_deals_assignee ON crm_deals(assigned_to)`);
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS crm_activities (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          org_id UUID NOT NULL REFERENCES organisations(id),
+          type TEXT NOT NULL,
+          subject TEXT NOT NULL,
+          description TEXT,
+          deal_id UUID REFERENCES crm_deals(id),
+          contact_id UUID REFERENCES contacts(id),
+          assigned_to UUID REFERENCES users(id),
+          due_date TIMESTAMP,
+          completed_at TIMESTAMP,
+          status TEXT DEFAULT 'pending' NOT NULL,
+          created_at TIMESTAMP DEFAULT now() NOT NULL
+        );
+      `);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_crm_activities_org ON crm_activities(org_id)`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_crm_activities_deal ON crm_activities(deal_id)`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_crm_activities_contact ON crm_activities(contact_id)`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_crm_activities_assignee ON crm_activities(assigned_to)`);
+
+      // Seed default CRM stages for each org
+      const orgResult = await pool.query(`SELECT id FROM organisations`);
+      for (const org of orgResult.rows) {
+        const existing = await pool.query(`SELECT COUNT(*) as cnt FROM crm_stages WHERE org_id = $1`, [org.id]);
+        if (Number(existing.rows[0].cnt) === 0) {
+          const defaultStages = [
+            { name: 'Lead', order: 1, color: '#94a3b8' },
+            { name: 'Qualified', order: 2, color: '#6366f1' },
+            { name: 'Proposal', order: 3, color: '#3b82f6' },
+            { name: 'Negotiation', order: 4, color: '#f59e0b' },
+            { name: 'Closed Won', order: 5, color: '#22c55e' },
+            { name: 'Closed Lost', order: 6, color: '#ef4444' },
+          ];
+          for (const stage of defaultStages) {
+            await pool.query(`INSERT INTO crm_stages (org_id, name, "order", color) VALUES ($1, $2, $3, $4)`, [org.id, stage.name, stage.order, stage.color]);
+          }
+        }
+      }
+      console.log('[Migration] CRM tables ready.');
+    } catch (err) {
+      console.error('[Migration] CRM tables error:', err);
+    }
+
     // Ensure every org has a subscription record (Free plan fallback)
     try {
       const orphanOrgs = await pool.query(`

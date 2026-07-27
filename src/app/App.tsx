@@ -143,6 +143,12 @@ const FeatureFlagsPage = lazy(() => import('../pages/settings/FeatureFlagsPage')
 const CustomerSubscriptionPage = lazy(() => import('../pages/settings/CustomerSubscriptionPage').then(m => ({ default: m.CustomerSubscriptionPage })));
 
 const OcrProcessingPage = lazy(() => import('../pages/accountant/OcrProcessingPage').then(m => ({ default: m.OcrProcessingPage })));
+
+const CrmDashboard = lazy(() => import('../pages/crm/CrmDashboard').then(m => ({ default: m.CrmDashboard })));
+const DealsPipeline = lazy(() => import('../pages/crm/DealsPipeline').then(m => ({ default: m.DealsPipeline })));
+const DealsTable = lazy(() => import('../pages/crm/DealsTable').then(m => ({ default: m.DealsTable })));
+const CrmContactsPage = lazy(() => import('../pages/crm/CrmContactsPage').then(m => ({ default: m.CrmContactsPage })));
+const ActivitiesPage = lazy(() => import('../pages/crm/ActivitiesPage').then(m => ({ default: m.ActivitiesPage })));
 const HelpDocumentsPage = lazy(() => import('../pages/help/HelpDocumentsPage').then(m => ({ default: m.HelpDocumentsPage })));
 const FAQsPage = lazy(() => import('../pages/help/FAQsPage').then(m => ({ default: m.FAQsPage })));
 const VideoTutorialsPage = lazy(() => import('../pages/help/VideoTutorialsPage').then(m => ({ default: m.VideoTutorialsPage })));
@@ -325,6 +331,7 @@ function AppRoutes() {
           <Route path="accountant" element={<Navigate to="/app/accountant/journals" replace />} />
           <Route path="reports" element={<Navigate to="/app/reports/trial-balance" replace />} />
           <Route path="revenue" element={<Navigate to="/app/revenue/contracts" replace />} />
+          <Route path="crm" element={<Navigate to="/app/crm/dashboard" replace />} />
 
           <Route path="ai/assistant" element={<LazyRoute element={<AccountingAssistant />} />} />
           <Route path="ai/nvidia" element={<LazyRoute element={<NvidiaAiPage />} />} />
@@ -415,6 +422,11 @@ function AppRoutes() {
           <Route path="revenue/contracts" element={<LazyRoute element={<RevenueContractsPage />} />} />
           <Route path="revenue/recognition-report" element={<LazyRoute element={<RevenueRecognitionReport />} />} />
           <Route path="support/tickets" element={<LazyRoute element={<SupportTicketsPage />} />} />
+          <Route path="crm/dashboard" element={<LazyRoute element={<CrmDashboard />} />} />
+          <Route path="crm/pipeline" element={<LazyRoute element={<DealsPipeline />} />} />
+          <Route path="crm/deals" element={<LazyRoute element={<DealsTable />} />} />
+          <Route path="crm/contacts" element={<LazyRoute element={<CrmContactsPage />} />} />
+          <Route path="crm/activities" element={<LazyRoute element={<ActivitiesPage />} />} />
 
           <Route path="settings" element={<Suspense fallback={<PageLoader />}><SettingsLayout /></Suspense>}>
             <Route index element={<Navigate to="/app/settings/organisation" replace />} />

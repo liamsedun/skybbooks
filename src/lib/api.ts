@@ -2022,5 +2022,20 @@ export const platformUsersApi = {
   },
 };
 
+export const crmApi = {
+  getStages: async (): Promise<any> => { const r = await api.get('/crm/stages'); return r.data; },
+  getDeals: async (params?: any): Promise<any> => { const r = await api.get('/crm/deals', { params }); return r.data; },
+  getDeal: async (id: string): Promise<any> => { const r = await api.get(`/crm/deals/${id}`); return r.data; },
+  createDeal: async (data: any): Promise<any> => { const r = await api.post('/crm/deals', data); return r.data; },
+  updateDeal: async (id: string, data: any): Promise<any> => { const r = await api.put(`/crm/deals/${id}`, data); return r.data; },
+  deleteDeal: async (id: string): Promise<any> => { const r = await api.delete(`/crm/deals/${id}`); return r.data; },
+  updateDealStage: async (id: string, stageId: string): Promise<any> => { const r = await api.patch(`/crm/deals/${id}/stage`, { stageId }); return r.data; },
+  getActivities: async (params?: any): Promise<any> => { const r = await api.get('/crm/activities', { params }); return r.data; },
+  createActivity: async (data: any): Promise<any> => { const r = await api.post('/crm/activities', data); return r.data; },
+  updateActivity: async (id: string, data: any): Promise<any> => { const r = await api.put(`/crm/activities/${id}`, data); return r.data; },
+  deleteActivity: async (id: string): Promise<any> => { const r = await api.delete(`/crm/activities/${id}`); return r.data; },
+  getDashboard: async (): Promise<any> => { const r = await api.get('/crm/dashboard'); return r.data; },
+};
+
 
 

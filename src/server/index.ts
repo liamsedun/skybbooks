@@ -78,6 +78,7 @@ import rateLimitAdminRouter from '../routes/rateLimitAdmin';
 import featureRolloutsRouter from '../routes/featureRollouts';
 import dunningRouter from '../routes/dunning';
 import customerSubscriptionsRouter from '../routes/customerSubscriptions';
+import crmRouter from '../routes/crm';
 import promotionsEngineRouter from '../routes/promotionsEngine';
 
 import { runMigration } from '../db/migrate';
@@ -239,6 +240,7 @@ async function startServer() {
   app.use('/api/dunning', dunningRouter);
   app.use('/api/customer-subscriptions', customerSubscriptionsRouter);
   app.use('/api/promotions', promotionsEngineRouter);
+  app.use('/api/crm', crmRouter);
 
   app.get('/api/health', (req, res) => {
     res.json({ status: 'healthy', timestamp: new Date().toISOString() });
