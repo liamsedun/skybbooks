@@ -2067,6 +2067,46 @@ export const hrApi = {
   updateEmployee: async (id: string, data: any): Promise<any> => { const r = await api.put(`/hr/employees/${id}`, data); return r.data; },
   deleteEmployee: async (id: string): Promise<any> => { const r = await api.delete(`/hr/employees/${id}`); return r.data; },
   getNextEmployeeCode: async (): Promise<any> => { const r = await api.get('/hr/employees/code/next'); return r.data; },
+  softDeleteEmployee: async (id: string): Promise<any> => { const r = await api.patch(`/hr/employees/${id}/soft-delete`); return r.data; },
+  restoreEmployee: async (id: string): Promise<any> => { const r = await api.patch(`/hr/employees/${id}/restore`); return r.data; },
+  updateEmployeePhoto: async (id: string, photoUrl: string): Promise<any> => { const r = await api.patch(`/hr/employees/${id}/photo`, { photoUrl }); return r.data; },
+  getEmployeeFullProfile: async (id: string): Promise<any> => { const r = await api.get(`/hr/employees/${id}/profile`); return r.data; },
+  getEmployeeDependants: async (empId: string): Promise<any> => { const r = await api.get(`/hr/employees/${empId}/dependants`); return r.data; },
+  createEmployeeDependant: async (empId: string, data: any): Promise<any> => { const r = await api.post(`/hr/employees/${empId}/dependants`, data); return r.data; },
+  updateEmployeeDependant: async (id: string, data: any): Promise<any> => { const r = await api.put(`/hr/dependants/${id}`, data); return r.data; },
+  deleteEmployeeDependant: async (id: string): Promise<any> => { const r = await api.delete(`/hr/dependants/${id}`); return r.data; },
+  getEmployeeEducation: async (empId: string): Promise<any> => { const r = await api.get(`/hr/employees/${empId}/education`); return r.data; },
+  createEmployeeEducation: async (empId: string, data: any): Promise<any> => { const r = await api.post(`/hr/employees/${empId}/education`, data); return r.data; },
+  updateEmployeeEducation: async (id: string, data: any): Promise<any> => { const r = await api.put(`/hr/education/${id}`, data); return r.data; },
+  deleteEmployeeEducation: async (id: string): Promise<any> => { const r = await api.delete(`/hr/education/${id}`); return r.data; },
+  getEmployeeEmploymentHistory: async (empId: string): Promise<any> => { const r = await api.get(`/hr/employees/${empId}/employment-history`); return r.data; },
+  createEmployeeEmploymentHistory: async (empId: string, data: any): Promise<any> => { const r = await api.post(`/hr/employees/${empId}/employment-history`, data); return r.data; },
+  updateEmployeeEmploymentHistory: async (id: string, data: any): Promise<any> => { const r = await api.put(`/hr/employment-history/${id}`, data); return r.data; },
+  deleteEmployeeEmploymentHistory: async (id: string): Promise<any> => { const r = await api.delete(`/hr/employment-history/${id}`); return r.data; },
+  getEmployeeSkills: async (empId: string): Promise<any> => { const r = await api.get(`/hr/employees/${empId}/skills`); return r.data; },
+  createEmployeeSkill: async (empId: string, data: any): Promise<any> => { const r = await api.post(`/hr/employees/${empId}/skills`, data); return r.data; },
+  updateEmployeeSkill: async (id: string, data: any): Promise<any> => { const r = await api.put(`/hr/skills/${id}`, data); return r.data; },
+  deleteEmployeeSkill: async (id: string): Promise<any> => { const r = await api.delete(`/hr/skills/${id}`); return r.data; },
+  getEmployeeCertifications: async (empId: string): Promise<any> => { const r = await api.get(`/hr/employees/${empId}/certifications`); return r.data; },
+  createEmployeeCertification: async (empId: string, data: any): Promise<any> => { const r = await api.post(`/hr/employees/${empId}/certifications`, data); return r.data; },
+  updateEmployeeCertification: async (id: string, data: any): Promise<any> => { const r = await api.put(`/hr/certifications/${id}`, data); return r.data; },
+  deleteEmployeeCertification: async (id: string): Promise<any> => { const r = await api.delete(`/hr/certifications/${id}`); return r.data; },
+  getEmployeeMedical: async (empId: string): Promise<any> => { const r = await api.get(`/hr/employees/${empId}/medical`); return r.data; },
+  upsertEmployeeMedical: async (empId: string, data: any): Promise<any> => { const r = await api.put(`/hr/employees/${empId}/medical`, data); return r.data; },
+  getEmployeeTimeline: async (empId: string): Promise<any> => { const r = await api.get(`/hr/employees/${empId}/timeline`); return r.data; },
+  addTimelineEntry: async (empId: string, data: any): Promise<any> => { const r = await api.post(`/hr/employees/${empId}/timeline`, data); return r.data; },
+  transferEmployee: async (id: string, data: any): Promise<any> => { const r = await api.post(`/hr/employees/${id}/transfer`, data); return r.data; },
+  getEmployeeTransfers: async (empId: string): Promise<any> => { const r = await api.get(`/hr/employees/${empId}/transfers`); return r.data; },
+  promoteEmployee: async (id: string, data: any): Promise<any> => { const r = await api.post(`/hr/employees/${id}/promote`, data); return r.data; },
+  getEmployeePromotions: async (empId: string): Promise<any> => { const r = await api.get(`/hr/employees/${empId}/promotions`); return r.data; },
+  confirmEmployee: async (id: string, data?: any): Promise<any> => { const r = await api.post(`/hr/employees/${id}/confirm`, data || {}); return r.data; },
+  suspendEmployee: async (id: string, data: any): Promise<any> => { const r = await api.post(`/hr/employees/${id}/suspend`, data); return r.data; },
+  terminateEmployee: async (id: string, data: any): Promise<any> => { const r = await api.post(`/hr/employees/${id}/terminate`, data); return r.data; },
+  reinstateEmployee: async (id: string, data?: any): Promise<any> => { const r = await api.post(`/hr/employees/${id}/reinstate`, data || {}); return r.data; },
+  reactivateEmployee: async (id: string, data?: any): Promise<any> => { const r = await api.post(`/hr/employees/${id}/reactivate`, data || {}); return r.data; },
+  getEmployeeDisciplinary: async (empId: string): Promise<any> => { const r = await api.get(`/hr/employees/${empId}/disciplinary`); return r.data; },
+  bulkImportEmployees: async (data: any): Promise<any> => { const r = await api.post('/hr/employees/bulk-import', data); return r.data; },
+  bulkExportEmployees: async (params?: any): Promise<any> => { const r = await api.post('/hr/employees/bulk-export', params || {}); return r.data; },
 
   // ── Employee Documents ──
   getEmployeeDocuments: async (empId: string): Promise<any> => { const r = await api.get(`/hr/employees/${empId}/documents`); return r.data; },
@@ -2114,30 +2154,128 @@ export const hrApi = {
   getOnboardingTasks: async (empId: string): Promise<any> => { const r = await api.get(`/hr/onboarding/${empId}`); return r.data; },
   createOnboardingTask: async (data: any): Promise<any> => { const r = await api.post('/hr/onboarding/tasks', data); return r.data; },
   completeOnboardingTask: async (id: string): Promise<any> => { const r = await api.patch(`/hr/onboarding/tasks/${id}/complete`); return r.data; },
+  createOnboardingChecklist: async (empId: string): Promise<any> => { const r = await api.post(`/hr/onboarding/checklist/${empId}`); return r.data; },
+
+  // ── Equipment Assignments ──
+  getEquipmentAssignments: async (params?: any): Promise<any> => { const r = await api.get('/hr/equipment-assignments', { params }); return r.data; },
+  assignEquipment: async (data: any): Promise<any> => { const r = await api.post('/hr/equipment-assignments', data); return r.data; },
+  returnEquipment: async (id: string): Promise<any> => { const r = await api.patch(`/hr/equipment-assignments/${id}/return`); return r.data; },
+
+  // ── Orientation Sessions ──
+  getOrientationSessions: async (params?: any): Promise<any> => { const r = await api.get('/hr/orientation-sessions', { params }); return r.data; },
+  scheduleOrientationSession: async (data: any): Promise<any> => { const r = await api.post('/hr/orientation-sessions', data); return r.data; },
+  completeOrientationSession: async (id: string): Promise<any> => { const r = await api.patch(`/hr/orientation-sessions/${id}/complete`); return r.data; },
+
+  // ── Probation Reviews ──
+  getProbationReviews: async (params?: any): Promise<any> => { const r = await api.get('/hr/probation-reviews', { params }); return r.data; },
+  createProbationReview: async (data: any): Promise<any> => { const r = await api.post('/hr/probation-reviews', data); return r.data; },
+  finalizeProbation: async (id: string, data: any): Promise<any> => { const r = await api.patch(`/hr/probation-reviews/${id}/finalize`, data); return r.data; },
+
+  // ── Pre-Employment Documents ──
+  getPreEmploymentDocuments: async (params?: any): Promise<any> => { const r = await api.get('/hr/pre-employment-documents', { params }); return r.data; },
+  uploadPreEmploymentDocument: async (data: any): Promise<any> => { const r = await api.post('/hr/pre-employment-documents', data); return r.data; },
+  verifyPreEmploymentDocument: async (id: string): Promise<any> => { const r = await api.patch(`/hr/pre-employment-documents/${id}/verify`); return r.data; },
 
   // ── Leave ──
+  // ── Leave Types ──
   getLeaveTypes: async (): Promise<any> => { const r = await api.get('/hr/leave-types'); return r.data; },
+  getLeaveType: async (id: string): Promise<any> => { const r = await api.get(`/hr/leave-types/${id}`); return r.data; },
   createLeaveType: async (data: any): Promise<any> => { const r = await api.post('/hr/leave-types', data); return r.data; },
   updateLeaveType: async (id: string, data: any): Promise<any> => { const r = await api.put(`/hr/leave-types/${id}`, data); return r.data; },
   deleteLeaveType: async (id: string): Promise<any> => { const r = await api.delete(`/hr/leave-types/${id}`); return r.data; },
+
+  // ── Leave Policies ──
+  getLeavePolicies: async (): Promise<any> => { const r = await api.get('/hr/leave-policies'); return r.data; },
+  getLeavePolicy: async (id: string): Promise<any> => { const r = await api.get(`/hr/leave-policies/${id}`); return r.data; },
+  createLeavePolicy: async (data: any): Promise<any> => { const r = await api.post('/hr/leave-policies', data); return r.data; },
+  updateLeavePolicy: async (id: string, data: any): Promise<any> => { const r = await api.put(`/hr/leave-policies/${id}`, data); return r.data; },
+  deleteLeavePolicy: async (id: string): Promise<any> => { const r = await api.delete(`/hr/leave-policies/${id}`); return r.data; },
+
+  // ── Holidays ──
+  getHolidays: async (params?: any): Promise<any> => { const r = await api.get('/hr/holidays', { params }); return r.data; },
+  getHoliday: async (id: string): Promise<any> => { const r = await api.get(`/hr/holidays/${id}`); return r.data; },
+  createHoliday: async (data: any): Promise<any> => { const r = await api.post('/hr/holidays', data); return r.data; },
+  updateHoliday: async (id: string, data: any): Promise<any> => { const r = await api.put(`/hr/holidays/${id}`, data); return r.data; },
+  deleteHoliday: async (id: string): Promise<any> => { const r = await api.delete(`/hr/holidays/${id}`); return r.data; },
+  getHolidayCalendar: async (year: number): Promise<any> => { const r = await api.get(`/hr/holidays/calendar/${year}`); return r.data; },
+
+  // ── Compensatory Leave ──
+  getCompensatoryLeaves: async (params?: any): Promise<any> => { const r = await api.get('/hr/compensatory-leaves', { params }); return r.data; },
+  getCompensatoryLeave: async (id: string): Promise<any> => { const r = await api.get(`/hr/compensatory-leaves/${id}`); return r.data; },
+  createCompensatoryLeave: async (data: any): Promise<any> => { const r = await api.post('/hr/compensatory-leaves', data); return r.data; },
+  approveCompensatoryLeave: async (id: string): Promise<any> => { const r = await api.patch(`/hr/compensatory-leaves/${id}/approve`); return r.data; },
+  deleteCompensatoryLeave: async (id: string): Promise<any> => { const r = await api.delete(`/hr/compensatory-leaves/${id}`); return r.data; },
+
+  // ── Leave Requests ──
   getLeaveRequests: async (params?: any): Promise<any> => { const r = await api.get('/hr/leave-requests', { params }); return r.data; },
   getLeaveRequest: async (id: string): Promise<any> => { const r = await api.get(`/hr/leave-requests/${id}`); return r.data; },
   createLeaveRequest: async (data: any): Promise<any> => { const r = await api.post('/hr/leave-requests', data); return r.data; },
-  approveLeaveRequest: async (id: string): Promise<any> => { const r = await api.patch(`/hr/leave-requests/${id}/approve`); return r.data; },
+  approveLeaveRequest: async (id: string, data?: any): Promise<any> => { const r = await api.patch(`/hr/leave-requests/${id}/approve`, data); return r.data; },
   rejectLeaveRequest: async (id: string, data: any): Promise<any> => { const r = await api.patch(`/hr/leave-requests/${id}/reject`, data); return r.data; },
   cancelLeaveRequest: async (id: string): Promise<any> => { const r = await api.patch(`/hr/leave-requests/${id}/cancel`); return r.data; },
+  recallLeaveRequest: async (id: string): Promise<any> => { const r = await api.patch(`/hr/leave-requests/${id}/recall`); return r.data; },
+
+  // ── Leave Balances ──
   getLeaveBalances: async (params?: any): Promise<any> => { const r = await api.get('/hr/leave-balances', { params }); return r.data; },
   allocateLeaveBalance: async (data: any): Promise<any> => { const r = await api.post('/hr/leave-balances/allocate', data); return r.data; },
+  recalculateLeaveBalance: async (data: any): Promise<any> => { const r = await api.post('/hr/leave-balances/recalculate', data); return r.data; },
+
+  // ── Leave Accrual ──
+  runLeaveAccrual: async (data: any): Promise<any> => { const r = await api.post('/hr/leave-accrual/run', data); return r.data; },
+  getAccrualLogs: async (): Promise<any> => { const r = await api.get('/hr/leave-accrual/logs'); return r.data; },
+
+  // ── Leave Calendar ──
+  getLeaveCalendar: async (params?: any): Promise<any> => { const r = await api.get('/hr/leave-calendar', { params }); return r.data; },
+
+  // ── Leave Report ──
+  getLeaveReport: async (params?: any): Promise<any> => { const r = await api.get('/hr/leave-report', { params }); return r.data; },
 
   // ── Attendance ──
   getAttendance: async (params?: any): Promise<any> => { const r = await api.get('/hr/attendance', { params }); return r.data; },
-  clockIn: async (): Promise<any> => { const r = await api.post('/hr/attendance/clock-in'); return r.data; },
-  clockOut: async (): Promise<any> => { const r = await api.post('/hr/attendance/clock-out'); return r.data; },
+  getAttendanceRecord: async (id: string): Promise<any> => { const r = await api.get(`/hr/attendance/${id}`); return r.data; },
+  getTodayAttendance: async (params?: any): Promise<any> => { const r = await api.get('/hr/attendance/today', { params }); return r.data; },
+  clockIn: async (data?: any): Promise<any> => { const r = await api.post('/hr/attendance/clock-in', data); return r.data; },
+  clockOut: async (data?: any): Promise<any> => { const r = await api.post('/hr/attendance/clock-out', data); return r.data; },
+  breakIn: async (data?: any): Promise<any> => { const r = await api.post('/hr/attendance/break-in', data); return r.data; },
+  breakOut: async (data?: any): Promise<any> => { const r = await api.post('/hr/attendance/break-out', data); return r.data; },
   updateAttendance: async (id: string, data: any): Promise<any> => { const r = await api.put(`/hr/attendance/${id}`, data); return r.data; },
+  approveAttendance: async (id: string): Promise<any> => { const r = await api.patch(`/hr/attendance/${id}/approve`); return r.data; },
+  recalculateAllAttendance: async (data?: any): Promise<any> => { const r = await api.post('/hr/attendance/calculate', data); return r.data; },
   getAttendanceSummary: async (params?: any): Promise<any> => { const r = await api.get('/hr/attendance/summary', { params }); return r.data; },
+  getAttendanceReport: async (params?: any): Promise<any> => { const r = await api.get('/hr/attendance/report', { params }); return r.data; },
+  generateTimesheetsFromAttendance: async (data?: any): Promise<any> => { const r = await api.post('/hr/attendance/generate-timesheets', data); return r.data; },
+
+  // ── Shift Assignments ──
+  getShiftAssignments: async (params?: any): Promise<any> => { const r = await api.get('/hr/shift-assignments', { params }); return r.data; },
+  assignShift: async (data: any): Promise<any> => { const r = await api.post('/hr/shift-assignments', data); return r.data; },
+  updateShiftAssignment: async (id: string, data: any): Promise<any> => { const r = await api.put(`/hr/shift-assignments/${id}`, data); return r.data; },
+  deleteShiftAssignment: async (id: string): Promise<any> => { const r = await api.delete(`/hr/shift-assignments/${id}`); return r.data; },
+
+  // ── Shift Rotations ──
+  getShiftRotations: async (params?: any): Promise<any> => { const r = await api.get('/hr/shift-rotations', { params }); return r.data; },
+  getShiftRotation: async (id: string): Promise<any> => { const r = await api.get(`/hr/shift-rotations/${id}`); return r.data; },
+  createShiftRotation: async (data: any): Promise<any> => { const r = await api.post('/hr/shift-rotations', data); return r.data; },
+  updateShiftRotation: async (id: string, data: any): Promise<any> => { const r = await api.put(`/hr/shift-rotations/${id}`, data); return r.data; },
+  deleteShiftRotation: async (id: string): Promise<any> => { const r = await api.delete(`/hr/shift-rotations/${id}`); return r.data; },
+  addRotationAssignee: async (id: string, data: any): Promise<any> => { const r = await api.post(`/hr/shift-rotations/${id}/assignees`, data); return r.data; },
+  removeRotationAssignee: async (rotationId: string, assigneeId: string): Promise<any> => { const r = await api.delete(`/hr/shift-rotations/${rotationId}/assignees/${assigneeId}`); return r.data; },
+
+  // ── Attendance Exceptions ──
+  getAttendanceExceptions: async (params?: any): Promise<any> => { const r = await api.get('/hr/attendance-exceptions', { params }); return r.data; },
+  createAttendanceException: async (data: any): Promise<any> => { const r = await api.post('/hr/attendance-exceptions', data); return r.data; },
+  approveAttendanceException: async (id: string): Promise<any> => { const r = await api.patch(`/hr/attendance-exceptions/${id}/approve`); return r.data; },
+  rejectAttendanceException: async (id: string): Promise<any> => { const r = await api.patch(`/hr/attendance-exceptions/${id}/reject`); return r.data; },
+  deleteAttendanceException: async (id: string): Promise<any> => { const r = await api.delete(`/hr/attendance-exceptions/${id}`); return r.data; },
+
+  // ── Overtime Policies ──
+  getOvertimePolicies: async (params?: any): Promise<any> => { const r = await api.get('/hr/overtime-policies', { params }); return r.data; },
+  createOvertimePolicy: async (data: any): Promise<any> => { const r = await api.post('/hr/overtime-policies', data); return r.data; },
+  updateOvertimePolicy: async (id: string, data: any): Promise<any> => { const r = await api.put(`/hr/overtime-policies/${id}`, data); return r.data; },
+  deleteOvertimePolicy: async (id: string): Promise<any> => { const r = await api.delete(`/hr/overtime-policies/${id}`); return r.data; },
 
   // ── Shifts ──
   getShifts: async (): Promise<any> => { const r = await api.get('/hr/shifts'); return r.data; },
+  getShift: async (id: string): Promise<any> => { const r = await api.get(`/hr/shifts/${id}`); return r.data; },
   createShift: async (data: any): Promise<any> => { const r = await api.post('/hr/shifts', data); return r.data; },
   updateShift: async (id: string, data: any): Promise<any> => { const r = await api.put(`/hr/shifts/${id}`, data); return r.data; },
   deleteShift: async (id: string): Promise<any> => { const r = await api.delete(`/hr/shifts/${id}`); return r.data; },
@@ -2158,6 +2296,43 @@ export const hrApi = {
   submitPerformanceReview: async (id: string): Promise<any> => { const r = await api.patch(`/hr/performance-reviews/${id}/submit`); return r.data; },
   completePerformanceReview: async (id: string, data: any): Promise<any> => { const r = await api.patch(`/hr/performance-reviews/${id}/complete`, data); return r.data; },
   deletePerformanceReview: async (id: string): Promise<any> => { const r = await api.delete(`/hr/performance-reviews/${id}`); return r.data; },
+  getReviewSections: async (reviewId: string): Promise<any> => { const r = await api.get(`/hr/performance-reviews/${reviewId}/sections`); return r.data; },
+  createReviewSection: async (reviewId: string, data: any): Promise<any> => { const r = await api.post(`/hr/performance-reviews/${reviewId}/sections`, data); return r.data; },
+  updateReviewSection: async (id: string, data: any): Promise<any> => { const r = await api.put(`/hr/review-sections/${id}`, data); return r.data; },
+  deleteReviewSection: async (id: string): Promise<any> => { const r = await api.delete(`/hr/review-sections/${id}`); return r.data; },
+
+  // ── KPIs ──
+  getKpis: async (params?: any): Promise<any> => { const r = await api.get('/hr/kpis', { params }); return r.data; },
+  getKpi: async (id: string): Promise<any> => { const r = await api.get(`/hr/kpis/${id}`); return r.data; },
+  createKpi: async (data: any): Promise<any> => { const r = await api.post('/hr/kpis', data); return r.data; },
+  updateKpi: async (id: string, data: any): Promise<any> => { const r = await api.put(`/hr/kpis/${id}`, data); return r.data; },
+  deleteKpi: async (id: string): Promise<any> => { const r = await api.delete(`/hr/kpis/${id}`); return r.data; },
+
+  // ── Performance Cycles ──
+  getPerformanceCycles: async (params?: any): Promise<any> => { const r = await api.get('/hr/performance-cycles', { params }); return r.data; },
+  getPerformanceCycle: async (id: string): Promise<any> => { const r = await api.get(`/hr/performance-cycles/${id}`); return r.data; },
+  createPerformanceCycle: async (data: any): Promise<any> => { const r = await api.post('/hr/performance-cycles', data); return r.data; },
+  updatePerformanceCycle: async (id: string, data: any): Promise<any> => { const r = await api.put(`/hr/performance-cycles/${id}`, data); return r.data; },
+  deletePerformanceCycle: async (id: string): Promise<any> => { const r = await api.delete(`/hr/performance-cycles/${id}`); return r.data; },
+
+  // ── Development Plans ──
+  getDevelopmentPlans: async (params?: any): Promise<any> => { const r = await api.get('/hr/development-plans', { params }); return r.data; },
+  getDevelopmentPlan: async (id: string): Promise<any> => { const r = await api.get(`/hr/development-plans/${id}`); return r.data; },
+  createDevelopmentPlan: async (data: any): Promise<any> => { const r = await api.post('/hr/development-plans', data); return r.data; },
+  updateDevelopmentPlan: async (id: string, data: any): Promise<any> => { const r = await api.put(`/hr/development-plans/${id}`, data); return r.data; },
+  deleteDevelopmentPlan: async (id: string): Promise<any> => { const r = await api.delete(`/hr/development-plans/${id}`); return r.data; },
+
+  // ── Promotion Recommendations ──
+  getPromotions: async (params?: any): Promise<any> => { const r = await api.get('/hr/promotions', { params }); return r.data; },
+  getPromotion: async (id: string): Promise<any> => { const r = await api.get(`/hr/promotions/${id}`); return r.data; },
+  createPromotion: async (data: any): Promise<any> => { const r = await api.post('/hr/promotions', data); return r.data; },
+  updatePromotion: async (id: string, data: any): Promise<any> => { const r = await api.put(`/hr/promotions/${id}`, data); return r.data; },
+  approvePromotion: async (id: string): Promise<any> => { const r = await api.patch(`/hr/promotions/${id}/approve`); return r.data; },
+  rejectPromotion: async (id: string): Promise<any> => { const r = await api.patch(`/hr/promotions/${id}/reject`); return r.data; },
+  deletePromotion: async (id: string): Promise<any> => { const r = await api.delete(`/hr/promotions/${id}`); return r.data; },
+
+  // ── Performance Analytics ──
+  getPerformanceAnalytics: async (params?: any): Promise<any> => { const r = await api.get('/hr/performance/analytics', { params }); return r.data; },
 
   // ── LMS Courses ──
   getCourses: async (params?: any): Promise<any> => { const r = await api.get('/hr/courses', { params }); return r.data; },
@@ -2206,15 +2381,6 @@ export const hrApi = {
   generateLetter: async (data: any): Promise<any> => { const r = await api.post('/hr/letters/generate', data); return r.data; },
   deleteLetter: async (id: string): Promise<any> => { const r = await api.delete(`/hr/letters/${id}`); return r.data; },
 
-  // ── Travel ──
-  getTravelRequests: async (params?: any): Promise<any> => { const r = await api.get('/hr/travel-requests', { params }); return r.data; },
-  getTravelRequest: async (id: string): Promise<any> => { const r = await api.get(`/hr/travel-requests/${id}`); return r.data; },
-  createTravelRequest: async (data: any): Promise<any> => { const r = await api.post('/hr/travel-requests', data); return r.data; },
-  updateTravelRequest: async (id: string, data: any): Promise<any> => { const r = await api.put(`/hr/travel-requests/${id}`, data); return r.data; },
-  deleteTravelRequest: async (id: string): Promise<any> => { const r = await api.delete(`/hr/travel-requests/${id}`); return r.data; },
-  approveTravelRequest: async (id: string): Promise<any> => { const r = await api.patch(`/hr/travel-requests/${id}/approve`); return r.data; },
-  declineTravelRequest: async (id: string, data: any): Promise<any> => { const r = await api.patch(`/hr/travel-requests/${id}/decline`, data); return r.data; },
-
   // ── Expense Reports ──
   getExpenseReports: async (params?: any): Promise<any> => { const r = await api.get('/hr/expense-reports', { params }); return r.data; },
   getExpenseReport: async (id: string): Promise<any> => { const r = await api.get(`/hr/expense-reports/${id}`); return r.data; },
@@ -2241,18 +2407,100 @@ export const hrApi = {
   enrollBenefit: async (data: any): Promise<any> => { const r = await api.post('/hr/employee-benefits/enroll', data); return r.data; },
   disenrollBenefit: async (id: string): Promise<any> => { const r = await api.delete(`/hr/employee-benefits/${id}`); return r.data; },
 
+  // ── Allowances ──
+  getAllowances: async (): Promise<any> => { const r = await api.get('/hr/allowances'); return r.data; },
+  getAllowance: async (id: string): Promise<any> => { const r = await api.get(`/hr/allowances/${id}`); return r.data; },
+  createAllowance: async (data: any): Promise<any> => { const r = await api.post('/hr/allowances', data); return r.data; },
+  updateAllowance: async (id: string, data: any): Promise<any> => { const r = await api.put(`/hr/allowances/${id}`, data); return r.data; },
+  deleteAllowance: async (id: string): Promise<any> => { const r = await api.delete(`/hr/allowances/${id}`); return r.data; },
+  getEmployeeAllowances: async (empId: string): Promise<any> => { const r = await api.get(`/hr/employee-allowances/${empId}`); return r.data; },
+  assignEmployeeAllowance: async (data: any): Promise<any> => { const r = await api.post('/hr/employee-allowances', data); return r.data; },
+  removeEmployeeAllowance: async (id: string): Promise<any> => { const r = await api.delete(`/hr/employee-allowances/${id}`); return r.data; },
+
+  // ── Bonuses ──
+  getBonuses: async (params?: any): Promise<any> => { const r = await api.get('/hr/bonuses', { params }); return r.data; },
+  getBonus: async (id: string): Promise<any> => { const r = await api.get(`/hr/bonuses/${id}`); return r.data; },
+  createBonus: async (data: any): Promise<any> => { const r = await api.post('/hr/bonuses', data); return r.data; },
+  updateBonus: async (id: string, data: any): Promise<any> => { const r = await api.put(`/hr/bonuses/${id}`, data); return r.data; },
+  approveBonus: async (id: string): Promise<any> => { const r = await api.patch(`/hr/bonuses/${id}/approve`); return r.data; },
+  deleteBonus: async (id: string): Promise<any> => { const r = await api.delete(`/hr/bonuses/${id}`); return r.data; },
+
+  // ── Deductions ──
+  getDeductions: async (): Promise<any> => { const r = await api.get('/hr/deductions'); return r.data; },
+  getDeduction: async (id: string): Promise<any> => { const r = await api.get(`/hr/deductions/${id}`); return r.data; },
+  createDeduction: async (data: any): Promise<any> => { const r = await api.post('/hr/deductions', data); return r.data; },
+  updateDeduction: async (id: string, data: any): Promise<any> => { const r = await api.put(`/hr/deductions/${id}`, data); return r.data; },
+  deleteDeduction: async (id: string): Promise<any> => { const r = await api.delete(`/hr/deductions/${id}`); return r.data; },
+  getEmployeeDeductions: async (empId: string): Promise<any> => { const r = await api.get(`/hr/employee-deductions/${empId}`); return r.data; },
+  assignEmployeeDeduction: async (data: any): Promise<any> => { const r = await api.post('/hr/employee-deductions', data); return r.data; },
+  removeEmployeeDeduction: async (id: string): Promise<any> => { const r = await api.delete(`/hr/employee-deductions/${id}`); return r.data; },
+
+  // ── Salary Reviews ──
+  getSalaryReviews: async (params?: any): Promise<any> => { const r = await api.get('/hr/salary-reviews', { params }); return r.data; },
+  getSalaryReview: async (id: string): Promise<any> => { const r = await api.get(`/hr/salary-reviews/${id}`); return r.data; },
+  createSalaryReview: async (data: any): Promise<any> => { const r = await api.post('/hr/salary-reviews', data); return r.data; },
+  approveSalaryReview: async (id: string): Promise<any> => { const r = await api.patch(`/hr/salary-reviews/${id}/approve`); return r.data; },
+  rejectSalaryReview: async (id: string): Promise<any> => { const r = await api.patch(`/hr/salary-reviews/${id}/reject`); return r.data; },
+  deleteSalaryReview: async (id: string): Promise<any> => { const r = await api.delete(`/hr/salary-reviews/${id}`); return r.data; },
+
+  // ── Compensation History & Reports ──
+  getCompensationHistory: async (params?: any): Promise<any> => { const r = await api.get('/hr/compensation-history', { params }); return r.data; },
+  getCompensationReport: async (): Promise<any> => { const r = await api.get('/hr/compensation-report'); return r.data; },
+
+  // ── Travel Management ──
+  getTravelDashboard: async (): Promise<any> => { const r = await api.get('/hr/travel/dashboard'); return r.data; },
+  getTravelRequests: async (params?: any): Promise<any> => { const r = await api.get('/hr/travel-requests', { params }); return r.data; },
+  getTravelRequest: async (id: string): Promise<any> => { const r = await api.get(`/hr/travel-requests/${id}`); return r.data; },
+  createTravelRequest: async (data: any): Promise<any> => { const r = await api.post('/hr/travel-requests', data); return r.data; },
+  updateTravelRequest: async (id: string, data: any): Promise<any> => { const r = await api.put(`/hr/travel-requests/${id}`, data); return r.data; },
+  submitTravelRequest: async (id: string): Promise<any> => { const r = await api.patch(`/hr/travel-requests/${id}/submit`); return r.data; },
+  approveTravelRequest: async (id: string): Promise<any> => { const r = await api.patch(`/hr/travel-requests/${id}/approve`); return r.data; },
+  declineTravelRequest: async (id: string, reason?: string): Promise<any> => { const r = await api.patch(`/hr/travel-requests/${id}/decline`, { reason }); return r.data; },
+  deleteTravelRequest: async (id: string): Promise<any> => { const r = await api.delete(`/hr/travel-requests/${id}`); return r.data; },
+  getTravelAdvances: async (params?: any): Promise<any> => { const r = await api.get('/hr/travel-advances', { params }); return r.data; },
+  getTravelAdvance: async (id: string): Promise<any> => { const r = await api.get(`/hr/travel-advances/${id}`); return r.data; },
+  createTravelAdvance: async (data: any): Promise<any> => { const r = await api.post('/hr/travel-advances', data); return r.data; },
+  updateTravelAdvance: async (id: string, data: any): Promise<any> => { const r = await api.put(`/hr/travel-advances/${id}`, data); return r.data; },
+  approveTravelAdvance: async (id: string): Promise<any> => { const r = await api.patch(`/hr/travel-advances/${id}/approve`); return r.data; },
+  disburseTravelAdvance: async (id: string): Promise<any> => { const r = await api.patch(`/hr/travel-advances/${id}/disburse`); return r.data; },
+  deleteTravelAdvance: async (id: string): Promise<any> => { const r = await api.delete(`/hr/travel-advances/${id}`); return r.data; },
+  getTravelExpenses: async (params?: any): Promise<any> => { const r = await api.get('/hr/travel-expenses', { params }); return r.data; },
+  linkExpenseToTravel: async (id: string, travelRequestId: string): Promise<any> => { const r = await api.patch(`/hr/travel-expenses/${id}/link`, { travelRequestId }); return r.data; },
+  getTravelSettlements: async (params?: any): Promise<any> => { const r = await api.get('/hr/travel-settlements', { params }); return r.data; },
+  getTravelSettlement: async (id: string): Promise<any> => { const r = await api.get(`/hr/travel-settlements/${id}`); return r.data; },
+  createTravelSettlement: async (data: any): Promise<any> => { const r = await api.post('/hr/travel-settlements', data); return r.data; },
+  autoSettleTravel: async (travelRequestId: string): Promise<any> => { const r = await api.post(`/hr/travel-settlements/auto-settle/${travelRequestId}`); return r.data; },
+  getTravelHistory: async (params?: any): Promise<any> => { const r = await api.get('/hr/travel-history', { params }); return r.data; },
+  getTravelReport: async (params?: any): Promise<any> => { const r = await api.get('/hr/travel-report', { params }); return r.data; },
+
+  // ── Document Management ──
+  getDocDashboard: async (): Promise<any> => { const r = await api.get('/hr/documents/dashboard'); return r.data; },
+  getDocCategories: async (): Promise<any> => { const r = await api.get('/hr/documents/categories'); return r.data; },
+  getDocCategory: async (id: string): Promise<any> => { const r = await api.get(`/hr/documents/categories/${id}`); return r.data; },
+  createDocCategory: async (data: any): Promise<any> => { const r = await api.post('/hr/documents/categories', data); return r.data; },
+  updateDocCategory: async (id: string, data: any): Promise<any> => { const r = await api.put(`/hr/documents/categories/${id}`, data); return r.data; },
+  deleteDocCategory: async (id: string): Promise<any> => { const r = await api.delete(`/hr/documents/categories/${id}`); return r.data; },
+  getDocFiles: async (params?: any): Promise<any> => { const r = await api.get('/hr/documents/files', { params }); return r.data; },
+  getDocFile: async (id: string): Promise<any> => { const r = await api.get(`/hr/documents/files/${id}`); return r.data; },
+  createDocFile: async (data: any): Promise<any> => { const r = await api.post('/hr/documents/files', data); return r.data; },
+  updateDocFile: async (id: string, data: any): Promise<any> => { const r = await api.put(`/hr/documents/files/${id}`, data); return r.data; },
+  uploadDocVersion: async (id: string, data: any): Promise<any> => { const r = await api.post(`/hr/documents/files/${id}/version`, data); return r.data; },
+  deleteDocFile: async (id: string): Promise<any> => { const r = await api.delete(`/hr/documents/files/${id}`); return r.data; },
+  getDocVersions: async (id: string): Promise<any> => { const r = await api.get(`/hr/documents/files/${id}/versions`); return r.data; },
+  getDocPermissions: async (id: string): Promise<any> => { const r = await api.get(`/hr/documents/files/${id}/permissions`); return r.data; },
+  setDocPermission: async (data: any): Promise<any> => { const r = await api.post('/hr/documents/permissions', data); return r.data; },
+  removeDocPermission: async (id: string): Promise<any> => { const r = await api.delete(`/hr/documents/permissions/${id}`); return r.data; },
+  getDocEmployeeLinks: async (id: string): Promise<any> => { const r = await api.get(`/hr/documents/files/${id}/employees`); return r.data; },
+  linkDocToEmployee: async (data: any): Promise<any> => { const r = await api.post('/hr/documents/employee-links', data); return r.data; },
+  unlinkDocFromEmployee: async (id: string): Promise<any> => { const r = await api.delete(`/hr/documents/employee-links/${id}`); return r.data; },
+  getEmployeeDocs: async (employeeId: string): Promise<any> => { const r = await api.get(`/hr/documents/employee/${employeeId}`); return r.data; },
+
   // ── Tasks ──
   getHrTasks: async (params?: any): Promise<any> => { const r = await api.get('/hr/tasks', { params }); return r.data; },
   createHrTask: async (data: any): Promise<any> => { const r = await api.post('/hr/tasks', data); return r.data; },
   updateHrTask: async (id: string, data: any): Promise<any> => { const r = await api.put(`/hr/tasks/${id}`, data); return r.data; },
   completeHrTask: async (id: string): Promise<any> => { const r = await api.patch(`/hr/tasks/${id}/complete`); return r.data; },
   deleteHrTask: async (id: string): Promise<any> => { const r = await api.delete(`/hr/tasks/${id}`); return r.data; },
-
-  // ── Workflow ──
-  getWorkflowTemplates: async (): Promise<any> => { const r = await api.get('/hr/workflow-templates'); return r.data; },
-  createWorkflowTemplate: async (data: any): Promise<any> => { const r = await api.post('/hr/workflow-templates', data); return r.data; },
-  updateWorkflowTemplate: async (id: string, data: any): Promise<any> => { const r = await api.put(`/hr/workflow-templates/${id}`, data); return r.data; },
-  deleteWorkflowTemplate: async (id: string): Promise<any> => { const r = await api.delete(`/hr/workflow-templates/${id}`); return r.data; },
 
   // ── OKR & Goals ──
   getGoalCycles: async (): Promise<any> => { const r = await api.get('/hr/goal-cycles'); return r.data; },
@@ -2281,30 +2529,6 @@ export const hrApi = {
   getTicketResponses: async (ticketId: string): Promise<any> => { const r = await api.get(`/hr/ticket-responses/${ticketId}`); return r.data; },
   createTicketResponse: async (data: any): Promise<any> => { const r = await api.post('/hr/ticket-responses', data); return r.data; },
 
-  // ── Approvals ──
-  getApprovalRequests: async (params?: any): Promise<any> => { const r = await api.get('/hr/approval-requests', { params }); return r.data; },
-  getApprovalRequest: async (id: string): Promise<any> => { const r = await api.get(`/hr/approval-requests/${id}`); return r.data; },
-  createApprovalRequest: async (data: any): Promise<any> => { const r = await api.post('/hr/approval-requests', data); return r.data; },
-  approveRequest: async (id: string, data?: any): Promise<any> => { const r = await api.patch(`/hr/approval-requests/${id}/approve`, data); return r.data; },
-  rejectRequest: async (id: string, data?: any): Promise<any> => { const r = await api.patch(`/hr/approval-requests/${id}/reject`, data); return r.data; },
-  cancelApprovalRequest: async (id: string): Promise<any> => { const r = await api.patch(`/hr/approval-requests/${id}/cancel`); return r.data; },
-  getApprovalConfigs: async (): Promise<any> => { const r = await api.get('/hr/approval-configs'); return r.data; },
-  createApprovalConfig: async (data: any): Promise<any> => { const r = await api.post('/hr/approval-configs', data); return r.data; },
-  updateApprovalConfig: async (id: string, data: any): Promise<any> => { const r = await api.put(`/hr/approval-configs/${id}`, data); return r.data; },
-  deleteApprovalConfig: async (id: string): Promise<any> => { const r = await api.delete(`/hr/approval-configs/${id}`); return r.data; },
-
-  // ── Reports ──
-  getHeadcountReport: async (params?: any): Promise<any> => { const r = await api.get('/hr/reports/headcount', { params }); return r.data; },
-  getTurnoverReport: async (params?: any): Promise<any> => { const r = await api.get('/hr/reports/turnover', { params }); return r.data; },
-  getAttendanceReport: async (params?: any): Promise<any> => { const r = await api.get('/hr/reports/attendance', { params }); return r.data; },
-  getLeaveReport: async (params?: any): Promise<any> => { const r = await api.get('/hr/reports/leave', { params }); return r.data; },
-  getTravelExpenseReport: async (params?: any): Promise<any> => { const r = await api.get('/hr/reports/travel-expense', { params }); return r.data; },
-  getPerformanceSummaryReport: async (params?: any): Promise<any> => { const r = await api.get('/hr/reports/performance-summary', { params }); return r.data; },
-  getRecruitmentFunnelReport: async (params?: any): Promise<any> => { const r = await api.get('/hr/reports/recruitment-funnel', { params }); return r.data; },
-  getCostReport: async (params?: any): Promise<any> => { const r = await api.get('/hr/reports/cost', { params }); return r.data; },
-  getComplianceReport: async (params?: any): Promise<any> => { const r = await api.get('/hr/reports/compliance', { params }); return r.data; },
-  getCustomReport: async (data: any): Promise<any> => { const r = await api.post('/hr/reports/custom', data); return r.data; },
-
   // ── Settings & Policies ──
   getHrSettings: async (): Promise<any> => { const r = await api.get('/hr/settings'); return r.data; },
   getHrSetting: async (key: string): Promise<any> => { const r = await api.get(`/hr/settings/${key}`); return r.data; },
@@ -2314,4 +2538,105 @@ export const hrApi = {
   createPolicy: async (data: any): Promise<any> => { const r = await api.post('/hr/policies', data); return r.data; },
   updatePolicy: async (id: string, data: any): Promise<any> => { const r = await api.put(`/hr/policies/${id}`, data); return r.data; },
   deletePolicy: async (id: string): Promise<any> => { const r = await api.delete(`/hr/policies/${id}`); return r.data; },
+  // ── Approval Engine ──
+  getApprovalConfigs: async (): Promise<any> => { const r = await api.get('/hr/approval/configs'); return r.data; },
+  getApprovalConfig: async (id: string): Promise<any> => { const r = await api.get(`/hr/approval/configs/${id}`); return r.data; },
+  createApprovalConfig: async (data: any): Promise<any> => { const r = await api.post('/hr/approval/configs', data); return r.data; },
+  updateApprovalConfig: async (id: string, data: any): Promise<any> => { const r = await api.put(`/hr/approval/configs/${id}`, data); return r.data; },
+  deleteApprovalConfig: async (id: string): Promise<any> => { const r = await api.delete(`/hr/approval/configs/${id}`); return r.data; },
+  getApprovalRequests: async (params?: any): Promise<any> => { const r = await api.get('/hr/approval/requests', { params }); return r.data; },
+  getApprovalRequest: async (id: string): Promise<any> => { const r = await api.get(`/hr/approval/requests/${id}`); return r.data; },
+  createApprovalRequest: async (data: any): Promise<any> => { const r = await api.post('/hr/approval/requests', data); return r.data; },
+  cancelApprovalRequest: async (id: string): Promise<any> => { const r = await api.patch(`/hr/approval/requests/${id}/cancel`); return r.data; },
+  getApprovalSteps: async (requestId: string): Promise<any> => { const r = await api.get(`/hr/approval/requests/${requestId}/steps`); return r.data; },
+  approveApprovalStep: async (requestId: string, comment?: string): Promise<any> => { const r = await api.post(`/hr/approval/requests/${requestId}/approve`, { comment }); return r.data; },
+  rejectApprovalStep: async (requestId: string, comment?: string): Promise<any> => { const r = await api.post(`/hr/approval/requests/${requestId}/reject`, { comment }); return r.data; },
+  sendBackApprovalStep: async (requestId: string, comment?: string): Promise<any> => { const r = await api.post(`/hr/approval/requests/${requestId}/send-back`, { comment }); return r.data; },
+  escalateApprovalRequest: async (requestId: string, escalateToUserId: string, comment?: string): Promise<any> => { const r = await api.post(`/hr/approval/requests/${requestId}/escalate`, { escalateToUserId, comment }); return r.data; },
+  delegateApprovalStep: async (requestId: string, delegateToUserId: string): Promise<any> => { const r = await api.post(`/hr/approval/requests/${requestId}/delegate`, { delegateToUserId }); return r.data; },
+  getApprovalComments: async (requestId: string): Promise<any> => { const r = await api.get(`/hr/approval/requests/${requestId}/comments`); return r.data; },
+  addApprovalComment: async (requestId: string, comment: string, stepInstanceId?: string): Promise<any> => { const r = await api.post(`/hr/approval/requests/${requestId}/comments`, { comment, stepInstanceId }); return r.data; },
+  getMyApprovalQueue: async (params?: any): Promise<any> => { const r = await api.get('/hr/approval/my-queue', { params }); return r.data; },
+  getDelegations: async (employeeId?: string): Promise<any> => { const r = await api.get('/hr/approval/delegations', { params: { employeeId } }); return r.data; },
+  createDelegation: async (data: any): Promise<any> => { const r = await api.post('/hr/approval/delegations', data); return r.data; },
+  deleteDelegation: async (id: string): Promise<any> => { const r = await api.delete(`/hr/approval/delegations/${id}`); return r.data; },
+  getEscalationRules: async (module?: string): Promise<any> => { const r = await api.get('/hr/approval/escalation-rules', { params: { module } }); return r.data; },
+  createEscalationRule: async (data: any): Promise<any> => { const r = await api.post('/hr/approval/escalation-rules', data); return r.data; },
+  deleteEscalationRule: async (id: string): Promise<any> => { const r = await api.delete(`/hr/approval/escalation-rules/${id}`); return r.data; },
+  checkEscalations: async (): Promise<any> => { const r = await api.post('/hr/approval/check-escalations'); return r.data; },
+  getApprovalHistory: async (params?: any): Promise<any> => { const r = await api.get('/hr/approval/history', { params }); return r.data; },
+  getApprovalDashboard: async (): Promise<any> => { const r = await api.get('/hr/approval/dashboard'); return r.data; },
+  // ── HR Reports Engine ──
+  getReportEmployees: async (params?: any): Promise<any> => { const r = await api.get('/hr/reports/employees', { params }); return r.data; },
+  getReportEmployeeDetail: async (id: string): Promise<any> => { const r = await api.get(`/hr/reports/employees/${id}`); return r.data; },
+  getReportLeave: async (params?: any): Promise<any> => { const r = await api.get('/hr/reports/leave', { params }); return r.data; },
+  getReportLeaveBalances: async (employeeId?: string): Promise<any> => { const r = await api.get('/hr/reports/leave/balances', { params: { employeeId } }); return r.data; },
+  getReportAttendance: async (params?: any): Promise<any> => { const r = await api.get('/hr/reports/attendance', { params }); return r.data; },
+  getReportPerformance: async (params?: any): Promise<any> => { const r = await api.get('/hr/reports/performance', { params }); return r.data; },
+  getReportTravel: async (params?: any): Promise<any> => { const r = await api.get('/hr/reports/travel', { params }); return r.data; },
+  getReportCompensation: async (params?: any): Promise<any> => { const r = await api.get('/hr/reports/compensation', { params }); return r.data; },
+  getReportTurnover: async (params?: any): Promise<any> => { const r = await api.get('/hr/reports/turnover', { params }); return r.data; },
+  getReportRecruitment: async (params?: any): Promise<any> => { const r = await api.get('/hr/reports/recruitment', { params }); return r.data; },
+  getReportKpiDashboard: async (): Promise<any> => { const r = await api.get('/hr/reports/kpi-dashboard'); return r.data; },
+  getReportExport: async (reportType: string, params?: any): Promise<any> => { const r = await api.get(`/hr/reports/export/${reportType}`, { params }); return r.data; },
+  getReportDrillDown: async (reportType: string, groupKey: string, groupValue: string, params?: any): Promise<any> => { const r = await api.get(`/hr/reports/drill-down/${reportType}/${groupKey}/${groupValue}`, { params }); return r.data; },
+  getScheduledReports: async (): Promise<any> => { const r = await api.get('/hr/reports/scheduled'); return r.data; },
+  createScheduledReport: async (data: any): Promise<any> => { const r = await api.post('/hr/reports/scheduled', data); return r.data; },
+  deleteScheduledReport: async (id: string): Promise<any> => { const r = await api.delete(`/hr/reports/scheduled/${id}`); return r.data; },
+  // ── HR Workflow Engine ──
+  getWorkflowTemplates: async (): Promise<any> => { const r = await api.get('/hr/workflow/templates'); return r.data; },
+  getWorkflowTemplate: async (id: string): Promise<any> => { const r = await api.get(`/hr/workflow/templates/${id}`); return r.data; },
+  createWorkflowTemplate: async (data: any): Promise<any> => { const r = await api.post('/hr/workflow/templates', data); return r.data; },
+  updateWorkflowTemplate: async (id: string, data: any): Promise<any> => { const r = await api.put(`/hr/workflow/templates/${id}`, data); return r.data; },
+  deleteWorkflowTemplate: async (id: string): Promise<any> => { const r = await api.delete(`/hr/workflow/templates/${id}`); return r.data; },
+  executeWorkflow: async (data: any): Promise<any> => { const r = await api.post('/hr/workflow/execute', data); return r.data; },
+  dispatchWorkflowEvent: async (data: any): Promise<any> => { const r = await api.post('/hr/workflow/dispatch', data); return r.data; },
+  getAutomationRules: async (event?: string): Promise<any> => { const r = await api.get('/hr/automation-rules', { params: { event } }); return r.data; },
+  createAutomationRule: async (data: any): Promise<any> => { const r = await api.post('/hr/automation-rules', data); return r.data; },
+  updateAutomationRule: async (id: string, data: any): Promise<any> => { const r = await api.put(`/hr/automation-rules/${id}`, data); return r.data; },
+  deleteAutomationRule: async (id: string): Promise<any> => { const r = await api.delete(`/hr/automation-rules/${id}`); return r.data; },
+  getNotifications: async (employeeId?: string, unreadOnly?: boolean): Promise<any> => { const r = await api.get('/hr/notifications', { params: { employeeId, unreadOnly } }); return r.data; },
+  getUnreadNotificationCount: async (employeeId?: string): Promise<any> => { const r = await api.get('/hr/notifications/unread-count', { params: { employeeId } }); return r.data; },
+  markNotificationRead: async (id: string): Promise<any> => { const r = await api.patch(`/hr/notifications/${id}/read`); return r.data; },
+  markAllNotificationsRead: async (employeeId?: string): Promise<any> => { const r = await api.post('/hr/notifications/mark-all-read', { employeeId }); return r.data; },
+  createNotification: async (data: any): Promise<any> => { const r = await api.post('/hr/notifications', data); return r.data; },
+  getReminderConfigs: async (type?: string): Promise<any> => { const r = await api.get('/hr/reminder-configs', { params: { type } }); return r.data; },
+  createReminderConfig: async (data: any): Promise<any> => { const r = await api.post('/hr/reminder-configs', data); return r.data; },
+  deleteReminderConfig: async (id: string): Promise<any> => { const r = await api.delete(`/hr/reminder-configs/${id}`); return r.data; },
+  runScheduledAlerts: async (): Promise<any> => { const r = await api.post('/hr/run-alerts'); return r.data; },
+  getWorkflowDashboard: async (employeeId?: string): Promise<any> => { const r = await api.get('/hr/workflow/dashboard', { params: { employeeId } }); return r.data; },
+  // ── Calendar Events ──
+  getCalendarEvents: async (params?: any): Promise<any> => { const r = await api.get('/hr/calendar-events', { params }); return r.data; },
+  createCalendarEvent: async (data: any): Promise<any> => { const r = await api.post('/hr/calendar-events', data); return r.data; },
+  markCalendarEventRead: async (id: string): Promise<any> => { const r = await api.patch(`/hr/calendar-events/${id}/read`); return r.data; },
+  // ── Document Requests ──
+  getDocumentRequests: async (params?: any): Promise<any> => { const r = await api.get('/hr/document-requests', { params }); return r.data; },
+  createDocumentRequest: async (data: any): Promise<any> => { const r = await api.post('/hr/document-requests', data); return r.data; },
+  completeDocumentRequest: async (id: string): Promise<any> => { const r = await api.patch(`/hr/document-requests/${id}/complete`); return r.data; },
+  // ── Renewal Tracking ──
+  getRenewals: async (params?: any): Promise<any> => { const r = await api.get('/hr/renewals', { params }); return r.data; },
+  getUpcomingRenewals: async (days?: number): Promise<any> => { const r = await api.get('/hr/renewals/upcoming', { params: { days } }); return r.data; },
+  createRenewalRecord: async (data: any): Promise<any> => { const r = await api.post('/hr/renewals', data); return r.data; },
+  processRenewal: async (id: string, data: any): Promise<any> => { const r = await api.patch(`/hr/renewals/${id}/renew`, data); return r.data; },
+  checkUpcomingRenewals: async (): Promise<any> => { const r = await api.post('/hr/renewals/check'); return r.data; },
+  // ── Policy Acknowledgements ──
+  getPolicyAcknowledgements: async (params?: any): Promise<any> => { const r = await api.get('/hr/policy-acknowledgements', { params }); return r.data; },
+  requestPolicyAcknowledgement: async (data: any): Promise<any> => { const r = await api.post('/hr/policy-acknowledgements', data); return r.data; },
+  acknowledgePolicy: async (id: string): Promise<any> => { const r = await api.patch(`/hr/policy-acknowledgements/${id}/acknowledge`); return r.data; },
+  // ── HR Integration Bridges ──
+  syncHrEmployeeToPayroll: async (hrEmployeeId: string): Promise<any> => { const r = await api.post(`/hr/integrate/payroll/sync-employee/${hrEmployeeId}`); return r.data; },
+  syncTerminationToPayroll: async (hrEmployeeId: string, data: any): Promise<any> => { const r = await api.post(`/hr/integrate/payroll/sync-termination/${hrEmployeeId}`, data); return r.data; },
+  bulkSyncAllHrToPayroll: async (): Promise<any> => { const r = await api.post('/hr/integrate/payroll/bulk-sync'); return r.data; },
+  getHrDataForPayroll: async (): Promise<any> => { const r = await api.get('/hr/integrate/payroll/hr-data'); return r.data; },
+  enrichPayrollRunWithHr: async (runId: string): Promise<any> => { const r = await api.get(`/hr/integrate/payroll/enrich-run/${runId}`); return r.data; },
+  postHrCostEntry: async (data: any): Promise<any> => { const r = await api.post('/hr/integrate/accounting/post-cost', data); return r.data; },
+  postTimesheetToProject: async (data: any): Promise<any> => { const r = await api.post('/hr/integrate/projects/post-timesheet', data); return r.data; },
+  getCrossModuleTasks: async (params?: any): Promise<any> => { const r = await api.get('/hr/integrate/tasks', { params }); return r.data; },
+  createCrossModuleTask: async (data: any): Promise<any> => { const r = await api.post('/hr/integrate/tasks', data); return r.data; },
+  createCrossModuleEvent: async (data: any): Promise<any> => { const r = await api.post('/hr/integrate/calendar/events', data); return r.data; },
+  getHrSystemNotifications: async (): Promise<any> => { const r = await api.get('/hr/integrate/notifications'); return r.data; },
+  getHrAiInsights: async (): Promise<any> => { const r = await api.get('/hr/integrate/ai/insights'); return r.data; },
+  syncHrDocToSystem: async (hrDocFileId: string): Promise<any> => { const r = await api.post(`/hr/integrate/documents/sync/${hrDocFileId}`); return r.data; },
+  createOnboardingTasks: async (employeeId: string, data?: any): Promise<any> => { const r = await api.post(`/hr/integrate/onboarding/${employeeId}`, data || {}); return r.data; },
+  createOffboardingTasks: async (employeeId: string, data: any): Promise<any> => { const r = await api.post(`/hr/integrate/offboarding/${employeeId}`, data); return r.data; },
 };

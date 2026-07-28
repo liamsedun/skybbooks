@@ -30,10 +30,6 @@ export function ManageLayout() {
   if (TABS.length === 0) {
     return (
       <div className="space-y-6">
-        <div>
-          <h1 className="text-xl font-bold text-ink-900">Manage SkyHRM</h1>
-          <p className="text-sm text-ink-400 mt-0.5">Configure HR settings, users, organisation structure, access control, approvals, and services.</p>
-        </div>
         <div className="bg-surface rounded-2xl border border-border-custom shadow-sm p-8 text-center text-ink-400">
           <Shield className="w-12 h-12 mx-auto mb-3 text-ink-300" />
           <p>You do not have access to this section.</p>
@@ -44,10 +40,6 @@ export function ManageLayout() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-bold text-ink-900">Manage SkyHRM</h1>
-        <p className="text-sm text-ink-400 mt-0.5">Configure HR settings, users, organisation structure, access control, approvals, and services.</p>
-      </div>
       <div className="flex gap-1 bg-surface rounded-xl border border-border-custom shadow-sm p-1 overflow-x-auto">
         {TABS.map((t, i) => {
           const Icon = t.icon;

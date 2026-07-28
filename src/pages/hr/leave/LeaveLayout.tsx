@@ -1,5 +1,5 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { ClipboardList, ListOrdered, Calendar } from 'lucide-react';
+import { ClipboardList, ListOrdered, Calendar, Sun, Shield, FileText } from 'lucide-react';
 import { useHrPermissions } from '../../../hooks/useHrPermissions';
 
 interface TabItem {
@@ -12,7 +12,10 @@ interface TabItem {
 const ALL_TABS: TabItem[] = [
   { label: 'Leave Summary', path: '/app/hr/leave/summary', icon: ClipboardList },
   { label: 'Leave Requests', path: '/app/hr/leave/requests', icon: ListOrdered, permission: 'hr:approve' },
-  { label: 'Shift', path: '/app/hr/leave/shift', icon: Calendar },
+  { label: 'Leave Calendar', path: '/app/hr/leave/calendar', icon: Calendar },
+  { label: 'Leave Types', path: '/app/hr/leave/types', icon: FileText, permission: 'hr:admin' },
+  { label: 'Leave Policies', path: '/app/hr/leave/policies', icon: Shield, permission: 'hr:admin' },
+  { label: 'Holiday Calendar', path: '/app/hr/leave/holidays', icon: Sun, permission: 'hr:admin' },
 ];
 
 export function LeaveLayout() {

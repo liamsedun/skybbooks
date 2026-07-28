@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Users, UserCheck, UserX, Clock, Plus, Download, FileText, Edit3, Trash2, Eye } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -20,7 +20,7 @@ interface UserItem {
   status: string;
 }
 
-const MOCK: UserItem[] = [
+const INITIAL_USERS: UserItem[] = [
   { id: '1', name: 'Alice Johnson', email: 'alice@company.com', role: 'admin', lastLogin: '2026-07-25', status: 'active' },
   { id: '2', name: 'Bob Smith', email: 'bob@company.com', role: 'manager', lastLogin: '2026-07-24', status: 'active' },
   { id: '3', name: 'Carol White', email: 'carol@company.com', role: 'hr', lastLogin: '2026-07-23', status: 'active' },
@@ -35,14 +35,27 @@ const MOCK: UserItem[] = [
 
 export function UsersPage() {
   const { success: showSuccess } = useToast();
-  const ps = useHrPageState({ data: MOCK, initialSortKey: 'name', searchKeys: ['name', 'email'], pageSize: 10 });
+  const [users, setUsers] = useState<UserItem[]>(INITIAL_USERS);
+  const ps = useHrPageState({ data: users, initialSortKey: 'name', searchKeys: ['name', 'email'], pageSize: 10 });
 
   const stats = useMemo(() => [
-    { label: 'Total Users', value: MOCK.length, icon: <Users className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
-    { label: 'Active', value: MOCK.filter(i => i.status === 'active').length, icon: <UserCheck className="w-4 h-4" />, color: 'emerald' as const, active: ps.statusFilter === 'active', onClick: () => ps.setStatusFilter('active') },
-    { label: 'Invited', value: MOCK.filter(i => i.status === 'invited').length, icon: <Clock className="w-4 h-4" />, color: 'amber' as const, active: ps.statusFilter === 'invited', onClick: () => ps.setStatusFilter('invited') },
-    { label: 'Disabled', value: MOCK.filter(i => i.status === 'inactive').length, icon: <UserX className="w-4 h-4" />, color: 'rose' as const, active: ps.statusFilter === 'inactive', onClick: () => ps.setStatusFilter('inactive') },
-  ], [ps.statusFilter]);
+    { label: 'Total Users', value: users.length, icon: <Users className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
+    { label: 'Active', value: users.filter(i => i.status === 'active').length, icon: <UserCheck className="w-4 h-4" />, color: 'emerald' as const, active: ps.statusFilter === 'active', onClick: () => ps.setStatusFilter('active') },
+    { label: 'Invited', value: users.filter(i => i.status === 'invited').length, icon: <Clock className="w-4 h-4" />, color: 'amber' as const, active: ps.statusFilter === 'invited', onClick: () => ps.setStatusFilter('invited') },
+    { label: 'Disabled', value: users.filter(i => i.status === 'inactive').length, icon: <UserX className="w-4 h-4" />, color: 'rose' as const, active: ps.statusFilter === 'inactive', onClick: () => ps.setStatusFilter('inactive') },
+  ], [users, ps.statusFilter]);
+
+  const handleDelete = (id: string) => {
+    setUsers(prev => prev.filter(u => u.id !== id));
+    ps.closeConfirmDelete();
+    showSuccess('User deleted');
+  };
+
+  const handleBatchDelete = () => {
+    setUsers(prev => prev.filter(u => !ps.selectedIds.includes(u.id)));
+    ps.setSelectedIds([]);
+    showSuccess('Users deleted');
+  };
 
   const columns: Column<UserItem>[] = [
     { key: 'name', label: 'Name', sortable: true, render: (i) => <span className="font-medium text-ink-900">{i.name}</span> },
@@ -64,8 +77,8 @@ export function UsersPage() {
       pageKey="manage"
       headerActions={
         <>
-          <button onClick={() => { exportToCsv(['Name', 'Email', 'Role', 'Last Login', 'Status'], MOCK.map(u => [u.name, u.email, u.role, u.lastLogin || 'N/A', u.status]), 'users'); showSuccess('Users exported'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
-          <button onClick={() => exportToPdf('Users', ['Name', 'Email', 'Role', 'Status'], MOCK.map(u => [u.name, u.email, u.role, u.status]), 'users')} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><FileText className="w-3.5 h-3.5" /> PDF</button>
+          <button onClick={() => { exportToCsv(['Name', 'Email', 'Role', 'Last Login', 'Status'], users.map(u => [u.name, u.email, u.role, u.lastLogin || 'N/A', u.status]), 'users'); showSuccess('Users exported'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
+          <button onClick={() => exportToPdf('Users', ['Name', 'Email', 'Role', 'Status'], users.map(u => [u.name, u.email, u.role, u.status]), 'users')} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><FileText className="w-3.5 h-3.5" /> PDF</button>
           <button onClick={ps.openAddModal} className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary-hover transition-all shadow-sm"><Plus className="w-3.5 h-3.5" /> Add User</button>
         </>
       }>
@@ -77,7 +90,7 @@ export function UsersPage() {
       {ps.selectedIds.length > 0 && (
         <div className="flex items-center justify-between p-3 bg-primary/5 dark:bg-primary/10 border border-primary/20 rounded-xl">
           <span className="text-sm text-ink-600">{ps.selectedIds.length} selected</span>
-          <button onClick={() => { showSuccess('Users deleted'); ps.setSelectedIds([]); }} className="text-xs font-medium text-rose-600 hover:text-rose-700">Delete Selected</button>
+          <button onClick={handleBatchDelete} className="text-xs font-medium text-rose-600 hover:text-rose-700">Delete Selected</button>
         </div>
       )}
       <HrDataTable columns={columns} data={ps.paginated} keyExtractor={i => i.id}
@@ -91,9 +104,9 @@ export function UsersPage() {
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Email</label><input type="email" className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Role</label><select className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"><option>admin</option><option>manager</option><option>hr</option><option>user</option></select></div>
       </HrFormModal>
-      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showSuccess('User deleted'); ps.closeConfirmDelete(); }} title="Delete User" message="Are you sure you want to delete this user?" confirmLabel="Delete" variant="danger" />
+      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => handleDelete(ps.deletingId!)} title="Delete User" message="Are you sure you want to delete this user?" confirmLabel="Delete" variant="danger" />
       <HrViewDrawer open={ps.viewDrawerOpen} onClose={ps.closeViewDrawer} title="User Details">
-        {ps.viewingId && (() => { const u = MOCK.find(i => i.id === ps.viewingId)!; return (
+        {ps.viewingId && (() => { const u = users.find(i => i.id === ps.viewingId)!; return (
           <div className="space-y-3 text-sm text-ink-600">
             <div className="flex items-center gap-3 pb-3 border-b border-border-custom"><div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">{u.name.charAt(0)}</div><div><p className="font-semibold text-ink-900">{u.name}</p><p className="text-ink-400 text-xs">{u.email}</p></div></div>
             <div className="grid grid-cols-2 gap-4"><div><p className="text-ink-400 text-xs">Role</p><p className="font-medium text-ink-900 capitalize">{u.role}</p></div><div><p className="text-ink-400 text-xs">Status</p><p className="font-medium text-ink-900 capitalize">{u.status}</p></div><div className="col-span-2"><p className="text-ink-400 text-xs">Last Login</p><p className="font-medium text-ink-900">{u.lastLogin ? formatDate(u.lastLogin) : 'Never'}</p></div></div>

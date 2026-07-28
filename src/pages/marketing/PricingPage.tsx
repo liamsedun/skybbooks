@@ -13,38 +13,70 @@ function fmtNaira(v: number): string {
   return (v < 0 ? '-₦' : '₦') + formatted;
 }
 
-const MODULE_LABELS: Record<string, string> = {
-  crm: 'SkyCRM',
-  hrm: 'SkyHRM',
-};
-
-const MODULE_DESCRIPTIONS: Record<string, string> = {
-  crm: 'Customer Relationship Management',
-  hrm: 'Human Resource Management',
-};
-
-// Feature sections mapped from plan limits
-function getFeatures(plan: any) {
-  const features: { label: string; included: boolean }[] = [
-    { label: `Up to ${plan.userLimit || 1} user${(plan.userLimit || 1) > 1 ? 's' : ''}`, included: true },
-    { label: 'Bank feed connection', included: plan.apiRequests > 0 },
+const PLAN_FEATURES: Record<string, { label: string; included: boolean }[]> = {
+  free: [
+    { label: 'Up to 1 user', included: true },
+    { label: '10 Invoices/month', included: true },
+    { label: '10 Bills/Repayment', included: true },
+    { label: '1 Bank feed connection', included: true },
+    { label: '1 Bank reconciliation/month', included: true },
+    { label: 'Financial reports (P&L, BS, CF)', included: true },
+    { label: 'API access', included: true },
+    { label: '500MB storage', included: true },
+    { label: 'VAT computation', included: true },
+    { label: 'WHT computation', included: true },
+    { label: 'Tax engine (VAT, WHT, PAYE, CIT)', included: true },
+  ],
+  start: [
+    { label: 'Up to 3 users', included: true },
+    { label: 'Bank feed connection', included: true },
     { label: 'Bank reconciliation', included: true },
     { label: 'Multi-currency support', included: true },
     { label: 'Financial reports (P&L, BS, CF)', included: true },
-    { label: 'Inventory management', included: (plan.maxWarehouses ?? 0) > 0 },
-    { label: 'Projects', included: (plan.maxProjects ?? 0) > 0 },
-    { label: 'API access', included: plan.apiRequests > 0 },
-    { label: `${plan.storageLimitGb || 1} GB storage`, included: true },
-  ];
-  return features;
-}
-
-function getTaxFeatures(plan: any) {
-  return [
+    { label: 'Inventory management', included: true },
+    { label: 'Projects', included: true },
+    { label: 'API access', included: true },
+    { label: '5 GB storage', included: true },
     { label: 'VAT computation', included: true },
     { label: 'WHT computation', included: true },
-    ...(plan.maxAiRequests > 0 ? [{ label: 'Tax engine (VAT, WHT, PAYE, CIT)', included: true }] : []),
-  ];
+    { label: 'Tax engine (VAT, WHT, PAYE, CIT)', included: true },
+  ],
+  professional: [
+    { label: 'Up to 10 users', included: true },
+    { label: 'Bank feed connection', included: true },
+    { label: 'Bank reconciliation', included: true },
+    { label: 'Multi-currency support', included: true },
+    { label: 'Financial reports (P&L, BS, CF)', included: true },
+    { label: 'Inventory management', included: true },
+    { label: 'Projects', included: true },
+    { label: 'API access', included: true },
+    { label: '10 GB storage', included: true },
+    { label: 'VAT computation', included: true },
+    { label: 'WHT computation', included: true },
+    { label: 'Tax engine (VAT, WHT, PAYE, CIT)', included: true },
+    { label: 'SkyHRM', included: true },
+  ],
+  enterprise: [
+    { label: 'Up to 50 users', included: true },
+    { label: 'Bank feed connection', included: true },
+    { label: 'Bank reconciliation', included: true },
+    { label: 'Multi-currency support', included: true },
+    { label: 'Financial reports (P&L, BS, CF)', included: true },
+    { label: 'Inventory management', included: true },
+    { label: 'Projects', included: true },
+    { label: 'API access', included: true },
+    { label: '20 GB storage', included: true },
+    { label: 'VAT computation', included: true },
+    { label: 'WHT computation', included: true },
+    { label: 'Tax engine (VAT, WHT, PAYE, CIT)', included: true },
+    { label: 'SkyCRM', included: true },
+    { label: 'SkyHRM', included: true },
+  ],
+};
+
+function getFeatures(plan: any) {
+  const code = (plan.code || '').toLowerCase();
+  return PLAN_FEATURES[code] || PLAN_FEATURES.free;
 }
 
 function computeSavings(monthlyKobo: number, annualKobo: number): string | null {
@@ -173,9 +205,7 @@ export function PricingPage() {
                 const period = billing === 'monthly' ? '/month' : '/year';
                 const perMonth = billing === 'annual' ? computeAnnualPerMonth(annualKobo) : null;
                 const savings = billing === 'annual' ? computeSavings(monthlyKobo, annualKobo) : null;
-                const modules: string[] = plan.modules ?? [];
                 const features = getFeatures(plan);
-                const taxFeatures = getTaxFeatures(plan);
 
                 return (
                   <div
@@ -199,7 +229,7 @@ export function PricingPage() {
                       {/* Price */}
                       <div className="mt-6 text-center">
                         <div className="flex items-baseline justify-center gap-1">
-                          <span className="text-3xl lg:text-4xl font-extrabold text-[#082F49]">{price}</span>
+                          <span className="text-2xl lg:text-3xl font-extrabold text-[#082F49]">{price}</span>
                           <span className="text-sm text-slate-400">{period}</span>
                         </div>
                         {perMonth && (
@@ -226,34 +256,9 @@ export function PricingPage() {
                         {plan.monthlyPriceKobo === 0 ? 'Get Started' : 'Start Free Trial'} <ArrowRight size={14} />
                       </button>
 
-                      {/* Module badges */}
-                      {modules.length > 0 && (
-                        <div className="mt-4 flex flex-wrap items-center justify-center gap-1.5">
-                          {modules.map((m: string) => (
-                            <span
-                              key={m}
-                              className="text-[11px] font-semibold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-full"
-                              title={MODULE_DESCRIPTIONS[m] || m}
-                            >
-                              {MODULE_LABELS[m] || m.toUpperCase()}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-
                       {/* Feature list */}
                       <ul className="mt-6 space-y-3 flex-1">
                         {features.map((f) => (
-                          <li key={f.label} className={`flex items-start gap-2.5 text-sm ${f.included ? 'text-slate-600' : 'text-slate-400'}`}>
-                            {f.included ? (
-                              <Check size={14} className="text-emerald-500 mt-0.5 shrink-0" />
-                            ) : (
-                              <X size={14} className="text-slate-300 mt-0.5 shrink-0" />
-                            )}
-                            {f.label}
-                          </li>
-                        ))}
-                        {taxFeatures.map((f) => (
                           <li key={f.label} className="flex items-start gap-2.5 text-sm text-slate-600">
                             <Check size={14} className="text-emerald-500 mt-0.5 shrink-0" />
                             {f.label}

@@ -11,7 +11,7 @@ const SECTIONS = [
 
 export function ManageSkyHRMPage() {
   return (
-    <HrPageShell title="Manage SkyHRM" description="Configure HR settings, policies, and approval workflows" pageKey="manage">
+    <HrPageShell title="Manage SkyHRM" description="Configure HR settings, users, organisation structure, access control, approvals, and services." pageKey="manage">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {SECTIONS.map(s => {
           const Icon = s.icon;

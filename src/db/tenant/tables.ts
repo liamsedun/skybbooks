@@ -100,9 +100,19 @@ import {
   hrTicketStatusEnum,
   hrSurveyStatusEnum,
   hrOkrTypeEnum,
+  hrReviewTypeEnum,
+  hrKpiFrequencyEnum,
+  hrDevPlanStatusEnum,
+  hrPromotionStatusEnum,
   hrCourseLevelEnum,
   hrCourseStatusEnum,
   hrLetterTypeEnum,
+  hrAdvanceStatusEnum,
+  hrSettlementStatusEnum,
+  hrDocStatusEnum,
+  hrDocAccessLevelEnum,
+  hrDocPermissionEnum,
+  hrDocLinkTypeEnum,
 } from '../enums';
 
 // ==========================================
@@ -1252,6 +1262,7 @@ export const projects = pgTable('projects', {
 export const employees = pgTable('employees', {
   id: uuid('id').defaultRandom().primaryKey(),
   orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  hrEmployeeId: uuid('hr_employee_id').references(() => hrEmployees.id),
   staffId: text('staff_id').notNull(),
   firstName: text('first_name').notNull(),
   middleName: text('middle_name'),
@@ -2145,6 +2156,160 @@ export const hrEmergencyContacts = pgTable('hr_emergency_contacts', {
 }));
 
 // ================================================================
+// HRM — Employee Data Sections (2a)
+// ================================================================
+
+export const hrEmployeeDependants = pgTable('hr_employee_dependants', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  employeeId: uuid('employee_id').references(() => hrEmployees.id).notNull(),
+  name: text('name').notNull(),
+  relationship: text('relationship').notNull(),
+  dateOfBirth: date('date_of_birth'),
+  phone: text('phone'),
+  address: text('address'),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrDepEmp: index('idx_hr_dep_emp').on(table.employeeId),
+}));
+
+export const hrEmployeeEducation = pgTable('hr_employee_education', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  employeeId: uuid('employee_id').references(() => hrEmployees.id).notNull(),
+  institution: text('institution').notNull(),
+  degree: text('degree').notNull(),
+  field: text('field'),
+  startDate: date('start_date'),
+  endDate: date('end_date'),
+  grade: text('grade'),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrEduEmp: index('idx_hr_edu_emp').on(table.employeeId),
+}));
+
+export const hrEmployeeEmploymentHistory = pgTable('hr_employee_employment_history', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  employeeId: uuid('employee_id').references(() => hrEmployees.id).notNull(),
+  company: text('company').notNull(),
+  position: text('position').notNull(),
+  startDate: date('start_date'),
+  endDate: date('end_date'),
+  reasonLeaving: text('reason_leaving'),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrEmpHistEmp: index('idx_hr_emp_hist_emp').on(table.employeeId),
+}));
+
+export const hrEmployeeSkills = pgTable('hr_employee_skills', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  employeeId: uuid('employee_id').references(() => hrEmployees.id).notNull(),
+  skill: text('skill').notNull(),
+  proficiency: text('proficiency').default('intermediate'),
+  yearsExperience: integer('years_experience').default(0),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrSkillEmp: index('idx_hr_skill_emp').on(table.employeeId),
+}));
+
+export const hrEmployeeCertifications = pgTable('hr_employee_certifications', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  employeeId: uuid('employee_id').references(() => hrEmployees.id).notNull(),
+  name: text('name').notNull(),
+  issuer: text('issuer').notNull(),
+  issueDate: date('issue_date'),
+  expiryDate: date('expiry_date'),
+  credentialId: text('credential_id'),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrCertEmp: index('idx_hr_cert_emp').on(table.employeeId),
+}));
+
+export const hrEmployeeMedical = pgTable('hr_employee_medical', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  employeeId: uuid('employee_id').references(() => hrEmployees.id).notNull(),
+  bloodGroup: text('blood_group'),
+  genotype: text('genotype'),
+  allergies: text('allergies'),
+  disabilities: text('disabilities'),
+  emergencyContact: text('emergency_contact'),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrMedEmp: uniqueIndex('idx_hr_med_emp').on(table.employeeId),
+}));
+
+export const hrEmployeeTimeline = pgTable('hr_employee_timeline', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  employeeId: uuid('employee_id').references(() => hrEmployees.id).notNull(),
+  eventType: text('event_type').notNull(),
+  description: text('description').notNull(),
+  oldValue: text('old_value'),
+  newValue: text('new_value'),
+  createdBy: uuid('created_by'),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrTimelineEmp: index('idx_hr_timeline_emp').on(table.employeeId),
+  idxHrTimelineType: index('idx_hr_timeline_type').on(table.eventType),
+}));
+
+export const hrEmployeeTransfers = pgTable('hr_employee_transfers', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  employeeId: uuid('employee_id').references(() => hrEmployees.id).notNull(),
+  fromDepartmentId: uuid('from_department_id').references(() => hrDepartments.id),
+  toDepartmentId: uuid('to_department_id').references(() => hrDepartments.id),
+  fromDesignationId: uuid('from_designation_id').references(() => hrDesignations.id),
+  toDesignationId: uuid('to_designation_id').references(() => hrDesignations.id),
+  effectiveDate: date('effective_date').notNull(),
+  reason: text('reason'),
+  approvedBy: uuid('approved_by'),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrTransEmp: index('idx_hr_trans_emp').on(table.employeeId),
+}));
+
+export const hrEmployeePromotions = pgTable('hr_employee_promotions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  employeeId: uuid('employee_id').references(() => hrEmployees.id).notNull(),
+  fromDesignationId: uuid('from_designation_id').references(() => hrDesignations.id),
+  toDesignationId: uuid('to_designation_id').references(() => hrDesignations.id),
+  effectiveDate: date('effective_date').notNull(),
+  reason: text('reason'),
+  approvalStatus: text('approval_status').default('pending'),
+  approvedBy: uuid('approved_by'),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrPromEmp: index('idx_hr_prom_emp').on(table.employeeId),
+}));
+
+export const hrEmployeeDisciplinary = pgTable('hr_employee_disciplinary', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  employeeId: uuid('employee_id').references(() => hrEmployees.id).notNull(),
+  actionType: text('action_type').notNull(),
+  reason: text('reason').notNull(),
+  effectiveDate: date('effective_date').notNull(),
+  duration: text('duration'),
+  isReinstated: boolean('is_reinstated').default(false),
+  reinstatedDate: date('reinstated_date'),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrDiscEmp: index('idx_hr_disc_emp').on(table.employeeId),
+}));
+
+// ================================================================
 // HRM — Recruitment & Onboarding (2)
 // ================================================================
 
@@ -2231,6 +2396,176 @@ export const hrOnboardingTasks = pgTable('hr_onboarding_tasks', {
 }));
 
 // ================================================================
+// HRM — Recruitment Extended (Requisitions, Evaluations, Offers)
+// ================================================================
+
+export const hrJobRequisitions = pgTable('hr_job_requisitions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  title: text('title').notNull(),
+  departmentId: uuid('department_id').references(() => hrDepartments.id),
+  designationId: uuid('designation_id').references(() => hrDesignations.id),
+  description: text('description'),
+  reason: text('reason').notNull(),
+  requirements: text('requirements'),
+  location: text('location'),
+  employmentType: hrContractTypeEnum('employment_type'),
+  openings: integer('openings').default(1),
+  salaryRange: text('salary_range'),
+  urgency: text('urgency').default('normal'),
+  status: text('status').default('draft').notNull(),
+  requestedBy: uuid('requested_by'),
+  approvedBy: uuid('approved_by'),
+  approvedAt: timestamp('approved_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrReqOrg: index('idx_hr_req_org').on(table.orgId),
+  idxHrReqDept: index('idx_hr_req_dept').on(table.departmentId),
+  idxHrReqStatus: index('idx_hr_req_status').on(table.status),
+}));
+
+export const hrInterviewEvaluations = pgTable('hr_interview_evaluations', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  applicationId: uuid('application_id').references(() => hrCandidateApplications.id).notNull(),
+  candidateId: uuid('candidate_id').references(() => hrCandidates.id).notNull(),
+  interviewerId: uuid('interviewer_id'),
+  interviewDate: timestamp('interview_date'),
+  rating: integer('rating'),
+  communication: integer('communication'),
+  technicalSkills: integer('technical_skills'),
+  experience: integer('experience'),
+  culturalFit: integer('cultural_fit'),
+  strengths: text('strengths'),
+  weaknesses: text('weaknesses'),
+  notes: text('notes'),
+  recommendation: text('recommendation'),
+  isPassed: boolean('is_passed'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrEvalApp: index('idx_hr_eval_app').on(table.applicationId),
+  idxHrEvalCan: index('idx_hr_eval_can').on(table.candidateId),
+}));
+
+export const hrOfferLetters = pgTable('hr_offer_letters', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  applicationId: uuid('application_id').references(() => hrCandidateApplications.id).notNull(),
+  candidateId: uuid('candidate_id').references(() => hrCandidates.id).notNull(),
+  content: text('content'),
+  offerAmount: bigint('offer_amount', { mode: 'number' }),
+  currency: text('currency').default('NGN'),
+  startDate: date('start_date'),
+  status: text('status').default('draft'),
+  sentAt: timestamp('sent_at'),
+  acceptedAt: timestamp('accepted_at'),
+  signedByCandidate: boolean('signed_by_candidate').default(false),
+  signedAt: timestamp('signed_at'),
+  generatedBy: uuid('generated_by'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrOfferApp: index('idx_hr_offer_app').on(table.applicationId),
+  idxHrOfferCan: index('idx_hr_offer_can').on(table.candidateId),
+}));
+
+export const hrBackgroundChecks = pgTable('hr_background_checks', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  candidateId: uuid('candidate_id').references(() => hrCandidates.id).notNull(),
+  applicationId: uuid('application_id').references(() => hrCandidateApplications.id),
+  type: text('type').notNull(),
+  status: text('status').default('pending').notNull(),
+  requestedBy: uuid('requested_by'),
+  conductedBy: text('conducted_by'),
+  conductedAt: date('conducted_at'),
+  result: text('result'),
+  reportUrl: text('report_url'),
+  notes: text('notes'),
+  completedAt: timestamp('completed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrBgCan: index('idx_hr_bg_can').on(table.candidateId),
+}));
+
+export const hrPreEmploymentDocuments = pgTable('hr_pre_employment_documents', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  candidateId: uuid('candidate_id').references(() => hrCandidates.id),
+  employeeId: uuid('employee_id').references(() => hrEmployees.id),
+  name: text('name').notNull(),
+  type: text('type'),
+  fileUrl: text('file_url'),
+  status: text('status').default('pending'),
+  verifiedAt: timestamp('verified_at'),
+  verifiedBy: uuid('verified_by'),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrPreEmpCan: index('idx_hr_pre_emp_can').on(table.candidateId),
+  idxHrPreEmpEmp: index('idx_hr_pre_emp_emp').on(table.employeeId),
+}));
+
+export const hrEquipmentAssignments = pgTable('hr_equipment_assignments', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  employeeId: uuid('employee_id').references(() => hrEmployees.id).notNull(),
+  equipmentName: text('equipment_name').notNull(),
+  serialNumber: text('serial_number'),
+  category: text('category'),
+  assignedAt: timestamp('assigned_at').defaultNow().notNull(),
+  returnedAt: timestamp('returned_at'),
+  condition: text('condition'),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrEquipEmp: index('idx_hr_equip_emp').on(table.employeeId),
+}));
+
+export const hrOrientationSessions = pgTable('hr_orientation_sessions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  employeeId: uuid('employee_id').references(() => hrEmployees.id).notNull(),
+  title: text('title').notNull(),
+  description: text('description'),
+  facilitator: text('facilitator'),
+  sessionDate: timestamp('session_date').notNull(),
+  duration: integer('duration'),
+  location: text('location'),
+  isCompleted: boolean('is_completed').default(false),
+  completedAt: timestamp('completed_at'),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrOrientEmp: index('idx_hr_orient_emp').on(table.employeeId),
+}));
+
+export const hrProbationReviews = pgTable('hr_probation_reviews', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  employeeId: uuid('employee_id').references(() => hrEmployees.id).notNull(),
+  reviewDate: date('review_date').notNull(),
+  reviewerId: uuid('reviewer_id'),
+  rating: integer('rating'),
+  performance: text('performance'),
+  areasOfImprovement: text('areas_of_improvement'),
+  recommendation: text('recommendation'),
+  isPassed: boolean('is_passed'),
+  extendedProbation: boolean('extended_probation').default(false),
+  extensionPeriod: integer('extension_period'),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrProbEmp: index('idx_hr_prob_emp').on(table.employeeId),
+}));
+
+// ================================================================
 // HRM — Leave & Attendance (4), Time Tracking (5)
 // ================================================================
 
@@ -2245,9 +2580,16 @@ export const hrLeaveTypes = pgTable('hr_leave_types', {
   requiresApproval: boolean('requires_approval').default(true),
   carryForward: boolean('carry_forward').default(false),
   maxCarryForward: integer('max_carry_forward').default(0),
+  accrualRate: numeric('accrual_rate').default('0'),
+  accrualFrequency: text('accrual_frequency').default('yearly'),
+  maxConsecutiveDays: integer('max_consecutive_days').default(0),
+  requiresDocumentation: boolean('requires_documentation').default(false),
+  minDaysBeforeRequest: integer('min_days_before_request').default(0),
+  color: text('color').default('#6366f1'),
   genderRestriction: hrGenderEnum('gender_restriction'),
   isActive: boolean('is_active').default(true).notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull()
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
 }, (table) => ({
   idxHrLvTypeOrg: index('idx_hr_lv_type_org').on(table.orgId),
 }));
@@ -2260,11 +2602,15 @@ export const hrLeaveRequests = pgTable('hr_leave_requests', {
   startDate: date('start_date').notNull(),
   endDate: date('end_date').notNull(),
   totalDays: integer('total_days').notNull(),
+  isHalfDay: boolean('is_half_day').default(false),
   reason: text('reason'),
+  remarks: text('remarks'),
   status: hrLeaveStatusEnum('status').default('pending').notNull(),
   approvedBy: uuid('approved_by'),
   approvedAt: timestamp('approved_at'),
   rejectionReason: text('rejection_reason'),
+  recalledAt: timestamp('recalled_at'),
+  recalledById: uuid('recalled_by_id'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull()
 }, (table) => ({
@@ -2283,12 +2629,86 @@ export const hrLeaveBalances = pgTable('hr_leave_balances', {
   usedDays: integer('used_days').default(0).notNull(),
   pendingDays: integer('pending_days').default(0).notNull(),
   carriedForward: integer('carried_forward').default(0),
+  accruedDays: numeric('accrued_days').default('0'),
+  availableDays: numeric('available_days').default('0'),
+  lastAccrualDate: timestamp('last_accrual_date'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull()
 }, (table) => ({
   idxHrLvBalEmp: index('idx_hr_lv_bal_emp').on(table.employeeId),
   idxHrLvBalYear: index('idx_hr_lv_bal_year').on(table.year),
   unqHrLvBal: uniqueIndex('unq_hr_lv_bal').on(table.orgId, table.employeeId, table.leaveTypeId, table.year),
+}));
+
+export const hrLeavePolicies = pgTable('hr_leave_policies', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  name: text('name').notNull(),
+  description: text('description'),
+  maxConsecutiveDays: integer('max_consecutive_days').default(30),
+  minDaysBeforeRequest: integer('min_days_before_request').default(1),
+  allowHalfDay: boolean('allow_half_day').default(true),
+  allowCarryForward: boolean('allow_carry_forward').default(true),
+  maxCarryForwardDays: integer('max_carry_forward_days').default(10),
+  accrualEnabled: boolean('accrual_enabled').default(false),
+  accrualFrequency: text('accrual_frequency').default('monthly'),
+  accrualAmount: numeric('accrual_amount').default('0'),
+  requiresDocumentation: boolean('requires_documentation').default(false),
+  requiresApproval: boolean('requires_approval').default(true),
+  approvalLevels: integer('approval_levels').default(1),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrLvPolOrg: index('idx_hr_lv_pol_org').on(table.orgId),
+}));
+
+export const hrHolidays = pgTable('hr_holidays', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  name: text('name').notNull(),
+  date: date('date').notNull(),
+  type: text('type').default('public'),
+  recurring: boolean('recurring').default(false),
+  isActive: boolean('is_active').default(true).notNull(),
+  description: text('description'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrHolOrg: index('idx_hr_hol_org').on(table.orgId),
+  idxHrHolDate: index('idx_hr_hol_date').on(table.date),
+}));
+
+export const hrCompensatoryLeaves = pgTable('hr_compensatory_leaves', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  employeeId: uuid('employee_id').references(() => hrEmployees.id).notNull(),
+  dateEarned: date('date_earned').notNull(),
+  daysEarned: integer('days_earned').default(1).notNull(),
+  reason: text('reason').notNull(),
+  status: hrLeaveStatusEnum('status').default('pending').notNull(),
+  expiryDate: date('expiry_date'),
+  usedAt: timestamp('used_at'),
+  usedForLeaveId: uuid('used_for_leave_id'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrCompOrg: index('idx_hr_comp_org').on(table.orgId),
+  idxHrCompEmp: index('idx_hr_comp_emp').on(table.employeeId),
+}));
+
+export const hrLeaveAccrualLogs = pgTable('hr_leave_accrual_logs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  runDate: timestamp('run_date').defaultNow().notNull(),
+  period: text('period').notNull(),
+  status: text('status').default('completed').notNull(),
+  employeesProcessed: integer('employees_processed').default(0),
+  totalAccrued: numeric('total_accrued').default('0'),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrAccLogOrg: index('idx_hr_acc_log_org').on(table.orgId),
 }));
 
 export const hrAttendanceRecords = pgTable('hr_attendance_records', {
@@ -2298,12 +2718,30 @@ export const hrAttendanceRecords = pgTable('hr_attendance_records', {
   date: date('date').notNull(),
   clockIn: timestamp('clock_in'),
   clockOut: timestamp('clock_out'),
+  breakStart: timestamp('break_start'),
+  breakEnd: timestamp('break_end'),
+  totalBreakMinutes: integer('total_break_minutes').default(0),
+  isRemote: boolean('is_remote').default(false),
+  gpsLatitude: text('gps_latitude'),
+  gpsLongitude: text('gps_longitude'),
+  biometricVerified: boolean('biometric_verified').default(false),
+  overtimeMinutes: integer('overtime_minutes').default(0),
+  isLate: boolean('is_late').default(false),
+  lateMinutes: integer('late_minutes').default(0),
+  isEarlyDeparture: boolean('is_early_departure').default(false),
+  earlyDepartureMinutes: integer('early_departure_minutes').default(0),
+  shiftId: uuid('shift_id').references(() => hrShifts.id),
+  exceptionId: uuid('exception_id'),
+  approvedBy: uuid('approved_by'),
+  approvedAt: timestamp('approved_at'),
   status: hrAttendanceStatusEnum('status').default('present').notNull(),
   notes: text('notes'),
-  createdAt: timestamp('created_at').defaultNow().notNull()
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
 }, (table) => ({
   idxHrAttEmpDate: uniqueIndex('idx_hr_att_emp_date').on(table.orgId, table.employeeId, table.date),
   idxHrAttStatus: index('idx_hr_att_status').on(table.status),
+  idxHrAttShift: index('idx_hr_att_shift').on(table.shiftId),
 }));
 
 export const hrShifts = pgTable('hr_shifts', {
@@ -2314,8 +2752,12 @@ export const hrShifts = pgTable('hr_shifts', {
   startTime: text('start_time').notNull(),
   endTime: text('end_time').notNull(),
   gracePeriod: integer('grace_period').default(0),
+  breakDuration: integer('break_duration').default(60),
+  workingDays: text('working_days').default('mon-fri'),
+  isFlexible: boolean('is_flexible').default(false),
   isActive: boolean('is_active').default(true).notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull()
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
 }, (table) => ({
   idxHrShiftOrg: index('idx_hr_shift_org').on(table.orgId),
 }));
@@ -2355,6 +2797,88 @@ export const hrTimesheetEntries = pgTable('hr_timesheet_entries', {
   idxHrTsEntTs: index('idx_hr_ts_ent_ts').on(table.timesheetId),
 }));
 
+export const hrShiftAssignments = pgTable('hr_shift_assignments', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  employeeId: uuid('employee_id').references(() => hrEmployees.id).notNull(),
+  shiftId: uuid('shift_id').references(() => hrShifts.id).notNull(),
+  effectiveDate: date('effective_date').notNull(),
+  endDate: date('end_date'),
+  isPrimary: boolean('is_primary').default(true),
+  assignedBy: uuid('assigned_by'),
+  reason: text('reason'),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrShAssignEmp: index('idx_hr_sh_assign_emp').on(table.employeeId),
+  idxHrShAssignShift: index('idx_hr_sh_assign_shift').on(table.shiftId),
+  unqHrShAssign: uniqueIndex('unq_hr_sh_assign').on(table.orgId, table.employeeId, table.effectiveDate),
+}));
+
+export const hrShiftRotations = pgTable('hr_shift_rotations', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  name: text('name').notNull(),
+  description: text('description'),
+  rotationPattern: text('rotation_pattern').notNull(),
+  rotationFrequency: text('rotation_frequency').default('weekly'),
+  effectiveDate: date('effective_date'),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrShRotOrg: index('idx_hr_sh_rot_org').on(table.orgId),
+}));
+
+export const hrShiftRotationAssignees = pgTable('hr_shift_rotation_assignees', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  rotationId: uuid('rotation_id').references(() => hrShiftRotations.id).notNull(),
+  employeeId: uuid('employee_id').references(() => hrEmployees.id).notNull(),
+  shiftId: uuid('shift_id').references(() => hrShifts.id).notNull(),
+  weekOffset: integer('week_offset').default(0),
+  dayOfWeek: integer('day_of_week'),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrShRotAssRot: index('idx_hr_sh_rot_ass_rot').on(table.rotationId),
+  idxHrShRotAssEmp: index('idx_hr_sh_rot_ass_emp').on(table.employeeId),
+}));
+
+export const hrAttendanceExceptions = pgTable('hr_attendance_exceptions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  employeeId: uuid('employee_id').references(() => hrEmployees.id).notNull(),
+  date: date('date').notNull(),
+  type: text('type').notNull(),
+  reason: text('reason').notNull(),
+  status: text('status').default('pending').notNull(),
+  approvedBy: uuid('approved_by'),
+  approvedAt: timestamp('approved_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrAttExcEmp: index('idx_hr_att_exc_emp').on(table.employeeId),
+  idxHrAttExcDate: index('idx_hr_att_exc_date').on(table.date),
+}));
+
+export const hrOvertimePolicies = pgTable('hr_overtime_policies', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  name: text('name').notNull(),
+  type: text('type').default('daily'),
+  multiplier: numeric('multiplier').default('1.5'),
+  minHoursForOvertime: integer('min_hours_for_overtime').default(8),
+  maxOvertimePerDay: integer('max_overtime_per_day').default(4),
+  maxOvertimePerWeek: integer('max_overtime_per_week').default(20),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrOtPolOrg: index('idx_hr_ot_pol_org').on(table.orgId),
+}));
+
 // ================================================================
 // HRM — Performance Management (6), LMS (7), OKR & Goals (13)
 // ================================================================
@@ -2362,8 +2886,10 @@ export const hrTimesheetEntries = pgTable('hr_timesheet_entries', {
 export const hrPerformanceReviews = pgTable('hr_performance_reviews', {
   id: uuid('id').defaultRandom().primaryKey(),
   orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  cycleId: uuid('cycle_id').references(() => hrGoalCycles.id),
   employeeId: uuid('employee_id').references(() => hrEmployees.id).notNull(),
   reviewerId: uuid('reviewer_id').references(() => users.id).notNull(),
+  reviewType: hrReviewTypeEnum('review_type').default('manager').notNull(),
   reviewPeriod: text('review_period').notNull(),
   dueDate: date('due_date'),
   rating: integer('rating'),
@@ -2371,7 +2897,12 @@ export const hrPerformanceReviews = pgTable('hr_performance_reviews', {
   strengths: text('strengths'),
   improvements: text('improvements'),
   goals: text('goals'),
+  overallScore: integer('overall_score'),
   status: hrReviewStatusEnum('status').default('draft').notNull(),
+  isManagerReview: boolean('is_manager_review').default(false),
+  isSelfReview: boolean('is_self_review').default(false),
+  isPeerReview: boolean('is_peer_review').default(false),
+  is360Review: boolean('is_360_review').default(false),
   submittedAt: timestamp('submitted_at'),
   completedAt: timestamp('completed_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -2380,6 +2911,90 @@ export const hrPerformanceReviews = pgTable('hr_performance_reviews', {
   idxHrPerfOrg: index('idx_hr_perf_org').on(table.orgId),
   idxHrPerfEmp: index('idx_hr_perf_emp').on(table.employeeId),
   idxHrPerfRv: index('idx_hr_perf_rv').on(table.reviewerId),
+  idxHrPerfCycle: index('idx_hr_perf_cycle').on(table.cycleId),
+  idxHrPerfType: index('idx_hr_perf_type').on(table.reviewType),
+}));
+
+export const hrReviewSections = pgTable('hr_review_sections', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  reviewId: uuid('review_id').references(() => hrPerformanceReviews.id).notNull(),
+  name: text('name').notNull(),
+  weight: integer('weight').default(1),
+  score: integer('score'),
+  comments: text('comments'),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrRsReview: index('idx_hr_rs_review').on(table.reviewId),
+}));
+
+export const hrKpis = pgTable('hr_kpis', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  employeeId: uuid('employee_id').references(() => hrEmployees.id).notNull(),
+  name: text('name').notNull(),
+  category: text('category'),
+  target: numeric('target').notNull(),
+  actual: numeric('actual').default('0'),
+  unit: text('unit'),
+  frequency: hrKpiFrequencyEnum('frequency').default('monthly'),
+  weight: integer('weight').default(1),
+  isActive: boolean('is_active').default(true),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrKpiEmp: index('idx_hr_kpi_emp').on(table.employeeId),
+}));
+
+export const hrPerformanceCycles = pgTable('hr_performance_cycles', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  name: text('name').notNull(),
+  startDate: date('start_date').notNull(),
+  endDate: date('end_date').notNull(),
+  reviewType: hrReviewTypeEnum('review_type').default('manager'),
+  isActive: boolean('is_active').default(true),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrPcOrg: index('idx_hr_pc_org').on(table.orgId),
+}));
+
+export const hrDevelopmentPlans = pgTable('hr_development_plans', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  employeeId: uuid('employee_id').references(() => hrEmployees.id).notNull(),
+  title: text('title').notNull(),
+  description: text('description'),
+  goal: text('goal'),
+  actionItems: text('action_items'),
+  resources: text('resources'),
+  startDate: date('start_date'),
+  targetDate: date('target_date'),
+  completedDate: date('completed_date'),
+  status: hrDevPlanStatusEnum('status').default('not_started'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrDpEmp: index('idx_hr_dp_emp').on(table.employeeId),
+}));
+
+export const hrPromotionRecommendations = pgTable('hr_promotion_recommendations', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  employeeId: uuid('employee_id').references(() => hrEmployees.id).notNull(),
+  currentRole: text('current_role').notNull(),
+  proposedRole: text('proposed_role').notNull(),
+  reason: text('reason').notNull(),
+  achievements: text('achievements'),
+  recommendedBy: uuid('recommended_by').references(() => users.id),
+  approvedBy: uuid('approved_by').references(() => users.id),
+  status: hrPromotionStatusEnum('status').default('pending'),
+  decidedAt: timestamp('decided_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrPromEmp: index('idx_hr_prom_emp').on(table.employeeId),
+  idxHrPromStatus: index('idx_hr_prom_status').on(table.status),
 }));
 
 export const hrCourses = pgTable('hr_courses', {
@@ -2547,6 +3162,7 @@ export const hrExpenseReports = pgTable('hr_expense_reports', {
   totalAmount: bigint('total_amount', { mode: 'number' }).default(0),
   currency: text('currency').default('NGN'),
   status: hrExpenseStatusEnum('status').default('draft').notNull(),
+  travelRequestId: uuid('travel_request_id').references(() => hrTravelRequests.id),
   approvedBy: uuid('approved_by'),
   approvedAt: timestamp('approved_at'),
   reimbursedAt: timestamp('reimbursed_at'),
@@ -2570,6 +3186,132 @@ export const hrExpenseEntries = pgTable('hr_expense_entries', {
   createdAt: timestamp('created_at').defaultNow().notNull()
 }, (table) => ({
   idxHrExpEntRpt: index('idx_hr_exp_ent_rpt').on(table.reportId),
+}));
+
+export const hrTravelAdvances = pgTable('hr_travel_advances', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  employeeId: uuid('employee_id').references(() => hrEmployees.id).notNull(),
+  travelRequestId: uuid('travel_request_id').references(() => hrTravelRequests.id),
+  amount: bigint('amount', { mode: 'number' }).notNull(),
+  currency: text('currency').default('NGN'),
+  requestDate: date('request_date').notNull(),
+  purpose: text('purpose'),
+  status: hrAdvanceStatusEnum('status').default('pending').notNull(),
+  approvedBy: uuid('approved_by'),
+  approvedAt: timestamp('approved_at'),
+  disbursedAt: timestamp('disbursed_at'),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrAdvEmp: index('idx_hr_adv_emp').on(table.employeeId),
+  idxHrAdvTrv: index('idx_hr_adv_trv').on(table.travelRequestId),
+}));
+
+export const hrTravelSettlements = pgTable('hr_travel_settlements', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  travelRequestId: uuid('travel_request_id').references(() => hrTravelRequests.id).notNull(),
+  employeeId: uuid('employee_id').references(() => hrEmployees.id).notNull(),
+  totalExpenses: bigint('total_expenses', { mode: 'number' }).default(0),
+  advanceAmount: bigint('advance_amount', { mode: 'number' }).default(0),
+  balanceDue: bigint('balance_due', { mode: 'number' }).default(0),
+  currency: text('currency').default('NGN'),
+  status: hrSettlementStatusEnum('status').default('pending').notNull(),
+  settledAt: timestamp('settled_at'),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrSetTrv: index('idx_hr_set_trv').on(table.travelRequestId),
+  idxHrSetEmp: index('idx_hr_set_emp').on(table.employeeId),
+}));
+
+// ================================================================
+// HRM — Document Management (6 tables)
+// ================================================================
+
+export const hrDocCategories = pgTable('hr_doc_categories', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  name: text('name').notNull(),
+  description: text('description'),
+  parentId: uuid('parent_id'),
+  icon: text('icon'),
+  color: text('color').default('#3b82f6'),
+  sortOrder: integer('sort_order').default(0),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrDocCatOrg: index('idx_hr_doc_cat_org').on(table.orgId),
+}));
+
+export const hrDocFiles = pgTable('hr_doc_files', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  categoryId: uuid('category_id').references(() => hrDocCategories.id),
+  name: text('name').notNull(),
+  description: text('description'),
+  fileUrl: text('file_url').notNull(),
+  fileType: text('file_type').notNull(),
+  mimeType: text('mime_type'),
+  fileSize: integer('file_size').default(0),
+  fileHash: text('file_hash'),
+  version: integer('version').default(1).notNull(),
+  status: hrDocStatusEnum('status').default('active').notNull(),
+  expiryDate: date('expiry_date'),
+  accessLevel: hrDocAccessLevelEnum('access_level').default('restricted').notNull(),
+  tags: text('tags').array(),
+  uploadedBy: uuid('uploaded_by').references(() => users.id).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrDocFileOrg: index('idx_hr_doc_file_org').on(table.orgId),
+  idxHrDocFileCat: index('idx_hr_doc_file_cat').on(table.categoryId),
+  idxHrDocFileStatus: index('idx_hr_doc_file_status').on(table.status),
+}));
+
+export const hrDocVersions = pgTable('hr_doc_versions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  fileId: uuid('file_id').references(() => hrDocFiles.id).notNull(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  versionNumber: integer('version_number').notNull(),
+  fileUrl: text('file_url').notNull(),
+  fileType: text('file_type'),
+  fileSize: integer('file_size').default(0),
+  fileHash: text('file_hash'),
+  changeNotes: text('change_notes'),
+  uploadedBy: uuid('uploaded_by').references(() => users.id).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrDocVerFile: index('idx_hr_doc_ver_file').on(table.fileId),
+}));
+
+export const hrDocPermissions = pgTable('hr_doc_permissions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  fileId: uuid('file_id').references(() => hrDocFiles.id).notNull(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  employeeId: uuid('employee_id').references(() => hrEmployees.id),
+  permission: hrDocPermissionEnum('permission').default('view').notNull(),
+  grantedBy: uuid('granted_by').references(() => users.id).notNull(),
+  expiresAt: date('expires_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrDocPermFile: index('idx_hr_doc_perm_file').on(table.fileId),
+}));
+
+export const hrDocEmployeeLinks = pgTable('hr_doc_employee_links', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  fileId: uuid('file_id').references(() => hrDocFiles.id).notNull(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  employeeId: uuid('employee_id').references(() => hrEmployees.id).notNull(),
+  linkType: hrDocLinkTypeEnum('link_type').default('other').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrDocLinkFile: index('idx_hr_doc_link_file').on(table.fileId),
+  idxHrDocLinkEmp: index('idx_hr_doc_link_emp').on(table.employeeId),
 }));
 
 export const hrCompensationBands = pgTable('hr_compensation_bands', {
@@ -2630,6 +3372,110 @@ export const hrEmployeeBenefits = pgTable('hr_employee_benefits', {
 }, (table) => ({
   idxHrEmpBenEmp: index('idx_hr_emp_ben_emp').on(table.employeeId),
   unqHrEmpBen: uniqueIndex('unq_hr_emp_ben').on(table.employeeId, table.benefitId),
+}));
+
+export const hrAllowances = pgTable('hr_allowances', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  name: text('name').notNull(),
+  type: text('type').default('fixed'),
+  amount: bigint('amount', { mode: 'number' }),
+  recurrence: text('recurrence').default('monthly'),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrAllwOrg: index('idx_hr_allw_org').on(table.orgId),
+}));
+
+export const hrEmployeeAllowances = pgTable('hr_employee_allowances', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  employeeId: uuid('employee_id').references(() => hrEmployees.id).notNull(),
+  allowanceId: uuid('allowance_id').references(() => hrAllowances.id).notNull(),
+  amount: bigint('amount', { mode: 'number' }),
+  effectiveDate: date('effective_date'),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrEmpAllwEmp: index('idx_hr_emp_allw_emp').on(table.employeeId),
+}));
+
+export const hrBonuses = pgTable('hr_bonuses', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  employeeId: uuid('employee_id').references(() => hrEmployees.id).notNull(),
+  name: text('name').notNull(),
+  type: text('type').default('performance'),
+  amount: bigint('amount', { mode: 'number' }).notNull(),
+  currency: text('currency').default('NGN'),
+  payoutDate: date('payout_date'),
+  reason: text('reason'),
+  approvedBy: uuid('approved_by').references(() => users.id),
+  status: text('status').default('pending'),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrBonEmp: index('idx_hr_bon_emp').on(table.employeeId),
+}));
+
+export const hrDeductions = pgTable('hr_deductions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  name: text('name').notNull(),
+  type: text('type').default('statutory'),
+  amount: bigint('amount', { mode: 'number' }),
+  percentage: numeric('percentage'),
+  isMandatory: boolean('is_mandatory').default(false),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrDedOrg: index('idx_hr_ded_org').on(table.orgId),
+}));
+
+export const hrEmployeeDeductions = pgTable('hr_employee_deductions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  employeeId: uuid('employee_id').references(() => hrEmployees.id).notNull(),
+  deductionId: uuid('deduction_id').references(() => hrDeductions.id).notNull(),
+  amount: bigint('amount', { mode: 'number' }),
+  effectiveDate: date('effective_date'),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrEmpDedEmp: index('idx_hr_emp_ded_emp').on(table.employeeId),
+}));
+
+export const hrSalaryReviews = pgTable('hr_salary_reviews', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  employeeId: uuid('employee_id').references(() => hrEmployees.id).notNull(),
+  previousSalary: bigint('previous_salary', { mode: 'number' }),
+  newSalary: bigint('new_salary', { mode: 'number' }).notNull(),
+  currency: text('currency').default('NGN'),
+  reason: text('reason'),
+  reviewType: text('review_type').default('annual'),
+  approvedBy: uuid('approved_by').references(() => users.id),
+  status: text('status').default('pending'),
+  effectiveDate: date('effective_date').notNull(),
+  decidedAt: timestamp('decided_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrSalRevEmp: index('idx_hr_sal_rev_emp').on(table.employeeId),
+}));
+
+export const hrCompensationHistory = pgTable('hr_compensation_history', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  employeeId: uuid('employee_id').references(() => hrEmployees.id).notNull(),
+  changeType: text('change_type').notNull(),
+  previousValue: bigint('previous_value', { mode: 'number' }),
+  newValue: bigint('new_value', { mode: 'number' }),
+  currency: text('currency').default('NGN'),
+  reason: text('reason'),
+  changedBy: uuid('changed_by').references(() => users.id),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrCompHistEmp: index('idx_hr_comp_hist_emp').on(table.employeeId),
 }));
 
 // ================================================================
@@ -2810,16 +3656,84 @@ export const hrApprovalRequests = pgTable('hr_approval_requests', {
   module: text('module').notNull(),
   sourceId: uuid('source_id').notNull(),
   requesterId: uuid('requester_id').references(() => hrEmployees.id).notNull(),
-  approverId: uuid('approver_id').references(() => hrEmployees.id).notNull(),
+  approverId: uuid('approver_id').references(() => hrEmployees.id),
   status: hrApprovalStatusEnum('status').default('pending').notNull(),
+  currentStepOrder: integer('current_step_order').default(0).notNull(),
+  title: text('title'),
+  description: text('description'),
+  priority: text('priority').default('normal').notNull(),
+  escalatedTo: uuid('escalated_to').references(() => hrEmployees.id),
+  delegatedTo: uuid('delegated_to').references(() => hrEmployees.id),
   comment: text('comment'),
   decidedAt: timestamp('decided_at'),
+  submittedAt: timestamp('submitted_at').defaultNow().notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull()
 }, (table) => ({
   idxHrAprReq: index('idx_hr_apr_req').on(table.requesterId),
   idxHrAprAppr: index('idx_hr_apr_appr').on(table.approverId),
   idxHrAprSrc: index('idx_hr_apr_src').on(table.module, table.sourceId),
+  idxHrAprStatus: index('idx_hr_apr_status').on(table.orgId, table.status),
+}));
+
+export const hrApprovalStepInstances = pgTable('hr_approval_step_instances', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  requestId: uuid('request_id').references(() => hrApprovalRequests.id).notNull(),
+  stepOrder: integer('step_order').notNull(),
+  stepName: text('step_name').notNull(),
+  label: text('label').notNull(),
+  assigneeId: uuid('assignee_id').references(() => hrEmployees.id),
+  status: hrApprovalStepStatusEnum('status').default('pending').notNull(),
+  comment: text('comment'),
+  decidedAt: timestamp('decided_at'),
+  notifiedAt: timestamp('notified_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+}, (table) => ({
+  idxAprStepReq: index('idx_apr_step_req').on(table.requestId),
+  idxAprStepAsgn: index('idx_apr_step_asgn').on(table.assigneeId),
+}));
+
+export const hrApprovalDelegations = pgTable('hr_approval_delegations', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  delegatorId: uuid('delegator_id').references(() => hrEmployees.id).notNull(),
+  delegateId: uuid('delegate_id').references(() => hrEmployees.id).notNull(),
+  module: text('module'),
+  startDate: timestamp('start_date').notNull(),
+  endDate: timestamp('end_date'),
+  isActive: boolean('is_active').default(true).notNull(),
+  reason: text('reason'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+}, (table) => ({
+  idxDelOrg: index('idx_del_org').on(table.orgId, table.delegatorId, table.isActive),
+}));
+
+export const hrApprovalEscalationRules = pgTable('hr_approval_escalation_rules', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  module: text('module'),
+  stepName: text('step_name').notNull(),
+  timeoutHours: integer('timeout_hours').notNull(),
+  escalateToRole: text('escalate_to_role'),
+  escalateToUserId: uuid('escalate_to_user_id').references(() => hrEmployees.id),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+}, (table) => ({
+  idxEscOrg: index('idx_esc_org').on(table.orgId, table.module),
+}));
+
+export const hrApprovalComments = pgTable('hr_approval_comments', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  requestId: uuid('request_id').references(() => hrApprovalRequests.id).notNull(),
+  stepInstanceId: uuid('step_instance_id').references(() => hrApprovalStepInstances.id),
+  userId: uuid('user_id').references(() => hrEmployees.id).notNull(),
+  comment: text('comment').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+}, (table) => ({
+  idxCmtReq: index('idx_cmt_req').on(table.requestId),
 }));
 
 // ================================================================
@@ -2852,5 +3766,173 @@ export const hrPolicies = pgTable('hr_policies', {
   updatedAt: timestamp('updated_at').defaultNow().notNull()
 }, (table) => ({
   idxHrPolOrg: index('idx_hr_pol_org').on(table.orgId),
+}));
+
+export const hrScheduledReports = pgTable('hr_scheduled_reports', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  name: text('name').notNull(),
+  reportType: text('report_type').notNull(),
+  frequency: text('frequency').notNull(),
+  recipients: text('recipients').array().default([]),
+  format: text('format').default('csv'),
+  filters: jsonb('filters').default({}),
+  isActive: boolean('is_active').default(true).notNull(),
+  lastRunAt: timestamp('last_run_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrSchedOrg: index('idx_hr_sched_org').on(table.orgId),
+}));
+
+export const hrWorkflowInstances = pgTable('hr_workflow_instances', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  templateId: uuid('template_id').references(() => hrWorkflowTemplates.id),
+  name: text('name').notNull(),
+  trigger: text('trigger').notNull(),
+  sourceId: uuid('source_id'),
+  status: hrWorkflowStatusEnum('status').default('pending').notNull(),
+  currentStep: integer('current_step').default(0),
+  totalSteps: integer('total_steps').default(0),
+  data: jsonb('data').default({}),
+  startedAt: timestamp('started_at').defaultNow().notNull(),
+  completedAt: timestamp('completed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrWiOrg: index('idx_hr_wi_org').on(table.orgId, table.status),
+  idxHrWiSrc: index('idx_hr_wi_src').on(table.sourceId),
+}));
+
+export const hrAutomationRules = pgTable('hr_automation_rules', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  name: text('name').notNull(),
+  event: text('event').notNull(),
+  conditions: jsonb('conditions').default({}),
+  actions: jsonb('actions').default([]),
+  templateId: uuid('template_id').references(() => hrWorkflowTemplates.id),
+  schedule: text('schedule'),
+  isActive: boolean('is_active').default(true).notNull(),
+  lastTriggeredAt: timestamp('last_triggered_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrArOrg: index('idx_hr_ar_org').on(table.orgId, table.event, table.isActive),
+}));
+
+export const hrNotifications = pgTable('hr_notifications', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  employeeId: uuid('employee_id').references(() => hrEmployees.id).notNull(),
+  type: text('type').notNull(),
+  title: text('title').notNull(),
+  body: text('body'),
+  link: text('link'),
+  isRead: boolean('is_read').default(false).notNull(),
+  readAt: timestamp('read_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrNotifEmp: index('idx_hr_notif_emp').on(table.employeeId, table.isRead),
+  idxHrNotifOrg: index('idx_hr_notif_org').on(table.orgId, table.createdAt),
+}));
+
+export const hrReminderConfigs = pgTable('hr_reminder_configs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  name: text('name').notNull(),
+  type: text('type').notNull(),
+  schedule: text('schedule').notNull(),
+  templateId: uuid('template_id').references(() => hrWorkflowTemplates.id),
+  conditions: jsonb('conditions').default({}),
+  recipients: text('recipients').array().default([]),
+  isActive: boolean('is_active').default(true).notNull(),
+  lastRunAt: timestamp('last_run_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrRmOrg: index('idx_hr_rm_org').on(table.orgId, table.type, table.isActive),
+}));
+
+export const hrPolicyAcknowledgements = pgTable('hr_policy_acknowledgements', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  policyId: uuid('policy_id').references(() => hrPolicies.id).notNull(),
+  employeeId: uuid('employee_id').references(() => hrEmployees.id).notNull(),
+  acknowledgedAt: timestamp('acknowledged_at'),
+  acknowledgedIp: text('acknowledged_ip'),
+  status: text('status').default('pending').notNull(),
+  requestedAt: timestamp('requested_at').defaultNow().notNull(),
+  dueDate: timestamp('due_date'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrPaOrg: index('idx_hr_pa_org').on(table.orgId, table.status),
+  idxHrPaEmp: index('idx_hr_pa_emp').on(table.employeeId, table.policyId),
+}));
+
+export const hrDocumentRequests = pgTable('hr_document_requests', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  employeeId: uuid('employee_id').references(() => hrEmployees.id).notNull(),
+  documentType: text('document_type').notNull(),
+  description: text('description'),
+  reason: text('reason'),
+  status: text('status').default('pending').notNull(),
+  dueDate: timestamp('due_date'),
+  completedAt: timestamp('completed_at'),
+  requestedBy: uuid('requested_by').references(() => users.id),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrDrOrg: index('idx_hr_dr_org').on(table.orgId, table.status),
+  idxHrDrEmp: index('idx_hr_dr_emp').on(table.employeeId),
+}));
+
+export const hrRenewalTracking = pgTable('hr_renewal_tracking', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  employeeId: uuid('employee_id').references(() => hrEmployees.id).notNull(),
+  type: text('type').notNull(),
+  referenceId: uuid('reference_id'),
+  title: text('title').notNull(),
+  description: text('description'),
+  currentExpiryDate: timestamp('current_expiry_date'),
+  renewedDate: timestamp('renewed_date'),
+  newExpiryDate: timestamp('new_expiry_date'),
+  status: text('status').default('active').notNull(),
+  reminderDays: integer('reminder_days').default(30),
+  autoRenew: boolean('auto_renew').default(false).notNull(),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrRnOrg: index('idx_hr_rn_org').on(table.orgId, table.status, table.type),
+  idxHrRnEmp: index('idx_hr_rn_emp').on(table.employeeId),
+  idxHrRnExp: index('idx_hr_rn_exp').on(table.currentExpiryDate),
+}));
+
+export const hrCalendarEvents = pgTable('hr_calendar_events', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organisations.id).notNull(),
+  employeeId: uuid('employee_id').references(() => hrEmployees.id),
+  title: text('title').notNull(),
+  description: text('description'),
+  eventType: text('event_type').notNull(),
+  startTime: timestamp('start_time').notNull(),
+  endTime: timestamp('end_time'),
+  allDay: boolean('all_day').default(false).notNull(),
+  location: text('location'),
+  link: text('link'),
+  source: text('source'),
+  sourceId: uuid('source_id'),
+  isRead: boolean('is_read').default(false).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+}, (table) => ({
+  idxHrCeOrg: index('idx_hr_ce_org').on(table.orgId, table.eventType),
+  idxHrCeEmp: index('idx_hr_ce_emp').on(table.employeeId, table.startTime),
+  idxHrCeTime: index('idx_hr_ce_time').on(table.startTime),
 }));
 

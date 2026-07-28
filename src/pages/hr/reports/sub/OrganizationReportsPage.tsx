@@ -1,128 +1,116 @@
-﻿import { useState, useMemo } from 'react';
-import { Building2, Plus, Download, FileText, Edit3, Trash2, Eye, Globe, FileBarChart, Archive, CheckCircle2 } from 'lucide-react';
-import { useHrPageState } from '../../../../hooks/useHrPageState';
+﻿import { useState, useEffect, useMemo } from 'react';
+import { Building2, Users, TrendingUp, DollarSign, Download, FileText } from 'lucide-react';
 import { HrPageShell } from '../../../../components/hr/HrPageShell';
 import { HrStatCards } from '../../../../components/hr/HrStatCards';
-import { HrFilterBar } from '../../../../components/hr/HrFilterBar';
-import { HrDataTable, Column } from '../../../../components/hr/HrDataTable';
-import { HrFormModal } from '../../../../components/hr/HrFormModal';
-import { HrConfirmDialog } from '../../../../components/hr/HrConfirmDialog';
-import { HrViewDrawer } from '../../../../components/hr/HrViewDrawer';
-import { exportToCsv, exportToPdf, statusColor, formatDate } from '../../../../lib/hrExport';
-import { useToast } from '../../../../contexts/ToastContext';
+import { hrApi } from '../../../../lib/api';
+import { exportToCsv, exportToPdf } from '../../../../lib/hrExport';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
-interface OrgReport {
-  id: string;
-  title: string;
-  department: string;
-  period: string;
-  generatedBy: string;
-  status: 'generated' | 'draft' | 'archived';
-}
-
-const MOCK: OrgReport[] = [
-  { id: 'ORG-001', title: 'Q2 2026 Headcount Report', department: 'All Departments', period: 'Q2 2026', generatedBy: 'Yetunde Bello', status: 'generated' },
-  { id: 'ORG-002', title: 'Annual Turnover Analysis', department: 'All Departments', period: 'FY 2025', generatedBy: 'Yetunde Bello', status: 'generated' },
-  { id: 'ORG-003', title: 'Department Salary Benchmark', department: 'Finance', period: 'H1 2026', generatedBy: 'Chidi Nwosu', status: 'generated' },
-  { id: 'ORG-004', title: 'Diversity & Inclusion Stats', department: 'All Departments', period: 'Q2 2026', generatedBy: 'Fatima Usman', status: 'draft' },
-  { id: 'ORG-005', title: 'Training Hours by Dept', department: 'All Departments', period: 'H1 2026', generatedBy: 'Amara Okafor', status: 'draft' },
-  { id: 'ORG-006', title: 'Leave Utilization (Annual)', department: 'All Departments', period: 'FY 2025', generatedBy: 'Ibrahim Danjuma', status: 'archived' },
-  { id: 'ORG-007', title: 'Performance Review Summary', department: 'Engineering', period: '2025', generatedBy: 'Emeka Eze', status: 'archived' },
-  { id: 'ORG-008', title: 'Compensation Review 2025', department: 'All Departments', period: 'FY 2025', generatedBy: 'Yetunde Bello', status: 'archived' },
-];
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
 export function OrganizationReportsPage() {
-  const { success } = useToast();
-  const [localData, setLocalData] = useState<OrgReport[]>(MOCK);
-  const ps = useHrPageState({ data: localData, initialSortKey: 'title', searchKeys: ['title', 'department', 'generatedBy'], pageSize: 10 });
-  const { filtered, paginated } = ps;
+  const [emp, setEmp] = useState<any>(null);
+  const [turnover, setTurnover] = useState<any>(null);
+  const [comp, setComp] = useState<any>(null);
+  const [recruit, setRecruit] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      hrApi.getReportEmployees(),
+      hrApi.getReportTurnover(),
+      hrApi.getReportCompensation(),
+      hrApi.getReportRecruitment(),
+    ]).then(([e, t, c, r]) => {
+      setEmp(e.data); setTurnover(t.data); setComp(c.data); setRecruit(r.data);
+      setLoading(false);
+    });
+  }, []);
 
   const stats = useMemo(() => [
-    { label: 'Total Reports', value: localData.length, icon: <FileBarChart className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
-    { label: 'Generated', value: localData.filter(i => i.status === 'generated').length, icon: <CheckCircle2 className="w-4 h-4" />, color: 'emerald' as const, active: ps.statusFilter === 'generated', onClick: () => ps.setStatusFilter('generated') },
-    { label: 'Draft', value: localData.filter(i => i.status === 'draft').length, icon: <FileText className="w-4 h-4" />, color: 'amber' as const, active: ps.statusFilter === 'draft', onClick: () => ps.setStatusFilter('draft') },
-    { label: 'Archived', value: localData.filter(i => i.status === 'archived').length, icon: <Archive className="w-4 h-4" />, color: 'slate' as const, active: ps.statusFilter === 'archived', onClick: () => ps.setStatusFilter('archived') },
-  ], [localData, ps.statusFilter]);
+    { label: 'Total Employees', value: emp?.total || 0, icon: Users, color: 'blue' as const },
+    { label: 'Turnover Rate', value: `${turnover?.turnoverRate || 0}%`, icon: TrendingUp, color: 'red' as const },
+    { label: 'Total Salary', value: `₦${((comp?.totalSalary || 0) / 1000000).toFixed(1)}M`, icon: DollarSign, color: 'green' as const },
+    { label: 'Open Positions', value: recruit?.openPositions || 0, icon: Building2, color: 'purple' as const },
+  ], [emp, turnover, comp, recruit]);
 
-  const handleDelete = (id: string) => {
-    setLocalData(prev => prev.filter(i => i.id !== id));
-    ps.closeConfirmDelete();
-    success('Organization report deleted');
+  const orgExport = () => {
+    const headers = ['Metric', 'Value'];
+    const rows = [
+      ['Total Employees', String(emp?.total || 0)],
+      ['Active', String(emp?.activeCount || 0)],
+      ['Turnover Rate', `${turnover?.turnoverRate || 0}%`],
+      ['Total Leavers', String(turnover?.totalLeavers || 0)],
+      ['Total Salary', String(comp?.totalSalary || 0)],
+      ['Open Positions', String(recruit?.openPositions || 0)],
+      ['Candidates', String(recruit?.totalCandidates || 0)],
+      ['Hired', String(recruit?.hired || 0)],
+    ];
+    exportToCsv(headers, rows, 'org-wide-report');
   };
 
-  const columns: Column<OrgReport>[] = [
-    { key: 'title', label: 'Title', sortable: true, render: (i) => <span className="font-medium text-ink-900">{i.title}</span> },
-    { key: 'department', label: 'Department', sortable: true, render: (i) => <span className="text-xs font-medium text-ink-500 bg-ink-100 dark:bg-ink-800 px-2 py-0.5 rounded-full">{i.department}</span> },
-    { key: 'period', label: 'Period', sortable: true },
-    { key: 'generatedBy', label: 'Generated By', sortable: true },
-    { key: 'status', label: 'Status', sortable: true, render: (i) => <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${statusColor(i.status)}`}>{i.status}</span> },
-    { key: 'actions', label: '', render: (i) => (
-      <div className="flex items-center justify-end gap-1" onClick={e => e.stopPropagation()}>
-        <button onClick={() => ps.openViewDrawer(i.id)} className="w-7 h-7 flex items-center justify-center rounded-lg text-ink-400 hover:text-primary hover:bg-primary/10 transition-colors" title="View"><Eye className="w-3.5 h-3.5" /></button>
-        <button onClick={() => ps.openEditModal(i.id)} className="w-7 h-7 flex items-center justify-center rounded-lg text-ink-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors" title="Edit"><Edit3 className="w-3.5 h-3.5" /></button>
-        <button onClick={() => ps.openConfirmDelete(i.id)} className="w-7 h-7 flex items-center justify-center rounded-lg text-ink-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
-      </div>
-    ), className: 'text-right' },
-  ];
-
-  const selectedItem = ps.viewingId ? filtered.find(i => i.id === ps.viewingId) : null;
-  const editItem = ps.editingId ? filtered.find(i => i.id === ps.editingId) : null;
-
-  const csvHeaders = ['Title', 'Department', 'Period', 'Generated By', 'Status'];
-  const csvRows = filtered.map(i => [i.title, i.department, i.period, i.generatedBy, i.status]);
-  const pdfHeaders = csvHeaders;
-  const pdfRows = csvRows;
+  if (loading) return <HrPageShell title="Organization Reports" description="Organization-wide metrics"><div className="text-sm text-ink-400 p-4">Loading...</div></HrPageShell>;
 
   return (
-    <HrPageShell title="Organization Reports" description="Company-wide HR metrics, headcount trends, turnover rates, and diversity stats"
-      pageKey="reports"
-      headerActions={<>
-        <button onClick={() => { exportToCsv(csvHeaders, csvRows, 'organization-reports'); success('CSV exported'); }} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-ink-600 bg-ink-100 dark:bg-ink-800 hover:bg-ink-200 dark:hover:bg-ink-700 rounded-lg transition-colors"><Download className="w-3.5 h-3.5" /> CSV</button>
-        <button onClick={() => exportToPdf('Organization Reports', pdfHeaders, pdfRows, 'organization-reports')} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-ink-600 bg-ink-100 dark:bg-ink-800 hover:bg-ink-200 dark:hover:bg-ink-700 rounded-lg transition-colors"><FileText className="w-3.5 h-3.5" /> PDF</button>
-        <button onClick={ps.openAddModal} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors"><Plus className="w-3.5 h-3.5" /> Add Report</button>
-      </>}>
-      <HrStatCards items={stats} columns={4} />
-      <HrFilterBar
-        searchValue={ps.search} onSearchChange={ps.setSearch} searchPlaceholder="Search reports..."
-        statusFilter={ps.statusFilter} onStatusChange={ps.setStatusFilter} statusOptions={['all', 'generated', 'draft', 'archived']}
-        onExportPdf={() => exportToPdf('Organization Reports', pdfHeaders, pdfRows, 'organization-reports')}
-      />
-      <HrDataTable columns={columns} data={paginated} keyExtractor={i => i.id}
-        sortKey={ps.sortKey as string} sortDir={ps.sortDir} onSort={(k) => ps.handleSort(k as any)}
-        selectedIds={ps.selectedIds} onSelectOne={ps.handleSelectOne} onSelectAll={ps.handleSelectAll}
-        page={ps.page} totalPages={ps.totalPages} onPageChange={ps.setPage} pageSize={ps.pageSize} totalItems={filtered.length}
-        from={(ps.page - 1) * ps.pageSize + 1} to={Math.min(ps.page * ps.pageSize, filtered.length)}
-        emptyMessage="No organization reports found" emptyAction={<button onClick={ps.openAddModal} className="text-xs font-medium text-primary">Add report</button>} />
-      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Organization Report' : 'New Organization Report'}>
-        <div className="space-y-4">
-          <div><label className="block text-xs font-medium text-ink-600 mb-1">Title</label><input className="w-full h-9 px-3 text-sm rounded-lg border border-ink-200 dark:border-ink-700 bg-white dark:bg-ink-900 text-ink-900" defaultValue={editItem?.title ?? ''} /></div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><label className="block text-xs font-medium text-ink-600 mb-1">Department</label>
-              <select className="w-full h-9 px-3 text-sm rounded-lg border border-ink-200 dark:border-ink-700 bg-white dark:bg-ink-900 text-ink-900" defaultValue={editItem?.department ?? ''}>
-                <option>All Departments</option><option>Engineering</option><option>Finance</option><option>Marketing</option><option>HR</option><option>Operations</option><option>Legal</option>
-              </select>
-            </div>
-            <div><label className="block text-xs font-medium text-ink-600 mb-1">Period</label>
-              <select className="w-full h-9 px-3 text-sm rounded-lg border border-ink-200 dark:border-ink-700 bg-white dark:bg-ink-900 text-ink-900" defaultValue={editItem?.period ?? ''}>
-                <option>Q1 2026</option><option>Q2 2026</option><option>Q3 2026</option><option>Q4 2026</option><option>H1 2026</option><option>H2 2026</option><option>FY 2025</option>
-              </select>
-            </div>
-          </div>
-          <button className="w-full h-9 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors" onClick={() => { success(ps.editingId ? 'Report updated' : 'Report created'); ps.closeModal(); }}>{ps.editingId ? 'Update' : 'Create'}</button>
+    <HrPageShell title="Organization Reports" description="Organization-wide metrics and analytics"
+      headerActions={
+        <div className="flex gap-1">
+          <button onClick={orgExport} className="p-1.5 rounded-lg hover:bg-ink-50" title="CSV"><Download className="w-4 h-4" /></button>
         </div>
-      </HrFormModal>
-      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => handleDelete(ps.deletingId!)} title="Delete Report" message="Are you sure you want to delete this organization report? This action cannot be undone." />
-      <HrViewDrawer open={ps.viewDrawerOpen} onClose={ps.closeViewDrawer} title="Organization Report Details">
-        {selectedItem && <div className="space-y-3">
-          <div><label className="text-xs text-ink-500">Title</label><p className="text-sm font-medium text-ink-900">{selectedItem.title}</p></div>
-          <div><label className="text-xs text-ink-500">Department</label><p className="text-sm text-ink-700">{selectedItem.department}</p></div>
-          <div><label className="text-xs text-ink-500">Period</label><p className="text-sm text-ink-700">{selectedItem.period}</p></div>
-          <div><label className="text-xs text-ink-500">Generated By</label><p className="text-sm text-ink-700">{selectedItem.generatedBy}</p></div>
-          <div><label className="text-xs text-ink-500">Status</label><p className="text-sm font-medium text-ink-900 capitalize">{selectedItem.status}</p></div>
-        </div>}
-      </HrViewDrawer>
+      }>
+      <HrStatCards items={stats} columns={4} />
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+        <div className="bg-surface rounded-2xl border border-border-custom shadow-sm p-5">
+          <h3 className="text-sm font-semibold text-ink-700 mb-4">Employees by Department</h3>
+          <ResponsiveContainer width="100%" height={250}>
+            <BarChart data={(emp?.byDepartment || []).map((d: any) => ({ name: d.department || 'Unknown', count: Number(d.count) }))}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+              <YAxis tick={{ fontSize: 11 }} />
+              <Tooltip />
+              <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="bg-surface rounded-2xl border border-border-custom shadow-sm p-5">
+          <h3 className="text-sm font-semibold text-ink-700 mb-4">Employee Status</h3>
+          <ResponsiveContainer width="100%" height={250}>
+            <PieChart>
+              <Pie data={(emp?.byStatus || []).map((s: any) => ({ name: s.status, value: Number(s.count) }))} cx="50%" cy="50%" innerRadius={60} outerRadius={90} dataKey="value" label={({ name, value }) => `${name}: ${value}`}>
+                {(emp?.byStatus || []).map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+              </Pie>
+              <Tooltip />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="bg-surface rounded-2xl border border-border-custom shadow-sm p-5">
+          <h3 className="text-sm font-semibold text-ink-700 mb-4">Turnover by Department</h3>
+          <div className="space-y-2">
+            {(turnover?.byDepartment || []).map((d: any) => (
+              <div key={d.department} className="flex items-center justify-between text-sm"><span className="text-ink-600">{d.department || 'Unknown'}</span><span className="font-semibold">{d.count}</span></div>
+            ))}
+            {(!turnover?.byDepartment || turnover.byDepartment.length === 0) && <p className="text-xs text-ink-400">No turnover data</p>}
+          </div>
+        </div>
+
+        <div className="bg-surface rounded-2xl border border-border-custom shadow-sm p-5">
+          <h3 className="text-sm font-semibold text-ink-700 mb-4">Recruitment Funnel</h3>
+          <div className="space-y-2">
+            {(recruit?.funnel || []).map((s: any) => (
+              <div key={s.stage} className="flex items-center gap-3">
+                <span className="text-sm capitalize text-ink-600 w-24">{s.stage}</span>
+                <div className="flex-1 bg-ink-100 rounded-full h-2">
+                  <div className="bg-primary h-2 rounded-full" style={{ width: `${Math.min(s.conversionRate || 0, 100)}%` }} />
+                </div>
+                <span className="text-xs font-semibold w-16 text-right">{s.count}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
     </HrPageShell>
   );
 }
-
-

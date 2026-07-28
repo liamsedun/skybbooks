@@ -205,10 +205,18 @@ const LeaveSummaryPage = lazy(() => import('../pages/hr/leave/LeaveSummaryPage')
 const LeaveShiftPage = lazy(() => import('../pages/hr/leave/ShiftPage').then(m => ({ default: m.LeaveShiftPage })));
 const LeaveRequestsPage = lazy(() => import('../pages/hr/leave/LeaveRequestsPage').then(m => ({ default: m.LeaveRequestsPage })));
 const LeaveTypesPage = lazy(() => import('../pages/hr/leave/LeaveTypesPage').then(m => ({ default: m.LeaveTypesPage })));
+const LeaveCalendarPage = lazy(() => import('../pages/hr/leave/LeaveCalendarPage').then(m => ({ default: m.LeaveCalendarPage })));
+const HolidayCalendarPage = lazy(() => import('../pages/hr/leave/HolidayCalendarPage').then(m => ({ default: m.HolidayCalendarPage })));
+const LeavePolicyPage = lazy(() => import('../pages/hr/leave/LeavePolicyPage').then(m => ({ default: m.LeavePolicyPage })));
 const AttendanceLayout = lazy(() => import('../pages/hr/attendance/AttendanceLayout').then(m => ({ default: m.AttendanceLayout })));
 const AttendanceSummaryPage = lazy(() => import('../pages/hr/attendance/AttendanceSummaryPage').then(m => ({ default: m.AttendanceSummaryPage })));
 const AttendanceShiftPage = lazy(() => import('../pages/hr/attendance/ShiftPage').then(m => ({ default: m.AttendanceShiftPage })));
 const ShiftsPage = lazy(() => import('../pages/hr/attendance/ShiftsPage').then(m => ({ default: m.ShiftsPage })));
+const DailyLogPage = lazy(() => import('../pages/hr/attendance/DailyLogPage').then(m => ({ default: m.DailyLogPage })));
+const ShiftAssignmentsPage = lazy(() => import('../pages/hr/attendance/ShiftAssignmentsPage').then(m => ({ default: m.ShiftAssignmentsPage })));
+const AttendanceExceptionsPage = lazy(() => import('../pages/hr/attendance/ExceptionsPage').then(m => ({ default: m.AttendanceExceptionsPage })));
+const OvertimePoliciesPage = lazy(() => import('../pages/hr/attendance/OvertimePoliciesPage').then(m => ({ default: m.OvertimePoliciesPage })));
+const AttendanceReportsPage = lazy(() => import('../pages/hr/attendance/ReportsPage').then(m => ({ default: m.AttendanceReportsPage })));
 const TimesheetsLayout = lazy(() => import('../pages/hr/time/TimesheetsLayout').then(m => ({ default: m.TimesheetsLayout })));
 const TimeLogsPage = lazy(() => import('../pages/hr/time/TimeLogsPage').then(m => ({ default: m.TimeLogsPage })));
 const TimesheetsListPage = lazy(() => import('../pages/hr/time/TimesheetsListPage').then(m => ({ default: m.TimesheetsListPage })));
@@ -216,10 +224,18 @@ const OnboardingLayout = lazy(() => import('../pages/hr/recruitment/OnboardingLa
 const AddCandidatePage = lazy(() => import('../pages/hr/recruitment/AddCandidatePage').then(m => ({ default: m.AddCandidatePage })));
 const JobOpeningsPage = lazy(() => import('../pages/hr/recruitment/JobOpeningsPage').then(m => ({ default: m.JobOpeningsPage })));
 const CandidatesPage = lazy(() => import('../pages/hr/recruitment/CandidatesPage').then(m => ({ default: m.CandidatesPage })));
+const RequisitionsPage = lazy(() => import('../pages/hr/recruitment/RequisitionsPage').then(m => ({ default: m.RequisitionsPage })));
+const OnboardingPage = lazy(() => import('../pages/hr/recruitment/OnboardingPage').then(m => ({ default: m.OnboardingPage })));
 const JobsPage = lazy(() => import('../pages/hr/JobsPage').then(m => ({ default: m.JobsPage })));
 const HrProjectsPage = lazy(() => import('../pages/hr/ProjectsPage').then(m => ({ default: m.ProjectsPage })));
 const JobSchedulePage = lazy(() => import('../pages/hr/JobSchedulePage').then(m => ({ default: m.JobSchedulePage })));
+const PerformanceLayout = lazy(() => import('../pages/hr/performance/PerformanceLayout').then(m => ({ default: m.PerformanceLayout })));
 const PerformanceReviewsPage = lazy(() => import('../pages/hr/performance/PerformanceReviewsPage').then(m => ({ default: m.PerformanceReviewsPage })));
+const PerformanceAnalyticsPage = lazy(() => import('../pages/hr/performance/PerformanceAnalyticsPage').then(m => ({ default: m.PerformanceAnalyticsPage })));
+const KpiPage = lazy(() => import('../pages/hr/performance/KpiPage').then(m => ({ default: m.KpiPage })));
+const PerformanceCyclesPage = lazy(() => import('../pages/hr/performance/PerformanceCyclesPage').then(m => ({ default: m.PerformanceCyclesPage })));
+const DevelopmentPlansPage = lazy(() => import('../pages/hr/performance/DevelopmentPlansPage').then(m => ({ default: m.DevelopmentPlansPage })));
+const PromotionsPage = lazy(() => import('../pages/hr/performance/PromotionsPage').then(m => ({ default: m.PromotionsPage })));
 const CoursesPage = lazy(() => import('../pages/hr/courses/CoursesPage').then(m => ({ default: m.CoursesPage })));
 const SurveysPage = lazy(() => import('../pages/hr/surveys/SurveysPage').then(m => ({ default: m.SurveysPage })));
 const AnnouncementsPage = lazy(() => import('../pages/hr/announcements/AnnouncementsPage').then(m => ({ default: m.AnnouncementsPage })));
@@ -227,21 +243,51 @@ const RecognitionPage = lazy(() => import('../pages/hr/recognition/RecognitionPa
 const GoalsPage = lazy(() => import('../pages/hr/goals/GoalsPage').then(m => ({ default: m.GoalsPage })));
 const LettersPage = lazy(() => import('../pages/hr/letters/LettersPage').then(m => ({ default: m.LettersPage })));
 const LetterTemplatesPage = lazy(() => import('../pages/hr/letters/LetterTemplatesPage').then(m => ({ default: m.LetterTemplatesPage })));
-const TravelRequestsPage = lazy(() => import('../pages/hr/travel/TravelRequestsPage').then(m => ({ default: m.TravelRequestsPage })));
 const ExpenseReportsPage = lazy(() => import('../pages/hr/expenses/ExpenseReportsPage').then(m => ({ default: m.ExpenseReportsPage })));
 const CompensationPage = lazy(() => import('../pages/hr/compensation/CompensationPage').then(m => ({ default: m.CompensationPage })));
 const BenefitsPage = lazy(() => import('../pages/hr/compensation/BenefitsPage').then(m => ({ default: m.BenefitsPage })));
+const AllowancesPage = lazy(() => import('../pages/hr/compensation/AllowancesPage').then(m => ({ default: m.AllowancesPage })));
+const BonusesPage = lazy(() => import('../pages/hr/compensation/BonusesPage').then(m => ({ default: m.BonusesPage })));
+const DeductionsPage = lazy(() => import('../pages/hr/compensation/DeductionsPage').then(m => ({ default: m.DeductionsPage })));
+const SalaryReviewsPage = lazy(() => import('../pages/hr/compensation/SalaryReviewsPage').then(m => ({ default: m.SalaryReviewsPage })));
+const PayGradesPage = lazy(() => import('../pages/hr/compensation/PayGradesPage').then(m => ({ default: m.PayGradesPage })));
+const CompensationHistoryPage = lazy(() => import('../pages/hr/compensation/CompensationHistoryPage').then(m => ({ default: m.CompensationHistoryPage })));
+const CompensationReportsPage = lazy(() => import('../pages/hr/compensation/CompensationReportsPage').then(m => ({ default: m.CompensationReportsPage })));
+const TravelManagementPage = lazy(() => import('../pages/hr/travel/TravelManagementPage').then(m => ({ default: m.TravelManagementPage })));
+const TravelRequestsPage = lazy(() => import('../pages/hr/travel/TravelRequestsPage').then(m => ({ default: m.TravelRequestsPage })));
+const TravelAdvancesPage = lazy(() => import('../pages/hr/travel/TravelAdvancesPage').then(m => ({ default: m.TravelAdvancesPage })));
+const TravelExpensesPage = lazy(() => import('../pages/hr/travel/TravelExpensesPage').then(m => ({ default: m.TravelExpensesPage })));
+const TravelSettlementsPage = lazy(() => import('../pages/hr/travel/TravelSettlementsPage').then(m => ({ default: m.TravelSettlementsPage })));
+const TravelHistoryPage = lazy(() => import('../pages/hr/travel/TravelHistoryPage').then(m => ({ default: m.TravelHistoryPage })));
+const TravelReportsPage = lazy(() => import('../pages/hr/travel/TravelReportsPage').then(m => ({ default: m.TravelReportsPage })));
+const DocManagementPage = lazy(() => import('../pages/hr/documents/DocManagementPage').then(m => ({ default: m.DocManagementPage })));
+const DocFilesPage = lazy(() => import('../pages/hr/documents/DocFilesPage').then(m => ({ default: m.DocFilesPage })));
+const DocCategoriesPage = lazy(() => import('../pages/hr/documents/DocCategoriesPage').then(m => ({ default: m.DocCategoriesPage })));
+const DocEmployeeDocsPage = lazy(() => import('../pages/hr/documents/DocEmployeeDocsPage').then(m => ({ default: m.DocEmployeeDocsPage })));
+const DocVersionsPage = lazy(() => import('../pages/hr/documents/DocVersionsPage').then(m => ({ default: m.DocVersionsPage })));
+const DocReportsPage = lazy(() => import('../pages/hr/documents/DocReportsPage').then(m => ({ default: m.DocReportsPage })));
+const ApprovalDashboardPage = lazy(() => import('../pages/hr/approvals/ApprovalDashboardPage').then(m => ({ default: m.ApprovalDashboardPage })));
+const ApprovalMyQueuePage = lazy(() => import('../pages/hr/approvals/ApprovalMyQueuePage').then(m => ({ default: m.ApprovalMyQueuePage })));
+const ApprovalConfigsPage = lazy(() => import('../pages/hr/approvals/ApprovalConfigsPage').then(m => ({ default: m.ApprovalConfigsPage })));
+const ApprovalDelegationsPage = lazy(() => import('../pages/hr/approvals/ApprovalDelegationsPage').then(m => ({ default: m.ApprovalDelegationsPage })));
+const ApprovalHistoryPage = lazy(() => import('../pages/hr/approvals/ApprovalHistoryPage').then(m => ({ default: m.ApprovalHistoryPage })));
 const TasksPage = lazy(() => import('../pages/hr/tasks/TasksPage').then(m => ({ default: m.TasksPage })));
 const WorkflowsPage = lazy(() => import('../pages/hr/workflows/WorkflowsPage').then(m => ({ default: m.WorkflowsPage })));
+const WorkflowLayout = lazy(() => import('../pages/hr/workflow/WorkflowLayout').then(m => ({ default: m.WorkflowLayout })));
+const WorkflowDashboardPage = lazy(() => import('../pages/hr/workflow/WorkflowDashboardPage').then(m => ({ default: m.WorkflowDashboardPage })));
+const WorkflowTemplatesPage = lazy(() => import('../pages/hr/workflow/WorkflowTemplatesPage').then(m => ({ default: m.WorkflowTemplatesPage })));
+const WorkflowAutomationRulesPage = lazy(() => import('../pages/hr/workflow/AutomationRulesPage').then(m => ({ default: m.AutomationRulesPage })));
+const WorkflowNotificationsPage = lazy(() => import('../pages/hr/workflow/NotificationsPage').then(m => ({ default: m.NotificationsPage })));
+const WorkflowReminderConfigsPage = lazy(() => import('../pages/hr/workflow/ReminderConfigsPage').then(m => ({ default: m.ReminderConfigsPage })));
 const OffboardingPage = lazy(() => import('../pages/hr/offboarding/OffboardingPage').then(m => ({ default: m.OffboardingPage })));
 const HelpDeskPage = lazy(() => import('../pages/hr/helpdesk/HelpDeskPage').then(m => ({ default: m.HelpDeskPage })));
 const ApprovalsPage = lazy(() => import('../pages/hr/approvals/ApprovalsPage').then(m => ({ default: m.ApprovalsPage })));
 const ReportsLayout = lazy(() => import('../pages/hr/reports/ReportsLayout').then(m => ({ default: m.ReportsLayout })));
 const MyReportsPage = lazy(() => import('../pages/hr/reports/sub/MyReportsPage').then(m => ({ default: m.MyReportsPage })));
-const ReportsEmployeeInformationPage = lazy(() => import('../pages/hr/reports/sub/EmployeeInformationPage').then(m => ({ default: m.ReportsEmployeeInformationPage })));
+const ReportsEmployeeInformationPage = lazy(() => import('../pages/hr/reports/sub/EmployeeInformationPage').then(m => ({ default: m.EmployeeInformationPage })));
 const CareerHistoryPage = lazy(() => import('../pages/hr/reports/sub/CareerHistoryPage').then(m => ({ default: m.CareerHistoryPage })));
 const LeaveBalancePage = lazy(() => import('../pages/hr/reports/sub/LeaveBalancePage').then(m => ({ default: m.LeaveBalancePage })));
-const ReportsAttendancePage = lazy(() => import('../pages/hr/reports/sub/AttendancePage').then(m => ({ default: m.ReportsAttendancePage })));
+const ReportsAttendancePage = lazy(() => import('../pages/hr/reports/sub/AttendancePage').then(m => ({ default: m.AttendancePage })));
 const EarlyCheckInPage = lazy(() => import('../pages/hr/reports/sub/EarlyCheckInPage').then(m => ({ default: m.EarlyCheckInPage })));
 const LateCheckInPage = lazy(() => import('../pages/hr/reports/sub/LateCheckInPage').then(m => ({ default: m.LateCheckInPage })));
 const EarlyCheckOutPage = lazy(() => import('../pages/hr/reports/sub/EarlyCheckOutPage').then(m => ({ default: m.EarlyCheckOutPage })));
@@ -250,7 +296,7 @@ const PresenceHoursPage = lazy(() => import('../pages/hr/reports/sub/PresenceHou
 const TeamReportsPage = lazy(() => import('../pages/hr/reports/sub/TeamReportsPage').then(m => ({ default: m.TeamReportsPage })));
 const OrganizationReportsPage = lazy(() => import('../pages/hr/reports/sub/OrganizationReportsPage').then(m => ({ default: m.OrganizationReportsPage })));
 const ReportsAnalyticsPage = lazy(() => import('../pages/hr/reports/sub/AnalyticsPage').then(m => ({ default: m.AnalyticsPage })));
-const ReportsSchedulesPage = lazy(() => import('../pages/hr/reports/sub/SchedulesPage').then(m => ({ default: m.ReportsSchedulesPage })));
+const ReportsSchedulesPage = lazy(() => import('../pages/hr/reports/sub/SchedulesPage').then(m => ({ default: m.SchedulesPage })));
 const PoliciesPage = lazy(() => import('../pages/hr/administration/PoliciesPage').then(m => ({ default: m.PoliciesPage })));
 const HrSettingsPage = lazy(() => import('../pages/hr/administration/HrSettingsPage').then(m => ({ default: m.HrSettingsPage })));
 
@@ -615,12 +661,21 @@ function AppRoutes() {
             <Route index element={<Navigate to="/app/hr/leave/summary" replace />} />
             <Route path="summary" element={<LazyRoute element={<LeaveSummaryPage />} />} />
             <Route path="requests" element={<LazyRoute element={<LeaveRequestsPage />} />} />
+            <Route path="calendar" element={<LazyRoute element={<LeaveCalendarPage />} />} />
+            <Route path="types" element={<LazyRoute element={<LeaveTypesPage />} />} />
+            <Route path="policies" element={<LazyRoute element={<LeavePolicyPage />} />} />
+            <Route path="holidays" element={<LazyRoute element={<HolidayCalendarPage />} />} />
             <Route path="shift" element={<LazyRoute element={<LeaveShiftPage />} />} />
           </Route>
           <Route path="hr/attendance" element={<HrGuard perm="hr:read"><Suspense fallback={<PageLoader />}><AttendanceLayout /></Suspense></HrGuard>}>
             <Route index element={<Navigate to="/app/hr/attendance/summary" replace />} />
             <Route path="summary" element={<LazyRoute element={<AttendanceSummaryPage />} />} />
             <Route path="shift" element={<LazyRoute element={<AttendanceShiftPage />} />} />
+            <Route path="daily" element={<LazyRoute element={<DailyLogPage />} />} />
+            <Route path="shift-assignments" element={<LazyRoute element={<ShiftAssignmentsPage />} />} />
+            <Route path="exceptions" element={<LazyRoute element={<AttendanceExceptionsPage />} />} />
+            <Route path="overtime" element={<LazyRoute element={<OvertimePoliciesPage />} />} />
+            <Route path="reports" element={<LazyRoute element={<AttendanceReportsPage />} />} />
           </Route>
           <Route path="hr/timesheets" element={<HrGuard perm="hr:read"><Suspense fallback={<PageLoader />}><TimesheetsLayout /></Suspense></HrGuard>}>
             <Route index element={<Navigate to="/app/hr/timesheets/logs" replace />} />
@@ -679,26 +734,70 @@ function AppRoutes() {
           </Route>
           <Route path="hr/employees" element={<HrGuard perm="hr:read"><LazyRoute element={<EmployeeList />} /></HrGuard>} />
           <Route path="hr/employees/new" element={<HrGuard perm="hr:create"><LazyRoute element={<EmployeeForm />} /></HrGuard>} />
+          <Route path="hr/employees/:id/edit" element={<HrGuard perm="hr:update"><LazyRoute element={<EmployeeForm />} /></HrGuard>} />
           <Route path="hr/employees/:id" element={<HrGuard perm="hr:read"><LazyRoute element={<EmployeeDetail />} /></HrGuard>} />
           <Route path="hr/departments" element={<HrGuard perm="hr:read"><LazyRoute element={<DepartmentsPage />} /></HrGuard>} />
           <Route path="hr/designations" element={<HrGuard perm="hr:read"><LazyRoute element={<DesignationsPage />} /></HrGuard>} />
           <Route path="hr/leave-types" element={<HrGuard perm="hr:read"><LazyRoute element={<LeaveTypesPage />} /></HrGuard>} />
           <Route path="hr/shifts" element={<HrGuard perm="hr:read"><LazyRoute element={<ShiftsPage />} /></HrGuard>} />
           <Route path="hr/candidates" element={<HrGuard perm="hr:read"><LazyRoute element={<CandidatesPage />} /></HrGuard>} />
-          <Route path="hr/performance" element={<HrGuard perm="hr:read"><LazyRoute element={<PerformanceReviewsPage />} /></HrGuard>} />
+          <Route path="hr/candidates/add" element={<HrGuard perm="hr:create"><LazyRoute element={<AddCandidatePage />} /></HrGuard>} />
+          <Route path="hr/recruitment/requisitions" element={<HrGuard perm="hr:read"><LazyRoute element={<RequisitionsPage />} /></HrGuard>} />
+          <Route path="hr/recruitment/onboarding" element={<HrGuard perm="hr:read"><LazyRoute element={<OnboardingPage />} /></HrGuard>} />
           <Route path="hr/courses" element={<HrGuard perm="hr:read"><LazyRoute element={<CoursesPage />} /></HrGuard>} />
           <Route path="hr/surveys" element={<HrGuard perm="hr:read"><LazyRoute element={<SurveysPage />} /></HrGuard>} />
           <Route path="hr/announcements" element={<HrGuard perm="hr:read"><LazyRoute element={<AnnouncementsPage />} /></HrGuard>} />
           <Route path="hr/recognition" element={<HrGuard perm="hr:read"><LazyRoute element={<RecognitionPage />} /></HrGuard>} />
-          <Route path="hr/goals" element={<HrGuard perm="hr:read"><LazyRoute element={<GoalsPage />} /></HrGuard>} />
+          <Route path="hr/performance" element={<HrGuard perm="hr:read"><Suspense fallback={<PageLoader />}><PerformanceLayout /></Suspense></HrGuard>}>
+            <Route index element={<Navigate to="/app/hr/performance/overview" replace />} />
+            <Route path="overview" element={<LazyRoute element={<PerformanceAnalyticsPage />} />} />
+            <Route path="reviews" element={<LazyRoute element={<PerformanceReviewsPage />} />} />
+            <Route path="goals" element={<LazyRoute element={<GoalsPage />} />} />
+            <Route path="kpis" element={<LazyRoute element={<KpiPage />} />} />
+            <Route path="cycles" element={<LazyRoute element={<PerformanceCyclesPage />} />} />
+            <Route path="development" element={<LazyRoute element={<DevelopmentPlansPage />} />} />
+            <Route path="promotions" element={<LazyRoute element={<PromotionsPage />} />} />
+          </Route>
           <Route path="hr/letters" element={<HrGuard perm="hr:read"><LazyRoute element={<LettersPage />} /></HrGuard>} />
           <Route path="hr/letter-templates" element={<HrGuard perm="hr:read"><LazyRoute element={<LetterTemplatesPage />} /></HrGuard>} />
-          <Route path="hr/travel" element={<HrGuard perm="hr:read"><LazyRoute element={<TravelRequestsPage />} /></HrGuard>} />
+          <Route path="hr/travel" element={<HrGuard perm="hr:read"><LazyRoute element={<TravelManagementPage />} /></HrGuard>} />
           <Route path="hr/expenses" element={<HrGuard perm="hr:read"><LazyRoute element={<ExpenseReportsPage />} /></HrGuard>} />
           <Route path="hr/compensation" element={<HrGuard perm="hr:read"><LazyRoute element={<CompensationPage />} /></HrGuard>} />
-          <Route path="hr/benefits" element={<HrGuard perm="hr:read"><LazyRoute element={<BenefitsPage />} /></HrGuard>} />
+          <Route path="hr/compensation/benefits" element={<HrGuard perm="hr:read"><LazyRoute element={<BenefitsPage />} /></HrGuard>} />
+          <Route path="hr/compensation/allowances" element={<HrGuard perm="hr:read"><LazyRoute element={<AllowancesPage />} /></HrGuard>} />
+          <Route path="hr/compensation/bonuses" element={<HrGuard perm="hr:read"><LazyRoute element={<BonusesPage />} /></HrGuard>} />
+          <Route path="hr/compensation/deductions" element={<HrGuard perm="hr:read"><LazyRoute element={<DeductionsPage />} /></HrGuard>} />
+          <Route path="hr/compensation/salary-reviews" element={<HrGuard perm="hr:read"><LazyRoute element={<SalaryReviewsPage />} /></HrGuard>} />
+          <Route path="hr/compensation/pay-grades" element={<HrGuard perm="hr:read"><LazyRoute element={<PayGradesPage />} /></HrGuard>} />
+          <Route path="hr/compensation/history" element={<HrGuard perm="hr:read"><LazyRoute element={<CompensationHistoryPage />} /></HrGuard>} />
+          <Route path="hr/compensation/reports" element={<HrGuard perm="hr:read"><LazyRoute element={<CompensationReportsPage />} /></HrGuard>} />
+          <Route path="hr/travel" element={<HrGuard perm="hr:read"><LazyRoute element={<TravelManagementPage />} /></HrGuard>} />
+          <Route path="hr/travel/requests" element={<HrGuard perm="hr:read"><LazyRoute element={<TravelRequestsPage />} /></HrGuard>} />
+          <Route path="hr/travel/advances" element={<HrGuard perm="hr:read"><LazyRoute element={<TravelAdvancesPage />} /></HrGuard>} />
+          <Route path="hr/travel/expenses" element={<HrGuard perm="hr:read"><LazyRoute element={<TravelExpensesPage />} /></HrGuard>} />
+          <Route path="hr/travel/settlements" element={<HrGuard perm="hr:read"><LazyRoute element={<TravelSettlementsPage />} /></HrGuard>} />
+          <Route path="hr/travel/history" element={<HrGuard perm="hr:read"><LazyRoute element={<TravelHistoryPage />} /></HrGuard>} />
+          <Route path="hr/travel/reports" element={<HrGuard perm="hr:read"><LazyRoute element={<TravelReportsPage />} /></HrGuard>} />
+          <Route path="hr/documents" element={<HrGuard perm="hr:read"><LazyRoute element={<DocManagementPage />} /></HrGuard>} />
+          <Route path="hr/documents/files" element={<HrGuard perm="hr:read"><LazyRoute element={<DocFilesPage />} /></HrGuard>} />
+          <Route path="hr/documents/categories" element={<HrGuard perm="hr:read"><LazyRoute element={<DocCategoriesPage />} /></HrGuard>} />
+          <Route path="hr/documents/employee" element={<HrGuard perm="hr:read"><LazyRoute element={<DocEmployeeDocsPage />} /></HrGuard>} />
+          <Route path="hr/documents/versions" element={<HrGuard perm="hr:read"><LazyRoute element={<DocVersionsPage />} /></HrGuard>} />
+          <Route path="hr/documents/reports" element={<HrGuard perm="hr:read"><LazyRoute element={<DocReportsPage />} /></HrGuard>} />
+          <Route path="hr/approvals" element={<HrGuard perm="hr:read"><LazyRoute element={<ApprovalDashboardPage />} /></HrGuard>} />
+          <Route path="hr/approvals/my-queue" element={<HrGuard perm="hr:read"><LazyRoute element={<ApprovalMyQueuePage />} /></HrGuard>} />
+          <Route path="hr/approvals/configs" element={<HrGuard perm="hr:read"><LazyRoute element={<ApprovalConfigsPage />} /></HrGuard>} />
+          <Route path="hr/approvals/delegations" element={<HrGuard perm="hr:read"><LazyRoute element={<ApprovalDelegationsPage />} /></HrGuard>} />
+          <Route path="hr/approvals/history" element={<HrGuard perm="hr:read"><LazyRoute element={<ApprovalHistoryPage />} /></HrGuard>} />
           <Route path="hr/tasks" element={<HrGuard perm="hr:read"><LazyRoute element={<TasksPage />} /></HrGuard>} />
           <Route path="hr/workflows" element={<HrGuard perm="hr:read"><LazyRoute element={<WorkflowsPage />} /></HrGuard>} />
+          <Route path="hr/workflow" element={<HrGuard perm="hr:read"><Suspense fallback={<PageLoader />}><WorkflowLayout /></Suspense></HrGuard>}>
+            <Route index element={<LazyRoute element={<WorkflowDashboardPage />} />} />
+            <Route path="templates" element={<LazyRoute element={<WorkflowTemplatesPage />} />} />
+            <Route path="automation-rules" element={<LazyRoute element={<WorkflowAutomationRulesPage />} />} />
+            <Route path="notifications" element={<LazyRoute element={<WorkflowNotificationsPage />} />} />
+            <Route path="reminder-configs" element={<LazyRoute element={<WorkflowReminderConfigsPage />} />} />
+          </Route>
           <Route path="hr/offboarding" element={<HrGuard perm="hr:read"><LazyRoute element={<OffboardingPage />} /></HrGuard>} />
           <Route path="hr/helpdesk" element={<HrGuard perm="hr:read"><LazyRoute element={<HelpDeskPage />} /></HrGuard>} />
           <Route path="hr/approvals" element={<HrGuard perm="hr:approve"><LazyRoute element={<ApprovalsPage />} /></HrGuard>} />

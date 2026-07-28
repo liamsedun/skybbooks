@@ -4317,6 +4317,65 @@ export async function runMigration() {
       console.error('[Migration] Error backfilling subscriptions:', e);
     }
 
+    // ===== TRAVEL MANAGEMENT ENUMS + TABLES =====
+    try {
+      await db.execute(sql`DO $$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'hr_advance_status') THEN
+          CREATE TYPE hr_advance_status AS ENUM ('pending','approved','disbursed','settled','cancelled');
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'hr_settlement_status') THEN
+          CREATE TYPE hr_settlement_status AS ENUM ('pending','partial','settled','disputed');
+        END IF;
+      END $$;`);
+
+      await db.execute(sql`CREATE TABLE IF NOT EXISTS hr_travel_advances (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id UUID REFERENCES organisations(id) NOT NULL,
+        employee_id UUID REFERENCES hr_employees(id) NOT NULL,
+        travel_request_id UUID REFERENCES hr_travel_requests(id),
+        amount BIGINT NOT NULL,
+        currency TEXT DEFAULT 'NGN',
+        request_date DATE NOT NULL,
+        purpose TEXT,
+        status hr_advance_status DEFAULT 'pending' NOT NULL,
+        approved_by UUID,
+        approved_at TIMESTAMP,
+        disbursed_at TIMESTAMP,
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+        updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+      )`);
+
+      await db.execute(sql`CREATE TABLE IF NOT EXISTS hr_travel_settlements (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id UUID REFERENCES organisations(id) NOT NULL,
+        travel_request_id UUID REFERENCES hr_travel_requests(id) NOT NULL,
+        employee_id UUID REFERENCES hr_employees(id) NOT NULL,
+        total_expenses BIGINT DEFAULT 0,
+        advance_amount BIGINT DEFAULT 0,
+        balance_due BIGINT DEFAULT 0,
+        currency TEXT DEFAULT 'NGN',
+        status hr_settlement_status DEFAULT 'pending' NOT NULL,
+        settled_at TIMESTAMP,
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+        updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+      )`);
+
+      await db.execute(sql`ALTER TABLE hr_expense_reports ADD COLUMN IF NOT EXISTS travel_request_id UUID REFERENCES hr_travel_requests(id)`);
+
+      // Indexes
+      await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_hr_adv_emp ON hr_travel_advances(employee_id)`);
+      await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_hr_adv_trv ON hr_travel_advances(travel_request_id)`);
+      await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_hr_set_trv ON hr_travel_settlements(travel_request_id)`);
+      await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_hr_set_emp ON hr_travel_settlements(employee_id)`);
+      await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_hr_exp_trv ON hr_expense_reports(travel_request_id)`);
+
+      console.log('[Migration] Travel Management tables ready.');
+    } catch (err) {
+      console.error('[Migration] Travel Management tables error:', err);
+    }
+
     console.log('[Migration] Database is online. Migration/schema push complete!');
   } catch (err) {
     console.error('[Migration] Failed to connect or run schema setup:', err);
@@ -4519,6 +4578,105 @@ export async function runMigration() {
     console.log('[Migration] Feature rollouts tables verified.');
   } catch (e) {
     console.warn('[Migration] Could not create feature rollouts tables:', (e as Error).message);
+  }
+
+  // ===== DOCUMENT MANAGEMENT TABLES =====
+  try {
+    await pool.query(`DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'hr_doc_status') THEN
+        CREATE TYPE hr_doc_status AS ENUM ('draft','active','archived','expired');
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'hr_doc_access_level') THEN
+        CREATE TYPE hr_doc_access_level AS ENUM ('public','restricted','confidential');
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'hr_doc_permission') THEN
+        CREATE TYPE hr_doc_permission AS ENUM ('view','download','edit','admin');
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'hr_doc_link_type') THEN
+        CREATE TYPE hr_doc_link_type AS ENUM ('onboarding','contract','id','payroll','training','performance','other');
+      END IF;
+    END $$;`);
+
+    await pool.query(`CREATE TABLE IF NOT EXISTS hr_doc_categories (
+      id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+      org_id UUID REFERENCES organisations(id) NOT NULL,
+      name TEXT NOT NULL,
+      description TEXT,
+      parent_id UUID,
+      icon TEXT,
+      color TEXT DEFAULT '#3b82f6',
+      sort_order INTEGER DEFAULT 0,
+      is_active BOOLEAN DEFAULT true NOT NULL,
+      created_at TIMESTAMP DEFAULT now() NOT NULL,
+      updated_at TIMESTAMP DEFAULT now() NOT NULL
+    )`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_hr_doc_cat_org ON hr_doc_categories(org_id)`);
+
+    await pool.query(`CREATE TABLE IF NOT EXISTS hr_doc_files (
+      id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+      org_id UUID REFERENCES organisations(id) NOT NULL,
+      category_id UUID REFERENCES hr_doc_categories(id),
+      name TEXT NOT NULL,
+      description TEXT,
+      file_url TEXT NOT NULL,
+      file_type TEXT NOT NULL,
+      mime_type TEXT,
+      file_size INTEGER DEFAULT 0,
+      file_hash TEXT,
+      version INTEGER DEFAULT 1 NOT NULL,
+      status hr_doc_status DEFAULT 'active' NOT NULL,
+      expiry_date DATE,
+      access_level hr_doc_access_level DEFAULT 'restricted' NOT NULL,
+      tags TEXT[],
+      uploaded_by UUID REFERENCES users(id) NOT NULL,
+      created_at TIMESTAMP DEFAULT now() NOT NULL,
+      updated_at TIMESTAMP DEFAULT now() NOT NULL
+    )`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_hr_doc_file_org ON hr_doc_files(org_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_hr_doc_file_cat ON hr_doc_files(category_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_hr_doc_file_status ON hr_doc_files(status)`);
+
+    await pool.query(`CREATE TABLE IF NOT EXISTS hr_doc_versions (
+      id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+      file_id UUID REFERENCES hr_doc_files(id) NOT NULL,
+      org_id UUID REFERENCES organisations(id) NOT NULL,
+      version_number INTEGER NOT NULL,
+      file_url TEXT NOT NULL,
+      file_type TEXT,
+      file_size INTEGER DEFAULT 0,
+      file_hash TEXT,
+      change_notes TEXT,
+      uploaded_by UUID REFERENCES users(id) NOT NULL,
+      created_at TIMESTAMP DEFAULT now() NOT NULL
+    )`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_hr_doc_ver_file ON hr_doc_versions(file_id)`);
+
+    await pool.query(`CREATE TABLE IF NOT EXISTS hr_doc_permissions (
+      id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+      file_id UUID REFERENCES hr_doc_files(id) NOT NULL,
+      org_id UUID REFERENCES organisations(id) NOT NULL,
+      employee_id UUID REFERENCES hr_employees(id),
+      permission hr_doc_permission DEFAULT 'view' NOT NULL,
+      granted_by UUID REFERENCES users(id) NOT NULL,
+      expires_at DATE,
+      created_at TIMESTAMP DEFAULT now() NOT NULL
+    )`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_hr_doc_perm_file ON hr_doc_permissions(file_id)`);
+
+    await pool.query(`CREATE TABLE IF NOT EXISTS hr_doc_employee_links (
+      id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+      file_id UUID REFERENCES hr_doc_files(id) NOT NULL,
+      org_id UUID REFERENCES organisations(id) NOT NULL,
+      employee_id UUID REFERENCES hr_employees(id) NOT NULL,
+      link_type hr_doc_link_type DEFAULT 'other' NOT NULL,
+      created_at TIMESTAMP DEFAULT now() NOT NULL
+    )`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_hr_doc_link_file ON hr_doc_employee_links(file_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_hr_doc_link_emp ON hr_doc_employee_links(employee_id)`);
+
+    console.log('[Migration] Document Management tables ready.');
+  } catch (err) {
+    console.error('[Migration] Document Management tables error:', err);
   }
 
   await pool.end();

@@ -1,5 +1,5 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { BarChart3, Calendar } from 'lucide-react';
+import { BarChart3, Calendar, Clock, Users, AlertTriangle, Timer, FileText } from 'lucide-react';
 import { useHrPermissions } from '../../../hooks/useHrPermissions';
 
 interface TabItem {
@@ -10,8 +10,13 @@ interface TabItem {
 }
 
 const ALL_TABS: TabItem[] = [
-  { label: 'Attendance Summary', path: '/app/hr/attendance/summary', icon: BarChart3 },
-  { label: 'Shift', path: '/app/hr/attendance/shift', icon: Calendar },
+  { label: 'Summary', path: '/app/hr/attendance/summary', icon: BarChart3 },
+  { label: 'Daily Log', path: '/app/hr/attendance/daily', icon: Clock },
+  { label: 'Shifts', path: '/app/hr/attendance/shift', icon: Calendar },
+  { label: 'Shift Assignments', path: '/app/hr/attendance/shift-assignments', icon: Users },
+  { label: 'Exceptions', path: '/app/hr/attendance/exceptions', icon: AlertTriangle, permission: 'hr:manage' },
+  { label: 'Overtime', path: '/app/hr/attendance/overtime', icon: Timer, permission: 'hr:manage' },
+  { label: 'Reports', path: '/app/hr/attendance/reports', icon: FileText, permission: 'hr:reports' },
 ];
 
 export function AttendanceLayout() {
@@ -41,8 +46,8 @@ export function AttendanceLayout() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-ink-900">Attendance</h1>
-        <p className="text-sm text-ink-400 mt-0.5">Track employee attendance and manage shifts.</p>
+        <h1 className="text-xl font-bold text-ink-900">Attendance & Time Tracking</h1>
+        <p className="text-sm text-ink-400 mt-0.5">Track employee attendance, manage shifts, and handle exceptions.</p>
       </div>
       <div className="flex gap-1 bg-surface rounded-xl border border-border-custom shadow-sm p-1 overflow-x-auto">
         {TABS.map((t, i) => {

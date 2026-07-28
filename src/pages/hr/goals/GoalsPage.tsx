@@ -1,4 +1,4 @@
-﻿import { useMemo } from 'react';
+﻿import { useState, useEffect, useRef, useMemo } from 'react';
 import { Target, TrendingUp, Users, Calendar, Plus, Download, FileText, Edit3, Trash2, Eye } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -10,22 +10,18 @@ import { HrConfirmDialog } from '../../../components/hr/HrConfirmDialog';
 import { HrViewDrawer } from '../../../components/hr/HrViewDrawer';
 import { exportToCsv, exportToPdf, statusColor, formatDate } from '../../../lib/hrExport';
 import { useToast } from '../../../contexts/ToastContext';
+import { hrApi } from '../../../lib/api';
 
 interface Goal {
-  id: string; title: string; owner: string; quarter: string;
+  id: string; title: string; owner: string; cycleName: string;
   keyResults: number; progress: number; status: string;
+  description: string;
 }
 
-const MOCK: Goal[] = [
-  { id: 'goal-1', title: 'Increase Employee Retention', owner: 'Alice Johnson', quarter: 'Q3 2026', keyResults: 3, progress: 45, status: 'active' },
-  { id: 'goal-2', title: 'Reduce Time-to-Hire', owner: 'Bob Smith', quarter: 'Q3 2026', keyResults: 4, progress: 70, status: 'active' },
-  { id: 'goal-3', title: 'Improve Training Completion', owner: 'Carol White', quarter: 'Q2 2026', keyResults: 3, progress: 100, status: 'completed' },
-  { id: 'goal-4', title: 'Launch Employee Portal', owner: 'David Lee', quarter: 'Q3 2026', keyResults: 5, progress: 30, status: 'active' },
-  { id: 'goal-5', title: 'Implement 360 Reviews', owner: 'Eve Brown', quarter: 'Q2 2026', keyResults: 4, progress: 100, status: 'completed' },
-  { id: 'goal-6', title: 'Boost Diversity Hiring', owner: 'Frank Wilson', quarter: 'Q3 2026', keyResults: 3, progress: 55, status: 'active' },
-  { id: 'goal-7', title: 'Automate Payroll Processing', owner: 'Grace Kim', quarter: 'Q4 2026', keyResults: 4, progress: 0, status: 'draft' },
-  { id: 'goal-8', title: 'Health & Safety Compliance', owner: 'Henry Davis', quarter: 'Q3 2026', keyResults: 2, progress: 80, status: 'active' },
-];
+interface OkrPayload {
+  title: string; description: string; isActive: boolean;
+  ownerId?: string; cycleId?: string;
+}
 
 const progressColor = (pct: number) => {
   if (pct >= 100) return 'bg-emerald-500';
@@ -34,19 +30,81 @@ const progressColor = (pct: number) => {
   return 'bg-rose-500';
 };
 
+function deriveStatus(progress: number | null, isActive: boolean | null): string {
+  if (progress !== null && progress >= 100) return 'completed';
+  if (isActive === false) return 'draft';
+  return 'active';
+}
+
+function deriveIsActive(status: string): boolean {
+  if (status === 'draft') return false;
+  return true;
+}
+
+function mapOkrToGoal(raw: any): Goal {
+  const ownerName = raw.owner ? `${raw.owner.firstName || ''} ${raw.owner.lastName || ''}`.trim() : '';
+  const cycleName = raw.cycle?.name || '';
+  const progress = raw.progress ?? 0;
+  const krCount = Array.isArray(raw.keyResults) ? raw.keyResults.length : 0;
+  const status = deriveStatus(raw.progress, raw.isActive);
+  return {
+    id: raw.id,
+    title: raw.title || '',
+    owner: ownerName,
+    cycleName,
+    keyResults: krCount,
+    progress,
+    status,
+    description: raw.description || '',
+  };
+}
+
 export function GoalsPage() {
-  const { success: showSuccess } = useToast();
-  const ps = useHrPageState({ data: MOCK, initialSortKey: 'title', searchKeys: ['title', 'owner', 'quarter'], pageSize: 10 });
+  const { toast } = useToast();
+  const [data, setData] = useState<Goal[]>([]);
+  const [loading, setLoading] = useState(true);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const res = await hrApi.getOkrs({ pageSize: 500 });
+      const items = Array.isArray(res) ? res : (res?.data ?? []);
+      setData(items.map(mapOkrToGoal));
+    } catch {
+      toast('Failed to load goals', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchData(); }, []);
+
+  const ps = useHrPageState({ data, initialSortKey: 'title', searchKeys: ['title', 'owner', 'cycleName'], pageSize: 10 });
+
+  const statusCounts = useMemo(() => ({
+    all: data.length,
+    active: data.filter(i => i.status === 'active').length,
+    completed: data.filter(i => i.status === 'completed').length,
+    draft: data.filter(i => i.status === 'draft').length,
+  }), [data]);
+
   const stats = useMemo(() => [
-    { label: 'Total', value: MOCK.length, icon: <Target className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
-    { label: 'Active', value: MOCK.filter(i => i.status === 'active').length, icon: <TrendingUp className="w-4 h-4" />, color: 'emerald' as const, active: ps.statusFilter === 'active', onClick: () => ps.setStatusFilter('active') },
-    { label: 'Completed', value: MOCK.filter(i => i.status === 'completed').length, icon: <Users className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'completed', onClick: () => ps.setStatusFilter('completed') },
-    { label: 'Draft', value: MOCK.filter(i => i.status === 'draft').length, icon: <Calendar className="w-4 h-4" />, color: 'amber' as const, active: ps.statusFilter === 'draft', onClick: () => ps.setStatusFilter('draft') },
-  ], [ps.statusFilter]);
+    { label: 'Total', value: statusCounts.all, icon: <Target className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
+    { label: 'Active', value: statusCounts.active, icon: <TrendingUp className="w-4 h-4" />, color: 'emerald' as const, active: ps.statusFilter === 'active', onClick: () => ps.setStatusFilter('active') },
+    { label: 'Completed', value: statusCounts.completed, icon: <Users className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'completed', onClick: () => ps.setStatusFilter('completed') },
+    { label: 'Draft', value: statusCounts.draft, icon: <Calendar className="w-4 h-4" />, color: 'amber' as const, active: ps.statusFilter === 'draft', onClick: () => ps.setStatusFilter('draft') },
+  ], [statusCounts, ps.statusFilter]);
+
+  const filteredByStatus = useMemo(() => {
+    if (ps.statusFilter === 'all') return data;
+    return data.filter(i => i.status === ps.statusFilter);
+  }, [data, ps.statusFilter]);
+
   const columns: Column<Goal>[] = [
     { key: 'title', label: 'Title', sortable: true, render: (i) => <span className="font-medium text-ink-900">{i.title}</span> },
     { key: 'owner', label: 'Owner', sortable: true },
-    { key: 'quarter', label: 'Quarter', sortable: true },
+    { key: 'cycleName', label: 'Cycle', sortable: true },
     { key: 'keyResults', label: 'Key Results', sortable: true, render: (i) => <span className="text-ink-600">{i.keyResults}</span> },
     { key: 'progress', label: 'Progress', sortable: true, render: (i) => (
       <div className="flex items-center gap-2 min-w-[100px]">
@@ -65,13 +123,63 @@ export function GoalsPage() {
       </div>
     ), className: 'text-right' },
   ];
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formRef.current) return;
+    const fd = new FormData(formRef.current);
+    const title = fd.get('title') as string;
+    const description = fd.get('description') as string;
+    const status = fd.get('status') as string;
+    if (!title?.trim()) { toast('Title is required', 'error'); return; }
+    const payload: OkrPayload = { title: title.trim(), description: description?.trim() || '', isActive: deriveIsActive(status) };
+    try {
+      if (ps.editingId) {
+        await hrApi.updateOkr(ps.editingId, payload);
+        toast('Goal updated', 'success');
+      } else {
+        await hrApi.createOkr(payload);
+        toast('Goal created', 'success');
+      }
+      ps.closeModal();
+      await fetchData();
+    } catch {
+      toast(ps.editingId ? 'Failed to update goal' : 'Failed to create goal', 'error');
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!ps.deletingId) return;
+    try {
+      await hrApi.deleteOkr(ps.deletingId);
+      toast('Goal deleted', 'success');
+      ps.closeConfirmDelete();
+      await fetchData();
+    } catch {
+      toast('Failed to delete goal', 'error');
+    }
+  };
+
+  const editingGoal = ps.editingId ? data.find(i => i.id === ps.editingId) : null;
+  const viewingGoal = ps.viewingId ? data.find(i => i.id === ps.viewingId) : null;
+
+  if (loading) {
+    return (
+      <HrPageShell title="OKR Goals" description="Manage objectives and key results" pageKey="goals">
+        <div className="flex items-center justify-center py-20">
+          <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full" />
+        </div>
+      </HrPageShell>
+    );
+  }
+
   return (
     <HrPageShell title="OKR Goals" description="Manage objectives and key results"
       pageKey="goals"
       headerActions={
         <>
-          <button onClick={() => { exportToCsv(['Title','Owner','Quarter','Key Results','Progress','Status'], ps.filtered.map(i => [i.title,i.owner,i.quarter,String(i.keyResults),`${i.progress}%`,i.status]), 'goals'); showSuccess('Exported'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
-          <button onClick={() => exportToPdf('OKR Goals', ['Title','Owner','Quarter','Key Results','Progress','Status'], ps.filtered.map(i => [i.title,i.owner,i.quarter,String(i.keyResults),`${i.progress}%`,i.status]), 'goals')} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><FileText className="w-3.5 h-3.5" /> PDF</button>
+          <button onClick={() => { exportToCsv(['Title','Owner','Cycle','Key Results','Progress','Status'], ps.filtered.map(i => [i.title,i.owner,i.cycleName,String(i.keyResults),`${i.progress}%`,i.status]), 'goals'); toast('Exported', 'success'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
+          <button onClick={() => exportToPdf('OKR Goals', ['Title','Owner','Cycle','Key Results','Progress','Status'], ps.filtered.map(i => [i.title,i.owner,i.cycleName,String(i.keyResults),`${i.progress}%`,i.status]), 'goals')} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><FileText className="w-3.5 h-3.5" /> PDF</button>
           <button onClick={ps.openAddModal} className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary-hover transition-all shadow-sm"><Plus className="w-3.5 h-3.5" /> Add New</button>
         </>
       }>
@@ -86,25 +194,45 @@ export function GoalsPage() {
         page={ps.page} totalPages={ps.totalPages} onPageChange={ps.setPage} pageSize={ps.pageSize} totalItems={ps.filtered.length}
         from={(ps.page - 1) * ps.pageSize + 1} to={Math.min(ps.page * ps.pageSize, ps.filtered.length)}
         emptyMessage="No goals" emptyAction={<button onClick={ps.openAddModal} className="text-xs font-medium text-primary">Add</button>} />
-      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Goal' : 'Add Goal'} onSubmit={(e) => { e.preventDefault(); showSuccess(ps.editingId ? 'Updated' : 'Created'); ps.closeModal(); }}>
-        <div><label className="block text-xs font-medium text-ink-500 mb-1">Goal Title</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" placeholder="e.g. Increase Employee Retention" /></div>
-        <div><label className="block text-xs font-medium text-ink-500 mb-1">Owner</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" placeholder="e.g. Alice Johnson" /></div>
-        <div className="grid grid-cols-2 gap-3"><div><label className="block text-xs font-medium text-ink-500 mb-1">Quarter</label><select className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"><option value="Q1 2026">Q1 2026</option><option value="Q2 2026">Q2 2026</option><option value="Q3 2026">Q3 2026</option><option value="Q4 2026">Q4 2026</option></select></div><div><label className="block text-xs font-medium text-ink-500 mb-1">Status</label><select className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"><option value="draft">Draft</option><option value="active">Active</option><option value="completed">Completed</option></select></div></div>
-        <div><label className="block text-xs font-medium text-ink-500 mb-1">Description</label><textarea className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" rows={3} placeholder="Describe the objective and its impact..." /></div>
-      </HrFormModal>
-      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showSuccess('Deleted'); ps.closeConfirmDelete(); }} title="Delete Goal" message="Are you sure you want to delete this goal?" confirmLabel="Delete" variant="danger" />
-      <HrViewDrawer open={ps.viewDrawerOpen} onClose={ps.closeViewDrawer} title="Goal Details">
-        {ps.viewingId && (() => { const g = MOCK.find(i => i.id === ps.viewingId)!; return (
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 pb-4 border-b border-border-custom"><div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/30 text-amber-600 flex items-center justify-center"><Target className="w-5 h-5" /></div><div><p className="text-sm font-semibold text-ink-900">{g.title}</p><p className="text-xs text-ink-400">Owned by {g.owner} · {g.quarter}</p></div></div>
-            <div><p className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider mb-1">Progress</p><div className="flex items-center gap-2"><div className="flex-1 h-2.5 bg-ink-100 dark:bg-ink-800 rounded-full overflow-hidden"><div className={`h-full rounded-full transition-all ${progressColor(g.progress)}`} style={{ width: `${g.progress}%` }} /></div><span className="text-sm font-semibold text-ink-700 w-10 text-right">{g.progress}%</span></div></div>
-            <div><p className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider mb-1">Key Results</p><p className="text-sm font-medium text-ink-700">{g.keyResults} key result{g.keyResults !== 1 ? 's' : ''}</p></div>
-            <div className="grid grid-cols-2 gap-3"><div><p className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider">Status</p><span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border mt-1 ${statusColor(g.status)}`}>{g.status}</span></div><div><p className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider">Quarter</p><p className="text-sm text-ink-700 mt-1">{g.quarter}</p></div></div>
+      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Goal' : 'Add Goal'} onSubmit={handleSubmit}>
+        <form ref={formRef}>
+          <div><label className="block text-xs font-medium text-ink-500 mb-1">Goal Title</label><input name="title" defaultValue={editingGoal?.title || ''} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" placeholder="e.g. Increase Employee Retention" /></div>
+          <div className="grid grid-cols-2 gap-3 mt-3">
+            <div>
+              <label className="block text-xs font-medium text-ink-500 mb-1">Cycle</label>
+              <select name="cycleName" defaultValue={editingGoal?.cycleName || 'Q3 2026'} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
+                <option value="Q1 2026">Q1 2026</option>
+                <option value="Q2 2026">Q2 2026</option>
+                <option value="Q3 2026">Q3 2026</option>
+                <option value="Q4 2026">Q4 2026</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-ink-500 mb-1">Status</label>
+              <select name="status" defaultValue={editingGoal?.status || 'draft'} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
+                <option value="draft">Draft</option>
+                <option value="active">Active</option>
+                <option value="completed">Completed</option>
+              </select>
+            </div>
           </div>
-        );})()}
+          <div className="mt-3"><label className="block text-xs font-medium text-ink-500 mb-1">Description</label><textarea name="description" defaultValue={editingGoal?.description || ''} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" rows={3} placeholder="Describe the objective and its impact..." /></div>
+        </form>
+      </HrFormModal>
+      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={handleDelete} title="Delete Goal" message="Are you sure you want to delete this goal?" confirmLabel="Delete" variant="danger" />
+      <HrViewDrawer open={ps.viewDrawerOpen} onClose={ps.closeViewDrawer} title="Goal Details">
+        {viewingGoal && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 pb-4 border-b border-border-custom"><div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/30 text-amber-600 flex items-center justify-center"><Target className="w-5 h-5" /></div><div><p className="text-sm font-semibold text-ink-900">{viewingGoal.title}</p><p className="text-xs text-ink-400">Owned by {viewingGoal.owner || 'Unassigned'} · {viewingGoal.cycleName || 'No cycle'}</p></div></div>
+            <div><p className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider mb-1">Progress</p><div className="flex items-center gap-2"><div className="flex-1 h-2.5 bg-ink-100 dark:bg-ink-800 rounded-full overflow-hidden"><div className={`h-full rounded-full transition-all ${progressColor(viewingGoal.progress)}`} style={{ width: `${viewingGoal.progress}%` }} /></div><span className="text-sm font-semibold text-ink-700 w-10 text-right">{viewingGoal.progress}%</span></div></div>
+            <div><p className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider mb-1">Key Results</p><p className="text-sm font-medium text-ink-700">{viewingGoal.keyResults} key result{viewingGoal.keyResults !== 1 ? 's' : ''}</p></div>
+            <div className="grid grid-cols-2 gap-3"><div><p className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider">Status</p><span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border mt-1 ${statusColor(viewingGoal.status)}`}>{viewingGoal.status}</span></div><div><p className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider">Cycle</p><p className="text-sm text-ink-700 mt-1">{viewingGoal.cycleName || '—'}</p></div></div>
+            {viewingGoal.description && (
+              <div><p className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider mb-1">Description</p><p className="text-sm text-ink-700">{viewingGoal.description}</p></div>
+            )}
+          </div>
+        )}
       </HrViewDrawer>
     </HrPageShell>
   );
 }
-
-

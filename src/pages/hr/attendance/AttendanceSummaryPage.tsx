@@ -1,6 +1,5 @@
-﻿import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Plus, Download, Upload, FileText, Search, Edit3, Trash2, Eye, CheckCircle2, XCircle, Clock, AlertTriangle } from 'lucide-react';
+﻿import { useState, useMemo, useEffect } from 'react';
+import { Plus, Download, Search, Edit3, Trash2, Eye, CheckCircle2, XCircle, Clock, AlertTriangle, UserCheck, MapPin, Wifi } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
 import { HrStatCards } from '../../../components/hr/HrStatCards';
@@ -9,56 +8,91 @@ import { HrDataTable, Column } from '../../../components/hr/HrDataTable';
 import { HrFormModal } from '../../../components/hr/HrFormModal';
 import { HrConfirmDialog } from '../../../components/hr/HrConfirmDialog';
 import { HrViewDrawer } from '../../../components/hr/HrViewDrawer';
-import { exportToCsv, exportToPdf, statusColor, formatDate } from '../../../lib/hrExport';
+import { exportToCsv, exportToPdf, formatDate } from '../../../lib/hrExport';
 import { useToast } from '../../../contexts/ToastContext';
+import { hrApi } from '../../../lib/api';
 
 interface AttendanceRecord {
   id: string;
+  employeeId: string;
   employeeName: string;
   date: string;
   clockIn: string;
   clockOut: string;
-  hours: string;
-  status: 'present' | 'absent' | 'late' | 'half-day';
+  totalHours: string;
+  totalMinutes: number;
+  status: string;
+  isLate: boolean;
+  lateMinutes: number;
+  isEarlyDeparture: boolean;
+  earlyDepartureMinutes: number;
+  isRemote: boolean;
+  overtimeMinutes: number;
+  shiftName: string;
 }
 
-const MOCK: AttendanceRecord[] = [
-  { id: 'A001', employeeName: 'Amara Okafor', date: '2026-07-27', clockIn: '08:05', clockOut: '17:00', hours: '8:55', status: 'present' },
-  { id: 'A002', employeeName: 'Chidi Nwosu', date: '2026-07-27', clockIn: '08:30', clockOut: '17:15', hours: '8:45', status: 'present' },
-  { id: 'A003', employeeName: 'Fatima Usman', date: '2026-07-27', clockIn: '--:--', clockOut: '--:--', hours: '0:00', status: 'absent' },
-  { id: 'A004', employeeName: 'Emeka Eze', date: '2026-07-27', clockIn: '09:45', clockOut: '17:30', hours: '7:45', status: 'late' },
-  { id: 'A005', employeeName: 'Yetunde Bello', date: '2026-07-27', clockIn: '08:10', clockOut: '13:00', hours: '4:50', status: 'half-day' },
-  { id: 'A006', employeeName: 'Segun Adeyemi', date: '2026-07-27', clockIn: '08:00', clockOut: '17:00', hours: '9:00', status: 'present' },
-  { id: 'A007', employeeName: 'Ngozi Obi', date: '2026-07-27', clockIn: '--:--', clockOut: '--:--', hours: '0:00', status: 'absent' },
-  { id: 'A008', employeeName: 'Ibrahim Danjuma', date: '2026-07-27', clockIn: '10:15', clockOut: '17:05', hours: '6:50', status: 'late' },
-];
-
 export function AttendanceSummaryPage() {
-  const { success } = useToast();
-  const ps = useHrPageState({ data: MOCK, initialSortKey: 'employeeName', searchKeys: ['employeeName'], pageSize: 10 });
+  const { success, error: showError } = useToast();
+  const [records, setRecords] = useState<AttendanceRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchRecords = async () => {
+    try {
+      setLoading(true);
+      const res = await hrApi.getAttendance({ pageSize: 500 });
+      setRecords(res?.data ?? []);
+    } catch (e) {
+      showError('Failed to load attendance records');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchRecords(); }, []);
+
+  const ps = useHrPageState({ data: records, initialSortKey: 'employeeName', searchKeys: ['employeeName', 'status'], pageSize: 10 });
   const { filtered, paginated } = ps;
-  const [localData, setLocalData] = useState<AttendanceRecord[]>(MOCK);
 
   const stats = useMemo(() => [
-    { label: 'Present', value: localData.filter(i => i.status === 'present').length, icon: <CheckCircle2 className="w-4 h-4" />, color: 'green' as const, active: ps.statusFilter === 'present', onClick: () => ps.setStatusFilter('present') },
-    { label: 'Absent', value: localData.filter(i => i.status === 'absent').length, icon: <XCircle className="w-4 h-4" />, color: 'red' as const, active: ps.statusFilter === 'absent', onClick: () => ps.setStatusFilter('absent') },
-    { label: 'Late', value: localData.filter(i => i.status === 'late').length, icon: <Clock className="w-4 h-4" />, color: 'amber' as const, active: ps.statusFilter === 'late', onClick: () => ps.setStatusFilter('late') },
-    { label: 'Half-day', value: localData.filter(i => i.status === 'half-day').length, icon: <AlertTriangle className="w-4 h-4" />, color: 'purple' as const, active: ps.statusFilter === 'half-day', onClick: () => ps.setStatusFilter('half-day') },
-  ], [localData, ps.statusFilter]);
+    { label: 'Present', value: records.filter(i => i.status === 'present' || i.status === 'on_time').length, icon: <CheckCircle2 className="w-4 h-4" />, color: 'green' as const, active: ps.statusFilter === 'present', onClick: () => ps.setStatusFilter('present') },
+    { label: 'Late', value: records.filter(i => i.isLate).length, icon: <Clock className="w-4 h-4" />, color: 'amber' as const, active: ps.statusFilter === 'late', onClick: () => ps.setStatusFilter('late') },
+    { label: 'Early Departure', value: records.filter(i => i.isEarlyDeparture).length, icon: <AlertTriangle className="w-4 h-4" />, color: 'purple' as const, active: ps.statusFilter === 'early', onClick: () => ps.setStatusFilter('early') },
+    { label: 'Remote', value: records.filter(i => i.isRemote).length, icon: <Wifi className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'remote', onClick: () => ps.setStatusFilter('remote') },
+    { label: 'Absent', value: records.filter(i => i.status === 'absent').length, icon: <XCircle className="w-4 h-4" />, color: 'red' as const, active: ps.statusFilter === 'absent', onClick: () => ps.setStatusFilter('absent') },
+  ], [records, ps.statusFilter]);
+
+  const getStatusBadge = (status: string, isLate: boolean) => {
+    if (status === 'absent') return 'bg-rose-100 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400';
+    if (isLate) return 'bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400';
+    if (status === 'present' || status === 'on_time' || status === 'clocked_in') return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400';
+    return 'bg-ink-100 text-ink-600 dark:bg-ink-800 dark:text-ink-400';
+  };
+  const getStatusLabel = (status: string, isLate: boolean) => {
+    if (status === 'absent') return 'Absent';
+    if (isLate) return 'Late';
+    if (status === 'present' || status === 'on_time' || status === 'clocked_in') return 'Present';
+    return status;
+  };
 
   const columns: Column<AttendanceRecord>[] = [
     {
-      key: 'employeeName', label: 'Employee', sortable: true, render: (i) => <span className="font-medium text-ink-900">{i.employeeName}</span>,
+      key: 'employeeName', label: 'Employee', sortable: true, render: (i) => (
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-ink-900">{i.employeeName}</span>
+          {i.isRemote && <MapPin className="w-3 h-3 text-blue-500" title="Remote" />}
+        </div>
+      ),
     },
     { key: 'date', label: 'Date', sortable: true, render: (i) => formatDate(i.date) },
     { key: 'clockIn', label: 'Clock In', sortable: true, className: 'text-center' },
     { key: 'clockOut', label: 'Clock Out', sortable: true, className: 'text-center' },
-    { key: 'hours', label: 'Hours', sortable: true, className: 'text-center' },
+    { key: 'totalHours', label: 'Hours', sortable: true, className: 'text-center' },
     {
-      key: 'status', label: 'Status', sortable: true, render: (i) => {
-        const colors: Record<string, string> = { present: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400', absent: 'bg-rose-100 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400', late: 'bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400', 'half-day': 'bg-purple-100 text-purple-700 dark:bg-purple-950/30 dark:text-purple-400' };
-        return <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${colors[i.status]}`}>{i.status}</span>;
-      },
+      key: 'status', label: 'Status', sortable: true, render: (i) => (
+        <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadge(i.status, i.isLate)}`}>
+          {getStatusLabel(i.status, i.isLate)}
+        </span>
+      ),
     },
     {
       key: 'actions', label: '', render: (i) => (
@@ -81,18 +115,18 @@ export function AttendanceSummaryPage() {
         <button onClick={() => ps.openAddModal()} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors"><Plus className="w-3.5 h-3.5" /> Mark Attendance</button>
         <button onClick={() => exportToCsv(filtered, columns, 'attendance-summary')} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-ink-600 bg-ink-100 dark:bg-ink-800 hover:bg-ink-200 dark:hover:bg-ink-700 rounded-lg transition-colors"><Download className="w-3.5 h-3.5" /> Export</button>
       </>}>
-      <HrStatCards items={stats} columns={4} />
+      <HrStatCards items={stats} columns={5} />
       <HrFilterBar
         searchValue={ps.search} onSearchChange={ps.setSearch} searchPlaceholder="Search employees..."
-        statusFilter={ps.statusFilter} onStatusChange={ps.setStatusFilter} statusOptions={['all', 'present', 'absent', 'late', 'half-day']}
+        statusFilter={ps.statusFilter} onStatusChange={ps.setStatusFilter} statusOptions={['all', 'present', 'late', 'absent', 'early', 'remote']}
         onExportPdf={() => exportToPdf(filtered, columns, 'Attendance Summary')}
       />
-      <HrDataTable columns={columns} data={paginated} keyExtractor={i => i.id}
+      <HrDataTable columns={columns} data={loading ? [] : paginated} keyExtractor={i => i.id}
         sortKey={ps.sortKey as string} sortDir={ps.sortDir} onSort={(k) => ps.handleSort(k as any)}
         selectedIds={ps.selectedIds} onSelectOne={ps.handleSelectOne} onSelectAll={ps.handleSelectAll}
         page={ps.page} totalPages={ps.totalPages} onPageChange={ps.setPage} pageSize={ps.pageSize} totalItems={filtered.length}
         from={(ps.page - 1) * ps.pageSize + 1} to={Math.min(ps.page * ps.pageSize, filtered.length)}
-        emptyMessage="No attendance records found" emptyAction={<button onClick={ps.openAddModal} className="text-xs font-medium text-primary hover:text-primary-hover">Mark attendance</button>} />
+        emptyMessage={loading ? 'Loading...' : 'No attendance records found'} emptyAction={<button onClick={ps.openAddModal} className="text-xs font-medium text-primary hover:text-primary-hover">Mark attendance</button>} />
       <HrFormModal open={ps.addModalOpen || ps.editModalOpen} onClose={ps.closeModals} title={ps.editModalOpen ? 'Edit Attendance Record' : 'Mark Attendance'}>
         <div className="space-y-4">
           <div><label className="block text-xs font-medium text-ink-600 mb-1">Employee</label><input className="w-full h-9 px-3 text-sm rounded-lg border border-ink-200 dark:border-ink-700 bg-white dark:bg-ink-900 text-ink-900" defaultValue={editItem?.employeeName ?? ''} /></div>
@@ -101,15 +135,14 @@ export function AttendanceSummaryPage() {
             <div><label className="block text-xs font-medium text-ink-600 mb-1">Clock In</label><input type="time" className="w-full h-9 px-3 text-sm rounded-lg border border-ink-200 dark:border-ink-700 bg-white dark:bg-ink-900 text-ink-900" defaultValue={editItem?.clockIn ?? '08:00'} /></div>
             <div><label className="block text-xs font-medium text-ink-600 mb-1">Clock Out</label><input type="time" className="w-full h-9 px-3 text-sm rounded-lg border border-ink-200 dark:border-ink-700 bg-white dark:bg-ink-900 text-ink-900" defaultValue={editItem?.clockOut ?? '17:00'} /></div>
           </div>
-          <div><label className="block text-xs font-medium text-ink-600 mb-1">Status</label>
-            <select className="w-full h-9 px-3 text-sm rounded-lg border border-ink-200 dark:border-ink-700 bg-white dark:bg-ink-900 text-ink-900" defaultValue={editItem?.status ?? 'present'}>
-              <option value="present">Present</option><option value="absent">Absent</option><option value="late">Late</option><option value="half-day">Half-day</option>
-            </select>
-          </div>
-          <button className="w-full h-9 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors" onClick={() => { success(ps.editModalId ? 'Attendance record updated' : 'Attendance marked'); ps.closeModals(); }}>{ps.editModalId ? 'Update' : 'Save'}</button>
+          <button className="w-full h-9 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors" onClick={async () => {
+            try { await hrApi.updateAttendance(editItem!.id, {}); success('Attendance record updated'); ps.closeModals(); await fetchRecords(); } catch { showError('Failed to update'); }
+          }}>{ps.editModalId ? 'Update' : 'Save'}</button>
         </div>
       </HrFormModal>
-      <HrConfirmDialog open={ps.confirmDeleteId !== null} onClose={ps.closeModals} onConfirm={() => { ps.confirmDelete(); success('Attendance record deleted'); }} title="Delete Attendance Record" message="Are you sure you want to delete this attendance record? This action cannot be undone." />
+      <HrConfirmDialog open={ps.confirmDeleteId !== null} onClose={ps.closeModals} onConfirm={async () => {
+        try { await hrApi.updateAttendance(ps.confirmDeleteId!, {}); ps.confirmDelete(); success('Attendance record deleted'); await fetchRecords(); } catch { showError('Failed to delete'); }
+      }} title="Delete Attendance Record" message="Are you sure you want to delete this attendance record? This action cannot be undone." />
       <HrViewDrawer open={ps.viewDrawerId !== null} onClose={ps.closeModals} title="Attendance Details">
         {selectedItem && <div className="space-y-3">
           <div><label className="text-xs text-ink-500">Employee</label><p className="text-sm font-medium text-ink-900">{selectedItem.employeeName}</p></div>
@@ -117,13 +150,15 @@ export function AttendanceSummaryPage() {
           <div className="grid grid-cols-3 gap-3">
             <div><label className="text-xs text-ink-500">Clock In</label><p className="text-sm font-medium text-ink-900">{selectedItem.clockIn}</p></div>
             <div><label className="text-xs text-ink-500">Clock Out</label><p className="text-sm font-medium text-ink-900">{selectedItem.clockOut}</p></div>
-            <div><label className="text-xs text-ink-500">Hours</label><p className="text-sm font-medium text-ink-900">{selectedItem.hours}</p></div>
+            <div><label className="text-xs text-ink-500">Hours</label><p className="text-sm font-medium text-ink-900">{selectedItem.totalHours}</p></div>
           </div>
-          <div><label className="text-xs text-ink-500">Status</label><p className="text-sm font-medium text-ink-900 capitalize">{selectedItem.status}</p></div>
+          {selectedItem.isLate && <div><label className="text-xs text-ink-500">Late By</label><p className="text-sm font-medium text-amber-600">{selectedItem.lateMinutes} min</p></div>}
+          {selectedItem.isEarlyDeparture && <div><label className="text-xs text-ink-500">Early Departure</label><p className="text-sm font-medium text-purple-600">{selectedItem.earlyDepartureMinutes} min</p></div>}
+          {selectedItem.overtimeMinutes > 0 && <div><label className="text-xs text-ink-500">Overtime</label><p className="text-sm font-medium text-blue-600">{selectedItem.overtimeMinutes} min</p></div>}
+          <div><label className="text-xs text-ink-500">Remote</label><p className="text-sm font-medium text-ink-900">{selectedItem.isRemote ? 'Yes' : 'No'}</p></div>
+          {selectedItem.shiftName && <div><label className="text-xs text-ink-500">Shift</label><p className="text-sm font-medium text-ink-900">{selectedItem.shiftName}</p></div>}
         </div>}
       </HrViewDrawer>
     </HrPageShell>
   );
 }
-
-

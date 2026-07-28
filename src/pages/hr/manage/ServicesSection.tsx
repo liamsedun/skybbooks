@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   UserPlus, UserCheck, FileText, Users, Building, User,
@@ -71,14 +72,19 @@ const SERVICE_GROUPS: { label: string; items: ServiceTab[] }[] = [
 
 const ALL_TABS = SERVICE_GROUPS.flatMap(g => g.items);
 
-function ServiceForm({ label }: { label: string }) {
+interface ServiceConfig {
+  enabled: boolean;
+  config: string;
+}
+
+function ServiceForm({ label, config, onChange }: { label: string; config: ServiceConfig; onChange: (c: ServiceConfig) => void }) {
   const { success } = useToast();
   return (
     <div className="bg-surface rounded-2xl border border-border-custom shadow-sm p-6 space-y-5">
       <div className="flex items-center justify-between"><h2 className="text-base font-semibold text-ink-900">{label} Settings</h2><button onClick={() => success(`${label} settings saved`)} className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary-hover transition-all shadow-sm"><Save className="w-3.5 h-3.5" /> Save</button></div>
       <div className="space-y-4">
-        <div><label className="block text-xs font-medium text-ink-500 mb-1">Enable {label}</label><label className="relative inline-flex items-center cursor-pointer mt-1"><input type="checkbox" defaultChecked className="sr-only peer" /><div className="w-9 h-5 bg-ink-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary/30 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div></label></div>
-        <div><label className="block text-xs font-medium text-ink-500 mb-1">Configuration</label><textarea rows={4} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none" placeholder={`Configure ${label.toLowerCase()} settings here...`} /></div>
+        <div><label className="block text-xs font-medium text-ink-500 mb-1">Enable {label}</label><label className="relative inline-flex items-center cursor-pointer mt-1"><input type="checkbox" checked={config.enabled} onChange={e => onChange({ ...config, enabled: e.target.checked })} className="sr-only peer" /><div className="w-9 h-5 bg-ink-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary/30 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div></label></div>
+        <div><label className="block text-xs font-medium text-ink-500 mb-1">Configuration</label><textarea rows={4} value={config.config} onChange={e => onChange({ ...config, config: e.target.value })} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none" placeholder={`Configure ${label.toLowerCase()} settings here...`} /></div>
       </div>
     </div>
   );
@@ -89,6 +95,16 @@ export function ServicesSection() {
   const activeTab = searchParams.get('tab') || 'onboarding';
   const activeItem = ALL_TABS.find(t => t.key === activeTab);
   const ActiveIcon = activeItem?.icon || ClipboardList;
+
+  const [configs, setConfigs] = useState<Record<string, ServiceConfig>>(() => {
+    const init: Record<string, ServiceConfig> = {};
+    ALL_TABS.forEach(t => { init[t.key] = { enabled: true, config: '' }; });
+    return init;
+  });
+
+  const updateConfig = (key: string, c: ServiceConfig) => {
+    setConfigs(prev => ({ ...prev, [key]: c }));
+  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -116,7 +132,9 @@ export function ServicesSection() {
         ))}
       </div>
       <div className="lg:col-span-3 space-y-6">
-        {activeItem ? <ServiceForm label={activeItem.label} /> : (
+        {activeItem ? (
+          <ServiceForm label={activeItem.label} config={configs[activeTab] || { enabled: true, config: '' }} onChange={c => updateConfig(activeTab, c)} />
+        ) : (
           <div className="bg-surface rounded-2xl border border-border-custom shadow-sm p-8 text-center text-ink-400">
             <ActiveIcon className="w-12 h-12 mx-auto mb-3 text-ink-300" />
             <p className="font-medium text-ink-600">Services</p>

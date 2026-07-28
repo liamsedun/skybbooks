@@ -85,6 +85,12 @@ import hrLeaveTimeRouter from '../routes/hr/leave-time';
 import hrPeopleRouter from '../routes/hr/people';
 import hrOperationsRouter from '../routes/hr/operations';
 import hrSupportRouter from '../routes/hr/support';
+import hrTravelRouter from '../routes/hr/travel';
+import hrDocumentsRouter from '../routes/hr/documents';
+import hrApprovalsRouter from '../routes/hr/approvals';
+import hrReportsRouter from '../routes/hr/reports';
+import hrWorkflowRouter from '../routes/hr/workflow';
+import hrIntegrationRouter from '../routes/hr/integration';
 import promotionsEngineRouter from '../routes/promotionsEngine';
 
 import { runMigration } from '../db/migrate';
@@ -94,6 +100,7 @@ import { routeGuard } from '../middleware/routeGuard';
 import { AppError, ValidationError } from '../lib/errors';
 import { processPaymentReminders } from '../services/reminders.service';
 import { runDueRecurringBills } from '../services/recurring-bills.service';
+import { runAllOrgAlerts, runAllOrgEscalations, runAllOrgRenewalChecks } from '../services/hr/scheduler.service';
 
 const logger = winston.createLogger({
   level: 'info',
@@ -136,6 +143,15 @@ async function startServer() {
 
   // Send payment reminders (every 6 hours)
   setInterval(() => processPaymentReminders().catch((err) => logger.error('[Reminders] Error:', err)), 6 * 60 * 60 * 1000);
+
+  // HR scheduled alerts (birthday, anniversary, probation, contract expiry) — every 6 hours
+  setInterval(() => runAllOrgAlerts().catch((err) => logger.error('[HR Alerts] Error:', err)), 6 * 60 * 60 * 1000);
+
+  // HR escalation checks (auto-escalate timed-out approval steps) — every 30 minutes
+  setInterval(() => runAllOrgEscalations().catch((err) => logger.error('[HR Escalations] Error:', err)), 30 * 60 * 1000);
+
+  // HR renewal checks (contract/visa/cert renewal reminders) — every 6 hours
+  setInterval(() => runAllOrgRenewalChecks().catch((err) => logger.error('[HR Renewals] Error:', err)), 6 * 60 * 60 * 1000);
 
   const app = express();
   const PORT = Number(process.env.PORT) || 3000;
@@ -253,6 +269,12 @@ async function startServer() {
   app.use('/api/hr', hrPeopleRouter);
   app.use('/api/hr', hrOperationsRouter);
   app.use('/api/hr', hrSupportRouter);
+  app.use('/api/hr', hrTravelRouter);
+  app.use('/api/hr', hrDocumentsRouter);
+  app.use('/api/hr', hrApprovalsRouter);
+  app.use('/api/hr', hrReportsRouter);
+  app.use('/api/hr', hrWorkflowRouter);
+  app.use('/api/hr', hrIntegrationRouter);
 
   app.get('/api/health', (req, res) => {
     res.json({ status: 'healthy', timestamp: new Date().toISOString() });

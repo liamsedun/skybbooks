@@ -117,6 +117,8 @@ import {
   hrTravelRequests,
   hrExpenseReports,
   hrExpenseEntries,
+  hrTravelAdvances,
+  hrTravelSettlements,
   hrCompensationBands,
   hrEmployeeCompensation,
   hrBenefits,
@@ -134,6 +136,11 @@ import {
   hrApprovalRequests,
   hrSettings,
   hrPolicies,
+  hrDocCategories,
+  hrDocFiles,
+  hrDocVersions,
+  hrDocPermissions,
+  hrDocEmployeeLinks,
 } from './tables';
 
 export const organisationsRelations = relations(organisations, ({ many }) => ({
@@ -1738,6 +1745,7 @@ export const hrExpenseReportsRelations = relations(hrExpenseReports, ({ one, man
   organisation: one(organisations, { fields: [hrExpenseReports.orgId], references: [organisations.id] }),
   employee: one(hrEmployees, { fields: [hrExpenseReports.employeeId], references: [hrEmployees.id] }),
   entries: many(hrExpenseEntries),
+  travelRequest: one(hrTravelRequests, { fields: [hrExpenseReports.travelRequestId], references: [hrTravelRequests.id] }),
 }));
 
 export const hrExpenseEntriesRelations = relations(hrExpenseEntries, ({ one }) => ({
@@ -1820,10 +1828,37 @@ export const hrApprovalConfigsRelations = relations(hrApprovalConfigs, ({ one })
   organisation: one(organisations, { fields: [hrApprovalConfigs.orgId], references: [organisations.id] }),
 }));
 
-export const hrApprovalRequestsRelations = relations(hrApprovalRequests, ({ one }) => ({
+export const hrApprovalRequestsRelations = relations(hrApprovalRequests, ({ one, many }) => ({
   organisation: one(organisations, { fields: [hrApprovalRequests.orgId], references: [organisations.id] }),
   requester: one(hrEmployees, { fields: [hrApprovalRequests.requesterId], references: [hrEmployees.id], relationName: 'approvalsRequested' }),
   approver: one(hrEmployees, { fields: [hrApprovalRequests.approverId], references: [hrEmployees.id], relationName: 'approvalsApproved' }),
+  escalatedToEmployee: one(hrEmployees, { fields: [hrApprovalRequests.escalatedTo], references: [hrEmployees.id], relationName: 'approvalsEscalated' }),
+  delegatedToEmployee: one(hrEmployees, { fields: [hrApprovalRequests.delegatedTo], references: [hrEmployees.id], relationName: 'approvalsDelegated' }),
+  stepInstances: many(hrApprovalStepInstances),
+  comments: many(hrApprovalComments),
+}));
+
+export const hrApprovalStepInstancesRelations = relations(hrApprovalStepInstances, ({ one, many }) => ({
+  request: one(hrApprovalRequests, { fields: [hrApprovalStepInstances.requestId], references: [hrApprovalRequests.id] }),
+  assignee: one(hrEmployees, { fields: [hrApprovalStepInstances.assigneeId], references: [hrEmployees.id] }),
+  comments: many(hrApprovalComments),
+}));
+
+export const hrApprovalDelegationsRelations = relations(hrApprovalDelegations, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrApprovalDelegations.orgId], references: [organisations.id] }),
+  delegator: one(hrEmployees, { fields: [hrApprovalDelegations.delegatorId], references: [hrEmployees.id], relationName: 'delegationsGiven' }),
+  delegate: one(hrEmployees, { fields: [hrApprovalDelegations.delegateId], references: [hrEmployees.id], relationName: 'delegationsReceived' }),
+}));
+
+export const hrApprovalEscalationRulesRelations = relations(hrApprovalEscalationRules, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrApprovalEscalationRules.orgId], references: [organisations.id] }),
+  escalateTo: one(hrEmployees, { fields: [hrApprovalEscalationRules.escalateToUserId], references: [hrEmployees.id] }),
+}));
+
+export const hrApprovalCommentsRelations = relations(hrApprovalComments, ({ one }) => ({
+  request: one(hrApprovalRequests, { fields: [hrApprovalComments.requestId], references: [hrApprovalRequests.id] }),
+  stepInstance: one(hrApprovalStepInstances, { fields: [hrApprovalComments.stepInstanceId], references: [hrApprovalStepInstances.id] }),
+  user: one(hrEmployees, { fields: [hrApprovalComments.userId], references: [hrEmployees.id] }),
 }));
 
 export const hrSettingsRelations = relations(hrSettings, ({ one }) => ({
@@ -1833,4 +1868,93 @@ export const hrSettingsRelations = relations(hrSettings, ({ one }) => ({
 export const hrPoliciesRelations = relations(hrPolicies, ({ one }) => ({
   organisation: one(organisations, { fields: [hrPolicies.orgId], references: [organisations.id] }),
   creator: one(users, { fields: [hrPolicies.createdBy], references: [users.id] }),
+}));
+
+export const hrTravelAdvancesRelations = relations(hrTravelAdvances, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrTravelAdvances.orgId], references: [organisations.id] }),
+  employee: one(hrEmployees, { fields: [hrTravelAdvances.employeeId], references: [hrEmployees.id] }),
+  travelRequest: one(hrTravelRequests, { fields: [hrTravelAdvances.travelRequestId], references: [hrTravelRequests.id] }),
+}));
+
+export const hrTravelSettlementsRelations = relations(hrTravelSettlements, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrTravelSettlements.orgId], references: [organisations.id] }),
+  employee: one(hrEmployees, { fields: [hrTravelSettlements.employeeId], references: [hrEmployees.id] }),
+  travelRequest: one(hrTravelRequests, { fields: [hrTravelSettlements.travelRequestId], references: [hrTravelRequests.id] }),
+}));
+
+export const hrDocCategoriesRelations = relations(hrDocCategories, ({ one, many }) => ({
+  organisation: one(organisations, { fields: [hrDocCategories.orgId], references: [organisations.id] }),
+  parent: one(hrDocCategories, { fields: [hrDocCategories.parentId], references: [hrDocCategories.id], relationName: 'docCatParent' }),
+  children: many(hrDocCategories, { relationName: 'docCatParent' }),
+  files: many(hrDocFiles),
+}));
+
+export const hrDocFilesRelations = relations(hrDocFiles, ({ one, many }) => ({
+  organisation: one(organisations, { fields: [hrDocFiles.orgId], references: [organisations.id] }),
+  category: one(hrDocCategories, { fields: [hrDocFiles.categoryId], references: [hrDocCategories.id] }),
+  uploader: one(users, { fields: [hrDocFiles.uploadedBy], references: [users.id] }),
+  versions: many(hrDocVersions),
+  permissions: many(hrDocPermissions),
+  employeeLinks: many(hrDocEmployeeLinks),
+}));
+
+export const hrDocVersionsRelations = relations(hrDocVersions, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrDocVersions.orgId], references: [organisations.id] }),
+  file: one(hrDocFiles, { fields: [hrDocVersions.fileId], references: [hrDocFiles.id] }),
+  uploader: one(users, { fields: [hrDocVersions.uploadedBy], references: [users.id] }),
+}));
+
+export const hrDocPermissionsRelations = relations(hrDocPermissions, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrDocPermissions.orgId], references: [organisations.id] }),
+  file: one(hrDocFiles, { fields: [hrDocPermissions.fileId], references: [hrDocFiles.id] }),
+  employee: one(hrEmployees, { fields: [hrDocPermissions.employeeId], references: [hrEmployees.id] }),
+  granter: one(users, { fields: [hrDocPermissions.grantedBy], references: [users.id] }),
+}));
+
+export const hrDocEmployeeLinksRelations = relations(hrDocEmployeeLinks, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrDocEmployeeLinks.orgId], references: [organisations.id] }),
+  file: one(hrDocFiles, { fields: [hrDocEmployeeLinks.fileId], references: [hrDocFiles.id] }),
+  employee: one(hrEmployees, { fields: [hrDocEmployeeLinks.employeeId], references: [hrEmployees.id] }),
+}));
+
+export const hrWorkflowInstancesRelations = relations(hrWorkflowInstances, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrWorkflowInstances.orgId], references: [organisations.id] }),
+  template: one(hrWorkflowTemplates, { fields: [hrWorkflowInstances.templateId], references: [hrWorkflowTemplates.id] }),
+}));
+
+export const hrAutomationRulesRelations = relations(hrAutomationRules, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrAutomationRules.orgId], references: [organisations.id] }),
+  template: one(hrWorkflowTemplates, { fields: [hrAutomationRules.templateId], references: [hrWorkflowTemplates.id] }),
+}));
+
+export const hrNotificationsRelations = relations(hrNotifications, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrNotifications.orgId], references: [organisations.id] }),
+  employee: one(hrEmployees, { fields: [hrNotifications.employeeId], references: [hrEmployees.id] }),
+}));
+
+export const hrReminderConfigsRelations = relations(hrReminderConfigs, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrReminderConfigs.orgId], references: [organisations.id] }),
+  template: one(hrWorkflowTemplates, { fields: [hrReminderConfigs.templateId], references: [hrWorkflowTemplates.id] }),
+}));
+
+export const hrPolicyAcknowledgementsRelations = relations(hrPolicyAcknowledgements, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrPolicyAcknowledgements.orgId], references: [organisations.id] }),
+  policy: one(hrPolicies, { fields: [hrPolicyAcknowledgements.policyId], references: [hrPolicies.id] }),
+  employee: one(hrEmployees, { fields: [hrPolicyAcknowledgements.employeeId], references: [hrEmployees.id] }),
+}));
+
+export const hrDocumentRequestsRelations = relations(hrDocumentRequests, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrDocumentRequests.orgId], references: [organisations.id] }),
+  employee: one(hrEmployees, { fields: [hrDocumentRequests.employeeId], references: [hrEmployees.id] }),
+  requester: one(users, { fields: [hrDocumentRequests.requestedBy], references: [users.id] }),
+}));
+
+export const hrRenewalTrackingRelations = relations(hrRenewalTracking, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrRenewalTracking.orgId], references: [organisations.id] }),
+  employee: one(hrEmployees, { fields: [hrRenewalTracking.employeeId], references: [hrEmployees.id] }),
+}));
+
+export const hrCalendarEventsRelations = relations(hrCalendarEvents, ({ one }) => ({
+  organisation: one(organisations, { fields: [hrCalendarEvents.orgId], references: [organisations.id] }),
+  employee: one(hrEmployees, { fields: [hrCalendarEvents.employeeId], references: [hrEmployees.id] }),
 }));
