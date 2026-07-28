@@ -5,8 +5,8 @@ import {
   hrLeaveRequests, hrLeaveBalances, hrLeaveTypes,
   hrAttendanceRecords, hrAttendanceExceptions,
   hrTravelRequests, hrExpenseReports, hrExpenseEntries,
-  hrPerformanceReviews, hrPerformanceGoals, hrKpiEntries,
-  hrDevPlans,
+  hrPerformanceReviews, hrKpis,
+  hrDevelopmentPlans,
   hrCompensationBands, hrEmployeeCompensation, hrSalaryReviews, hrBonuses, hrBenefits, hrEmployeeBenefits,
   hrCandidateApplications, hrJobOpenings,
   hrCourses, hrEnrollments,
@@ -128,11 +128,11 @@ export async function getPerformanceReportData(orgId: string, filters?: ReportFi
   const avgRating = await db.select({ avg: avg(hrPerformanceReviews.overallRating) }).from(hrPerformanceReviews)
     .where(and(...conditions, isNotNull(hrPerformanceReviews.overallRating))).then(r => Number(r[0]?.avg || 0));
 
-  const activeGoals = await db.select({ count: count() }).from(hrPerformanceGoals)
-    .where(and(eq(hrPerformanceGoals.orgId, orgId), eq(hrPerformanceGoals.status, 'active'))).then(r => r[0]?.count || 0);
+  const activeGoals = await db.select({ count: count() }).from(hrKpis)
+    .where(and(eq(hrKpis.orgId, orgId), eq(hrKpis.isActive, true))).then(r => r[0]?.count || 0);
 
-  const activeDevPlans = await db.select({ count: count() }).from(hrDevPlans)
-    .where(and(eq(hrDevPlans.orgId, orgId), eq(hrDevPlans.status, 'in_progress'))).then(r => r[0]?.count || 0);
+  const activeDevPlans = await db.select({ count: count() }).from(hrDevelopmentPlans)
+    .where(and(eq(hrDevelopmentPlans.orgId, orgId), eq(hrDevelopmentPlans.status, 'in_progress'))).then(r => r[0]?.count || 0);
 
   return { totalReviews, byStatus, avgRating: Math.round(avgRating * 10) / 10, activeGoals, activeDevPlans };
 }

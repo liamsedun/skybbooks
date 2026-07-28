@@ -113,6 +113,8 @@ import {
   hrDocAccessLevelEnum,
   hrDocPermissionEnum,
   hrDocLinkTypeEnum,
+  hrApprovalStepStatusEnum,
+  hrWorkflowStatusEnum,
 } from '../enums';
 
 // ==========================================

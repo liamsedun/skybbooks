@@ -141,6 +141,18 @@ import {
   hrDocVersions,
   hrDocPermissions,
   hrDocEmployeeLinks,
+  hrApprovalComments,
+  hrApprovalDelegations,
+  hrApprovalEscalationRules,
+  hrApprovalStepInstances,
+  hrAutomationRules,
+  hrCalendarEvents,
+  hrDocumentRequests,
+  hrNotifications,
+  hrPolicyAcknowledgements,
+  hrReminderConfigs,
+  hrRenewalTracking,
+  hrWorkflowInstances,
 } from './tables';
 
 export const organisationsRelations = relations(organisations, ({ many }) => ({
