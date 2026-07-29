@@ -5,7 +5,6 @@ import { asyncHandler } from '../../middleware/asyncHandler';
 import {
   getLetterTemplates, createLetterTemplate, updateLetterTemplate, deleteLetterTemplate,
   getLetters, getLetter, generateLetter, deleteLetter,
-  getTravelRequests, getTravelRequest, createTravelRequest, updateTravelRequest, deleteTravelRequest, approveTravelRequest, declineTravelRequest,
   getExpenseReports, getExpenseReport, createExpenseReport, updateExpenseReport, deleteExpenseReport, submitExpenseReport, approveExpenseReport, reimburseExpenseReport,
   getExpenseEntries, createExpenseEntry, updateExpenseEntry, deleteExpenseEntry,
   getCompensationBands, createCompensationBand, updateCompensationBand, deleteCompensationBand,
@@ -74,47 +73,6 @@ router.post('/letters/generate', requireTenantPermission('hr:create'), asyncHand
 
 router.delete('/letters/:id', requireTenantPermission('hr:delete'), asyncHandler(async (req: AuthenticatedRequest, res: any) => {
   const result = await deleteLetter(req.user!.orgId!, req.params.id);
-  res.json({ success: true, data: result });
-}));
-
-// ── Travel Requests ──
-
-router.get('/travel-requests', requireTenantPermission('hr:read'), asyncHandler(async (req: AuthenticatedRequest, res: any) => {
-  const filters = {
-    ...(req.query.employeeId ? { employeeId: req.query.employeeId as string } : {}),
-    ...(req.query.status ? { status: req.query.status as string } : {}),
-  };
-  const result = await getTravelRequests(req.user!.orgId!, Object.keys(filters).length ? filters : undefined);
-  res.json({ success: true, data: result });
-}));
-
-router.get('/travel-requests/:id', requireTenantPermission('hr:read'), asyncHandler(async (req: AuthenticatedRequest, res: any) => {
-  const result = await getTravelRequest(req.user!.orgId!, req.params.id);
-  res.json({ success: true, data: result });
-}));
-
-router.post('/travel-requests', requireTenantPermission('hr:create'), asyncHandler(async (req: AuthenticatedRequest, res: any) => {
-  const result = await createTravelRequest(req.user!.orgId!, { ...req.body, userId: req.user!.id });
-  res.json({ success: true, data: result });
-}));
-
-router.put('/travel-requests/:id', requireTenantPermission('hr:update'), asyncHandler(async (req: AuthenticatedRequest, res: any) => {
-  const result = await updateTravelRequest(req.user!.orgId!, req.params.id, { ...req.body, userId: req.user!.id });
-  res.json({ success: true, data: result });
-}));
-
-router.delete('/travel-requests/:id', requireTenantPermission('hr:delete'), asyncHandler(async (req: AuthenticatedRequest, res: any) => {
-  const result = await deleteTravelRequest(req.user!.orgId!, req.params.id);
-  res.json({ success: true, data: result });
-}));
-
-router.patch('/travel-requests/:id/approve', requireTenantPermission('hr:approve'), asyncHandler(async (req: AuthenticatedRequest, res: any) => {
-  const result = await approveTravelRequest(req.user!.orgId!, req.params.id, req.user!.id);
-  res.json({ success: true, data: result });
-}));
-
-router.patch('/travel-requests/:id/decline', requireTenantPermission('hr:approve'), asyncHandler(async (req: AuthenticatedRequest, res: any) => {
-  const result = await declineTravelRequest(req.user!.orgId!, req.params.id, req.body.reason);
   res.json({ success: true, data: result });
 }));
 

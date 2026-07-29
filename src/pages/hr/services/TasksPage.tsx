@@ -45,7 +45,6 @@ export function TasksPage() {
   const [loading, setLoading] = useState(true);
   const ps = useHrPageState({ data, initialSortKey: 'title', searchKeys: ['title', 'assignedTo'], pageSize: 10 });
   useEffect(() => { loadData(); }, []);
-  useEffect(() => { ps.setData(data); }, [data]);
   const loadData = async () => {
     setLoading(true);
     try { const result = await hrApi.getHrTasks({}); setData(Array.isArray(result) ? result : []); }

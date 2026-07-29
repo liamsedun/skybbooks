@@ -17,7 +17,7 @@ export function ApprovalDashboardPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    hrApi.getApprovalDashboard().then(r => { setData(r.data); setLoading(false); });
+    hrApi.getApprovalDashboard().then(r => { setData(r.data); setLoading(false); }).catch(() => setLoading(false));
   }, []);
 
   const stats = [

@@ -19,10 +19,10 @@ export function WorkflowDashboardPage() {
   }, []);
 
   const stats = data ? [
-    { label: 'Total Templates', value: data.totalTemplates ?? 0, icon: Settings, color: 'blue' },
-    { label: 'Active Rules', value: data.activeRules ?? 0, icon: Zap, color: 'green' },
-    { label: 'Running Instances', value: data.runningInstances ?? 0, icon: PlayCircle, color: 'amber' },
-    { label: 'Completed Instances', value: data.completedInstances ?? 0, icon: CheckCircle, color: 'indigo' },
+    { label: 'Total Templates', value: data.totalTemplates ?? 0, icon: <Settings className="w-4 h-4" />, color: 'blue' as const },
+    { label: 'Active Rules', value: data.activeRules ?? 0, icon: <Zap className="w-4 h-4" />, color: 'emerald' as const },
+    { label: 'Running Instances', value: data.runningInstances ?? 0, icon: <PlayCircle className="w-4 h-4" />, color: 'amber' as const },
+    { label: 'Completed Instances', value: data.completedInstances ?? 0, icon: <CheckCircle className="w-4 h-4" />, color: 'purple' as const },
   ] : [];
 
   const columns = [
@@ -36,7 +36,7 @@ export function WorkflowDashboardPage() {
   return (
     <HrPageShell title="Workflow Engine Dashboard" loading={loading}>
       <div className="space-y-6">
-        <HrStatCards cards={stats} />
+        <HrStatCards items={stats} />
 
         <div className="flex gap-3 flex-wrap">
           <button onClick={() => navigate('/app/hr/workflow/templates')} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">Manage Templates</button>

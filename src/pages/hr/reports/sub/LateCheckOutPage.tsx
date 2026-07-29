@@ -40,8 +40,6 @@ export function LateCheckOutPage() {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { ps.setData(data); }, [data]);
-
   const stats = useMemo(() => [
     { label: 'Total Records', value: data.length, icon: <AlertTriangle className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
     { label: 'Late Departures', value: data.filter((i: any) => i.status === 'late').length, icon: <Moon className="w-4 h-4" />, color: 'rose' as const, active: ps.statusFilter === 'late', onClick: () => ps.setStatusFilter('late') },

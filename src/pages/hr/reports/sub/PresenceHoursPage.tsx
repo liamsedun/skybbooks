@@ -40,8 +40,6 @@ export function PresenceHoursPage() {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { ps.setData(data); }, [data]);
-
   const stats = useMemo(() => [
     { label: 'Total Records', value: data.length, icon: <Hourglass className="w-4 h-4" />, color: 'blue' as const },
     { label: 'Total Hours', value: data.reduce((s: number, i: any) => s + i.workedHours, 0), icon: <Clock className="w-4 h-4" />, color: 'emerald' as const },

@@ -25,8 +25,6 @@ export function LeavePolicyPage() {
   const ps = useHrPageState({ data, initialSortKey: 'name', searchKeys: ['name'], pageSize: 10 });
 
   useEffect(() => { loadData(); }, []);
-  useEffect(() => { ps.setData(data); }, [data]);
-
   const loadData = async () => {
     setLoading(true);
     try {

@@ -37,7 +37,6 @@ export function FilesPage() {
   const [loading, setLoading] = useState(true);
   const ps = useHrPageState({ data, initialSortKey: 'name', searchKeys: ['name', 'uploadedBy', 'category'], pageSize: 10 });
   useEffect(() => { loadData(); }, []);
-  useEffect(() => { ps.setData(data); }, [data]);
   const loadData = async () => {
     setLoading(true);
     try { const result = await hrApi.getDocFiles({}); setData(Array.isArray(result) ? result : []); }

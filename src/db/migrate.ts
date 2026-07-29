@@ -4264,6 +4264,62 @@ export async function runMigration() {
       console.error('[Migration] HR schema sync error:', err);
     }
 
+    // Fallback: ensure specific HR tables exist even if syncHrSchema failed
+    try {
+      await pool.query(`CREATE TABLE IF NOT EXISTS hr_development_plans (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id UUID NOT NULL,
+        employee_id UUID NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT,
+        goal TEXT,
+        action_items TEXT,
+        resources TEXT,
+        start_date DATE,
+        target_date DATE,
+        completed_date DATE,
+        status TEXT DEFAULT 'not_started',
+        created_at TIMESTAMP DEFAULT now() NOT NULL,
+        updated_at TIMESTAMP DEFAULT now() NOT NULL
+      )`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_hr_dp_emp ON hr_development_plans(employee_id)`);
+
+      await pool.query(`CREATE TABLE IF NOT EXISTS hr_promotion_recommendations (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id UUID NOT NULL,
+        employee_id UUID NOT NULL,
+        current_role TEXT NOT NULL,
+        proposed_role TEXT NOT NULL,
+        reason TEXT NOT NULL,
+        achievements TEXT,
+        recommended_by UUID,
+        approved_by UUID,
+        status TEXT DEFAULT 'pending',
+        decided_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT now() NOT NULL,
+        updated_at TIMESTAMP DEFAULT now() NOT NULL
+      )`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_hr_prom_emp ON hr_promotion_recommendations(employee_id)`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_hr_prom_status ON hr_promotion_recommendations(status)`);
+
+      await pool.query(`CREATE TABLE IF NOT EXISTS hr_benefits (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        org_id UUID NOT NULL,
+        name TEXT NOT NULL,
+        type TEXT DEFAULT 'health',
+        description TEXT,
+        provider TEXT,
+        cost_employer BIGINT DEFAULT 0,
+        cost_employee BIGINT DEFAULT 0,
+        is_active BOOLEAN DEFAULT true NOT NULL,
+        created_at TIMESTAMP DEFAULT now() NOT NULL,
+        updated_at TIMESTAMP DEFAULT now() NOT NULL
+      )`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_hr_ben_org ON hr_benefits(org_id)`);
+    } catch (err) {
+      console.error('[Migration] HR fallback tables error:', err);
+    }
+
     // HRM tables + seed default data
     try {
       const allOrgs = await pool.query(`SELECT id FROM organisations`);

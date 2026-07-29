@@ -19,7 +19,6 @@ export function OpsPerformancePage() {
   const [loading, setLoading] = useState(true);
   const ps = useHrPageState({ data, initialSortKey: 'employeeName', searchKeys: ['employeeName', 'reviewer', 'period'], pageSize: 10 });
   useEffect(() => { loadData(); }, []);
-  useEffect(() => { ps.setData(data); }, [data]);
   const loadData = async () => {
     setLoading(true);
     try { const result = await hrApi.getPerformanceReviews({}); setData(Array.isArray(result) ? result : []); }

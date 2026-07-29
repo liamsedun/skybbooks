@@ -40,7 +40,7 @@ export function BenefitsPage() {
     try {
       const res = await hrApi.getBenefits();
       setData(Array.isArray(res) ? res : res.data || []);
-    } catch (err) { console.toast(err, 'error'); }
+    } catch (err: any) { toast(err?.response?.data?.error || err?.message || 'Failed to load', 'error'); }
     setLoading(false);
   };
 
@@ -82,7 +82,7 @@ export function BenefitsPage() {
       toast('Benefit deleted', 'success');
       ps.closeConfirmDelete();
       fetchData();
-    } catch (err: any) { console.toast(err, 'error'); }
+    } catch (err: any) { toast(err?.response?.data?.error || err?.message || 'Failed to delete', 'error'); }
   };
 
   const columns: Column<BenefitItem>[] = [

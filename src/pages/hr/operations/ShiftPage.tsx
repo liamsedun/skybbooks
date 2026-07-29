@@ -19,7 +19,6 @@ export function OpsShiftPage() {
   const [loading, setLoading] = useState(true);
   const ps = useHrPageState({ data, initialSortKey: 'name', searchKeys: ['name', 'department'], pageSize: 10 });
   useEffect(() => { loadData(); }, []);
-  useEffect(() => { ps.setData(data); }, [data]);
   const loadData = async () => {
     setLoading(true);
     try { const result = await hrApi.getShifts(); setData(Array.isArray(result) ? result : []); }

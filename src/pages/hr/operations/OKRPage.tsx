@@ -25,7 +25,6 @@ export function OpsOKRPage() {
   const [loading, setLoading] = useState(true);
   const ps = useHrPageState({ data, initialSortKey: 'title', searchKeys: ['title', 'owner', 'quarter'], pageSize: 10 });
   useEffect(() => { loadData(); }, []);
-  useEffect(() => { ps.setData(data); }, [data]);
   const loadData = async () => {
     setLoading(true);
     try { const result = await hrApi.getOkrs({}); setData(Array.isArray(result) ? result : []); }

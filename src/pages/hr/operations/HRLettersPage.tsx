@@ -19,7 +19,6 @@ export function OpsHRLettersPage() {
   const [loading, setLoading] = useState(true);
   const ps = useHrPageState({ data, initialSortKey: 'title', searchKeys: ['title', 'employeeName', 'type'], pageSize: 10 });
   useEffect(() => { loadData(); }, []);
-  useEffect(() => { ps.setData(data); }, [data]);
   const loadData = async () => {
     setLoading(true);
     try { const result = await hrApi.getLetters({}); setData(Array.isArray(result) ? result : []); }

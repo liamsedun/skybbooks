@@ -19,7 +19,6 @@ export function OpsTimeTrackerPage() {
   const [loading, setLoading] = useState(true);
   const ps = useHrPageState({ data, initialSortKey: 'employeeName', searchKeys: ['employeeName', 'project', 'task'], pageSize: 10 });
   useEffect(() => { loadData(); }, []);
-  useEffect(() => { ps.setData(data); }, [data]);
   const loadData = async () => {
     setLoading(true);
     try { const result = await hrApi.getTimesheets({}); setData(Array.isArray(result) ? result : []); }

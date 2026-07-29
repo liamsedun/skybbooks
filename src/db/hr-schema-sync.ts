@@ -67,6 +67,7 @@ function getRawDefault(col: AnyPgColumn): string {
   }
   if (typeof d === 'boolean') return ` DEFAULT ${d ? 'true' : 'false'}`;
   if (typeof d === 'number') return ` DEFAULT ${d}`;
+  if (typeof d === 'string') return ` DEFAULT '${d}'`;
   return ` DEFAULT ${String(d)}`;
 }
 

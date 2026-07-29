@@ -40,8 +40,6 @@ export function EarlyCheckOutPage() {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { ps.setData(data); }, [data]);
-
   const stats = useMemo(() => [
     { label: 'Total Records', value: data.length, icon: <LogOut className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
     { label: 'Early Departures', value: data.filter((i: any) => i.status === 'early').length, icon: <Sunset className="w-4 h-4" />, color: 'amber' as const, active: ps.statusFilter === 'early', onClick: () => ps.setStatusFilter('early') },

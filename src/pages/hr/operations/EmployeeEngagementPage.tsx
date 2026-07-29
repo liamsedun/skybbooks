@@ -19,7 +19,6 @@ export function OpsEmployeeEngagementPage() {
   const [loading, setLoading] = useState(true);
   const ps = useHrPageState({ data, initialSortKey: 'title', searchKeys: ['title', 'type', 'department'], pageSize: 10 });
   useEffect(() => { loadData(); }, []);
-  useEffect(() => { ps.setData(data); }, [data]);
   const loadData = async () => {
     setLoading(true);
     try { setData([]); }

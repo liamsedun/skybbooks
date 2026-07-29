@@ -25,8 +25,6 @@ export function LeaveSummaryPage() {
   const ps = useHrPageState({ data, initialSortKey: 'employeeName', searchKeys: ['employeeName', 'leaveTypeName'], pageSize: 10 });
 
   useEffect(() => { loadData(); }, []);
-  useEffect(() => { ps.setData(data); }, [data]);
-
   const loadData = async () => {
     setLoading(true);
     try {

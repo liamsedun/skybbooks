@@ -24,8 +24,6 @@ export function HolidayCalendarPage() {
   const ps = useHrPageState({ data, initialSortKey: 'date', searchKeys: ['name'], pageSize: 10 });
 
   useEffect(() => { loadData(); }, [year]);
-  useEffect(() => { ps.setData(data); }, [data]);
-
   const loadData = async () => {
     setLoading(true);
     try {

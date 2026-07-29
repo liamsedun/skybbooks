@@ -52,8 +52,6 @@ export function CareerHistoryPage() {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { ps.setData(data); }, [data]);
-
   const stats = useMemo(() => [
     { label: 'Total Records', value: data.length, icon: <History className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
     { label: 'Promotions', value: data.filter((i: any) => i.type === 'promotion').length, icon: <TrendingUp className="w-4 h-4" />, color: 'emerald' as const, active: ps.statusFilter === 'promotion', onClick: () => ps.setStatusFilter('promotion') },

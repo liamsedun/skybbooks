@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { FileText, Plus, Download, FileEdit, Edit3, Trash2, Eye, Upload, History, Shield } from 'lucide-react';
-import { useHrPageState } from '../../../hooks/useHrPageState';
+
 import { HrPageShell } from '../../../components/hr/HrPageShell';
 import { HrStatCards } from '../../../components/hr/HrStatCards';
 import { HrFilterBar } from '../../../components/hr/HrFilterBar';
@@ -76,7 +76,6 @@ function formatFileSize(bytes: number): string {
 }
 
 export function DocFilesPage() {
-  const { orgId } = useHrPageState();
   const { toast } = useToast();
 
   const [docFiles, setDocFiles] = useState<DocFile[]>([]);
@@ -103,15 +102,15 @@ export function DocFilesPage() {
       const res = await hrApi.getDocFiles(params);
       setDocFiles(res.data ?? []);
     } catch {
-      addToast('Failed to load document files', 'error');
+      toast('Failed to load document files', 'error');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (orgId) fetchDocFiles();
-  }, [orgId, search, statusFilter, categoryFilter]);
+    fetchDocFiles();
+  }, [search, statusFilter, categoryFilter]);
 
   const stats = useMemo(() => {
     const total = docFiles.length;
@@ -128,12 +127,14 @@ export function DocFilesPage() {
 
   const columns: Column<DocFile>[] = [
     {
-      header: 'Name',
-      accessor: 'name',
+      key: 'name',
+      label: 'Name',
       sortable: true,
+      render: (row) => <span className="font-medium text-ink-900">{row.name}</span>,
     },
     {
-      header: 'Type',
+      key: 'fileType',
+      label: 'Type',
       render: (row) => (
         <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700">
           <FileText className="h-3 w-3" />
@@ -142,16 +143,19 @@ export function DocFilesPage() {
       ),
     },
     {
-      header: 'Version',
-      accessor: 'version',
+      key: 'version',
+      label: 'Version',
       sortable: true,
+      render: (row) => <span className="text-ink-600">{row.version}</span>,
     },
     {
-      header: 'File Size',
-      render: (row) => formatFileSize(row.fileSize),
+      key: 'fileSize',
+      label: 'File Size',
+      render: (row) => <span className="text-ink-600">{formatFileSize(row.fileSize)}</span>,
     },
     {
-      header: 'Status',
+      key: 'status',
+      label: 'Status',
       render: (row) => (
         <span
           className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${statusColor(row.status)}`}
@@ -161,52 +165,56 @@ export function DocFilesPage() {
       ),
     },
     {
-      header: 'Access Level',
+      key: 'accessLevel',
+      label: 'Access Level',
       render: (row) => (
-        <span className="inline-flex items-center gap-1 text-xs text-gray-600">
+        <span className="inline-flex items-center gap-1 text-xs text-ink-500">
           <Shield className="h-3 w-3" />
           {row.accessLevel}
         </span>
       ),
     },
     {
-      header: 'Expiry Date',
-      render: (row) => (row.expiryDate ? formatDate(row.expiryDate) : '—'),
+      key: 'expiryDate',
+      label: 'Expiry Date',
+      render: (row) => <span className="text-ink-600">{row.expiryDate ? formatDate(row.expiryDate) : '—'}</span>,
     },
     {
-      header: 'Actions',
+      key: 'actions',
+      label: '',
       render: (row) => (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-end gap-2">
           <button
             onClick={() => setViewItem(row)}
-            className="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+            className="rounded p-1 text-ink-400 hover:text-primary hover:bg-primary/10"
             title="View"
           >
             <Eye className="h-4 w-4" />
           </button>
           <button
             onClick={() => handleEdit(row)}
-            className="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+            className="rounded p-1 text-ink-400 hover:text-amber-600 hover:bg-amber-50"
             title="Edit"
           >
             <Edit3 className="h-4 w-4" />
           </button>
           <button
             onClick={() => setDeleteId(row.id)}
-            className="rounded p-1 text-red-500 hover:bg-red-50 hover:text-red-700"
+            className="rounded p-1 text-ink-400 hover:text-rose-600 hover:bg-rose-50"
             title="Delete"
           >
             <Trash2 className="h-4 w-4" />
           </button>
           <button
             onClick={() => handleVersions(row.id)}
-            className="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+            className="rounded p-1 text-ink-400 hover:text-primary hover:bg-primary/10"
             title="Versions"
           >
             <History className="h-4 w-4" />
           </button>
         </div>
       ),
+      className: 'text-right',
     },
   ];
 
@@ -234,13 +242,13 @@ export function DocFilesPage() {
       setVersions(res.data ?? []);
       setShowVersions(true);
     } catch {
-      addToast('Failed to load versions', 'error');
+      toast('Failed to load versions', 'error');
     }
   };
 
   const handleSave = async () => {
     if (!formData.name.trim() || !formData.fileUrl.trim()) {
-      addToast('Name and File URL are required', 'error');
+      toast('Name and File URL are required', 'error');
       return;
     }
     try {
@@ -263,17 +271,17 @@ export function DocFilesPage() {
       };
       if (editing) {
         await hrApi.updateDocFile(editing.id, payload);
-        addToast('Document file updated', 'success');
+        toast('Document file updated', 'success');
       } else {
         await hrApi.createDocFile(payload);
-        addToast('Document file created', 'success');
+        toast('Document file created', 'success');
       }
       setShowForm(false);
       setEditing(null);
       setFormData(emptyForm);
       fetchDocFiles();
     } catch {
-      addToast('Failed to save document file', 'error');
+      toast('Failed to save document file', 'error');
     } finally {
       setSaving(false);
     }
@@ -283,11 +291,11 @@ export function DocFilesPage() {
     if (!deleteId) return;
     try {
       await hrApi.deleteDocFile(deleteId);
-      addToast('Document file deleted', 'success');
+      toast('Document file deleted', 'success');
       setDeleteId(null);
       fetchDocFiles();
     } catch {
-      addToast('Failed to delete document file', 'error');
+      toast('Failed to delete document file', 'error');
     }
   };
 
@@ -443,7 +451,7 @@ export function DocFilesPage() {
   return (
     <HrPageShell
       title="Document Files"
-      subtitle="Manage document files with version control"
+      description="Manage document files with version control"
       actions={
         <button
           onClick={() => {
@@ -458,17 +466,16 @@ export function DocFilesPage() {
         </button>
       }
     >
-      <HrStatCards cards={stats} />
+      <HrStatCards items={stats} />
       {filters}
 
       <HrDataTable
         columns={columns}
         data={docFiles}
         loading={loading}
-        rowKey="id"
+        keyExtractor={(row) => row.id}
         emptyMessage="No document files found"
-        exportCsv={() => exportToCsv('doc-files', docFiles)}
-        exportPdf={() => exportToPdf('doc-files', 'Document Files', docFiles)}
+        emptyAction={<button onClick={() => { setEditing(null); setFormData(emptyForm); setShowForm(true); }} className="text-xs font-medium text-primary">Add your first document</button>}
       />
 
       <HrFormModal
