@@ -21,7 +21,7 @@ export function InvitesSettingsPage() {
   const invites: any[] = settings?.invites || [];
 
   const sendInvite = useMutation({
-    mutationFn: (data: { name: string; email: string; role: string }) => orgApi.inviteUser(data),
+    mutationFn: (data: { name?: string; fullName?: string; email: string; role: string }) => orgApi.inviteUser({ fullName: data.fullName || data.name || '', email: data.email, role: data.role }),
     onSuccess: () => {
       setLocalSuccess('Invitation sent successfully.');
       setName(''); setEmail(''); setRole('staff');

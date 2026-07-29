@@ -101,7 +101,7 @@ export function UsersPage() {
         await orgApi.updateUser(ps.editingId, { fullName: formData.name, role: formData.role });
         showSuccess('User updated');
       } else {
-        await orgApi.inviteUser({ name: formData.name, email: formData.email, role: formData.role });
+        await orgApi.inviteUser({ fullName: formData.name, email: formData.email, role: formData.role });
         showSuccess('User invited');
       }
       ps.closeModal();

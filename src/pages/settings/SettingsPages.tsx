@@ -1188,7 +1188,7 @@ export function UsersPage() {
     if (!name || !email) { setInviteError('Name and email are required.'); return; }
     setSendingInvite(true);
     try {
-      const result = await orgApi.inviteUser({ name, email, role });
+      const result = await orgApi.inviteUser({ fullName: name, email, role });
       setInviteSuccess(result.message || `Invitation sent to ${email}.`);
       setInviteForm({});
       setSelectedLocations([]);

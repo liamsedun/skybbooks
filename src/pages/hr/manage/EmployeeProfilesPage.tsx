@@ -27,7 +27,9 @@ export function EmployeeProfilesPage() {
   const [profiles, setProfiles] = useState<EmployeeProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const ps = useHrPageState({ data: profiles, initialSortKey: 'name', searchKeys: ['name', 'email', 'department', 'designation'], pageSize: 10 });
-  const [formData, setFormData] = useState({ name: '', email: '', department: '', designation: '', phone: '' });
+  const [formData, setFormData] = useState({ name: '', email: '', department: '', designation: '', phone: '', departmentId: '', designationId: '' });
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [designations, setDesignations] = useState<any[]>([]);
 
   const fetchProfiles = async () => {
     try {
@@ -50,7 +52,15 @@ export function EmployeeProfilesPage() {
     }
   };
 
-  useEffect(() => { fetchProfiles(); }, []);
+  const fetchDepartmentsDesignations = async () => {
+    try {
+      const [depts, desigs] = await Promise.all([hrApi.getDepartments(), hrApi.getDesignations()]);
+      setDepartments(Array.isArray(depts) ? depts : []);
+      setDesignations(Array.isArray(desigs) ? desigs : []);
+    } catch (_) {}
+  };
+
+  useEffect(() => { fetchProfiles(); fetchDepartmentsDesignations(); }, []);
 
   const stats = useMemo(() => [
     { label: 'Total Employees', value: profiles.length, icon: <Users className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
@@ -83,14 +93,16 @@ export function EmployeeProfilesPage() {
   };
 
   const openAddForm = () => {
-    setFormData({ name: '', email: '', department: '', designation: '', phone: '' });
+    setFormData({ name: '', email: '', department: '', designation: '', phone: '', departmentId: '', designationId: '' });
     ps.openAddModal();
   };
 
   const openEditForm = (id: string) => {
     const e = profiles.find(p => p.id === id);
     if (e) {
-      setFormData({ name: e.name, email: e.email, department: e.department, designation: e.designation, phone: e.phone });
+      const dept = departments.find(d => d.name === e.department || d.departmentName === e.department);
+      const desig = designations.find(d => d.title === e.designation || d.name === e.designation);
+      setFormData({ name: e.name, email: e.email, department: e.department, designation: e.designation, phone: e.phone, departmentId: dept?.id || '', designationId: desig?.id || '' });
     }
     ps.openEditModal(id);
   };
@@ -99,12 +111,14 @@ export function EmployeeProfilesPage() {
     e.preventDefault();
     try {
       const nameParts = formData.name.split(' ').filter(Boolean);
-      const payload = {
+      const payload: Record<string, any> = {
         firstName: nameParts[0] || '',
         lastName: nameParts.slice(1).join(' ') || '',
         email: formData.email,
         phone: formData.phone,
       };
+      if (formData.departmentId) payload.departmentId = formData.departmentId;
+      if (formData.designationId) payload.designationId = formData.designationId;
       if (ps.editingId) {
         await hrApi.updateEmployee(ps.editingId, payload);
         showSuccess('Employee updated');
@@ -164,8 +178,18 @@ export function EmployeeProfilesPage() {
       <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Employee' : 'Add Employee'} onSubmit={handleFormSubmit}>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Name</label><input value={formData.name} onChange={e => setFormData(f => ({ ...f, name: e.target.value }))} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" required /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Email</label><input type="email" value={formData.email} onChange={e => setFormData(f => ({ ...f, email: e.target.value }))} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" required /></div>
-        <div><label className="block text-xs font-medium text-ink-500 mb-1">Department</label><input value={formData.department} onChange={e => setFormData(f => ({ ...f, department: e.target.value }))} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
-        <div><label className="block text-xs font-medium text-ink-500 mb-1">Designation</label><input value={formData.designation} onChange={e => setFormData(f => ({ ...f, designation: e.target.value }))} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
+        <div><label className="block text-xs font-medium text-ink-500 mb-1">Department</label>
+          <select value={formData.departmentId} onChange={e => { const d = departments.find(d => d.id === e.target.value); setFormData(f => ({ ...f, departmentId: e.target.value, department: d ? (d.name || d.departmentName) : '' })); }} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
+            <option value="">Select Department</option>
+            {departments.map(d => <option key={d.id} value={d.id}>{d.name || d.departmentName}</option>)}
+          </select>
+        </div>
+        <div><label className="block text-xs font-medium text-ink-500 mb-1">Designation</label>
+          <select value={formData.designationId} onChange={e => { const d = designations.find(d => d.id === e.target.value); setFormData(f => ({ ...f, designationId: e.target.value, designation: d ? (d.title || d.name) : '' })); }} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
+            <option value="">Select Designation</option>
+            {designations.map(d => <option key={d.id} value={d.id}>{d.title || d.name}</option>)}
+          </select>
+        </div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Phone</label><input value={formData.phone} onChange={e => setFormData(f => ({ ...f, phone: e.target.value }))} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
       </HrFormModal>
       <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => handleDelete(ps.deletingId!)} title="Delete Profile" message="Are you sure you want to delete this employee profile?" confirmLabel="Delete" variant="danger" />

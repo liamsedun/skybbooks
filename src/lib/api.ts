@@ -272,8 +272,8 @@ export const notificationsApi = {
 
 // 2c. Organisation Management
 export const orgApi = {
-  inviteUser: async (data: { name: string; email: string; role: string }) => {
-    const res = await api.post('/org/invite', data);
+  inviteUser: async (data: { fullName: string; email: string; role: string }) => {
+    const res = await api.post('/org/users/invite', data);
     return res.data;
   },
   clearInvites: async () => {
