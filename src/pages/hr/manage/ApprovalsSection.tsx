@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { FileText, ListChecks, CheckCircle, MessageSquare, Save, Check, X, Send } from 'lucide-react';
+import { FileText, ListChecks, CheckCircle, MessageSquare, Save, Check, X, Send, Edit3, Trash2, Plus } from 'lucide-react';
 import { useToast } from '../../../contexts/ToastContext';
 import { statusColor } from '../../../lib/hrExport';
-import { orgApi, hrApi } from '../../../lib/api';
+import { orgApi } from '../../../lib/api';
 
 const TABS = [
   { label: 'Approval Details', key: 'details', icon: FileText },
@@ -61,18 +61,22 @@ function CriteriaContent({ minAmt, setMinAmt, maxAmt, setMaxAmt, level, setLevel
   );
 }
 
-function ListContent({ approvals, loading, onApprove, onReject }: { approvals: ApprovalItem[]; loading: boolean; onApprove: (id: string) => void; onReject: (id: string) => void }) {
+function ListContent({ approvals, onAdd, onEdit, onDelete, onApprove, onReject }: { approvals: ApprovalItem[]; onAdd: () => void; onEdit: (id: string) => void; onDelete: (id: string) => void; onApprove: (id: string) => void; onReject: (id: string) => void }) {
   return (
     <div className="bg-surface rounded-2xl border border-border-custom shadow-sm p-6 space-y-5">
-      <div className="flex items-center justify-between"><h2 className="text-base font-semibold text-ink-900">Approvals</h2></div>
-      {loading ? <p className="text-sm text-ink-400 p-3">Loading...</p> : <div className="overflow-x-auto"><table className="w-full"><thead><tr className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider border-b border-border-custom"><th className="px-3 py-2 text-left">ID</th><th className="px-3 py-2 text-left">Type</th><th className="px-3 py-2 text-left">Requester</th><th className="px-3 py-2 text-left">Date</th><th className="px-3 py-2 text-left">Status</th><th className="px-3 py-2 text-right">Actions</th></tr></thead><tbody className="divide-y divide-border-custom">{approvals.map(a => (
+      <div className="flex items-center justify-between"><h2 className="text-base font-semibold text-ink-900">Approvals</h2><button onClick={onAdd} className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary-hover transition-all shadow-sm"><Plus className="w-3.5 h-3.5" /> Add Approval</button></div>
+      {approvals.length === 0 ? <p className="text-sm text-ink-400 p-3">No approvals yet.</p> : <div className="overflow-x-auto"><table className="w-full"><thead><tr className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider border-b border-border-custom"><th className="px-3 py-2 text-left">ID</th><th className="px-3 py-2 text-left">Type</th><th className="px-3 py-2 text-left">Requester</th><th className="px-3 py-2 text-left">Date</th><th className="px-3 py-2 text-left">Status</th><th className="px-3 py-2 text-right">Actions</th></tr></thead><tbody className="divide-y divide-border-custom">{approvals.map(a => (
         <tr key={a.id} className="hover:bg-ink-50 transition-colors">
           <td className="px-3 py-2.5 text-sm font-medium text-ink-900">{a.id}</td>
           <td className="px-3 py-2.5 text-sm text-ink-600">{a.type}</td>
           <td className="px-3 py-2.5 text-sm text-ink-600">{a.requester}</td>
           <td className="px-3 py-2.5 text-sm text-ink-500">{a.date}</td>
           <td className="px-3 py-2.5"><span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${statusColor(a.status)}`}>{a.status}</span></td>
-          <td className="px-3 py-2.5 text-right space-x-1">{a.status === 'pending' && (<><button onClick={() => onApprove(a.id)} className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors"><Check className="w-3 h-3" /> Approve</button><button onClick={() => onReject(a.id)} className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-rose-700 bg-rose-50 border border-rose-200 rounded-lg hover:bg-rose-100 transition-colors"><X className="w-3 h-3" /> Reject</button></>)}</td>
+          <td className="px-3 py-2.5 text-right space-x-1">
+            {a.status === 'pending' && (<><button onClick={() => onApprove(a.id)} className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors"><Check className="w-3 h-3" /> Approve</button><button onClick={() => onReject(a.id)} className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-rose-700 bg-rose-50 border border-rose-200 rounded-lg hover:bg-rose-100 transition-colors"><X className="w-3 h-3" /> Reject</button></>)}
+            <button onClick={() => onEdit(a.id)} className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"><Edit3 className="w-3 h-3" /> Edit</button>
+            <button onClick={() => onDelete(a.id)} className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-rose-700 bg-rose-50 border border-rose-200 rounded-lg hover:bg-rose-100 transition-colors"><Trash2 className="w-3 h-3" /> Delete</button>
+          </td>
         </tr>
       ))}</tbody></table></div>}
     </div>
@@ -114,8 +118,11 @@ export function ApprovalsSection() {
   const [maxAmt, setMaxAmt] = useState('1000000');
   const [level, setLevel] = useState('Single Level');
   const [approvals, setApprovals] = useState<ApprovalItem[]>([]);
-  const [approvalsLoading, setApprovalsLoading] = useState(true);
   const [messages, setMessages] = useState<MessageItem[]>([]);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [formType, setFormType] = useState('');
+  const [formRequester, setFormRequester] = useState('');
 
   useEffect(() => {
     orgApi.getSettings().then(settings => {
@@ -128,8 +135,17 @@ export function ApprovalsSection() {
       if (ap.maxAmt) setMaxAmt(ap.maxAmt);
       if (ap.level) setLevel(ap.level);
       if (ap.messages) setMessages(ap.messages);
+      if (ap.list) setApprovals(ap.list);
       setLoaded(true);
     }).catch(() => {
+      const defaults: ApprovalItem[] = [
+        { id: 'A001', type: 'Leave Request', requester: 'Alice Johnson', date: '2026-07-25', status: 'pending' },
+        { id: 'A002', type: 'Travel Request', requester: 'Bob Smith', date: '2026-07-24', status: 'approved' },
+        { id: 'A003', type: 'Expense Report', requester: 'Carol White', date: '2026-07-23', status: 'pending' },
+        { id: 'A004', type: 'Compensatory Off', requester: 'David Brown', date: '2026-07-22', status: 'rejected' },
+        { id: 'A005', type: 'Leave Request', requester: 'Eve Davis', date: '2026-07-21', status: 'approved' },
+      ];
+      setApprovals(defaults);
       setMessages([
         { from: 'Alice Johnson', text: 'Please approve my leave request for next week.', time: '2 hours ago' },
         { from: 'Bob Smith', text: 'Travel expense report has been submitted for review.', time: '5 hours ago' },
@@ -138,28 +154,50 @@ export function ApprovalsSection() {
     });
   }, []);
 
-  useEffect(() => {
-    hrApi.getApprovalRequests({}).then(data => {
-      const list = (data?.data || data || []);
-      if (Array.isArray(list)) {
-        setApprovals(list.slice(0, 10).map((r: any) => ({
-          id: r.id?.slice(0, 8) || r.reference || '',
-          type: r.module || r.type || 'Approval',
-          requester: r.requesterName || r.employeeName || '',
-          date: r.createdAt ? new Date(r.createdAt).toISOString().split('T')[0] : '',
-          status: r.status === 'approved' ? 'approved' : r.status === 'rejected' ? 'rejected' : 'pending',
-        })));
-      }
-    }).catch(() => {
-      setApprovals([
-        { id: 'A001', type: 'Leave Request', requester: 'Alice Johnson', date: '2026-07-25', status: 'pending' },
-        { id: 'A002', type: 'Travel Request', requester: 'Bob Smith', date: '2026-07-24', status: 'approved' },
-        { id: 'A003', type: 'Expense Report', requester: 'Carol White', date: '2026-07-23', status: 'pending' },
-        { id: 'A004', type: 'Compensatory Off', requester: 'David Brown', date: '2026-07-22', status: 'rejected' },
-        { id: 'A005', type: 'Leave Request', requester: 'Eve Davis', date: '2026-07-21', status: 'approved' },
-      ]);
-    }).finally(() => setApprovalsLoading(false));
-  }, []);
+  const persistApprovals = async (list: ApprovalItem[]) => {
+    const settings = (await orgApi.getSettings()) as any;
+    await orgApi.updateSettings({ approvals: { ...(settings?.approvals || {}), list } });
+    setApprovals(list);
+  };
+
+  const handleAdd = () => {
+    setEditingId(null);
+    setFormType('Leave Request');
+    setFormRequester('');
+    setFormOpen(true);
+  };
+
+  const handleEdit = (id: string) => {
+    const item = approvals.find(a => a.id === id);
+    if (!item) return;
+    setEditingId(id);
+    setFormType(item.type);
+    setFormRequester(item.requester);
+    setFormOpen(true);
+  };
+
+  const handleSaveForm = async () => {
+    if (!formType.trim() || !formRequester.trim()) { toast('Fill all fields', 'error'); return; }
+    const date = new Date().toISOString().split('T')[0];
+    if (editingId) {
+      const updated = approvals.map(a => a.id === editingId ? { ...a, type: formType.trim(), requester: formRequester.trim() } : a);
+      await persistApprovals(updated);
+      toast('Approval updated', 'success');
+    } else {
+      const nextNum = String(approvals.length + 1).padStart(3, '0');
+      const newItem: ApprovalItem = { id: `A${nextNum}`, type: formType.trim(), requester: formRequester.trim(), date, status: 'pending' };
+      await persistApprovals([...approvals, newItem]);
+      toast('Approval added', 'success');
+    }
+    setFormOpen(false);
+    setEditingId(null);
+  };
+
+  const handleDelete = async (id: string) => {
+    const updated = approvals.filter(a => a.id !== id);
+    await persistApprovals(updated);
+    toast('Approval deleted', 'success');
+  };
 
   const saveDetails = async () => {
     try {
@@ -178,19 +216,15 @@ export function ApprovalsSection() {
   };
 
   const handleApprove = async (id: string) => {
-    try {
-      await hrApi.approveApprovalStep(id);
-      setApprovals(prev => prev.map(a => a.id === id ? { ...a, status: 'approved' as const } : a));
-      toast('Request approved', 'success');
-    } catch { toast('Failed to approve', 'error'); }
+    const updated = approvals.map(a => a.id === id ? { ...a, status: 'approved' as const } : a);
+    await persistApprovals(updated);
+    toast('Request approved', 'success');
   };
 
   const handleReject = async (id: string) => {
-    try {
-      await hrApi.rejectApprovalStep(id);
-      setApprovals(prev => prev.map(a => a.id === id ? { ...a, status: 'rejected' as const } : a));
-      toast('Request rejected', 'success');
-    } catch { toast('Failed to reject', 'error'); }
+    const updated = approvals.map(a => a.id === id ? { ...a, status: 'rejected' as const } : a);
+    await persistApprovals(updated);
+    toast('Request rejected', 'success');
   };
 
   const handleSendMessage = async (text: string) => {
@@ -227,9 +261,20 @@ export function ApprovalsSection() {
       <div className="lg:col-span-3 space-y-6">
         {activeTab === 'details' && <DetailsContent name={name} setName={setName} desc={desc} setDesc={setDesc} reqManager={reqManager} setReqManager={setReqManager} reqHr={reqHr} setReqHr={setReqHr} onSave={saveDetails} />}
         {activeTab === 'criteria' && <CriteriaContent minAmt={minAmt} setMinAmt={setMinAmt} maxAmt={maxAmt} setMaxAmt={setMaxAmt} level={level} setLevel={setLevel} onSave={saveCriteria} />}
-        {activeTab === 'list' && <ListContent approvals={approvals} loading={approvalsLoading} onApprove={handleApprove} onReject={handleReject} />}
+        {activeTab === 'list' && <ListContent approvals={approvals} onAdd={handleAdd} onEdit={handleEdit} onDelete={handleDelete} onApprove={handleApprove} onReject={handleReject} />}
         {activeTab === 'messages' && <MessagesContent messages={messages} onSend={handleSendMessage} />}
       </div>
+
+      {formOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => { setFormOpen(false); setEditingId(null); }}>
+          <div className="bg-surface rounded-2xl border border-border-custom shadow-xl p-6 w-full max-w-md mx-4 space-y-4" onClick={e => e.stopPropagation()}>
+            <h2 className="text-base font-semibold text-ink-900">{editingId ? 'Edit Approval' : 'Add Approval'}</h2>
+            <div><label className="block text-xs font-medium text-ink-500 mb-1">Type</label><select value={formType} onChange={e => setFormType(e.target.value)} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900"><option>Leave Request</option><option>Travel Request</option><option>Expense Report</option><option>Compensatory Off</option></select></div>
+            <div><label className="block text-xs font-medium text-ink-500 mb-1">Requester</label><input value={formRequester} onChange={e => setFormRequester(e.target.value)} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900" placeholder="Requester name" /></div>
+            <div className="flex justify-end gap-2 pt-2"><button onClick={() => { setFormOpen(false); setEditingId(null); }} className="px-4 py-2 text-sm font-medium text-ink-600 bg-ink-100 rounded-xl hover:bg-ink-200">Cancel</button><button onClick={handleSaveForm} className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-xl hover:bg-primary-hover"><Save className="w-3.5 h-3.5 inline mr-1" />{editingId ? 'Update' : 'Add'}</button></div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
