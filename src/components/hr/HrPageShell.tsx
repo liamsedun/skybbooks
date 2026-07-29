@@ -22,7 +22,6 @@ export function HrPageShell({ title, description, children, headerActions, pageK
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-ink-900">{title}</h1>
           <p className="text-sm text-ink-400 mt-0.5">{description}</p>
         </div>
         {headerActions && (

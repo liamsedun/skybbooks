@@ -28,7 +28,6 @@ export function HomeLayout() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-ink-900">Home</h1>
         <p className="text-sm text-ink-400 mt-0.5">HR overview, dashboard metrics, calendar, and delegation management.</p>
       </div>
       <div className="flex gap-1 bg-surface rounded-xl border border-border-custom shadow-sm p-1 overflow-x-auto">

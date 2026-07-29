@@ -12,7 +12,6 @@ export function WorkflowLayout() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-ink-900">Workflow Engine</h1>
         <p className="text-sm text-ink-400 mt-0.5">Manage automated workflows, templates, and notifications.</p>
       </div>
       <div className="border-b border-border-custom">

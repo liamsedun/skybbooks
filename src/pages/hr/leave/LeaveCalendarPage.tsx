@@ -66,7 +66,6 @@ export function LeaveCalendarPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-ink-900">Leave Calendar</h1>
           <p className="text-sm text-ink-400 mt-0.5">View employee leave and holidays on a calendar</p>
         </div>
         <div className="flex items-center gap-3">

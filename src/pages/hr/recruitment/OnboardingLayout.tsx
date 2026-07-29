@@ -26,7 +26,6 @@ export function OnboardingLayout() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-xl font-bold text-ink-900">Onboarding</h1>
           <p className="text-sm text-ink-400 mt-0.5">Manage new employee onboarding and candidate pipeline.</p>
         </div>
         <div className="bg-surface rounded-2xl border border-border-custom shadow-sm p-8 text-center text-ink-400">
@@ -40,7 +39,6 @@ export function OnboardingLayout() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-ink-900">Onboarding</h1>
         <p className="text-sm text-ink-400 mt-0.5">Manage new employee onboarding and candidate pipeline.</p>
       </div>
       <div className="flex gap-1 bg-surface rounded-xl border border-border-custom shadow-sm p-1 overflow-x-auto">

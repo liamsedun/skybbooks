@@ -32,7 +32,6 @@ export function AttendanceLayout() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-xl font-bold text-ink-900">Attendance</h1>
           <p className="text-sm text-ink-400 mt-0.5">Track employee attendance and manage shifts.</p>
         </div>
         <div className="bg-surface rounded-2xl border border-border-custom shadow-sm p-8 text-center text-ink-400">
@@ -46,7 +45,6 @@ export function AttendanceLayout() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-ink-900">Attendance & Time Tracking</h1>
         <p className="text-sm text-ink-400 mt-0.5">Track employee attendance, manage shifts, and handle exceptions.</p>
       </div>
       <div className="flex gap-1 bg-surface rounded-xl border border-border-custom shadow-sm p-1 overflow-x-auto">
