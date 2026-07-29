@@ -87,7 +87,7 @@ function ServiceForm({ label, config, onChange, route }: { label: string; config
         <h2 className="text-base font-semibold text-ink-900">{label} Settings</h2>
         <div className="flex items-center gap-2">
           {route && <button onClick={() => navigate(route)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><ExternalLink className="w-3.5 h-3.5" /> Open</button>}
-          <button onClick={() => { toast(`${label} settings saved`, 'success'); }} className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary-hover transition-all shadow-sm"><Save className="w-3.5 h-3.5" /> Save</button>
+          <button onClick={() => onChange(config)} className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary-hover transition-all shadow-sm"><Save className="w-3.5 h-3.5" /> Save</button>
         </div>
       </div>
       <div className="space-y-4">
