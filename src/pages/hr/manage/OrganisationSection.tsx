@@ -190,7 +190,8 @@ export function OrganisationSection() {
 
   const saveSettings = async () => {
     try {
-      const hrSettings: any = {};
+      const existing = await orgApi.getSettings();
+      const hrSettings: any = { ...(existing as any)?.hr };
       for (const key of Object.keys(formStates)) hrSettings[key] = formStates[key];
       hrSettings.locations = locations;
       await orgApi.updateSettings({ hr: hrSettings });
@@ -200,7 +201,8 @@ export function OrganisationSection() {
 
   const saveTabSetting = async (key: string) => {
     try {
-      const hrSettings: any = {};
+      const existing = await orgApi.getSettings();
+      const hrSettings: any = { ...(existing as any)?.hr };
       hrSettings[key] = formStates[key];
       hrSettings.locations = locations;
       await orgApi.updateSettings({ hr: hrSettings });
