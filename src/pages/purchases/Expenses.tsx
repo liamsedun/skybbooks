@@ -66,7 +66,7 @@ const EMPTY_FORM: FormState = {
 };
 
 function exportCSV(expenses: Expense[], vendorMap: Map<string,string>, accountMap: Map<string,string>) {
-  const headers = ['Ref #','Date','Description','Account','Vendor','Method','Bank/Cash','Amount (₦)','VAT (₦)','Billable'];
+  const headers = ['Ref #','Date','Description','Account','Vendor','Method','Bank/Cash','Currency','Amount (₦)','VAT (₦)','Billable'];
   const rows = expenses.map(e => [
     e.expenseNumber,
     fmtDate(e.date),
@@ -75,6 +75,7 @@ function exportCSV(expenses: Expense[], vendorMap: Map<string,string>, accountMa
     e.vendorId ? (vendorMap.get(e.vendorId) || '') : '',
     e.paymentMethod?.replace('_',' '),
     e.creditAccountName || '',
+    e.currency || 'NGN',
     (e.amount / 100).toFixed(2),
     (e.taxAmount / 100).toFixed(2),
     e.isBillable ? 'Yes' : 'No',
@@ -88,6 +89,11 @@ function exportCSV(expenses: Expense[], vendorMap: Map<string,string>, accountMa
 }
 
 function exportPDF(expenses: Expense[], vendorMap: Map<string,string>, accountMap: Map<string,string>, total: number) {
+  const fmtDualPdf = (k: number, c?: string, fx?: number | string | null) => {
+    if (!c || c === 'NGN' || !fx || Number(fx) <= 1) return `₦${(k/100).toLocaleString('en-NG',{minimumFractionDigits:2})}`;
+    const orig = (k/100) / Number(fx);
+    return `${c} ${orig.toLocaleString('en-US',{minimumFractionDigits:2})} \u2022 ₦${(k/100).toLocaleString('en-NG',{minimumFractionDigits:2})}`;
+  };
   const rows = expenses.map(e => `
     <tr>
       <td>${e.expenseNumber}</td>
@@ -97,7 +103,7 @@ function exportPDF(expenses: Expense[], vendorMap: Map<string,string>, accountMa
       <td>${e.vendorId ? (vendorMap.get(e.vendorId) || '—') : '—'}</td>
       <td>${e.paymentMethod?.replace('_',' ')}</td>
       <td>${e.creditAccountName || '—'}</td>
-      <td style="text-align:right">${formatNaira(e.amount)}</td>
+      <td style="text-align:right">${fmtDualPdf(e.amount, e.currency, e.fxRate)}</td>
     </tr>`).join('');
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Expenses Report</title>
   <style>
@@ -373,7 +379,12 @@ export function ExpensesPage() {
             <tbody className="divide-y divide-slate-100">
               {filtered.map(exp => (
                 <tr key={exp.id} className="hover:bg-slate-50/50 transition-colors">
-                  <td className="py-3 pl-4 pr-2 font-mono text-xs text-slate-600">{exp.expenseNumber}</td>
+                  <td className="py-3 pl-4 pr-2 font-mono text-xs text-slate-600">
+                    {exp.expenseNumber}
+                    {exp.currency && exp.currency !== 'NGN' && (
+                      <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-200">{exp.currency}</span>
+                    )}
+                  </td>
                   <td className="py-3 px-2 text-xs text-slate-500">{fmtDate(exp.date)}</td>
                   <td className="py-3 px-2 text-slate-700 max-w-[180px] truncate">{exp.description || '—'}</td>
                   <td className="py-3 px-2 text-xs text-slate-500 max-w-[120px] truncate">{accountMap.get(exp.accountId) || '—'}</td>
@@ -382,7 +393,7 @@ export function ExpensesPage() {
                     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border border-slate-100/50 bg-slate-100 text-slate-600 capitalize">{exp.paymentMethod?.replace('_', ' ')}</span>
                   </td>
                   <td className="py-3 px-2 text-xs text-slate-500 max-w-[140px] truncate">{exp.creditAccountName || '—'}</td>
-                  <td className="py-3 px-2 text-right font-mono text-slate-900 font-medium">{formatNaira(exp.amount)}</td>
+                  <td className="py-3 px-2 text-right font-mono text-slate-900 font-medium">{fmtDual(exp.amount, exp.currency, exp.fxRate)}</td>
                   <td className="py-3 px-2">
                     {exp.journalEntryId ? (
                       <button
@@ -645,7 +656,7 @@ export function ExpensesPage() {
                     <td className="py-3 px-2 text-slate-700">{viewingExpense.vendorId ? (vendorMap.get(viewingExpense.vendorId) || viewingExpense.vendorId) : '—'}</td>
                     <td className="py-3 px-2 text-slate-700 capitalize">{viewingExpense.paymentMethod.replace('_', ' ')}</td>
                     <td className="py-3 px-2 text-right font-mono text-slate-600">{viewingExpense.reference || '—'}</td>
-                    <td className="py-3 pl-2 pr-3 text-right font-mono font-bold text-slate-900">{formatNaira(viewingExpense.amount)}</td>
+                    <td className="py-3 pl-2 pr-3 text-right font-mono font-bold text-slate-900">{fmtDual(viewingExpense.amount, viewingExpense.currency, viewingExpense.fxRate)}</td>
                   </tr>
                 </tbody>
               </table>
@@ -654,15 +665,15 @@ export function ExpensesPage() {
                   <div className="w-64 border-t border-slate-200 pt-2 space-y-1">
                     <div className="flex justify-between text-xs text-slate-500">
                       <span>Subtotal</span>
-                      <span className="font-mono">{formatNaira(viewingExpense.amount - viewingExpense.taxAmount)}</span>
+                      <span className="font-mono">{fmtDual(viewingExpense.amount - viewingExpense.taxAmount, viewingExpense.currency, viewingExpense.fxRate)}</span>
                     </div>
                     <div className="flex justify-between text-xs text-slate-500">
                       <span>VAT (7.5%)</span>
-                      <span className="font-mono">{formatNaira(viewingExpense.taxAmount)}</span>
+                      <span className="font-mono">{fmtDual(viewingExpense.taxAmount, viewingExpense.currency, viewingExpense.fxRate)}</span>
                     </div>
                     <div className="flex justify-between text-sm font-bold text-slate-900 border-t border-slate-200 pt-1">
                       <span>Total</span>
-                      <span className="font-mono">{formatNaira(viewingExpense.amount)}</span>
+                      <span className="font-mono">{fmtDual(viewingExpense.amount, viewingExpense.currency, viewingExpense.fxRate)}</span>
                     </div>
                   </div>
                 </div>

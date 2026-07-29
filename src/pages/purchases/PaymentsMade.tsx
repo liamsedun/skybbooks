@@ -13,7 +13,7 @@ import {
 
 interface Vendor { id: string; name: string; }
 interface Account { id: string; name: string; type: string; }
-interface Bill { id: string; billNumber: string; vendorId: string; balanceDue: number; total: number; }
+interface Bill { id: string; billNumber: string; vendorId: string; balanceDue: number; total: number; currency?: string; fxRate?: number | string | null; }
 interface Payment {
   id: string; paymentNumber: string; vendorId: string;
   date: string; amount: number; currency: string; fxRate?: string | number | null;
@@ -58,8 +58,8 @@ const METHOD_META: Record<string, { label: string; icon: React.ComponentType<{ c
 const PAYMENT_METHODS = ['bank_transfer', 'cash', 'card', 'cheque', 'pos', 'ussd'];
 
 function exportPaymentsCSV(payments: Payment[], vendorMap: Map<string,string>) {
-  const headers = ['Payment #','Vendor','Date','Method','Reference','Amount (₦)'];
-  const rows = payments.map(p => [p.paymentNumber, vendorMap.get(p.vendorId)||'', fmtDate(p.date), p.paymentMethod?.replace('_',' ')||'', p.reference||'', (p.amount/100).toFixed(2)]);
+  const headers = ['Payment #','Vendor','Date','Method','Reference','Currency','Amount (₦)'];
+  const rows = payments.map(p => [p.paymentNumber, vendorMap.get(p.vendorId)||'', fmtDate(p.date), p.paymentMethod?.replace('_',' ')||'', p.reference||'', p.currency||'NGN', (p.amount/100).toFixed(2)]);
   const csv = [headers,...rows].map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');
   const blob = new Blob([csv],{type:'text/csv'});
   const url = URL.createObjectURL(blob);
@@ -67,8 +67,13 @@ function exportPaymentsCSV(payments: Payment[], vendorMap: Map<string,string>) {
 }
 
 function exportPaymentsPDF(payments: Payment[], vendorMap: Map<string,string>, total: number) {
-  const rows = payments.map(p=>`<tr><td>${p.paymentNumber}</td><td>${vendorMap.get(p.vendorId)||'—'}</td><td>${fmtDate(p.date)}</td><td>${p.paymentMethod?.replace('_',' ')||'—'}</td><td>${p.reference||'—'}</td><td style="text-align:right">${formatNaira(p.amount)}</td></tr>`).join('');
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Payments Made</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',sans-serif;color:#1e293b;padding:40px;font-size:13px}.header{display:flex;justify-content:space-between;margin-bottom:32px;padding-bottom:20px;border-bottom:2px solid #0f172a}.company{font-size:22px;font-weight:800}.subtitle{font-size:11px;color:#64748b;margin-top:4px}.title{font-size:18px;font-weight:700;text-align:right}.date{font-size:11px;color:#64748b;margin-top:4px;text-align:right}table{width:100%;border-collapse:collapse;margin-top:16px}th{background:#0f172a;color:#fff;padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase}td{padding:10px 12px;border-bottom:1px solid #e2e8f0;font-size:12px}tr:nth-child(even) td{background:#f8fafc}.total-row td{font-weight:700;background:#f1f5f9;border-top:2px solid #0f172a}.footer{margin-top:40px;text-align:center;font-size:10px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:16px}@media print{body{padding:20px}}</style></head><body><div class="header"><div><div class="company">SkyBooks</div><div class="subtitle">By Skyhouse Accountants &amp; Technologies</div></div><div><div class="title">Payments Made</div><div class="date">Generated: ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}</div></div></div><table><thead><tr><th>Payment #</th><th>Vendor</th><th>Date</th><th>Method</th><th>Reference</th><th style="text-align:right">Amount</th></tr></thead><tbody>${rows}</tbody><tfoot><tr class="total-row"><td colspan="5"><strong>Total (${payments.length} payments)</strong></td><td style="text-align:right">${formatNaira(total)}</td></tr></tfoot></table><div class="footer">SkyBooks By Skyhouse Accountants &amp; Technologies (Olalekan Williams Edun) &bull; Confidential</div></body></html>`;
+  const fmt = (k: number, c?: string, fx?: number | string | null) => {
+    if (!c || c === 'NGN' || !fx || Number(fx) <= 1) return `₦${(k/100).toLocaleString('en-NG',{minimumFractionDigits:2})}`;
+    const orig = (k/100) / Number(fx);
+    return `${c} ${orig.toLocaleString('en-US',{minimumFractionDigits:2})}  \u2022  ₦${(k/100).toLocaleString('en-NG',{minimumFractionDigits:2})}`;
+  };
+  const rows = payments.map(p=>`<tr><td>${p.paymentNumber}</td><td>${vendorMap.get(p.vendorId)||'—'}</td><td>${fmtDate(p.date)}</td><td>${p.paymentMethod?.replace('_',' ')||'—'}</td><td>${p.reference||'—'}</td><td>${p.currency||'NGN'}</td><td style="text-align:right">${fmt(p.amount, p.currency, p.fxRate)}</td></tr>`).join('');
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Payments Made</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',sans-serif;color:#1e293b;padding:40px;font-size:13px}.header{display:flex;justify-content:space-between;margin-bottom:32px;padding-bottom:20px;border-bottom:2px solid #0f172a}.company{font-size:22px;font-weight:800}.subtitle{font-size:11px;color:#64748b;margin-top:4px}.title{font-size:18px;font-weight:700;text-align:right}.date{font-size:11px;color:#64748b;margin-top:4px;text-align:right}table{width:100%;border-collapse:collapse;margin-top:16px}th{background:#0f172a;color:#fff;padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase}td{padding:10px 12px;border-bottom:1px solid #e2e8f0;font-size:12px}tr:nth-child(even) td{background:#f8fafc}.total-row td{font-weight:700;background:#f1f5f9;border-top:2px solid #0f172a}.footer{margin-top:40px;text-align:center;font-size:10px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:16px}@media print{body{padding:20px}}</style></head><body><div class="header"><div><div class="company">SkyBooks</div><div class="subtitle">By Skyhouse Accountants &amp; Technologies</div></div><div><div class="title">Payments Made</div><div class="date">Generated: ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}</div></div></div><table><thead><tr><th>Payment #</th><th>Vendor</th><th>Date</th><th>Method</th><th>Reference</th><th>Currency</th><th style="text-align:right">Amount</th></tr></thead><tbody>${rows}</tbody><tfoot><tr class="total-row"><td colspan="6"><strong>Total (${payments.length} payments)</strong></td><td style="text-align:right">${fmt(total, 'NGN')}</td></tr></tfoot></table><div class="footer">SkyBooks By Skyhouse Accountants &amp; Technologies (Olalekan Williams Edun) &bull; Confidential</div></body></html>`;
   const w = window.open('','_blank'); if(w){w.document.write(html);w.document.close();setTimeout(()=>w.print(),500);}
 }
 
@@ -542,7 +547,12 @@ export function PaymentsMadePage() {
                       <tr key={p.id} onClick={() => setDetailPaymentId(isSelected ? null : p.id)}
                         className={`group cursor-pointer transition-colors ${isSelected ? 'bg-indigo-50 border-l-2 border-l-indigo-500' : 'hover:bg-slate-50/50'}`}>
                         <td className="px-3 py-3">
-                          <p className="font-mono text-sm font-semibold text-slate-700">{p.paymentNumber}</p>
+                          <p className="font-mono text-sm font-semibold text-slate-700">
+                            {p.paymentNumber}
+                            {p.currency && p.currency !== 'NGN' && (
+                              <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-200">{p.currency}</span>
+                            )}
+                          </p>
                         </td>
                         <td className="px-3 py-3">
                           <p className="text-sm font-medium text-slate-800">{vendorMap.get(p.vendorId) || '—'}</p>
@@ -554,7 +564,7 @@ export function PaymentsMadePage() {
                             {meta.label}
                           </span>
                         </td>
-                        <td className="px-3 py-3 text-right font-semibold text-rose-700 font-mono">{formatNaira(p.amount)}</td>
+                        <td className="px-3 py-3 text-right font-semibold text-rose-700 font-mono">{fmtDual(p.amount, p.currency, p.fxRate)}</td>
                         <td className="px-3 py-3 text-center">
                           {p.journalEntryId ? (
                             <button onClick={(e) => { e.stopPropagation(); navigate(`/accountant/journals?entry=${p.journalEntryNumber || ''}`); }}
@@ -586,6 +596,7 @@ export function PaymentsMadePage() {
                       {filtered.length} payments shown
                     </td>
                     <td className="px-3 py-3 text-right font-bold text-slate-800 font-mono">{formatNaira(totals.sum)}</td>
+                    <td />
                     <td />
                   </tr>
                 </tfoot>
@@ -735,7 +746,7 @@ export function PaymentsMadePage() {
                         const logoHtml = org?.logoUrl
                           ? `<img src="${org.logoUrl}" alt="" style="width:48px;height:48px;border-radius:8px;object-fit:contain;border:1px solid #e2e8f0;background:white;padding:4px"/>`
                           : `<div style="width:48px;height:48px;border-radius:8px;background:#4f46e5;display:flex;align-items:center;justify-content:center;color:white;font-size:22px;font-weight:bold">${(org?.name||'S')[0].toUpperCase()}</div>`;
-                        const allocRows = (paymentDetail.allocations||[]).map(a => `<tr><td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;font-size:12px;font-family:monospace;color:#334155;font-weight:500">${billNumberMap.get(a.billId)||a.billId.substring(0,8)+'...'}</td><td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;font-size:12px;text-align:right;color:#dc2626;font-family:monospace;font-weight:600">${formatNaira(a.amount)}</td></tr>`).join('');
+                        const allocRows = (paymentDetail.allocations||[]).map(a => `<tr><td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;font-size:12px;font-family:monospace;color:#334155;font-weight:500">${billNumberMap.get(a.billId)||a.billId.substring(0,8)+'...'}</td><td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;font-size:12px;text-align:right;color:#dc2626;font-family:monospace;font-weight:600">${fmtDual(a.amount, paymentDetail.currency, paymentDetail.fxRate)}</td></tr>`).join('');
                         const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Payment Voucher ${paymentDetail.paymentNumber}</title>
                         <style>
                           *{margin:0;padding:0;box-sizing:border-box}
@@ -783,15 +794,15 @@ export function PaymentsMadePage() {
                             <tfoot>
                               <tr style="background:#f8fafc">
                                 <td style="padding:8px 12px;font-size:12px;color:#475569">Total Bills Credited</td>
-                                <td style="padding:8px 12px;font-size:12px;font-weight:600;color:#334155;text-align:right;font-family:monospace">${formatNaira(paymentDetail.totalAllocated || paymentDetail.amount)}</td>
+                                <td style="padding:8px 12px;font-size:12px;font-weight:600;color:#334155;text-align:right;font-family:monospace">${fmtDual(paymentDetail.totalAllocated || paymentDetail.amount, paymentDetail.currency, paymentDetail.fxRate)}</td>
                               </tr>
                               ${(paymentDetail.whtAmount||0) > 0 ? `<tr>
                                 <td style="padding:8px 12px;font-size:12px;color:#475569">Less: WHT Withheld</td>
-                                <td style="padding:8px 12px;font-size:12px;font-weight:500;color:#d97706;text-align:right;font-family:monospace">−${formatNaira(paymentDetail.whtAmount!)}</td>
+                                <td style="padding:8px 12px;font-size:12px;font-weight:500;color:#d97706;text-align:right;font-family:monospace">−${fmtDual(paymentDetail.whtAmount!, paymentDetail.currency, paymentDetail.fxRate)}</td>
                               </tr>` : ''}
                               <tr style="background:#f1f5f9">
                                 <td style="padding:10px 12px;font-size:13px;font-weight:700;color:#0f172a">Net Paid to Vendor</td>
-                                <td style="padding:10px 12px;font-size:13px;font-weight:800;color:#dc2626;text-align:right;font-family:monospace">${formatNaira(paymentDetail.amount)}</td>
+                                <td style="padding:10px 12px;font-size:13px;font-weight:800;color:#dc2626;text-align:right;font-family:monospace">${fmtDual(paymentDetail.amount, paymentDetail.currency, paymentDetail.fxRate)}</td>
                               </tr>
                             </tfoot>
                           </table>
@@ -1056,7 +1067,7 @@ export function PaymentsMadePage() {
                           className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                         />
                         <span className="flex-1 truncate font-mono">{bill.billNumber || 'Bill'}</span>
-                        <span className="font-mono text-indigo-600 font-semibold">{formatNaira(bill.balanceDue)}</span>
+                        <span className="font-mono text-indigo-600 font-semibold">{fmtDual(bill.balanceDue, bill.currency, bill.fxRate)}</span>
                       </label>
                     ))}
                   </div>
@@ -1087,7 +1098,7 @@ export function PaymentsMadePage() {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5">
             <h2 className="text-base font-semibold text-slate-900 mb-2">Reverse Payment</h2>
             <p className="text-sm text-slate-500 mb-4">
-              Reverse <span className="font-medium text-slate-700">{deleteTarget.paymentNumber}</span> ({formatNaira(deleteTarget.amount)})?
+              Reverse <span className="font-medium text-slate-700">{deleteTarget.paymentNumber}</span> ({fmtDual(deleteTarget.amount, deleteTarget.currency, deleteTarget.fxRate)})?
               This will restore any bill balance due and reverse the journal entries.
             </p>
             {deleteError && <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2 mb-3">{deleteError}</div>}

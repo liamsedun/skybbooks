@@ -52,8 +52,8 @@ function calcLine(l: POLine) {
 
 
 function exportPOsCSV(pos: PO[], vendorMap: Map<string,string>) {
-  const headers = ['PO #','Vendor','Date','Expected','Status','Total'];
-  const rows = pos.map(p => [p.poNumber, vendorMap.get(p.vendorId)||'', fmtDate(p.date), fmtDate(p.expectedDate), p.status, (p.total/100).toFixed(2)]);
+  const headers = ['PO #','Vendor','Date','Expected','Status','Currency','Total'];
+  const rows = pos.map(p => [p.poNumber, vendorMap.get(p.vendorId)||'', fmtDate(p.date), fmtDate(p.expectedDate), p.status, p.currency||'NGN', (p.total/100).toFixed(2)]);
   const csv = [headers,...rows].map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');
   const blob = new Blob([csv],{type:'text/csv'});
   const url = URL.createObjectURL(blob);
@@ -61,7 +61,12 @@ function exportPOsCSV(pos: PO[], vendorMap: Map<string,string>) {
 }
 
 function exportPOsPDF(pos: PO[], vendorMap: Map<string,string>) {
-  const rows = pos.map(p=>`<tr><td>${p.poNumber}</td><td>${vendorMap.get(p.vendorId)||'—'}</td><td>${fmtDate(p.date)}</td><td>${fmtDate(p.expectedDate)}</td><td>${p.status}</td><td style="text-align:right">${formatNaira(p.total)}</td></tr>`).join('');
+  const fmtDualPdf = (k: number, c?: string, fx?: number | string | null) => {
+    if (!c || c === 'NGN' || !fx || Number(fx) <= 1) return `₦${(k/100).toLocaleString('en-NG',{minimumFractionDigits:2})}`;
+    const orig = (k/100) / Number(fx);
+    return `${c} ${orig.toLocaleString('en-US',{minimumFractionDigits:2})} \u2022 ₦${(k/100).toLocaleString('en-NG',{minimumFractionDigits:2})}`;
+  };
+  const rows = pos.map(p=>`<tr><td>${p.poNumber}</td><td>${vendorMap.get(p.vendorId)||'—'}</td><td>${fmtDate(p.date)}</td><td>${fmtDate(p.expectedDate)}</td><td>${p.status}</td><td style="text-align:right">${fmtDualPdf(p.total, p.currency, p.fxRate)}</td></tr>`).join('');
   const total = pos.reduce((s,p)=>s+p.total,0);
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Purchase Orders</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',sans-serif;color:#1e293b;padding:40px;font-size:13px}.header{display:flex;justify-content:space-between;margin-bottom:32px;padding-bottom:20px;border-bottom:2px solid #0f172a}.company{font-size:22px;font-weight:800}.subtitle{font-size:11px;color:#64748b;margin-top:4px}.title{font-size:18px;font-weight:700;text-align:right}.date{font-size:11px;color:#64748b;margin-top:4px;text-align:right}table{width:100%;border-collapse:collapse;margin-top:16px}th{background:#0f172a;color:#fff;padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase}td{padding:10px 12px;border-bottom:1px solid #e2e8f0;font-size:12px}tr:nth-child(even) td{background:#f8fafc}.total-row td{font-weight:700;background:#f1f5f9;border-top:2px solid #0f172a}.footer{margin-top:40px;text-align:center;font-size:10px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:16px}@media print{body{padding:20px}}</style></head><body><div class="header"><div><div class="company">SkyBooks</div><div class="subtitle">By Skyhouse Accountants &amp; Technologies</div></div><div><div class="title">Purchase Orders</div><div class="date">Generated: ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}</div></div></div><table><thead><tr><th>PO #</th><th>Vendor</th><th>Date</th><th>Expected</th><th>Status</th><th style="text-align:right">Total</th></tr></thead><tbody>${rows}</tbody><tfoot><tr class="total-row"><td colspan="5"><strong>Total (${pos.length} orders)</strong></td><td style="text-align:right">${formatNaira(total)}</td></tr></tfoot></table><div class="footer">SkyBooks By Skyhouse Accountants &amp; Technologies (Olalekan Williams Edun) &bull; Confidential</div></body></html>`;
   const w = window.open('','_blank'); if(w){w.document.write(html);w.document.close();setTimeout(()=>w.print(),500);}
@@ -328,7 +333,12 @@ export function PurchaseOrdersPage() {
             <tbody className="divide-y divide-slate-100">
               {filtered.map(po => (
                 <tr key={po.id} className="hover:bg-slate-50/50 transition-colors">
-                  <td className="py-3 pl-4 pr-2 font-mono text-xs font-medium text-slate-700">{po.poNumber}</td>
+                  <td className="py-3 pl-4 pr-2 font-mono text-xs font-medium text-slate-700">
+                    {po.poNumber}
+                    {po.currency && po.currency !== 'NGN' && (
+                      <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-200">{po.currency}</span>
+                    )}
+                  </td>
                   <td className="py-3 px-2 font-medium text-slate-900">{vendorMap.get(po.vendorId) || '—'}</td>
                   <td className="py-3 px-2 text-xs text-slate-500">{fmtDate(po.date)}</td>
                   <td className="py-3 px-2 text-xs text-slate-500">{fmtDate(po.expectedDate)}</td>
@@ -337,7 +347,9 @@ export function PurchaseOrdersPage() {
                       {po.status}
                     </span>
                   </td>
-                  <td className="py-3 px-2 text-right font-mono text-slate-900">{formatNaira(po.total)}</td>
+                  <td className="py-3 px-2 text-right font-mono text-slate-900">
+                    {fmtDual(po.total, po.currency, po.fxRate)}
+                  </td>
                   <td className="py-3 pl-2 pr-4">
                     <div className="flex items-center justify-center gap-1">
                       <button onClick={() => openView(po)} className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all duration-200" title="View">
@@ -763,9 +775,9 @@ export function PurchaseOrdersPage() {
                   <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-shadow resize-none" />
                 </div>
                 <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 space-y-2">
-                  <div className="flex justify-between text-sm text-slate-500"><span>Subtotal</span><span className="font-mono">₦{totals.sub.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span></div>
-                  <div className="flex justify-between text-sm text-slate-500"><span>VAT</span><span className="font-mono">₦{totals.tax.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span></div>
-                  <div className="flex justify-between pt-2 border-t border-slate-200"><span className="font-bold text-slate-800">Total</span><span className="font-black text-slate-900 font-mono">₦{totals.total.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span></div>
+                  <div className="flex justify-between text-sm text-slate-500"><span>Subtotal</span><span className="font-mono">{fmtDual(Math.round(totals.sub * 100), form.currency, form.fxRate)}</span></div>
+                  <div className="flex justify-between text-sm text-slate-500"><span>VAT</span><span className="font-mono">{fmtDual(Math.round(totals.tax * 100), form.currency, form.fxRate)}</span></div>
+                  <div className="flex justify-between pt-2 border-t border-slate-200"><span className="font-bold text-slate-800">Total</span><span className="font-black text-slate-900 font-mono">{fmtDual(Math.round(totals.total * 100), form.currency, form.fxRate)}</span></div>
                 </div>
               </div>
 

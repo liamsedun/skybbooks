@@ -55,6 +55,12 @@ export function RecordPaymentDrawer({
   const { token } = useAuth();
   const [drawerCurrency, setDrawerCurrency] = React.useState('NGN');
   const [drawerFxRate, setDrawerFxRate] = React.useState<string | null>('1.00000000');
+  const fmtDual = (cents: number) => {
+    const ngn = formatNaira(cents);
+    if (drawerCurrency === 'NGN' || !drawerFxRate || Number(drawerFxRate) <= 1) return ngn;
+    const orig = cents / 100 / Number(drawerFxRate);
+    return `${drawerCurrency} ${orig.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}  \u2022  ${ngn}`;
+  };
   const [drawerProjectId, setDrawerProjectId] = React.useState('');
 
   // Queries for dynamic selects
@@ -469,16 +475,16 @@ export function RecordPaymentDrawer({
 
                 {/* Real-time distribution diagnostic summary line */}
                 <div className="flex justify-between items-center mt-3 text-[10px] text-slate-500 font-mono">
-                  <span>Allocated: {formatNaira(totalAllocatedKobo)}</span>
+                  <span>Allocated: {fmtDual(totalAllocatedKobo)}</span>
                   <span className={unallocatedKobo > 0 ? 'text-purple-600 font-bold' : ''}>
-                    Unallocated Excess: {formatNaira(unallocatedKobo)}
+                    Unallocated Excess: {fmtDual(unallocatedKobo)}
                   </span>
                 </div>
 
                 {isMismatched && (
                   <div className="mt-3 p-2.5 bg-rose-50 border border-rose-200 rounded-lg text-[11px] text-rose-700 font-semibold leading-relaxed">
-                    The invoice(s) checked total {formatNaira(totalAllocatedKobo)}, which must equal net received plus
-                    WHT ({formatNaira(grossKobo)}). Adjust the amount or WHT, or select additional invoices.
+                    The invoice(s) checked total {fmtDual(totalAllocatedKobo)}, which must equal net received plus
+                    WHT ({fmtDual(grossKobo)}). Adjust the amount or WHT, or select additional invoices.
                   </div>
                 )}
               </div>
@@ -548,7 +554,7 @@ export function RecordPaymentDrawer({
                                 {field.invoiceNumber}
                               </h5>
                               <p className="text-[10px] text-slate-400 font-semibold uppercase mt-0.5 font-mono">
-                                Dev. Balance: {formatNaira(field.balanceDue)}
+                                Dev. Balance: {fmtDual(field.balanceDue)}
                               </p>
                             </div>
                           </div>
@@ -557,7 +563,7 @@ export function RecordPaymentDrawer({
                           <div className="text-right shrink-0 max-w-[140px]">
                             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">Applying</p>
                             <p className={`font-mono font-extrabold text-sm ${field.selected && field.allocatedAmount > 0 ? 'text-emerald-700' : 'text-slate-300'}`}>
-                              {formatNaira(field.allocatedAmount || 0)}
+                              {fmtDual(field.allocatedAmount || 0)}
                             </p>
                           </div>
                         </div>

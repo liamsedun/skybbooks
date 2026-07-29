@@ -287,18 +287,17 @@ function printReceipt(payment: PaymentDetail, org: any, cust: any, invoices: (In
   <div style="margin-top:24px;padding:20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;">
     ${(payment.whtAmount || 0) > 0 ? `
     <table style="width:100%;border-collapse:collapse;font-size:12px;">
-      <tr><td style="padding:4px 0;color:#64748b;">Invoice Amount</td><td style="padding:4px 0;text-align:right;font-weight:600;font-family:monospace;color:#334155;">${formatNaira(payment.totalAllocated || payment.amount)}</td></tr>
-      <tr><td style="padding:4px 0;color:#d97706;">Less: WHT Withheld by Customer</td><td style="padding:4px 0;text-align:right;font-weight:500;font-family:monospace;color:#d97706;">− ${formatNaira(payment.whtAmount!)}</td></tr>
+      <tr><td style="padding:4px 0;color:#64748b;">Invoice Amount</td><td style="padding:4px 0;text-align:right;font-weight:600;font-family:monospace;color:#334155;">${fmtDual(payment.totalAllocated || payment.amount, payment.currency, payment.fxRate)}</td></tr>
+      <tr><td style="padding:4px 0;color:#d97706;">Less: WHT Withheld by Customer</td><td style="padding:4px 0;text-align:right;font-weight:500;font-family:monospace;color:#d97706;">− ${fmtDual(payment.whtAmount!, payment.currency, payment.fxRate)}</td></tr>
       <tr><td style="padding:8px 0 0 0;border-top:1px solid #cbd5e1;"></td><td style="padding:8px 0 0 0;border-top:1px solid #cbd5e1;"></td></tr>
-      <tr><td style="padding:4px 0;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;">Net Amount Received</td><td style="padding:4px 0;text-align:right;font-size:20px;font-weight:900;color:#059669;font-family:monospace;">${formatNaira(payment.amount)}</td></tr>
+      <tr><td style="padding:4px 0;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;">Net Amount Received</td><td style="padding:4px 0;text-align:right;font-size:20px;font-weight:900;color:#059669;font-family:monospace;">${fmtDual(payment.amount, payment.currency, payment.fxRate)}</td></tr>
     </table>
     ` : `
     <div style="text-align:center;">
       <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Net Amount Received</div>
-      <div style="font-size:28px;font-weight:900;color:#059669;font-family:monospace;">${formatNaira(payment.amount)}</div>
+      <div style="font-size:28px;font-weight:900;color:#059669;font-family:monospace;">${fmtDual(payment.amount, payment.currency, payment.fxRate)}</div>
     </div>
     `}
-    <div style="font-size:11px;color:#94a3b8;text-align:center;margin-top:6px;">${payment.currency}</div>
   </div>
 
   <!-- Allocated To -->
@@ -391,9 +390,8 @@ function printPaymentDetail(payment: PaymentDetail, org: any, toast: any) {
   <div style="margin-top:24px;padding:20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;">
     <div style="text-align:center;">
       <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Total Received</div>
-      <div style="font-size:28px;font-weight:900;color:#059669;font-family:monospace;">${formatNaira(payment.amount)}</div>
+      <div style="font-size:28px;font-weight:900;color:#059669;font-family:monospace;">${fmtDual(payment.amount, payment.currency, payment.fxRate)}</div>
     </div>
-    <div style="font-size:11px;color:#94a3b8;text-align:center;margin-top:6px;">${payment.currency}</div>
   </div>
 
   ${payment.notes ? `
@@ -417,9 +415,9 @@ function printPaymentDetail(payment: PaymentDetail, org: any, toast: any) {
 // ── Export Helpers ──────────────────────────────────────────────────────────
 
 function exportPaymentsCSV(payments: Payment[]) {
-  const headers = ['Payment #','Payer','Date','Amount (₦)','Method','Reference','Category','Notes'];
+  const headers = ['Payment #','Payer','Date','Currency','Amount (₦)','Method','Reference','Category','Notes'];
   const rows = payments.map(p => [
-    p.paymentNumber, p.payerName||'', p.date, (p.amount/100).toFixed(2),
+    p.paymentNumber, p.payerName||'', p.date, p.currency||'NGN', (p.amount/100).toFixed(2),
     p.paymentMethod, p.reference||'', p.category, p.notes||'',
   ]);
   const csv = [headers,...rows].map(r => r.map(val => `"${val}"`).join(',')).join('\n');
@@ -431,13 +429,17 @@ function exportPaymentsCSV(payments: Payment[]) {
 }
 
 function exportPaymentsPDF(payments: Payment[]) {
-  const fmt = (k: number) => `₦${(k/100).toLocaleString('en-NG',{minimumFractionDigits:2})}`;
+  const fmt = (k: number, c?: string, fx?: number | string | null) => {
+    if (!c || c === 'NGN' || !fx || Number(fx) <= 1) return `₦${(k/100).toLocaleString('en-NG',{minimumFractionDigits:2})}`;
+    const orig = (k/100) / Number(fx);
+    return `${c} ${orig.toLocaleString('en-US',{minimumFractionDigits:2})}  \u2022  ₦${(k/100).toLocaleString('en-NG',{minimumFractionDigits:2})}`;
+  };
   const rows = payments.map(p => `
     <tr>
       <td>${p.paymentNumber}</td>
       <td>${p.payerName||'\u2014'}</td>
       <td>${new Date(p.date).toLocaleDateString('en-GB')}</td>
-      <td style="text-align:right">${fmt(p.amount)}</td>
+      <td style="text-align:right">${fmt(p.amount, p.currency, p.fxRate)}</td>
       <td>${p.paymentMethod}</td>
       <td>${p.reference||'\u2014'}</td>
       <td><span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;background:#f1f5f9;color:#475569">${p.category}</span></td>
@@ -942,7 +944,12 @@ export function PaymentsReceivedPage() {
                         <tr key={p.id} onClick={() => setSelectedPaymentId(isSelected ? null : p.id)}
                           className={`group cursor-pointer hover:bg-slate-50/50 transition-colors ${isSelected ? 'bg-indigo-50 border-l-2 border-l-indigo-500' : ''}`}>
                           <td className="px-3 py-3">
-                            <p className="font-mono text-sm font-semibold text-slate-700">{p.paymentNumber}</p>
+                            <p className="font-mono text-sm font-semibold text-slate-700">
+                              {p.paymentNumber}
+                              {p.currency && p.currency !== 'NGN' && (
+                                <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-200">{p.currency}</span>
+                              )}
+                            </p>
                             {p.category === 'other_income' && (
                               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">Other Income</span>
                             )}
@@ -959,7 +966,7 @@ export function PaymentsReceivedPage() {
                             </span>
                           </td>
                           <td className="px-3 py-3 text-right font-semibold text-emerald-700 font-mono">
-                            {formatNaira(p.amount)}
+                            {fmtDual(p.amount, p.currency, p.fxRate)}
                           </td>
                           <td className="px-3 py-3 text-center">
                             {p.journalEntryId ? (
@@ -1004,6 +1011,7 @@ export function PaymentsReceivedPage() {
                         {filtered.length} payments shown
                       </td>
                       <td className="px-3 py-3 text-right font-bold text-slate-800 font-mono">{formatNaira(totals.sum)}</td>
+                      <td></td>
                       <td />
                     </tr>
                   </tfoot>

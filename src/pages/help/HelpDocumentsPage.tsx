@@ -16,6 +16,7 @@ const HELP_TOPICS = [
   { title: 'Audit Trail', icon: '🔍', content: 'View all changes made across the system with user details, timestamps, IP addresses, and before/after diff views. Export audit logs as CSV or PDF.' },
   { title: 'Tax Engine', icon: '💰', content: 'Manage PAYE schedules, ITF assessments, Stamp Duty records, Tax Exemptions, and FIRS reports. Auto-post tax journal entries.' },
   { title: 'VAT Return', icon: '📑', content: 'Compute VAT payable/receivable based on sales and purchases. File VAT returns and track filing history.' },
+  { title: 'SKYHRM Entry Point & Setup', icon: '👤', content: 'Entry at /app/hr/home/overview. Sidebar group visible only when user role has hrm module access (owners, admins, hr role). Setup hub at /app/hr/manage (6 tabs: Users, Employee Profiles, Organisation Setup with 8 sub-tabs, User Access Control, Approvals, Services). Recommended sequence: (1) Configure Departments & Designations, (2) HR Settings toggles (8 options), (3) Leave Types & Policies, (4) Attendance Configuration, (5) Approval Engine, (6) Onboarding Templates. HR schema auto-created on startup — no manual DB setup required.' },
 ];
 
 export function HelpDocumentsPage() {

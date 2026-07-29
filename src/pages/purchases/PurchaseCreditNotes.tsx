@@ -64,9 +64,9 @@ function fmtDate(d: string | null): string {
 }
 
 function exportVendorCreditNotesCSV(notes: VendorCredit[]) {
-  const headers = ['VC #','Vendor','Bill','Date','Status','Subtotal (₦)','VAT (₦)','Total (₦)','Remaining (₦)','Notes'];
+  const headers = ['VC #','Vendor','Bill','Date','Status','Currency','Subtotal (₦)','VAT (₦)','Total (₦)','Remaining (₦)','Notes'];
   const rows = notes.map(n => [
-    n.vcNumber, n.vendor?.name||'', n.billNumber||'', n.date, n.status,
+    n.vcNumber, n.vendor?.name||'', n.billNumber||'', n.date, n.status, n.currency||'NGN',
     (n.subtotal/100).toFixed(2), (n.tax/100).toFixed(2), (n.total/100).toFixed(2), (n.remainingCredit/100).toFixed(2),
     n.notes||'',
   ]);
@@ -79,17 +79,23 @@ function exportVendorCreditNotesCSV(notes: VendorCredit[]) {
 }
 
 function exportVendorCreditNotesPDF(notes: VendorCredit[]) {
-  const fmt = (k: number) => `₦${(k/100).toLocaleString('en-NG',{minimumFractionDigits:2})}`;
-  const rows = notes.map(n => `
-    <tr>
+  const fmt = (k: number, c?: string, fx?: number | string | null) => {
+    if (!c || c === 'NGN' || !fx || Number(fx) <= 1) return `₦${(k/100).toLocaleString('en-NG',{minimumFractionDigits:2})}`;
+    const orig = (k/100) / Number(fx);
+    return `${c} ${orig.toLocaleString('en-US',{minimumFractionDigits:2})}  \u2022  ₦${(k/100).toLocaleString('en-NG',{minimumFractionDigits:2})}`;
+  };
+  const rows = notes.map(n => {
+    const cur = (n.currency && n.currency !== 'NGN') ? `<span style="display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600;background:#eef2ff;color:#4338ca;margin-right:4px">${n.currency}</span>` : '';
+    return `<tr>
       <td>${n.vcNumber}</td>
       <td>${n.vendor?.name||'\u2014'}</td>
       <td>${n.billNumber||'\u2014'}</td>
       <td>${new Date(n.date).toLocaleDateString('en-GB')}</td>
       <td><span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;background:#f1f5f9;color:#475569">${n.status}</span></td>
-      <td style="text-align:right">${fmt(n.total)}</td>
-      <td style="text-align:right">${fmt(n.remainingCredit)}</td>
-    </tr>`).join('');
+      <td style="text-align:right">${cur}${fmt(n.total, n.currency, n.fxRate)}</td>
+      <td style="text-align:right">${fmt(n.remainingCredit, n.currency, n.fxRate)}</td>
+    </tr>`;
+  }).join('');
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Vendor Credit Notes</title>
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
@@ -178,21 +184,21 @@ function printVendorCreditNote(note: VendorCredit, org: any, toast: any) {
   <div style="margin-top:24px;display:flex;gap:16px;">
     <div style="flex:1;padding:16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;text-align:center;">
       <div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Subtotal</div>
-      <div style="font-size:18px;font-weight:900;color:#0f172a;font-family:monospace;">${formatNaira(note.subtotal)}</div>
+      <div style="font-size:18px;font-weight:900;color:#0f172a;font-family:monospace;">${fmtDual(note.subtotal, note.currency, note.fxRate)}</div>
     </div>
     <div style="flex:1;padding:16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;text-align:center;">
       <div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">VAT</div>
-      <div style="font-size:18px;font-weight:900;color:#0f172a;font-family:monospace;">${formatNaira(note.tax)}</div>
+      <div style="font-size:18px;font-weight:900;color:#0f172a;font-family:monospace;">${fmtDual(note.tax, note.currency, note.fxRate)}</div>
     </div>
     <div style="flex:1;padding:16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;text-align:center;">
       <div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Total</div>
-      <div style="font-size:18px;font-weight:900;color:#059669;font-family:monospace;">${formatNaira(note.total)}</div>
+      <div style="font-size:18px;font-weight:900;color:#059669;font-family:monospace;">${fmtDual(note.total, note.currency, note.fxRate)}</div>
     </div>
   </div>
 
   <div style="margin-top:16px;padding:16px;background:#fffbeb;border:1px solid #fde68a;border-radius:12px;text-align:center;">
     <div style="font-size:10px;font-weight:700;color:#d97706;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Remaining Credit</div>
-    <div style="font-size:20px;font-weight:900;color:#d97706;font-family:monospace;">${formatNaira(note.remainingCredit)}</div>
+    <div style="font-size:20px;font-weight:900;color:#d97706;font-family:monospace;">${fmtDual(note.remainingCredit, note.currency, note.fxRate)}</div>
   </div>
 
   ${note.notes ? `
@@ -433,15 +439,20 @@ export function PurchaseCreditNotesPage() {
                     className="group hover:bg-slate-50/50 transition-colors cursor-pointer"
                     onClick={() => setSelectedId(n.id)}
                   >
-                    <td className="px-3 py-3 font-mono text-sm font-semibold text-slate-700">{n.vcNumber}</td>
+                    <td className="px-3 py-3 font-mono text-sm font-semibold text-slate-700">
+                      {n.vcNumber}
+                      {n.currency && n.currency !== 'NGN' && (
+                        <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-200">{n.currency}</span>
+                      )}
+                    </td>
                     <td className="px-3 py-3">
                       <p className="text-sm font-medium text-slate-800">{n.vendor?.name || '\u2014'}</p>
                       {n.vendor?.email && <p className="text-xs text-slate-400">{n.vendor.email}</p>}
                     </td>
                     <td className="px-3 py-3 text-sm text-slate-500 font-mono">{n.billNumber || '\u2014'}</td>
                     <td className="px-3 py-3 text-sm text-slate-500">{fmtDate(n.date)}</td>
-                    <td className="px-3 py-3 text-right font-semibold text-slate-700 font-mono">{formatNaira(n.total)}</td>
-                    <td className="px-3 py-3 text-right font-semibold text-amber-600 font-mono">{formatNaira(n.remainingCredit)}</td>
+                    <td className="px-3 py-3 text-right font-semibold text-slate-700 font-mono">{fmtDual(n.total, n.currency, n.fxRate)}</td>
+                    <td className="px-3 py-3 text-right font-semibold text-amber-600 font-mono">{fmtDual(n.remainingCredit, n.currency, n.fxRate)}</td>
                     <td className="px-3 py-3">
                       <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${statusMeta.className === 'bg-amber-50 text-amber-700' ? 'border-amber-200 bg-amber-50 text-amber-700' : statusMeta.className === 'bg-emerald-50 text-emerald-700' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-slate-100 text-slate-500'}`}>
                         {statusMeta.label}
@@ -496,7 +507,7 @@ export function PurchaseCreditNotesPage() {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5">
             <h2 className="text-base font-semibold text-slate-900 mb-2">Void Credit Note</h2>
             <p className="text-sm text-slate-500 mb-4">
-              Void <span className="font-medium text-slate-700">{voidTarget.vcNumber}</span> ({formatNaira(voidTarget.total)})?
+              Void <span className="font-medium text-slate-700">{voidTarget.vcNumber}</span> ({fmtDual(voidTarget.total, voidTarget.currency, voidTarget.fxRate)})?
               This reverses its ledger entry and makes it unusable. This cannot be undone.
             </p>
             <div className="flex justify-end gap-2">
@@ -727,7 +738,7 @@ function DetailPanel({
                       <option value="">Select bill...</option>
                       {openBills.map(inv => (
                         <option key={inv.id} value={inv.id}>
-                          {inv.billNumber} — Balance Due: {formatNaira(inv.balanceDue)}
+                          {inv.billNumber} — Balance Due: {fmtDual(inv.balanceDue, inv.currency, (inv as any).fxRate)}
                         </option>
                       ))}
                     </select>
@@ -918,7 +929,7 @@ function CreateVendorCreditModal({ onClose, onError, editNote, updateMutation }:
                 <option value="" disabled>All bills are fully paid</option>
               )}
               {outstandingBills.map(inv => (
-                <option key={inv.id} value={inv.id}>{inv.billNumber} — {formatNaira(inv.total)} (Due: {formatNaira(inv.balanceDue)})</option>
+                <option key={inv.id} value={inv.id}>{inv.billNumber} — {fmtDual(inv.total, inv.currency, (inv as any).fxRate)} (Due: {fmtDual(inv.balanceDue, inv.currency, (inv as any).fxRate)})</option>
               ))}
             </select>
             <p className="text-xs text-slate-400 mt-1">
@@ -994,15 +1005,15 @@ function CreateVendorCreditModal({ onClose, onError, editNote, updateMutation }:
           <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-3 space-y-1 text-sm">
             <div className="flex justify-between">
               <span className="text-slate-500">Subtotal</span>
-              <span className="font-mono text-slate-700">{formatNaira(subtotalKobo)}</span>
+              <span className="font-mono text-slate-700">{fmtDual(subtotalKobo, currency, fxRate)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-500">VAT ({taxRate || 0}%)</span>
-              <span className="font-mono text-slate-700">{formatNaira(taxKobo)}</span>
+              <span className="font-mono text-slate-700">{fmtDual(taxKobo, currency, fxRate)}</span>
             </div>
             <div className="flex justify-between pt-1 border-t border-slate-200">
               <span className="font-semibold text-slate-700">Total Credit</span>
-              <span className="font-mono font-bold text-slate-900">{formatNaira(totalKobo)}</span>
+              <span className="font-mono font-bold text-slate-900">{fmtDual(totalKobo, currency, fxRate)}</span>
             </div>
           </div>
         </div>
