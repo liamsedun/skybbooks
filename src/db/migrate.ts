@@ -6,6 +6,7 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { sql } from 'drizzle-orm';
 import pg from 'pg';
+import { syncHrSchema } from './hr-schema-sync';
 
 export async function runMigration() {
   if (!process.env.DATABASE_URL) {
@@ -4254,6 +4255,13 @@ export async function runMigration() {
       console.log('[Migration] CRM tables ready.');
     } catch (err) {
       console.error('[Migration] CRM tables error:', err);
+    }
+
+    // Create missing HR tables (enums, departments, designations, employees, etc.)
+    try {
+      await syncHrSchema(db);
+    } catch (err) {
+      console.error('[Migration] HR schema sync error:', err);
     }
 
     // HRM tables + seed default data
