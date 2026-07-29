@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Plus, Download, Eye, Edit3, Trash2, FileText, CheckCircle2, XCircle } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -71,7 +71,7 @@ function DetailBox({ label, value }: { label: string; value: string }) {
 }
 
 export function LeaveTypesPage() {
-  const { success, error: showError } = useToast();
+  const { toast } = useToast();
   const [data, setData] = useState<LeaveType[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -83,7 +83,7 @@ export function LeaveTypesPage() {
       const res = await hrApi.getLeaveTypes();
       setData(Array.isArray(res) ? res : res?.data ?? []);
     } catch (err: any) {
-      showError(err?.message || 'Failed to load leave types');
+      toast(err?.message || 'Failed to load leave types', 'error');
     } finally {
       setLoading(false);
     }
@@ -187,10 +187,10 @@ export function LeaveTypesPage() {
       };
       if (ps.editingId) {
         await hrApi.updateLeaveType(ps.editingId, payload);
-        success('Leave type updated');
+        toast('Leave type updated', 'success');
       } else {
         await hrApi.createLeaveType(payload);
-        success('Leave type created');
+        toast('Leave type created', 'success');
       }
       ps.closeModal();
       fetchData();
@@ -206,11 +206,11 @@ export function LeaveTypesPage() {
     setSubmitting(true);
     try {
       await hrApi.deleteLeaveType(ps.deletingId);
-      success('Leave type deleted');
+      toast('Leave type deleted', 'success');
       ps.closeConfirmDelete();
       fetchData();
     } catch (err: any) {
-      showError(err?.response?.data?.error || err?.message || 'Failed to delete');
+      toast(err?.response?.data?.error || err?.message || 'Failed to delete', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -222,7 +222,7 @@ export function LeaveTypesPage() {
       statusFiltered.map(d => [d.name, d.code, String(d.daysPerYear), d.isPaid ? 'Yes' : 'No', d.carryForward ? 'Yes' : 'No', d.isActive ? 'Active' : 'Inactive']),
       'leave-types'
     );
-    success('Exported successfully');
+    toast('Exported successfully', 'success');
   };
 
   const handleExportPdf = () => {

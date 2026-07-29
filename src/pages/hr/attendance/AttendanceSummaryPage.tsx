@@ -1,4 +1,4 @@
-﻿import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Plus, Download, Search, Edit3, Trash2, Eye, CheckCircle2, XCircle, Clock, AlertTriangle, UserCheck, MapPin, Wifi } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -32,7 +32,7 @@ interface AttendanceRecord {
 }
 
 export function AttendanceSummaryPage() {
-  const { success, error: showError } = useToast();
+  const { toast } = useToast();
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -42,7 +42,7 @@ export function AttendanceSummaryPage() {
       const res = await hrApi.getAttendance({ pageSize: 500 });
       setRecords(res?.data ?? []);
     } catch (e) {
-      showError('Failed to load attendance records');
+      toast('Failed to load attendance records', 'error');
     } finally {
       setLoading(false);
     }
@@ -136,12 +136,12 @@ export function AttendanceSummaryPage() {
             <div><label className="block text-xs font-medium text-ink-600 mb-1">Clock Out</label><input type="time" className="w-full h-9 px-3 text-sm rounded-lg border border-ink-200 dark:border-ink-700 bg-white dark:bg-ink-900 text-ink-900" defaultValue={editItem?.clockOut ?? '17:00'} /></div>
           </div>
           <button className="w-full h-9 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors" onClick={async () => {
-            try { await hrApi.updateAttendance(editItem!.id, {}); success('Attendance record updated'); ps.closeModals(); await fetchRecords(); } catch { showError('Failed to update'); }
+            try { await hrApi.updateAttendance(editItem!.id, {}); toast('Attendance record updated', 'success'); ps.closeModals(); await fetchRecords(); } catch { toast('Failed to update', 'error'); }
           }}>{ps.editModalId ? 'Update' : 'Save'}</button>
         </div>
       </HrFormModal>
       <HrConfirmDialog open={ps.confirmDeleteId !== null} onClose={ps.closeModals} onConfirm={async () => {
-        try { await hrApi.updateAttendance(ps.confirmDeleteId!, {}); ps.confirmDelete(); success('Attendance record deleted'); await fetchRecords(); } catch { showError('Failed to delete'); }
+        try { await hrApi.updateAttendance(ps.confirmDeleteId!, {}); ps.confirmDelete(); toast('Attendance record deleted', 'success'); await fetchRecords(); } catch { toast('Failed to delete', 'error'); }
       }} title="Delete Attendance Record" message="Are you sure you want to delete this attendance record? This action cannot be undone." />
       <HrViewDrawer open={ps.viewDrawerId !== null} onClose={ps.closeModals} title="Attendance Details">
         {selectedItem && <div className="space-y-3">

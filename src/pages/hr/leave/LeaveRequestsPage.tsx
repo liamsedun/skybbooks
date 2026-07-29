@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { CheckCircle2, XCircle, Clock, Plus, Download, Eye, Edit3, Trash2, CalendarDays } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -46,7 +46,7 @@ interface SimpleLeaveType {
 }
 
 export function LeaveRequestsPage() {
-  const { success, error: showError } = useToast();
+  const { toast } = useToast();
 
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
   const [employees, setEmployees] = useState<SimpleEmployee[]>([]);
@@ -77,7 +77,7 @@ export function LeaveRequestsPage() {
     } catch (err: any) {
       const msg = err?.response?.data?.error || err?.message || 'Failed to load data';
       setFetchError(msg);
-      showError(msg);
+      toast(msg, 'error');
     } finally {
       setLoading(false);
     }
@@ -112,12 +112,12 @@ export function LeaveRequestsPage() {
     setSubmittingApprove(true);
     try {
       await hrApi.approveLeaveRequest(approveModalId, { remarks: approveRemarks || undefined });
-      success('Leave request approved');
+      toast('Leave request approved', 'success');
       setApproveModalId(null);
       setApproveRemarks('');
       await loadData();
     } catch (err: any) {
-      showError(err?.response?.data?.error || err?.message || 'Failed to approve');
+      toast(err?.response?.data?.error || err?.message || 'Failed to approve', 'error');
     } finally {
       setSubmittingApprove(false);
     }
@@ -128,12 +128,12 @@ export function LeaveRequestsPage() {
     setSubmittingReject(true);
     try {
       await hrApi.rejectLeaveRequest(rejectModalId, { reason: rejectReason.trim() });
-      success('Leave request rejected');
+      toast('Leave request rejected', 'success');
       setRejectModalId(null);
       setRejectReason('');
       await loadData();
     } catch (err: any) {
-      showError(err?.response?.data?.error || err?.message || 'Failed to reject');
+      toast(err?.response?.data?.error || err?.message || 'Failed to reject', 'error');
     } finally {
       setSubmittingReject(false);
     }
@@ -142,11 +142,11 @@ export function LeaveRequestsPage() {
   const handleCancel = async (id: string) => {
     try {
       await hrApi.cancelLeaveRequest(id);
-      success('Leave request cancelled');
+      toast('Leave request cancelled', 'success');
       ps.closeConfirmDelete();
       await loadData();
     } catch (err: any) {
-      showError(err?.response?.data?.error || err?.message || 'Failed to cancel');
+      toast(err?.response?.data?.error || err?.message || 'Failed to cancel', 'error');
     }
   };
 
@@ -172,7 +172,7 @@ export function LeaveRequestsPage() {
 
       const payload = { employeeId, leaveTypeId, startDate, endDate, isHalfDay, reason };
       await hrApi.createLeaveRequest(payload);
-      success(ps.editingId ? 'Leave request updated' : 'Leave request submitted');
+      toast(ps.editingId ? 'Leave request updated' : 'Leave request submitted', 'success');
       ps.closeModal();
       await loadData();
     } catch (err: any) {

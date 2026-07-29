@@ -43,7 +43,7 @@ const statusBadge = (status: string) => (
 );
 
 export function DevelopmentPlansPage() {
-  const { success: showSuccess, error: showError } = useToast();
+  const { toast } = useToast();
 
   const [plans, setPlans] = useState<DevelopmentPlan[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,7 +68,7 @@ export function DevelopmentPlansPage() {
     } catch (err: any) {
       const msg = err?.response?.data?.error || err?.message || 'Failed to load development plans';
       setFetchError(msg);
-      showError(msg);
+      toast(msg, 'error');
     } finally {
       setLoading(false);
     }
@@ -144,7 +144,7 @@ export function DevelopmentPlansPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formTitle.trim()) { showError('Title is required'); return; }
+    if (!formTitle.trim()) { toast('Title is required', 'error'); return; }
     setSubmitting(true);
     try {
       const payload: Record<string, any> = {
@@ -158,16 +158,16 @@ export function DevelopmentPlansPage() {
       };
       if (ps.editingId) {
         await hrApi.updateDevelopmentPlan(ps.editingId, payload);
-        showSuccess('Development plan updated');
+        toast('Development plan updated', 'success');
       } else {
         await hrApi.createDevelopmentPlan(payload);
-        showSuccess('Development plan created');
+        toast('Development plan created', 'success');
       }
       ps.closeModal();
       resetForm();
       await fetchPlans();
     } catch (err: any) {
-      showError(err?.response?.data?.error || err?.message || 'Failed to save');
+      toast(err?.response?.data?.error || err?.message || 'Failed to save', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -178,11 +178,11 @@ export function DevelopmentPlansPage() {
     setSubmitting(true);
     try {
       await hrApi.deleteDevelopmentPlan(ps.deletingId);
-      showSuccess('Development plan deleted');
+      toast('Development plan deleted', 'success');
       ps.closeConfirmDelete();
       await fetchPlans();
     } catch (err: any) {
-      showError(err?.response?.data?.error || err?.message || 'Failed to delete');
+      toast(err?.response?.data?.error || err?.message || 'Failed to delete', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -199,7 +199,7 @@ export function DevelopmentPlansPage() {
       pageKey="development-plans"
       headerActions={
         <>
-          <button onClick={() => { exportToCsv(csvHeaders, csvRows(ps.filtered), 'development-plans'); showSuccess('Exported'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
+          <button onClick={() => { exportToCsv(csvHeaders, csvRows(ps.filtered), 'development-plans'); toast('Exported', 'success'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
           <button onClick={() => exportToPdf('Development Plans', csvHeaders, csvRows(ps.filtered), 'development-plans')} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><FileText className="w-3.5 h-3.5" /> PDF</button>
           <button onClick={handleOpenAdd} className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary-hover transition-all shadow-sm"><Plus className="w-3.5 h-3.5" /> Add New</button>
         </>

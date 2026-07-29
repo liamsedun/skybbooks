@@ -25,7 +25,7 @@ interface Promotion {
 }
 
 export function PromotionsPage() {
-  const { success: showSuccess, error: showError } = useToast();
+  const { toast } = useToast();
 
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,7 +58,7 @@ export function PromotionsPage() {
     } catch (err: any) {
       const msg = err?.response?.data?.error || err?.message || 'Failed to load promotions';
       setFetchError(msg);
-      showError(msg);
+      toast(msg, 'error');
     } finally {
       setLoading(false);
     }
@@ -125,20 +125,20 @@ export function PromotionsPage() {
   const handleApprove = async (id: string) => {
     try {
       await hrApi.approvePromotion(id);
-      showSuccess('Promotion approved');
+      toast('Promotion approved', 'success');
       loadPromotions();
     } catch (err: any) {
-      showError(err?.response?.data?.error || err?.message || 'Failed to approve');
+      toast(err?.response?.data?.error || err?.message || 'Failed to approve', 'error');
     }
   };
 
   const handleReject = async (id: string) => {
     try {
       await hrApi.rejectPromotion(id);
-      showSuccess('Promotion rejected');
+      toast('Promotion rejected', 'success');
       loadPromotions();
     } catch (err: any) {
-      showError(err?.response?.data?.error || err?.message || 'Failed to reject');
+      toast(err?.response?.data?.error || err?.message || 'Failed to reject', 'error');
     }
   };
 
@@ -154,15 +154,15 @@ export function PromotionsPage() {
       };
       if (ps.editingId) {
         await hrApi.updatePromotion(ps.editingId, payload);
-        showSuccess('Updated');
+        toast('Updated', 'success');
       } else {
         await hrApi.createPromotion(payload);
-        showSuccess('Created');
+        toast('Created', 'success');
       }
       ps.closeModal();
       loadPromotions();
     } catch (err: any) {
-      showError(err?.response?.data?.error || err?.message || 'Failed to save');
+      toast(err?.response?.data?.error || err?.message || 'Failed to save', 'error');
     }
   };
 
@@ -170,11 +170,11 @@ export function PromotionsPage() {
     if (!ps.deletingId) return;
     try {
       await hrApi.deletePromotion(ps.deletingId);
-      showSuccess('Deleted');
+      toast('Deleted', 'success');
       ps.closeConfirmDelete();
       loadPromotions();
     } catch (err: any) {
-      showError(err?.response?.data?.error || err?.message || 'Failed to delete');
+      toast(err?.response?.data?.error || err?.message || 'Failed to delete', 'error');
     }
   };
 
@@ -183,7 +183,7 @@ export function PromotionsPage() {
       pageKey="promotions"
       headerActions={
         <>
-          <button onClick={() => { exportToCsv(['Employee ID','Current Role','Proposed Role','Reason','Achievements','Status'], ps.filtered.map(i => [i.employeeId,i.currentRole,i.proposedRole,i.reason,i.achievements,i.status]), 'promotions'); showSuccess('Exported'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
+          <button onClick={() => { exportToCsv(['Employee ID','Current Role','Proposed Role','Reason','Achievements','Status'], ps.filtered.map(i => [i.employeeId,i.currentRole,i.proposedRole,i.reason,i.achievements,i.status]), 'promotions'); toast('Exported', 'success'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
           <button onClick={() => exportToPdf('Promotion Recommendations', ['Employee ID','Current Role','Proposed Role','Reason','Status'], ps.filtered.map(i => [i.employeeId,i.currentRole,i.proposedRole,i.reason,i.status]), 'promotions')} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><FileText className="w-3.5 h-3.5" /> PDF</button>
           <button onClick={handleOpenAddModal} className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary-hover transition-all shadow-sm"><Plus className="w-3.5 h-3.5" /> Add New</button>
         </>

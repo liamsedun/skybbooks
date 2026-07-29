@@ -30,7 +30,7 @@ const categoryIcon = (cat: string) => {
 const fmtAmount = (n: number) => `₦${(n / 100).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
 
 export function ExpenseReportsPage() {
-  const { success: showSuccess, error: showError } = useToast();
+  const { toast } = useToast();
   const [data, setData] = useState<ExpenseReport[]>([]);
   const [loading, setLoading] = useState(true);
   const ps = useHrPageState({ data, initialSortKey: 'employeeName', searchKeys: ['employeeName', 'category'], pageSize: 10 });
@@ -39,7 +39,7 @@ export function ExpenseReportsPage() {
   const loadData = async () => {
     setLoading(true);
     try { const result = await hrApi.getExpenseReports({}); setData(Array.isArray(result) ? result : []); }
-    catch (e: any) { showError(e?.message || 'Failed to load'); }
+    catch (e: any) { toast(e?.message || 'Failed to load', 'error'); }
     finally { setLoading(false); }
   };
   const stats = useMemo(() => [
@@ -72,7 +72,7 @@ export function ExpenseReportsPage() {
       pageKey="expenses"
       headerActions={
         <>
-          <button onClick={() => { exportToCsv(['Employee','Category','Amount','Submitted','Status'], ps.filtered.map(i => [i.employeeName,i.category,String(i.amount),i.submittedDate,i.status]), 'expenses'); showSuccess('Exported'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
+          <button onClick={() => { exportToCsv(['Employee','Category','Amount','Submitted','Status'], ps.filtered.map(i => [i.employeeName,i.category,String(i.amount),i.submittedDate,i.status]), 'expenses'); toast('Exported', 'success'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
           <button onClick={() => exportToPdf('Expense Reports', ['Employee','Category','Amount','Submitted','Status'], ps.filtered.map(i => [i.employeeName,i.category,String(i.amount),i.submittedDate,i.status]), 'expenses')} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><FileText className="w-3.5 h-3.5" /> PDF</button>
           <button onClick={ps.openAddModal} className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary-hover transition-all shadow-sm"><Plus className="w-3.5 h-3.5" /> Add New</button>
         </>
@@ -88,13 +88,13 @@ export function ExpenseReportsPage() {
         page={ps.page} totalPages={ps.totalPages} onPageChange={ps.setPage} pageSize={ps.pageSize} totalItems={ps.filtered.length}
         from={(ps.page - 1) * ps.pageSize + 1} to={Math.min(ps.page * ps.pageSize, ps.filtered.length)}
         emptyMessage="No expense reports" emptyAction={<button onClick={ps.openAddModal} className="text-xs font-medium text-primary">Add</button>} />
-      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Expense' : 'Add Expense'} onSubmit={(e) => { e.preventDefault(); showError('Read-only view'); ps.closeModal(); }}>
+      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Expense' : 'Add Expense'} onSubmit={(e) => { e.preventDefault(); toast('Read-only view', 'error'); ps.closeModal(); }}>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Employee</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" placeholder="e.g. Alice Johnson" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Category</label><select className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"><option>Travel</option><option>Meals</option><option>Office Supplies</option><option>Transportation</option><option>Accommodation</option><option>Equipment</option></select></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Amount (NGN)</label><input type="number" className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" placeholder="e.g. 450000" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Status</label><select className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"><option value="draft">Draft</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select></div>
       </HrFormModal>
-      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showError('Read-only view'); ps.closeConfirmDelete(); }} title="Delete Expense" message="Are you sure you want to delete this expense report?" confirmLabel="Delete" variant="danger" />
+      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { toast('Read-only view', 'error'); ps.closeConfirmDelete(); }} title="Delete Expense" message="Are you sure you want to delete this expense report?" confirmLabel="Delete" variant="danger" />
       <HrViewDrawer open={ps.viewDrawerOpen} onClose={ps.closeViewDrawer} title="Expense Details">
         {ps.viewingId && (() => { const e = data.find(i => i.id === ps.viewingId)!; return (
           <div className="space-y-4">

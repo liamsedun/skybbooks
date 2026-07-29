@@ -13,7 +13,7 @@ import { useToast } from '../../../contexts/ToastContext';
 import { hrApi } from '../../../lib/api';
 
 export function LeavePolicyPage() {
-  const { success, error } = useToast();
+  const { toast } = useToast();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [employees, setEmployees] = useState<any[]>([]);
@@ -34,7 +34,7 @@ export function LeavePolicyPage() {
         hrApi.getLeavePolicies(),
       ]);
       setData(Array.isArray(policies) ? policies : []);
-    } catch (e: any) { error(e?.message || 'Failed to load leave policies'); }
+    } catch (e: any) { toast(e?.message || 'Failed to load leave policies', 'error'); }
     finally { setLoading(false); }
   };
 
@@ -54,19 +54,19 @@ export function LeavePolicyPage() {
     try {
       if (editingId) {
         await hrApi.updateLeavePolicy(editingId, formData);
-        success('Policy updated');
+        toast('Policy updated', 'success');
       } else {
         await hrApi.createLeavePolicy(formData);
-        success('Policy created');
+        toast('Policy created', 'success');
       }
       setFormOpen(false);
       loadData();
-    } catch (e: any) { error(e?.message || 'Failed to save'); }
+    } catch (e: any) { toast(e?.message || 'Failed to save', 'error'); }
   };
 
   const handleDelete = async (id: string) => {
-    try { await hrApi.deleteLeavePolicy(id); success('Policy deleted'); loadData(); ps.closeModals(); }
-    catch (e: any) { error(e?.message || 'Failed to delete'); }
+    try { await hrApi.deleteLeavePolicy(id); toast('Policy deleted', 'success'); loadData(); ps.closeModals(); }
+    catch (e: any) { toast(e?.message || 'Failed to delete', 'error'); }
   };
 
   const columns: Column<any>[] = [

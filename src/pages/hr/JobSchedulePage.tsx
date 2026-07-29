@@ -17,7 +17,7 @@ interface JobSchedule {
 }
 
 export function JobSchedulePage() {
-  const { success: showSuccess, error: showError } = useToast();
+  const { toast } = useToast();
   const [data] = useState<JobSchedule[]>([]);
   const ps = useHrPageState({ data, initialSortKey: 'candidate', searchKeys: ['candidate', 'jobTitle', 'interviewer'], pageSize: 10 });
   const stats = useMemo(() => [
@@ -45,7 +45,7 @@ export function JobSchedulePage() {
       pageKey="jobs"
       headerActions={
         <>
-          <button onClick={() => { exportToCsv(['Candidate','Job Title','Interviewer','Date','Status'], ps.filtered.map(i => [i.candidate,i.jobTitle,i.interviewer,i.interviewDate,i.status]), 'schedules'); showSuccess('Exported'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
+          <button onClick={() => { exportToCsv(['Candidate','Job Title','Interviewer','Date','Status'], ps.filtered.map(i => [i.candidate,i.jobTitle,i.interviewer,i.interviewDate,i.status]), 'schedules'); toast('Exported', 'success'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
           <button onClick={() => exportToPdf('Interview Schedule', ['Candidate','Job Title','Interviewer','Date','Status'], ps.filtered.map(i => [i.candidate,i.jobTitle,i.interviewer,i.interviewDate,i.status]), 'schedules')} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><FileText className="w-3.5 h-3.5" /> PDF</button>
           <button onClick={ps.openAddModal} className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary-hover transition-all shadow-sm"><Plus className="w-3.5 h-3.5" /> Add New</button>
         </>
@@ -61,11 +61,11 @@ export function JobSchedulePage() {
         page={ps.page} totalPages={ps.totalPages} onPageChange={ps.setPage} pageSize={ps.pageSize} totalItems={ps.filtered.length}
         from={(ps.page - 1) * ps.pageSize + 1} to={Math.min(ps.page * ps.pageSize, ps.filtered.length)}
         emptyMessage="No interviews scheduled" emptyAction={<button onClick={ps.openAddModal} className="text-xs font-medium text-primary">Add</button>} />
-      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Interview' : 'Schedule Interview'} onSubmit={(e) => { e.preventDefault(); showSuccess(ps.editingId ? 'Updated' : 'Scheduled'); ps.closeModal(); }}>
+      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Interview' : 'Schedule Interview'} onSubmit={(e) => { e.preventDefault(); toast(ps.editingId ? 'Updated' : 'Scheduled', 'success'); ps.closeModal(); }}>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Candidate</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div className="mt-3"><label className="block text-xs font-medium text-ink-500 mb-1">Job Title</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
       </HrFormModal>
-      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showSuccess('Deleted'); ps.closeConfirmDelete(); }} title="Delete Schedule" message="Are you sure you want to delete this interview?" confirmLabel="Delete" variant="danger" />
+      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { toast('Deleted', 'success'); ps.closeConfirmDelete(); }} title="Delete Schedule" message="Are you sure you want to delete this interview?" confirmLabel="Delete" variant="danger" />
       <HrViewDrawer open={ps.viewDrawerOpen} onClose={ps.closeViewDrawer} title="Interview Details">
         <div className="space-y-3 text-sm text-ink-600"><p>Interview details displayed here.</p></div>
       </HrViewDrawer>

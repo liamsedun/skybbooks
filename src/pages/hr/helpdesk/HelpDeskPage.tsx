@@ -30,7 +30,7 @@ const priorityColors: Record<string, string> = {
 };
 
 export function HelpDeskPage() {
-  const { success: showSuccess, error: showError } = useToast();
+  const { toast } = useToast();
   const [data, setData] = useState<TicketItem[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -69,15 +69,15 @@ export function HelpDeskPage() {
         await hrApi.updateHelpTicket(ps.editingId, payload);
         const res = await hrApi.getHelpTickets({});
         if (res?.data) setData(res.data);
-        showSuccess('Updated');
+        toast('Updated', 'success');
       } else {
         await hrApi.createHelpTicket(payload);
         const res = await hrApi.getHelpTickets({});
         if (res?.data) setData(res.data);
-        showSuccess('Created');
+        toast('Created', 'success');
       }
       ps.closeModal();
-    } catch { showError('Failed to save'); }
+    } catch { toast('Failed to save', 'error'); }
   };
 
   const columns: Column<TicketItem>[] = [
@@ -100,7 +100,7 @@ export function HelpDeskPage() {
       pageKey="helpdesk"
       headerActions={
         <>
-          <button onClick={() => { exportToCsv(['Ticket', 'Employee', 'Subject', 'Category', 'Priority', 'Status', 'Created'], ps.filtered.map(t => [t.id, t.employeeName, t.subject, t.category, t.priority, t.status, t.createdAt]), 'help-desk'); showSuccess('Exported'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
+          <button onClick={() => { exportToCsv(['Ticket', 'Employee', 'Subject', 'Category', 'Priority', 'Status', 'Created'], ps.filtered.map(t => [t.id, t.employeeName, t.subject, t.category, t.priority, t.status, t.createdAt]), 'help-desk'); toast('Exported', 'success'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
           <button onClick={() => exportToPdf('Help Desk Tickets', ['Ticket', 'Employee', 'Subject', 'Category', 'Priority', 'Status'], ps.filtered.map(t => [t.id, t.employeeName, t.subject, t.category, t.priority, t.status]), 'help-desk')} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><FileText className="w-3.5 h-3.5" /> PDF</button>
           <button onClick={ps.openAddModal} className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary-hover transition-all shadow-sm"><Plus className="w-3.5 h-3.5" /> New Ticket</button>
         </>

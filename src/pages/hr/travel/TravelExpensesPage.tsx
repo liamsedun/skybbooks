@@ -41,7 +41,7 @@ function mapExpense(raw: any): ExpenseReport {
 }
 
 export function TravelExpensesPage() {
-  const { success: showSuccess, error: showError } = useToast();
+  const { toast } = useToast();
   const [data, setData] = useState<ExpenseReport[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -52,7 +52,7 @@ export function TravelExpensesPage() {
       const items = Array.isArray(res) ? res : (res?.data ?? []);
       setData(items.map(mapExpense));
     } catch {
-      showError('Failed to load travel expenses');
+      toast('Failed to load travel expenses', 'error');
     } finally {
       setLoading(false);
     }
@@ -97,9 +97,9 @@ export function TravelExpensesPage() {
             if (!travelRequestId?.trim()) return;
             try {
               await hrApi.linkExpenseToTravel(i.id, travelRequestId.trim());
-              showSuccess('Linked to travel request');
+              toast('Linked to travel request', 'success');
               await fetchData();
-            } catch { showError('Failed to link'); }
+            } catch { toast('Failed to link', 'error'); }
           }} className="w-7 h-7 flex items-center justify-center rounded-lg text-ink-400 hover:text-primary hover:bg-primary/10 transition-colors" title="Link to Travel"><Link className="w-3.5 h-3.5" /></button>
         )}
       </div>
@@ -123,7 +123,7 @@ export function TravelExpensesPage() {
       pageKey="travel"
       headerActions={
         <>
-          <button onClick={() => { exportToCsv(['Title','Employee','Total Amount','Currency','Status','Travel Request','Created'], ps.filtered.map(i => [i.title || 'Untitled', i.employeeId || '', String(i.totalAmount), i.currency, i.status, i.travelRequestId || '', i.createdAt]), 'travel-expenses'); showSuccess('Exported'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
+          <button onClick={() => { exportToCsv(['Title','Employee','Total Amount','Currency','Status','Travel Request','Created'], ps.filtered.map(i => [i.title || 'Untitled', i.employeeId || '', String(i.totalAmount), i.currency, i.status, i.travelRequestId || '', i.createdAt]), 'travel-expenses'); toast('Exported', 'success'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
           <button onClick={() => exportToPdf('Travel Expenses', ['Title','Employee','Total Amount','Currency','Status','Travel Request','Created'], ps.filtered.map(i => [i.title || 'Untitled', i.employeeId || '', fmtAmount(i.totalAmount), i.currency, i.status, i.travelRequestId || '', formatDate(i.createdAt)]), 'travel-expenses')} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><FileText className="w-3.5 h-3.5" /> PDF</button>
         </>
       }>

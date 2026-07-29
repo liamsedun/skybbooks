@@ -25,7 +25,7 @@ interface TravelHistoryItem {
 const fmtAmount = (n: number) => `₦${(n / 100).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
 
 export function TravelHistoryPage() {
-  const { success: showSuccess, error: showError } = useToast();
+  const { toast } = useToast();
   const [data, setData] = useState<TravelHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -34,7 +34,7 @@ export function TravelHistoryPage() {
     hrApi.getTravelHistory().then((res: any) => {
       const items: TravelHistoryItem[] = Array.isArray(res) ? res : res?.data ?? [];
       setData(items);
-    }).catch(() => showError('Failed to load travel history'))
+    }).catch(() => toast('Failed to load travel history', 'error'))
     .finally(() => setLoading(false));
   };
 
@@ -69,7 +69,7 @@ export function TravelHistoryPage() {
       pageKey="travel-history"
       headerActions={
         <>
-          <button onClick={() => { exportToCsv(['Destination','Purpose','Departure','Return','Est. Cost','Status','Created'], ps.filtered.map(i => [i.destination,i.purpose,i.departureDate,i.returnDate,String(i.estimatedCost),i.status,i.createdAt]), 'travel-history'); showSuccess('Exported'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
+          <button onClick={() => { exportToCsv(['Destination','Purpose','Departure','Return','Est. Cost','Status','Created'], ps.filtered.map(i => [i.destination,i.purpose,i.departureDate,i.returnDate,String(i.estimatedCost),i.status,i.createdAt]), 'travel-history'); toast('Exported', 'success'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
           <button onClick={() => exportToPdf('Travel History', ['Destination','Purpose','Departure','Return','Est. Cost','Status','Created'], ps.filtered.map(i => [i.destination,i.purpose,i.departureDate,i.returnDate,String(i.estimatedCost),i.status,i.createdAt]), 'travel-history')} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><FileText className="w-3.5 h-3.5" /> PDF</button>
         </>
       }>

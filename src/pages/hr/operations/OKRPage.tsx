@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Target, Plus, Download, Upload, FileText, Edit3, Trash2, Eye, CheckCircle2, TrendingUp, AlertTriangle } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -20,7 +20,7 @@ const progressColor = (p: number) => {
   return 'bg-rose-500';
 };
 export function OpsOKRPage() {
-  const { success: showSuccess, error: showError } = useToast();
+  const { toast } = useToast();
   const [data, setData] = useState<OKRItem[]>([]);
   const [loading, setLoading] = useState(true);
   const ps = useHrPageState({ data, initialSortKey: 'title', searchKeys: ['title', 'owner', 'quarter'], pageSize: 10 });
@@ -29,7 +29,7 @@ export function OpsOKRPage() {
   const loadData = async () => {
     setLoading(true);
     try { const result = await hrApi.getOkrs({}); setData(Array.isArray(result) ? result : []); }
-    catch (e: any) { showError(e?.message || 'Failed to load'); }
+    catch (e: any) { toast(e?.message || 'Failed to load', 'error'); }
     finally { setLoading(false); }
   };
   const stats = useMemo(() => [
@@ -60,7 +60,7 @@ export function OpsOKRPage() {
     ), className: 'text-right' },
   ];
   return (
-    <HrPageShell title="OKR" description="Objectives and Key Results (OKRs) â€” set goals, track progress, and align teams."
+    <HrPageShell title="OKR" description="Objectives and Key Results (OKRs) — set goals, track progress, and align teams."
       pageKey="goals"
       headerActions={<><button onClick={ps.openAddModal} className="h-8 px-3.5 text-xs font-medium bg-primary text-white rounded-xl hover:bg-primary-hover transition-colors inline-flex items-center gap-1.5"><Plus className="w-3.5 h-3.5" />Add OKR</button><button onClick={() => ps.setImportOpen(true)} className="h-8 px-3.5 text-xs font-medium bg-surface text-ink-700 border border-border-custom rounded-xl hover:bg-ink-50 transition-colors inline-flex items-center gap-1.5"><Upload className="w-3.5 h-3.5" />Import</button><button onClick={() => exportToCsv(ps.filtered, 'okrs.csv')} className="h-8 px-3.5 text-xs font-medium bg-surface text-ink-700 border border-border-custom rounded-xl hover:bg-ink-50 transition-colors inline-flex items-center gap-1.5"><Download className="w-3.5 h-3.5" />Export</button></>}>
       <HrStatCards items={stats} columns={4} />
@@ -74,15 +74,15 @@ export function OpsOKRPage() {
         page={ps.page} totalPages={ps.totalPages} onPageChange={ps.setPage} pageSize={ps.pageSize} totalItems={ps.filtered.length}
         from={(ps.page - 1) * ps.pageSize + 1} to={Math.min(ps.page * ps.pageSize, ps.filtered.length)}
         emptyMessage="No OKRs found" emptyAction={<button onClick={ps.openAddModal} className="text-xs font-medium text-primary hover:text-primary-hover">Add your first OKR</button>} />
-      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit OKR' : 'Add OKR'} onSubmit={(e) => { e.preventDefault(); showError('Read-only view'); ps.closeModal(); }}>
+      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit OKR' : 'Add OKR'} onSubmit={(e) => { e.preventDefault(); toast('Read-only view', 'error'); ps.closeModal(); }}>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Objective</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Owner</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Quarter</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" placeholder="e.g. Q3 2026" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Progress (%)</label><input type="number" min="0" max="100" className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
       </HrFormModal>
-      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showError('Read-only view'); ps.closeConfirmDelete(); }} title="Delete OKR" message="Are you sure you want to delete this OKR?" confirmLabel="Delete" variant="danger" />
+      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { toast('Read-only view', 'error'); ps.closeConfirmDelete(); }} title="Delete OKR" message="Are you sure you want to delete this OKR?" confirmLabel="Delete" variant="danger" />
       <HrViewDrawer open={ps.viewDrawerOpen} onClose={ps.closeViewDrawer} title="OKR Details"><div className="space-y-3 text-sm text-ink-600"><p>Details content</p></div></HrViewDrawer>
-      <HrFormModal open={ps.importOpen} onClose={() => ps.setImportOpen(false)} title="Import OKRs" onSubmit={(e) => { e.preventDefault(); showSuccess('OKRs imported'); ps.setImportOpen(false); }} submitLabel="Import">
+      <HrFormModal open={ps.importOpen} onClose={() => ps.setImportOpen(false)} title="Import OKRs" onSubmit={(e) => { e.preventDefault(); toast('OKRs imported', 'success'); ps.setImportOpen(false); }} submitLabel="Import">
         <p className="text-sm text-ink-400 mb-3">Upload a CSV file with OKRs.</p>
         <input type="file" accept=".csv" className="block w-full text-sm text-ink-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-primary/10 file:text-primary hover:file:bg-primary/20 transition-all" />
       </HrFormModal>

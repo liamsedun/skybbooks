@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Users, Plus, Download, Upload, FileText, Search, Edit3, Trash2, Eye, CheckCircle2, XCircle, Clock, UserPlus, Calendar, Award, Mail, DollarSign } from 'lucide-react';
 import { hrApi } from '../../../lib/api';
@@ -75,8 +75,7 @@ const STATUS_OPTIONS: { label: string; value: StatusFilter }[] = [
 ];
 
 export function CandidatesPage() {
-  const navigate = useNavigate();
-  const { success, error: toastError } = useToast();
+  const navigate = useNavigate();const { toast } = useToast();
 
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [jobOpenings, setJobOpenings] = useState<JobOpening[]>([]);
@@ -221,16 +220,16 @@ export function CandidatesPage() {
     try {
       if (ps.editingId) {
         await hrApi.updateCandidate(ps.editingId, payload);
-        success('Candidate updated');
+        toast('Candidate updated', 'success');
       } else {
         await hrApi.createCandidate(payload);
-        success('Candidate created');
+        toast('Candidate created', 'success');
       }
       ps.closeModal();
       await loadData();
     } catch (err: any) {
       const msg = err?.response?.data?.error || err?.message || 'Operation failed';
-      toastError(msg);
+      toast(msg, 'error');
     }
   };
 
@@ -238,12 +237,12 @@ export function CandidatesPage() {
     if (!ps.deletingId) return;
     try {
       await hrApi.deleteCandidate(ps.deletingId);
-      success('Candidate deleted');
+      toast('Candidate deleted', 'success');
       ps.closeConfirmDelete();
       await loadData();
     } catch (err: any) {
       const msg = err?.response?.data?.error || err?.message || 'Delete failed';
-      toastError(msg);
+      toast(msg, 'error');
     }
   };
 
@@ -267,7 +266,7 @@ export function CandidatesPage() {
           await hrApi.createCandidate(entry);
         }
       }
-      success(`Imported ${rows.length - 1} candidates`);
+      toast(`Imported ${rows.length - 1} candidates`, 'success');
       ps.setImportOpen(false);
       await loadData();
     } catch {
@@ -283,7 +282,7 @@ export function CandidatesPage() {
         interviewDate: interviewData.interviewDate,
         interviewers: interviewData.interviewers.split(',').map(s => s.trim()).filter(Boolean),
       });
-      success('Interview scheduled');
+      toast('Interview scheduled', 'success');
       setInterviewModalOpen(false);
       setInterviewAppId(null);
       if (ps.viewingId) await loadCandidateDetail(ps.viewingId);
@@ -297,7 +296,7 @@ export function CandidatesPage() {
     if (!offerAppId || !offerAmount) return;
     try {
       await hrApi.sendOffer(offerAppId, { offerAmount: Number(offerAmount) });
-      success('Offer sent');
+      toast('Offer sent', 'success');
       setOfferModalOpen(false);
       setOfferAppId(null);
       if (ps.viewingId) await loadCandidateDetail(ps.viewingId);
@@ -309,7 +308,7 @@ export function CandidatesPage() {
   const handleUpdateStatus = async (appId: string, status: string) => {
     try {
       await hrApi.updateApplicationStatus(appId, { status });
-      success(`Status updated to ${status}`);
+      toast(`Status updated to ${status}`, 'success');
       if (ps.viewingId) await loadCandidateDetail(ps.viewingId);
     } catch (err: any) {
       toastError(err?.response?.data?.error || 'Failed to update status');
@@ -336,11 +335,11 @@ export function CandidatesPage() {
       ),
     },
     { key: 'email', label: 'Email', sortable: true, render: (i) => <span className="text-ink-500">{i.email}</span> },
-    { key: 'phone', label: 'Phone', sortable: false, render: (i) => <span className="text-ink-500 text-xs">{i.phone || '—'}</span>, hideOnMobile: true },
+    { key: 'phone', label: 'Phone', sortable: false, render: (i) => <span className="text-ink-500 text-xs">{i.phone || '�'}</span>, hideOnMobile: true },
     {
       key: 'position', label: 'Position', sortable: true, render: (i) => {
         const pos = i.latestApplication?.jobTitle || i.currentPosition || '';
-        return <span className="text-ink-700 text-xs">{pos || '—'}</span>;
+        return <span className="text-ink-700 text-xs">{pos || '�'}</span>;
       },
     },
     { key: 'source', label: 'Source', sortable: true, hideOnMobile: true },
@@ -441,7 +440,7 @@ export function CandidatesPage() {
             </div>
           </div>
           <div>
-            <label className="block text-xs font-medium text-ink-500 mb-1">Expected Salary (₦)</label>
+            <label className="block text-xs font-medium text-ink-500 mb-1">Expected Salary (?)</label>
             <input type="number" value={formData.expectedSalary} onChange={e => setFormData(p => ({ ...p, expectedSalary: e.target.value }))} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900" placeholder="e.g. 5000000" />
           </div>
           <div>
@@ -475,15 +474,15 @@ export function CandidatesPage() {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><label className="text-xs text-ink-500">Phone</label><p className="text-sm font-medium text-ink-900">{candidateDetail.phone || '—'}</p></div>
-              <div><label className="text-xs text-ink-500">Source</label><p className="text-sm font-medium text-ink-900">{candidateDetail.source || '—'}</p></div>
+              <div><label className="text-xs text-ink-500">Phone</label><p className="text-sm font-medium text-ink-900">{candidateDetail.phone || '�'}</p></div>
+              <div><label className="text-xs text-ink-500">Source</label><p className="text-sm font-medium text-ink-900">{candidateDetail.source || '�'}</p></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><label className="text-xs text-ink-500">Current Employer</label><p className="text-sm font-medium text-ink-900">{candidateDetail.currentEmployer || '—'}</p></div>
-              <div><label className="text-xs text-ink-500">Current Position</label><p className="text-sm font-medium text-ink-900">{candidateDetail.currentPosition || '—'}</p></div>
+              <div><label className="text-xs text-ink-500">Current Employer</label><p className="text-sm font-medium text-ink-900">{candidateDetail.currentEmployer || '�'}</p></div>
+              <div><label className="text-xs text-ink-500">Current Position</label><p className="text-sm font-medium text-ink-900">{candidateDetail.currentPosition || '�'}</p></div>
             </div>
             {candidateDetail.expectedSalary && (
-              <div><label className="text-xs text-ink-500">Expected Salary</label><p className="text-sm font-medium text-ink-900">₦{Number(candidateDetail.expectedSalary).toLocaleString()}</p></div>
+              <div><label className="text-xs text-ink-500">Expected Salary</label><p className="text-sm font-medium text-ink-900">?{Number(candidateDetail.expectedSalary).toLocaleString()}</p></div>
             )}
             {candidateDetail.notes && (
               <div><label className="text-xs text-ink-500">Notes</label><p className="text-sm text-ink-700 whitespace-pre-wrap">{candidateDetail.notes}</p></div>
@@ -503,7 +502,7 @@ export function CandidatesPage() {
                       <div className="grid grid-cols-2 gap-2 text-xs text-ink-500">
                         {app.interviewDate && <div><span className="font-medium">Interview:</span> {formatDate(app.interviewDate)}</div>}
                         {app.score !== null && <div><span className="font-medium">Score:</span> {app.score}</div>}
-                        {app.offerAmount && <div><span className="font-medium">Offer:</span> ₦{Number(app.offerAmount).toLocaleString()}</div>}
+                        {app.offerAmount && <div><span className="font-medium">Offer:</span> ?{Number(app.offerAmount).toLocaleString()}</div>}
                         {app.offerSentAt && <div><span className="font-medium">Offer Sent:</span> {formatDate(app.offerSentAt)}</div>}
                       </div>
                       {app.feedback && <p className="text-xs text-ink-600 italic">"{app.feedback}"</p>}
@@ -552,7 +551,7 @@ export function CandidatesPage() {
       <HrFormModal open={offerModalOpen} onClose={() => { setOfferModalOpen(false); setOfferAppId(null); }} title="Send Offer" onSubmit={handleSendOffer}>
         <div className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-ink-500 mb-1">Offer Amount (₦)</label>
+            <label className="block text-xs font-medium text-ink-500 mb-1">Offer Amount (?)</label>
             <input type="number" value={offerAmount} onChange={e => setOfferAmount(e.target.value)} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900" placeholder="e.g. 6000000" />
           </div>
         </div>

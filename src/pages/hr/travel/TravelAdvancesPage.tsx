@@ -34,7 +34,7 @@ const statusColor = (s: string) => {
 const fmtAmount = (n: number) => `₦${n.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
 
 export function TravelAdvancesPage() {
-  const { success: showSuccess, error: showError } = useToast();
+  const { toast } = useToast();
   const [data, setData] = useState<TravelAdvance[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -64,24 +64,24 @@ export function TravelAdvancesPage() {
     try {
       await hrApi.approveTravelAdvance(id);
       setData(prev => prev.map(i => i.id === id ? { ...i, status: 'approved', approvedBy: 'You', approvedAt: new Date().toISOString() } : i));
-      showSuccess('Advance approved');
-    } catch { showError('Failed to approve'); }
+      toast('Advance approved', 'success');
+    } catch { toast('Failed to approve', 'error'); }
   };
 
   const handleDisburse = async (id: string) => {
     try {
       await hrApi.disburseTravelAdvance(id);
       setData(prev => prev.map(i => i.id === id ? { ...i, status: 'disbursed', disbursedAt: new Date().toISOString() } : i));
-      showSuccess('Advance disbursed');
-    } catch { showError('Failed to disburse'); }
+      toast('Advance disbursed', 'success');
+    } catch { toast('Failed to disburse', 'error'); }
   };
 
   const handleDelete = async (id: string) => {
     try {
       await hrApi.deleteTravelAdvance(id);
       setData(prev => prev.filter(i => i.id !== id));
-      showSuccess('Deleted');
-    } catch { showError('Failed to delete'); }
+      toast('Deleted', 'success');
+    } catch { toast('Failed to delete', 'error'); }
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -101,15 +101,15 @@ export function TravelAdvancesPage() {
         await hrApi.updateTravelAdvance(ps.editingId, payload);
         const res = await hrApi.getTravelAdvances();
         if (res?.data) setData(res.data);
-        showSuccess('Updated');
+        toast('Updated', 'success');
       } else {
         await hrApi.createTravelAdvance(payload);
         const res = await hrApi.getTravelAdvances();
         if (res?.data) setData(res.data);
-        showSuccess('Created');
+        toast('Created', 'success');
       }
       ps.closeModal();
-    } catch { showError('Failed to save'); }
+    } catch { toast('Failed to save', 'error'); }
   };
 
   const columns: Column<TravelAdvance>[] = [
@@ -143,7 +143,7 @@ export function TravelAdvancesPage() {
       pageKey="travel"
       headerActions={
         <>
-          <button onClick={() => { exportToCsv(['Employee','Amount','Request Date','Purpose','Status','Notes'], ps.filtered.map(i => [i.employeeId,`₦${i.amount}`,i.requestDate,i.purpose,i.status,i.notes]), 'travel-advances'); showSuccess('Exported'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
+          <button onClick={() => { exportToCsv(['Employee','Amount','Request Date','Purpose','Status','Notes'], ps.filtered.map(i => [i.employeeId,`₦${i.amount}`,i.requestDate,i.purpose,i.status,i.notes]), 'travel-advances'); toast('Exported', 'success'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
           <button onClick={() => exportToPdf('Travel Advances', ['Employee','Amount','Request Date','Purpose','Status'], ps.filtered.map(i => [i.employeeId,`₦${i.amount}`,i.requestDate,i.purpose,i.status]), 'travel-advances')} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><FileText className="w-3.5 h-3.5" /> PDF</button>
           <button onClick={ps.openAddModal} className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary-hover transition-all shadow-sm"><Plus className="w-3.5 h-3.5" /> Add New</button>
         </>

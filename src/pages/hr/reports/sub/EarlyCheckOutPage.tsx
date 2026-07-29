@@ -1,4 +1,4 @@
-﻿import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { LogOut, Plus, Download, FileText, Edit3, Trash2, Eye, Clock, CheckCircle2, Sunset } from 'lucide-react';
 import { useHrPageState } from '../../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../../components/hr/HrPageShell';
@@ -23,7 +23,7 @@ interface EarlyCheckOut {
 }
 
 export function EarlyCheckOutPage() {
-  const { success, error } = useToast();
+  const { toast } = useToast();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const ps = useHrPageState({ data: [], initialSortKey: 'employeeName', searchKeys: ['employeeName', 'status'], pageSize: 10 });
@@ -36,7 +36,7 @@ export function EarlyCheckOutPage() {
     try {
       const result = await hrApi.getReportAttendance({});
       setData(Array.isArray(result) ? result : []);
-    } catch (e: any) { error(e?.message || 'Failed to load'); }
+    } catch (e: any) { toast(e?.message || 'Failed to load', 'error'); }
     finally { setLoading(false); }
   };
 
@@ -50,7 +50,7 @@ export function EarlyCheckOutPage() {
   ], [data, ps.statusFilter]);
 
   const handleDelete = (id: string) => {
-    error('This is a read-only report view');
+    toast('This is a read-only report view', 'error');
     ps.closeConfirmDelete();
   };
 
@@ -82,7 +82,7 @@ export function EarlyCheckOutPage() {
     <HrPageShell title="Early Check Out" description="Early departure records, frequency analysis, and department comparisons"
       pageKey="reports"
       headerActions={<>
-        <button onClick={() => { exportToCsv(csvHeaders, csvRows, 'early-checkout'); success('CSV exported'); }} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-ink-600 bg-ink-100 dark:bg-ink-800 hover:bg-ink-200 dark:hover:bg-ink-700 rounded-lg transition-colors"><Download className="w-3.5 h-3.5" /> CSV</button>
+        <button onClick={() => { exportToCsv(csvHeaders, csvRows, 'early-checkout'); toast('CSV exported', 'success'); }} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-ink-600 bg-ink-100 dark:bg-ink-800 hover:bg-ink-200 dark:hover:bg-ink-700 rounded-lg transition-colors"><Download className="w-3.5 h-3.5" /> CSV</button>
         <button onClick={() => exportToPdf('Early Check Out', pdfHeaders, pdfRows, 'early-checkout')} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-ink-600 bg-ink-100 dark:bg-ink-800 hover:bg-ink-200 dark:hover:bg-ink-700 rounded-lg transition-colors"><FileText className="w-3.5 h-3.5" /> PDF</button>
         <button onClick={ps.openAddModal} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors"><Plus className="w-3.5 h-3.5" /> Add Record</button>
       </>}>
@@ -109,7 +109,7 @@ export function EarlyCheckOutPage() {
             <div><label className="block text-xs font-medium text-ink-600 mb-1">Scheduled Time</label><input type="time" className="w-full h-9 px-3 text-sm rounded-lg border border-ink-200 dark:border-ink-700 bg-white dark:bg-ink-900 text-ink-900" defaultValue={editItem?.scheduledTime ?? ''} /></div>
             <div><label className="block text-xs font-medium text-ink-600 mb-1">Actual Time</label><input type="time" className="w-full h-9 px-3 text-sm rounded-lg border border-ink-200 dark:border-ink-700 bg-white dark:bg-ink-900 text-ink-900" defaultValue={editItem?.actualTime ?? ''} /></div>
           </div>
-          <button className="w-full h-9 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors" onClick={() => { error('This is a read-only report view'); ps.closeModal(); }}>{ps.editingId ? 'Update' : 'Create'}</button>
+          <button className="w-full h-9 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors" onClick={() => { toast('This is a read-only report view', 'error'); ps.closeModal(); }}>{ps.editingId ? 'Update' : 'Create'}</button>
         </div>
       </HrFormModal>
       <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => handleDelete(ps.deletingId!)} title="Delete Record" message="Are you sure you want to delete this early check-out record? This action cannot be undone." />

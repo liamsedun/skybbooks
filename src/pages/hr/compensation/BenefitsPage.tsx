@@ -29,7 +29,7 @@ function fmt(n: number) { return '₦' + (n || 0).toLocaleString(); }
 const EMPTY: BenefitItem = { id: '', name: '', type: 'health', description: '', provider: '', costEmployer: 0, costEmployee: 0, isActive: true, createdAt: '' };
 
 export function BenefitsPage() {
-  const { success: showSuccess } = useToast();
+  const { toast } = useToast();
   const [data, setData] = useState<BenefitItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState<BenefitItem>({ ...EMPTY });
@@ -40,7 +40,7 @@ export function BenefitsPage() {
     try {
       const res = await hrApi.getBenefits();
       setData(Array.isArray(res) ? res : res.data || []);
-    } catch (err) { console.error(err); }
+    } catch (err) { console.toast(err, 'error'); }
     setLoading(false);
   };
 
@@ -65,10 +65,10 @@ export function BenefitsPage() {
     try {
       if (ps.editingId) {
         await hrApi.updateBenefit(ps.editingId, { name: form.name, type: form.type, description: form.description, provider: form.provider, costEmployer: form.costEmployer, costEmployee: form.costEmployee, isActive: form.isActive });
-        showSuccess('Benefit updated');
+        toast('Benefit updated', 'success');
       } else {
         await hrApi.createBenefit({ name: form.name, type: form.type, description: form.description, provider: form.provider, costEmployer: form.costEmployer, costEmployee: form.costEmployee, isActive: form.isActive });
-        showSuccess('Benefit created');
+        toast('Benefit created', 'success');
       }
       ps.closeModal();
       fetchData();
@@ -79,10 +79,10 @@ export function BenefitsPage() {
     if (!ps.deletingId) return;
     try {
       await hrApi.deleteBenefit(ps.deletingId);
-      showSuccess('Benefit deleted');
+      toast('Benefit deleted', 'success');
       ps.closeConfirmDelete();
       fetchData();
-    } catch (err: any) { console.error(err); }
+    } catch (err: any) { console.toast(err, 'error'); }
   };
 
   const columns: Column<BenefitItem>[] = [
@@ -106,7 +106,7 @@ export function BenefitsPage() {
       pageKey="benefits"
       headerActions={
         <>
-          <button onClick={() => { exportToCsv(['Benefit', 'Type', 'Provider', 'Employer Cost', 'Employee Cost', 'Status'], ps.filtered.map(b => [b.name, b.type, b.provider || '', String(b.costEmployer), String(b.costEmployee), b.isActive ? 'Active' : 'Inactive']), 'benefits'); showSuccess('Exported'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
+          <button onClick={() => { exportToCsv(['Benefit', 'Type', 'Provider', 'Employer Cost', 'Employee Cost', 'Status'], ps.filtered.map(b => [b.name, b.type, b.provider || '', String(b.costEmployer), String(b.costEmployee), b.isActive ? 'Active' : 'Inactive']), 'benefits'); toast('Exported', 'success'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
           <button onClick={() => exportToPdf('Benefits', ['Benefit', 'Type', 'Provider', 'Employer Cost', 'Status'], ps.filtered.map(b => [b.name, b.type, b.provider || '', fmt(b.costEmployer), b.isActive ? 'Active' : 'Inactive']), 'benefits')} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><FileText className="w-3.5 h-3.5" /> PDF</button>
           <button onClick={openAdd} className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary-hover transition-all shadow-sm"><Plus className="w-3.5 h-3.5" /> Add Benefit</button>
         </>

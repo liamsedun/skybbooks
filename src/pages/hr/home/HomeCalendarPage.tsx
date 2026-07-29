@@ -1,4 +1,4 @@
-﻿import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Calendar, Gift, Umbrella, Briefcase, GraduationCap, ChevronLeft, ChevronRight } from 'lucide-react';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
 import { useToast } from '../../../contexts/ToastContext';
@@ -30,7 +30,7 @@ const MONTHS = ['January','February','March','April','May','June','July','August
 const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
 export function HomeCalendarPage() {
-  const { success: showSuccess, error: showError } = useToast();
+  const { toast } = useToast();
   const [data, setData] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentMonth, setCurrentMonth] = useState(7);
@@ -43,7 +43,7 @@ export function HomeCalendarPage() {
     try {
       const result = await hrApi.getCalendarEvents({});
       setData(Array.isArray(result) ? result : []);
-    } catch (e: any) { showError(e?.message || 'Failed to load'); }
+    } catch (e: any) { toast(e?.message || 'Failed to load', 'error'); }
     finally { setLoading(false); }
   };
 
@@ -101,7 +101,7 @@ export function HomeCalendarPage() {
               <span className="text-xs font-medium text-ink-700 mb-1 block">{day.date}</span>
               <div className="space-y-1">
                 {day.events.map(evt => (
-                  <button key={evt.id} onClick={() => showSuccess(evt.title)}
+                  <button key={evt.id} onClick={() => toast(evt.title, 'success')}
                     className={`w-full text-left px-2 py-1 rounded-lg border text-[11px] font-medium flex items-center gap-1.5 transition-opacity hover:opacity-80 ${TYPE_STYLES[evt.type]}`}>
                     {TYPE_ICONS[evt.type]}
                     <span className="truncate">{evt.title}</span>

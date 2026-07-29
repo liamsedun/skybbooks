@@ -24,7 +24,7 @@ const progressColor = (pct: number) => {
 };
 
 export function ProjectsPage() {
-  const { success: showSuccess, error: showError } = useToast();
+  const { toast } = useToast();
   const [data] = useState<Project[]>([]);
   const ps = useHrPageState({ data, initialSortKey: 'name', searchKeys: ['name', 'lead'], pageSize: 10 });
   const stats = useMemo(() => [
@@ -59,7 +59,7 @@ export function ProjectsPage() {
       pageKey="projects"
       headerActions={
         <>
-          <button onClick={() => { exportToCsv(['Name','Lead','Team Size','Progress','Status'], ps.filtered.map(i => [i.name,i.lead,String(i.teamSize),`${i.progress}%`,i.status]), 'projects'); showSuccess('Exported'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
+          <button onClick={() => { exportToCsv(['Name','Lead','Team Size','Progress','Status'], ps.filtered.map(i => [i.name,i.lead,String(i.teamSize),`${i.progress}%`,i.status]), 'projects'); toast('Exported', 'success'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
           <button onClick={() => exportToPdf('HR Projects', ['Name','Lead','Team Size','Progress','Status'], ps.filtered.map(i => [i.name,i.lead,String(i.teamSize),`${i.progress}%`,i.status]), 'projects')} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><FileText className="w-3.5 h-3.5" /> PDF</button>
           <button onClick={ps.openAddModal} className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary-hover transition-all shadow-sm"><Plus className="w-3.5 h-3.5" /> Add New</button>
         </>
@@ -75,11 +75,11 @@ export function ProjectsPage() {
         page={ps.page} totalPages={ps.totalPages} onPageChange={ps.setPage} pageSize={ps.pageSize} totalItems={ps.filtered.length}
         from={(ps.page - 1) * ps.pageSize + 1} to={Math.min(ps.page * ps.pageSize, ps.filtered.length)}
         emptyMessage="No projects" emptyAction={<button onClick={ps.openAddModal} className="text-xs font-medium text-primary">Add</button>} />
-      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Project' : 'Add Project'} onSubmit={(e) => { e.preventDefault(); showSuccess(ps.editingId ? 'Updated' : 'Created'); ps.closeModal(); }}>
+      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Project' : 'Add Project'} onSubmit={(e) => { e.preventDefault(); toast(ps.editingId ? 'Updated' : 'Created', 'success'); ps.closeModal(); }}>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Name</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div className="mt-3"><label className="block text-xs font-medium text-ink-500 mb-1">Lead</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
       </HrFormModal>
-      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showSuccess('Deleted'); ps.closeConfirmDelete(); }} title="Delete Project" message="Are you sure you want to delete this project?" confirmLabel="Delete" variant="danger" />
+      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { toast('Deleted', 'success'); ps.closeConfirmDelete(); }} title="Delete Project" message="Are you sure you want to delete this project?" confirmLabel="Delete" variant="danger" />
       <HrViewDrawer open={ps.viewDrawerOpen} onClose={ps.closeViewDrawer} title="Project Details">
         <div className="space-y-3 text-sm text-ink-600"><p>Project details displayed here.</p></div>
       </HrViewDrawer>

@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UserPlus, X, Save, Loader2 } from 'lucide-react';
 import { hrApi } from '../../../lib/api';
@@ -37,7 +37,7 @@ const SOURCES = ['LinkedIn', 'Indeed', 'Referral', 'Company Website', 'Job Fair'
 
 export function AddCandidatePage() {
   const navigate = useNavigate();
-  const { success, error: showError } = useToast();
+  const { toast } = useToast();
   const [form, setForm] = useState<FormData>(emptyForm);
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
   const [jobOpenings, setJobOpenings] = useState<JobOpening[]>([]);
@@ -50,7 +50,7 @@ export function AddCandidatePage() {
         const data = res?.data ?? res ?? [];
         setJobOpenings(Array.isArray(data) ? data : []);
       })
-      .catch(() => showError('Failed to load job openings'))
+      .catch(() => toast('Failed to load job openings', 'error'))
       .finally(() => setLoading(false));
   }, []);
 
@@ -83,11 +83,11 @@ export function AddCandidatePage() {
       };
       if (form.jobOpeningId) payload.jobOpeningId = form.jobOpeningId;
       await hrApi.createCandidate(payload);
-      success('Candidate added successfully');
+      toast('Candidate added successfully', 'success');
       navigate('/app/hr/recruitment/candidates');
     } catch (err: any) {
       const msg = err?.response?.data?.error || err?.message || 'Failed to create candidate';
-      showError(msg);
+      toast(msg, 'error');
     } finally {
       setSubmitting(false);
     }
@@ -157,7 +157,7 @@ export function AddCandidatePage() {
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div><label className="block text-xs font-medium text-ink-500 mb-1">Expected Salary (₦)</label>
+            <div><label className="block text-xs font-medium text-ink-500 mb-1">Expected Salary (?)</label>
               <input type="number" value={form.expectedSalary} onChange={set('expectedSalary')} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" placeholder="e.g. 5000000" />
             </div>
             <div><label className="block text-xs font-medium text-ink-500 mb-1">Resume URL</label>

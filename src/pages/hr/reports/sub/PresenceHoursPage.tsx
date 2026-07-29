@@ -1,4 +1,4 @@
-﻿import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Hourglass, Plus, Download, FileText, Edit3, Trash2, Eye, Clock, Sun, Moon, TrendingUp } from 'lucide-react';
 import { useHrPageState } from '../../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../../components/hr/HrPageShell';
@@ -23,7 +23,7 @@ interface PresenceRecord {
 }
 
 export function PresenceHoursPage() {
-  const { success, error } = useToast();
+  const { toast } = useToast();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const ps = useHrPageState({ data: [], initialSortKey: 'employeeName', searchKeys: ['employeeName', 'month'], pageSize: 10 });
@@ -36,7 +36,7 @@ export function PresenceHoursPage() {
     try {
       const result = await hrApi.getReportAttendance({});
       setData(Array.isArray(result) ? result : []);
-    } catch (e: any) { error(e?.message || 'Failed to load'); }
+    } catch (e: any) { toast(e?.message || 'Failed to load', 'error'); }
     finally { setLoading(false); }
   };
 
@@ -50,7 +50,7 @@ export function PresenceHoursPage() {
   ], [data]);
 
   const handleDelete = (id: string) => {
-    error('This is a read-only report view');
+    toast('This is a read-only report view', 'error');
     ps.closeConfirmDelete();
   };
 
@@ -97,7 +97,7 @@ export function PresenceHoursPage() {
     <HrPageShell title="Presence Hours" description="Total presence hours per employee, department averages, and monthly trends"
       pageKey="reports"
       headerActions={<>
-        <button onClick={() => { exportToCsv(csvHeaders, csvRows, 'presence-hours'); success('CSV exported'); }} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-ink-600 bg-ink-100 dark:bg-ink-800 hover:bg-ink-200 dark:hover:bg-ink-700 rounded-lg transition-colors"><Download className="w-3.5 h-3.5" /> CSV</button>
+        <button onClick={() => { exportToCsv(csvHeaders, csvRows, 'presence-hours'); toast('CSV exported', 'success'); }} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-ink-600 bg-ink-100 dark:bg-ink-800 hover:bg-ink-200 dark:hover:bg-ink-700 rounded-lg transition-colors"><Download className="w-3.5 h-3.5" /> CSV</button>
         <button onClick={() => exportToPdf('Presence Hours', pdfHeaders, pdfRows, 'presence-hours')} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-ink-600 bg-ink-100 dark:bg-ink-800 hover:bg-ink-200 dark:hover:bg-ink-700 rounded-lg transition-colors"><FileText className="w-3.5 h-3.5" /> PDF</button>
         <button onClick={ps.openAddModal} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors"><Plus className="w-3.5 h-3.5" /> Add Record</button>
       </>}>
@@ -122,7 +122,7 @@ export function PresenceHoursPage() {
             <div><label className="block text-xs font-medium text-ink-600 mb-1">Worked Hours</label><input type="number" className="w-full h-9 px-3 text-sm rounded-lg border border-ink-200 dark:border-ink-700 bg-white dark:bg-ink-900 text-ink-900" defaultValue={editItem?.workedHours ?? ''} /></div>
             <div><label className="block text-xs font-medium text-ink-600 mb-1">Overtime</label><input type="number" className="w-full h-9 px-3 text-sm rounded-lg border border-ink-200 dark:border-ink-700 bg-white dark:bg-ink-900 text-ink-900" defaultValue={editItem?.overtime ?? ''} /></div>
           </div>
-          <button className="w-full h-9 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors" onClick={() => { error('This is a read-only report view'); ps.closeModal(); }}>{ps.editingId ? 'Update' : 'Create'}</button>
+          <button className="w-full h-9 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors" onClick={() => { toast('This is a read-only report view', 'error'); ps.closeModal(); }}>{ps.editingId ? 'Update' : 'Create'}</button>
         </div>
       </HrFormModal>
       <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => handleDelete(ps.deletingId!)} title="Delete Record" message="Are you sure you want to delete this presence hour record? This action cannot be undone." />

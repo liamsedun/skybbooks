@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, AlertCircle } from 'lucide-react';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -33,7 +33,7 @@ function FormField({ label, id, error, children }: { label: string; id: string; 
 export function EmployeeForm() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { success: showSuccess } = useToast();
+  const { toast } = useToast();
   const isEdit = Boolean(id);
 
   const [formData, setFormData] = useState({
@@ -78,7 +78,7 @@ export function EmployeeForm() {
     setSubmitting(true);
     setTimeout(() => {
       setSubmitting(false);
-      showSuccess(isEdit ? 'Employee updated successfully' : 'Employee created successfully');
+      toast(isEdit ? 'Employee updated successfully' : 'Employee created successfully', 'success');
       navigate('/app/hr/employees');
     }, 500);
   };

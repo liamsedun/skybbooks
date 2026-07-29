@@ -22,7 +22,7 @@ function fmtFileSize(bytes: number) {
 }
 
 export function DocReportsPage() {
-  const { success: showSuccess } = useToast();
+  const { toast } = useToast();
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -31,7 +31,7 @@ export function DocReportsPage() {
     try {
       const res = await hrApi.getDocDashboard();
       setDashboard(res?.data || res);
-    } catch (err) { console.error(err); }
+    } catch (err) { console.toast(err, 'error'); }
     setLoading(false);
   };
 
@@ -63,7 +63,7 @@ export function DocReportsPage() {
                 ['Categories', String(dashboard.totalCategories)],
                 ['Total Size', fmtFileSize(dashboard.totalSize)],
               ], 'doc-report');
-              showSuccess('Exported');
+              toast('Exported', 'success');
             }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all">
               <Download className="w-3.5 h-3.5" /> CSV
             </button>

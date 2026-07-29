@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { FileText, Clock, Layout, FileSignature, Plus, Download, FileText as FileTextIcon, Edit3, Trash2, Eye } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -18,7 +18,7 @@ interface Template {
 }
 
 export function LetterTemplatesPage() {
-  const { success: showSuccess, error: showError } = useToast();
+  const { toast } = useToast();
   const [data, setData] = useState<Template[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -45,8 +45,8 @@ export function LetterTemplatesPage() {
     try {
       await hrApi.deleteLetterTemplate(id);
       setData(prev => prev.filter(i => i.id !== id));
-      showSuccess('Deleted');
-    } catch { showError('Failed to delete'); }
+      toast('Deleted', 'success');
+    } catch { toast('Failed to delete', 'error'); }
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -62,15 +62,15 @@ export function LetterTemplatesPage() {
         await hrApi.updateLetterTemplate(ps.editingId, payload);
         const res = await hrApi.getLetterTemplates();
         if (res?.data) setData(res.data);
-        showSuccess('Updated');
+        toast('Updated', 'success');
       } else {
         await hrApi.createLetterTemplate(payload);
         const res = await hrApi.getLetterTemplates();
         if (res?.data) setData(res.data);
-        showSuccess('Created');
+        toast('Created', 'success');
       }
       ps.closeModal();
-    } catch { showError('Failed to save'); }
+    } catch { toast('Failed to save', 'error'); }
   };
 
   const columns: Column<Template>[] = [
@@ -91,7 +91,7 @@ export function LetterTemplatesPage() {
       pageKey="letters"
       headerActions={
         <>
-          <button onClick={() => { exportToCsv(['Name','Type','Last Used','Status'], ps.filtered.map(i => [i.name,i.type,i.lastUsed,i.status]), 'templates'); showSuccess('Exported'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
+          <button onClick={() => { exportToCsv(['Name','Type','Last Used','Status'], ps.filtered.map(i => [i.name,i.type,i.lastUsed,i.status]), 'templates'); toast('Exported', 'success'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
           <button onClick={() => exportToPdf('Letter Templates', ['Name','Type','Last Used','Status'], ps.filtered.map(i => [i.name,i.type,i.lastUsed,i.status]), 'templates')} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><FileTextIcon className="w-3.5 h-3.5" /> PDF</button>
           <button onClick={ps.openAddModal} className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary-hover transition-all shadow-sm"><Plus className="w-3.5 h-3.5" /> Add New</button>
         </>

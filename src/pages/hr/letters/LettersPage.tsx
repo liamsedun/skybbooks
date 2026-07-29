@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { FileText, User, Calendar, FileSignature, Plus, Download, FileText as FileTextIcon, Edit3, Trash2, Eye } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -18,7 +18,7 @@ interface Letter {
 }
 
 export function LettersPage() {
-  const { success: showSuccess, error: showError } = useToast();
+  const { toast } = useToast();
   const [data, setData] = useState<Letter[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -45,8 +45,8 @@ export function LettersPage() {
     try {
       await hrApi.deleteLetter(id);
       setData(prev => prev.filter(i => i.id !== id));
-      showSuccess('Deleted');
-    } catch { showError('Failed to delete'); }
+      toast('Deleted', 'success');
+    } catch { toast('Failed to delete', 'error'); }
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -62,9 +62,9 @@ export function LettersPage() {
       await hrApi.generateLetter(payload);
       const res = await hrApi.getLetters({});
       if (res?.data) setData(res.data);
-      showSuccess(ps.editingId ? 'Updated' : 'Created');
+      toast(ps.editingId ? 'Updated' : 'Created', 'success');
       ps.closeModal();
-    } catch { showError('Failed to save'); }
+    } catch { toast('Failed to save', 'error'); }
   };
 
   const columns: Column<Letter>[] = [
@@ -85,7 +85,7 @@ export function LettersPage() {
       pageKey="letters"
       headerActions={
         <>
-          <button onClick={() => { exportToCsv(['Employee','Type','Issue Date','Status'], ps.filtered.map(i => [i.employeeName,i.type,i.issueDate,i.status]), 'letters'); showSuccess('Exported'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
+          <button onClick={() => { exportToCsv(['Employee','Type','Issue Date','Status'], ps.filtered.map(i => [i.employeeName,i.type,i.issueDate,i.status]), 'letters'); toast('Exported', 'success'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
           <button onClick={() => exportToPdf('HR Letters', ['Employee','Type','Issue Date','Status'], ps.filtered.map(i => [i.employeeName,i.type,i.issueDate,i.status]), 'letters')} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><FileTextIcon className="w-3.5 h-3.5" /> PDF</button>
           <button onClick={ps.openAddModal} className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary-hover transition-all shadow-sm"><Plus className="w-3.5 h-3.5" /> Add New</button>
         </>

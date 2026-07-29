@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { ClipboardList, BarChart3, Target, Users, Plus, Download, FileText, Edit3, Trash2, Eye } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -18,7 +18,7 @@ interface Survey {
 }
 
 export function SurveysPage() {
-  const { success: showSuccess, error: showError } = useToast();
+  const { toast } = useToast();
   const [data, setData] = useState<Survey[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -46,8 +46,8 @@ export function SurveysPage() {
     try {
       await hrApi.deleteSurvey(id);
       setData(prev => prev.filter(i => i.id !== id));
-      showSuccess('Deleted');
-    } catch { showError('Failed to delete'); }
+      toast('Deleted', 'success');
+    } catch { toast('Failed to delete', 'error'); }
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -65,15 +65,15 @@ export function SurveysPage() {
         await hrApi.updateSurvey(ps.editingId, payload);
         const res = await hrApi.getSurveys({});
         if (res?.data) setData(res.data);
-        showSuccess('Updated');
+        toast('Updated', 'success');
       } else {
         await hrApi.createSurvey(payload);
         const res = await hrApi.getSurveys({});
         if (res?.data) setData(res.data);
-        showSuccess('Created');
+        toast('Created', 'success');
       }
       ps.closeModal();
-    } catch { showError('Failed to save'); }
+    } catch { toast('Failed to save', 'error'); }
   };
 
   const columns: Column<Survey>[] = [
@@ -94,7 +94,7 @@ export function SurveysPage() {
       pageKey="surveys"
       headerActions={
         <>
-          <button onClick={() => { exportToCsv(['Title','Department','Responses/Target','Status'], ps.filtered.map(i => [i.title,i.department,`${i.responses}/${i.target}`,i.status]), 'surveys'); showSuccess('Exported'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
+          <button onClick={() => { exportToCsv(['Title','Department','Responses/Target','Status'], ps.filtered.map(i => [i.title,i.department,`${i.responses}/${i.target}`,i.status]), 'surveys'); toast('Exported', 'success'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
           <button onClick={() => exportToPdf('Surveys', ['Title','Department','Responses/Target','Status'], ps.filtered.map(i => [i.title,i.department,`${i.responses}/${i.target}`,i.status]), 'surveys')} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><FileText className="w-3.5 h-3.5" /> PDF</button>
           <button onClick={ps.openAddModal} className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary-hover transition-all shadow-sm"><Plus className="w-3.5 h-3.5" /> Add New</button>
         </>

@@ -9,7 +9,7 @@ import { exportToCsv } from '../../../lib/hrExport';
 const fmtAmount = (n: number) => `₦${(n / 100).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
 
 export function TravelReportsPage() {
-  const { success: showSuccess, error: showError } = useToast();
+  const { toast } = useToast();
   const [report, setReport] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -17,7 +17,7 @@ export function TravelReportsPage() {
     setLoading(true);
     hrApi.getTravelReport().then((res: any) => {
       setReport(res?.data ?? res);
-    }).catch(() => showError('Failed to load travel report'))
+    }).catch(() => toast('Failed to load travel report', 'error'))
     .finally(() => setLoading(false));
   };
 
@@ -44,7 +44,7 @@ export function TravelReportsPage() {
           <button onClick={() => {
             const rows = stats.map(s => [s.label, String(s.value)]);
             exportToCsv(['Metric', 'Value'], rows, 'travel-report');
-            showSuccess('Exported');
+            toast('Exported', 'success');
           }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
         </>
       }>

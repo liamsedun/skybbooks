@@ -29,7 +29,7 @@ const EMPTY: DocCategory = { id: '', name: '', description: '', parentId: null, 
 function fmtDate(d: string) { return d ? new Date(d).toLocaleDateString() : '-'; }
 
 export function DocCategoriesPage() {
-  const { success: showSuccess } = useToast();
+  const { toast } = useToast();
   const [data, setData] = useState<DocCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState<DocCategory>({ ...EMPTY });
@@ -40,7 +40,7 @@ export function DocCategoriesPage() {
     try {
       const res = await hrApi.getDocCategories();
       setData(Array.isArray(res) ? res : res.data || []);
-    } catch (err) { console.error(err); }
+    } catch (err) { console.toast(err, 'error'); }
     setLoading(false);
   };
 
@@ -65,10 +65,10 @@ export function DocCategoriesPage() {
       const payload = { name: form.name, description: form.description || null, parentId: form.parentId, icon: form.icon || null, color: form.color, sortOrder: form.sortOrder, isActive: form.isActive };
       if (ps.editingId) {
         await hrApi.updateDocCategory(ps.editingId, payload);
-        showSuccess('Category updated');
+        toast('Category updated', 'success');
       } else {
         await hrApi.createDocCategory(payload);
-        showSuccess('Category created');
+        toast('Category created', 'success');
       }
       ps.closeModal();
       fetchData();
@@ -79,10 +79,10 @@ export function DocCategoriesPage() {
     if (!ps.deletingId) return;
     try {
       await hrApi.deleteDocCategory(ps.deletingId);
-      showSuccess('Category deleted');
+      toast('Category deleted', 'success');
       ps.closeConfirmDelete();
       fetchData();
-    } catch (err: any) { console.error(err); }
+    } catch (err: any) { console.toast(err, 'error'); }
   };
 
   const columns: Column<DocCategory>[] = [
@@ -111,7 +111,7 @@ export function DocCategoriesPage() {
       pageKey="doc-categories"
       headerActions={
         <>
-          <button onClick={() => { exportToCsv(['Name', 'Description', 'Color', 'Sort Order', 'Status'], filteredByStatus.map(a => [a.name, a.description || '', a.color, String(a.sortOrder), a.isActive ? 'Active' : 'Inactive']), 'doc-categories'); showSuccess('Exported'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
+          <button onClick={() => { exportToCsv(['Name', 'Description', 'Color', 'Sort Order', 'Status'], filteredByStatus.map(a => [a.name, a.description || '', a.color, String(a.sortOrder), a.isActive ? 'Active' : 'Inactive']), 'doc-categories'); toast('Exported', 'success'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
           <button onClick={() => exportToPdf('Document Categories', ['Name', 'Description', 'Color', 'Sort Order', 'Status'], filteredByStatus.map(a => [a.name, a.description || '', a.color, String(a.sortOrder), a.isActive ? 'Active' : 'Inactive']), 'doc-categories')} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><FileText className="w-3.5 h-3.5" /> PDF</button>
           <button onClick={openAdd} className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary-hover transition-all shadow-sm"><Plus className="w-3.5 h-3.5" /> Add Category</button>
         </>

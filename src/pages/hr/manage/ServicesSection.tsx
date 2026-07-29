@@ -79,7 +79,7 @@ interface ServiceConfig {
 }
 
 function ServiceForm({ label, config, onChange, route }: { label: string; config: ServiceConfig; onChange: (c: ServiceConfig) => void; route?: string }) {
-  const { success } = useToast();
+  const { toast } = useToast();
   const navigate = useNavigate();
   return (
     <div className="bg-surface rounded-2xl border border-border-custom shadow-sm p-6 space-y-5">
@@ -87,7 +87,7 @@ function ServiceForm({ label, config, onChange, route }: { label: string; config
         <h2 className="text-base font-semibold text-ink-900">{label} Settings</h2>
         <div className="flex items-center gap-2">
           {route && <button onClick={() => navigate(route)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><ExternalLink className="w-3.5 h-3.5" /> Open</button>}
-          <button onClick={() => { success(`${label} settings saved`); }} className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary-hover transition-all shadow-sm"><Save className="w-3.5 h-3.5" /> Save</button>
+          <button onClick={() => { toast(`${label} settings saved`, 'success'); }} className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary-hover transition-all shadow-sm"><Save className="w-3.5 h-3.5" /> Save</button>
         </div>
       </div>
       <div className="space-y-4">
@@ -112,7 +112,7 @@ export function ServicesSection() {
   const activeTab = searchParams.get('tab') || 'onboarding';
   const activeItem = ALL_TABS.find(t => t.key === activeTab);
   const ActiveIcon = activeItem?.icon || ClipboardList;
-  const { success, error: showError } = useToast();
+  const { toast } = useToast();
 
   const [configs, setConfigs] = useState<Record<string, ServiceConfig>>({});
   const [loaded, setLoaded] = useState(false);
@@ -140,8 +140,8 @@ export function ServicesSection() {
     try {
       const settings = (await orgApi.getSettings()) as any;
       await orgApi.updateSettings({ services: { ...(settings?.services || {}), [key]: c } });
-      success(`${ALL_TABS.find(t => t.key === key)?.label || key} settings saved`);
-    } catch { showError('Failed to save'); }
+      toast(`${ALL_TABS.find(t => t.key === key)?.label || key} settings saved`, 'success');
+    } catch { toast('Failed to save', 'error'); }
   };
 
   if (!loaded) return <div className="p-6 text-sm text-ink-400">Loading...</div>;

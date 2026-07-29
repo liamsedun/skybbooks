@@ -103,7 +103,7 @@ function MessagesContent({ messages, onSend }: { messages: MessageItem[]; onSend
 export function ApprovalsSection() {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'details';
-  const { success, error: showError } = useToast();
+  const { toast } = useToast();
 
   const [loaded, setLoaded] = useState(false);
   const [name, setName] = useState('Leave Approval');
@@ -165,32 +165,32 @@ export function ApprovalsSection() {
     try {
       const settings = (await orgApi.getSettings()) as any;
       await orgApi.updateSettings({ approvals: { ...(settings?.approvals || {}), name, desc, reqManager, reqHr } });
-      success('Approval details saved');
-    } catch { showError('Failed to save'); }
+      toast('Approval details saved', 'success');
+    } catch { toast('Failed to save', 'error'); }
   };
 
   const saveCriteria = async () => {
     try {
       const settings = (await orgApi.getSettings()) as any;
       await orgApi.updateSettings({ approvals: { ...(settings?.approvals || {}), minAmt, maxAmt, level } });
-      success('Criteria saved');
-    } catch { showError('Failed to save'); }
+      toast('Criteria saved', 'success');
+    } catch { toast('Failed to save', 'error'); }
   };
 
   const handleApprove = async (id: string) => {
     try {
       await hrApi.approveApprovalStep(id);
       setApprovals(prev => prev.map(a => a.id === id ? { ...a, status: 'approved' as const } : a));
-      success('Request approved');
-    } catch { showError('Failed to approve'); }
+      toast('Request approved', 'success');
+    } catch { toast('Failed to approve', 'error'); }
   };
 
   const handleReject = async (id: string) => {
     try {
       await hrApi.rejectApprovalStep(id);
       setApprovals(prev => prev.map(a => a.id === id ? { ...a, status: 'rejected' as const } : a));
-      success('Request rejected');
-    } catch { showError('Failed to reject'); }
+      toast('Request rejected', 'success');
+    } catch { toast('Failed to reject', 'error'); }
   };
 
   const handleSendMessage = async (text: string) => {
@@ -200,8 +200,8 @@ export function ApprovalsSection() {
       const settings = (await orgApi.getSettings()) as any;
       const existing = settings?.approvals?.messages || [];
       await orgApi.updateSettings({ approvals: { ...(settings?.approvals || {}), messages: [...existing, newMsg] } });
-      success('Message sent');
-    } catch { showError('Failed to save message'); }
+      toast('Message sent', 'success');
+    } catch { toast('Failed to save message', 'error'); }
   };
 
   if (!loaded) return <div className="p-6 text-sm text-ink-400">Loading...</div>;

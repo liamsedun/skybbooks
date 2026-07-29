@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { FileText, ScrollText, Plus, Download, FileText as FilePdf, Upload, Edit3, Trash2, Eye, Building2, Users } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -30,7 +30,7 @@ function LetterTypeIcon({ type }: { type: string }) {
 }
 
 export function HRLettersPage() {
-  const { success: showSuccess, error: showError } = useToast();
+  const { toast } = useToast();
   const [data, setData] = useState<LetterTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const ps = useHrPageState({ data, initialSortKey: 'name', searchKeys: ['name', 'type', 'department'], pageSize: 10 });
@@ -39,7 +39,7 @@ export function HRLettersPage() {
   const loadData = async () => {
     setLoading(true);
     try { const result = await hrApi.getLetters({}); setData(Array.isArray(result) ? result : []); }
-    catch (e: any) { showError(e?.message || 'Failed to load'); }
+    catch (e: any) { toast(e?.message || 'Failed to load', 'error'); }
     finally { setLoading(false); }
   };
 
@@ -75,7 +75,7 @@ export function HRLettersPage() {
       pageKey="letters"
       headerActions={
         <>
-          <button onClick={() => { exportToCsv(['Name', 'Type', 'Department', 'Last Used', 'Status'], ps.filtered.map(i => [i.name, i.type, i.department, i.lastUsed, i.status]), 'hr-letters'); showSuccess('CSV exported'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
+          <button onClick={() => { exportToCsv(['Name', 'Type', 'Department', 'Last Used', 'Status'], ps.filtered.map(i => [i.name, i.type, i.department, i.lastUsed, i.status]), 'hr-letters'); toast('CSV exported', 'success'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
           <button onClick={() => exportToPdf('HR Letters', ['Name', 'Type', 'Department', 'Last Used', 'Status'], ps.filtered.map(i => [i.name, i.type, i.department, i.lastUsed, i.status]), 'hr-letters')} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><FilePdf className="w-3.5 h-3.5" /> PDF</button>
           <button onClick={() => ps.setImportOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Upload className="w-3.5 h-3.5" /> Import</button>
           <button onClick={ps.openAddModal} className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary-hover transition-all shadow-sm"><Plus className="w-3.5 h-3.5" /> Add Template</button>
@@ -89,7 +89,7 @@ export function HRLettersPage() {
       {ps.selectedIds.length > 0 && (
         <div className="flex items-center justify-between p-3 bg-primary/5 dark:bg-primary/10 border border-primary/20 rounded-xl">
           <span className="text-sm text-ink-600">{ps.selectedIds.length} selected</span>
-          <button onClick={() => { showError('Read-only view'); ps.setSelectedIds([]); }} className="text-xs font-medium text-rose-600 hover:text-rose-700 transition-colors">Delete Selected</button>
+          <button onClick={() => { toast('Read-only view', 'error'); ps.setSelectedIds([]); }} className="text-xs font-medium text-rose-600 hover:text-rose-700 transition-colors">Delete Selected</button>
         </div>
       )}
       <HrDataTable columns={columns} data={ps.paginated} keyExtractor={i => i.id}
@@ -98,13 +98,13 @@ export function HRLettersPage() {
         page={ps.page} totalPages={ps.totalPages} onPageChange={ps.setPage} pageSize={ps.pageSize} totalItems={ps.filtered.length}
         from={(ps.page - 1) * ps.pageSize + 1} to={Math.min(ps.page * ps.pageSize, ps.filtered.length)}
         emptyMessage="No letter templates found" emptyAction={<button onClick={ps.openAddModal} className="text-xs font-medium text-primary hover:text-primary-hover">Add your first template</button>} />
-      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Template' : 'Add Template'} onSubmit={(e) => { e.preventDefault(); showError('Read-only view'); ps.closeModal(); }}>
+      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Template' : 'Add Template'} onSubmit={(e) => { e.preventDefault(); toast('Read-only view', 'error'); ps.closeModal(); }}>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Template Name</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Type</label><select className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"><option>offer</option><option>appointment</option><option>confirmation</option><option>warning</option><option>experience</option></select></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Department</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Content</label><textarea rows={6} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
       </HrFormModal>
-      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showError('Read-only view'); ps.closeConfirmDelete(); }} title="Delete Template" message="Are you sure you want to delete this letter template? This action cannot be undone." confirmLabel="Delete" variant="danger" />
+      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { toast('Read-only view', 'error'); ps.closeConfirmDelete(); }} title="Delete Template" message="Are you sure you want to delete this letter template? This action cannot be undone." confirmLabel="Delete" variant="danger" />
       <HrViewDrawer open={ps.viewDrawerOpen} onClose={ps.closeViewDrawer} title="Template Details">
         {ps.viewingId && (() => {
           const item = data.find(i => i.id === ps.viewingId);
@@ -122,7 +122,7 @@ export function HRLettersPage() {
           );
         })()}
       </HrViewDrawer>
-      <HrFormModal open={ps.importOpen} onClose={() => ps.setImportOpen(false)} title="Import Templates" onSubmit={(e) => { e.preventDefault(); showError('Read-only view'); ps.setImportOpen(false); }} submitLabel="Import">
+      <HrFormModal open={ps.importOpen} onClose={() => ps.setImportOpen(false)} title="Import Templates" onSubmit={(e) => { e.preventDefault(); toast('Read-only view', 'error'); ps.setImportOpen(false); }} submitLabel="Import">
         <p className="text-sm text-ink-400 mb-3">Upload a CSV file to import letter templates.</p>
         <input type="file" accept=".csv" className="block w-full text-sm text-ink-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 transition-colors" />
       </HrFormModal>

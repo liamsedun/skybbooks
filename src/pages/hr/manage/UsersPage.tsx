@@ -22,7 +22,7 @@ interface UserItem {
 }
 
 export function UsersPage() {
-  const { success: showSuccess, error: showError } = useToast();
+  const { toast } = useToast();
   const [users, setUsers] = useState<UserItem[]>([]);
   const [loading, setLoading] = useState(true);
   const ps = useHrPageState({ data: users, initialSortKey: 'name', searchKeys: ['name', 'email'], pageSize: 10 });
@@ -42,7 +42,7 @@ export function UsersPage() {
       }));
       setUsers(mapped);
     } catch (err) {
-      showError('Failed to load users');
+      toast('Failed to load users', 'error');
     } finally {
       setLoading(false);
     }
@@ -62,9 +62,9 @@ export function UsersPage() {
       await orgApi.deleteUser(id);
       setUsers(prev => prev.filter(u => u.id !== id));
       ps.closeConfirmDelete();
-      showSuccess('User deleted');
+      toast('User deleted', 'success');
     } catch (err) {
-      showError('Failed to delete user');
+      toast('Failed to delete user', 'error');
     }
   };
 
@@ -75,9 +75,9 @@ export function UsersPage() {
       }
       setUsers(prev => prev.filter(u => !ps.selectedIds.includes(u.id)));
       ps.setSelectedIds([]);
-      showSuccess('Users deleted');
+      toast('Users deleted', 'success');
     } catch (err) {
-      showError('Failed to delete some users');
+      toast('Failed to delete some users', 'error');
     }
   };
 
@@ -99,15 +99,15 @@ export function UsersPage() {
     try {
       if (ps.editingId) {
         await orgApi.updateUser(ps.editingId, { fullName: formData.name, role: formData.role });
-        showSuccess('User updated');
+        toast('User updated', 'success');
       } else {
         await orgApi.inviteUser({ fullName: formData.name, email: formData.email, role: formData.role });
-        showSuccess('User invited');
+        toast('User invited', 'success');
       }
       ps.closeModal();
       await fetchUsers();
     } catch (err: any) {
-      showError(err?.response?.data?.message || 'Failed to save user');
+      toast(err?.response?.data?.message || 'Failed to save user', 'error');
     }
   };
 
@@ -131,7 +131,7 @@ export function UsersPage() {
       pageKey="manage"
       headerActions={
         <>
-          <button onClick={() => { exportToCsv(['Name', 'Email', 'Role', 'Last Login', 'Status'], users.map(u => [u.name, u.email, u.role, u.lastLogin || 'N/A', u.status]), 'users'); showSuccess('Users exported'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
+          <button onClick={() => { exportToCsv(['Name', 'Email', 'Role', 'Last Login', 'Status'], users.map(u => [u.name, u.email, u.role, u.lastLogin || 'N/A', u.status]), 'users'); toast('Users exported', 'success'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
           <button onClick={() => exportToPdf('Users', ['Name', 'Email', 'Role', 'Status'], users.map(u => [u.name, u.email, u.role, u.status]), 'users')} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><FileText className="w-3.5 h-3.5" /> PDF</button>
           <button onClick={openAddForm} className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary-hover transition-all shadow-sm"><Plus className="w-3.5 h-3.5" /> Add User</button>
         </>

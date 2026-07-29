@@ -1,4 +1,4 @@
-﻿import { useMemo, useState, useEffect, useRef } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { FileText, Plus, Download, Upload, Edit3, Trash2, Eye, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -17,7 +17,7 @@ interface Timesheet {
 }
 
 export function TimesheetsListPage() {
-  const { success, error } = useToast();
+  const { toast } = useToast();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -28,7 +28,7 @@ export function TimesheetsListPage() {
     try {
       const result = await hrApi.getTimesheets({});
       setData(Array.isArray(result) ? result : []);
-    } catch (e: any) { error(e?.message || 'Failed to load'); }
+    } catch (e: any) { toast(e?.message || 'Failed to load', 'error'); }
     finally { setLoading(false); }
   };
 
@@ -50,10 +50,10 @@ export function TimesheetsListPage() {
   const handleSave = async () => {
     try {
       const formData = { employee: employeeRef.current?.value ?? '', weekEnding: weekEndingRef.current?.value ?? '', totalHours: Number(totalHoursRef.current?.value) || 0, status: statusRef.current?.value ?? 'draft' };
-      if (ps.editingId) { await hrApi.updateTimesheet(ps.editingId, formData); success('Updated'); }
-      else { await hrApi.createTimesheet(formData); success('Created'); }
+      if (ps.editingId) { await hrApi.updateTimesheet(ps.editingId, formData); toast('Updated', 'success'); }
+      else { await hrApi.createTimesheet(formData); toast('Created', 'success'); }
       ps.closeModal(); loadData();
-    } catch (e: any) { error(e?.message || 'Failed to save'); }
+    } catch (e: any) { toast(e?.message || 'Failed to save', 'error'); }
   };
 
   const columns: Column<Timesheet>[] = [
@@ -109,7 +109,7 @@ export function TimesheetsListPage() {
           <button className="w-full h-9 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-xl transition-colors" onClick={handleSave}>{ps.editingId ? 'Update' : 'Create'}</button>
         </div>
       </HrFormModal>
-      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { success('Timesheet deleted'); ps.closeConfirmDelete(); }} title="Delete Timesheet" message="Are you sure you want to delete this timesheet?" confirmLabel="Delete" variant="danger" />
+      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { toast('Timesheet deleted', 'success'); ps.closeConfirmDelete(); }} title="Delete Timesheet" message="Are you sure you want to delete this timesheet?" confirmLabel="Delete" variant="danger" />
       <HrViewDrawer open={ps.viewDrawerOpen} onClose={ps.closeViewDrawer} title="Timesheet Details">
         {selectedItem && <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
@@ -124,7 +124,7 @@ export function TimesheetsListPage() {
           {selectedItem.submittedDate !== '--' && <div><label className="text-xs text-ink-500">Submitted Date</label><p className="text-sm font-medium text-ink-900">{formatDate(selectedItem.submittedDate)}</p></div>}
         </div>}
       </HrViewDrawer>
-      <HrFormModal open={ps.importOpen} onClose={() => ps.setImportOpen(false)} title="Import Timesheets" onSubmit={(e) => { e.preventDefault(); success('Timesheets imported'); ps.setImportOpen(false); }} submitLabel="Import">
+      <HrFormModal open={ps.importOpen} onClose={() => ps.setImportOpen(false)} title="Import Timesheets" onSubmit={(e) => { e.preventDefault(); toast('Timesheets imported', 'success'); ps.setImportOpen(false); }} submitLabel="Import">
         <p className="text-sm text-ink-400 mb-3">Upload a CSV file with timesheet records (Employee, Week Ending, Total Hours, Status).</p>
         <input type="file" accept=".csv" className="block w-full text-sm text-ink-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-primary/10 file:text-primary hover:file:bg-primary/20 transition-all" />
       </HrFormModal>

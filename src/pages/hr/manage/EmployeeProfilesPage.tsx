@@ -23,7 +23,7 @@ interface EmployeeProfile {
 }
 
 export function EmployeeProfilesPage() {
-  const { success: showSuccess, error: showError } = useToast();
+  const { toast } = useToast();
   const [profiles, setProfiles] = useState<EmployeeProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const ps = useHrPageState({ data: profiles, initialSortKey: 'name', searchKeys: ['name', 'email', 'department', 'designation'], pageSize: 10 });
@@ -46,7 +46,7 @@ export function EmployeeProfilesPage() {
       }));
       setProfiles(list);
     } catch (err) {
-      showError('Failed to load employee profiles');
+      toast('Failed to load employee profiles', 'error');
     } finally {
       setLoading(false);
     }
@@ -73,9 +73,9 @@ export function EmployeeProfilesPage() {
       await hrApi.deleteEmployee(id);
       setProfiles(prev => prev.filter(p => p.id !== id));
       ps.closeConfirmDelete();
-      showSuccess('Profile deleted');
+      toast('Profile deleted', 'success');
     } catch (err) {
-      showError('Failed to delete profile');
+      toast('Failed to delete profile', 'error');
     }
   };
 
@@ -86,9 +86,9 @@ export function EmployeeProfilesPage() {
       }
       setProfiles(prev => prev.filter(p => !ps.selectedIds.includes(p.id)));
       ps.setSelectedIds([]);
-      showSuccess('Profiles deleted');
+      toast('Profiles deleted', 'success');
     } catch (err) {
-      showError('Failed to delete some profiles');
+      toast('Failed to delete some profiles', 'error');
     }
   };
 
@@ -121,15 +121,15 @@ export function EmployeeProfilesPage() {
       if (formData.designationId) payload.designationId = formData.designationId;
       if (ps.editingId) {
         await hrApi.updateEmployee(ps.editingId, payload);
-        showSuccess('Employee updated');
+        toast('Employee updated', 'success');
       } else {
         await hrApi.createEmployee(payload);
-        showSuccess('Employee created');
+        toast('Employee created', 'success');
       }
       ps.closeModal();
       await fetchProfiles();
     } catch (err: any) {
-      showError(err?.response?.data?.message || 'Failed to save employee');
+      toast(err?.response?.data?.message || 'Failed to save employee', 'error');
     }
   };
 
@@ -153,7 +153,7 @@ export function EmployeeProfilesPage() {
       pageKey="manage"
       headerActions={
         <>
-          <button onClick={() => { exportToCsv(['Name', 'Department', 'Designation', 'Email', 'Phone', 'Status'], profiles.map(p => [p.name, p.department, p.designation, p.email, p.phone, p.status]), 'employee-profiles'); showSuccess('Profiles exported'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
+          <button onClick={() => { exportToCsv(['Name', 'Department', 'Designation', 'Email', 'Phone', 'Status'], profiles.map(p => [p.name, p.department, p.designation, p.email, p.phone, p.status]), 'employee-profiles');         toast('Profiles exported', 'success'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
           <button onClick={() => exportToPdf('Employee Profiles', ['Name', 'Department', 'Designation', 'Status'], profiles.map(p => [p.name, p.department, p.designation, p.status]), 'employee-profiles')} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><FileText className="w-3.5 h-3.5" /> PDF</button>
           <button onClick={openAddForm} className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary-hover transition-all shadow-sm"><Plus className="w-3.5 h-3.5" /> Add Employee</button>
         </>

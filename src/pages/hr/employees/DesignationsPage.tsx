@@ -1,4 +1,4 @@
-﻿import { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Briefcase, Plus, Download, Upload, FileText, Edit3, Trash2, Eye, Layers } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
@@ -29,7 +29,7 @@ const MOCK_DESIGNATIONS: Designation[] = [
 
 export function DesignationsPage() {
   const navigate = useNavigate();
-  const { success: showSuccess } = useToast();
+  const { toast } = useToast();
   const pageState = useHrPageState({ data: MOCK_DESIGNATIONS, initialSortKey: 'name', searchKeys: ['name', 'department'], pageSize: 10 });
   const { filtered, paginated, ...rest } = pageState;
 
@@ -81,7 +81,7 @@ export function DesignationsPage() {
 
   const handleExportCsv = () => {
     exportToCsv(['Name', 'Department', 'Level', 'Status'], statusFiltered.map(d => [d.name, d.department, String(d.level), d.status]), 'designations');
-    showSuccess('Exported successfully');
+    toast('Exported successfully', 'success');
   };
 
   return (
@@ -116,7 +116,7 @@ export function DesignationsPage() {
         from={(pageState.page - 1) * pageState.pageSize + 1} to={Math.min(pageState.page * pageState.pageSize, statusFiltered.length)}
         emptyMessage="No designations found" emptyAction={<button onClick={pageState.openAddModal} className="text-xs font-medium text-primary hover:text-primary-hover">Add your first designation</button>} />
 
-      <HrFormModal open={pageState.modalOpen} onClose={pageState.closeModal} title={pageState.editingId ? 'Edit Designation' : 'Add Designation'} onSubmit={(e) => { e.preventDefault(); showSuccess(pageState.editingId ? 'Designation updated' : 'Designation created'); pageState.closeModal(); }}>
+      <HrFormModal open={pageState.modalOpen} onClose={pageState.closeModal} title={pageState.editingId ? 'Edit Designation' : 'Add Designation'} onSubmit={(e) => { e.preventDefault(); toast(pageState.editingId ? 'Designation updated' : 'Designation created', 'success'); pageState.closeModal(); }}>
         <div className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-ink-500 mb-1">Designation Name</label>
@@ -154,7 +154,7 @@ export function DesignationsPage() {
         </div>
       </HrFormModal>
 
-      <HrConfirmDialog open={pageState.confirmOpen} onClose={pageState.closeConfirmDelete} onConfirm={() => { showSuccess('Designation deleted'); pageState.closeConfirmDelete(); }} title="Delete Designation" message="Are you sure? This action cannot be undone." confirmLabel="Delete" variant="danger" />
+      <HrConfirmDialog open={pageState.confirmOpen} onClose={pageState.closeConfirmDelete} onConfirm={() => { toast('Designation deleted', 'success'); pageState.closeConfirmDelete(); }} title="Delete Designation" message="Are you sure? This action cannot be undone." confirmLabel="Delete" variant="danger" />
 
       <HrViewDrawer open={pageState.viewDrawerOpen} onClose={pageState.closeViewDrawer} title={viewingDesig?.name || 'Designation Details'}>
         {viewingDesig && (

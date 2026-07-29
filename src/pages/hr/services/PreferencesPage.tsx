@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { Bell, MessageSquare, Moon, Globe2, CalendarDays, CheckCircle2 } from 'lucide-react';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
 import { useToast } from '../../../contexts/ToastContext';
@@ -13,7 +13,7 @@ const defaultSettings = {
 };
 
 export function PreferencesPage() {
-  const { success: showSuccess } = useToast();
+  const { toast } = useToast();
   const [settings, setSettings] = useState({ ...defaultSettings });
   const [dirty, setDirty] = useState(false);
 
@@ -28,7 +28,7 @@ export function PreferencesPage() {
   };
 
   const handleSave = () => {
-    showSuccess('Preferences saved successfully');
+    toast('Preferences saved successfully', 'success');
     setDirty(false);
   };
 

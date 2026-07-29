@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { CalendarDays, CheckCircle2, Clock, XCircle, Plus, Download, Eye, Edit3, Trash2 } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -13,7 +13,7 @@ import { useToast } from '../../../contexts/ToastContext';
 import { hrApi } from '../../../lib/api';
 
 export function LeaveSummaryPage() {
-  const { success, error } = useToast();
+  const { toast } = useToast();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [employees, setEmployees] = useState<any[]>([]);
@@ -38,7 +38,7 @@ export function LeaveSummaryPage() {
       setData(Array.isArray(requests) ? requests : []);
       setEmployees(Array.isArray(emps) ? emps : []);
       setLeaveTypes(Array.isArray(ltypes) ? ltypes : []);
-    } catch (e: any) { error(e?.message || 'Failed to load leave data'); }
+    } catch (e: any) { toast(e?.message || 'Failed to load leave data', 'error'); }
     finally { setLoading(false); }
   };
 
@@ -71,19 +71,19 @@ export function LeaveSummaryPage() {
     try {
       if (editingId) {
         await hrApi.createLeaveRequest(formData);
-        success('Leave request updated');
+        toast('Leave request updated', 'success');
       } else {
         await hrApi.createLeaveRequest(formData);
-        success('Leave request created');
+        toast('Leave request created', 'success');
       }
       setFormOpen(false);
       loadData();
-    } catch (e: any) { error(e?.message || 'Failed to save'); }
+    } catch (e: any) { toast(e?.message || 'Failed to save', 'error'); }
   };
 
   const handleDelete = async (id: string) => {
-    try { await hrApi.cancelLeaveRequest(id); success('Leave request cancelled'); loadData(); ps.closeModals(); }
-    catch (e: any) { error(e?.message || 'Failed to cancel'); }
+    try { await hrApi.cancelLeaveRequest(id); toast('Leave request cancelled', 'success'); loadData(); ps.closeModals(); }
+    catch (e: any) { toast(e?.message || 'Failed to cancel', 'error'); }
   };
 
   const columns: Column<any>[] = [

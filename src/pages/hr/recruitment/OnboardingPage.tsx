@@ -66,7 +66,7 @@ function FormModal({ open, onClose, title, children, onSubmit, submitLabel = 'Sa
 }
 
 export function OnboardingPage() {
-  const { success: showSuccess, error: showError } = useToast();
+  const { toast } = useToast();
 
   const [employees, setEmployees] = useState<any[]>([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
@@ -169,28 +169,28 @@ export function OnboardingPage() {
     e.preventDefault();
     try {
       await hrApi.createOnboardingTask({ ...taskForm, employeeId: selectedEmployeeId });
-      showSuccess('Task created');
+      toast('Task created', 'success');
       setShowAddTask(false);
       setTaskForm({ taskName: '', description: '', assignedTo: '', dueDate: '' });
       fetchChecklist(selectedEmployeeId);
-    } catch { showError('Failed to create task'); }
+    } catch { toast('Failed to create task', 'error'); }
   };
 
   const handleCompleteTask = async (id: string) => {
     try {
       await hrApi.completeOnboardingTask(id);
-      showSuccess('Task completed');
+      toast('Task completed', 'success');
       fetchChecklist(selectedEmployeeId);
-    } catch { showError('Failed to complete task'); }
+    } catch { toast('Failed to complete task', 'error'); }
   };
 
   const handleAutoGenerateChecklist = async () => {
     if (!selectedEmployeeId) return;
     try {
       await hrApi.createOnboardingChecklist(selectedEmployeeId);
-      showSuccess('Checklist auto-generated');
+      toast('Checklist auto-generated', 'success');
       fetchChecklist(selectedEmployeeId);
-    } catch { showError('Failed to generate checklist'); }
+    } catch { toast('Failed to generate checklist', 'error'); }
   };
 
   // ── Equipment handlers ──
@@ -198,19 +198,19 @@ export function OnboardingPage() {
     e.preventDefault();
     try {
       await hrApi.assignEquipment({ ...equipForm, employeeId: selectedEmployeeId });
-      showSuccess('Equipment assigned');
+      toast('Equipment assigned', 'success');
       setShowAssignEquipment(false);
       setEquipForm({ equipmentName: '', serialNumber: '', category: '', condition: '', notes: '' });
       fetchEquipment(selectedEmployeeId);
-    } catch { showError('Failed to assign equipment'); }
+    } catch { toast('Failed to assign equipment', 'error'); }
   };
 
   const handleReturnEquipment = async (id: string) => {
     try {
       await hrApi.returnEquipment(id);
-      showSuccess('Equipment returned');
+      toast('Equipment returned', 'success');
       fetchEquipment(selectedEmployeeId);
-    } catch { showError('Failed to return equipment'); }
+    } catch { toast('Failed to return equipment', 'error'); }
   };
 
   // ── Orientation handlers ──
@@ -218,19 +218,19 @@ export function OnboardingPage() {
     e.preventDefault();
     try {
       await hrApi.scheduleOrientationSession({ ...sessionForm, employeeId: selectedEmployeeId });
-      showSuccess('Session scheduled');
+      toast('Session scheduled', 'success');
       setShowScheduleSession(false);
       setSessionForm({ title: '', description: '', facilitator: '', sessionDate: '', duration: '', location: '' });
       fetchOrientation(selectedEmployeeId);
-    } catch { showError('Failed to schedule session'); }
+    } catch { toast('Failed to schedule session', 'error'); }
   };
 
   const handleCompleteSession = async (id: string) => {
     try {
       await hrApi.completeOrientationSession(id);
-      showSuccess('Session completed');
+      toast('Session completed', 'success');
       fetchOrientation(selectedEmployeeId);
-    } catch { showError('Failed to complete session'); }
+    } catch { toast('Failed to complete session', 'error'); }
   };
 
   // ── Probation handlers ──
@@ -238,19 +238,19 @@ export function OnboardingPage() {
     e.preventDefault();
     try {
       await hrApi.createProbationReview({ ...reviewForm, employeeId: selectedEmployeeId });
-      showSuccess('Review added');
+      toast('Review added', 'success');
       setShowAddReview(false);
       setReviewForm({ reviewDate: '', rating: 3, performance: '', areasOfImprovement: '', recommendation: '', isPassed: true });
       fetchProbation(selectedEmployeeId);
-    } catch { showError('Failed to add review'); }
+    } catch { toast('Failed to add review', 'error'); }
   };
 
   const handleFinalizeProbation = async (id: string) => {
     try {
       await hrApi.finalizeProbation(id, { isPassed: true, recommendation: 'Probation completed successfully.' });
-      showSuccess('Probation finalized');
+      toast('Probation finalized', 'success');
       fetchProbation(selectedEmployeeId);
-    } catch { showError('Failed to finalize probation'); }
+    } catch { toast('Failed to finalize probation', 'error'); }
   };
 
   // ── Document handlers ──
@@ -258,19 +258,19 @@ export function OnboardingPage() {
     e.preventDefault();
     try {
       await hrApi.uploadPreEmploymentDocument({ ...docForm, employeeId: selectedEmployeeId });
-      showSuccess('Document uploaded');
+      toast('Document uploaded', 'success');
       setShowUploadDoc(false);
       setDocForm({ name: '', type: '', fileUrl: '' });
       fetchDocuments(selectedEmployeeId);
-    } catch { showError('Failed to upload document'); }
+    } catch { toast('Failed to upload document', 'error'); }
   };
 
   const handleVerifyDoc = async (id: string) => {
     try {
       await hrApi.verifyPreEmploymentDocument(id);
-      showSuccess('Document verified');
+      toast('Document verified', 'success');
       fetchDocuments(selectedEmployeeId);
-    } catch { showError('Failed to verify document'); }
+    } catch { toast('Failed to verify document', 'error'); }
   };
 
   return (

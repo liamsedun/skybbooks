@@ -28,7 +28,7 @@ function fmtAmount(n: number) { return '₦' + (n || 0).toLocaleString(); }
 function fmtDate(d: string) { return d ? new Date(d).toLocaleDateString() : '-'; }
 
 export function AllowancesPage() {
-  const { success: showSuccess } = useToast();
+  const { toast } = useToast();
   const [data, setData] = useState<Allowance[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState<Allowance>({ ...EMPTY });
@@ -39,7 +39,7 @@ export function AllowancesPage() {
     try {
       const res = await hrApi.getAllowances();
       setData(Array.isArray(res) ? res : res.data || []);
-    } catch (err) { console.error(err); }
+    } catch (err) { console.toast(err, 'error'); }
     setLoading(false);
   };
 
@@ -64,10 +64,10 @@ export function AllowancesPage() {
     try {
       if (ps.editingId) {
         await hrApi.updateAllowance(ps.editingId, { name: form.name, type: form.type, amount: form.amount, recurrence: form.recurrence, isActive: form.isActive });
-        showSuccess('Allowance updated');
+        toast('Allowance updated', 'success');
       } else {
         await hrApi.createAllowance({ name: form.name, type: form.type, amount: form.amount, recurrence: form.recurrence, isActive: form.isActive });
-        showSuccess('Allowance created');
+        toast('Allowance created', 'success');
       }
       ps.closeModal();
       fetchData();
@@ -78,10 +78,10 @@ export function AllowancesPage() {
     if (!ps.deletingId) return;
     try {
       await hrApi.deleteAllowance(ps.deletingId);
-      showSuccess('Allowance deleted');
+      toast('Allowance deleted', 'success');
       ps.closeConfirmDelete();
       fetchData();
-    } catch (err: any) { console.error(err); }
+    } catch (err: any) { console.toast(err, 'error'); }
   };
 
   const columns: Column<Allowance>[] = [
@@ -104,7 +104,7 @@ export function AllowancesPage() {
       pageKey="allowances"
       headerActions={
         <>
-          <button onClick={() => { exportToCsv(['Name', 'Type', 'Amount', 'Recurrence', 'Status'], ps.filtered.map(a => [a.name, a.type, String(a.amount), a.recurrence, a.isActive ? 'Active' : 'Inactive']), 'allowances'); showSuccess('Exported'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
+          <button onClick={() => { exportToCsv(['Name', 'Type', 'Amount', 'Recurrence', 'Status'], ps.filtered.map(a => [a.name, a.type, String(a.amount), a.recurrence, a.isActive ? 'Active' : 'Inactive']), 'allowances'); toast('Exported', 'success'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
           <button onClick={() => exportToPdf('Allowances', ['Name', 'Type', 'Amount', 'Recurrence', 'Status'], ps.filtered.map(a => [a.name, a.type, fmtAmount(a.amount), a.recurrence, a.isActive ? 'Active' : 'Inactive']), 'allowances')} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><FileText className="w-3.5 h-3.5" /> PDF</button>
           <button onClick={openAdd} className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary-hover transition-all shadow-sm"><Plus className="w-3.5 h-3.5" /> Add Allowance</button>
         </>

@@ -28,7 +28,7 @@ function fmtFileSize(bytes: number) {
 }
 
 export function DocVersionsPage() {
-  const { success: showSuccess } = useToast();
+  const { toast } = useToast();
   const [fileId, setFileId] = useState('');
   const [versions, setVersions] = useState<DocVersion[]>([]);
   const [loading, setLoading] = useState(false);
@@ -43,7 +43,7 @@ export function DocVersionsPage() {
     try {
       const res = await hrApi.getDocVersions(fileId.trim());
       setVersions(Array.isArray(res) ? res : res.data || []);
-    } catch (err) { console.error(err); }
+    } catch (err) { console.toast(err, 'error'); }
     setLoading(false);
   };
 
@@ -69,7 +69,7 @@ export function DocVersionsPage() {
       pageKey="doc-versions"
       headerActions={
         versions.length > 0 ? (
-          <button onClick={() => { exportToCsv(['Version #', 'File URL', 'File Type', 'File Size', 'Change Notes', 'Created At'], versions.map(v => [String(v.versionNumber), v.fileUrl, v.fileType || '', fmtFileSize(v.fileSize), v.changeNotes || '', formatDate(v.createdAt)]), 'doc-versions'); showSuccess('Exported'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
+          <button onClick={() => { exportToCsv(['Version #', 'File URL', 'File Type', 'File Size', 'Change Notes', 'Created At'], versions.map(v => [String(v.versionNumber), v.fileUrl, v.fileType || '', fmtFileSize(v.fileSize), v.changeNotes || '', formatDate(v.createdAt)]), 'doc-versions'); toast('Exported', 'success'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
         ) : <></>
       }>
       <div className="bg-surface rounded-2xl border border-border-custom shadow-sm p-4 sm:p-5">

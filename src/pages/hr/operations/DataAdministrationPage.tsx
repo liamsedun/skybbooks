@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { Database, Download, Upload, Archive, Trash2, FileSpreadsheet, AlertTriangle, CheckCircle } from 'lucide-react';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
 import { HrConfirmDialog } from '../../../components/hr/HrConfirmDialog';
@@ -7,7 +7,7 @@ import { useToast } from '../../../contexts/ToastContext';
 interface ActionCard { icon: typeof Download; label: string; description: string; action: string; variant: 'primary' | 'danger' | 'warning'; }
 
 export function OpsDataAdministrationPage() {
-  const { success: showSuccess, error: showError } = useToast();
+  const { toast } = useToast();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
 
@@ -28,31 +28,31 @@ export function OpsDataAdministrationPage() {
   const handleAction = (action: string) => {
     switch (action) {
       case 'export':
-        showSuccess('HR data export started. You will be notified when ready.');
+        toast('HR data export started. You will be notified when ready.', 'success');
         break;
       case 'import':
-        showSuccess('Bulk import initiated. Processing employee records.');
+        toast('Bulk import initiated. Processing employee records.', 'success');
         break;
       case 'reports':
-        showSuccess('HR report generation started. Check the Reports section.');
+        toast('HR report generation started. Check the Reports section.', 'success');
         break;
       case 'archive':
         openConfirm('Archive Records', 'This will move all inactive employee records to the archive. Active records will not be affected. Continue?', () => {
-          showSuccess('Inactive records archived successfully.');
+          toast('Inactive records archived successfully.', 'success');
           setConfirmOpen(false);
         });
         break;
       case 'purge':
         openConfirm('Purge Old Records', 'This will permanently delete all records older than the retention period (7 years). This action CANNOT be undone. Are you absolutely sure?', () => {
-          showSuccess('Old records purged successfully.');
+          toast('Old records purged successfully.', 'success');
           setConfirmOpen(false);
         });
         break;
       case 'optimize':
-        showSuccess('Database optimization completed successfully.');
+        toast('Database optimization completed successfully.', 'success');
         break;
       default:
-        showError('Unknown action.');
+        toast('Unknown action.', 'error');
     }
   };
 

@@ -27,7 +27,7 @@ interface TravelSettlement {
 const fmtAmount = (n: number) => `₦${(n / 100).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
 
 export function TravelSettlementsPage() {
-  const { success: showSuccess, error: showError } = useToast();
+  const { toast } = useToast();
   const [data, setData] = useState<TravelSettlement[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -36,7 +36,7 @@ export function TravelSettlementsPage() {
     hrApi.getTravelSettlements().then((res: any) => {
       const items: TravelSettlement[] = Array.isArray(res) ? res : res?.data ?? [];
       setData(items);
-    }).catch(() => showError('Failed to load settlements'))
+    }).catch(() => toast('Failed to load settlements', 'error'))
     .finally(() => setLoading(false));
   };
 
@@ -73,9 +73,9 @@ export function TravelSettlementsPage() {
     const travelRequestId = window.prompt('Enter Travel Request ID to auto-settle:');
     if (!travelRequestId) return;
     hrApi.autoSettleTravel(travelRequestId).then(() => {
-      showSuccess('Settlement auto-completed');
+      toast('Settlement auto-completed', 'success');
       load();
-    }).catch(() => showError('Auto-settle failed'));
+    }).catch(() => toast('Auto-settle failed', 'error'));
   };
 
   return (
@@ -84,7 +84,7 @@ export function TravelSettlementsPage() {
       headerActions={
         <>
           <button onClick={handleAutoSettle} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><CheckCircle2 className="w-3.5 h-3.5" /> Auto-Settle</button>
-          <button onClick={() => { exportToCsv(['Travel Request ID','Employee','Total Expenses','Advance Amount','Balance Due','Status','Date'], ps.filtered.map(i => [i.travelRequestId,i.employeeName,String(i.totalExpenses),String(i.advanceAmount),String(i.balanceDue),i.status,i.createdAt]), 'travel-settlements'); showSuccess('Exported'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
+          <button onClick={() => { exportToCsv(['Travel Request ID','Employee','Total Expenses','Advance Amount','Balance Due','Status','Date'], ps.filtered.map(i => [i.travelRequestId,i.employeeName,String(i.totalExpenses),String(i.advanceAmount),String(i.balanceDue),i.status,i.createdAt]), 'travel-settlements'); toast('Exported', 'success'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
           <button onClick={() => exportToPdf('Travel Settlements', ['Travel Request ID','Employee','Total Expenses','Advance Amount','Balance Due','Status','Date'], ps.filtered.map(i => [i.travelRequestId,i.employeeName,String(i.totalExpenses),String(i.advanceAmount),String(i.balanceDue),i.status,i.createdAt]), 'travel-settlements')} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><FileText className="w-3.5 h-3.5" /> PDF</button>
         </>
       }>

@@ -8,7 +8,7 @@ import { exportToCsv } from '../../../lib/hrExport';
 const fmtCurrency = (n: number) => '₦' + n.toLocaleString('en-US', { minimumFractionDigits: 2 });
 
 export function CompensationReportsPage() {
-  const { success, error: showError } = useToast();
+  const { toast } = useToast();
   const [report, setReport] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
@@ -18,7 +18,7 @@ export function CompensationReportsPage() {
       const res = await hrApi.getCompensationReport();
       setReport(res?.data ?? res);
     } catch (e) {
-      showError('Failed to load compensation report');
+      toast('Failed to load compensation report', 'error');
     } finally {
       setLoading(false);
     }
@@ -45,7 +45,7 @@ export function CompensationReportsPage() {
     const headers = ['Metric', 'Value'];
     const rows = statCards.map(s => [s.label, typeof s.value === 'string' ? s.value : String(s.value)]);
     exportToCsv(headers, rows, 'compensation-report');
-    success('Compensation report exported');
+    toast('Compensation report exported', 'success');
   };
 
   return (

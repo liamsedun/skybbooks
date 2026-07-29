@@ -13,7 +13,7 @@ import { useToast } from '../../../contexts/ToastContext';
 import { hrApi } from '../../../lib/api';
 
 export function AttendanceExceptionsPage() {
-  const { success, error: showError } = useToast();
+  const { toast } = useToast();
   const [exceptions, setExceptions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -23,7 +23,7 @@ export function AttendanceExceptionsPage() {
       const res = await hrApi.getAttendanceExceptions({ pageSize: 500 });
       setExceptions(res?.data ?? []);
     } catch (e) {
-      showError('Failed to load exceptions');
+      toast('Failed to load exceptions', 'error');
     } finally {
       setLoading(false);
     }
@@ -54,8 +54,8 @@ export function AttendanceExceptionsPage() {
     {
       key: 'actions', label: '', render: (i) => (
         <div className="flex items-center justify-end gap-1" onClick={e => e.stopPropagation()}>
-          {i.status === 'pending' && <><button onClick={async () => { try { await hrApi.approveAttendanceException(i.id); success('Exception approved'); await fetchData(); } catch { showError('Failed to approve'); } }} className="w-7 h-7 flex items-center justify-center rounded-lg text-emerald-500 hover:bg-emerald-50 transition-colors" title="Approve"><ThumbsUp className="w-3.5 h-3.5" /></button>
-          <button onClick={async () => { try { await hrApi.rejectAttendanceException(i.id); success('Exception rejected'); await fetchData(); } catch { showError('Failed to reject'); } }} className="w-7 h-7 flex items-center justify-center rounded-lg text-rose-500 hover:bg-rose-50 transition-colors" title="Reject"><ThumbsDown className="w-3.5 h-3.5" /></button></>}
+          {i.status === 'pending' && <><button onClick={async () => { try { await hrApi.approveAttendanceException(i.id); toast('Exception approved', 'success'); await fetchData(); } catch { toast('Failed to approve', 'error'); } }} className="w-7 h-7 flex items-center justify-center rounded-lg text-emerald-500 hover:bg-emerald-50 transition-colors" title="Approve"><ThumbsUp className="w-3.5 h-3.5" /></button>
+          <button onClick={async () => { try { await hrApi.rejectAttendanceException(i.id); toast('Exception rejected', 'success'); await fetchData(); } catch { toast('Failed to reject', 'error'); } }} className="w-7 h-7 flex items-center justify-center rounded-lg text-rose-500 hover:bg-rose-50 transition-colors" title="Reject"><ThumbsDown className="w-3.5 h-3.5" /></button></>}
           <button onClick={() => ps.openViewDrawer(i.id)} className="w-7 h-7 flex items-center justify-center rounded-lg text-ink-400 hover:text-primary hover:bg-primary/10 transition-colors" title="View"><Eye className="w-3.5 h-3.5" /></button>
           <button onClick={() => ps.openConfirmDelete(i.id)} className="w-7 h-7 flex items-center justify-center rounded-lg text-ink-400 hover:text-rose-600 hover:bg-rose-50 transition-colors" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
         </div>
@@ -97,12 +97,12 @@ export function AttendanceExceptionsPage() {
           </div>
           <div><label className="block text-xs font-medium text-ink-600 mb-1">Reason</label><textarea rows={3} className="w-full px-3 py-2 text-sm rounded-lg border border-ink-200 dark:border-ink-700 bg-white dark:bg-ink-900 text-ink-900" placeholder="Explain the exception reason" /></div>
           <button className="w-full h-9 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors" onClick={async () => {
-            try { await hrApi.createAttendanceException({}); success('Exception created'); ps.closeModals(); await fetchData(); } catch { showError('Failed to create'); }
+            try { await hrApi.createAttendanceException({}); toast('Exception created', 'success'); ps.closeModals(); await fetchData(); } catch { toast('Failed to create', 'error'); }
           }}>Submit</button>
         </div>
       </HrFormModal>
       <HrConfirmDialog open={ps.confirmDeleteId !== null} onClose={ps.closeModals} onConfirm={async () => {
-        try { await hrApi.deleteAttendanceException(ps.confirmDeleteId!); ps.confirmDelete(); success('Exception deleted'); await fetchData(); } catch { showError('Failed to delete'); }
+        try { await hrApi.deleteAttendanceException(ps.confirmDeleteId!); ps.confirmDelete(); toast('Exception deleted', 'success'); await fetchData(); } catch { toast('Failed to delete', 'error'); }
       }} title="Delete Exception" message="Are you sure you want to delete this exception?" />
       <HrViewDrawer open={ps.viewDrawerId !== null} onClose={ps.closeModals} title="Exception Details">
         {selectedItem && <div className="space-y-3">

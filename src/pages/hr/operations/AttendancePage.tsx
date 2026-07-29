@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Clock, Plus, Download, Upload, FileText, Edit3, Trash2, Eye, CheckCircle2, XCircle } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -15,7 +15,7 @@ import { useState } from 'react';
 
 interface AttendanceItem { id: string; employeeName: string; date: string; clockIn: string; clockOut: string; hours: string; status: string; }
 export function OpsAttendancePage() {
-  const { success: showSuccess, error: showError } = useToast();
+  const { toast } = useToast();
   const [data, setData] = useState<AttendanceItem[]>([]);
   const [loading, setLoading] = useState(true);
   const ps = useHrPageState({ data, initialSortKey: 'employeeName', searchKeys: ['employeeName', 'status'], pageSize: 10 });
@@ -24,7 +24,7 @@ export function OpsAttendancePage() {
   const loadData = async () => {
     setLoading(true);
     try { const result = await hrApi.getAttendance({}); setData(Array.isArray(result) ? result : []); }
-    catch (e: any) { showError(e?.message || 'Failed to load'); }
+    catch (e: any) { toast(e?.message || 'Failed to load', 'error'); }
     finally { setLoading(false); }
   };
   const stats = useMemo(() => [
@@ -63,15 +63,15 @@ export function OpsAttendancePage() {
         page={ps.page} totalPages={ps.totalPages} onPageChange={ps.setPage} pageSize={ps.pageSize} totalItems={ps.filtered.length}
         from={(ps.page - 1) * ps.pageSize + 1} to={Math.min(ps.page * ps.pageSize, ps.filtered.length)}
         emptyMessage="No attendance records found" emptyAction={<button onClick={ps.openAddModal} className="text-xs font-medium text-primary hover:text-primary-hover">Add your first record</button>} />
-      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Record' : 'Add Record'} onSubmit={(e) => { e.preventDefault(); showSuccess(ps.editingId ? 'Record updated' : 'Record created'); ps.closeModal(); loadData(); }}>
+      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Record' : 'Add Record'} onSubmit={(e) => { e.preventDefault(); toast(ps.editingId ? 'Record updated' : 'Record created', 'success'); ps.closeModal(); loadData(); }}>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Employee Name</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Date</label><input type="date" className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Clock In</label><input type="time" className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Clock Out</label><input type="time" className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
       </HrFormModal>
-      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showSuccess('Record deleted'); ps.closeConfirmDelete(); loadData(); }} title="Delete Record" message="Are you sure you want to delete this attendance record?" confirmLabel="Delete" variant="danger" />
+      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { toast('Record deleted', 'success'); ps.closeConfirmDelete(); loadData(); }} title="Delete Record" message="Are you sure you want to delete this attendance record?" confirmLabel="Delete" variant="danger" />
       <HrViewDrawer open={ps.viewDrawerOpen} onClose={ps.closeViewDrawer} title="Attendance Details"><div className="space-y-3 text-sm text-ink-600"><p>Details content</p></div></HrViewDrawer>
-      <HrFormModal open={ps.importOpen} onClose={() => ps.setImportOpen(false)} title="Import Attendance" onSubmit={(e) => { e.preventDefault(); showSuccess('Records imported'); ps.setImportOpen(false); }} submitLabel="Import">
+      <HrFormModal open={ps.importOpen} onClose={() => ps.setImportOpen(false)} title="Import Attendance" onSubmit={(e) => { e.preventDefault(); toast('Records imported', 'success'); ps.setImportOpen(false); }} submitLabel="Import">
         <p className="text-sm text-ink-400 mb-3">Upload a CSV file with attendance data.</p>
         <input type="file" accept=".csv" className="block w-full text-sm text-ink-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-primary/10 file:text-primary hover:file:bg-primary/20 transition-all" />
       </HrFormModal>

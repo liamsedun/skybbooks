@@ -1,4 +1,4 @@
-﻿import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Briefcase, Plus, Download, Upload, FileText, Edit3, Trash2, Eye, CheckCircle2, XCircle, Clock, Send, Ban } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
@@ -15,7 +15,7 @@ import { hrApi } from '../../../lib/api';
 
 export function JobOpeningsPage() {
   const navigate = useNavigate();
-  const { success: showSuccess, error: showError } = useToast();
+  const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [jobOpenings, setJobOpenings] = useState<any[]>([]);
@@ -159,20 +159,20 @@ export function JobOpeningsPage() {
   const handlePublish = async (id: string) => {
     try {
       await hrApi.publishJobOpening(id);
-      showSuccess('Job opening published');
+      toast('Job opening published', 'success');
       refresh();
     } catch (err: any) {
-      showError(err.message || 'Failed to publish');
+      toast(err.message || 'Failed to publish', 'error');
     }
   };
 
   const handleClose = async (id: string) => {
     try {
       await hrApi.closeJobOpening(id);
-      showSuccess('Job opening closed');
+      toast('Job opening closed', 'success');
       refresh();
     } catch (err: any) {
-      showError(err.message || 'Failed to close');
+      toast(err.message || 'Failed to close', 'error');
     }
   };
 
@@ -182,11 +182,11 @@ export function JobOpeningsPage() {
     setDeleting(true);
     try {
       await hrApi.deleteJobOpening(id);
-      showSuccess('Job opening deleted');
+      toast('Job opening deleted', 'success');
       pageState.closeConfirmDelete();
       refresh();
     } catch (err: any) {
-      showError(err.message || 'Failed to delete');
+      toast(err.message || 'Failed to delete', 'error');
     } finally {
       setDeleting(false);
     }
@@ -211,15 +211,15 @@ export function JobOpeningsPage() {
       };
       if (pageState.editingId) {
         await hrApi.updateJobOpening(pageState.editingId, payload);
-        showSuccess('Job opening updated');
+        toast('Job opening updated', 'success');
       } else {
         await hrApi.createJobOpening(payload);
-        showSuccess('Job opening created');
+        toast('Job opening created', 'success');
       }
       pageState.closeModal();
       refresh();
     } catch (err: any) {
-      showError(err.message || 'Failed to save');
+      toast(err.message || 'Failed to save', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -249,7 +249,7 @@ export function JobOpeningsPage() {
       ]),
       'job-openings'
     );
-    showSuccess('CSV exported');
+    toast('CSV exported', 'success');
   };
 
   const handleExportPdf = () => {
@@ -272,7 +272,7 @@ export function JobOpeningsPage() {
       const text = await handleFileUpload(e);
       const rows = parseCsv(text);
       if (rows.length < 2) {
-        showError('CSV must have a header row and at least one data row');
+        toast('CSV must have a header row and at least one data row', 'error');
         return;
       }
       const headers = rows[0];
@@ -287,10 +287,10 @@ export function JobOpeningsPage() {
         await hrApi.createJobOpening(entry);
         imported++;
       }
-      showSuccess(`${imported} job openings imported`);
+      toast(`${imported} job openings imported`, 'success');
       refresh();
     } catch (err: any) {
-      showError(err.message || 'Import failed');
+      toast(err.message || 'Import failed', 'error');
     }
   };
 
@@ -379,7 +379,7 @@ export function JobOpeningsPage() {
             <label className="block text-xs font-medium text-ink-500 mb-1">Salary Range</label>
             <input ref={salaryRangeRef} defaultValue={editItem?.salaryRange || ''}
               className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-              placeholder="e.g. ₦5M - ₦8M" />
+              placeholder="e.g. ?5M - ?8M" />
           </div>
           <div>
             <label className="block text-xs font-medium text-ink-500 mb-1">Number of Openings *</label>

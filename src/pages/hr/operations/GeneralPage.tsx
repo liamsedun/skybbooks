@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { Sliders, Save, RotateCcw } from 'lucide-react';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
 import { useToast } from '../../../contexts/ToastContext';
@@ -6,7 +6,7 @@ import { useToast } from '../../../contexts/ToastContext';
 interface ToggleSetting { key: string; label: string; description: string; enabled: boolean; }
 
 export function OpsGeneralPage() {
-  const { success: showSuccess } = useToast();
+  const { toast } = useToast();
   const [settings, setSettings] = useState<ToggleSetting[]>([
     { key: 'auto-approve-leave', label: 'Auto-Approve Leave Requests', description: 'Leave requests under 3 days are automatically approved.', enabled: false },
     { key: 'notify-onboarding', label: 'Notify Onboarding Tasks', description: 'Send email reminders for pending onboarding tasks.', enabled: true },
@@ -25,12 +25,12 @@ export function OpsGeneralPage() {
   };
 
   const handleSave = () => {
-    showSuccess('Settings saved');
+    toast('Settings saved', 'success');
   };
 
   const handleReset = () => {
     setSettings(prev => prev.map(s => ({ ...s, enabled: false })));
-    showSuccess('Settings reset to defaults');
+    toast('Settings reset to defaults', 'success');
   };
 
   return (

@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { Sliders, Shield, Bug, Wifi, Bell, ScrollText, CheckCircle2 } from 'lucide-react';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
 import { useToast } from '../../../contexts/ToastContext';
@@ -12,7 +12,7 @@ const defaultConfig = {
 };
 
 export function GeneralPage() {
-  const { success: showSuccess } = useToast();
+  const { toast } = useToast();
   const [config, setConfig] = useState({ ...defaultConfig });
   const [dirty, setDirty] = useState(false);
 
@@ -22,12 +22,12 @@ export function GeneralPage() {
   };
 
   const handleSave = () => {
-    showSuccess('System configuration saved');
+    toast('System configuration saved', 'success');
     setDirty(false);
   };
 
   const cards = [
-    { key: 'maintenanceMode' as const, label: 'Maintenance Mode', description: 'Enable system maintenance mode â€” only admins can access', icon: <Sliders className="w-5 h-5" />, color: 'rose' as const },
+    { key: 'maintenanceMode' as const, label: 'Maintenance Mode', description: 'Enable system maintenance mode — only admins can access', icon: <Sliders className="w-5 h-5" />, color: 'rose' as const },
     { key: 'debugLogging' as const, label: 'Debug Logging', description: 'Enable verbose debug logging for troubleshooting', icon: <Bug className="w-5 h-5" />, color: 'amber' as const },
     { key: 'apiAccess' as const, label: 'API Access', description: 'Allow external API access to HR services', icon: <Wifi className="w-5 h-5" />, color: 'cyan' as const },
     { key: 'webhookNotifications' as const, label: 'Webhook Notifications', description: 'Send webhook events for HR lifecycle changes', icon: <Bell className="w-5 h-5" />, color: 'purple' as const },

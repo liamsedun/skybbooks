@@ -6,7 +6,7 @@ import { useToast } from '../../../contexts/ToastContext';
 import { hrApi } from '../../../lib/api';
 
 export function AttendanceReportsPage() {
-  const { success, error: showError } = useToast();
+  const { toast } = useToast();
   const [dateFrom, setDateFrom] = useState(() => new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]);
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().split('T')[0]);
   const [reportData, setReportData] = useState<any>(null);
@@ -19,7 +19,7 @@ export function AttendanceReportsPage() {
       const res = await hrApi.getAttendanceReport({ dateFrom, dateTo });
       setReportData(res?.data ?? []);
     } catch (e) {
-      showError('Failed to load report');
+      toast('Failed to load report', 'error');
     } finally {
       setLoading(false);
     }
@@ -45,7 +45,7 @@ export function AttendanceReportsPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url; a.download = `attendance-report-${dateFrom}-${dateTo}.csv`; a.click();
     URL.revokeObjectURL(url);
-    success('Report exported');
+    toast('Report exported', 'success');
   };
 
   const totalPresent = reportData?.reduce((a: number, r: any) => a + (r.presentDays ?? 0), 0) ?? 0;

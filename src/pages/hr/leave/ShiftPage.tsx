@@ -1,4 +1,4 @@
-﻿import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Download, Upload, FileText, Search, Edit3, Trash2, Eye, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
@@ -23,7 +23,7 @@ interface Shift {
 }
 
 export function LeaveShiftPage() {
-  const { success, error } = useToast();
+  const { toast } = useToast();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -34,7 +34,7 @@ export function LeaveShiftPage() {
     try {
       const result = await hrApi.getShifts();
       setData(Array.isArray(result) ? result : []);
-    } catch (e: any) { error(e?.message || 'Failed to load'); }
+    } catch (e: any) { toast(e?.message || 'Failed to load', 'error'); }
     finally { setLoading(false); }
   };
 
@@ -56,16 +56,16 @@ export function LeaveShiftPage() {
   const handleSave = async () => {
     try {
       const formData = { name: nameRef.current?.value ?? '', startTime: startTimeRef.current?.value ?? '', endTime: endTimeRef.current?.value ?? '', days: daysRef.current?.value ?? '', status: statusRef.current?.value ?? '' };
-      if (ps.editingId) { await hrApi.updateShift(ps.editingId, formData); success('Updated'); }
-      else { await hrApi.createShift(formData); success('Created'); }
+      if (ps.editingId) { await hrApi.updateShift(ps.editingId, formData); toast('Updated', 'success'); }
+      else { await hrApi.createShift(formData); toast('Created', 'success'); }
       ps.closeModal(); loadData();
-    } catch (e: any) { error(e?.message || 'Failed to save'); }
+    } catch (e: any) { toast(e?.message || 'Failed to save', 'error'); }
   };
 
   const handleDelete = async () => {
     if (!ps.deletingId) return;
-    try { await hrApi.deleteShift(ps.deletingId); success('Deleted'); loadData(); ps.closeConfirmDelete(); }
-    catch (e: any) { error(e?.message || 'Failed to delete'); }
+    try { await hrApi.deleteShift(ps.deletingId); toast('Deleted', 'success'); loadData(); ps.closeConfirmDelete(); }
+    catch (e: any) { toast(e?.message || 'Failed to delete', 'error'); }
   };
 
   const columns: Column<Shift>[] = [
@@ -121,7 +121,7 @@ export function LeaveShiftPage() {
             <div><label className="block text-xs font-medium text-ink-600 mb-1">Start Time</label><input ref={startTimeRef} type="time" className="w-full h-9 px-3 text-sm rounded-lg border border-ink-200 dark:border-ink-700 bg-white dark:bg-ink-900 text-ink-900" defaultValue={editItem?.startTime ?? '08:00'} /></div>
             <div><label className="block text-xs font-medium text-ink-600 mb-1">End Time</label><input ref={endTimeRef} type="time" className="w-full h-9 px-3 text-sm rounded-lg border border-ink-200 dark:border-ink-700 bg-white dark:bg-ink-900 text-ink-900" defaultValue={editItem?.endTime ?? '17:00'} /></div>
           </div>
-          <div><label className="block text-xs font-medium text-ink-600 mb-1">Working Days</label><input ref={daysRef} className="w-full h-9 px-3 text-sm rounded-lg border border-ink-200 dark:border-ink-700 bg-white dark:bg-ink-900 text-ink-900" defaultValue={editItem?.days ?? 'Monâ€“Fri'} placeholder="e.g. Monâ€“Fri" /></div>
+          <div><label className="block text-xs font-medium text-ink-600 mb-1">Working Days</label><input ref={daysRef} className="w-full h-9 px-3 text-sm rounded-lg border border-ink-200 dark:border-ink-700 bg-white dark:bg-ink-900 text-ink-900" defaultValue={editItem?.days ?? 'Mon–Fri'} placeholder="e.g. Mon–Fri" /></div>
           <div><label className="block text-xs font-medium text-ink-600 mb-1">Status</label>
             <select ref={statusRef} className="w-full h-9 px-3 text-sm rounded-lg border border-ink-200 dark:border-ink-700 bg-white dark:bg-ink-900 text-ink-900" defaultValue={editItem?.status ?? 'active'}>
               <option value="active">Active</option><option value="inactive">Inactive</option>

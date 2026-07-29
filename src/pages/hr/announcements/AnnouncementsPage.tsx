@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Megaphone, ArrowUpCircle, MinusCircle, ArrowDownCircle, Plus, Download, FileText, Edit3, Trash2, Eye } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -27,7 +27,7 @@ const priorityIcon = (p: string) => {
 };
 
 export function AnnouncementsPage() {
-  const { success: showSuccess, error: showError } = useToast();
+  const { toast } = useToast();
   const [data, setData] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -54,8 +54,8 @@ export function AnnouncementsPage() {
     try {
       await hrApi.deleteAnnouncement(id);
       setData(prev => prev.filter(i => i.id !== id));
-      showSuccess('Deleted');
-    } catch { showError('Failed to delete'); }
+      toast('Deleted', 'success');
+    } catch { toast('Failed to delete', 'error'); }
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -73,15 +73,15 @@ export function AnnouncementsPage() {
         await hrApi.updateAnnouncement(ps.editingId, payload);
         const res = await hrApi.getAnnouncements();
         if (res?.data) setData(res.data);
-        showSuccess('Updated');
+        toast('Updated', 'success');
       } else {
         await hrApi.createAnnouncement(payload);
         const res = await hrApi.getAnnouncements();
         if (res?.data) setData(res.data);
-        showSuccess('Created');
+        toast('Created', 'success');
       }
       ps.closeModal();
-    } catch { showError('Failed to save'); }
+    } catch { toast('Failed to save', 'error'); }
   };
 
   const columns: Column<Announcement>[] = [
@@ -109,7 +109,7 @@ export function AnnouncementsPage() {
       pageKey="announcements"
       headerActions={
         <>
-          <button onClick={() => { exportToCsv(['Title','Author','Department','Priority','Date','Status'], ps.filtered.map(i => [i.title,i.author,i.department,i.priority,i.date,i.status]), 'announcements'); showSuccess('Exported'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
+          <button onClick={() => { exportToCsv(['Title','Author','Department','Priority','Date','Status'], ps.filtered.map(i => [i.title,i.author,i.department,i.priority,i.date,i.status]), 'announcements'); toast('Exported', 'success'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
           <button onClick={() => exportToPdf('Announcements', ['Title','Author','Department','Priority','Date','Status'], ps.filtered.map(i => [i.title,i.author,i.department,i.priority,i.date,i.status]), 'announcements')} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><FileText className="w-3.5 h-3.5" /> PDF</button>
           <button onClick={ps.openAddModal} className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary-hover transition-all shadow-sm"><Plus className="w-3.5 h-3.5" /> Add New</button>
         </>
@@ -135,7 +135,7 @@ export function AnnouncementsPage() {
       <HrViewDrawer open={ps.viewDrawerOpen} onClose={ps.closeViewDrawer} title="Announcement Details">
         {ps.viewingId && (() => { const a = data.find(i => i.id === ps.viewingId)!; return (
           <div className="space-y-4">
-            <div className="flex items-center gap-3 pb-4 border-b border-border-custom"><div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center"><Megaphone className="w-5 h-5" /></div><div><p className="text-sm font-semibold text-ink-900">{a.title}</p><p className="text-xs text-ink-400">by {a.author} · {formatDate(a.date)}</p></div></div>
+            <div className="flex items-center gap-3 pb-4 border-b border-border-custom"><div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center"><Megaphone className="w-5 h-5" /></div><div><p className="text-sm font-semibold text-ink-900">{a.title}</p><p className="text-xs text-ink-400">by {a.author} � {formatDate(a.date)}</p></div></div>
             <div className="grid grid-cols-3 gap-3"><div><p className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider">Department</p><p className="text-sm text-ink-700 mt-1">{a.department}</p></div><div><p className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider">Priority</p><p className="text-sm text-ink-700 mt-1 capitalize flex items-center gap-1">{priorityIcon(a.priority)}{a.priority}</p></div><div><p className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider">Status</p><span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border mt-1 ${statusColor(a.status)}`}>{a.status}</span></div></div>
           </div>
         );})()}

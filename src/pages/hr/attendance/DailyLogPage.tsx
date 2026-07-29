@@ -5,7 +5,7 @@ import { useToast } from '../../../contexts/ToastContext';
 import { hrApi } from '../../../lib/api';
 
 export function DailyLogPage() {
-  const { success, error: showError } = useToast();
+  const { toast } = useToast();
   const [todayRecord, setTodayRecord] = useState<any>(null);
   const [employeeId, setEmployeeId] = useState('');
   const [loading, setLoading] = useState(false);
@@ -35,10 +35,10 @@ export function DailyLogPage() {
     try {
       setLoading(true);
       const res = await hrApi.clockIn({ employeeId, isRemote });
-      success('Clocked in successfully');
+      toast('Clocked in successfully', 'success');
       setTodayRecord(res?.data ?? { clockIn: new Date().toISOString() });
     } catch (e) {
-      showError('Failed to clock in');
+      toast('Failed to clock in', 'error');
     } finally {
       setLoading(false);
     }
@@ -49,10 +49,10 @@ export function DailyLogPage() {
     try {
       setLoading(true);
       const res = await hrApi.clockOut({ employeeId });
-      success('Clocked out successfully');
+      toast('Clocked out successfully', 'success');
       setTodayRecord(res?.data ?? { ...todayRecord, clockOut: new Date().toISOString() });
     } catch (e) {
-      showError('Failed to clock out');
+      toast('Failed to clock out', 'error');
     } finally {
       setLoading(false);
     }
@@ -63,10 +63,10 @@ export function DailyLogPage() {
     try {
       setLoading(true);
       await hrApi.breakIn({ employeeId });
-      success('Break started');
+      toast('Break started', 'success');
       fetchToday(employeeId);
     } catch (e) {
-      showError('Failed to start break');
+      toast('Failed to start break', 'error');
     } finally {
       setLoading(false);
     }
@@ -77,10 +77,10 @@ export function DailyLogPage() {
     try {
       setLoading(true);
       await hrApi.breakOut({ employeeId });
-      success('Break ended');
+      toast('Break ended', 'success');
       fetchToday(employeeId);
     } catch (e) {
-      showError('Failed to end break');
+      toast('Failed to end break', 'error');
     } finally {
       setLoading(false);
     }

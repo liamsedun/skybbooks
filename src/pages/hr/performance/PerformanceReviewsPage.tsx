@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { ClipboardCheck, Star, User, Calendar, Plus, Download, FileText, Edit3, Trash2, Eye, Send, CheckCircle2 } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -31,12 +31,12 @@ interface Review {
 }
 
 const ratingStars = (r: number) => {
-  if (!r || r === 0) return <span className="text-ink-300 text-xs">—</span>;
+  if (!r || r === 0) return <span className="text-ink-300 text-xs">�</span>;
   return <span className="text-amber-500 font-semibold text-sm">{r.toFixed(1)}</span>;
 };
 
 export function PerformanceReviewsPage() {
-  const { success, error: showError } = useToast();
+  const { toast } = useToast();
 
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,8 +58,8 @@ export function PerformanceReviewsPage() {
       const data = res.data ?? res ?? [];
       const mapped: Review[] = data.map((r: any) => ({
         id: r.id,
-        employeeName: r.employee ? `${r.employee.firstName} ${r.employee.lastName}` : '—',
-        reviewerName: r.reviewer ? (r.reviewer.fullName || r.reviewer.email || '—') : '—',
+        employeeName: r.employee ? `${r.employee.firstName} ${r.employee.lastName}` : '�',
+        reviewerName: r.reviewer ? (r.reviewer.fullName || r.reviewer.email || '�') : '�',
         reviewPeriod: r.reviewPeriod,
         rating: r.rating ?? 0,
         reviewType: r.reviewType || 'manager',
@@ -77,7 +77,7 @@ export function PerformanceReviewsPage() {
     } catch (err: any) {
       const msg = err?.response?.data?.error || err?.message || 'Failed to load reviews';
       setFetchError(msg);
-      showError(msg);
+      toast(msg, 'error');
     } finally {
       setLoading(false);
     }
@@ -153,20 +153,20 @@ export function PerformanceReviewsPage() {
   const handleSubmitReview = async (id: string) => {
     try {
       await hrApi.submitPerformanceReview(id);
-      success('Submitted for review');
+      toast('Submitted for review', 'success');
       loadReviews();
     } catch (err: any) {
-      showError(err?.response?.data?.error || err?.message || 'Failed to submit');
+      toast(err?.response?.data?.error || err?.message || 'Failed to submit', 'error');
     }
   };
 
   const handleCompleteReview = async (id: string) => {
     try {
       await hrApi.completePerformanceReview(id, { rating: 3, summary: 'Completed' });
-      success('Review completed');
+      toast('Review completed', 'success');
       loadReviews();
     } catch (err: any) {
-      showError(err?.response?.data?.error || err?.message || 'Failed to complete');
+      toast(err?.response?.data?.error || err?.message || 'Failed to complete', 'error');
     }
   };
 
@@ -184,15 +184,15 @@ export function PerformanceReviewsPage() {
       if (formStatus === 'completed') payload.rating = parseInt(formRating);
       if (ps.editingId) {
         await hrApi.updatePerformanceReview(ps.editingId, payload);
-        success('Updated');
+        toast('Updated', 'success');
       } else {
         await hrApi.createPerformanceReview(payload);
-        success('Created');
+        toast('Created', 'success');
       }
       ps.closeModal();
       loadReviews();
     } catch (err: any) {
-      showError(err?.response?.data?.error || err?.message || 'Failed to save');
+      toast(err?.response?.data?.error || err?.message || 'Failed to save', 'error');
     }
   };
 
@@ -200,11 +200,11 @@ export function PerformanceReviewsPage() {
     if (!ps.deletingId) return;
     try {
       await hrApi.deletePerformanceReview(ps.deletingId);
-      success('Deleted');
+      toast('Deleted', 'success');
       ps.closeConfirmDelete();
       loadReviews();
     } catch (err: any) {
-      showError(err?.response?.data?.error || err?.message || 'Failed to delete');
+      toast(err?.response?.data?.error || err?.message || 'Failed to delete', 'error');
     }
   };
 
@@ -213,7 +213,7 @@ export function PerformanceReviewsPage() {
       pageKey="performance-reviews"
       headerActions={
         <>
-          <button onClick={() => { exportToCsv(['Employee','Reviewer','Period','Rating','Type','Status'], ps.filtered.map(i => [i.employeeName,i.reviewerName,i.reviewPeriod,String(i.rating),i.reviewType,i.status]), 'reviews'); showSuccess('Exported'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
+          <button onClick={() => { exportToCsv(['Employee','Reviewer','Period','Rating','Type','Status'], ps.filtered.map(i => [i.employeeName,i.reviewerName,i.reviewPeriod,String(i.rating),i.reviewType,i.status]), 'reviews'); toast('Exported', 'success'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
           <button onClick={() => exportToPdf('Performance Reviews', ['Employee','Reviewer','Period','Rating','Type','Status'], ps.filtered.map(i => [i.employeeName,i.reviewerName,i.reviewPeriod,String(i.rating),i.reviewType,i.status]), 'reviews')} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><FileText className="w-3.5 h-3.5" /> PDF</button>
           <button onClick={handleOpenAddModal} className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary-hover transition-all shadow-sm"><Plus className="w-3.5 h-3.5" /> Add New</button>
         </>
@@ -248,15 +248,15 @@ export function PerformanceReviewsPage() {
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Employee ID</label><input value={formEmployeeId} onChange={e => setFormEmployeeId(e.target.value)} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" placeholder="Employee UUID" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Reviewer ID</label><input value={formReviewerId} onChange={e => setFormReviewerId(e.target.value)} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" placeholder="Reviewer UUID" /></div>
         <div className="grid grid-cols-2 gap-3"><div><label className="block text-xs font-medium text-ink-500 mb-1">Period</label><select value={formReviewPeriod} onChange={e => setFormReviewPeriod(e.target.value)} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"><option value="Q1 2026">Q1 2026</option><option value="Q2 2026">Q2 2026</option><option value="Q3 2026">Q3 2026</option><option value="Q4 2026">Q4 2026</option></select></div><div><label className="block text-xs font-medium text-ink-500 mb-1">Review Type</label><select value={formReviewType} onChange={e => setFormReviewType(e.target.value)} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"><option value="self">Self</option><option value="manager">Manager</option><option value="peer">Peer</option><option value="360">360</option></select></div></div>
-        <div className="grid grid-cols-2 gap-3"><div><label className="block text-xs font-medium text-ink-500 mb-1">Rating</label><select value={formRating} onChange={e => setFormRating(e.target.value)} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"><option value="1">1.0 — Needs Improvement</option><option value="2">2.0 — Below Expectations</option><option value="3">3.0 — Meets Expectations</option><option value="4">4.0 — Exceeds Expectations</option><option value="5">5.0 — Outstanding</option></select></div><div><label className="block text-xs font-medium text-ink-500 mb-1">Status</label><select value={formStatus} onChange={e => setFormStatus(e.target.value)} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"><option value="draft">Draft</option><option value="pending_review">Pending Review</option><option value="completed">Completed</option></select></div></div>
+        <div className="grid grid-cols-2 gap-3"><div><label className="block text-xs font-medium text-ink-500 mb-1">Rating</label><select value={formRating} onChange={e => setFormRating(e.target.value)} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"><option value="1">1.0 � Needs Improvement</option><option value="2">2.0 � Below Expectations</option><option value="3">3.0 � Meets Expectations</option><option value="4">4.0 � Exceeds Expectations</option><option value="5">5.0 � Outstanding</option></select></div><div><label className="block text-xs font-medium text-ink-500 mb-1">Status</label><select value={formStatus} onChange={e => setFormStatus(e.target.value)} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"><option value="draft">Draft</option><option value="pending_review">Pending Review</option><option value="completed">Completed</option></select></div></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Summary</label><textarea value={formSummary} onChange={e => setFormSummary(e.target.value)} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" rows={3} placeholder="Review summary and feedback..." /></div>
       </HrFormModal>
       <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={handleDelete} title="Delete Review" message="Are you sure you want to delete this review?" confirmLabel="Delete" variant="danger" />
       <HrViewDrawer open={ps.viewDrawerOpen} onClose={ps.closeViewDrawer} title="Review Details">
         {ps.viewingId && (() => { const r = reviews.find(i => i.id === ps.viewingId)!; return (
           <div className="space-y-4">
-            <div className="flex items-center gap-3 pb-4 border-b border-border-custom"><div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/30 text-blue-600 flex items-center justify-center"><ClipboardCheck className="w-5 h-5" /></div><div><p className="text-sm font-semibold text-ink-900">{r.employeeName}</p><p className="text-xs text-ink-400">Reviewer: {r.reviewerName} · {r.reviewPeriod}</p></div></div>
-            <div className="grid grid-cols-3 gap-3"><div className="p-3 bg-ink-50 dark:bg-ink-800/50 rounded-xl"><p className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider">Rating</p><p className="text-xl font-bold text-ink-900 mt-1">{r.rating > 0 ? r.rating.toFixed(1) : '—'}</p></div><div className="p-3 bg-ink-50 dark:bg-ink-800/50 rounded-xl"><p className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider">Type</p><p className="text-sm font-medium text-ink-900 mt-1 capitalize">{r.reviewType}</p></div><div className="p-3 bg-ink-50 dark:bg-ink-800/50 rounded-xl"><p className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider">Status</p><span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border mt-1 ${statusColor(r.status)}`}>{r.status.replace('_', ' ')}</span></div></div>
+            <div className="flex items-center gap-3 pb-4 border-b border-border-custom"><div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/30 text-blue-600 flex items-center justify-center"><ClipboardCheck className="w-5 h-5" /></div><div><p className="text-sm font-semibold text-ink-900">{r.employeeName}</p><p className="text-xs text-ink-400">Reviewer: {r.reviewerName} � {r.reviewPeriod}</p></div></div>
+            <div className="grid grid-cols-3 gap-3"><div className="p-3 bg-ink-50 dark:bg-ink-800/50 rounded-xl"><p className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider">Rating</p><p className="text-xl font-bold text-ink-900 mt-1">{r.rating > 0 ? r.rating.toFixed(1) : '�'}</p></div><div className="p-3 bg-ink-50 dark:bg-ink-800/50 rounded-xl"><p className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider">Type</p><p className="text-sm font-medium text-ink-900 mt-1 capitalize">{r.reviewType}</p></div><div className="p-3 bg-ink-50 dark:bg-ink-800/50 rounded-xl"><p className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider">Status</p><span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border mt-1 ${statusColor(r.status)}`}>{r.status.replace('_', ' ')}</span></div></div>
             <div><p className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider mb-1">Review Period</p><p className="text-sm text-ink-700">{r.reviewPeriod}</p></div>
             {r.summary && <div><p className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider mb-1">Summary</p><p className="text-sm text-ink-700">{r.summary}</p></div>}
           </div>

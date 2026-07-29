@@ -1,4 +1,4 @@
-﻿import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { History, Plus, Download, FileText, Edit3, Trash2, Eye, TrendingUp, ArrowLeftRight, ArrowDown } from 'lucide-react';
 import { useHrPageState } from '../../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../../components/hr/HrPageShell';
@@ -35,7 +35,7 @@ const typeColors: Record<string, string> = {
 };
 
 export function CareerHistoryPage() {
-  const { success, error } = useToast();
+  const { toast } = useToast();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const ps = useHrPageState({ data: [], initialSortKey: 'employeeName', searchKeys: ['employeeName', 'previousRole', 'newRole', 'type'], pageSize: 10 });
@@ -48,7 +48,7 @@ export function CareerHistoryPage() {
     try {
       const result = await hrApi.getReportEmployees({});
       setData(Array.isArray(result) ? result : []);
-    } catch (e: any) { error(e?.message || 'Failed to load'); }
+    } catch (e: any) { toast(e?.message || 'Failed to load', 'error'); }
     finally { setLoading(false); }
   };
 
@@ -62,7 +62,7 @@ export function CareerHistoryPage() {
   ], [data, ps.statusFilter]);
 
   const handleDelete = (id: string) => {
-    error('This is a read-only report view');
+    toast('This is a read-only report view', 'error');
     ps.closeConfirmDelete();
   };
 
@@ -98,7 +98,7 @@ export function CareerHistoryPage() {
     <HrPageShell title="Career History" description="Employee career progression, promotions, transfers, and role change timeline"
       pageKey="reports"
       headerActions={<>
-        <button onClick={() => { exportToCsv(csvHeaders, csvRows, 'career-history'); success('CSV exported'); }} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-ink-600 bg-ink-100 dark:bg-ink-800 hover:bg-ink-200 dark:hover:bg-ink-700 rounded-lg transition-colors"><Download className="w-3.5 h-3.5" /> CSV</button>
+        <button onClick={() => { exportToCsv(csvHeaders, csvRows, 'career-history'); toast('CSV exported', 'success'); }} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-ink-600 bg-ink-100 dark:bg-ink-800 hover:bg-ink-200 dark:hover:bg-ink-700 rounded-lg transition-colors"><Download className="w-3.5 h-3.5" /> CSV</button>
         <button onClick={() => exportToPdf('Career History', pdfHeaders, pdfRows, 'career-history')} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-ink-600 bg-ink-100 dark:bg-ink-800 hover:bg-ink-200 dark:hover:bg-ink-700 rounded-lg transition-colors"><FileText className="w-3.5 h-3.5" /> PDF</button>
         <button onClick={ps.openAddModal} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors"><Plus className="w-3.5 h-3.5" /> Add Record</button>
       </>}>
@@ -129,7 +129,7 @@ export function CareerHistoryPage() {
               </select>
             </div>
           </div>
-          <button className="w-full h-9 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors" onClick={() => { error('This is a read-only report view'); ps.closeModal(); }}>{ps.editingId ? 'Update' : 'Create'}</button>
+          <button className="w-full h-9 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors" onClick={() => { toast('This is a read-only report view', 'error'); ps.closeModal(); }}>{ps.editingId ? 'Update' : 'Create'}</button>
         </div>
       </HrFormModal>
       <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => handleDelete(ps.deletingId!)} title="Delete Career Record" message="Are you sure you want to delete this career record? This action cannot be undone." />

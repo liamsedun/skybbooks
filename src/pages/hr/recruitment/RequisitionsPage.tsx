@@ -70,7 +70,7 @@ function urgencyColor(u: string): string {
 }
 
 export function RequisitionsPage() {
-  const { success: showSuccess, error: showError } = useToast();
+  const { toast } = useToast();
 
   const [requisitions, setRequisitions] = useState<Requisition[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -148,13 +148,13 @@ export function RequisitionsPage() {
     setApproveLoading(true);
     try {
       await hrApi.approveRequisition(approvingId, { approvedBy: approveName });
-      showSuccess('Requisition approved');
+      toast('Requisition approved', 'success');
       setApproveModalOpen(false);
       setApprovingId(null);
       setApproveName('');
       fetchData();
     } catch (err: any) {
-      showError(err?.response?.data?.error || 'Failed to approve');
+      toast(err?.response?.data?.error || 'Failed to approve', 'error');
     } finally {
       setApproveLoading(false);
     }
@@ -162,17 +162,17 @@ export function RequisitionsPage() {
 
   const handleReject = async () => {
     if (!rejectingId) return;
-    if (!rejectReason.trim()) { showError('Please provide a rejection reason'); return; }
+    if (!rejectReason.trim()) { toast('Please provide a rejection reason', 'error'); return; }
     setRejectLoading(true);
     try {
       await hrApi.rejectRequisition(rejectingId, { rejectionReason: rejectReason });
-      showSuccess('Requisition rejected');
+      toast('Requisition rejected', 'success');
       setRejectModalOpen(false);
       setRejectingId(null);
       setRejectReason('');
       fetchData();
     } catch (err: any) {
-      showError(err?.response?.data?.error || 'Failed to reject');
+      toast(err?.response?.data?.error || 'Failed to reject', 'error');
     } finally {
       setRejectLoading(false);
     }
@@ -183,12 +183,12 @@ export function RequisitionsPage() {
     setSubmitLoading(true);
     try {
       await hrApi.submitRequisition(submittingId);
-      showSuccess('Requisition submitted for approval');
+      toast('Requisition submitted for approval', 'success');
       setSubmitConfirmOpen(false);
       setSubmittingId(null);
       fetchData();
     } catch (err: any) {
-      showError(err?.response?.data?.error || 'Failed to submit');
+      toast(err?.response?.data?.error || 'Failed to submit', 'error');
     } finally {
       setSubmitLoading(false);
     }
@@ -199,11 +199,11 @@ export function RequisitionsPage() {
     setDeleteLoading(true);
     try {
       await hrApi.deleteRequisition(ps.deletingId);
-      showSuccess('Requisition deleted');
+      toast('Requisition deleted', 'success');
       ps.closeConfirmDelete();
       fetchData();
     } catch (err: any) {
-      showError(err?.response?.data?.error || 'Failed to delete');
+      toast(err?.response?.data?.error || 'Failed to delete', 'error');
     } finally {
       setDeleteLoading(false);
     }
@@ -219,10 +219,10 @@ export function RequisitionsPage() {
       const payload = { ...formData, openings: Number(formData.openings) };
       if (ps.editingId) {
         await hrApi.updateRequisition(ps.editingId, payload);
-        showSuccess('Requisition updated');
+        toast('Requisition updated', 'success');
       } else {
         await hrApi.createRequisition(payload);
-        showSuccess('Requisition created');
+        toast('Requisition created', 'success');
       }
       ps.closeModal();
       setFormData(initialFormData);

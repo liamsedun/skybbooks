@@ -25,7 +25,7 @@ interface ShiftAssignment {
 }
 
 export function ShiftAssignmentsPage() {
-  const { success, error: showError } = useToast();
+  const { toast } = useToast();
   const [assignments, setAssignments] = useState<ShiftAssignment[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -40,7 +40,7 @@ export function ShiftAssignmentsPage() {
       }));
       setAssignments(items);
     } catch (e) {
-      showError('Failed to load shift assignments');
+      toast('Failed to load shift assignments', 'error');
     } finally {
       setLoading(false);
     }
@@ -113,12 +113,12 @@ export function ShiftAssignmentsPage() {
             <div><label className="block text-xs font-medium text-ink-600 mb-1">End Date</label><input type="date" className="w-full h-9 px-3 text-sm rounded-lg border border-ink-200 dark:border-ink-700 bg-white dark:bg-ink-900 text-ink-900" defaultValue={editItem?.endDate ?? ''} /></div>
           </div>
           <button className="w-full h-9 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors" onClick={async () => {
-            try { await (editItem ? hrApi.updateShiftAssignment(editItem.id, {}) : hrApi.assignShift({})); success(editItem ? 'Assignment updated' : 'Assignment created'); ps.closeModals(); await fetchData(); } catch { showError('Failed to save'); }
+            try { await (editItem ? hrApi.updateShiftAssignment(editItem.id, {}) : hrApi.assignShift({})); toast(editItem ? 'Assignment updated' : 'Assignment created', 'success'); ps.closeModals(); await fetchData(); } catch { toast('Failed to save', 'error'); }
           }}>{ps.editModalId ? 'Update' : 'Create'}</button>
         </div>
       </HrFormModal>
       <HrConfirmDialog open={ps.confirmDeleteId !== null} onClose={ps.closeModals} onConfirm={async () => {
-        try { await hrApi.deleteShiftAssignment(ps.confirmDeleteId!); ps.confirmDelete(); success('Shift assignment deleted'); await fetchData(); } catch { showError('Failed to delete'); }
+        try { await hrApi.deleteShiftAssignment(ps.confirmDeleteId!); ps.confirmDelete(); toast('Shift assignment deleted', 'success'); await fetchData(); } catch { toast('Failed to delete', 'error'); }
       }} title="Delete Shift Assignment" message="Are you sure you want to delete this shift assignment? This action cannot be undone." />
       <HrViewDrawer open={ps.viewDrawerId !== null} onClose={ps.closeModals} title="Shift Assignment Details">
         {selectedItem && <div className="space-y-3">

@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { BookOpen, Users, Clock, GraduationCap, Plus, Download, FileText, Edit3, Trash2, Eye } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -18,7 +18,7 @@ interface Course {
 }
 
 export function CoursesPage() {
-  const { success: showSuccess, error: showError } = useToast();
+  const { toast } = useToast();
   const [data, setData] = useState<Course[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -46,8 +46,8 @@ export function CoursesPage() {
     try {
       await hrApi.deleteCourse(id);
       setData(prev => prev.filter(i => i.id !== id));
-      showSuccess('Deleted');
-    } catch { showError('Failed to delete'); }
+      toast('Deleted', 'success');
+    } catch { toast('Failed to delete', 'error'); }
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -64,15 +64,15 @@ export function CoursesPage() {
         await hrApi.updateCourse(ps.editingId, payload);
         const res = await hrApi.getCourses({});
         if (res?.data) setData(res.data);
-        showSuccess('Updated');
+        toast('Updated', 'success');
       } else {
         await hrApi.createCourse(payload);
         const res = await hrApi.getCourses({});
         if (res?.data) setData(res.data);
-        showSuccess('Created');
+        toast('Created', 'success');
       }
       ps.closeModal();
-    } catch { showError('Failed to save'); }
+    } catch { toast('Failed to save', 'error'); }
   };
 
   const columns: Column<Course>[] = [
@@ -94,7 +94,7 @@ export function CoursesPage() {
       pageKey="courses"
       headerActions={
         <>
-          <button onClick={() => { exportToCsv(['Title','Provider','Duration','Enrolled','Status'], ps.filtered.map(i => [i.title,i.provider,i.duration,String(i.enrolled),i.status]), 'courses'); showSuccess('Exported'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
+          <button onClick={() => { exportToCsv(['Title','Provider','Duration','Enrolled','Status'], ps.filtered.map(i => [i.title,i.provider,i.duration,String(i.enrolled),i.status]), 'courses'); toast('Exported', 'success'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
           <button onClick={() => exportToPdf('Courses', ['Title','Provider','Duration','Enrolled','Status'], ps.filtered.map(i => [i.title,i.provider,i.duration,String(i.enrolled),i.status]), 'courses')} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><FileText className="w-3.5 h-3.5" /> PDF</button>
           <button onClick={ps.openAddModal} className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary-hover transition-all shadow-sm"><Plus className="w-3.5 h-3.5" /> Add New</button>
         </>

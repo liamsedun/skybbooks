@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ShieldCheck, Plus, Download, Upload, FileText, Edit3, Trash2, Eye, Check, X, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -15,7 +15,7 @@ import { hrApi } from '../../../lib/api';
 interface ApprovalItem { id: string; type: string; requester: string; date: string; amount: string; status: string; }
 
 export function OpsApprovalsPage() {
-  const { success: showSuccess, error: showError } = useToast();
+  const { toast } = useToast();
   const [data, setData] = useState<ApprovalItem[]>([]);
   const [loading, setLoading] = useState(true);
   const ps = useHrPageState({ data, initialSortKey: 'requester', searchKeys: ['type', 'requester'], pageSize: 10 });
@@ -24,7 +24,7 @@ export function OpsApprovalsPage() {
   const loadData = async () => {
     setLoading(true);
     try { const result = await hrApi.getApprovalRequests({}); setData(Array.isArray(result) ? result : []); }
-    catch (e: any) { showError(e?.message || 'Failed to load'); }
+    catch (e: any) { toast(e?.message || 'Failed to load', 'error'); }
     finally { setLoading(false); }
   };
   const stats = useMemo(() => [
@@ -41,7 +41,7 @@ export function OpsApprovalsPage() {
     { key: 'status', label: 'Status', render: (i) => <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${statusColor(i.status)}`}>{i.status}</span> },
     { key: 'actions', label: '', render: (i) => (
       <div className="flex items-center justify-end gap-1" onClick={e => e.stopPropagation()}>
-        {i.status === 'pending' && (<><button onClick={async () => { try { await hrApi.createApprovalRequest({ id: i.id, status: 'approved' }); showSuccess('Request approved'); loadData(); } catch (e: any) { showError(e?.message || 'Failed'); } }} className="w-7 h-7 flex items-center justify-center rounded-lg text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 transition-colors" title="Approve"><Check className="w-3.5 h-3.5" /></button><button onClick={async () => { try { await hrApi.createApprovalRequest({ id: i.id, status: 'rejected' }); showSuccess('Request rejected'); loadData(); } catch (e: any) { showError(e?.message || 'Failed'); } }} className="w-7 h-7 flex items-center justify-center rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 transition-colors" title="Reject"><X className="w-3.5 h-3.5" /></button></>)}
+        {i.status === 'pending' && (<><button onClick={async () => { try { await hrApi.createApprovalRequest({ id: i.id, status: 'approved' }); toast('Request approved', 'success'); loadData(); } catch (e: any) { toast(e?.message || 'Failed', 'error'); } }} className="w-7 h-7 flex items-center justify-center rounded-lg text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 transition-colors" title="Approve"><Check className="w-3.5 h-3.5" /></button><button onClick={async () => { try { await hrApi.createApprovalRequest({ id: i.id, status: 'rejected' }); toast('Request rejected', 'success'); loadData(); } catch (e: any) { toast(e?.message || 'Failed', 'error'); } }} className="w-7 h-7 flex items-center justify-center rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 transition-colors" title="Reject"><X className="w-3.5 h-3.5" /></button></>)}
         <button onClick={() => ps.openViewDrawer(i.id)} className="w-7 h-7 flex items-center justify-center rounded-lg text-ink-400 hover:text-primary hover:bg-primary/10 transition-colors" title="View"><Eye className="w-3.5 h-3.5" /></button>
         <button onClick={() => ps.openEditModal(i.id)} className="w-7 h-7 flex items-center justify-center rounded-lg text-ink-400 hover:text-amber-600 hover:bg-amber-50 transition-colors" title="Edit"><Edit3 className="w-3.5 h-3.5" /></button>
         <button onClick={() => ps.openConfirmDelete(i.id)} className="w-7 h-7 flex items-center justify-center rounded-lg text-ink-400 hover:text-rose-600 hover:bg-rose-50 transition-colors" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
@@ -63,7 +63,7 @@ export function OpsApprovalsPage() {
         page={ps.page} totalPages={ps.totalPages} onPageChange={ps.setPage} pageSize={ps.pageSize} totalItems={ps.filtered.length}
         from={(ps.page - 1) * ps.pageSize + 1} to={Math.min(ps.page * ps.pageSize, ps.filtered.length)}
         emptyMessage="No approvals found" />
-      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={async () => { try { await hrApi.createApprovalRequest({ id: ps.confirmingId, deleted: true }); showSuccess('Request deleted'); loadData(); } catch (e: any) { showError(e?.message || 'Failed'); } ps.closeConfirmDelete(); }} title="Delete Request" message="Are you sure you want to delete this approval request?" confirmLabel="Delete" variant="danger" />
+      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={async () => { try { await hrApi.createApprovalRequest({ id: ps.confirmingId, deleted: true }); toast('Request deleted', 'success'); loadData(); } catch (e: any) { toast(e?.message || 'Failed', 'error'); } ps.closeConfirmDelete(); }} title="Delete Request" message="Are you sure you want to delete this approval request?" confirmLabel="Delete" variant="danger" />
       <HrViewDrawer open={ps.viewDrawerOpen} onClose={ps.closeViewDrawer} title="Approval Details"><div className="space-y-3 text-sm text-ink-600"><p>Details content</p></div></HrViewDrawer>
     </HrPageShell>
   );

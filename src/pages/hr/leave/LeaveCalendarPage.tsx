@@ -7,7 +7,7 @@ const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export function LeaveCalendarPage() {
-  const { error } = useToast();
+  const { toast } = useToast();
   const [date, setDate] = useState(new Date());
   const [leaves, setLeaves] = useState<any[]>([]);
   const [holidays, setHolidays] = useState<any[]>([]);
@@ -37,7 +37,7 @@ export function LeaveCalendarPage() {
       setHolidays(calendarData?.holidays || []);
       setEmployees(Array.isArray(empData) ? empData : []);
     } catch (e: any) {
-      error(e?.message || 'Failed to load calendar');
+      toast(e?.message || 'Failed to load calendar', 'error');
     } finally { setLoading(false); }
   };
 

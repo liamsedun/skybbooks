@@ -1,4 +1,4 @@
-﻿import { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, Settings, ToggleLeft, ToggleRight, Bell, Shield, Mail, Clock, Users, CalendarCheck, FileText } from 'lucide-react';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -33,7 +33,7 @@ function ToggleCard({ setting, onToggle }: { setting: ToggleSetting; onToggle: (
 
 export function HrSettingsPage() {
   const navigate = useNavigate();
-  const { success: showSuccess } = useToast();
+  const { toast } = useToast();
 
   const [settings, setSettings] = useState<ToggleSetting[]>([
     { key: 'autoApproveLeave', label: 'Auto-approve Leave Requests', description: 'Leave requests are automatically approved without manager review', icon: <CalendarCheck className="w-4 h-4" />, enabled: false },
@@ -59,7 +59,7 @@ export function HrSettingsPage() {
     setTimeout(() => {
       setSaving(false);
       setChanged(false);
-      showSuccess('Settings saved successfully');
+      toast('Settings saved successfully', 'success');
     }, 500);
   };
 
@@ -119,7 +119,7 @@ export function HrSettingsPage() {
               <p className="text-sm font-semibold text-rose-700 dark:text-rose-300">Reset All HR Settings</p>
               <p className="text-xs text-rose-500 dark:text-rose-400 mt-0.5">This will revert all settings to their default values</p>
             </div>
-            <button onClick={() => { setSettings(prev => prev.map(s => ({ ...s, enabled: false }))); setChanged(true); showSuccess('Settings reset to defaults'); }}
+            <button onClick={() => { setSettings(prev => prev.map(s => ({ ...s, enabled: false }))); setChanged(true); toast('Settings reset to defaults', 'success'); }}
               className="px-3 py-1.5 text-xs font-semibold text-white bg-rose-600 rounded-xl hover:bg-rose-700 transition-all shadow-sm">
               Reset All
             </button>

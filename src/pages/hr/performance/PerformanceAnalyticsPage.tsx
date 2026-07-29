@@ -37,7 +37,7 @@ function StatCard({ label, value, icon, color }: { label: string; value: string 
 }
 
 export function PerformanceAnalyticsPage() {
-  const { error: showError } = useToast();
+  const { toast } = useToast();
 
   const [dateFrom, setDateFrom] = useState(defaultFrom);
   const [dateTo, setDateTo] = useState(defaultTo);
@@ -51,7 +51,7 @@ export function PerformanceAnalyticsPage() {
       const data: PerformanceAnalytics = res.data ?? res;
       setAnalytics(data);
     } catch (err: any) {
-      showError(err?.response?.data?.error || err?.message || 'Failed to load analytics');
+      toast(err?.response?.data?.error || err?.message || 'Failed to load analytics', 'error');
     } finally {
       setLoading(false);
     }

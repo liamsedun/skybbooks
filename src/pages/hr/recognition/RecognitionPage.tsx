@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Award, Heart, Sparkles, MessageSquare, Plus, Download, FileText, Edit3, Trash2, Eye } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -27,7 +27,7 @@ const typeIcon = (t: string) => {
 };
 
 export function RecognitionPage() {
-  const { success: showSuccess, error: showError } = useToast();
+  const { toast } = useToast();
   const [data, setData] = useState<Recognition[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -54,8 +54,8 @@ export function RecognitionPage() {
     try {
       await hrApi.deleteRecognition(id);
       setData(prev => prev.filter(i => i.id !== id));
-      showSuccess('Deleted');
-    } catch { showError('Failed to delete'); }
+      toast('Deleted', 'success');
+    } catch { toast('Failed to delete', 'error'); }
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -72,9 +72,9 @@ export function RecognitionPage() {
       await hrApi.createRecognition(payload);
       const res = await hrApi.getRecognition({});
       if (res?.data) setData(res.data);
-      showSuccess('Created');
+      toast('Created', 'success');
       ps.closeModal();
-    } catch { showError('Failed to save'); }
+    } catch { toast('Failed to save', 'error'); }
   };
 
   const columns: Column<Recognition>[] = [
@@ -101,7 +101,7 @@ export function RecognitionPage() {
       pageKey="recognition"
       headerActions={
         <>
-          <button onClick={() => { exportToCsv(['From','To','Type','Message','Date','Status'], ps.filtered.map(i => [i.fromEmployee,i.toEmployee,i.type,i.message,i.date,i.status]), 'recognition'); showSuccess('Exported'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
+          <button onClick={() => { exportToCsv(['From','To','Type','Message','Date','Status'], ps.filtered.map(i => [i.fromEmployee,i.toEmployee,i.type,i.message,i.date,i.status]), 'recognition'); toast('Exported', 'success'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
           <button onClick={() => exportToPdf('Recognition', ['From','To','Type','Message','Date','Status'], ps.filtered.map(i => [i.fromEmployee,i.toEmployee,i.type,i.message,i.date,i.status]), 'recognition')} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><FileText className="w-3.5 h-3.5" /> PDF</button>
           <button onClick={ps.openAddModal} className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary-hover transition-all shadow-sm"><Plus className="w-3.5 h-3.5" /> Add New</button>
         </>
@@ -128,7 +128,7 @@ export function RecognitionPage() {
       <HrViewDrawer open={ps.viewDrawerOpen} onClose={ps.closeViewDrawer} title="Recognition Details">
         {ps.viewingId && (() => { const r = data.find(i => i.id === ps.viewingId)!; return (
           <div className="space-y-4">
-            <div className="flex items-center gap-3 pb-4 border-b border-border-custom"><div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/30 text-amber-600 flex items-center justify-center"><Award className="w-5 h-5" /></div><div><p className="text-sm font-semibold text-ink-900">{r.toEmployee}</p><p className="text-xs text-ink-400">by {r.fromEmployee} · {formatDate(r.date)}</p></div></div>
+            <div className="flex items-center gap-3 pb-4 border-b border-border-custom"><div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/30 text-amber-600 flex items-center justify-center"><Award className="w-5 h-5" /></div><div><p className="text-sm font-semibold text-ink-900">{r.toEmployee}</p><p className="text-xs text-ink-400">by {r.fromEmployee} � {formatDate(r.date)}</p></div></div>
             <div className="p-3 bg-ink-50 dark:bg-ink-800/50 rounded-xl"><p className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider">Type</p><p className="text-sm text-ink-700 mt-1 flex items-center gap-1">{typeIcon(r.type)}{r.type}</p></div>
             <div className="p-3 bg-ink-50 dark:bg-ink-800/50 rounded-xl"><p className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider">Message</p><p className="text-sm text-ink-700 mt-1 italic">"{r.message}"</p></div>
             <div><p className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider">Status</p><span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border mt-1 ${statusColor(r.status)}`}>{r.status}</span></div>

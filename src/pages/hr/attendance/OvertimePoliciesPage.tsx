@@ -13,7 +13,7 @@ import { useToast } from '../../../contexts/ToastContext';
 import { hrApi } from '../../../lib/api';
 
 export function OvertimePoliciesPage() {
-  const { success, error: showError } = useToast();
+  const { toast } = useToast();
   const [policies, setPolicies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -23,7 +23,7 @@ export function OvertimePoliciesPage() {
       const res = await hrApi.getOvertimePolicies({ pageSize: 500 });
       setPolicies(res?.data ?? []);
     } catch (e) {
-      showError('Failed to load overtime policies');
+      toast('Failed to load overtime policies', 'error');
     } finally {
       setLoading(false);
     }
@@ -94,12 +94,12 @@ export function OvertimePoliciesPage() {
             <div><label className="block text-xs font-medium text-ink-600 mb-1">Max Hours</label><input type="number" className="w-full h-9 px-3 text-sm rounded-lg border border-ink-200 dark:border-ink-700 bg-white dark:bg-ink-900 text-ink-900" defaultValue={editItem?.maxOvertimeHours ?? ''} placeholder="Unlimited" /></div>
           </div>
           <button className="w-full h-9 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors" onClick={async () => {
-            try { await (editItem ? hrApi.updateOvertimePolicy(editItem.id, {}) : hrApi.createOvertimePolicy({})); success(editItem ? 'Policy updated' : 'Policy created'); ps.closeModals(); await fetchData(); } catch { showError('Failed to save'); }
+            try { await (editItem ? hrApi.updateOvertimePolicy(editItem.id, {}) : hrApi.createOvertimePolicy({})); toast(editItem ? 'Policy updated' : 'Policy created', 'success'); ps.closeModals(); await fetchData(); } catch { toast('Failed to save', 'error'); }
           }}>{ps.editModalId ? 'Update' : 'Create'}</button>
         </div>
       </HrFormModal>
       <HrConfirmDialog open={ps.confirmDeleteId !== null} onClose={ps.closeModals} onConfirm={async () => {
-        try { await hrApi.deleteOvertimePolicy(ps.confirmDeleteId!); ps.confirmDelete(); success('Policy deleted'); await fetchData(); } catch { showError('Failed to delete'); }
+        try { await hrApi.deleteOvertimePolicy(ps.confirmDeleteId!); ps.confirmDelete(); toast('Policy deleted', 'success'); await fetchData(); } catch { toast('Failed to delete', 'error'); }
       }} title="Delete Policy" message="Are you sure you want to delete this overtime policy?" />
       <HrViewDrawer open={ps.viewDrawerId !== null} onClose={ps.closeModals} title="Policy Details">
         {selectedItem && <div className="space-y-3">

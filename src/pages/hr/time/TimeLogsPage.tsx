@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Timer, Plus, Download, Upload, FileText, Edit3, Trash2, Eye, Play, Square } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -17,7 +17,7 @@ interface TimeLog {
 }
 
 export function TimeLogsPage() {
-  const { success: showSuccess, error: showError } = useToast();
+  const { toast } = useToast();
   const [data, setData] = useState<TimeLog[]>([]);
   const [loading, setLoading] = useState(true);
   const ps = useHrPageState({ data, initialSortKey: 'date', initialSortDirection: 'desc', searchKeys: ['employee', 'project'], pageSize: 10 });
@@ -27,7 +27,7 @@ export function TimeLogsPage() {
   const loadData = async () => {
     setLoading(true);
     try { const result = await hrApi.getAttendance({}); setData(Array.isArray(result) ? result : []); }
-    catch (e: any) { showError(e?.message || 'Failed to load'); }
+    catch (e: any) { toast(e?.message || 'Failed to load', 'error'); }
     finally { setLoading(false); }
   };
 
@@ -80,7 +80,7 @@ export function TimeLogsPage() {
         page={ps.page} totalPages={ps.totalPages} onPageChange={ps.setPage} pageSize={ps.pageSize} totalItems={filtered.length}
         from={(ps.page - 1) * ps.pageSize + 1} to={Math.min(ps.page * ps.pageSize, filtered.length)}
         emptyMessage="No time logs found" emptyAction={<button onClick={ps.openAddModal} className="text-xs font-medium text-primary hover:text-primary-hover">Log your first entry</button>} />
-      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Time Log' : 'Log Time'} onSubmit={(e) => { e.preventDefault(); success(ps.editingId ? 'Time log updated' : 'Time log created'); ps.closeModal(); }}>
+      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Time Log' : 'Log Time'} onSubmit={(e) => { e.preventDefault(); toast(ps.editingId ? 'Time log updated' : 'Time log created', 'success'); ps.closeModal(); }}>
         <div className="space-y-4">
           <div><label className="block text-xs font-medium text-ink-500 mb-1">Employee</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900" defaultValue={editItem?.employee ?? ''} placeholder="e.g. Chioma Okafor" /></div>
           <div><label className="block text-xs font-medium text-ink-500 mb-1">Project</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900" defaultValue={editItem?.project ?? ''} placeholder="e.g. Payroll System" /></div>
@@ -98,7 +98,7 @@ export function TimeLogsPage() {
           </div>
         </div>
       </HrFormModal>
-      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { success('Time log deleted'); ps.closeConfirmDelete(); }} title="Delete Time Log" message="Are you sure you want to delete this time entry?" confirmLabel="Delete" variant="danger" />
+      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { toast('Time log deleted', 'success'); ps.closeConfirmDelete(); }} title="Delete Time Log" message="Are you sure you want to delete this time entry?" confirmLabel="Delete" variant="danger" />
       <HrViewDrawer open={ps.viewDrawerOpen} onClose={ps.closeViewDrawer} title="Time Log Details">
         {selectedItem && <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
@@ -117,7 +117,7 @@ export function TimeLogsPage() {
           <div><label className="text-xs text-ink-500">Status</label><p className="text-sm font-medium text-ink-900 capitalize">{selectedItem.status}</p></div>
         </div>}
       </HrViewDrawer>
-      <HrFormModal open={ps.importOpen} onClose={() => ps.setImportOpen(false)} title="Import Time Logs" onSubmit={(e) => { e.preventDefault(); success('Time logs imported'); ps.setImportOpen(false); }} submitLabel="Import">
+      <HrFormModal open={ps.importOpen} onClose={() => ps.setImportOpen(false)} title="Import Time Logs" onSubmit={(e) => { e.preventDefault(); toast('Time logs imported', 'success'); ps.setImportOpen(false); }} submitLabel="Import">
         <p className="text-sm text-ink-400 mb-3">Upload a CSV file with time entries (Employee, Project, Date, Start, End, Hours, Billable, Status).</p>
         <input type="file" accept=".csv" className="block w-full text-sm text-ink-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-primary/10 file:text-primary hover:file:bg-primary/20 transition-all" />
       </HrFormModal>

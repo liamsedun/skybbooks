@@ -1,4 +1,4 @@
-﻿import { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Building, Plus, Download, Upload, FileText, Edit3, Trash2, Eye, Users } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
@@ -27,7 +27,7 @@ const MOCK_DEPARTMENTS: Department[] = [
 
 export function DepartmentsPage() {
   const navigate = useNavigate();
-  const { success: showSuccess } = useToast();
+  const { toast } = useToast();
   const pageState = useHrPageState({ data: MOCK_DEPARTMENTS, initialSortKey: 'name', searchKeys: ['name', 'head'], pageSize: 10 });
   const { filtered, paginated, ...rest } = pageState;
 
@@ -67,7 +67,7 @@ export function DepartmentsPage() {
 
   const handleExportCsv = () => {
     exportToCsv(['Name', 'Head', 'Employees', 'Status'], statusFiltered.map(d => [d.name, d.head, String(d.employeeCount), d.status]), 'departments');
-    showSuccess('Exported successfully');
+    toast('Exported successfully', 'success');
   };
 
   return (
@@ -102,7 +102,7 @@ export function DepartmentsPage() {
         from={(pageState.page - 1) * pageState.pageSize + 1} to={Math.min(pageState.page * pageState.pageSize, statusFiltered.length)}
         emptyMessage="No departments found" emptyAction={<button onClick={pageState.openAddModal} className="text-xs font-medium text-primary hover:text-primary-hover">Add your first department</button>} />
 
-      <HrFormModal open={pageState.modalOpen} onClose={pageState.closeModal} title={pageState.editingId ? 'Edit Department' : 'Add Department'} onSubmit={(e) => { e.preventDefault(); showSuccess(pageState.editingId ? 'Department updated' : 'Department created'); pageState.closeModal(); }}>
+      <HrFormModal open={pageState.modalOpen} onClose={pageState.closeModal} title={pageState.editingId ? 'Edit Department' : 'Add Department'} onSubmit={(e) => { e.preventDefault(); toast(pageState.editingId ? 'Department updated' : 'Department created', 'success'); pageState.closeModal(); }}>
         <div className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-ink-500 mb-1">Department Name</label>
@@ -122,7 +122,7 @@ export function DepartmentsPage() {
         </div>
       </HrFormModal>
 
-      <HrConfirmDialog open={pageState.confirmOpen} onClose={pageState.closeConfirmDelete} onConfirm={() => { showSuccess('Department deleted'); pageState.closeConfirmDelete(); }} title="Delete Department" message="Are you sure? This action cannot be undone." confirmLabel="Delete" variant="danger" />
+      <HrConfirmDialog open={pageState.confirmOpen} onClose={pageState.closeConfirmDelete} onConfirm={() => { toast('Department deleted', 'success'); pageState.closeConfirmDelete(); }} title="Delete Department" message="Are you sure? This action cannot be undone." confirmLabel="Delete" variant="danger" />
 
       <HrViewDrawer open={pageState.viewDrawerOpen} onClose={pageState.closeViewDrawer} title={viewingDept?.name || 'Department Details'}>
         {viewingDept && (

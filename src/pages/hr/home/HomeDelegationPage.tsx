@@ -1,4 +1,4 @@
-﻿import { useMemo, useEffect, useState, useRef } from 'react';
+import { useMemo, useEffect, useState, useRef } from 'react';
 import { UserCheck, Clock, Ban, Plus, Download, FileText, Edit3, Trash2, Eye } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -18,7 +18,7 @@ interface Delegation {
 }
 
 export function HomeDelegationPage() {
-  const { success: showSuccess, error: showError } = useToast();
+  const { toast } = useToast();
   const [data, setData] = useState<Delegation[]>([]);
   const [loading, setLoading] = useState(true);
   const delegatorRef = useRef<HTMLInputElement>(null);
@@ -35,7 +35,7 @@ export function HomeDelegationPage() {
     try {
       const result = await hrApi.getDelegations();
       setData(Array.isArray(result) ? result : []);
-    } catch (e: any) { showError(e?.message || 'Failed to load'); }
+    } catch (e: any) { toast(e?.message || 'Failed to load', 'error'); }
     finally { setLoading(false); }
   };
 
@@ -63,7 +63,7 @@ export function HomeDelegationPage() {
       pageKey="home"
       headerActions={
         <>
-          <button onClick={() => { exportToCsv(['Delegator','Delegate','Module','Status'], ps.filtered.map(i => [i.delegator,i.delegate,i.module,i.status]), 'delegations'); showSuccess('Exported'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
+          <button onClick={() => { exportToCsv(['Delegator','Delegate','Module','Status'], ps.filtered.map(i => [i.delegator,i.delegate,i.module,i.status]), 'delegations'); toast('Exported', 'success'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
           <button onClick={() => exportToPdf('Delegation Rules', ['Delegator','Delegate','Module','Status'], ps.filtered.map(i => [i.delegator,i.delegate,i.module,i.status]), 'delegations')} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><FileText className="w-3.5 h-3.5" /> PDF</button>
           <button onClick={ps.openAddModal} className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary-hover transition-all shadow-sm"><Plus className="w-3.5 h-3.5" /> Add New</button>
         </>
@@ -79,17 +79,17 @@ export function HomeDelegationPage() {
         page={ps.page} totalPages={ps.totalPages} onPageChange={ps.setPage} pageSize={ps.pageSize} totalItems={ps.filtered.length}
         from={(ps.page - 1) * ps.pageSize + 1} to={Math.min(ps.page * ps.pageSize, ps.filtered.length)}
         emptyMessage="No delegation rules" emptyAction={<button onClick={ps.openAddModal} className="text-xs font-medium text-primary">Add</button>} />
-      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Delegation' : 'Add Delegation'} onSubmit={async (e) => { e.preventDefault(); try { await hrApi.createDelegation({ delegator: delegatorRef.current?.value, delegate: delegateRef.current?.value, module: moduleRef.current?.value, startDate: startDateRef.current?.value, endDate: endDateRef.current?.value }); showSuccess(ps.editingId ? 'Updated' : 'Created'); ps.closeModal(); loadData(); } catch (err: any) { showError(err?.message || 'Failed to save'); } }}>
+      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Delegation' : 'Add Delegation'} onSubmit={async (e) => { e.preventDefault(); try { await hrApi.createDelegation({ delegator: delegatorRef.current?.value, delegate: delegateRef.current?.value, module: moduleRef.current?.value, startDate: startDateRef.current?.value, endDate: endDateRef.current?.value }); toast(ps.editingId ? 'Updated' : 'Created', 'success'); ps.closeModal(); loadData(); } catch (err: any) { toast(err?.message || 'Failed to save', 'error'); } }}>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Delegator</label><input ref={delegatorRef} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" placeholder="e.g. Alice Johnson" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Delegate</label><input ref={delegateRef} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" placeholder="e.g. Bob Smith" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Module</label><select ref={moduleRef} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"><option>Leave</option><option>Payroll</option><option>Recruitment</option><option>Attendance</option><option>Training</option></select></div>
         <div className="grid grid-cols-2 gap-3"><div><label className="block text-xs font-medium text-ink-500 mb-1">Start Date</label><input ref={startDateRef} type="date" className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div><div><label className="block text-xs font-medium text-ink-500 mb-1">End Date</label><input ref={endDateRef} type="date" className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div></div>
       </HrFormModal>
-      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={async () => { try { if (ps.deletingId) await hrApi.deleteDelegation(ps.deletingId); showSuccess('Deleted'); ps.closeConfirmDelete(); loadData(); } catch (err: any) { showError(err?.message || 'Failed to delete'); } }} title="Delete Delegation" message="Are you sure you want to delete this delegation rule?" confirmLabel="Delete" variant="danger" />
+      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={async () => { try { if (ps.deletingId) await hrApi.deleteDelegation(ps.deletingId); toast('Deleted', 'success'); ps.closeConfirmDelete(); loadData(); } catch (err: any) { toast(err?.message || 'Failed to delete', 'error'); } }} title="Delete Delegation" message="Are you sure you want to delete this delegation rule?" confirmLabel="Delete" variant="danger" />
       <HrViewDrawer open={ps.viewDrawerOpen} onClose={ps.closeViewDrawer} title="Delegation Details">
         {ps.viewingId && (() => { const d = data.find(i => i.id === ps.viewingId)!; return (
           <div className="space-y-4">
-            <div className="flex items-center gap-3 pb-4 border-b border-border-custom"><div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/30 text-blue-600 flex items-center justify-center"><UserCheck className="w-5 h-5" /></div><div><p className="text-sm font-semibold text-ink-900">{d.delegator} → {d.delegate}</p><p className="text-xs text-ink-400">{d.module}</p></div></div>
+            <div className="flex items-center gap-3 pb-4 border-b border-border-custom"><div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/30 text-blue-600 flex items-center justify-center"><UserCheck className="w-5 h-5" /></div><div><p className="text-sm font-semibold text-ink-900">{d.delegator} ? {d.delegate}</p><p className="text-xs text-ink-400">{d.module}</p></div></div>
             <div className="grid grid-cols-2 gap-3"><div className="p-3 bg-ink-50 dark:bg-ink-800/50 rounded-xl"><p className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider">Start Date</p><p className="text-sm text-ink-700 mt-1">{formatDate(d.startDate)}</p></div><div className="p-3 bg-ink-50 dark:bg-ink-800/50 rounded-xl"><p className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider">End Date</p><p className="text-sm text-ink-700 mt-1">{formatDate(d.endDate)}</p></div></div>
             <div><p className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider">Status</p><span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border mt-1 ${statusColor(d.status)}`}>{d.status}</span></div>
           </div>

@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Plane, Plus, Download, FileText, Edit3, Trash2, Eye, Send, CheckCircle2, XCircle } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -45,10 +45,10 @@ const STATUS_OPTIONS = [
   { label: 'Completed', value: 'completed' },
 ];
 
-const fmtNaira = (n: number) => `₦${n.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+const fmtNaira = (n: number) => `?${n.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
 
 export function TravelRequestsPage() {
-  const { success: showSuccess, error: showError } = useToast();
+  const { toast } = useToast();
   const [travelRequests, setTravelRequests] = useState<TravelRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ ...INITIAL_FORM });
@@ -118,15 +118,15 @@ export function TravelRequestsPage() {
     try {
       if (ps.editingId) {
         await hrApi.updateTravelRequest(ps.editingId, form);
-        showSuccess('Travel request updated');
+        toast('Travel request updated', 'success');
       } else {
         await hrApi.createTravelRequest(form);
-        showSuccess('Travel request created');
+        toast('Travel request created', 'success');
       }
       ps.closeModal();
       await load();
     } catch (err: any) {
-      showError(err?.message || 'Failed to save');
+      toast(err?.message || 'Failed to save', 'error');
     }
   };
 
@@ -134,19 +134,19 @@ export function TravelRequestsPage() {
     try {
       if (action === 'submit') {
         await hrApi.submitTravelRequest(id);
-        showSuccess('Submitted for approval');
+        toast('Submitted for approval', 'success');
       } else if (action === 'approve') {
         await hrApi.approveTravelRequest(id);
-        showSuccess('Travel request approved');
+        toast('Travel request approved', 'success');
       } else {
         const reason = window.prompt('Reason for declining:');
         if (!reason) return;
         await hrApi.declineTravelRequest(id, reason);
-        showSuccess('Travel request declined');
+        toast('Travel request declined', 'success');
       }
       await load();
     } catch (err: any) {
-      showError(err?.message || `Failed to ${action}`);
+      toast(err?.message || `Failed to ${action}`, 'error');
     }
   };
 
@@ -154,11 +154,11 @@ export function TravelRequestsPage() {
     if (!ps.deletingId) return;
     try {
       await hrApi.deleteTravelRequest(ps.deletingId);
-      showSuccess('Travel request deleted');
+      toast('Travel request deleted', 'success');
       ps.closeConfirmDelete();
       await load();
     } catch (err: any) {
-      showError(err?.message || 'Failed to delete');
+      toast(err?.message || 'Failed to delete', 'error');
     }
   };
 
@@ -170,7 +170,7 @@ export function TravelRequestsPage() {
     ]);
     if (type === 'csv') {
       exportToCsv(headers, rows, 'travel-requests');
-      showSuccess('CSV exported');
+      toast('CSV exported', 'success');
     } else {
       exportToPdf('Travel Requests', headers, rows, 'travel-requests');
     }

@@ -29,7 +29,7 @@ const reviewTypeColors: Record<string, string> = {
 };
 
 export function PerformanceCyclesPage() {
-  const { success: showSuccess, error: showError } = useToast();
+  const { toast } = useToast();
   const [items, setItems] = useState<PerformanceCycleItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -88,17 +88,17 @@ export function PerformanceCyclesPage() {
     try {
       if (ps.editingId) {
         await hrApi.updatePerformanceCycle(ps.editingId, formData);
-        showSuccess('Performance cycle updated');
+        toast('Performance cycle updated', 'success');
       } else {
         await hrApi.createPerformanceCycle(formData);
-        showSuccess('Performance cycle created');
+        toast('Performance cycle created', 'success');
       }
       ps.closeModal();
       await fetchItems();
     } catch (err: any) {
       const msg = err?.message || 'Operation failed';
       ps.setFormError(msg);
-      showError(msg);
+      toast(msg, 'error');
     } finally {
       setSubmitting(false);
     }
@@ -109,11 +109,11 @@ export function PerformanceCyclesPage() {
     setSubmitting(true);
     try {
       await hrApi.deletePerformanceCycle(ps.deletingId);
-      showSuccess('Performance cycle deleted');
+      toast('Performance cycle deleted', 'success');
       ps.closeConfirmDelete();
       await fetchItems();
     } catch (err: any) {
-      showError(err?.message || 'Delete failed');
+      toast(err?.message || 'Delete failed', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -132,7 +132,7 @@ export function PerformanceCyclesPage() {
       pageKey="performance-cycles"
       headerActions={
         <>
-          <button onClick={() => { exportToCsv(csvHeaders, csvRows, 'performance-cycles'); showSuccess('CSV exported'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
+          <button onClick={() => { exportToCsv(csvHeaders, csvRows, 'performance-cycles'); toast('CSV exported', 'success'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
           <button onClick={() => exportToPdf('Performance Cycles', csvHeaders, csvRows, 'performance-cycles')} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><FileText className="w-3.5 h-3.5" /> PDF</button>
           <button onClick={handleAddNew} className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary-hover transition-all shadow-sm"><Plus className="w-3.5 h-3.5" /> Add Cycle</button>
         </>

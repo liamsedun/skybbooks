@@ -1,4 +1,4 @@
-﻿import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Download, Upload, FileText, Search, Edit3, Trash2, Eye, CheckCircle2, XCircle, CalendarRange } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
@@ -23,7 +23,7 @@ interface ShiftAssignment {
 }
 
 export function ShiftsPage() {
-  const { success, error } = useToast();
+  const { toast } = useToast();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -34,7 +34,7 @@ export function ShiftsPage() {
     try {
       const result = await hrApi.getShiftAssignments({});
       setData(Array.isArray(result) ? result : []);
-    } catch (e: any) { error(e?.message || 'Failed to load'); }
+    } catch (e: any) { toast(e?.message || 'Failed to load', 'error'); }
     finally { setLoading(false); }
   };
 
@@ -57,16 +57,16 @@ export function ShiftsPage() {
   const handleSave = async () => {
     try {
       const formData = { employeeName: employeeRef.current?.value ?? '', shiftName: shiftRef.current?.value ?? '', startDate: startDateRef.current?.value ?? '', endDate: endDateRef.current?.value ?? '', status: statusRef.current?.value ?? '' };
-      if (ps.editingId) { await hrApi.updateShiftAssignment(ps.editingId, formData); success('Updated'); }
-      else { await hrApi.assignShift(formData); success('Created'); }
+      if (ps.editingId) { await hrApi.updateShiftAssignment(ps.editingId, formData); toast('Updated', 'success'); }
+      else { await hrApi.assignShift(formData); toast('Created', 'success'); }
       ps.closeModal(); loadData();
-    } catch (e: any) { error(e?.message || 'Failed to save'); }
+    } catch (e: any) { toast(e?.message || 'Failed to save', 'error'); }
   };
 
   const handleDelete = async () => {
     if (!ps.deletingId) return;
-    try { await hrApi.deleteShiftAssignment(ps.deletingId); success('Deleted'); loadData(); ps.closeConfirmDelete(); }
-    catch (e: any) { error(e?.message || 'Failed to delete'); }
+    try { await hrApi.deleteShiftAssignment(ps.deletingId); toast('Deleted', 'success'); loadData(); ps.closeConfirmDelete(); }
+    catch (e: any) { toast(e?.message || 'Failed to delete', 'error'); }
   };
 
   const columns: Column<ShiftAssignment>[] = [

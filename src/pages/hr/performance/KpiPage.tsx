@@ -57,7 +57,7 @@ const EMPTY_FORM: FormState = {
 };
 
 export function KpiPage() {
-  const { success: showSuccess, error: showError } = useToast();
+  const { toast } = useToast();
   const [kpis, setKpis] = useState<Kpi[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -183,10 +183,10 @@ export function KpiPage() {
       if (form.weight) payload.weight = Number(form.weight);
       if (ps.editingId) {
         await hrApi.updateKpi(ps.editingId, payload);
-        showSuccess('KPI updated');
+        toast('KPI updated', 'success');
       } else {
         await hrApi.createKpi(payload);
-        showSuccess('KPI created');
+        toast('KPI created', 'success');
       }
       ps.closeModal();
       setForm(EMPTY_FORM);
@@ -203,11 +203,11 @@ export function KpiPage() {
     setSubmitting(true);
     try {
       await hrApi.deleteKpi(ps.deletingId);
-      showSuccess('KPI deleted');
+      toast('KPI deleted', 'success');
       ps.closeConfirmDelete();
       await fetchKpis();
     } catch (err: any) {
-      showError(err?.message || 'Delete failed');
+      toast(err?.message || 'Delete failed', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -225,7 +225,7 @@ export function KpiPage() {
       pageKey="kpis"
       headerActions={
         <>
-          <button onClick={() => { exportToCsv(csvHeaders, csvRows(filteredData), 'kpis'); showSuccess('Exported'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
+          <button onClick={() => { exportToCsv(csvHeaders, csvRows(filteredData), 'kpis'); toast('Exported', 'success'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
           <button onClick={() => exportToPdf('KPIs', csvHeaders, csvRows(filteredData), 'kpis')} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><FileText className="w-3.5 h-3.5" /> PDF</button>
           <button onClick={() => { ps.openAddModal(); setForm(EMPTY_FORM); }} className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary-hover transition-all shadow-sm"><Plus className="w-3.5 h-3.5" /> Add New</button>
         </>

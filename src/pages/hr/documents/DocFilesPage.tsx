@@ -77,7 +77,7 @@ function formatFileSize(bytes: number): string {
 
 export function DocFilesPage() {
   const { orgId } = useHrPageState();
-  const { addToast } = useToast();
+  const { toast } = useToast();
 
   const [docFiles, setDocFiles] = useState<DocFile[]>([]);
   const [loading, setLoading] = useState(true);

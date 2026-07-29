@@ -13,7 +13,7 @@ import { useToast } from '../../../contexts/ToastContext';
 import { hrApi } from '../../../lib/api';
 
 export function HolidayCalendarPage() {
-  const { success, error } = useToast();
+  const { toast } = useToast();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState<any>({});
@@ -31,7 +31,7 @@ export function HolidayCalendarPage() {
     try {
       const result = await hrApi.getHolidays({ year });
       setData(Array.isArray(result) ? result : []);
-    } catch (e: any) { error(e?.message || 'Failed to load holidays'); }
+    } catch (e: any) { toast(e?.message || 'Failed to load holidays', 'error'); }
     finally { setLoading(false); }
   };
 
@@ -49,15 +49,15 @@ export function HolidayCalendarPage() {
 
   const handleSave = async () => {
     try {
-      if (editingId) { await hrApi.updateHoliday(editingId, formData); success('Holiday updated'); }
-      else { await hrApi.createHoliday(formData); success('Holiday created'); }
+      if (editingId) { await hrApi.updateHoliday(editingId, formData); toast('Holiday updated', 'success'); }
+      else { await hrApi.createHoliday(formData); toast('Holiday created', 'success'); }
       setFormOpen(false); loadData();
-    } catch (e: any) { error(e?.message || 'Failed to save'); }
+    } catch (e: any) { toast(e?.message || 'Failed to save', 'error'); }
   };
 
   const handleDelete = async (id: string) => {
-    try { await hrApi.deleteHoliday(id); success('Holiday deleted'); loadData(); ps.closeModals(); }
-    catch (e: any) { error(e?.message || 'Failed to delete'); }
+    try { await hrApi.deleteHoliday(id); toast('Holiday deleted', 'success'); loadData(); ps.closeModals(); }
+    catch (e: any) { toast(e?.message || 'Failed to delete', 'error'); }
   };
 
   const columns: Column<any>[] = [

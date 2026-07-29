@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Users, UserCheck, UserX, UserPlus, Plus, Download, Upload, FileText, Edit3, Trash2, Eye } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
@@ -26,7 +26,7 @@ interface Employee {
 
 export function EmployeeList() {
   const navigate = useNavigate();
-  const { success: showSuccess, error: showError } = useToast();
+  const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -99,7 +99,7 @@ export function EmployeeList() {
   const handleExportCsv = () => {
     const rows = statusFiltered.map(i => [i.name, i.email, i.department, i.designation, i.status, i.joinDate, i.phone || '']);
     exportToCsv(['Name', 'Email', 'Department', 'Designation', 'Status', 'Join Date', 'Phone'], rows, 'employees');
-    showSuccess('CSV exported successfully');
+    toast('CSV exported successfully', 'success');
   };
 
   const handleDelete = async () => {
@@ -107,11 +107,11 @@ export function EmployeeList() {
     setDeleteLoading(true);
     try {
       await hrApi.softDeleteEmployee(pageState.deletingId);
-      showSuccess('Employee deleted');
+      toast('Employee deleted', 'success');
       pageState.closeConfirmDelete();
       fetchEmployees();
     } catch (err: any) {
-      showError(err?.response?.data?.error || 'Failed to delete employee');
+      toast(err?.response?.data?.error || 'Failed to delete employee', 'error');
     } finally {
       setDeleteLoading(false);
     }
@@ -120,19 +120,19 @@ export function EmployeeList() {
   const handleImport = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!fileInputRef.current?.files?.length) {
-      showError('Please select a CSV file');
+      toast('Please select a CSV file', 'error');
       return;
     }
     setImportLoading(true);
     try {
       const text = await handleFileUpload({ target: { files: fileInputRef.current.files } } as any);
       await hrApi.bulkImportEmployees({ csvData: text });
-      showSuccess('Import completed');
+      toast('Import completed', 'success');
       pageState.setImportOpen(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
       fetchEmployees();
     } catch (err: any) {
-      showError(err?.response?.data?.error || 'Import failed');
+      toast(err?.response?.data?.error || 'Import failed', 'error');
     } finally {
       setImportLoading(false);
     }
@@ -151,7 +151,7 @@ export function EmployeeList() {
           <button onClick={() => {
             const rows = statusFiltered.map(i => [i.name, i.email, i.department, i.designation, i.status, i.joinDate, i.phone || '']);
             exportToPdf('Employees', ['Name','Email','Department','Designation','Status','Join Date','Phone'], rows, 'employees');
-            showSuccess('PDF exported successfully');
+            toast('PDF exported successfully', 'success');
           }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><FileText className="w-3.5 h-3.5" /> PDF</button>
           <button onClick={() => pageState.setImportOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Upload className="w-3.5 h-3.5" /> Import</button>
           <button onClick={() => navigate('/app/hr/employees/new')} className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary-hover transition-all shadow-sm"><Plus className="w-3.5 h-3.5" /> Add Employee</button>
