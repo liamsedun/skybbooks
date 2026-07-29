@@ -39,14 +39,15 @@ function TabContent({ label, state, onChange, onSave }: { label: string; state: 
 }
 
 function LocationsContent({ locations, setLocations, onSave }: { locations: string[]; setLocations: React.Dispatch<React.SetStateAction<string[]>>; onSave: () => void }) {
-  const { success } = useToast();
+  const { toast } = useToast();
   const [newLocation, setNewLocation] = useState('');
 
   const addLocation = useCallback(() => {
     if (!newLocation.trim()) return;
     setLocations(prev => [...prev, newLocation.trim()]);
     setNewLocation('');
-  }, [newLocation, setLocations]);
+    toast('Location added', 'success');
+  }, [newLocation, setLocations, toast]);
 
   const removeLocation = useCallback((name: string) => {
     setLocations(prev => prev.filter(l => l !== name));
@@ -64,7 +65,7 @@ function LocationsContent({ locations, setLocations, onSave }: { locations: stri
 }
 
 function DepartmentsContent() {
-  const { success, error: showError } = useToast();
+  const { toast } = useToast();
   const [depts, setDepts] = useState<{ id: string; name: string }[]>([]);
   const [newDept, setNewDept] = useState('');
   const [loading, setLoading] = useState(true);
@@ -75,7 +76,7 @@ function DepartmentsContent() {
       const data = await hrApi.getDepartments();
       const list = (data?.data || data || []).map((d: any) => ({ id: d.id, name: d.name || d.title || '' }));
       setDepts(list);
-    } catch { showError('Failed to load departments'); } finally { setLoading(false); }
+    } catch { toast('Failed to load departments', 'error'); } finally { setLoading(false); }
   };
 
   useEffect(() => { fetchDepts(); }, []);
@@ -85,17 +86,17 @@ function DepartmentsContent() {
     try {
       await hrApi.createDepartment({ name: newDept.trim() });
       setNewDept('');
-      success('Department added');
+      toast('Department added', 'success');
       await fetchDepts();
-    } catch { showError('Failed to add department'); }
+    } catch { toast('Failed to add department', 'error'); }
   };
 
   const removeDept = async (id: string) => {
     try {
       await hrApi.deleteDepartment(id);
-      success('Department removed');
+      toast('Department removed', 'success');
       await fetchDepts();
-    } catch { showError('Failed to remove department'); }
+    } catch { toast('Failed to remove department', 'error'); }
   };
 
   return (
@@ -110,7 +111,7 @@ function DepartmentsContent() {
 }
 
 function DesignationsContent() {
-  const { success, error: showError } = useToast();
+  const { toast } = useToast();
   const [designations, setDesignations] = useState<{ id: string; title: string }[]>([]);
   const [newDesig, setNewDesig] = useState('');
   const [loading, setLoading] = useState(true);
@@ -121,7 +122,7 @@ function DesignationsContent() {
       const data = await hrApi.getDesignations();
       const list = (data?.data || data || []).map((d: any) => ({ id: d.id, title: d.title || d.name || '' }));
       setDesignations(list);
-    } catch { showError('Failed to load designations'); } finally { setLoading(false); }
+    } catch { toast('Failed to load designations', 'error'); } finally { setLoading(false); }
   };
 
   useEffect(() => { fetchDesigs(); }, []);
@@ -131,17 +132,17 @@ function DesignationsContent() {
     try {
       await hrApi.createDesignation({ title: newDesig.trim() });
       setNewDesig('');
-      success('Designation added');
+      toast('Designation added', 'success');
       await fetchDesigs();
-    } catch { showError('Failed to add designation'); }
+    } catch { toast('Failed to add designation', 'error'); }
   };
 
   const removeDesig = async (id: string) => {
     try {
       await hrApi.deleteDesignation(id);
-      success('Designation removed');
+      toast('Designation removed', 'success');
       await fetchDesigs();
-    } catch { showError('Failed to remove designation'); }
+    } catch { toast('Failed to remove designation', 'error'); }
   };
 
   return (
@@ -156,7 +157,7 @@ function DesignationsContent() {
 }
 
 export function OrganisationSection() {
-  const { success, error: showError } = useToast();
+  const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'policy';
 
@@ -195,8 +196,8 @@ export function OrganisationSection() {
       for (const key of Object.keys(formStates)) hrSettings[key] = formStates[key];
       hrSettings.locations = locations;
       await orgApi.updateSettings({ hr: hrSettings });
-      success('Settings saved');
-    } catch { showError('Failed to save settings'); }
+      toast('Settings saved', 'success');
+    } catch { toast('Failed to save settings', 'error'); }
   };
 
   const saveTabSetting = async (key: string) => {
@@ -206,8 +207,8 @@ export function OrganisationSection() {
       hrSettings[key] = formStates[key];
       hrSettings.locations = locations;
       await orgApi.updateSettings({ hr: hrSettings });
-      success(`${TABS.find(t => t.key === key)?.label || key} saved`);
-    } catch { showError('Failed to save'); }
+      toast(`${TABS.find(t => t.key === key)?.label || key} saved`, 'success');
+    } catch { toast('Failed to save', 'error'); }
   };
 
   const updateForm = (key: string, state: FormTabState) => {

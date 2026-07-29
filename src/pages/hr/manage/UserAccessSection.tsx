@@ -38,13 +38,13 @@ function SpecificRoleContent({ checks, onToggle, onSave }: { checks: Record<stri
 }
 
 function AssignmentsContent({ assignments, onAdd, onRemove }: { assignments: { user: string; role: string }[]; onAdd: (user: string, role: string) => void; onRemove: (idx: number) => void }) {
-  const { success } = useToast();
+  const { toast } = useToast();
   const [newUser, setNewUser] = useState('');
   const [newRole, setNewRole] = useState('User');
   return (
     <div className="bg-surface rounded-2xl border border-border-custom shadow-sm p-6 space-y-5">
       <div className="flex items-center justify-between"><h2 className="text-base font-semibold text-ink-900">Role Assignments</h2></div>
-      <div className="flex gap-2"><input value={newUser} onChange={e => setNewUser(e.target.value)} className="flex-1 px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" placeholder="User name" /><select value={newRole} onChange={e => setNewRole(e.target.value)} className="px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900"><option>Admin</option><option>Manager</option><option>HR</option><option>User</option></select><button onClick={() => { if (!newUser.trim()) return; onAdd(newUser.trim(), newRole); setNewUser(''); success('Assignment added'); }} className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary-hover transition-all shadow-sm"><UserPlus className="w-3.5 h-3.5" /> Assign</button></div>
+      <div className="flex gap-2"><input value={newUser} onChange={e => setNewUser(e.target.value)} className="flex-1 px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" placeholder="User name" /><select value={newRole} onChange={e => setNewRole(e.target.value)} className="px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900"><option>Admin</option><option>Manager</option><option>HR</option><option>User</option></select><button onClick={() => { if (!newUser.trim()) return; onAdd(newUser.trim(), newRole); setNewUser(''); toast('Assignment added', 'success'); }} className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary-hover transition-all shadow-sm"><UserPlus className="w-3.5 h-3.5" /> Assign</button></div>
       <div className="overflow-x-auto"><table className="w-full"><thead><tr className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider border-b border-border-custom"><th className="px-3 py-2 text-left">User</th><th className="px-3 py-2 text-left">Role</th><th className="px-3 py-2 text-right">Actions</th></tr></thead><tbody className="divide-y divide-border-custom">{assignments.map((a, i) => (
         <tr key={i} className="hover:bg-ink-50 transition-colors"><td className="px-3 py-2.5 text-sm font-medium text-ink-900">{a.user}</td><td className="px-3 py-2.5 text-sm text-ink-600">{a.role}</td><td className="px-3 py-2.5 text-right"><button onClick={() => onRemove(i)} className="w-7 h-7 inline-flex items-center justify-center rounded-lg text-ink-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button></td></tr>
       ))}</tbody></table></div>
@@ -78,7 +78,7 @@ function AdminContent({ superAdmin, onToggle, onSave }: { superAdmin: boolean; o
 export function UserAccessSection() {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'general';
-  const { success, error: showError } = useToast();
+  const { toast } = useToast();
 
   const [toggles, setToggles] = useState<Record<string, boolean>>({ Admin: true, Manager: true, HR: true, User: true });
   const [specificChecks, setSpecificChecks] = useState<Record<string, Record<string, boolean>>>({});
@@ -111,8 +111,8 @@ export function UserAccessSection() {
   const saveAll = async () => {
     try {
       await orgApi.updateSettings({ accessControl: { toggles, specificChecks, assignments, permChecks, superAdmin } });
-      success('Access control settings saved');
-    } catch { showError('Failed to save settings'); }
+      toast('Access control settings saved', 'success');
+    } catch { toast('Failed to save settings', 'error'); }
   };
 
   if (!loaded) return <div className="p-6 text-sm text-ink-400">Loading...</div>;
