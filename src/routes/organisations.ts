@@ -46,7 +46,7 @@ const updateOrgSchema = z.object({
 const inviteUserSchema = z.object({
   email: z.string().email('Invalid email address format.'),
   fullName: z.string().min(1, 'Full name is required.'),
-  role: z.enum(['owner', 'accountant', 'staff'])
+  role: z.enum(['owner', 'accountant', 'staff', 'admin', 'manager', 'hr'])
 });
 
 const updateUserSchema = z.object({

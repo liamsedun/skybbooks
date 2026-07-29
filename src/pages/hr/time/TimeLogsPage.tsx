@@ -23,7 +23,6 @@ export function TimeLogsPage() {
   const ps = useHrPageState({ data, initialSortKey: 'date', initialSortDirection: 'desc', searchKeys: ['employee', 'project'], pageSize: 10 });
   const { filtered, paginated } = ps;
   useEffect(() => { loadData(); }, []);
-  useEffect(() => { ps.setData(data); }, [data]);
   const loadData = async () => {
     setLoading(true);
     try { const result = await hrApi.getAttendance({}); setData(Array.isArray(result) ? result : []); }

@@ -20,7 +20,6 @@ export function OpsApprovalsPage() {
   const [loading, setLoading] = useState(true);
   const ps = useHrPageState({ data, initialSortKey: 'requester', searchKeys: ['type', 'requester'], pageSize: 10 });
   useEffect(() => { loadData(); }, []);
-  useEffect(() => { ps.setData(data); }, [data]);
   const loadData = async () => {
     setLoading(true);
     try { const result = await hrApi.getApprovalRequests({}); setData(Array.isArray(result) ? result : []); }
