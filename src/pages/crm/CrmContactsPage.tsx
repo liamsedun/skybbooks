@@ -38,7 +38,7 @@ export function CrmContactsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-ink-900">CRM Contacts</h1>
+
         <div className="relative flex-1 max-w-xs ml-auto">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-400 pointer-events-none" />
           <input type="text" placeholder="Search by name, email, city..." value={search}

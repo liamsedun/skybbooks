@@ -162,9 +162,7 @@ export function DealsTable() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-ink-900">
-          {contactIdFilter ? 'Deals for Contact' : 'All Deals'}
-        </h1>
+
         <div className="flex items-center gap-2">
           <button
             onClick={() => navigate('/app/crm/pipeline')}

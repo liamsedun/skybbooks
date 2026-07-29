@@ -88,8 +88,7 @@ export function CrmDashboard() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-ink-900">CRM Dashboard</h1>
-          <p className="text-sm text-ink-400 mt-0.5">Track your sales pipeline, deals, and team activities</p>
+          <p className="text-sm text-ink-400">Track your sales pipeline, deals, and team activities</p>
         </div>
       </div>
 

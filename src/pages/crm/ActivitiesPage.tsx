@@ -237,7 +237,7 @@ export function ActivitiesPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-ink-900">Activities</h1>
+
         <button onClick={openCreate}
           className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary-hover transition-colors shadow-sm">
           <Plus className="w-4 h-4" /> New Activity
