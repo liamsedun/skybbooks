@@ -202,10 +202,10 @@ export function AppLayout({ currentView, onViewChange, children }: AppLayoutProp
       { name: 'All Projects', id: 'projects', icon: Briefcase },
     ]},
     { title: 'CRM', icon: Building2, items: [
-      { name: 'Dashboard', id: 'crm_dashboard', icon: LayoutDashboard },
-      { name: 'Pipeline', id: 'crm_pipeline', icon: Kanban },
-      { name: 'Deals', id: 'crm_deals', icon: Target },
-      { name: 'Contacts', id: 'crm_contacts', icon: Users },
+      { name: 'CRM Dashboard', id: 'crm_dashboard', icon: LayoutDashboard },
+      { name: 'Deals Pipeline', id: 'crm_pipeline', icon: Kanban },
+      { name: 'All Deals', id: 'crm_deals', icon: Target },
+      { name: 'CRM Contacts', id: 'crm_contacts', icon: Users },
       { name: 'Activities', id: 'crm_activities', icon: CheckSquare },
     ]},
     { title: 'PURCHASES', icon: ShoppingBag, items: [

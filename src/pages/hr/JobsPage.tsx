@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Briefcase, Globe, MapPin, Users, Plus, Download, FileText, Edit3, Trash2, Eye } from 'lucide-react';
 import { useHrPageState } from '../../hooks/useHrPageState';
 import { HrPageShell } from '../../components/hr/HrPageShell';
@@ -10,34 +10,32 @@ import { HrConfirmDialog } from '../../components/hr/HrConfirmDialog';
 import { HrViewDrawer } from '../../components/hr/HrViewDrawer';
 import { exportToCsv, exportToPdf, statusColor, formatDate } from '../../lib/hrExport';
 import { useToast } from '../../contexts/ToastContext';
+import { hrApi } from '../../lib/api';
 
 interface JobPosting {
   id: string; title: string; department: string; location: string;
   type: string; applicants: number; postedDate: string; status: string;
 }
 
-const MOCK: JobPosting[] = [
-  { id: 'job-1', title: 'Senior Frontend Developer', department: 'Engineering', location: 'Lagos, NG', type: 'Full-time', applicants: 24, postedDate: '2026-07-01', status: 'open' },
-  { id: 'job-2', title: 'Backend Engineer', department: 'Engineering', location: 'Abuja, NG', type: 'Full-time', applicants: 18, postedDate: '2026-07-05', status: 'open' },
-  { id: 'job-3', title: 'HR Manager', department: 'Human Resources', location: 'Lagos, NG', type: 'Full-time', applicants: 12, postedDate: '2026-06-20', status: 'closed' },
-  { id: 'job-4', title: 'Product Designer', department: 'Design', location: 'Remote', type: 'Contract', applicants: 31, postedDate: '2026-07-10', status: 'open' },
-  { id: 'job-5', title: 'DevOps Engineer', department: 'Engineering', location: 'Lagos, NG', type: 'Full-time', applicants: 9, postedDate: '2026-07-15', status: 'draft' },
-  { id: 'job-6', title: 'Marketing Lead', department: 'Marketing', location: 'Remote', type: 'Full-time', applicants: 15, postedDate: '2026-06-01', status: 'closed' },
-  { id: 'job-7', title: 'Data Analyst', department: 'Analytics', location: 'Lagos, NG', type: 'Full-time', applicants: 22, postedDate: '2026-07-18', status: 'open' },
-  { id: 'job-8', title: 'Customer Success Manager', department: 'Support', location: 'Abuja, NG', type: 'Full-time', applicants: 7, postedDate: '2026-07-20', status: 'draft' },
-  { id: 'job-9', title: 'UI/UX Intern', department: 'Design', location: 'Lagos, NG', type: 'Internship', applicants: 45, postedDate: '2026-06-15', status: 'closed' },
-  { id: 'job-10', title: 'Technical Writer', department: 'Engineering', location: 'Remote', type: 'Contract', applicants: 11, postedDate: '2026-07-22', status: 'open' },
-];
-
 export function JobsPage() {
-  const { success: showSuccess } = useToast();
-  const ps = useHrPageState({ data: MOCK, initialSortKey: 'title', searchKeys: ['title', 'department', 'location'], pageSize: 10 });
+  const { success: showSuccess, error: showError } = useToast();
+  const [data, setData] = useState<JobPosting[]>([]);
+  const [loading, setLoading] = useState(true);
+  const ps = useHrPageState({ data, initialSortKey: 'title', searchKeys: ['title', 'department', 'location'], pageSize: 10 });
+  useEffect(() => { loadData(); }, []);
+  useEffect(() => { ps.setData(data); }, [data]);
+  const loadData = async () => {
+    setLoading(true);
+    try { const result = await hrApi.getJobOpenings({}); setData(Array.isArray(result) ? result : []); }
+    catch (e: any) { showError(e?.message || 'Failed to load'); }
+    finally { setLoading(false); }
+  };
   const stats = useMemo(() => [
-    { label: 'Total', value: MOCK.length, icon: <Briefcase className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
-    { label: 'Open', value: MOCK.filter(i => i.status === 'open').length, icon: <Globe className="w-4 h-4" />, color: 'emerald' as const, active: ps.statusFilter === 'open', onClick: () => ps.setStatusFilter('open') },
-    { label: 'Closed', value: MOCK.filter(i => i.status === 'closed').length, icon: <MapPin className="w-4 h-4" />, color: 'rose' as const, active: ps.statusFilter === 'closed', onClick: () => ps.setStatusFilter('closed') },
-    { label: 'Draft', value: MOCK.filter(i => i.status === 'draft').length, icon: <Users className="w-4 h-4" />, color: 'amber' as const, active: ps.statusFilter === 'draft', onClick: () => ps.setStatusFilter('draft') },
-  ], [ps.statusFilter]);
+    { label: 'Total', value: data.length, icon: <Briefcase className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
+    { label: 'Open', value: data.filter(i => i.status === 'open').length, icon: <Globe className="w-4 h-4" />, color: 'emerald' as const, active: ps.statusFilter === 'open', onClick: () => ps.setStatusFilter('open') },
+    { label: 'Closed', value: data.filter(i => i.status === 'closed').length, icon: <MapPin className="w-4 h-4" />, color: 'rose' as const, active: ps.statusFilter === 'closed', onClick: () => ps.setStatusFilter('closed') },
+    { label: 'Draft', value: data.filter(i => i.status === 'draft').length, icon: <Users className="w-4 h-4" />, color: 'amber' as const, active: ps.statusFilter === 'draft', onClick: () => ps.setStatusFilter('draft') },
+  ], [data, ps.statusFilter]);
   const columns: Column<JobPosting>[] = [
     { key: 'title', label: 'Title', sortable: true, render: (i) => <span className="font-medium text-ink-900">{i.title}</span> },
     { key: 'department', label: 'Department', sortable: true },

@@ -1,4 +1,4 @@
-﻿import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Receipt, ShoppingBag, Car, Utensils, Plane, Plus, Download, FileText, Edit3, Trash2, Eye } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -10,24 +10,12 @@ import { HrConfirmDialog } from '../../../components/hr/HrConfirmDialog';
 import { HrViewDrawer } from '../../../components/hr/HrViewDrawer';
 import { exportToCsv, exportToPdf, statusColor, formatDate } from '../../../lib/hrExport';
 import { useToast } from '../../../contexts/ToastContext';
+import { hrApi } from '../../../lib/api';
 
 interface ExpenseReport {
   id: string; employeeName: string; category: string;
   amount: number; submittedDate: string; status: string;
 }
-
-const MOCK: ExpenseReport[] = [
-  { id: 'exp-1', employeeName: 'Alice Johnson', category: 'Travel', amount: 450000, submittedDate: '2026-07-28', status: 'approved' },
-  { id: 'exp-2', employeeName: 'Bob Smith', category: 'Meals', amount: 85000, submittedDate: '2026-07-30', status: 'pending' },
-  { id: 'exp-3', employeeName: 'Carol White', category: 'Office Supplies', amount: 35000, submittedDate: '2026-08-01', status: 'approved' },
-  { id: 'exp-4', employeeName: 'David Lee', category: 'Transportation', amount: 120000, submittedDate: '2026-07-25', status: 'rejected' },
-  { id: 'exp-5', employeeName: 'Eve Brown', category: 'Accommodation', amount: 380000, submittedDate: '2026-08-02', status: 'pending' },
-  { id: 'exp-6', employeeName: 'Frank Wilson', category: 'Travel', amount: 250000, submittedDate: '2026-07-20', status: 'approved' },
-  { id: 'exp-7', employeeName: 'Grace Kim', category: 'Meals', amount: 65000, submittedDate: '2026-08-03', status: 'draft' },
-  { id: 'exp-8', employeeName: 'Henry Davis', category: 'Equipment', amount: 750000, submittedDate: '2026-07-15', status: 'approved' },
-  { id: 'exp-9', employeeName: 'Ivy Chen', category: 'Transportation', amount: 95000, submittedDate: '2026-08-04', status: 'pending' },
-  { id: 'exp-10', employeeName: 'Jack Taylor', category: 'Accommodation', amount: 520000, submittedDate: '2026-07-22', status: 'rejected' },
-];
 
 const categoryIcon = (cat: string) => {
   switch (cat) {
@@ -39,17 +27,27 @@ const categoryIcon = (cat: string) => {
   }
 };
 
-const fmtAmount = (n: number) => `â‚¦${(n / 100).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+const fmtAmount = (n: number) => `₦${(n / 100).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
 
 export function ExpenseReportsPage() {
-  const { success: showSuccess } = useToast();
-  const ps = useHrPageState({ data: MOCK, initialSortKey: 'employeeName', searchKeys: ['employeeName', 'category'], pageSize: 10 });
+  const { success: showSuccess, error: showError } = useToast();
+  const [data, setData] = useState<ExpenseReport[]>([]);
+  const [loading, setLoading] = useState(true);
+  const ps = useHrPageState({ data, initialSortKey: 'employeeName', searchKeys: ['employeeName', 'category'], pageSize: 10 });
+  useEffect(() => { loadData(); }, []);
+  useEffect(() => { ps.setData(data); }, [data]);
+  const loadData = async () => {
+    setLoading(true);
+    try { const result = await hrApi.getExpenseReports({}); setData(Array.isArray(result) ? result : []); }
+    catch (e: any) { showError(e?.message || 'Failed to load'); }
+    finally { setLoading(false); }
+  };
   const stats = useMemo(() => [
-    { label: 'Total', value: MOCK.length, icon: <Receipt className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
-    { label: 'Approved', value: MOCK.filter(i => i.status === 'approved').length, icon: <ShoppingBag className="w-4 h-4" />, color: 'emerald' as const, active: ps.statusFilter === 'approved', onClick: () => ps.setStatusFilter('approved') },
-    { label: 'Pending', value: MOCK.filter(i => i.status === 'pending').length, icon: <Car className="w-4 h-4" />, color: 'amber' as const, active: ps.statusFilter === 'pending', onClick: () => ps.setStatusFilter('pending') },
-    { label: 'Draft', value: MOCK.filter(i => i.status === 'draft').length, icon: <Utensils className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'draft', onClick: () => ps.setStatusFilter('draft') },
-  ], [ps.statusFilter]);
+    { label: 'Total', value: data.length, icon: <Receipt className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
+    { label: 'Approved', value: data.filter(i => i.status === 'approved').length, icon: <ShoppingBag className="w-4 h-4" />, color: 'emerald' as const, active: ps.statusFilter === 'approved', onClick: () => ps.setStatusFilter('approved') },
+    { label: 'Pending', value: data.filter(i => i.status === 'pending').length, icon: <Car className="w-4 h-4" />, color: 'amber' as const, active: ps.statusFilter === 'pending', onClick: () => ps.setStatusFilter('pending') },
+    { label: 'Draft', value: data.filter(i => i.status === 'draft').length, icon: <Utensils className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'draft', onClick: () => ps.setStatusFilter('draft') },
+  ], [data, ps.statusFilter]);
   const columns: Column<ExpenseReport>[] = [
     { key: 'employeeName', label: 'Employee', sortable: true, render: (i) => <span className="font-medium text-ink-900">{i.employeeName}</span> },
     { key: 'category', label: 'Category', sortable: true, render: (i) => (
@@ -90,18 +88,18 @@ export function ExpenseReportsPage() {
         page={ps.page} totalPages={ps.totalPages} onPageChange={ps.setPage} pageSize={ps.pageSize} totalItems={ps.filtered.length}
         from={(ps.page - 1) * ps.pageSize + 1} to={Math.min(ps.page * ps.pageSize, ps.filtered.length)}
         emptyMessage="No expense reports" emptyAction={<button onClick={ps.openAddModal} className="text-xs font-medium text-primary">Add</button>} />
-      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Expense' : 'Add Expense'} onSubmit={(e) => { e.preventDefault(); showSuccess(ps.editingId ? 'Updated' : 'Created'); ps.closeModal(); }}>
+      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Expense' : 'Add Expense'} onSubmit={(e) => { e.preventDefault(); showError('Read-only view'); ps.closeModal(); }}>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Employee</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" placeholder="e.g. Alice Johnson" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Category</label><select className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"><option>Travel</option><option>Meals</option><option>Office Supplies</option><option>Transportation</option><option>Accommodation</option><option>Equipment</option></select></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Amount (NGN)</label><input type="number" className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" placeholder="e.g. 450000" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Status</label><select className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"><option value="draft">Draft</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select></div>
       </HrFormModal>
-      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showSuccess('Deleted'); ps.closeConfirmDelete(); }} title="Delete Expense" message="Are you sure you want to delete this expense report?" confirmLabel="Delete" variant="danger" />
+      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showError('Read-only view'); ps.closeConfirmDelete(); }} title="Delete Expense" message="Are you sure you want to delete this expense report?" confirmLabel="Delete" variant="danger" />
       <HrViewDrawer open={ps.viewDrawerOpen} onClose={ps.closeViewDrawer} title="Expense Details">
-        {ps.viewingId && (() => { const e = MOCK.find(i => i.id === ps.viewingId)!; return (
+        {ps.viewingId && (() => { const e = data.find(i => i.id === ps.viewingId)!; return (
           <div className="space-y-4">
-            <div className="flex items-center gap-3 pb-4 border-b border-border-custom"><div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950/30 text-rose-600 flex items-center justify-center"><Receipt className="w-5 h-5" /></div><div><p className="text-sm font-semibold text-ink-900">{e.employeeName}</p><p className="text-xs text-ink-400">{e.category} · {formatDate(e.submittedDate)}</p></div></div>
-            <div className="grid grid-cols-2 gap-3"><div className="p-3 bg-ink-50 dark:bg-ink-800/50 rounded-xl"><p className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider">Category</p><p className="text-sm text-ink-700 mt-1 flex items-center gap-1">{categoryIcon(e.category)}{e.category}</p></div><div className="p-3 bg-ink-50 dark:bg-ink-800/50 rounded-xl"><p className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider">Amount</p><p className="text-sm font-semibold text-ink-900 mt-1">{'₦'}{(e.amount / 100).toLocaleString('en-US', { minimumFractionDigits: 2 })}</p></div></div>
+            <div className="flex items-center gap-3 pb-4 border-b border-border-custom"><div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950/30 text-rose-600 flex items-center justify-center"><Receipt className="w-5 h-5" /></div><div><p className="text-sm font-semibold text-ink-900">{e.employeeName}</p><p className="text-xs text-ink-400">{e.category} � {formatDate(e.submittedDate)}</p></div></div>
+            <div className="grid grid-cols-2 gap-3"><div className="p-3 bg-ink-50 dark:bg-ink-800/50 rounded-xl"><p className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider">Category</p><p className="text-sm text-ink-700 mt-1 flex items-center gap-1">{categoryIcon(e.category)}{e.category}</p></div><div className="p-3 bg-ink-50 dark:bg-ink-800/50 rounded-xl"><p className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider">Amount</p><p className="text-sm font-semibold text-ink-900 mt-1">{'?'}{(e.amount / 100).toLocaleString('en-US', { minimumFractionDigits: 2 })}</p></div></div>
             <div><p className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider">Status</p><span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border mt-1 ${statusColor(e.status)}`}>{e.status}</span></div>
           </div>
         );})()}
@@ -109,5 +107,6 @@ export function ExpenseReportsPage() {
     </HrPageShell>
   );
 }
+
 
 

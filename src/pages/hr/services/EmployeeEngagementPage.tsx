@@ -1,4 +1,4 @@
-﻿import { useMemo } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { Heart, CalendarCheck, Clock, CheckCircle2, Plus, Download, FileText, Upload, Edit3, Trash2, Eye, Users } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -21,27 +21,17 @@ interface Activity {
   status: 'planned' | 'ongoing' | 'completed';
 }
 
-const MOCK: Activity[] = [
-  { id: '1', title: 'Employee Satisfaction Survey', type: 'survey', department: 'All Departments', date: '2026-02-15', participants: 45, status: 'completed' },
-  { id: '2', title: 'Team Building Retreat', type: 'event', department: 'Engineering', date: '2026-03-10', participants: 30, status: 'completed' },
-  { id: '3', title: 'Leadership Workshop', type: 'workshop', department: 'Management', date: '2026-04-01', participants: 12, status: 'ongoing' },
-  { id: '4', title: 'Quarterly Town Hall', type: 'event', department: 'All Departments', date: '2026-04-15', participants: 120, status: 'planned' },
-  { id: '5', title: 'Diversity & Inclusion Survey', type: 'survey', department: 'All Departments', date: '2026-05-01', participants: 0, status: 'planned' },
-  { id: '6', title: 'Mental Health Awareness Session', type: 'workshop', department: 'HR', date: '2026-05-10', participants: 25, status: 'ongoing' },
-  { id: '7', title: 'Innovation Hackathon', type: 'event', department: 'Product', date: '2026-06-01', participants: 40, status: 'planned' },
-  { id: '8', title: 'Performance Feedback Training', type: 'workshop', department: 'All Departments', date: '2026-03-20', participants: 55, status: 'completed' },
-];
-
 export function EmployeeEngagementPage() {
-  const { success: showSuccess } = useToast();
-  const ps = useHrPageState({ data: MOCK, initialSortKey: 'title', searchKeys: ['title', 'type', 'department'], pageSize: 10 });
+  const { success: showSuccess, error: showError } = useToast();
+  const [data] = useState<Activity[]>([]);
+  const ps = useHrPageState({ data, initialSortKey: 'title', searchKeys: ['title', 'type', 'department'], pageSize: 10 });
 
   const stats = useMemo(() => [
-    { label: 'Total', value: MOCK.length, icon: <Heart className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
-    { label: 'Planned', value: MOCK.filter(i => i.status === 'planned').length, icon: <CalendarCheck className="w-4 h-4" />, color: 'purple' as const, active: ps.statusFilter === 'planned', onClick: () => ps.setStatusFilter('planned') },
-    { label: 'Ongoing', value: MOCK.filter(i => i.status === 'ongoing').length, icon: <Clock className="w-4 h-4" />, color: 'amber' as const, active: ps.statusFilter === 'ongoing', onClick: () => ps.setStatusFilter('ongoing') },
-    { label: 'Completed', value: MOCK.filter(i => i.status === 'completed').length, icon: <CheckCircle2 className="w-4 h-4" />, color: 'emerald' as const, active: ps.statusFilter === 'completed', onClick: () => ps.setStatusFilter('completed') },
-  ], [ps.statusFilter]);
+    { label: 'Total', value: data.length, icon: <Heart className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
+    { label: 'Planned', value: data.filter(i => i.status === 'planned').length, icon: <CalendarCheck className="w-4 h-4" />, color: 'purple' as const, active: ps.statusFilter === 'planned', onClick: () => ps.setStatusFilter('planned') },
+    { label: 'Ongoing', value: data.filter(i => i.status === 'ongoing').length, icon: <Clock className="w-4 h-4" />, color: 'amber' as const, active: ps.statusFilter === 'ongoing', onClick: () => ps.setStatusFilter('ongoing') },
+    { label: 'Completed', value: data.filter(i => i.status === 'completed').length, icon: <CheckCircle2 className="w-4 h-4" />, color: 'emerald' as const, active: ps.statusFilter === 'completed', onClick: () => ps.setStatusFilter('completed') },
+  ], [data, ps.statusFilter]);
 
   const columns: Column<Activity>[] = [
     { key: 'title', label: 'Activity', sortable: true, render: (i) => <span className="font-medium text-ink-900">{i.title}</span> },
@@ -78,7 +68,7 @@ export function EmployeeEngagementPage() {
       {ps.selectedIds.length > 0 && (
         <div className="flex items-center justify-between p-3 bg-primary/5 dark:bg-primary/10 border border-primary/20 rounded-xl">
           <span className="text-sm text-ink-600">{ps.selectedIds.length} selected</span>
-          <button onClick={() => { showSuccess('Selected activities deleted'); ps.setSelectedIds([]); }} className="text-xs font-medium text-rose-600 hover:text-rose-700 transition-colors">Delete Selected</button>
+          <button onClick={() => { showError('Read-only view'); ps.setSelectedIds([]); }} className="text-xs font-medium text-rose-600 hover:text-rose-700 transition-colors">Delete Selected</button>
         </div>
       )}
       <HrDataTable columns={columns} data={ps.paginated} keyExtractor={i => i.id}
@@ -87,16 +77,16 @@ export function EmployeeEngagementPage() {
         page={ps.page} totalPages={ps.totalPages} onPageChange={ps.setPage} pageSize={ps.pageSize} totalItems={ps.filtered.length}
         from={(ps.page - 1) * ps.pageSize + 1} to={Math.min(ps.page * ps.pageSize, ps.filtered.length)}
         emptyMessage="No activities found" emptyAction={<button onClick={ps.openAddModal} className="text-xs font-medium text-primary hover:text-primary-hover">Add your first activity</button>} />
-      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Activity' : 'Add Activity'} onSubmit={(e) => { e.preventDefault(); showSuccess(ps.editingId ? 'Activity updated' : 'Activity created'); ps.closeModal(); }}>
+      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Activity' : 'Add Activity'} onSubmit={(e) => { e.preventDefault(); showError('Read-only view'); ps.closeModal(); }}>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Title</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Type</label><select className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"><option>survey</option><option>event</option><option>workshop</option></select></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Department</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Date</label><input type="date" className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
       </HrFormModal>
-      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showSuccess('Activity deleted'); ps.closeConfirmDelete(); }} title="Delete Activity" message="Are you sure you want to delete this engagement activity? This action cannot be undone." confirmLabel="Delete" variant="danger" />
+      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showError('Read-only view'); ps.closeConfirmDelete(); }} title="Delete Activity" message="Are you sure you want to delete this engagement activity? This action cannot be undone." confirmLabel="Delete" variant="danger" />
       <HrViewDrawer open={ps.viewDrawerOpen} onClose={ps.closeViewDrawer} title="Activity Details">
         {ps.viewingId && (() => {
-          const item = MOCK.find(i => i.id === ps.viewingId);
+          const item = data.find(i => i.id === ps.viewingId);
           if (!item) return null;
           return (
             <div className="space-y-4 text-sm">
@@ -112,7 +102,7 @@ export function EmployeeEngagementPage() {
           );
         })()}
       </HrViewDrawer>
-      <HrFormModal open={ps.importOpen} onClose={() => ps.setImportOpen(false)} title="Import Activities" onSubmit={(e) => { e.preventDefault(); showSuccess('Activities imported'); ps.setImportOpen(false); }} submitLabel="Import">
+      <HrFormModal open={ps.importOpen} onClose={() => ps.setImportOpen(false)} title="Import Activities" onSubmit={(e) => { e.preventDefault(); showError('Read-only view'); ps.setImportOpen(false); }} submitLabel="Import">
         <p className="text-sm text-ink-400 mb-3">Upload a CSV file to import engagement activities.</p>
         <input type="file" accept=".csv" className="block w-full text-sm text-ink-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 transition-colors" />
       </HrFormModal>

@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Users, UserCheck, UserX, Plus, Download, FileText, Edit3, Trash2, Eye } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -10,6 +10,7 @@ import { HrConfirmDialog } from '../../../components/hr/HrConfirmDialog';
 import { HrViewDrawer } from '../../../components/hr/HrViewDrawer';
 import { exportToCsv, exportToPdf, statusColor } from '../../../lib/hrExport';
 import { useToast } from '../../../contexts/ToastContext';
+import { hrApi } from '../../../lib/api';
 
 interface EmployeeProfile {
   id: string;
@@ -21,24 +22,35 @@ interface EmployeeProfile {
   status: string;
 }
 
-const INITIAL: EmployeeProfile[] = [
-  { id: '1', name: 'Alice Johnson', department: 'Engineering', designation: 'Senior Developer', email: 'alice@company.com', phone: '+234 801 234 5678', status: 'active' },
-  { id: '2', name: 'Bob Smith', department: 'Marketing', designation: 'Marketing Lead', email: 'bob@company.com', phone: '+234 802 345 6789', status: 'active' },
-  { id: '3', name: 'Carol White', department: 'Human Resources', designation: 'HR Manager', email: 'carol@company.com', phone: '+234 803 456 7890', status: 'active' },
-  { id: '4', name: 'David Brown', department: 'Finance', designation: 'Accountant', email: 'david@company.com', phone: '+234 804 567 8901', status: 'active' },
-  { id: '5', name: 'Eve Davis', department: 'Engineering', designation: 'Frontend Developer', email: 'eve@company.com', phone: '+234 805 678 9012', status: 'inactive' },
-  { id: '6', name: 'Frank Miller', department: 'Operations', designation: 'Operations Manager', email: 'frank@company.com', phone: '+234 806 789 0123', status: 'active' },
-  { id: '7', name: 'Grace Wilson', department: 'Sales', designation: 'Sales Executive', email: 'grace@company.com', phone: '+234 807 890 1234', status: 'active' },
-  { id: '8', name: 'Hank Moore', department: 'Engineering', designation: 'Backend Developer', email: 'hank@company.com', phone: '+234 808 901 2345', status: 'inactive' },
-  { id: '9', name: 'Ivy Taylor', department: 'Human Resources', designation: 'Recruiter', email: 'ivy@company.com', phone: '+234 809 012 3456', status: 'active' },
-  { id: '10', name: 'Jack Anderson', department: 'Finance', designation: 'CFO', email: 'jack@company.com', phone: '+234 810 123 4567', status: 'inactive' },
-];
-
 export function EmployeeProfilesPage() {
-  const { success: showSuccess } = useToast();
-  const [profiles, setProfiles] = useState<EmployeeProfile[]>(INITIAL);
+  const { success: showSuccess, error: showError } = useToast();
+  const [profiles, setProfiles] = useState<EmployeeProfile[]>([]);
+  const [loading, setLoading] = useState(true);
   const ps = useHrPageState({ data: profiles, initialSortKey: 'name', searchKeys: ['name', 'email', 'department', 'designation'], pageSize: 10 });
-  const formRef = useRef<Record<string, string | null>>({ name: null, email: null, department: null, designation: null, phone: null });
+  const [formData, setFormData] = useState({ name: '', email: '', department: '', designation: '', phone: '' });
+
+  const fetchProfiles = async () => {
+    try {
+      setLoading(true);
+      const data = await hrApi.getEmployees();
+      const list: EmployeeProfile[] = (Array.isArray(data) ? data : []).map((e: any) => ({
+        id: e.id,
+        name: [e.firstName, e.lastName].filter(Boolean).join(' ') || '',
+        department: e.departmentName || '',
+        designation: e.designationTitle || '',
+        email: e.email || '',
+        phone: e.phone || '',
+        status: e.isActive ? 'active' : 'inactive',
+      }));
+      setProfiles(list);
+    } catch (err) {
+      showError('Failed to load employee profiles');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchProfiles(); }, []);
 
   const stats = useMemo(() => [
     { label: 'Total Employees', value: profiles.length, icon: <Users className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
@@ -46,37 +58,65 @@ export function EmployeeProfilesPage() {
     { label: 'Inactive', value: profiles.filter(i => i.status === 'inactive').length, icon: <UserX className="w-4 h-4" />, color: 'amber' as const, active: ps.statusFilter === 'inactive', onClick: () => ps.setStatusFilter('inactive') },
   ], [profiles, ps.statusFilter]);
 
-  const handleDelete = (id: string) => {
-    setProfiles(prev => prev.filter(p => p.id !== id));
-    ps.closeConfirmDelete();
-    showSuccess('Profile deleted');
-  };
-
-  const handleBatchDelete = () => {
-    setProfiles(prev => prev.filter(p => !ps.selectedIds.includes(p.id)));
-    ps.setSelectedIds([]);
-    showSuccess('Profiles deleted');
-  };
-
-  const handleFormSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const el = e.currentTarget as HTMLFormElement;
-    const data = new FormData(el);
-    const name = (data.get('name') as string) || '';
-    const email = (data.get('email') as string) || '';
-    const department = (data.get('department') as string) || '';
-    const designation = (data.get('designation') as string) || '';
-    const phone = (data.get('phone') as string) || '';
-
-    if (ps.editingId) {
-      setProfiles(prev => prev.map(p => p.id === ps.editingId ? { ...p, name, email, department, designation, phone } : p));
-      showSuccess('Employee updated');
-    } else {
-      const newId = String(Date.now());
-      setProfiles(prev => [...prev, { id: newId, name, email, department, designation, phone, status: 'active' }]);
-      showSuccess('Employee created');
+  const handleDelete = async (id: string) => {
+    try {
+      await hrApi.deleteEmployee(id);
+      setProfiles(prev => prev.filter(p => p.id !== id));
+      ps.closeConfirmDelete();
+      showSuccess('Profile deleted');
+    } catch (err) {
+      showError('Failed to delete profile');
     }
-    ps.closeModal();
+  };
+
+  const handleBatchDelete = async () => {
+    try {
+      for (const id of ps.selectedIds) {
+        await hrApi.deleteEmployee(id);
+      }
+      setProfiles(prev => prev.filter(p => !ps.selectedIds.includes(p.id)));
+      ps.setSelectedIds([]);
+      showSuccess('Profiles deleted');
+    } catch (err) {
+      showError('Failed to delete some profiles');
+    }
+  };
+
+  const openAddForm = () => {
+    setFormData({ name: '', email: '', department: '', designation: '', phone: '' });
+    ps.openAddModal();
+  };
+
+  const openEditForm = (id: string) => {
+    const e = profiles.find(p => p.id === id);
+    if (e) {
+      setFormData({ name: e.name, email: e.email, department: e.department, designation: e.designation, phone: e.phone });
+    }
+    ps.openEditModal(id);
+  };
+
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const nameParts = formData.name.split(' ').filter(Boolean);
+      const payload = {
+        firstName: nameParts[0] || '',
+        lastName: nameParts.slice(1).join(' ') || '',
+        email: formData.email,
+        phone: formData.phone,
+      };
+      if (ps.editingId) {
+        await hrApi.updateEmployee(ps.editingId, payload);
+        showSuccess('Employee updated');
+      } else {
+        await hrApi.createEmployee(payload);
+        showSuccess('Employee created');
+      }
+      ps.closeModal();
+      await fetchProfiles();
+    } catch (err: any) {
+      showError(err?.response?.data?.message || 'Failed to save employee');
+    }
   };
 
   const columns: Column<EmployeeProfile>[] = [
@@ -88,7 +128,7 @@ export function EmployeeProfilesPage() {
     { key: 'actions', label: '', render: (i) => (
       <div className="flex items-center justify-end gap-1" onClick={e => e.stopPropagation()}>
         <button onClick={() => ps.openViewDrawer(i.id)} className="w-7 h-7 flex items-center justify-center rounded-lg text-ink-400 hover:text-primary hover:bg-primary/10 transition-colors" title="View"><Eye className="w-3.5 h-3.5" /></button>
-        <button onClick={() => ps.openEditModal(i.id)} className="w-7 h-7 flex items-center justify-center rounded-lg text-ink-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors" title="Edit"><Edit3 className="w-3.5 h-3.5" /></button>
+        <button onClick={() => openEditForm(i.id)} className="w-7 h-7 flex items-center justify-center rounded-lg text-ink-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors" title="Edit"><Edit3 className="w-3.5 h-3.5" /></button>
         <button onClick={() => ps.openConfirmDelete(i.id)} className="w-7 h-7 flex items-center justify-center rounded-lg text-ink-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
       </div>
     ), className: 'text-right' },
@@ -101,7 +141,7 @@ export function EmployeeProfilesPage() {
         <>
           <button onClick={() => { exportToCsv(['Name', 'Department', 'Designation', 'Email', 'Phone', 'Status'], profiles.map(p => [p.name, p.department, p.designation, p.email, p.phone, p.status]), 'employee-profiles'); showSuccess('Profiles exported'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
           <button onClick={() => exportToPdf('Employee Profiles', ['Name', 'Department', 'Designation', 'Status'], profiles.map(p => [p.name, p.department, p.designation, p.status]), 'employee-profiles')} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><FileText className="w-3.5 h-3.5" /> PDF</button>
-          <button onClick={ps.openAddModal} className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary-hover transition-all shadow-sm"><Plus className="w-3.5 h-3.5" /> Add Employee</button>
+          <button onClick={openAddForm} className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary-hover transition-all shadow-sm"><Plus className="w-3.5 h-3.5" /> Add Employee</button>
         </>
       }>
       <HrStatCards items={stats} columns={3} />
@@ -120,13 +160,13 @@ export function EmployeeProfilesPage() {
         selectedIds={ps.selectedIds} onSelectOne={ps.handleSelectOne} onSelectAll={ps.handleSelectAll}
         page={ps.page} totalPages={ps.totalPages} onPageChange={ps.setPage} pageSize={ps.pageSize} totalItems={ps.filtered.length}
         from={(ps.page - 1) * ps.pageSize + 1} to={Math.min(ps.page * ps.pageSize, ps.filtered.length)}
-        emptyMessage="No profiles found" emptyAction={<button onClick={ps.openAddModal} className="text-xs font-medium text-primary">Add your first employee</button>} />
+        emptyMessage={loading ? 'Loading...' : 'No profiles found'} emptyAction={!loading ? <button onClick={openAddForm} className="text-xs font-medium text-primary">Add your first employee</button> : undefined} />
       <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Employee' : 'Add Employee'} onSubmit={handleFormSubmit}>
-        <div><label className="block text-xs font-medium text-ink-500 mb-1">Name</label><input name="name" defaultValue={ps.editingId ? profiles.find(p => p.id === ps.editingId)?.name : ''} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" required /></div>
-        <div><label className="block text-xs font-medium text-ink-500 mb-1">Email</label><input name="email" type="email" defaultValue={ps.editingId ? profiles.find(p => p.id === ps.editingId)?.email : ''} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" required /></div>
-        <div><label className="block text-xs font-medium text-ink-500 mb-1">Department</label><input name="department" defaultValue={ps.editingId ? profiles.find(p => p.id === ps.editingId)?.department : ''} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
-        <div><label className="block text-xs font-medium text-ink-500 mb-1">Designation</label><input name="designation" defaultValue={ps.editingId ? profiles.find(p => p.id === ps.editingId)?.designation : ''} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
-        <div><label className="block text-xs font-medium text-ink-500 mb-1">Phone</label><input name="phone" defaultValue={ps.editingId ? profiles.find(p => p.id === ps.editingId)?.phone : ''} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
+        <div><label className="block text-xs font-medium text-ink-500 mb-1">Name</label><input value={formData.name} onChange={e => setFormData(f => ({ ...f, name: e.target.value }))} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" required /></div>
+        <div><label className="block text-xs font-medium text-ink-500 mb-1">Email</label><input type="email" value={formData.email} onChange={e => setFormData(f => ({ ...f, email: e.target.value }))} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" required /></div>
+        <div><label className="block text-xs font-medium text-ink-500 mb-1">Department</label><input value={formData.department} onChange={e => setFormData(f => ({ ...f, department: e.target.value }))} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
+        <div><label className="block text-xs font-medium text-ink-500 mb-1">Designation</label><input value={formData.designation} onChange={e => setFormData(f => ({ ...f, designation: e.target.value }))} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
+        <div><label className="block text-xs font-medium text-ink-500 mb-1">Phone</label><input value={formData.phone} onChange={e => setFormData(f => ({ ...f, phone: e.target.value }))} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
       </HrFormModal>
       <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => handleDelete(ps.deletingId!)} title="Delete Profile" message="Are you sure you want to delete this employee profile?" confirmLabel="Delete" variant="danger" />
       <HrViewDrawer open={ps.viewDrawerOpen} onClose={ps.closeViewDrawer} title="Employee Details">

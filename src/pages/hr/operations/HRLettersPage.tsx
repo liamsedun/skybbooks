@@ -1,4 +1,4 @@
-﻿import { useMemo } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { FileText, Plus, Download, Upload, Edit3, Trash2, Eye, Clock, CheckCircle2 } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -10,21 +10,22 @@ import { HrConfirmDialog } from '../../../components/hr/HrConfirmDialog';
 import { HrViewDrawer } from '../../../components/hr/HrViewDrawer';
 import { exportToCsv, exportToPdf, statusColor, formatDate } from '../../../lib/hrExport';
 import { useToast } from '../../../contexts/ToastContext';
+import { hrApi } from '../../../lib/api';
 
 interface Letter { id: string; title: string; employeeName: string; type: string; issueDate: string; status: string; }
-const MOCK: Letter[] = [
-  { id: 'LT1', title: 'Offer Letter - Chioma Okafor', employeeName: 'Chioma Okafor', type: 'Offer Letter', issueDate: '2026-07-01', status: 'issued' },
-  { id: 'LT2', title: 'Experience Letter - Segun Adebayo', employeeName: 'Segun Adebayo', type: 'Experience Letter', issueDate: '2026-07-15', status: 'draft' },
-  { id: 'LT3', title: 'Bonafide Certificate - Amina Bello', employeeName: 'Amina Bello', type: 'Bonafide', issueDate: '2026-07-20', status: 'issued' },
-  { id: 'LT4', title: 'Promotion Letter - Ngozi Eze', employeeName: 'Ngozi Eze', type: 'Promotion Letter', issueDate: '2026-08-01', status: 'draft' },
-  { id: 'LT5', title: 'Warning Letter - Femi Ogunlade', employeeName: 'Femi Ogunlade', type: 'Warning Letter', issueDate: '2026-07-10', status: 'issued' },
-  { id: 'LT6', title: 'Relieving Letter - Zainab Abdullah', employeeName: 'Zainab Abdullah', type: 'Relieving Letter', issueDate: '2026-08-15', status: 'pending' },
-  { id: 'LT7', title: 'Salary Certificate - Chinedu Okonkwo', employeeName: 'Chinedu Okonkwo', type: 'Salary Certificate', issueDate: '2026-07-25', status: 'issued' },
-  { id: 'LT8', title: 'Appointment Letter - Yemi Lawson', employeeName: 'Yemi Lawson', type: 'Appointment Letter', issueDate: '2026-07-05', status: 'issued' },
-];
 export function OpsHRLettersPage() {
-  const { success: showSuccess } = useToast();
-  const ps = useHrPageState({ data: MOCK, initialSortKey: 'title', searchKeys: ['title', 'employeeName', 'type'], pageSize: 10 });
+  const { success: showSuccess, error: showError } = useToast();
+  const [data, setData] = useState<Letter[]>([]);
+  const [loading, setLoading] = useState(true);
+  const ps = useHrPageState({ data, initialSortKey: 'title', searchKeys: ['title', 'employeeName', 'type'], pageSize: 10 });
+  useEffect(() => { loadData(); }, []);
+  useEffect(() => { ps.setData(data); }, [data]);
+  const loadData = async () => {
+    setLoading(true);
+    try { const result = await hrApi.getLetters({}); setData(Array.isArray(result) ? result : []); }
+    catch (e: any) { showError(e?.message || 'Failed to load'); }
+    finally { setLoading(false); }
+  };
   const stats = useMemo(() => [
     { label: 'Total Letters', value: ps.filtered.length.toString(), icon: <FileText className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
     { label: 'Issued', value: ps.filtered.filter(i => i.status === 'issued').length.toString(), icon: <CheckCircle2 className="w-4 h-4" />, color: 'emerald' as const, active: ps.statusFilter === 'issued', onClick: () => ps.setStatusFilter('issued') },
@@ -60,12 +61,12 @@ export function OpsHRLettersPage() {
         page={ps.page} totalPages={ps.totalPages} onPageChange={ps.setPage} pageSize={ps.pageSize} totalItems={ps.filtered.length}
         from={(ps.page - 1) * ps.pageSize + 1} to={Math.min(ps.page * ps.pageSize, ps.filtered.length)}
         emptyMessage="No letters found" emptyAction={<button onClick={ps.openAddModal} className="text-xs font-medium text-primary hover:text-primary-hover">Generate your first letter</button>} />
-      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Letter' : 'Generate Letter'} onSubmit={(e) => { e.preventDefault(); showSuccess(ps.editingId ? 'Letter updated' : 'Letter generated'); ps.closeModal(); }}>
+      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Letter' : 'Generate Letter'} onSubmit={(e) => { e.preventDefault(); showError('Read-only view'); ps.closeModal(); }}>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Title</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Employee Name</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Letter Type</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
       </HrFormModal>
-      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showSuccess('Letter deleted'); ps.closeConfirmDelete(); }} title="Delete Letter" message="Are you sure you want to delete this letter?" confirmLabel="Delete" variant="danger" />
+      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showError('Read-only view'); ps.closeConfirmDelete(); }} title="Delete Letter" message="Are you sure you want to delete this letter?" confirmLabel="Delete" variant="danger" />
       <HrViewDrawer open={ps.viewDrawerOpen} onClose={ps.closeViewDrawer} title="Letter Details"><div className="space-y-3 text-sm text-ink-600"><p>Details content</p></div></HrViewDrawer>
       <HrFormModal open={ps.importOpen} onClose={() => ps.setImportOpen(false)} title="Import Letters" onSubmit={(e) => { e.preventDefault(); showSuccess('Letters imported'); ps.setImportOpen(false); }} submitLabel="Import">
         <p className="text-sm text-ink-400 mb-3">Upload a CSV file with letter records.</p>

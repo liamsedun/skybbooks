@@ -1,4 +1,4 @@
-﻿import { useMemo } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { CalendarDays, Plus, Download, Upload, FileText, Edit3, Trash2, Eye, CheckCircle2, XCircle } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -10,19 +10,22 @@ import { HrConfirmDialog } from '../../../components/hr/HrConfirmDialog';
 import { HrViewDrawer } from '../../../components/hr/HrViewDrawer';
 import { exportToCsv, exportToPdf, statusColor, formatDate } from '../../../lib/hrExport';
 import { useToast } from '../../../contexts/ToastContext';
+import { hrApi } from '../../../lib/api';
 
 interface ShiftItem { id: string; name: string; startTime: string; endTime: string; department: string; status: string; }
-const MOCK: ShiftItem[] = [
-  { id: 'SH1', name: 'Morning Shift', startTime: '06:00', endTime: '14:00', department: 'Operations', status: 'active' },
-  { id: 'SH2', name: 'Day Shift', startTime: '08:00', endTime: '16:00', department: 'All Departments', status: 'active' },
-  { id: 'SH3', name: 'Evening Shift', startTime: '14:00', endTime: '22:00', department: 'Operations', status: 'active' },
-  { id: 'SH4', name: 'Night Shift', startTime: '22:00', endTime: '06:00', department: 'Security', status: 'active' },
-  { id: 'SH5', name: 'Flexible Shift', startTime: '07:00', endTime: '19:00', department: 'Engineering', status: 'inactive' },
-  { id: 'SH6', name: 'Weekend Shift', startTime: '08:00', endTime: '14:00', department: 'Support', status: 'active' },
-];
 export function OpsShiftPage() {
-  const { success: showSuccess } = useToast();
-  const ps = useHrPageState({ data: MOCK, initialSortKey: 'name', searchKeys: ['name', 'department'], pageSize: 10 });
+  const { success: showSuccess, error: showError } = useToast();
+  const [data, setData] = useState<ShiftItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const ps = useHrPageState({ data, initialSortKey: 'name', searchKeys: ['name', 'department'], pageSize: 10 });
+  useEffect(() => { loadData(); }, []);
+  useEffect(() => { ps.setData(data); }, [data]);
+  const loadData = async () => {
+    setLoading(true);
+    try { const result = await hrApi.getShifts(); setData(Array.isArray(result) ? result : []); }
+    catch (e: any) { showError(e?.message || 'Failed to load'); }
+    finally { setLoading(false); }
+  };
   const stats = useMemo(() => [
     { label: 'Total Shifts', value: ps.filtered.length.toString(), icon: <CalendarDays className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
     { label: 'Active', value: ps.filtered.filter(i => i.status === 'active').length.toString(), icon: <CheckCircle2 className="w-4 h-4" />, color: 'emerald' as const, active: ps.statusFilter === 'active', onClick: () => ps.setStatusFilter('active') },
@@ -57,13 +60,13 @@ export function OpsShiftPage() {
         page={ps.page} totalPages={ps.totalPages} onPageChange={ps.setPage} pageSize={ps.pageSize} totalItems={ps.filtered.length}
         from={(ps.page - 1) * ps.pageSize + 1} to={Math.min(ps.page * ps.pageSize, ps.filtered.length)}
         emptyMessage="No shifts found" emptyAction={<button onClick={ps.openAddModal} className="text-xs font-medium text-primary hover:text-primary-hover">Add your first shift</button>} />
-      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Shift' : 'Add Shift'} onSubmit={(e) => { e.preventDefault(); showSuccess(ps.editingId ? 'Shift updated' : 'Shift created'); ps.closeModal(); }}>
+      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Shift' : 'Add Shift'} onSubmit={(e) => { e.preventDefault(); showError('Read-only view'); ps.closeModal(); }}>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Shift Name</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Start Time</label><input type="time" className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">End Time</label><input type="time" className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Department</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
       </HrFormModal>
-      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showSuccess('Shift deleted'); ps.closeConfirmDelete(); }} title="Delete Shift" message="Are you sure you want to delete this shift?" confirmLabel="Delete" variant="danger" />
+      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showError('Read-only view'); ps.closeConfirmDelete(); }} title="Delete Shift" message="Are you sure you want to delete this shift?" confirmLabel="Delete" variant="danger" />
       <HrViewDrawer open={ps.viewDrawerOpen} onClose={ps.closeViewDrawer} title="Shift Details"><div className="space-y-3 text-sm text-ink-600"><p>Details content</p></div></HrViewDrawer>
       <HrFormModal open={ps.importOpen} onClose={() => ps.setImportOpen(false)} title="Import Shifts" onSubmit={(e) => { e.preventDefault(); showSuccess('Shifts imported'); ps.setImportOpen(false); }} submitLabel="Import">
         <p className="text-sm text-ink-400 mb-3">Upload a CSV file with shift patterns.</p>

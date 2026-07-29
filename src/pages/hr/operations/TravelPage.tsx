@@ -1,4 +1,4 @@
-﻿import { useMemo } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { Plane, Plus, Download, Upload, FileText, Edit3, Trash2, Eye, Clock, CheckCircle2 } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -10,21 +10,22 @@ import { HrConfirmDialog } from '../../../components/hr/HrConfirmDialog';
 import { HrViewDrawer } from '../../../components/hr/HrViewDrawer';
 import { exportToCsv, exportToPdf, statusColor, formatDate } from '../../../lib/hrExport';
 import { useToast } from '../../../contexts/ToastContext';
+import { hrApi } from '../../../lib/api';
 
 interface TravelItem { id: string; employeeName: string; destination: string; dates: string; amount: string; status: string; }
-const MOCK: TravelItem[] = [
-  { id: 'TR1', employeeName: 'Chioma Okafor', destination: 'Lagos, Nigeria', dates: 'Aug 10-14', amount: 'â‚¦450,000', status: 'approved' },
-  { id: 'TR2', employeeName: 'Segun Adebayo', destination: 'Nairobi, Kenya', dates: 'Sep 5-10', amount: 'â‚¦1,200,000', status: 'pending' },
-  { id: 'TR3', employeeName: 'Amina Bello', destination: 'Abuja, Nigeria', dates: 'Aug 20-22', amount: 'â‚¦250,000', status: 'approved' },
-  { id: 'TR4', employeeName: 'Tunde Bakare', destination: 'Port Harcourt, Nigeria', dates: 'Jul 30-Aug 1', amount: 'â‚¦180,000', status: 'completed' },
-  { id: 'TR5', employeeName: 'Ngozi Eze', destination: 'Cape Town, South Africa', dates: 'Oct 1-8', amount: 'â‚¦2,500,000', status: 'pending' },
-  { id: 'TR6', employeeName: 'Femi Ogunlade', destination: 'Kano, Nigeria', dates: 'Aug 5-6', amount: 'â‚¦120,000', status: 'rejected' },
-  { id: 'TR7', employeeName: 'Zainab Abdullah', destination: 'Accra, Ghana', dates: 'Sep 15-20', amount: 'â‚¦980,000', status: 'approved' },
-  { id: 'TR8', employeeName: 'Chinedu Okonkwo', destination: 'Enugu, Nigeria', dates: 'Aug 12-14', amount: 'â‚¦210,000', status: 'pending' },
-];
 export function OpsTravelPage() {
-  const { success: showSuccess } = useToast();
-  const ps = useHrPageState({ data: MOCK, initialSortKey: 'employeeName', searchKeys: ['employeeName', 'destination'], pageSize: 10 });
+  const { success: showSuccess, error: showError } = useToast();
+  const [data, setData] = useState<TravelItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const ps = useHrPageState({ data, initialSortKey: 'employeeName', searchKeys: ['employeeName', 'destination'], pageSize: 10 });
+  useEffect(() => { loadData(); }, []);
+  useEffect(() => { ps.setData(data); }, [data]);
+  const loadData = async () => {
+    setLoading(true);
+    try { const result = await hrApi.getTravelRequests({}); setData(Array.isArray(result) ? result : []); }
+    catch (e: any) { showError(e?.message || 'Failed to load'); }
+    finally { setLoading(false); }
+  };
   const stats = useMemo(() => [
     { label: 'Total Requests', value: ps.filtered.length.toString(), icon: <Plane className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
     { label: 'Pending', value: ps.filtered.filter(i => i.status === 'pending').length.toString(), icon: <Clock className="w-4 h-4" />, color: 'amber' as const, active: ps.statusFilter === 'pending', onClick: () => ps.setStatusFilter('pending') },
@@ -60,13 +61,13 @@ export function OpsTravelPage() {
         page={ps.page} totalPages={ps.totalPages} onPageChange={ps.setPage} pageSize={ps.pageSize} totalItems={ps.filtered.length}
         from={(ps.page - 1) * ps.pageSize + 1} to={Math.min(ps.page * ps.pageSize, ps.filtered.length)}
         emptyMessage="No travel requests found" emptyAction={<button onClick={ps.openAddModal} className="text-xs font-medium text-primary hover:text-primary-hover">Add your first request</button>} />
-      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Request' : 'Add Request'} onSubmit={(e) => { e.preventDefault(); showSuccess(ps.editingId ? 'Request updated' : 'Request created'); ps.closeModal(); }}>
+      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Request' : 'Add Request'} onSubmit={(e) => { e.preventDefault(); showError('Read-only view'); ps.closeModal(); }}>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Employee Name</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Destination</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Travel Dates</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" placeholder="e.g. Aug 10-14" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Estimated Amount</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
       </HrFormModal>
-      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showSuccess('Request deleted'); ps.closeConfirmDelete(); }} title="Delete Request" message="Are you sure you want to delete this travel request?" confirmLabel="Delete" variant="danger" />
+      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showError('Read-only view'); ps.closeConfirmDelete(); }} title="Delete Request" message="Are you sure you want to delete this travel request?" confirmLabel="Delete" variant="danger" />
       <HrViewDrawer open={ps.viewDrawerOpen} onClose={ps.closeViewDrawer} title="Travel Details"><div className="space-y-3 text-sm text-ink-600"><p>Details content</p></div></HrViewDrawer>
       <HrFormModal open={ps.importOpen} onClose={() => ps.setImportOpen(false)} title="Import Travel Requests" onSubmit={(e) => { e.preventDefault(); showSuccess('Requests imported'); ps.setImportOpen(false); }} submitLabel="Import">
         <p className="text-sm text-ink-400 mb-3">Upload a CSV file with travel requests.</p>

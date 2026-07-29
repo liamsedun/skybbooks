@@ -690,7 +690,39 @@ router.post('/users/manual', requireRole('owner', 'admin'), async (req: Authenti
 });
 
 // ==========================================
-// 9. GET /org/users/export/csv — Export users as CSV
+// 9. DELETE /org/users/:userId — Delete a user
+// ==========================================
+router.delete('/users/:userId', requireRole('owner'), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const { userId } = req.params;
+
+    const targetUserList = await db
+      .select()
+      .from(users)
+      .where(and(eq(users.id, userId), eq(users.organisationId, orgId)))
+      .limit(1);
+
+    const targetUser = targetUserList[0];
+    if (!targetUser) {
+      throw new AppError('User not found in your organisation.', 404);
+    }
+
+    if (targetUser.role === 'owner') {
+      throw new AppError('Cannot delete an owner user.', 400);
+    }
+
+    await db.delete(users).where(eq(users.id, userId));
+
+    createAuditLog({ orgId, userId: req.user!.userId!, action: 'delete', entityType: 'user', entityId: userId, ...extractReqMeta(req) });
+    return res.status(200).json({ message: 'User deleted successfully.' });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// ==========================================
+// 10. GET /org/users/export/csv — Export users as CSV
 // ==========================================
 router.get('/users/export/csv', requireRole('owner', 'admin'), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {

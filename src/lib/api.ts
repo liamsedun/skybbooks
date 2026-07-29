@@ -314,6 +314,10 @@ export const orgApi = {
     const res = await api.patch(`/org/users/${userId}`, data);
     return res.data;
   },
+  deleteUser: async (userId: string) => {
+    const res = await api.delete(`/org/users/${userId}`);
+    return res.data;
+  },
   exportUsersCsv: async () => {
     const res = await api.get('/org/users/export/csv', { responseType: 'blob' });
     return res.data;

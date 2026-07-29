@@ -1,7 +1,8 @@
-﻿import { useMemo, useState } from 'react';
+﻿import { useMemo, useState, useEffect } from 'react';
 import { Calendar, Gift, Umbrella, Briefcase, GraduationCap, ChevronLeft, ChevronRight } from 'lucide-react';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
 import { useToast } from '../../../contexts/ToastContext';
+import { hrApi } from '../../../lib/api';
 
 interface CalendarEvent {
   id: string;
@@ -10,17 +11,6 @@ interface CalendarEvent {
   type: 'birthday' | 'holiday' | 'meeting' | 'training';
   description: string;
 }
-
-const MOCK_EVENTS: CalendarEvent[] = [
-  { id: 'evt-1', title: 'John Doe Birthday', date: '2026-08-05', type: 'birthday', description: 'John turns 34' },
-  { id: 'evt-2', title: 'Independence Day', date: '2026-08-10', type: 'holiday', description: 'Public holiday' },
-  { id: 'evt-3', title: 'All-Hands Meeting', date: '2026-08-12', type: 'meeting', description: 'Monthly company-wide sync' },
-  { id: 'evt-4', title: 'React Workshop', date: '2026-08-15', type: 'training', description: 'Advanced React patterns' },
-  { id: 'evt-5', title: 'Jane Smith Birthday', date: '2026-08-18', type: 'birthday', description: 'Jane turns 29' },
-  { id: 'evt-6', title: 'Sprint Planning', date: '2026-08-19', type: 'meeting', description: 'Q3 sprint planning session' },
-  { id: 'evt-7', title: 'Eid-el-Kabir', date: '2026-08-22', type: 'holiday', description: 'Public holiday' },
-  { id: 'evt-8', title: 'Leadership Training', date: '2026-08-26', type: 'training', description: 'Management skills program' },
-];
 
 const TYPE_STYLES: Record<string, string> = {
   birthday: 'bg-pink-100 dark:bg-pink-950/30 text-pink-700 dark:text-pink-300 border-pink-200 dark:border-pink-800',
@@ -40,19 +30,32 @@ const MONTHS = ['January','February','March','April','May','June','July','August
 const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
 export function HomeCalendarPage() {
-  const { success: showSuccess } = useToast();
+  const { success: showSuccess, error: showError } = useToast();
+  const [data, setData] = useState<CalendarEvent[]>([]);
+  const [loading, setLoading] = useState(true);
   const [currentMonth, setCurrentMonth] = useState(7);
   const [currentYear, setCurrentYear] = useState(2026);
+
+  useEffect(() => { loadData(); }, []);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const result = await hrApi.getCalendarEvents({});
+      setData(Array.isArray(result) ? result : []);
+    } catch (e: any) { showError(e?.message || 'Failed to load'); }
+    finally { setLoading(false); }
+  };
 
   const firstDay = new Date(currentYear, currentMonth, 1).getDay();
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
 
   const stats = useMemo(() => [
-    { label: 'Total Events', value: MOCK_EVENTS.length, icon: <Calendar className="w-4 h-4" />, color: 'blue' as const, active: false, onClick: () => {} },
-    { label: 'Birthdays', value: MOCK_EVENTS.filter(e => e.type === 'birthday').length, icon: <Gift className="w-4 h-4" />, color: 'pink' as const, active: false, onClick: () => {} },
-    { label: 'Holidays', value: MOCK_EVENTS.filter(e => e.type === 'holiday').length, icon: <Umbrella className="w-4 h-4" />, color: 'purple' as const, active: false, onClick: () => {} },
-    { label: 'Meetings', value: MOCK_EVENTS.filter(e => e.type === 'meeting').length, icon: <Briefcase className="w-4 h-4" />, color: 'blue' as const, active: false, onClick: () => {} },
-  ], []);
+    { label: 'Total Events', value: data.length, icon: <Calendar className="w-4 h-4" />, color: 'blue' as const, active: false, onClick: () => {} },
+    { label: 'Birthdays', value: data.filter(e => e.type === 'birthday').length, icon: <Gift className="w-4 h-4" />, color: 'pink' as const, active: false, onClick: () => {} },
+    { label: 'Holidays', value: data.filter(e => e.type === 'holiday').length, icon: <Umbrella className="w-4 h-4" />, color: 'purple' as const, active: false, onClick: () => {} },
+    { label: 'Meetings', value: data.filter(e => e.type === 'meeting').length, icon: <Briefcase className="w-4 h-4" />, color: 'blue' as const, active: false, onClick: () => {} },
+  ], [data]);
 
   const prevMonth = () => {
     if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(y => y - 1); }
@@ -67,10 +70,10 @@ export function HomeCalendarPage() {
     const days: { date: number; events: CalendarEvent[] }[] = [];
     for (let d = 1; d <= daysInMonth; d++) {
       const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      days.push({ date: d, events: MOCK_EVENTS.filter(e => e.date === dateStr) });
+      days.push({ date: d, events: data.filter(e => e.date === dateStr) });
     }
     return days;
-  }, [currentMonth, currentYear]);
+  }, [currentMonth, currentYear, data]);
 
   return (
     <HrPageShell title="HR Calendar" description="View and manage HR events"

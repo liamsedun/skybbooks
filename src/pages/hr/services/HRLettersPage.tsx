@@ -1,4 +1,4 @@
-﻿import { useMemo } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { FileText, ScrollText, Plus, Download, FileText as FilePdf, Upload, Edit3, Trash2, Eye, Building2, Users } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -10,6 +10,7 @@ import { HrConfirmDialog } from '../../../components/hr/HrConfirmDialog';
 import { HrViewDrawer } from '../../../components/hr/HrViewDrawer';
 import { exportToCsv, exportToPdf, statusColor, formatDate } from '../../../lib/hrExport';
 import { useToast } from '../../../contexts/ToastContext';
+import { hrApi } from '../../../lib/api';
 
 interface LetterTemplate {
   id: string;
@@ -20,17 +21,6 @@ interface LetterTemplate {
   status: 'active' | 'inactive';
 }
 
-const MOCK: LetterTemplate[] = [
-  { id: '1', name: 'Offer of Employment', type: 'offer', department: 'All Departments', lastUsed: '2026-04-01', status: 'active' },
-  { id: '2', name: 'Appointment Letter - Permanent', type: 'appointment', department: 'HR', lastUsed: '2026-03-28', status: 'active' },
-  { id: '3', name: 'Confirmation of Employment', type: 'confirmation', department: 'All Departments', lastUsed: '2026-03-15', status: 'active' },
-  { id: '4', name: 'Warning Letter - Performance', type: 'warning', department: 'Management', lastUsed: '2026-02-20', status: 'active' },
-  { id: '5', name: 'Experience Letter', type: 'experience', department: 'All Departments', lastUsed: '2026-04-05', status: 'active' },
-  { id: '6', name: 'Offer Letter - Internship', type: 'offer', department: 'Engineering', lastUsed: '2026-03-10', status: 'active' },
-  { id: '7', name: 'Appointment Letter - Contract', type: 'appointment', department: 'Finance', lastUsed: '2026-02-28', status: 'inactive' },
-  { id: '8', name: 'Warning Letter - Conduct', type: 'warning', department: 'All Departments', lastUsed: '2026-01-15', status: 'active' },
-];
-
 function LetterTypeIcon({ type }: { type: string }) {
   const map: Record<string, string> = {
     offer: 'text-emerald-500', appointment: 'text-blue-500', confirmation: 'text-purple-500',
@@ -40,15 +30,25 @@ function LetterTypeIcon({ type }: { type: string }) {
 }
 
 export function HRLettersPage() {
-  const { success: showSuccess } = useToast();
-  const ps = useHrPageState({ data: MOCK, initialSortKey: 'name', searchKeys: ['name', 'type', 'department'], pageSize: 10 });
+  const { success: showSuccess, error: showError } = useToast();
+  const [data, setData] = useState<LetterTemplate[]>([]);
+  const [loading, setLoading] = useState(true);
+  const ps = useHrPageState({ data, initialSortKey: 'name', searchKeys: ['name', 'type', 'department'], pageSize: 10 });
+  useEffect(() => { loadData(); }, []);
+  useEffect(() => { ps.setData(data); }, [data]);
+  const loadData = async () => {
+    setLoading(true);
+    try { const result = await hrApi.getLetters({}); setData(Array.isArray(result) ? result : []); }
+    catch (e: any) { showError(e?.message || 'Failed to load'); }
+    finally { setLoading(false); }
+  };
 
   const stats = useMemo(() => [
-    { label: 'Total', value: MOCK.length, icon: <FileText className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
-    { label: 'Offer', value: MOCK.filter(i => i.type === 'offer').length, icon: <FileText className="w-4 h-4" />, color: 'emerald' as const, active: ps.statusFilter === 'offer', onClick: () => ps.setStatusFilter('offer') },
-    { label: 'Appointment', value: MOCK.filter(i => i.type === 'appointment').length, icon: <Building2 className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'appointment', onClick: () => ps.setStatusFilter('appointment') },
-    { label: 'Experience', value: MOCK.filter(i => i.type === 'experience').length, icon: <Users className="w-4 h-4" />, color: 'cyan' as const, active: ps.statusFilter === 'experience', onClick: () => ps.setStatusFilter('experience') },
-  ], [ps.statusFilter]);
+    { label: 'Total', value: data.length, icon: <FileText className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
+    { label: 'Offer', value: data.filter(i => i.type === 'offer').length, icon: <FileText className="w-4 h-4" />, color: 'emerald' as const, active: ps.statusFilter === 'offer', onClick: () => ps.setStatusFilter('offer') },
+    { label: 'Appointment', value: data.filter(i => i.type === 'appointment').length, icon: <Building2 className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'appointment', onClick: () => ps.setStatusFilter('appointment') },
+    { label: 'Experience', value: data.filter(i => i.type === 'experience').length, icon: <Users className="w-4 h-4" />, color: 'cyan' as const, active: ps.statusFilter === 'experience', onClick: () => ps.setStatusFilter('experience') },
+  ], [data, ps.statusFilter]);
 
   const columns: Column<LetterTemplate>[] = [
     { key: 'name', label: 'Name', sortable: true, render: (i) => (
@@ -89,7 +89,7 @@ export function HRLettersPage() {
       {ps.selectedIds.length > 0 && (
         <div className="flex items-center justify-between p-3 bg-primary/5 dark:bg-primary/10 border border-primary/20 rounded-xl">
           <span className="text-sm text-ink-600">{ps.selectedIds.length} selected</span>
-          <button onClick={() => { showSuccess('Selected templates deleted'); ps.setSelectedIds([]); }} className="text-xs font-medium text-rose-600 hover:text-rose-700 transition-colors">Delete Selected</button>
+          <button onClick={() => { showError('Read-only view'); ps.setSelectedIds([]); }} className="text-xs font-medium text-rose-600 hover:text-rose-700 transition-colors">Delete Selected</button>
         </div>
       )}
       <HrDataTable columns={columns} data={ps.paginated} keyExtractor={i => i.id}
@@ -98,16 +98,16 @@ export function HRLettersPage() {
         page={ps.page} totalPages={ps.totalPages} onPageChange={ps.setPage} pageSize={ps.pageSize} totalItems={ps.filtered.length}
         from={(ps.page - 1) * ps.pageSize + 1} to={Math.min(ps.page * ps.pageSize, ps.filtered.length)}
         emptyMessage="No letter templates found" emptyAction={<button onClick={ps.openAddModal} className="text-xs font-medium text-primary hover:text-primary-hover">Add your first template</button>} />
-      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Template' : 'Add Template'} onSubmit={(e) => { e.preventDefault(); showSuccess(ps.editingId ? 'Template updated' : 'Template created'); ps.closeModal(); }}>
+      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Template' : 'Add Template'} onSubmit={(e) => { e.preventDefault(); showError('Read-only view'); ps.closeModal(); }}>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Template Name</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Type</label><select className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"><option>offer</option><option>appointment</option><option>confirmation</option><option>warning</option><option>experience</option></select></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Department</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Content</label><textarea rows={6} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
       </HrFormModal>
-      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showSuccess('Template deleted'); ps.closeConfirmDelete(); }} title="Delete Template" message="Are you sure you want to delete this letter template? This action cannot be undone." confirmLabel="Delete" variant="danger" />
+      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showError('Read-only view'); ps.closeConfirmDelete(); }} title="Delete Template" message="Are you sure you want to delete this letter template? This action cannot be undone." confirmLabel="Delete" variant="danger" />
       <HrViewDrawer open={ps.viewDrawerOpen} onClose={ps.closeViewDrawer} title="Template Details">
         {ps.viewingId && (() => {
-          const item = MOCK.find(i => i.id === ps.viewingId);
+          const item = data.find(i => i.id === ps.viewingId);
           if (!item) return null;
           return (
             <div className="space-y-4 text-sm">
@@ -122,7 +122,7 @@ export function HRLettersPage() {
           );
         })()}
       </HrViewDrawer>
-      <HrFormModal open={ps.importOpen} onClose={() => ps.setImportOpen(false)} title="Import Templates" onSubmit={(e) => { e.preventDefault(); showSuccess('Templates imported'); ps.setImportOpen(false); }} submitLabel="Import">
+      <HrFormModal open={ps.importOpen} onClose={() => ps.setImportOpen(false)} title="Import Templates" onSubmit={(e) => { e.preventDefault(); showError('Read-only view'); ps.setImportOpen(false); }} submitLabel="Import">
         <p className="text-sm text-ink-400 mb-3">Upload a CSV file to import letter templates.</p>
         <input type="file" accept=".csv" className="block w-full text-sm text-ink-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 transition-colors" />
       </HrFormModal>

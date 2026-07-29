@@ -33,20 +33,9 @@ const statusColor = (s: string) => {
 
 const fmtAmount = (n: number) => `₦${n.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
 
-const MOCK: TravelAdvance[] = [
-  { id: 'adv-1', employeeId: 'EMP-001', travelRequestId: 'trv-1', amount: 200000, currency: 'NGN', requestDate: '2026-08-01', purpose: 'Transport and accommodation for Abuja trip', status: 'pending', approvedBy: null, approvedAt: null, disbursedAt: null, notes: '', createdAt: '2026-08-01T10:00:00Z' },
-  { id: 'adv-2', employeeId: 'EMP-002', travelRequestId: null, amount: 350000, currency: 'NGN', requestDate: '2026-08-05', purpose: 'Flight tickets and per diem', status: 'approved', approvedBy: 'Manager', approvedAt: '2026-08-06T09:00:00Z', disbursedAt: null, notes: 'Urgent travel', createdAt: '2026-08-05T08:00:00Z' },
-  { id: 'adv-3', employeeId: 'EMP-003', travelRequestId: 'trv-3', amount: 150000, currency: 'NGN', requestDate: '2026-08-10', purpose: 'Local transport and meals', status: 'disbursed', approvedBy: 'Manager', approvedAt: '2026-08-11T10:00:00Z', disbursedAt: '2026-08-12T11:00:00Z', notes: '', createdAt: '2026-08-10T07:00:00Z' },
-  { id: 'adv-4', employeeId: 'EMP-004', travelRequestId: 'trv-4', amount: 500000, currency: 'NGN', requestDate: '2026-08-15', purpose: 'International travel advance', status: 'settled', approvedBy: 'Director', approvedAt: '2026-08-16T09:00:00Z', disbursedAt: '2026-08-17T10:00:00Z', notes: 'Fully settled', createdAt: '2026-08-15T08:00:00Z' },
-  { id: 'adv-5', employeeId: 'EMP-005', travelRequestId: null, amount: 100000, currency: 'NGN', requestDate: '2026-08-20', purpose: 'Petty cash for field work', status: 'cancelled', approvedBy: null, approvedAt: null, disbursedAt: null, notes: 'Cancelled by requester', createdAt: '2026-08-20T09:00:00Z' },
-  { id: 'adv-6', employeeId: 'EMP-001', travelRequestId: 'trv-2', amount: 280000, currency: 'NGN', requestDate: '2026-08-25', purpose: 'Hotel booking and per diem', status: 'pending', approvedBy: null, approvedAt: null, disbursedAt: null, notes: '', createdAt: '2026-08-25T11:00:00Z' },
-  { id: 'adv-7', employeeId: 'EMP-006', travelRequestId: null, amount: 420000, currency: 'NGN', requestDate: '2026-09-01', purpose: 'Conference registration and travel', status: 'approved', approvedBy: 'Manager', approvedAt: '2026-09-02T10:00:00Z', disbursedAt: null, notes: 'Conference fee included', createdAt: '2026-09-01T08:00:00Z' },
-  { id: 'adv-8', employeeId: 'EMP-007', travelRequestId: 'trv-5', amount: 180000, currency: 'NGN', requestDate: '2026-09-05', purpose: 'Site visit expenses', status: 'disbursed', approvedBy: 'Manager', approvedAt: '2026-09-06T09:00:00Z', disbursedAt: '2026-09-07T10:00:00Z', notes: '', createdAt: '2026-09-05T07:00:00Z' },
-];
-
 export function TravelAdvancesPage() {
   const { success: showSuccess, error: showError } = useToast();
-  const [data, setData] = useState<TravelAdvance[]>(MOCK);
+  const [data, setData] = useState<TravelAdvance[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -55,8 +44,6 @@ export function TravelAdvancesPage() {
         setLoading(true);
         const res = await hrApi.getTravelAdvances();
         if (res?.data) setData(res.data);
-      } catch {
-        setData(MOCK);
       } finally {
         setLoading(false);
       }

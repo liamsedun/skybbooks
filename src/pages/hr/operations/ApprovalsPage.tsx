@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { ShieldCheck, Plus, Download, Upload, FileText, Edit3, Trash2, Eye, Check, X, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -10,24 +10,23 @@ import { HrConfirmDialog } from '../../../components/hr/HrConfirmDialog';
 import { HrViewDrawer } from '../../../components/hr/HrViewDrawer';
 import { exportToCsv, exportToPdf, statusColor, formatDate } from '../../../lib/hrExport';
 import { useToast } from '../../../contexts/ToastContext';
+import { hrApi } from '../../../lib/api';
 
 interface ApprovalItem { id: string; type: string; requester: string; date: string; amount: string; status: string; }
-const MOCK: ApprovalItem[] = [
-  { id: 'AP1', type: 'Leave Request', requester: 'Chioma Okafor', date: '2026-07-27', amount: '--', status: 'pending' },
-  { id: 'AP2', type: 'Travel Request', requester: 'Segun Adebayo', date: '2026-07-26', amount: 'â‚¦1,200,000', status: 'pending' },
-  { id: 'AP3', type: 'Expense Report', requester: 'Amina Bello', date: '2026-07-25', amount: 'â‚¦85,000', status: 'pending' },
-  { id: 'AP4', type: 'Leave Request', requester: 'Tunde Bakare', date: '2026-07-27', amount: '--', status: 'approved' },
-  { id: 'AP5', type: 'Purchase Request', requester: 'Ngozi Eze', date: '2026-07-24', amount: 'â‚¦450,000', status: 'pending' },
-  { id: 'AP6', type: 'Overtime Approval', requester: 'Femi Ogunlade', date: '2026-07-26', amount: 'â‚¦32,000', status: 'pending' },
-  { id: 'AP7', type: 'Travel Request', requester: 'Zainab Abdullah', date: '2026-07-23', amount: 'â‚¦980,000', status: 'rejected' },
-  { id: 'AP8', type: 'Leave Request', requester: 'Chinedu Okonkwo', date: '2026-07-27', amount: '--', status: 'pending' },
-  { id: 'AP9', type: 'Expense Report', requester: 'Yemi Lawson', date: '2026-07-22', amount: 'â‚¦120,000', status: 'approved' },
-  { id: 'AP10', type: 'Purchase Request', requester: 'Adaeze Obi', date: '2026-07-21', amount: 'â‚¦250,000', status: 'pending' },
-];
 
 export function OpsApprovalsPage() {
-  const { success: showSuccess } = useToast();
-  const ps = useHrPageState({ data: MOCK, initialSortKey: 'requester', searchKeys: ['type', 'requester'], pageSize: 10 });
+  const { success: showSuccess, error: showError } = useToast();
+  const [data, setData] = useState<ApprovalItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const ps = useHrPageState({ data, initialSortKey: 'requester', searchKeys: ['type', 'requester'], pageSize: 10 });
+  useEffect(() => { loadData(); }, []);
+  useEffect(() => { ps.setData(data); }, [data]);
+  const loadData = async () => {
+    setLoading(true);
+    try { const result = await hrApi.getApprovalRequests({}); setData(Array.isArray(result) ? result : []); }
+    catch (e: any) { showError(e?.message || 'Failed to load'); }
+    finally { setLoading(false); }
+  };
   const stats = useMemo(() => [
     { label: 'Total Requests', value: ps.filtered.length.toString(), icon: <ShieldCheck className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
     { label: 'Pending', value: ps.filtered.filter(i => i.status === 'pending').length.toString(), icon: <Clock className="w-4 h-4" />, color: 'amber' as const, active: ps.statusFilter === 'pending', onClick: () => ps.setStatusFilter('pending') },
@@ -42,7 +41,7 @@ export function OpsApprovalsPage() {
     { key: 'status', label: 'Status', render: (i) => <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${statusColor(i.status)}`}>{i.status}</span> },
     { key: 'actions', label: '', render: (i) => (
       <div className="flex items-center justify-end gap-1" onClick={e => e.stopPropagation()}>
-        {i.status === 'pending' && (<><button onClick={() => { showSuccess('Request approved'); }} className="w-7 h-7 flex items-center justify-center rounded-lg text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 transition-colors" title="Approve"><Check className="w-3.5 h-3.5" /></button><button onClick={() => { showSuccess('Request rejected'); }} className="w-7 h-7 flex items-center justify-center rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 transition-colors" title="Reject"><X className="w-3.5 h-3.5" /></button></>)}
+        {i.status === 'pending' && (<><button onClick={async () => { try { await hrApi.createApprovalRequest({ id: i.id, status: 'approved' }); showSuccess('Request approved'); loadData(); } catch (e: any) { showError(e?.message || 'Failed'); } }} className="w-7 h-7 flex items-center justify-center rounded-lg text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 transition-colors" title="Approve"><Check className="w-3.5 h-3.5" /></button><button onClick={async () => { try { await hrApi.createApprovalRequest({ id: i.id, status: 'rejected' }); showSuccess('Request rejected'); loadData(); } catch (e: any) { showError(e?.message || 'Failed'); } }} className="w-7 h-7 flex items-center justify-center rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 transition-colors" title="Reject"><X className="w-3.5 h-3.5" /></button></>)}
         <button onClick={() => ps.openViewDrawer(i.id)} className="w-7 h-7 flex items-center justify-center rounded-lg text-ink-400 hover:text-primary hover:bg-primary/10 transition-colors" title="View"><Eye className="w-3.5 h-3.5" /></button>
         <button onClick={() => ps.openEditModal(i.id)} className="w-7 h-7 flex items-center justify-center rounded-lg text-ink-400 hover:text-amber-600 hover:bg-amber-50 transition-colors" title="Edit"><Edit3 className="w-3.5 h-3.5" /></button>
         <button onClick={() => ps.openConfirmDelete(i.id)} className="w-7 h-7 flex items-center justify-center rounded-lg text-ink-400 hover:text-rose-600 hover:bg-rose-50 transition-colors" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
@@ -64,7 +63,7 @@ export function OpsApprovalsPage() {
         page={ps.page} totalPages={ps.totalPages} onPageChange={ps.setPage} pageSize={ps.pageSize} totalItems={ps.filtered.length}
         from={(ps.page - 1) * ps.pageSize + 1} to={Math.min(ps.page * ps.pageSize, ps.filtered.length)}
         emptyMessage="No approvals found" />
-      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showSuccess('Request deleted'); ps.closeConfirmDelete(); }} title="Delete Request" message="Are you sure you want to delete this approval request?" confirmLabel="Delete" variant="danger" />
+      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={async () => { try { await hrApi.createApprovalRequest({ id: ps.confirmingId, deleted: true }); showSuccess('Request deleted'); loadData(); } catch (e: any) { showError(e?.message || 'Failed'); } ps.closeConfirmDelete(); }} title="Delete Request" message="Are you sure you want to delete this approval request?" confirmLabel="Delete" variant="danger" />
       <HrViewDrawer open={ps.viewDrawerOpen} onClose={ps.closeViewDrawer} title="Approval Details"><div className="space-y-3 text-sm text-ink-600"><p>Details content</p></div></HrViewDrawer>
     </HrPageShell>
   );

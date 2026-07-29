@@ -1,4 +1,4 @@
-﻿import { useMemo } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { Timer, Plus, Download, Upload, FileText, Edit3, Trash2, Eye, Clock, CheckCircle2 } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -10,23 +10,22 @@ import { HrConfirmDialog } from '../../../components/hr/HrConfirmDialog';
 import { HrViewDrawer } from '../../../components/hr/HrViewDrawer';
 import { exportToCsv, exportToPdf, statusColor, formatDate } from '../../../lib/hrExport';
 import { useToast } from '../../../contexts/ToastContext';
+import { hrApi } from '../../../lib/api';
 
 interface TimeEntry { id: string; employeeName: string; project: string; task: string; hours: number; date: string; status: string; }
-const MOCK: TimeEntry[] = [
-  { id: 'TM1', employeeName: 'Chioma Okafor', project: 'Payroll Engine', task: 'API Development', hours: 8, date: '2026-07-27', status: 'approved' },
-  { id: 'TM2', employeeName: 'Segun Adebayo', project: 'Marketing Site', task: 'Content Writing', hours: 6, date: '2026-07-27', status: 'approved' },
-  { id: 'TM3', employeeName: 'Amina Bello', project: 'Audit Reports', task: 'Data Analysis', hours: 7.5, date: '2026-07-27', status: 'pending' },
-  { id: 'TM4', employeeName: 'Tunde Bakare', project: 'Sales Dashboard', task: 'UI Design', hours: 8, date: '2026-07-27', status: 'approved' },
-  { id: 'TM5', employeeName: 'Ngozi Eze', project: 'Payroll Engine', task: 'Database Optimization', hours: 6.5, date: '2026-07-26', status: 'approved' },
-  { id: 'TM6', employeeName: 'Femi Ogunlade', project: 'HR Module', task: 'Feature Testing', hours: 7, date: '2026-07-26', status: 'pending' },
-  { id: 'TM7', employeeName: 'Zainab Abdullah', project: 'Recruitment Portal', task: 'Requirement Gathering', hours: 5, date: '2026-07-26', status: 'rejected' },
-  { id: 'TM8', employeeName: 'Chinedu Okonkwo', project: 'Payroll Engine', task: 'Bug Fixing', hours: 8, date: '2026-07-26', status: 'approved' },
-  { id: 'TM9', employeeName: 'Yemi Lawson', project: 'Marketing Site', task: 'SEO Optimization', hours: 4, date: '2026-07-27', status: 'pending' },
-  { id: 'TM10', employeeName: 'Adaeze Obi', project: 'Audit Reports', task: 'Report Generation', hours: 7, date: '2026-07-27', status: 'approved' },
-];
 export function OpsTimeTrackerPage() {
-  const { success: showSuccess } = useToast();
-  const ps = useHrPageState({ data: MOCK, initialSortKey: 'employeeName', searchKeys: ['employeeName', 'project', 'task'], pageSize: 10 });
+  const { success: showSuccess, error: showError } = useToast();
+  const [data, setData] = useState<TimeEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const ps = useHrPageState({ data, initialSortKey: 'employeeName', searchKeys: ['employeeName', 'project', 'task'], pageSize: 10 });
+  useEffect(() => { loadData(); }, []);
+  useEffect(() => { ps.setData(data); }, [data]);
+  const loadData = async () => {
+    setLoading(true);
+    try { const result = await hrApi.getTimesheets({}); setData(Array.isArray(result) ? result : []); }
+    catch (e: any) { showError(e?.message || 'Failed to load'); }
+    finally { setLoading(false); }
+  };
   const stats = useMemo(() => [
     { label: 'Total Entries', value: ps.filtered.length.toString(), icon: <Timer className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
     { label: 'Total Hours', value: ps.filtered.reduce((s, i) => s + i.hours, 0).toFixed(1), icon: <Clock className="w-4 h-4" />, color: 'cyan' as const },
@@ -63,13 +62,13 @@ export function OpsTimeTrackerPage() {
         page={ps.page} totalPages={ps.totalPages} onPageChange={ps.setPage} pageSize={ps.pageSize} totalItems={ps.filtered.length}
         from={(ps.page - 1) * ps.pageSize + 1} to={Math.min(ps.page * ps.pageSize, ps.filtered.length)}
         emptyMessage="No time entries found" emptyAction={<button onClick={ps.openAddModal} className="text-xs font-medium text-primary hover:text-primary-hover">Add your first entry</button>} />
-      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Entry' : 'Add Entry'} onSubmit={(e) => { e.preventDefault(); showSuccess(ps.editingId ? 'Entry updated' : 'Entry created'); ps.closeModal(); }}>
+      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Entry' : 'Add Entry'} onSubmit={(e) => { e.preventDefault(); showError('Read-only view'); ps.closeModal(); }}>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Employee Name</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Project</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Task</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Hours</label><input type="number" step="0.5" className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
       </HrFormModal>
-      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showSuccess('Entry deleted'); ps.closeConfirmDelete(); }} title="Delete Entry" message="Are you sure you want to delete this time entry?" confirmLabel="Delete" variant="danger" />
+      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showError('Read-only view'); ps.closeConfirmDelete(); }} title="Delete Entry" message="Are you sure you want to delete this time entry?" confirmLabel="Delete" variant="danger" />
       <HrViewDrawer open={ps.viewDrawerOpen} onClose={ps.closeViewDrawer} title="Time Entry Details"><div className="space-y-3 text-sm text-ink-600"><p>Details content</p></div></HrViewDrawer>
       <HrFormModal open={ps.importOpen} onClose={() => ps.setImportOpen(false)} title="Import Time Entries" onSubmit={(e) => { e.preventDefault(); showSuccess('Entries imported'); ps.setImportOpen(false); }} submitLabel="Import">
         <p className="text-sm text-ink-400 mb-3">Upload a CSV file with time entries.</p>

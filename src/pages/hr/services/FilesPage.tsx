@@ -1,4 +1,4 @@
-﻿import { useMemo } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { FolderOpen, FileText, FileSpreadsheet, FileImage, Plus, Download, Upload, Edit3, Trash2, Eye } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -10,6 +10,7 @@ import { HrConfirmDialog } from '../../../components/hr/HrConfirmDialog';
 import { HrViewDrawer } from '../../../components/hr/HrViewDrawer';
 import { exportToCsv, exportToPdf, statusColor, formatDate } from '../../../lib/hrExport';
 import { useToast } from '../../../contexts/ToastContext';
+import { hrApi } from '../../../lib/api';
 
 interface FileItem {
   id: string;
@@ -21,19 +22,6 @@ interface FileItem {
   status: 'active' | 'archived';
 }
 
-const MOCK: FileItem[] = [
-  { id: '1', name: 'Employee_Handbook_2026.pdf', category: 'document', uploadedBy: 'Admin', size: '2.4 MB', uploadDate: '2026-01-15', status: 'active' },
-  { id: '2', name: 'Payroll_Template_Q1.xlsx', category: 'template', uploadedBy: 'Finance', size: '1.1 MB', uploadDate: '2026-01-20', status: 'active' },
-  { id: '3', name: 'Monthly_HR_Report_Jan.pdf', category: 'report', uploadedBy: 'HR Manager', size: '856 KB', uploadDate: '2026-02-01', status: 'active' },
-  { id: '4', name: 'Onboarding_Checklist.docx', category: 'document', uploadedBy: 'HR Manager', size: '345 KB', uploadDate: '2026-02-10', status: 'active' },
-  { id: '5', name: 'Performance_Review_Form.docx', category: 'template', uploadedBy: 'Admin', size: '567 KB', uploadDate: '2026-02-15', status: 'active' },
-  { id: '6', name: 'Staff_List_March.xlsx', category: 'report', uploadedBy: 'Finance', size: '1.3 MB', uploadDate: '2026-03-01', status: 'archived' },
-  { id: '7', name: 'Leave_Policy_2026.pdf', category: 'document', uploadedBy: 'HR Manager', size: '678 KB', uploadDate: '2026-03-10', status: 'active' },
-  { id: '8', name: 'Training_Needs_Analysis.xlsx', category: 'report', uploadedBy: 'Admin', size: '2.1 MB', uploadDate: '2026-03-20', status: 'active' },
-  { id: '9', name: 'Expense_Claim_Form.docx', category: 'template', uploadedBy: 'Finance', size: '234 KB', uploadDate: '2026-04-01', status: 'active' },
-  { id: '10', name: 'Q1_HR_Dashboard.pptx', category: 'report', uploadedBy: 'HR Manager', size: '4.2 MB', uploadDate: '2026-04-05', status: 'archived' },
-];
-
 function FileTypeIcon({ name }: { name: string }) {
   const ext = name.split('.').pop()?.toLowerCase();
   if (ext === 'pdf') return <FileText className="w-4 h-4 text-rose-500" />;
@@ -44,15 +32,25 @@ function FileTypeIcon({ name }: { name: string }) {
 }
 
 export function FilesPage() {
-  const { success: showSuccess } = useToast();
-  const ps = useHrPageState({ data: MOCK, initialSortKey: 'name', searchKeys: ['name', 'uploadedBy', 'category'], pageSize: 10 });
+  const { success: showSuccess, error: showError } = useToast();
+  const [data, setData] = useState<FileItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const ps = useHrPageState({ data, initialSortKey: 'name', searchKeys: ['name', 'uploadedBy', 'category'], pageSize: 10 });
+  useEffect(() => { loadData(); }, []);
+  useEffect(() => { ps.setData(data); }, [data]);
+  const loadData = async () => {
+    setLoading(true);
+    try { const result = await hrApi.getDocFiles({}); setData(Array.isArray(result) ? result : []); }
+    catch (e: any) { showError(e?.message || 'Failed to load'); }
+    finally { setLoading(false); }
+  };
 
   const stats = useMemo(() => [
-    { label: 'Total', value: MOCK.length, icon: <FolderOpen className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
-    { label: 'Documents', value: MOCK.filter(i => i.category === 'document').length, icon: <FileText className="w-4 h-4" />, color: 'emerald' as const, active: ps.statusFilter === 'document', onClick: () => ps.setStatusFilter('document') },
-    { label: 'Templates', value: MOCK.filter(i => i.category === 'template').length, icon: <FileSpreadsheet className="w-4 h-4" />, color: 'amber' as const, active: ps.statusFilter === 'template', onClick: () => ps.setStatusFilter('template') },
-    { label: 'Reports', value: MOCK.filter(i => i.category === 'report').length, icon: <FileImage className="w-4 h-4" />, color: 'purple' as const, active: ps.statusFilter === 'report', onClick: () => ps.setStatusFilter('report') },
-  ], [ps.statusFilter]);
+    { label: 'Total', value: data.length, icon: <FolderOpen className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
+    { label: 'Documents', value: data.filter(i => i.category === 'document').length, icon: <FileText className="w-4 h-4" />, color: 'emerald' as const, active: ps.statusFilter === 'document', onClick: () => ps.setStatusFilter('document') },
+    { label: 'Templates', value: data.filter(i => i.category === 'template').length, icon: <FileSpreadsheet className="w-4 h-4" />, color: 'amber' as const, active: ps.statusFilter === 'template', onClick: () => ps.setStatusFilter('template') },
+    { label: 'Reports', value: data.filter(i => i.category === 'report').length, icon: <FileImage className="w-4 h-4" />, color: 'purple' as const, active: ps.statusFilter === 'report', onClick: () => ps.setStatusFilter('report') },
+  ], [data, ps.statusFilter]);
 
   const columns: Column<FileItem>[] = [
     { key: 'name', label: 'Name', sortable: true, render: (i) => (
@@ -94,7 +92,7 @@ export function FilesPage() {
       {ps.selectedIds.length > 0 && (
         <div className="flex items-center justify-between p-3 bg-primary/5 dark:bg-primary/10 border border-primary/20 rounded-xl">
           <span className="text-sm text-ink-600">{ps.selectedIds.length} selected</span>
-          <button onClick={() => { showSuccess('Selected files deleted'); ps.setSelectedIds([]); }} className="text-xs font-medium text-rose-600 hover:text-rose-700 transition-colors">Delete Selected</button>
+          <button onClick={() => { showError('Read-only view'); ps.setSelectedIds([]); }} className="text-xs font-medium text-rose-600 hover:text-rose-700 transition-colors">Delete Selected</button>
         </div>
       )}
       <HrDataTable columns={columns} data={ps.paginated} keyExtractor={i => i.id}
@@ -103,15 +101,15 @@ export function FilesPage() {
         page={ps.page} totalPages={ps.totalPages} onPageChange={ps.setPage} pageSize={ps.pageSize} totalItems={ps.filtered.length}
         from={(ps.page - 1) * ps.pageSize + 1} to={Math.min(ps.page * ps.pageSize, ps.filtered.length)}
         emptyMessage="No files found" emptyAction={<button onClick={ps.openAddModal} className="text-xs font-medium text-primary hover:text-primary-hover">Upload your first file</button>} />
-      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit File' : 'Add File'} onSubmit={(e) => { e.preventDefault(); showSuccess(ps.editingId ? 'File updated' : 'File added'); ps.closeModal(); }}>
+      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit File' : 'Add File'} onSubmit={(e) => { e.preventDefault(); showError('Read-only view'); ps.closeModal(); }}>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">File Name</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Category</label><select className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"><option>document</option><option>template</option><option>report</option></select></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">File</label><input type="file" className="block w-full text-sm text-ink-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 transition-colors" /></div>
       </HrFormModal>
-      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showSuccess('File deleted'); ps.closeConfirmDelete(); }} title="Delete File" message="Are you sure you want to delete this file? This action cannot be undone." confirmLabel="Delete" variant="danger" />
+      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showError('Read-only view'); ps.closeConfirmDelete(); }} title="Delete File" message="Are you sure you want to delete this file? This action cannot be undone." confirmLabel="Delete" variant="danger" />
       <HrViewDrawer open={ps.viewDrawerOpen} onClose={ps.closeViewDrawer} title="File Details">
         {ps.viewingId && (() => {
-          const item = MOCK.find(i => i.id === ps.viewingId);
+          const item = data.find(i => i.id === ps.viewingId);
           if (!item) return null;
           return (
             <div className="space-y-4 text-sm">
@@ -130,7 +128,7 @@ export function FilesPage() {
           );
         })()}
       </HrViewDrawer>
-      <HrFormModal open={ps.importOpen} onClose={() => ps.setImportOpen(false)} title="Upload File" onSubmit={(e) => { e.preventDefault(); showSuccess('File uploaded'); ps.setImportOpen(false); }} submitLabel="Upload">
+      <HrFormModal open={ps.importOpen} onClose={() => ps.setImportOpen(false)} title="Upload File" onSubmit={(e) => { e.preventDefault(); showSuccess('File upload is a read-only view'); ps.setImportOpen(false); }} submitLabel="Upload">
         <p className="text-sm text-ink-400 mb-3">Select a file to upload to the HR document store.</p>
         <input type="file" className="block w-full text-sm text-ink-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 transition-colors" />
       </HrFormModal>

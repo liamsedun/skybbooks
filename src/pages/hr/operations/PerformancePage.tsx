@@ -1,4 +1,4 @@
-﻿import { useMemo } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { Award, Plus, Download, Upload, FileText, Edit3, Trash2, Eye, Clock, CheckCircle2, UserCheck } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -10,21 +10,22 @@ import { HrConfirmDialog } from '../../../components/hr/HrConfirmDialog';
 import { HrViewDrawer } from '../../../components/hr/HrViewDrawer';
 import { exportToCsv, exportToPdf, statusColor, formatDate } from '../../../lib/hrExport';
 import { useToast } from '../../../contexts/ToastContext';
+import { hrApi } from '../../../lib/api';
 
 interface PerformanceItem { id: string; employeeName: string; reviewer: string; rating: number; period: string; status: string; }
-const MOCK: PerformanceItem[] = [
-  { id: 'PF1', employeeName: 'Chioma Okafor', reviewer: 'Emeka Obi', rating: 4.5, period: 'Q2 2026', status: 'completed' },
-  { id: 'PF2', employeeName: 'Segun Adebayo', reviewer: 'Funmi Lawal', rating: 3.8, period: 'Q2 2026', status: 'completed' },
-  { id: 'PF3', employeeName: 'Amina Bello', reviewer: 'Kelechi Nwosu', rating: 4.2, period: 'Q2 2026', status: 'completed' },
-  { id: 'PF4', employeeName: 'Tunde Bakare', reviewer: 'Funmi Lawal', rating: 0, period: 'Q3 2026', status: 'pending' },
-  { id: 'PF5', employeeName: 'Ngozi Eze', reviewer: 'Emeka Obi', rating: 4.7, period: 'Q2 2026', status: 'completed' },
-  { id: 'PF6', employeeName: 'Femi Ogunlade', reviewer: 'Amara Nwachukwu', rating: 3.5, period: 'Q2 2026', status: 'completed' },
-  { id: 'PF7', employeeName: 'Zainab Abdullah', reviewer: 'Amara Nwachukwu', rating: 0, period: 'Q3 2026', status: 'in-progress' },
-  { id: 'PF8', employeeName: 'Chinedu Okonkwo', reviewer: 'Emeka Obi', rating: 4.0, period: 'Q2 2026', status: 'completed' },
-];
 export function OpsPerformancePage() {
-  const { success: showSuccess } = useToast();
-  const ps = useHrPageState({ data: MOCK, initialSortKey: 'employeeName', searchKeys: ['employeeName', 'reviewer', 'period'], pageSize: 10 });
+  const { success: showSuccess, error: showError } = useToast();
+  const [data, setData] = useState<PerformanceItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const ps = useHrPageState({ data, initialSortKey: 'employeeName', searchKeys: ['employeeName', 'reviewer', 'period'], pageSize: 10 });
+  useEffect(() => { loadData(); }, []);
+  useEffect(() => { ps.setData(data); }, [data]);
+  const loadData = async () => {
+    setLoading(true);
+    try { const result = await hrApi.getPerformanceReviews({}); setData(Array.isArray(result) ? result : []); }
+    catch (e: any) { showError(e?.message || 'Failed to load'); }
+    finally { setLoading(false); }
+  };
   const stats = useMemo(() => [
     { label: 'Total Reviews', value: ps.filtered.length.toString(), icon: <Award className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
     { label: 'Completed', value: ps.filtered.filter(i => i.status === 'completed').length.toString(), icon: <CheckCircle2 className="w-4 h-4" />, color: 'emerald' as const, active: ps.statusFilter === 'completed', onClick: () => ps.setStatusFilter('completed') },
@@ -65,13 +66,13 @@ export function OpsPerformancePage() {
         page={ps.page} totalPages={ps.totalPages} onPageChange={ps.setPage} pageSize={ps.pageSize} totalItems={ps.filtered.length}
         from={(ps.page - 1) * ps.pageSize + 1} to={Math.min(ps.page * ps.pageSize, ps.filtered.length)}
         emptyMessage="No reviews found" emptyAction={<button onClick={ps.openAddModal} className="text-xs font-medium text-primary hover:text-primary-hover">Add your first review</button>} />
-      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Review' : 'Add Review'} onSubmit={(e) => { e.preventDefault(); showSuccess(ps.editingId ? 'Review updated' : 'Review created'); ps.closeModal(); }}>
+      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Review' : 'Add Review'} onSubmit={(e) => { e.preventDefault(); showError('Read-only view'); ps.closeModal(); }}>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Employee Name</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Reviewer</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Period</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" placeholder="e.g. Q3 2026" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Rating (0-5)</label><input type="number" step="0.1" min="0" max="5" className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
       </HrFormModal>
-      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showSuccess('Review deleted'); ps.closeConfirmDelete(); }} title="Delete Review" message="Are you sure you want to delete this performance review?" confirmLabel="Delete" variant="danger" />
+      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showError('Read-only view'); ps.closeConfirmDelete(); }} title="Delete Review" message="Are you sure you want to delete this performance review?" confirmLabel="Delete" variant="danger" />
       <HrViewDrawer open={ps.viewDrawerOpen} onClose={ps.closeViewDrawer} title="Review Details"><div className="space-y-3 text-sm text-ink-600"><p>Rating: <span className="font-semibold text-amber-600">{avgRating}</span> / 5.0 (average across completed reviews)</p></div></HrViewDrawer>
       <HrFormModal open={ps.importOpen} onClose={() => ps.setImportOpen(false)} title="Import Reviews" onSubmit={(e) => { e.preventDefault(); showSuccess('Reviews imported'); ps.setImportOpen(false); }} submitLabel="Import">
         <p className="text-sm text-ink-400 mb-3">Upload a CSV file with performance reviews.</p>

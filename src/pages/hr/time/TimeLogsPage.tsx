@@ -1,4 +1,4 @@
-﻿import { useMemo } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { Timer, Plus, Download, Upload, FileText, Edit3, Trash2, Eye, Play, Square } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -10,28 +10,26 @@ import { HrConfirmDialog } from '../../../components/hr/HrConfirmDialog';
 import { HrViewDrawer } from '../../../components/hr/HrViewDrawer';
 import { exportToCsv, exportToPdf, statusColor, formatDate } from '../../../lib/hrExport';
 import { useToast } from '../../../contexts/ToastContext';
+import { hrApi } from '../../../lib/api';
 
 interface TimeLog {
   id: string; employee: string; project: string; date: string; startTime: string; endTime: string; hours: number; billable: boolean; status: string;
 }
 
-const MOCK: TimeLog[] = [
-  { id: 'TL1', employee: 'Chioma Okafor', project: 'Payroll System', date: '2026-07-27', startTime: '08:00', endTime: '12:00', hours: 4, billable: true, status: 'approved' },
-  { id: 'TL2', employee: 'Segun Adebayo', project: 'Mobile App', date: '2026-07-27', startTime: '09:00', endTime: '17:00', hours: 8, billable: true, status: 'approved' },
-  { id: 'TL3', employee: 'Amina Bello', project: 'HR Dashboard', date: '2026-07-27', startTime: '08:30', endTime: '16:30', hours: 8, billable: true, status: 'pending' },
-  { id: 'TL4', employee: 'Tunde Bakare', project: 'Marketing Campaign', date: '2026-07-26', startTime: '10:00', endTime: '15:00', hours: 5, billable: false, status: 'approved' },
-  { id: 'TL5', employee: 'Ngozi Eze', project: 'Sales Training', date: '2026-07-26', startTime: '08:00', endTime: '14:00', hours: 6, billable: true, status: 'approved' },
-  { id: 'TL6', employee: 'Femi Ogunlade', project: 'Data Pipeline', date: '2026-07-26', startTime: '09:00', endTime: '18:00', hours: 9, billable: true, status: 'pending' },
-  { id: 'TL7', employee: 'Zainab Abdullah', project: 'Customer Portal', date: '2026-07-25', startTime: '08:00', endTime: '16:00', hours: 8, billable: true, status: 'rejected' },
-  { id: 'TL8', employee: 'Chinedu Okonkwo', project: 'Payroll System', date: '2026-07-25', startTime: '07:00', endTime: '15:00', hours: 8, billable: true, status: 'approved' },
-  { id: 'TL9', employee: 'Yemi Lawson', project: 'Mobile App', date: '2026-07-24', startTime: '09:00', endTime: '13:00', hours: 4, billable: false, status: 'approved' },
-  { id: 'TL10', employee: 'Adaeze Obi', project: 'HR Dashboard', date: '2026-07-24', startTime: '08:30', endTime: '17:30', hours: 9, billable: true, status: 'pending' },
-];
-
 export function TimeLogsPage() {
-  const { success } = useToast();
-  const ps = useHrPageState({ data: MOCK, initialSortKey: 'date', initialSortDirection: 'desc', searchKeys: ['employee', 'project'], pageSize: 10 });
+  const { success: showSuccess, error: showError } = useToast();
+  const [data, setData] = useState<TimeLog[]>([]);
+  const [loading, setLoading] = useState(true);
+  const ps = useHrPageState({ data, initialSortKey: 'date', initialSortDirection: 'desc', searchKeys: ['employee', 'project'], pageSize: 10 });
   const { filtered, paginated } = ps;
+  useEffect(() => { loadData(); }, []);
+  useEffect(() => { ps.setData(data); }, [data]);
+  const loadData = async () => {
+    setLoading(true);
+    try { const result = await hrApi.getAttendance({}); setData(Array.isArray(result) ? result : []); }
+    catch (e: any) { showError(e?.message || 'Failed to load'); }
+    finally { setLoading(false); }
+  };
 
   const totalHours = useMemo(() => filtered.reduce((sum, i) => sum + i.hours, 0), [filtered]);
 

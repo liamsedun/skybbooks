@@ -1,4 +1,4 @@
-﻿import { useState, useMemo } from 'react';
+﻿import { useState, useMemo, useEffect } from 'react';
 import { AlertTriangle, Plus, Download, FileText, Edit3, Trash2, Eye, Clock, XCircle, CheckCircle2, Moon } from 'lucide-react';
 import { useHrPageState } from '../../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../../components/hr/HrPageShell';
@@ -10,6 +10,7 @@ import { HrConfirmDialog } from '../../../../components/hr/HrConfirmDialog';
 import { HrViewDrawer } from '../../../../components/hr/HrViewDrawer';
 import { exportToCsv, exportToPdf, statusColor, formatDate } from '../../../../lib/hrExport';
 import { useToast } from '../../../../contexts/ToastContext';
+import { hrApi } from '../../../../lib/api';
 
 interface LateCheckOut {
   id: string;
@@ -21,36 +22,36 @@ interface LateCheckOut {
   status: 'on_time' | 'late';
 }
 
-const MOCK: LateCheckOut[] = [
-  { id: 'LCO-001', employeeName: 'Amara Okafor', date: '2026-07-15', scheduledTime: '17:00', actualTime: '17:30', minutesLate: 30, status: 'late' },
-  { id: 'LCO-002', employeeName: 'Chidi Nwosu', date: '2026-07-15', scheduledTime: '17:00', actualTime: '17:45', minutesLate: 45, status: 'late' },
-  { id: 'LCO-003', employeeName: 'Emeka Eze', date: '2026-07-15', scheduledTime: '17:00', actualTime: '18:15', minutesLate: 75, status: 'late' },
-  { id: 'LCO-004', employeeName: 'Fatima Usman', date: '2026-07-14', scheduledTime: '17:00', actualTime: '17:20', minutesLate: 20, status: 'late' },
-  { id: 'LCO-005', employeeName: 'Yetunde Bello', date: '2026-07-14', scheduledTime: '17:00', actualTime: '17:00', minutesLate: 0, status: 'on_time' },
-  { id: 'LCO-006', employeeName: 'Segun Adeyemi', date: '2026-07-13', scheduledTime: '17:00', actualTime: '18:00', minutesLate: 60, status: 'late' },
-  { id: 'LCO-007', employeeName: 'Ngozi Obi', date: '2026-07-13', scheduledTime: '17:00', actualTime: '17:00', minutesLate: 0, status: 'on_time' },
-  { id: 'LCO-008', employeeName: 'Tunde Bakare', date: '2026-07-12', scheduledTime: '17:00', actualTime: '17:25', minutesLate: 25, status: 'late' },
-  { id: 'LCO-009', employeeName: 'Chioma Adeleke', date: '2026-07-12', scheduledTime: '17:00', actualTime: '17:10', minutesLate: 10, status: 'late' },
-  { id: 'LCO-010', employeeName: 'Ibrahim Danjuma', date: '2026-07-11', scheduledTime: '17:00', actualTime: '17:00', minutesLate: 0, status: 'on_time' },
-];
-
 export function LateCheckOutPage() {
-  const { success } = useToast();
-  const [localData, setLocalData] = useState<LateCheckOut[]>(MOCK);
-  const ps = useHrPageState({ data: localData, initialSortKey: 'employeeName', searchKeys: ['employeeName', 'status'], pageSize: 10 });
+  const { success, error } = useToast();
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const ps = useHrPageState({ data: [], initialSortKey: 'employeeName', searchKeys: ['employeeName', 'status'], pageSize: 10 });
   const { filtered, paginated } = ps;
 
+  useEffect(() => { loadData(); }, []);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const result = await hrApi.getReportAttendance({});
+      setData(Array.isArray(result) ? result : []);
+    } catch (e: any) { error(e?.message || 'Failed to load'); }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => { ps.setData(data); }, [data]);
+
   const stats = useMemo(() => [
-    { label: 'Total Records', value: localData.length, icon: <AlertTriangle className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
-    { label: 'Late Departures', value: localData.filter(i => i.status === 'late').length, icon: <Moon className="w-4 h-4" />, color: 'rose' as const, active: ps.statusFilter === 'late', onClick: () => ps.setStatusFilter('late') },
-    { label: 'On Time', value: localData.filter(i => i.status === 'on_time').length, icon: <CheckCircle2 />, color: 'emerald' as const, active: ps.statusFilter === 'on_time', onClick: () => ps.setStatusFilter('on_time') },
-    { label: 'Avg Late (min)', value: Math.round(localData.filter(i => i.status === 'late').reduce((s, i) => s + i.minutesLate, 0) / Math.max(1, localData.filter(i => i.status === 'late').length)), icon: <Clock className="w-4 h-4" />, color: 'amber' as const },
-  ], [localData, ps.statusFilter]);
+    { label: 'Total Records', value: data.length, icon: <AlertTriangle className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
+    { label: 'Late Departures', value: data.filter((i: any) => i.status === 'late').length, icon: <Moon className="w-4 h-4" />, color: 'rose' as const, active: ps.statusFilter === 'late', onClick: () => ps.setStatusFilter('late') },
+    { label: 'On Time', value: data.filter((i: any) => i.status === 'on_time').length, icon: <CheckCircle2 />, color: 'emerald' as const, active: ps.statusFilter === 'on_time', onClick: () => ps.setStatusFilter('on_time') },
+    { label: 'Avg Late (min)', value: Math.round(data.filter((i: any) => i.status === 'late').reduce((s: number, i: any) => s + i.minutesLate, 0) / Math.max(1, data.filter((i: any) => i.status === 'late').length)), icon: <Clock className="w-4 h-4" />, color: 'amber' as const },
+  ], [data, ps.statusFilter]);
 
   const handleDelete = (id: string) => {
-    setLocalData(prev => prev.filter(i => i.id !== id));
+    error('This is a read-only report view');
     ps.closeConfirmDelete();
-    success('Late check-out record deleted');
   };
 
   const columns: Column<LateCheckOut>[] = [
@@ -108,7 +109,7 @@ export function LateCheckOutPage() {
             <div><label className="block text-xs font-medium text-ink-600 mb-1">Scheduled Time</label><input type="time" className="w-full h-9 px-3 text-sm rounded-lg border border-ink-200 dark:border-ink-700 bg-white dark:bg-ink-900 text-ink-900" defaultValue={editItem?.scheduledTime ?? ''} /></div>
             <div><label className="block text-xs font-medium text-ink-600 mb-1">Actual Time</label><input type="time" className="w-full h-9 px-3 text-sm rounded-lg border border-ink-200 dark:border-ink-700 bg-white dark:bg-ink-900 text-ink-900" defaultValue={editItem?.actualTime ?? ''} /></div>
           </div>
-          <button className="w-full h-9 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors" onClick={() => { success(ps.editingId ? 'Record updated' : 'Record created'); ps.closeModal(); }}>{ps.editingId ? 'Update' : 'Create'}</button>
+          <button className="w-full h-9 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors" onClick={() => { error('This is a read-only report view'); ps.closeModal(); }}>{ps.editingId ? 'Update' : 'Create'}</button>
         </div>
       </HrFormModal>
       <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => handleDelete(ps.deletingId!)} title="Delete Record" message="Are you sure you want to delete this late check-out record? This action cannot be undone." />

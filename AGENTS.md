@@ -73,6 +73,15 @@ Maintain and enhance accounting features: fix kobo/naira display, parent-child a
 ### Blocked
 - (none)
 
+### Session 6 — SkyHRM Hardcoded MOCK Data → API Wiring (Jul 2026)
+- **CRM audit**: All 5 CRM pages (`src/pages/crm/`) already clean — `Dashboard`, `Contacts`, `DealsPipeline`, `Activities`, `AllDeals` use `crmApi`/`api` via `useQuery`/`useMutation` with no hardcoded state
+- **Manage SkyHRM pages**: `UsersPage.tsx`, `EmployeeProfilesPage.tsx`, `OrganisationSection.tsx`, `UserAccessSection.tsx`, `ApprovalsSection.tsx`, `ServicesSection.tsx` rewritten to use `orgApi`/`hrApi` instead of mock data — verified with `vite build`
+- **MOCK data eliminated from HR pages**: Removed all hardcoded `const MOCK` arrays (~80+ instances across 60+ files in `attendance/`, `leave/`, `time/`, `reports/sub/`, `home/`, `operations/`, `services/`, `travel/`, `letters/`, `helpdesk/`, `surveys/`, `tasks/`, `recognition/`, `announcements/`, `courses/`, `administration/`, `approvals/`, `expenses/`, `offboarding/`, `workflows/`, `jobs/`, `projects/`)
+- **Pattern applied**: Every page now either (a) fetches from `hrApi` CRUD on mount via `useEffect` → `loadData()`, or (b) shows empty state for read-only dashboard views
+- **Form CRUD wired**: Create/edit/delete actions call real `hrApi` methods (`hrApi.createShift()`, `hrApi.deleteTimesheet()`, `hrApi.updateHelpTicket()`, etc.) with `loadData()` refresh on success
+- **Layout-only files left untouched**: `AttendanceLayout`, `LeaveLayout`, `HomeLayout`, `ServicesLayout`, `OperationsLayout`, `ManageLayout`, `PerformanceLayout`, `TimesheetsLayout`, `WorkflowLayout`, `ReportsLayout`, `OnboardingLayout` — UI shell/navigation only, no data dependencies
+- **Build**: `vite build` passes with 0 errors
+
 ### Multi-Tenancy Hardening — Completed Items
 - **Full codebase audit**: Scanned 53 service files, 20+ route files, webhooks, cron jobs, and auth flow — ~92% already org-scoped
 - **Skills infrastructure**: Created `docs/agents/issue-tracker.md` (GitHub), `docs/agents/domain.md` (single-context), updated AGENTS.md with `## Agent skills` block

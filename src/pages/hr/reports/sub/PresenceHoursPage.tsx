@@ -1,4 +1,4 @@
-﻿import { useState, useMemo } from 'react';
+﻿import { useState, useMemo, useEffect } from 'react';
 import { Hourglass, Plus, Download, FileText, Edit3, Trash2, Eye, Clock, Sun, Moon, TrendingUp } from 'lucide-react';
 import { useHrPageState } from '../../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../../components/hr/HrPageShell';
@@ -10,6 +10,7 @@ import { HrConfirmDialog } from '../../../../components/hr/HrConfirmDialog';
 import { HrViewDrawer } from '../../../../components/hr/HrViewDrawer';
 import { exportToCsv, exportToPdf, statusColor, formatDate } from '../../../../lib/hrExport';
 import { useToast } from '../../../../contexts/ToastContext';
+import { hrApi } from '../../../../lib/api';
 
 interface PresenceRecord {
   id: string;
@@ -21,36 +22,36 @@ interface PresenceRecord {
   status: 'completed' | 'partial' | 'below';
 }
 
-const MOCK: PresenceRecord[] = [
-  { id: 'PH-001', employeeName: 'Amara Okafor', month: '2026-07', expectedHours: 176, workedHours: 172, overtime: 4, status: 'completed' },
-  { id: 'PH-002', employeeName: 'Chidi Nwosu', month: '2026-07', expectedHours: 176, workedHours: 160, overtime: 2, status: 'partial' },
-  { id: 'PH-003', employeeName: 'Fatima Usman', month: '2026-07', expectedHours: 176, workedHours: 176, overtime: 0, status: 'completed' },
-  { id: 'PH-004', employeeName: 'Emeka Eze', month: '2026-07', expectedHours: 176, workedHours: 168, overtime: 6, status: 'partial' },
-  { id: 'PH-005', employeeName: 'Yetunde Bello', month: '2026-07', expectedHours: 176, workedHours: 174, overtime: 2, status: 'completed' },
-  { id: 'PH-006', employeeName: 'Segun Adeyemi', month: '2026-07', expectedHours: 176, workedHours: 140, overtime: 0, status: 'below' },
-  { id: 'PH-007', employeeName: 'Ngozi Obi', month: '2026-07', expectedHours: 176, workedHours: 170, overtime: 3, status: 'partial' },
-  { id: 'PH-008', employeeName: 'Ibrahim Danjuma', month: '2026-07', expectedHours: 176, workedHours: 176, overtime: 0, status: 'completed' },
-  { id: 'PH-009', employeeName: 'Chioma Adeleke', month: '2026-06', expectedHours: 176, workedHours: 155, overtime: 5, status: 'below' },
-  { id: 'PH-010', employeeName: 'Tunde Bakare', month: '2026-06', expectedHours: 176, workedHours: 162, overtime: 8, status: 'partial' },
-];
-
 export function PresenceHoursPage() {
-  const { success } = useToast();
-  const [localData, setLocalData] = useState<PresenceRecord[]>(MOCK);
-  const ps = useHrPageState({ data: localData, initialSortKey: 'employeeName', searchKeys: ['employeeName', 'month'], pageSize: 10 });
+  const { success, error } = useToast();
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const ps = useHrPageState({ data: [], initialSortKey: 'employeeName', searchKeys: ['employeeName', 'month'], pageSize: 10 });
   const { filtered, paginated } = ps;
 
+  useEffect(() => { loadData(); }, []);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const result = await hrApi.getReportAttendance({});
+      setData(Array.isArray(result) ? result : []);
+    } catch (e: any) { error(e?.message || 'Failed to load'); }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => { ps.setData(data); }, [data]);
+
   const stats = useMemo(() => [
-    { label: 'Total Records', value: localData.length, icon: <Hourglass className="w-4 h-4" />, color: 'blue' as const },
-    { label: 'Total Hours', value: localData.reduce((s, i) => s + i.workedHours, 0), icon: <Clock className="w-4 h-4" />, color: 'emerald' as const },
-    { label: 'Overtime (hrs)', value: localData.reduce((s, i) => s + i.overtime, 0), icon: <TrendingUp className="w-4 h-4" />, color: 'amber' as const },
-    { label: 'Avg Worked/Expected', value: `${Math.round(localData.reduce((s, i) => s + i.workedHours, 0) / Math.max(1, localData.reduce((s, i) => s + i.expectedHours, 0)) * 100)}%`, icon: <Sun className="w-4 h-4" />, color: 'purple' as const },
-  ], [localData]);
+    { label: 'Total Records', value: data.length, icon: <Hourglass className="w-4 h-4" />, color: 'blue' as const },
+    { label: 'Total Hours', value: data.reduce((s: number, i: any) => s + i.workedHours, 0), icon: <Clock className="w-4 h-4" />, color: 'emerald' as const },
+    { label: 'Overtime (hrs)', value: data.reduce((s: number, i: any) => s + i.overtime, 0), icon: <TrendingUp className="w-4 h-4" />, color: 'amber' as const },
+    { label: 'Avg Worked/Expected', value: `${Math.round(data.reduce((s: number, i: any) => s + i.workedHours, 0) / Math.max(1, data.reduce((s: number, i: any) => s + i.expectedHours, 0)) * 100)}%`, icon: <Sun className="w-4 h-4" />, color: 'purple' as const },
+  ], [data]);
 
   const handleDelete = (id: string) => {
-    setLocalData(prev => prev.filter(i => i.id !== id));
+    error('This is a read-only report view');
     ps.closeConfirmDelete();
-    success('Presence record deleted');
   };
 
   const columns: Column<PresenceRecord>[] = [
@@ -121,7 +122,7 @@ export function PresenceHoursPage() {
             <div><label className="block text-xs font-medium text-ink-600 mb-1">Worked Hours</label><input type="number" className="w-full h-9 px-3 text-sm rounded-lg border border-ink-200 dark:border-ink-700 bg-white dark:bg-ink-900 text-ink-900" defaultValue={editItem?.workedHours ?? ''} /></div>
             <div><label className="block text-xs font-medium text-ink-600 mb-1">Overtime</label><input type="number" className="w-full h-9 px-3 text-sm rounded-lg border border-ink-200 dark:border-ink-700 bg-white dark:bg-ink-900 text-ink-900" defaultValue={editItem?.overtime ?? ''} /></div>
           </div>
-          <button className="w-full h-9 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors" onClick={() => { success(ps.editingId ? 'Record updated' : 'Record created'); ps.closeModal(); }}>{ps.editingId ? 'Update' : 'Create'}</button>
+          <button className="w-full h-9 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors" onClick={() => { error('This is a read-only report view'); ps.closeModal(); }}>{ps.editingId ? 'Update' : 'Create'}</button>
         </div>
       </HrFormModal>
       <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => handleDelete(ps.deletingId!)} title="Delete Record" message="Are you sure you want to delete this presence hour record? This action cannot be undone." />

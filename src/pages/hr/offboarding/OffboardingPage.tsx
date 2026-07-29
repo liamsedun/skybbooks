@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { DoorOpen, Play, CheckCircle, Clock, Plus, Download, FileText, Edit3, Trash2, Eye } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -10,6 +10,7 @@ import { HrConfirmDialog } from '../../../components/hr/HrConfirmDialog';
 import { HrViewDrawer } from '../../../components/hr/HrViewDrawer';
 import { exportToCsv, exportToPdf, statusColor, formatDate } from '../../../lib/hrExport';
 import { useToast } from '../../../contexts/ToastContext';
+import { hrApi } from '../../../lib/api';
 
 interface OffboardingItem {
   id: string;
@@ -20,26 +21,25 @@ interface OffboardingItem {
   status: string;
 }
 
-const MOCK: OffboardingItem[] = [
-  { id: '1', employeeName: 'Alice Johnson', department: 'Engineering', exitDate: '2026-08-15', reason: 'Resignation', status: 'initiated' },
-  { id: '2', employeeName: 'Bob Smith', department: 'Marketing', exitDate: '2026-08-01', reason: 'End of Contract', status: 'in-progress' },
-  { id: '3', employeeName: 'Carol White', department: 'Finance', exitDate: '2026-07-30', reason: 'Retirement', status: 'completed' },
-  { id: '4', employeeName: 'David Brown', department: 'Engineering', exitDate: '2026-09-01', reason: 'Relocation', status: 'initiated' },
-  { id: '5', employeeName: 'Eve Davis', department: 'HR', exitDate: '2026-07-15', reason: 'Resignation', status: 'completed' },
-  { id: '6', employeeName: 'Frank Miller', department: 'Operations', exitDate: '2026-08-20', reason: 'Mutual Agreement', status: 'in-progress' },
-  { id: '7', employeeName: 'Grace Wilson', department: 'Sales', exitDate: '2026-07-10', reason: 'End of Contract', status: 'completed' },
-  { id: '8', employeeName: 'Hank Moore', department: 'Engineering', exitDate: '2026-09-15', reason: 'Resignation', status: 'initiated' },
-];
-
 export function OffboardingPage() {
-  const { success: showSuccess } = useToast();
-  const ps = useHrPageState({ data: MOCK, initialSortKey: 'employeeName', searchKeys: ['employeeName', 'department', 'reason'], pageSize: 10 });
+  const { success: showSuccess, error: showError } = useToast();
+  const [data, setData] = useState<OffboardingItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const ps = useHrPageState({ data, initialSortKey: 'employeeName', searchKeys: ['employeeName', 'department', 'reason'], pageSize: 10 });
+  useEffect(() => { loadData(); }, []);
+  useEffect(() => { ps.setData(data); }, [data]);
+  const loadData = async () => {
+    setLoading(true);
+    try { const result = await hrApi.getOffboardingTasks(''); setData(Array.isArray(result) ? result : []); }
+    catch (e: any) { showError(e?.message || 'Failed to load'); }
+    finally { setLoading(false); }
+  };
 
   const stats = useMemo(() => [
-    { label: 'Total', value: MOCK.length, icon: <DoorOpen className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
-    { label: 'In Progress', value: MOCK.filter(i => i.status === 'in-progress').length + MOCK.filter(i => i.status === 'initiated').length, icon: <Play className="w-4 h-4" />, color: 'amber' as const, active: ps.statusFilter === 'in-progress', onClick: () => ps.setStatusFilter('in-progress') },
-    { label: 'Completed', value: MOCK.filter(i => i.status === 'completed').length, icon: <CheckCircle className="w-4 h-4" />, color: 'emerald' as const, active: ps.statusFilter === 'completed', onClick: () => ps.setStatusFilter('completed') },
-  ], [ps.statusFilter]);
+    { label: 'Total', value: data.length, icon: <DoorOpen className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
+    { label: 'In Progress', value: data.filter(i => i.status === 'in-progress').length + data.filter(i => i.status === 'initiated').length, icon: <Play className="w-4 h-4" />, color: 'amber' as const, active: ps.statusFilter === 'in-progress', onClick: () => ps.setStatusFilter('in-progress') },
+    { label: 'Completed', value: data.filter(i => i.status === 'completed').length, icon: <CheckCircle className="w-4 h-4" />, color: 'emerald' as const, active: ps.statusFilter === 'completed', onClick: () => ps.setStatusFilter('completed') },
+  ], [data, ps.statusFilter]);
 
   const columns: Column<OffboardingItem>[] = [
     { key: 'employeeName', label: 'Employee', sortable: true, render: (i) => <span className="font-medium text-ink-900">{i.employeeName}</span> },
@@ -67,8 +67,8 @@ export function OffboardingPage() {
       pageKey="offboarding"
       headerActions={
         <>
-          <button onClick={() => { exportToCsv(['Employee', 'Department', 'Exit Date', 'Reason', 'Status'], MOCK.map(o => [o.employeeName, o.department, o.exitDate, o.reason, o.status]), 'offboarding'); showSuccess('Exported'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
-          <button onClick={() => exportToPdf('Offboarding', ['Employee', 'Department', 'Exit Date', 'Reason', 'Status'], MOCK.map(o => [o.employeeName, o.department, o.exitDate, o.reason, o.status]), 'offboarding')} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><FileText className="w-3.5 h-3.5" /> PDF</button>
+          <button onClick={() => { exportToCsv(['Employee', 'Department', 'Exit Date', 'Reason', 'Status'], data.map(o => [o.employeeName, o.department, o.exitDate, o.reason, o.status]), 'offboarding'); showSuccess('Exported'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
+          <button onClick={() => exportToPdf('Offboarding', ['Employee', 'Department', 'Exit Date', 'Reason', 'Status'], data.map(o => [o.employeeName, o.department, o.exitDate, o.reason, o.status]), 'offboarding')} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><FileText className="w-3.5 h-3.5" /> PDF</button>
           <button onClick={ps.openAddModal} className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary-hover transition-all shadow-sm"><Plus className="w-3.5 h-3.5" /> Start Offboarding</button>
         </>
       }>
@@ -83,14 +83,14 @@ export function OffboardingPage() {
         page={ps.page} totalPages={ps.totalPages} onPageChange={ps.setPage} pageSize={ps.pageSize} totalItems={ps.filtered.length}
         from={(ps.page - 1) * ps.pageSize + 1} to={Math.min(ps.page * ps.pageSize, ps.filtered.length)}
         emptyMessage="No offboarding records" emptyAction={<button onClick={ps.openAddModal} className="text-xs font-medium text-primary">Start offboarding</button>} />
-      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Offboarding' : 'Start Offboarding'} onSubmit={(e) => { e.preventDefault(); showSuccess(ps.editingId ? 'Updated' : 'Started'); ps.closeModal(); }}>
+      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Offboarding' : 'Start Offboarding'} onSubmit={(e) => { e.preventDefault(); showError('Read-only view'); ps.closeModal(); }}>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Employee</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Exit Date</label><input type="date" className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Reason</label><select className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"><option>Resignation</option><option>Retirement</option><option>End of Contract</option><option>Relocation</option><option>Mutual Agreement</option></select></div>
       </HrFormModal>
-      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showSuccess('Deleted'); ps.closeConfirmDelete(); }} title="Delete" message="Are you sure?" confirmLabel="Delete" variant="danger" />
+      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showError('Read-only view'); ps.closeConfirmDelete(); }} title="Delete" message="Are you sure?" confirmLabel="Delete" variant="danger" />
       <HrViewDrawer open={ps.viewDrawerOpen} onClose={ps.closeViewDrawer} title="Offboarding Details">
-        {ps.viewingId && (() => { const o = MOCK.find(i => i.id === ps.viewingId)!; return (
+        {ps.viewingId && (() => { const o = data.find(i => i.id === ps.viewingId)!; return (
           <div className="space-y-3 text-sm text-ink-600">
             <div className="grid grid-cols-2 gap-4"><div><p className="text-ink-400 text-xs">Employee</p><p className="font-medium text-ink-900">{o.employeeName}</p></div><div><p className="text-ink-400 text-xs">Department</p><p className="font-medium text-ink-900">{o.department}</p></div><div><p className="text-ink-400 text-xs">Exit Date</p><p className="font-medium text-ink-900">{formatDate(o.exitDate)}</p></div><div><p className="text-ink-400 text-xs">Reason</p><p className="font-medium text-ink-900">{o.reason}</p></div><div><p className="text-ink-400 text-xs">Status</p><p className="font-medium text-ink-900 capitalize">{o.status}</p></div></div>
           </div>

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { FileText, CheckCircle, Clock, Archive, Plus, Download, Edit3, Trash2, Eye } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -10,6 +10,7 @@ import { HrConfirmDialog } from '../../../components/hr/HrConfirmDialog';
 import { HrViewDrawer } from '../../../components/hr/HrViewDrawer';
 import { exportToCsv, exportToPdf, statusColor, formatDate } from '../../../lib/hrExport';
 import { useToast } from '../../../contexts/ToastContext';
+import { hrApi } from '../../../lib/api';
 
 interface PolicyItem {
   id: string;
@@ -20,27 +21,64 @@ interface PolicyItem {
   status: string;
 }
 
-const MOCK: PolicyItem[] = [
-  { id: '1', title: 'Leave Policy', category: 'leave', effectiveDate: '2026-01-01', version: 3, status: 'active' },
-  { id: '2', title: 'Code of Conduct', category: 'conduct', effectiveDate: '2026-02-15', version: 2, status: 'active' },
-  { id: '3', title: 'Attendance Policy', category: 'attendance', effectiveDate: '2026-03-01', version: 1, status: 'active' },
-  { id: '4', title: 'Compensation & Benefits', category: 'compensation', effectiveDate: '2026-01-01', version: 4, status: 'active' },
-  { id: '5', title: 'Remote Work Policy', category: 'conduct', effectiveDate: '2026-06-01', version: 1, status: 'draft' },
-  { id: '6', title: 'Overtime Policy', category: 'compensation', effectiveDate: '2026-04-01', version: 2, status: 'draft' },
-  { id: '7', title: 'Dress Code Policy', category: 'conduct', effectiveDate: '2025-06-01', version: 1, status: 'archived' },
-  { id: '8', title: 'Annual Leave Carryover', category: 'leave', effectiveDate: '2025-12-01', version: 1, status: 'archived' },
-];
-
 export function PoliciesPage() {
-  const { success: showSuccess } = useToast();
-  const ps = useHrPageState({ data: MOCK, initialSortKey: 'title', searchKeys: ['title', 'category'], pageSize: 10 });
+  const { success: showSuccess, error: showError } = useToast();
+  const [data, setData] = useState<PolicyItem[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        setLoading(true);
+        const res = await hrApi.getPolicies();
+        if (res?.data) setData(res.data);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  const ps = useHrPageState({ data, initialSortKey: 'title', searchKeys: ['title', 'category'], pageSize: 10 });
 
   const stats = useMemo(() => [
-    { label: 'Total Policies', value: MOCK.length, icon: <FileText className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
-    { label: 'Active', value: MOCK.filter(i => i.status === 'active').length, icon: <CheckCircle className="w-4 h-4" />, color: 'emerald' as const, active: ps.statusFilter === 'active', onClick: () => ps.setStatusFilter('active') },
-    { label: 'Draft', value: MOCK.filter(i => i.status === 'draft').length, icon: <Clock className="w-4 h-4" />, color: 'amber' as const, active: ps.statusFilter === 'draft', onClick: () => ps.setStatusFilter('draft') },
-    { label: 'Archived', value: MOCK.filter(i => i.status === 'archived').length, icon: <Archive className="w-4 h-4" />, color: 'slate' as const, active: ps.statusFilter === 'archived', onClick: () => ps.setStatusFilter('archived') },
-  ], [ps.statusFilter]);
+    { label: 'Total Policies', value: data.length, icon: <FileText className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
+    { label: 'Active', value: data.filter(i => i.status === 'active').length, icon: <CheckCircle className="w-4 h-4" />, color: 'emerald' as const, active: ps.statusFilter === 'active', onClick: () => ps.setStatusFilter('active') },
+    { label: 'Draft', value: data.filter(i => i.status === 'draft').length, icon: <Clock className="w-4 h-4" />, color: 'amber' as const, active: ps.statusFilter === 'draft', onClick: () => ps.setStatusFilter('draft') },
+    { label: 'Archived', value: data.filter(i => i.status === 'archived').length, icon: <Archive className="w-4 h-4" />, color: 'slate' as const, active: ps.statusFilter === 'archived', onClick: () => ps.setStatusFilter('archived') },
+  ], [data, ps.statusFilter]);
+
+  const handleDelete = async (id: string) => {
+    try {
+      await hrApi.deletePolicy(id);
+      setData(prev => prev.filter(i => i.id !== id));
+      showSuccess('Deleted');
+    } catch { showError('Failed to delete'); }
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const payload = {
+      title: (form.elements.nativeItem('title') as HTMLInputElement).value,
+      category: (form.elements.nativeItem('category') as HTMLSelectElement).value,
+      effectiveDate: (form.elements.nativeItem('effectiveDate') as HTMLInputElement).value,
+      status: (form.elements.nativeItem('status') as HTMLSelectElement).value,
+    };
+    try {
+      if (ps.editingId) {
+        await hrApi.updatePolicy(ps.editingId, payload);
+        const res = await hrApi.getPolicies();
+        if (res?.data) setData(res.data);
+        showSuccess('Updated');
+      } else {
+        await hrApi.createPolicy(payload);
+        const res = await hrApi.getPolicies();
+        if (res?.data) setData(res.data);
+        showSuccess('Created');
+      }
+      ps.closeModal();
+    } catch { showError('Failed to save'); }
+  };
 
   const columns: Column<PolicyItem>[] = [
     { key: 'title', label: 'Title', sortable: true, render: (i) => <span className="font-medium text-ink-900">{i.title}</span> },
@@ -69,8 +107,8 @@ export function PoliciesPage() {
       pageKey="policies"
       headerActions={
         <>
-          <button onClick={() => { exportToCsv(['Title', 'Category', 'Effective Date', 'Version', 'Status'], MOCK.map(p => [p.title, p.category, p.effectiveDate, String(p.version), p.status]), 'policies'); showSuccess('Exported'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
-          <button onClick={() => exportToPdf('HR Policies', ['Title', 'Category', 'Effective Date', 'Version', 'Status'], MOCK.map(p => [p.title, p.category, p.effectiveDate, String(p.version), p.status]), 'policies')} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><FileText className="w-3.5 h-3.5" /> PDF</button>
+          <button onClick={() => { exportToCsv(['Title', 'Category', 'Effective Date', 'Version', 'Status'], ps.filtered.map(p => [p.title, p.category, p.effectiveDate, String(p.version), p.status]), 'policies'); showSuccess('Exported'); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><Download className="w-3.5 h-3.5" /> CSV</button>
+          <button onClick={() => exportToPdf('HR Policies', ['Title', 'Category', 'Effective Date', 'Version', 'Status'], ps.filtered.map(p => [p.title, p.category, p.effectiveDate, String(p.version), p.status]), 'policies')} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border-custom text-ink-600 text-xs font-medium rounded-xl hover:bg-ink-50 dark:hover:bg-ink-800 transition-all"><FileText className="w-3.5 h-3.5" /> PDF</button>
           <button onClick={ps.openAddModal} className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary-hover transition-all shadow-sm"><Plus className="w-3.5 h-3.5" /> Add Policy</button>
         </>
       }>
@@ -85,14 +123,15 @@ export function PoliciesPage() {
         page={ps.page} totalPages={ps.totalPages} onPageChange={ps.setPage} pageSize={ps.pageSize} totalItems={ps.filtered.length}
         from={(ps.page - 1) * ps.pageSize + 1} to={Math.min(ps.page * ps.pageSize, ps.filtered.length)}
         emptyMessage="No policies found" emptyAction={<button onClick={ps.openAddModal} className="text-xs font-medium text-primary">Add your first policy</button>} />
-      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Policy' : 'Add Policy'} onSubmit={(e) => { e.preventDefault(); showSuccess(ps.editingId ? 'Updated' : 'Created'); ps.closeModal(); }}>
-        <div><label className="block text-xs font-medium text-ink-500 mb-1">Title</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
-        <div><label className="block text-xs font-medium text-ink-500 mb-1">Category</label><select className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"><option>leave</option><option>conduct</option><option>attendance</option><option>compensation</option></select></div>
-        <div><label className="block text-xs font-medium text-ink-500 mb-1">Effective Date</label><input type="date" className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
+      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Policy' : 'Add Policy'} onSubmit={handleSubmit}>
+        <div><label className="block text-xs font-medium text-ink-500 mb-1">Title</label><input name="title" className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
+        <div><label className="block text-xs font-medium text-ink-500 mb-1">Category</label><select name="category" className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"><option>leave</option><option>conduct</option><option>attendance</option><option>compensation</option></select></div>
+        <div><label className="block text-xs font-medium text-ink-500 mb-1">Effective Date</label><input name="effectiveDate" type="date" className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
+        <div><label className="block text-xs font-medium text-ink-500 mb-1">Status</label><select name="status" className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"><option value="draft">Draft</option><option value="active">Active</option><option value="archived">Archived</option></select></div>
       </HrFormModal>
-      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showSuccess('Deleted'); ps.closeConfirmDelete(); }} title="Delete Policy" message="Are you sure you want to delete this policy?" confirmLabel="Delete" variant="danger" />
+      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { if (ps.confirmingId) { handleDelete(ps.confirmingId); } ps.closeConfirmDelete(); }} title="Delete Policy" message="Are you sure you want to delete this policy?" confirmLabel="Delete" variant="danger" />
       <HrViewDrawer open={ps.viewDrawerOpen} onClose={ps.closeViewDrawer} title="Policy Details">
-        {ps.viewingId && (() => { const p = MOCK.find(i => i.id === ps.viewingId)!; return (
+        {ps.viewingId && (() => { const p = data.find(i => i.id === ps.viewingId)!; return (
           <div className="space-y-3 text-sm text-ink-600">
             <div className="grid grid-cols-2 gap-4"><div className="col-span-2"><p className="text-ink-400 text-xs">Title</p><p className="font-semibold text-ink-900">{p.title}</p></div><div><p className="text-ink-400 text-xs">Category</p><p className="font-medium text-ink-900 capitalize">{p.category}</p></div><div><p className="text-ink-400 text-xs">Version</p><p className="font-medium text-ink-900">v{p.version}</p></div><div><p className="text-ink-400 text-xs">Effective Date</p><p className="font-medium text-ink-900">{formatDate(p.effectiveDate)}</p></div><div><p className="text-ink-400 text-xs">Status</p><p className="font-medium text-ink-900 capitalize">{p.status}</p></div></div>
           </div>

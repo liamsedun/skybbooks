@@ -1,4 +1,4 @@
-﻿import { useMemo } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { Target, Plus, Download, Upload, FileText, Edit3, Trash2, Eye, CheckCircle2, TrendingUp, AlertTriangle } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -10,18 +10,9 @@ import { HrConfirmDialog } from '../../../components/hr/HrConfirmDialog';
 import { HrViewDrawer } from '../../../components/hr/HrViewDrawer';
 import { exportToCsv, exportToPdf, statusColor, formatDate } from '../../../lib/hrExport';
 import { useToast } from '../../../contexts/ToastContext';
+import { hrApi } from '../../../lib/api';
 
 interface OKRItem { id: string; title: string; owner: string; quarter: string; progress: number; status: string; }
-const MOCK: OKRItem[] = [
-  { id: 'OK1', title: 'Improve employee satisfaction score', owner: 'Amara Nwachukwu', quarter: 'Q3 2026', progress: 45, status: 'on-track' },
-  { id: 'OK2', title: 'Reduce time-to-hire by 30%', owner: 'Kelechi Nwosu', quarter: 'Q3 2026', progress: 60, status: 'on-track' },
-  { id: 'OK3', title: 'Complete compliance training', owner: 'Zainab Abdullah', quarter: 'Q3 2026', progress: 80, status: 'ahead' },
-  { id: 'OK4', title: 'Launch new payroll system', owner: 'Funmi Lawal', quarter: 'Q3 2026', progress: 25, status: 'at-risk' },
-  { id: 'OK5', title: 'Reduce turnover rate by 15%', owner: 'Amara Nwachukwu', quarter: 'Q3 2026', progress: 35, status: 'on-track' },
-  { id: 'OK6', title: 'Implement performance review automation', owner: 'Kelechi Nwosu', quarter: 'Q4 2026', progress: 10, status: 'pending' },
-  { id: 'OK7', title: 'Achieve 90% onboarding completion', owner: 'Emeka Obi', quarter: 'Q3 2026', progress: 70, status: 'on-track' },
-  { id: 'OK8', title: 'Roll out employee self-service portal', owner: 'Emeka Obi', quarter: 'Q4 2026', progress: 5, status: 'pending' },
-];
 const progressColor = (p: number) => {
   if (p >= 80) return 'bg-emerald-500';
   if (p >= 50) return 'bg-blue-500';
@@ -29,8 +20,18 @@ const progressColor = (p: number) => {
   return 'bg-rose-500';
 };
 export function OpsOKRPage() {
-  const { success: showSuccess } = useToast();
-  const ps = useHrPageState({ data: MOCK, initialSortKey: 'title', searchKeys: ['title', 'owner', 'quarter'], pageSize: 10 });
+  const { success: showSuccess, error: showError } = useToast();
+  const [data, setData] = useState<OKRItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const ps = useHrPageState({ data, initialSortKey: 'title', searchKeys: ['title', 'owner', 'quarter'], pageSize: 10 });
+  useEffect(() => { loadData(); }, []);
+  useEffect(() => { ps.setData(data); }, [data]);
+  const loadData = async () => {
+    setLoading(true);
+    try { const result = await hrApi.getOkrs({}); setData(Array.isArray(result) ? result : []); }
+    catch (e: any) { showError(e?.message || 'Failed to load'); }
+    finally { setLoading(false); }
+  };
   const stats = useMemo(() => [
     { label: 'Total OKRs', value: ps.filtered.length.toString(), icon: <Target className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
     { label: 'On Track', value: ps.filtered.filter(i => i.status === 'on-track').length.toString(), icon: <CheckCircle2 className="w-4 h-4" />, color: 'cyan' as const, active: ps.statusFilter === 'on-track', onClick: () => ps.setStatusFilter('on-track') },
@@ -73,13 +74,13 @@ export function OpsOKRPage() {
         page={ps.page} totalPages={ps.totalPages} onPageChange={ps.setPage} pageSize={ps.pageSize} totalItems={ps.filtered.length}
         from={(ps.page - 1) * ps.pageSize + 1} to={Math.min(ps.page * ps.pageSize, ps.filtered.length)}
         emptyMessage="No OKRs found" emptyAction={<button onClick={ps.openAddModal} className="text-xs font-medium text-primary hover:text-primary-hover">Add your first OKR</button>} />
-      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit OKR' : 'Add OKR'} onSubmit={(e) => { e.preventDefault(); showSuccess(ps.editingId ? 'OKR updated' : 'OKR created'); ps.closeModal(); }}>
+      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit OKR' : 'Add OKR'} onSubmit={(e) => { e.preventDefault(); showError('Read-only view'); ps.closeModal(); }}>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Objective</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Owner</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Quarter</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" placeholder="e.g. Q3 2026" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Progress (%)</label><input type="number" min="0" max="100" className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
       </HrFormModal>
-      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showSuccess('OKR deleted'); ps.closeConfirmDelete(); }} title="Delete OKR" message="Are you sure you want to delete this OKR?" confirmLabel="Delete" variant="danger" />
+      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showError('Read-only view'); ps.closeConfirmDelete(); }} title="Delete OKR" message="Are you sure you want to delete this OKR?" confirmLabel="Delete" variant="danger" />
       <HrViewDrawer open={ps.viewDrawerOpen} onClose={ps.closeViewDrawer} title="OKR Details"><div className="space-y-3 text-sm text-ink-600"><p>Details content</p></div></HrViewDrawer>
       <HrFormModal open={ps.importOpen} onClose={() => ps.setImportOpen(false)} title="Import OKRs" onSubmit={(e) => { e.preventDefault(); showSuccess('OKRs imported'); ps.setImportOpen(false); }} submitLabel="Import">
         <p className="text-sm text-ink-400 mb-3">Upload a CSV file with OKRs.</p>

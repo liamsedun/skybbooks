@@ -1,4 +1,4 @@
-﻿import { useMemo } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { Calendar, Plus, Download, Upload, FileText, Edit3, Trash2, Eye, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -10,21 +10,22 @@ import { HrConfirmDialog } from '../../../components/hr/HrConfirmDialog';
 import { HrViewDrawer } from '../../../components/hr/HrViewDrawer';
 import { exportToCsv, exportToPdf, statusColor, formatDate } from '../../../lib/hrExport';
 import { useToast } from '../../../contexts/ToastContext';
+import { hrApi } from '../../../lib/api';
 
 interface LeaveRecord { id: string; employeeName: string; type: string; fromDate: string; toDate: string; days: number; status: string; }
-const MOCK: LeaveRecord[] = [
-  { id: 'LV1', employeeName: 'Chioma Okafor', type: 'Annual Leave', fromDate: '2026-08-10', toDate: '2026-08-21', days: 10, status: 'approved' },
-  { id: 'LV2', employeeName: 'Segun Adebayo', type: 'Sick Leave', fromDate: '2026-07-25', toDate: '2026-07-27', days: 3, status: 'approved' },
-  { id: 'LV3', employeeName: 'Amina Bello', type: 'Maternity Leave', fromDate: '2026-09-01', toDate: '2026-12-01', days: 90, status: 'pending' },
-  { id: 'LV4', employeeName: 'Tunde Bakare', type: 'Annual Leave', fromDate: '2026-08-05', toDate: '2026-08-09', days: 5, status: 'pending' },
-  { id: 'LV5', employeeName: 'Ngozi Eze', type: 'Personal Leave', fromDate: '2026-07-30', toDate: '2026-07-31', days: 2, status: 'approved' },
-  { id: 'LV6', employeeName: 'Femi Ogunlade', type: 'Sick Leave', fromDate: '2026-08-12', toDate: '2026-08-14', days: 3, status: 'pending' },
-  { id: 'LV7', employeeName: 'Zainab Abdullah', type: 'Annual Leave', fromDate: '2026-09-15', toDate: '2026-09-30', days: 12, status: 'rejected' },
-  { id: 'LV8', employeeName: 'Chinedu Okonkwo', type: 'Study Leave', fromDate: '2026-10-01', toDate: '2026-12-31', days: 90, status: 'pending' },
-];
 export function OpsLeaveTrackerPage() {
-  const { success: showSuccess } = useToast();
-  const ps = useHrPageState({ data: MOCK, initialSortKey: 'employeeName', searchKeys: ['employeeName', 'type'], pageSize: 10 });
+  const { success: showSuccess, error: showError } = useToast();
+  const [data, setData] = useState<LeaveRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const ps = useHrPageState({ data, initialSortKey: 'employeeName', searchKeys: ['employeeName', 'type'], pageSize: 10 });
+  useEffect(() => { loadData(); }, []);
+  useEffect(() => { ps.setData(data); }, [data]);
+  const loadData = async () => {
+    setLoading(true);
+    try { const result = await hrApi.getLeaveRequests({}); setData(Array.isArray(result) ? result : []); }
+    catch (e: any) { showError(e?.message || 'Failed to load'); }
+    finally { setLoading(false); }
+  };
   const stats = useMemo(() => [
     { label: 'Total Requests', value: ps.filtered.length.toString(), icon: <Calendar className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
     { label: 'Pending', value: ps.filtered.filter(i => i.status === 'pending').length.toString(), icon: <Clock className="w-4 h-4" />, color: 'amber' as const, active: ps.statusFilter === 'pending', onClick: () => ps.setStatusFilter('pending') },
@@ -61,13 +62,13 @@ export function OpsLeaveTrackerPage() {
         page={ps.page} totalPages={ps.totalPages} onPageChange={ps.setPage} pageSize={ps.pageSize} totalItems={ps.filtered.length}
         from={(ps.page - 1) * ps.pageSize + 1} to={Math.min(ps.page * ps.pageSize, ps.filtered.length)}
         emptyMessage="No leave records found" emptyAction={<button onClick={ps.openAddModal} className="text-xs font-medium text-primary hover:text-primary-hover">Add your first leave record</button>} />
-      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Leave' : 'Add Leave'} onSubmit={(e) => { e.preventDefault(); showSuccess(ps.editingId ? 'Leave updated' : 'Leave created'); ps.closeModal(); }}>
+      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Leave' : 'Add Leave'} onSubmit={(e) => { e.preventDefault(); showError('Read-only view'); ps.closeModal(); }}>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Employee Name</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Leave Type</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">From Date</label><input type="date" className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">To Date</label><input type="date" className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
       </HrFormModal>
-      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showSuccess('Leave deleted'); ps.closeConfirmDelete(); }} title="Delete Leave" message="Are you sure you want to delete this leave record?" confirmLabel="Delete" variant="danger" />
+      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showError('Read-only view'); ps.closeConfirmDelete(); }} title="Delete Leave" message="Are you sure you want to delete this leave record?" confirmLabel="Delete" variant="danger" />
       <HrViewDrawer open={ps.viewDrawerOpen} onClose={ps.closeViewDrawer} title="Leave Details"><div className="space-y-3 text-sm text-ink-600"><p>Details content</p></div></HrViewDrawer>
       <HrFormModal open={ps.importOpen} onClose={() => ps.setImportOpen(false)} title="Import Leaves" onSubmit={(e) => { e.preventDefault(); showSuccess('Leaves imported'); ps.setImportOpen(false); }} submitLabel="Import">
         <p className="text-sm text-ink-400 mb-3">Upload a CSV file with leave records.</p>

@@ -1,4 +1,4 @@
-﻿import { useMemo } from 'react';
+﻿import { useState, useEffect, useMemo } from 'react';
 import { FileText, User, Calendar, FileSignature, Plus, Download, FileText as FileTextIcon, Edit3, Trash2, Eye } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -10,33 +10,63 @@ import { HrConfirmDialog } from '../../../components/hr/HrConfirmDialog';
 import { HrViewDrawer } from '../../../components/hr/HrViewDrawer';
 import { exportToCsv, exportToPdf, statusColor, formatDate } from '../../../lib/hrExport';
 import { useToast } from '../../../contexts/ToastContext';
+import { hrApi } from '../../../lib/api';
 
 interface Letter {
   id: string; employeeName: string; type: string;
   issueDate: string; status: string;
 }
 
-const MOCK: Letter[] = [
-  { id: 'ltr-1', employeeName: 'John Doe', type: 'Offer Letter', issueDate: '2026-07-15', status: 'issued' },
-  { id: 'ltr-2', employeeName: 'Jane Smith', type: 'Promotion Letter', issueDate: '2026-07-20', status: 'issued' },
-  { id: 'ltr-3', employeeName: 'Mike Wilson', type: 'Confirmation Letter', issueDate: '2026-08-01', status: 'draft' },
-  { id: 'ltr-4', employeeName: 'Sarah Davis', type: 'Warning Letter', issueDate: '2026-07-10', status: 'issued' },
-  { id: 'ltr-5', employeeName: 'Emily Taylor', type: 'Resignation Acceptance', issueDate: '2026-07-25', status: 'issued' },
-  { id: 'ltr-6', employeeName: 'Chris Martin', type: 'Transfer Letter', issueDate: '2026-08-05', status: 'draft' },
-  { id: 'ltr-7', employeeName: 'Lisa Anderson', type: 'Salary Revision Letter', issueDate: '2026-07-30', status: 'issued' },
-  { id: 'ltr-8', employeeName: 'Tom Harris', type: 'Offer Letter', issueDate: '2026-08-10', status: 'draft' },
-  { id: 'ltr-9', employeeName: 'Nancy Moore', type: 'Experience Letter', issueDate: '2026-07-05', status: 'issued' },
-  { id: 'ltr-10', employeeName: 'Oscar White', type: 'Internship Certificate', issueDate: '2026-08-12', status: 'draft' },
-];
-
 export function LettersPage() {
-  const { success: showSuccess } = useToast();
-  const ps = useHrPageState({ data: MOCK, initialSortKey: 'employeeName', searchKeys: ['employeeName', 'type'], pageSize: 10 });
+  const { success: showSuccess, error: showError } = useToast();
+  const [data, setData] = useState<Letter[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        setLoading(true);
+        const res = await hrApi.getLetters({});
+        if (res?.data) setData(res.data);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  const ps = useHrPageState({ data, initialSortKey: 'employeeName', searchKeys: ['employeeName', 'type'], pageSize: 10 });
   const stats = useMemo(() => [
-    { label: 'Total', value: MOCK.length, icon: <FileText className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
-    { label: 'Issued', value: MOCK.filter(i => i.status === 'issued').length, icon: <FileSignature className="w-4 h-4" />, color: 'emerald' as const, active: ps.statusFilter === 'issued', onClick: () => ps.setStatusFilter('issued') },
-    { label: 'Draft', value: MOCK.filter(i => i.status === 'draft').length, icon: <Calendar className="w-4 h-4" />, color: 'amber' as const, active: ps.statusFilter === 'draft', onClick: () => ps.setStatusFilter('draft') },
-  ], [ps.statusFilter]);
+    { label: 'Total', value: data.length, icon: <FileText className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
+    { label: 'Issued', value: data.filter(i => i.status === 'issued').length, icon: <FileSignature className="w-4 h-4" />, color: 'emerald' as const, active: ps.statusFilter === 'issued', onClick: () => ps.setStatusFilter('issued') },
+    { label: 'Draft', value: data.filter(i => i.status === 'draft').length, icon: <Calendar className="w-4 h-4" />, color: 'amber' as const, active: ps.statusFilter === 'draft', onClick: () => ps.setStatusFilter('draft') },
+  ], [data, ps.statusFilter]);
+
+  const handleDelete = async (id: string) => {
+    try {
+      await hrApi.deleteLetter(id);
+      setData(prev => prev.filter(i => i.id !== id));
+      showSuccess('Deleted');
+    } catch { showError('Failed to delete'); }
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const payload = {
+      employeeName: (form.elements.nativeItem('employeeName') as HTMLInputElement).value,
+      type: (form.elements.nativeItem('type') as HTMLSelectElement).value,
+      issueDate: (form.elements.nativeItem('issueDate') as HTMLInputElement).value,
+      status: (form.elements.nativeItem('status') as HTMLSelectElement).value,
+    };
+    try {
+      await hrApi.generateLetter(payload);
+      const res = await hrApi.getLetters({});
+      if (res?.data) setData(res.data);
+      showSuccess(ps.editingId ? 'Updated' : 'Created');
+      ps.closeModal();
+    } catch { showError('Failed to save'); }
+  };
+
   const columns: Column<Letter>[] = [
     { key: 'employeeName', label: 'Employee', sortable: true, render: (i) => <span className="font-medium text-ink-900">{i.employeeName}</span> },
     { key: 'type', label: 'Type', sortable: true },
@@ -71,15 +101,15 @@ export function LettersPage() {
         page={ps.page} totalPages={ps.totalPages} onPageChange={ps.setPage} pageSize={ps.pageSize} totalItems={ps.filtered.length}
         from={(ps.page - 1) * ps.pageSize + 1} to={Math.min(ps.page * ps.pageSize, ps.filtered.length)}
         emptyMessage="No letters" emptyAction={<button onClick={ps.openAddModal} className="text-xs font-medium text-primary">Add</button>} />
-      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Letter' : 'Add Letter'} onSubmit={(e) => { e.preventDefault(); showSuccess(ps.editingId ? 'Updated' : 'Created'); ps.closeModal(); }}>
-        <div><label className="block text-xs font-medium text-ink-500 mb-1">Employee</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" placeholder="e.g. John Doe" /></div>
-        <div><label className="block text-xs font-medium text-ink-500 mb-1">Letter Type</label><select className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"><option>Offer Letter</option><option>Promotion Letter</option><option>Confirmation Letter</option><option>Warning Letter</option><option>Resignation Acceptance</option><option>Transfer Letter</option><option>Salary Revision Letter</option><option>Experience Letter</option></select></div>
-        <div><label className="block text-xs font-medium text-ink-500 mb-1">Issue Date</label><input type="date" className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
-        <div><label className="block text-xs font-medium text-ink-500 mb-1">Status</label><select className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"><option value="draft">Draft</option><option value="issued">Issued</option></select></div>
+      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Letter' : 'Add Letter'} onSubmit={handleSubmit}>
+        <div><label className="block text-xs font-medium text-ink-500 mb-1">Employee</label><input name="employeeName" className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" placeholder="e.g. John Doe" /></div>
+        <div><label className="block text-xs font-medium text-ink-500 mb-1">Letter Type</label><select name="type" className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"><option>Offer Letter</option><option>Promotion Letter</option><option>Confirmation Letter</option><option>Warning Letter</option><option>Resignation Acceptance</option><option>Transfer Letter</option><option>Salary Revision Letter</option><option>Experience Letter</option></select></div>
+        <div><label className="block text-xs font-medium text-ink-500 mb-1">Issue Date</label><input name="issueDate" type="date" className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
+        <div><label className="block text-xs font-medium text-ink-500 mb-1">Status</label><select name="status" className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"><option value="draft">Draft</option><option value="issued">Issued</option></select></div>
       </HrFormModal>
-      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showSuccess('Deleted'); ps.closeConfirmDelete(); }} title="Delete Letter" message="Are you sure you want to delete this letter?" confirmLabel="Delete" variant="danger" />
+      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { if (ps.confirmingId) { handleDelete(ps.confirmingId); } ps.closeConfirmDelete(); }} title="Delete Letter" message="Are you sure you want to delete this letter?" confirmLabel="Delete" variant="danger" />
       <HrViewDrawer open={ps.viewDrawerOpen} onClose={ps.closeViewDrawer} title="Letter Details">
-        {ps.viewingId && (() => { const l = MOCK.find(i => i.id === ps.viewingId)!; return (
+        {ps.viewingId && (() => { const l = data.find(i => i.id === ps.viewingId)!; return (
           <div className="space-y-4">
             <div className="flex items-center gap-3 pb-4 border-b border-border-custom"><div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/30 text-blue-600 flex items-center justify-center"><FileText className="w-5 h-5" /></div><div><p className="text-sm font-semibold text-ink-900">{l.employeeName}</p><p className="text-xs text-ink-400">{l.type}</p></div></div>
             <div className="grid grid-cols-2 gap-3"><div className="p-3 bg-ink-50 dark:bg-ink-800/50 rounded-xl"><p className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider">Issue Date</p><p className="text-sm text-ink-700 mt-1">{formatDate(l.issueDate)}</p></div><div className="p-3 bg-ink-50 dark:bg-ink-800/50 rounded-xl"><p className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider">Status</p><span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border mt-1 ${statusColor(l.status)}`}>{l.status}</span></div></div>

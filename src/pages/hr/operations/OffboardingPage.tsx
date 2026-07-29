@@ -1,4 +1,4 @@
-﻿import { useMemo } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { DoorOpen, Plus, Download, Upload, FileText, Edit3, Trash2, Eye, Clock, CheckCircle2, UserCheck } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -10,21 +10,22 @@ import { HrConfirmDialog } from '../../../components/hr/HrConfirmDialog';
 import { HrViewDrawer } from '../../../components/hr/HrViewDrawer';
 import { exportToCsv, exportToPdf, statusColor, formatDate } from '../../../lib/hrExport';
 import { useToast } from '../../../contexts/ToastContext';
+import { hrApi } from '../../../lib/api';
 
 interface OffboardingItem { id: string; employeeName: string; department: string; exitDate: string; reason: string; status: string; }
-const MOCK: OffboardingItem[] = [
-  { id: 'OF1', employeeName: 'Yemi Lawson', department: 'Marketing', exitDate: '2026-08-15', reason: 'Resignation', status: 'pending' },
-  { id: 'OF2', employeeName: 'Adaeze Obi', department: 'Finance', exitDate: '2026-08-31', reason: 'End of Contract', status: 'in-progress' },
-  { id: 'OF3', employeeName: 'Femi Ogunlade', department: 'Operations', exitDate: '2026-07-30', reason: 'Retirement', status: 'completed' },
-  { id: 'OF4', employeeName: 'Zainab Abdullah', department: 'HR', exitDate: '2026-09-15', reason: 'Resignation', status: 'pending' },
-  { id: 'OF5', employeeName: 'Chinedu Okonkwo', department: 'Engineering', exitDate: '2026-07-25', reason: 'Relocation', status: 'completed' },
-  { id: 'OF6', employeeName: 'Ngozi Eze', department: 'Engineering', exitDate: '2026-08-30', reason: 'Mutual Agreement', status: 'in-progress' },
-  { id: 'OF7', employeeName: 'Tunde Bakare', department: 'Sales', exitDate: '2026-09-01', reason: 'Resignation', status: 'pending' },
-  { id: 'OF8', employeeName: 'Segun Adebayo', department: 'Marketing', exitDate: '2026-07-20', reason: 'End of Contract', status: 'completed' },
-];
 export function OpsOffboardingPage() {
-  const { success: showSuccess } = useToast();
-  const ps = useHrPageState({ data: MOCK, initialSortKey: 'employeeName', searchKeys: ['employeeName', 'department', 'reason'], pageSize: 10 });
+  const { success: showSuccess, error: showError } = useToast();
+  const [data, setData] = useState<OffboardingItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const ps = useHrPageState({ data, initialSortKey: 'employeeName', searchKeys: ['employeeName', 'department', 'reason'], pageSize: 10 });
+  useEffect(() => { loadData(); }, []);
+  useEffect(() => { ps.setData(data); }, [data]);
+  const loadData = async () => {
+    setLoading(true);
+    try { const result = await hrApi.getOffboardingTasks(''); setData(Array.isArray(result) ? result : []); }
+    catch (e: any) { showError(e?.message || 'Failed to load'); }
+    finally { setLoading(false); }
+  };
   const stats = useMemo(() => [
     { label: 'Total Records', value: ps.filtered.length.toString(), icon: <DoorOpen className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
     { label: 'Pending', value: ps.filtered.filter(i => i.status === 'pending').length.toString(), icon: <Clock className="w-4 h-4" />, color: 'amber' as const, active: ps.statusFilter === 'pending', onClick: () => ps.setStatusFilter('pending') },
@@ -60,13 +61,13 @@ export function OpsOffboardingPage() {
         page={ps.page} totalPages={ps.totalPages} onPageChange={ps.setPage} pageSize={ps.pageSize} totalItems={ps.filtered.length}
         from={(ps.page - 1) * ps.pageSize + 1} to={Math.min(ps.page * ps.pageSize, ps.filtered.length)}
         emptyMessage="No offboarding records found" emptyAction={<button onClick={ps.openAddModal} className="text-xs font-medium text-primary hover:text-primary-hover">Add your first record</button>} />
-      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Record' : 'Add Record'} onSubmit={(e) => { e.preventDefault(); showSuccess(ps.editingId ? 'Record updated' : 'Record created'); ps.closeModal(); }}>
+      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Record' : 'Add Record'} onSubmit={(e) => { e.preventDefault(); showError('Read-only view'); ps.closeModal(); }}>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Employee Name</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Department</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Exit Date</label><input type="date" className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Reason</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
       </HrFormModal>
-      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showSuccess('Record deleted'); ps.closeConfirmDelete(); }} title="Delete Record" message="Are you sure you want to delete this offboarding record?" confirmLabel="Delete" variant="danger" />
+      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showError('Read-only view'); ps.closeConfirmDelete(); }} title="Delete Record" message="Are you sure you want to delete this offboarding record?" confirmLabel="Delete" variant="danger" />
       <HrViewDrawer open={ps.viewDrawerOpen} onClose={ps.closeViewDrawer} title="Offboarding Details"><div className="space-y-3 text-sm text-ink-600"><p>Details content</p></div></HrViewDrawer>
       <HrFormModal open={ps.importOpen} onClose={() => ps.setImportOpen(false)} title="Import Offboarding Records" onSubmit={(e) => { e.preventDefault(); showSuccess('Records imported'); ps.setImportOpen(false); }} submitLabel="Import">
         <p className="text-sm text-ink-400 mb-3">Upload a CSV file with offboarding records.</p>

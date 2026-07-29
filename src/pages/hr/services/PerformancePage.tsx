@@ -1,4 +1,4 @@
-﻿import { useMemo } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { Award, CheckCircle2, Clock, FileEdit, Plus, Download, FileText, Upload, Edit3, Trash2, Eye, Star } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -10,6 +10,7 @@ import { HrConfirmDialog } from '../../../components/hr/HrConfirmDialog';
 import { HrViewDrawer } from '../../../components/hr/HrViewDrawer';
 import { exportToCsv, exportToPdf, statusColor, formatDate } from '../../../lib/hrExport';
 import { useToast } from '../../../contexts/ToastContext';
+import { hrApi } from '../../../lib/api';
 
 interface Review {
   id: string;
@@ -19,17 +20,6 @@ interface Review {
   rating: number;
   status: 'draft' | 'completed' | 'pending';
 }
-
-const MOCK: Review[] = [
-  { id: '1', employeeName: 'Alice Johnson', reviewer: 'David Smith', period: 'Q1 2026', rating: 4, status: 'completed' },
-  { id: '2', employeeName: 'Bob Williams', reviewer: 'David Smith', period: 'Q1 2026', rating: 3, status: 'completed' },
-  { id: '3', employeeName: 'Carol Davis', reviewer: 'Emily Brown', period: 'Q1 2026', rating: 5, status: 'pending' },
-  { id: '4', employeeName: 'Daniel Miller', reviewer: 'Emily Brown', period: 'Q2 2026', rating: 2, status: 'draft' },
-  { id: '5', employeeName: 'Eve Wilson', reviewer: 'David Smith', period: 'Q2 2026', rating: 4, status: 'pending' },
-  { id: '6', employeeName: 'Frank Moore', reviewer: 'Sarah Taylor', period: 'Q2 2026', rating: 5, status: 'completed' },
-  { id: '7', employeeName: 'Grace Anderson', reviewer: 'Sarah Taylor', period: 'Q3 2026', rating: 3, status: 'draft' },
-  { id: '8', employeeName: 'Henry Thomas', reviewer: 'David Smith', period: 'Q3 2026', rating: 4, status: 'pending' },
-];
 
 function StarRating({ rating }: { rating: number }) {
   return (
@@ -42,15 +32,25 @@ function StarRating({ rating }: { rating: number }) {
 }
 
 export function PerformancePage() {
-  const { success: showSuccess } = useToast();
-  const ps = useHrPageState({ data: MOCK, initialSortKey: 'employeeName', searchKeys: ['employeeName', 'reviewer', 'period'], pageSize: 10 });
+  const { success: showSuccess, error: showError } = useToast();
+  const [data, setData] = useState<Review[]>([]);
+  const [loading, setLoading] = useState(true);
+  const ps = useHrPageState({ data, initialSortKey: 'employeeName', searchKeys: ['employeeName', 'reviewer', 'period'], pageSize: 10 });
+  useEffect(() => { loadData(); }, []);
+  useEffect(() => { ps.setData(data); }, [data]);
+  const loadData = async () => {
+    setLoading(true);
+    try { const result = await hrApi.getPerformanceReviews({}); setData(Array.isArray(result) ? result : []); }
+    catch (e: any) { showError(e?.message || 'Failed to load'); }
+    finally { setLoading(false); }
+  };
 
   const stats = useMemo(() => [
-    { label: 'Total', value: MOCK.length, icon: <Award className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
-    { label: 'Completed', value: MOCK.filter(i => i.status === 'completed').length, icon: <CheckCircle2 className="w-4 h-4" />, color: 'emerald' as const, active: ps.statusFilter === 'completed', onClick: () => ps.setStatusFilter('completed') },
-    { label: 'Pending', value: MOCK.filter(i => i.status === 'pending').length, icon: <Clock className="w-4 h-4" />, color: 'amber' as const, active: ps.statusFilter === 'pending', onClick: () => ps.setStatusFilter('pending') },
-    { label: 'Draft', value: MOCK.filter(i => i.status === 'draft').length, icon: <FileEdit className="w-4 h-4" />, color: 'slate' as const, active: ps.statusFilter === 'draft', onClick: () => ps.setStatusFilter('draft') },
-  ], [ps.statusFilter]);
+    { label: 'Total', value: data.length, icon: <Award className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
+    { label: 'Completed', value: data.filter(i => i.status === 'completed').length, icon: <CheckCircle2 className="w-4 h-4" />, color: 'emerald' as const, active: ps.statusFilter === 'completed', onClick: () => ps.setStatusFilter('completed') },
+    { label: 'Pending', value: data.filter(i => i.status === 'pending').length, icon: <Clock className="w-4 h-4" />, color: 'amber' as const, active: ps.statusFilter === 'pending', onClick: () => ps.setStatusFilter('pending') },
+    { label: 'Draft', value: data.filter(i => i.status === 'draft').length, icon: <FileEdit className="w-4 h-4" />, color: 'slate' as const, active: ps.statusFilter === 'draft', onClick: () => ps.setStatusFilter('draft') },
+  ], [data, ps.statusFilter]);
 
   const columns: Column<Review>[] = [
     { key: 'employeeName', label: 'Employee', sortable: true, render: (i) => <span className="font-medium text-ink-900">{i.employeeName}</span> },
@@ -86,7 +86,7 @@ export function PerformancePage() {
       {ps.selectedIds.length > 0 && (
         <div className="flex items-center justify-between p-3 bg-primary/5 dark:bg-primary/10 border border-primary/20 rounded-xl">
           <span className="text-sm text-ink-600">{ps.selectedIds.length} selected</span>
-          <button onClick={() => { showSuccess('Selected reviews deleted'); ps.setSelectedIds([]); }} className="text-xs font-medium text-rose-600 hover:text-rose-700 transition-colors">Delete Selected</button>
+          <button onClick={() => { showError('Read-only view'); ps.setSelectedIds([]); }} className="text-xs font-medium text-rose-600 hover:text-rose-700 transition-colors">Delete Selected</button>
         </div>
       )}
       <HrDataTable columns={columns} data={ps.paginated} keyExtractor={i => i.id}
@@ -95,17 +95,17 @@ export function PerformancePage() {
         page={ps.page} totalPages={ps.totalPages} onPageChange={ps.setPage} pageSize={ps.pageSize} totalItems={ps.filtered.length}
         from={(ps.page - 1) * ps.pageSize + 1} to={Math.min(ps.page * ps.pageSize, ps.filtered.length)}
         emptyMessage="No reviews found" emptyAction={<button onClick={ps.openAddModal} className="text-xs font-medium text-primary hover:text-primary-hover">Add your first review</button>} />
-      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Review' : 'Add Review'} onSubmit={(e) => { e.preventDefault(); showSuccess(ps.editingId ? 'Review updated' : 'Review created'); ps.closeModal(); }}>
+      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Review' : 'Add Review'} onSubmit={(e) => { e.preventDefault(); showError('Read-only view'); ps.closeModal(); }}>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Employee Name</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Reviewer</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Period</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Rating (1-5)</label><input type="number" min={1} max={5} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Status</label><select className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"><option>draft</option><option>pending</option><option>completed</option></select></div>
       </HrFormModal>
-      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showSuccess('Review deleted'); ps.closeConfirmDelete(); }} title="Delete Review" message="Are you sure you want to delete this performance review? This action cannot be undone." confirmLabel="Delete" variant="danger" />
+      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showError('Read-only view'); ps.closeConfirmDelete(); }} title="Delete Review" message="Are you sure you want to delete this performance review? This action cannot be undone." confirmLabel="Delete" variant="danger" />
       <HrViewDrawer open={ps.viewDrawerOpen} onClose={ps.closeViewDrawer} title="Review Details">
         {ps.viewingId && (() => {
-          const item = MOCK.find(i => i.id === ps.viewingId);
+          const item = data.find(i => i.id === ps.viewingId);
           if (!item) return null;
           return (
             <div className="space-y-4 text-sm">
@@ -120,7 +120,7 @@ export function PerformancePage() {
           );
         })()}
       </HrViewDrawer>
-      <HrFormModal open={ps.importOpen} onClose={() => ps.setImportOpen(false)} title="Import Reviews" onSubmit={(e) => { e.preventDefault(); showSuccess('Reviews imported'); ps.setImportOpen(false); }} submitLabel="Import">
+      <HrFormModal open={ps.importOpen} onClose={() => ps.setImportOpen(false)} title="Import Reviews" onSubmit={(e) => { e.preventDefault(); showError('Read-only view'); ps.setImportOpen(false); }} submitLabel="Import">
         <p className="text-sm text-ink-400 mb-3">Upload a CSV file to import performance reviews.</p>
         <input type="file" accept=".csv" className="block w-full text-sm text-ink-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 transition-colors" />
       </HrFormModal>

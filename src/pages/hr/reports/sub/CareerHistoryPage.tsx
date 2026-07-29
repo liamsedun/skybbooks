@@ -1,4 +1,4 @@
-﻿import { useState, useMemo } from 'react';
+﻿import { useState, useMemo, useEffect } from 'react';
 import { History, Plus, Download, FileText, Edit3, Trash2, Eye, TrendingUp, ArrowLeftRight, ArrowDown } from 'lucide-react';
 import { useHrPageState } from '../../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../../components/hr/HrPageShell';
@@ -10,6 +10,7 @@ import { HrConfirmDialog } from '../../../../components/hr/HrConfirmDialog';
 import { HrViewDrawer } from '../../../../components/hr/HrViewDrawer';
 import { exportToCsv, exportToPdf, statusColor, formatDate } from '../../../../lib/hrExport';
 import { useToast } from '../../../../contexts/ToastContext';
+import { hrApi } from '../../../../lib/api';
 
 interface CareerRecord {
   id: string;
@@ -20,17 +21,6 @@ interface CareerRecord {
   type: 'promotion' | 'transfer' | 'demotion';
   status: 'completed' | 'pending';
 }
-
-const MOCK: CareerRecord[] = [
-  { id: 'CR-001', employeeName: 'Amara Okafor', previousRole: 'Junior Developer', newRole: 'Senior Developer', effectiveDate: '2026-06-01', type: 'promotion', status: 'completed' },
-  { id: 'CR-002', employeeName: 'Chidi Nwosu', previousRole: 'Financial Analyst', newRole: 'Finance Manager', effectiveDate: '2026-05-15', type: 'promotion', status: 'completed' },
-  { id: 'CR-003', employeeName: 'Fatima Usman', previousRole: 'Marketing Officer', newRole: 'Brand Lead', effectiveDate: '2026-07-01', type: 'promotion', status: 'completed' },
-  { id: 'CR-004', employeeName: 'Emeka Eze', previousRole: 'Engineering Lead', newRole: 'Product Manager', effectiveDate: '2026-08-01', type: 'transfer', status: 'pending' },
-  { id: 'CR-005', employeeName: 'Yetunde Bello', previousRole: 'HR Assistant', newRole: 'HR Business Partner', effectiveDate: '2026-04-01', type: 'promotion', status: 'completed' },
-  { id: 'CR-006', employeeName: 'Segun Adeyemi', previousRole: 'Ops Manager', newRole: 'Regional Ops Lead', effectiveDate: '2026-03-15', type: 'transfer', status: 'completed' },
-  { id: 'CR-007', employeeName: 'Ngozi Obi', previousRole: 'Senior Counsel', newRole: 'Legal Advisor', effectiveDate: '2026-02-01', type: 'demotion', status: 'completed' },
-  { id: 'CR-008', employeeName: 'Ibrahim Danjuma', previousRole: 'Finance Manager', newRole: 'CFO', effectiveDate: '2026-09-01', type: 'promotion', status: 'pending' },
-];
 
 const typeIcon: Record<string, React.ReactNode> = {
   promotion: <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />,
@@ -45,22 +35,35 @@ const typeColors: Record<string, string> = {
 };
 
 export function CareerHistoryPage() {
-  const { success } = useToast();
-  const [localData, setLocalData] = useState<CareerRecord[]>(MOCK);
-  const ps = useHrPageState({ data: localData, initialSortKey: 'employeeName', searchKeys: ['employeeName', 'previousRole', 'newRole', 'type'], pageSize: 10 });
+  const { success, error } = useToast();
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const ps = useHrPageState({ data: [], initialSortKey: 'employeeName', searchKeys: ['employeeName', 'previousRole', 'newRole', 'type'], pageSize: 10 });
   const { filtered, paginated } = ps;
 
+  useEffect(() => { loadData(); }, []);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const result = await hrApi.getReportEmployees({});
+      setData(Array.isArray(result) ? result : []);
+    } catch (e: any) { error(e?.message || 'Failed to load'); }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => { ps.setData(data); }, [data]);
+
   const stats = useMemo(() => [
-    { label: 'Total Records', value: localData.length, icon: <History className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
-    { label: 'Promotions', value: localData.filter(i => i.type === 'promotion').length, icon: <TrendingUp className="w-4 h-4" />, color: 'emerald' as const, active: ps.statusFilter === 'promotion', onClick: () => ps.setStatusFilter('promotion') },
-    { label: 'Transfers', value: localData.filter(i => i.type === 'transfer').length, icon: <ArrowLeftRight className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'transfer', onClick: () => ps.setStatusFilter('transfer') },
-    { label: 'Demotions', value: localData.filter(i => i.type === 'demotion').length, icon: <ArrowDown className="w-4 h-4" />, color: 'rose' as const, active: ps.statusFilter === 'demotion', onClick: () => ps.setStatusFilter('demotion') },
-  ], [localData, ps.statusFilter]);
+    { label: 'Total Records', value: data.length, icon: <History className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
+    { label: 'Promotions', value: data.filter((i: any) => i.type === 'promotion').length, icon: <TrendingUp className="w-4 h-4" />, color: 'emerald' as const, active: ps.statusFilter === 'promotion', onClick: () => ps.setStatusFilter('promotion') },
+    { label: 'Transfers', value: data.filter((i: any) => i.type === 'transfer').length, icon: <ArrowLeftRight className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'transfer', onClick: () => ps.setStatusFilter('transfer') },
+    { label: 'Demotions', value: data.filter((i: any) => i.type === 'demotion').length, icon: <ArrowDown className="w-4 h-4" />, color: 'rose' as const, active: ps.statusFilter === 'demotion', onClick: () => ps.setStatusFilter('demotion') },
+  ], [data, ps.statusFilter]);
 
   const handleDelete = (id: string) => {
-    setLocalData(prev => prev.filter(i => i.id !== id));
+    error('This is a read-only report view');
     ps.closeConfirmDelete();
-    success('Career record deleted');
   };
 
   const columns: Column<CareerRecord>[] = [
@@ -126,7 +129,7 @@ export function CareerHistoryPage() {
               </select>
             </div>
           </div>
-          <button className="w-full h-9 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors" onClick={() => { success(ps.editingId ? 'Record updated' : 'Record created'); ps.closeModal(); }}>{ps.editingId ? 'Update' : 'Create'}</button>
+          <button className="w-full h-9 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors" onClick={() => { error('This is a read-only report view'); ps.closeModal(); }}>{ps.editingId ? 'Update' : 'Create'}</button>
         </div>
       </HrFormModal>
       <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => handleDelete(ps.deletingId!)} title="Delete Career Record" message="Are you sure you want to delete this career record? This action cannot be undone." />

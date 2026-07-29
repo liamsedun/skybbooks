@@ -1,4 +1,4 @@
-﻿import { useMemo } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { Heart, Plus, Download, Upload, FileText, Edit3, Trash2, Eye, Clock, CheckCircle2, CheckSquare } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -10,21 +10,22 @@ import { HrConfirmDialog } from '../../../components/hr/HrConfirmDialog';
 import { HrViewDrawer } from '../../../components/hr/HrViewDrawer';
 import { exportToCsv, exportToPdf, statusColor, formatDate } from '../../../lib/hrExport';
 import { useToast } from '../../../contexts/ToastContext';
+import { hrApi } from '../../../lib/api';
 
 interface EngagementItem { id: string; title: string; type: string; department: string; date: string; status: string; }
-const MOCK: EngagementItem[] = [
-  { id: 'EG1', title: 'Quarterly Town Hall', type: 'Event', department: 'All', date: '2026-08-15', status: 'upcoming' },
-  { id: 'EG2', title: 'Employee Pulse Survey', type: 'Survey', department: 'All', date: '2026-07-25', status: 'completed' },
-  { id: 'EG3', title: 'Team Building Workshop', type: 'Activity', department: 'Engineering', date: '2026-08-20', status: 'upcoming' },
-  { id: 'EG4', title: 'Wellness Wednesday', type: 'Event', department: 'All', date: '2026-08-05', status: 'upcoming' },
-  { id: 'EG5', title: 'Peer Recognition Awards', type: 'Recognition', department: 'All', date: '2026-07-30', status: 'active' },
-  { id: 'EG6', title: 'Diversity & Inclusion Session', type: 'Training', department: 'All', date: '2026-08-10', status: 'active' },
-  { id: 'EG7', title: 'Department Social Mixer', type: 'Event', department: 'Marketing', date: '2026-07-20', status: 'completed' },
-  { id: 'EG8', title: 'Innovation Hackathon', type: 'Activity', department: 'Engineering', date: '2026-09-01', status: 'upcoming' },
-];
 export function OpsEmployeeEngagementPage() {
-  const { success: showSuccess } = useToast();
-  const ps = useHrPageState({ data: MOCK, initialSortKey: 'title', searchKeys: ['title', 'type', 'department'], pageSize: 10 });
+  const { success: showSuccess, error: showError } = useToast();
+  const [data, setData] = useState<EngagementItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const ps = useHrPageState({ data, initialSortKey: 'title', searchKeys: ['title', 'type', 'department'], pageSize: 10 });
+  useEffect(() => { loadData(); }, []);
+  useEffect(() => { ps.setData(data); }, [data]);
+  const loadData = async () => {
+    setLoading(true);
+    try { setData([]); }
+    catch (e: any) { showError(e?.message || 'Failed to load'); }
+    finally { setLoading(false); }
+  };
   const stats = useMemo(() => [
     { label: 'Total Activities', value: ps.filtered.length.toString(), icon: <Heart className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
     { label: 'Upcoming', value: ps.filtered.filter(i => i.status === 'upcoming').length.toString(), icon: <Clock className="w-4 h-4" />, color: 'cyan' as const, active: ps.statusFilter === 'upcoming', onClick: () => ps.setStatusFilter('upcoming') },
@@ -60,13 +61,13 @@ export function OpsEmployeeEngagementPage() {
         page={ps.page} totalPages={ps.totalPages} onPageChange={ps.setPage} pageSize={ps.pageSize} totalItems={ps.filtered.length}
         from={(ps.page - 1) * ps.pageSize + 1} to={Math.min(ps.page * ps.pageSize, ps.filtered.length)}
         emptyMessage="No activities found" emptyAction={<button onClick={ps.openAddModal} className="text-xs font-medium text-primary hover:text-primary-hover">Add your first activity</button>} />
-      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Activity' : 'Add Activity'} onSubmit={(e) => { e.preventDefault(); showSuccess(ps.editingId ? 'Activity updated' : 'Activity created'); ps.closeModal(); }}>
+      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Activity' : 'Add Activity'} onSubmit={(e) => { e.preventDefault(); showError('Read-only view'); ps.closeModal(); }}>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Title</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Type</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Department</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Date</label><input type="date" className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
       </HrFormModal>
-      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showSuccess('Activity deleted'); ps.closeConfirmDelete(); }} title="Delete Activity" message="Are you sure you want to delete this activity?" confirmLabel="Delete" variant="danger" />
+      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showError('Read-only view'); ps.closeConfirmDelete(); }} title="Delete Activity" message="Are you sure you want to delete this activity?" confirmLabel="Delete" variant="danger" />
       <HrViewDrawer open={ps.viewDrawerOpen} onClose={ps.closeViewDrawer} title="Activity Details"><div className="space-y-3 text-sm text-ink-600"><p>Details content</p></div></HrViewDrawer>
       <HrFormModal open={ps.importOpen} onClose={() => ps.setImportOpen(false)} title="Import Activities" onSubmit={(e) => { e.preventDefault(); showSuccess('Activities imported'); ps.setImportOpen(false); }} submitLabel="Import">
         <p className="text-sm text-ink-400 mb-3">Upload a CSV file with engagement activities.</p>

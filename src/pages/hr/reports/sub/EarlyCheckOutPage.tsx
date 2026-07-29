@@ -1,4 +1,4 @@
-﻿import { useState, useMemo } from 'react';
+﻿import { useState, useMemo, useEffect } from 'react';
 import { LogOut, Plus, Download, FileText, Edit3, Trash2, Eye, Clock, CheckCircle2, Sunset } from 'lucide-react';
 import { useHrPageState } from '../../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../../components/hr/HrPageShell';
@@ -10,6 +10,7 @@ import { HrConfirmDialog } from '../../../../components/hr/HrConfirmDialog';
 import { HrViewDrawer } from '../../../../components/hr/HrViewDrawer';
 import { exportToCsv, exportToPdf, statusColor, formatDate } from '../../../../lib/hrExport';
 import { useToast } from '../../../../contexts/ToastContext';
+import { hrApi } from '../../../../lib/api';
 
 interface EarlyCheckOut {
   id: string;
@@ -21,36 +22,36 @@ interface EarlyCheckOut {
   status: 'on_time' | 'early';
 }
 
-const MOCK: EarlyCheckOut[] = [
-  { id: 'ECO-001', employeeName: 'Amara Okafor', date: '2026-07-15', scheduledTime: '17:00', actualTime: '16:30', minutesEarly: 30, status: 'early' },
-  { id: 'ECO-002', employeeName: 'Fatima Usman', date: '2026-07-15', scheduledTime: '17:00', actualTime: '16:45', minutesEarly: 15, status: 'early' },
-  { id: 'ECO-003', employeeName: 'Emeka Eze', date: '2026-07-15', scheduledTime: '17:00', actualTime: '16:00', minutesEarly: 60, status: 'early' },
-  { id: 'ECO-004', employeeName: 'Chioma Adeleke', date: '2026-07-14', scheduledTime: '17:00', actualTime: '16:20', minutesEarly: 40, status: 'early' },
-  { id: 'ECO-005', employeeName: 'Yetunde Bello', date: '2026-07-14', scheduledTime: '17:00', actualTime: '17:00', minutesEarly: 0, status: 'on_time' },
-  { id: 'ECO-006', employeeName: 'Tunde Bakare', date: '2026-07-13', scheduledTime: '17:00', actualTime: '16:50', minutesEarly: 10, status: 'early' },
-  { id: 'ECO-007', employeeName: 'Ngozi Obi', date: '2026-07-13', scheduledTime: '17:00', actualTime: '17:00', minutesEarly: 0, status: 'on_time' },
-  { id: 'ECO-008', employeeName: 'Ibrahim Danjuma', date: '2026-07-12', scheduledTime: '17:00', actualTime: '16:15', minutesEarly: 45, status: 'early' },
-  { id: 'ECO-009', employeeName: 'Segun Adeyemi', date: '2026-07-12', scheduledTime: '17:00', actualTime: '16:30', minutesEarly: 30, status: 'early' },
-  { id: 'ECO-010', employeeName: 'Chidi Nwosu', date: '2026-07-11', scheduledTime: '17:00', actualTime: '17:00', minutesEarly: 0, status: 'on_time' },
-];
-
 export function EarlyCheckOutPage() {
-  const { success } = useToast();
-  const [localData, setLocalData] = useState<EarlyCheckOut[]>(MOCK);
-  const ps = useHrPageState({ data: localData, initialSortKey: 'employeeName', searchKeys: ['employeeName', 'status'], pageSize: 10 });
+  const { success, error } = useToast();
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const ps = useHrPageState({ data: [], initialSortKey: 'employeeName', searchKeys: ['employeeName', 'status'], pageSize: 10 });
   const { filtered, paginated } = ps;
 
+  useEffect(() => { loadData(); }, []);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const result = await hrApi.getReportAttendance({});
+      setData(Array.isArray(result) ? result : []);
+    } catch (e: any) { error(e?.message || 'Failed to load'); }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => { ps.setData(data); }, [data]);
+
   const stats = useMemo(() => [
-    { label: 'Total Records', value: localData.length, icon: <LogOut className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
-    { label: 'Early Departures', value: localData.filter(i => i.status === 'early').length, icon: <Sunset className="w-4 h-4" />, color: 'amber' as const, active: ps.statusFilter === 'early', onClick: () => ps.setStatusFilter('early') },
-    { label: 'On Time', value: localData.filter(i => i.status === 'on_time').length, icon: <CheckCircle2 className="w-4 h-4" />, color: 'emerald' as const, active: ps.statusFilter === 'on_time', onClick: () => ps.setStatusFilter('on_time') },
-    { label: 'Avg Early (min)', value: Math.round(localData.filter(i => i.status === 'early').reduce((s, i) => s + i.minutesEarly, 0) / Math.max(1, localData.filter(i => i.status === 'early').length)), icon: <Clock className="w-4 h-4" />, color: 'purple' as const },
-  ], [localData, ps.statusFilter]);
+    { label: 'Total Records', value: data.length, icon: <LogOut className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
+    { label: 'Early Departures', value: data.filter((i: any) => i.status === 'early').length, icon: <Sunset className="w-4 h-4" />, color: 'amber' as const, active: ps.statusFilter === 'early', onClick: () => ps.setStatusFilter('early') },
+    { label: 'On Time', value: data.filter((i: any) => i.status === 'on_time').length, icon: <CheckCircle2 className="w-4 h-4" />, color: 'emerald' as const, active: ps.statusFilter === 'on_time', onClick: () => ps.setStatusFilter('on_time') },
+    { label: 'Avg Early (min)', value: Math.round(data.filter((i: any) => i.status === 'early').reduce((s: number, i: any) => s + i.minutesEarly, 0) / Math.max(1, data.filter((i: any) => i.status === 'early').length)), icon: <Clock className="w-4 h-4" />, color: 'purple' as const },
+  ], [data, ps.statusFilter]);
 
   const handleDelete = (id: string) => {
-    setLocalData(prev => prev.filter(i => i.id !== id));
+    error('This is a read-only report view');
     ps.closeConfirmDelete();
-    success('Early check-out record deleted');
   };
 
   const columns: Column<EarlyCheckOut>[] = [
@@ -108,7 +109,7 @@ export function EarlyCheckOutPage() {
             <div><label className="block text-xs font-medium text-ink-600 mb-1">Scheduled Time</label><input type="time" className="w-full h-9 px-3 text-sm rounded-lg border border-ink-200 dark:border-ink-700 bg-white dark:bg-ink-900 text-ink-900" defaultValue={editItem?.scheduledTime ?? ''} /></div>
             <div><label className="block text-xs font-medium text-ink-600 mb-1">Actual Time</label><input type="time" className="w-full h-9 px-3 text-sm rounded-lg border border-ink-200 dark:border-ink-700 bg-white dark:bg-ink-900 text-ink-900" defaultValue={editItem?.actualTime ?? ''} /></div>
           </div>
-          <button className="w-full h-9 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors" onClick={() => { success(ps.editingId ? 'Record updated' : 'Record created'); ps.closeModal(); }}>{ps.editingId ? 'Update' : 'Create'}</button>
+          <button className="w-full h-9 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors" onClick={() => { error('This is a read-only report view'); ps.closeModal(); }}>{ps.editingId ? 'Update' : 'Create'}</button>
         </div>
       </HrFormModal>
       <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => handleDelete(ps.deletingId!)} title="Delete Record" message="Are you sure you want to delete this early check-out record? This action cannot be undone." />

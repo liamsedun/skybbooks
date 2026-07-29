@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from 'react';
+﻿import { useMemo, useState, useEffect, useRef } from 'react';
 import { FileText, Plus, Download, Upload, Edit3, Trash2, Eye, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -10,34 +10,51 @@ import { HrConfirmDialog } from '../../../components/hr/HrConfirmDialog';
 import { HrViewDrawer } from '../../../components/hr/HrViewDrawer';
 import { exportToCsv, exportToPdf, statusColor, formatDate } from '../../../lib/hrExport';
 import { useToast } from '../../../contexts/ToastContext';
+import { hrApi } from '../../../lib/api';
 
 interface Timesheet {
   id: string; employee: string; weekEnding: string; totalHours: number; approvedHours: number; status: string; submittedDate: string;
 }
 
-const MOCK: Timesheet[] = [
-  { id: 'TS1', employee: 'Chioma Okafor', weekEnding: '2026-08-02', totalHours: 40, approvedHours: 40, status: 'approved', submittedDate: '2026-07-27' },
-  { id: 'TS2', employee: 'Segun Adebayo', weekEnding: '2026-08-02', totalHours: 38, approvedHours: 38, status: 'approved', submittedDate: '2026-07-27' },
-  { id: 'TS3', employee: 'Amina Bello', weekEnding: '2026-08-02', totalHours: 42, approvedHours: 0, status: 'pending', submittedDate: '2026-07-27' },
-  { id: 'TS4', employee: 'Tunde Bakare', weekEnding: '2026-08-02', totalHours: 35, approvedHours: 0, status: 'draft', submittedDate: '--' },
-  { id: 'TS5', employee: 'Ngozi Eze', weekEnding: '2026-07-26', totalHours: 40, approvedHours: 40, status: 'approved', submittedDate: '2026-07-21' },
-  { id: 'TS6', employee: 'Femi Ogunlade', weekEnding: '2026-07-26', totalHours: 45, approvedHours: 45, status: 'approved', submittedDate: '2026-07-22' },
-  { id: 'TS7', employee: 'Zainab Abdullah', weekEnding: '2026-07-26', totalHours: 36, approvedHours: 0, status: 'rejected', submittedDate: '2026-07-23' },
-  { id: 'TS8', employee: 'Chinedu Okonkwo', weekEnding: '2026-07-26', totalHours: 40, approvedHours: 40, status: 'approved', submittedDate: '2026-07-22' },
-];
-
 export function TimesheetsListPage() {
-  const { success } = useToast();
-  const ps = useHrPageState({ data: MOCK, initialSortKey: 'weekEnding', initialSortDirection: 'desc', searchKeys: ['employee'], pageSize: 10 });
+  const { success, error } = useToast();
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => { loadData(); }, []);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const result = await hrApi.getTimesheets({});
+      setData(Array.isArray(result) ? result : []);
+    } catch (e: any) { error(e?.message || 'Failed to load'); }
+    finally { setLoading(false); }
+  };
+
+  const ps = useHrPageState({ data, initialSortKey: 'weekEnding', initialSortDirection: 'desc', searchKeys: ['employee'], pageSize: 10 });
   const { filtered, paginated } = ps;
-  const [localData, setLocalData] = useState<Timesheet[]>(MOCK);
 
   const stats = useMemo(() => [
-    { label: 'Total Timesheets', value: localData.length, icon: <FileText className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
-    { label: 'Approved', value: localData.filter(i => i.status === 'approved').length, icon: <CheckCircle2 className="w-4 h-4" />, color: 'emerald' as const, active: ps.statusFilter === 'approved', onClick: () => ps.setStatusFilter('approved') },
-    { label: 'Pending', value: localData.filter(i => i.status === 'pending').length, icon: <Clock className="w-4 h-4" />, color: 'amber' as const, active: ps.statusFilter === 'pending', onClick: () => ps.setStatusFilter('pending') },
-    { label: 'Draft', value: localData.filter(i => i.status === 'draft').length, icon: <FileText className="w-4 h-4" />, color: 'slate' as const, active: ps.statusFilter === 'draft', onClick: () => ps.setStatusFilter('draft') },
-  ], [localData, ps.statusFilter]);
+    { label: 'Total Timesheets', value: data.length, icon: <FileText className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
+    { label: 'Approved', value: data.filter(i => i.status === 'approved').length, icon: <CheckCircle2 className="w-4 h-4" />, color: 'emerald' as const, active: ps.statusFilter === 'approved', onClick: () => ps.setStatusFilter('approved') },
+    { label: 'Pending', value: data.filter(i => i.status === 'pending').length, icon: <Clock className="w-4 h-4" />, color: 'amber' as const, active: ps.statusFilter === 'pending', onClick: () => ps.setStatusFilter('pending') },
+    { label: 'Draft', value: data.filter(i => i.status === 'draft').length, icon: <FileText className="w-4 h-4" />, color: 'slate' as const, active: ps.statusFilter === 'draft', onClick: () => ps.setStatusFilter('draft') },
+  ], [data, ps.statusFilter]);
+
+  const employeeRef = useRef<HTMLInputElement>(null);
+  const weekEndingRef = useRef<HTMLInputElement>(null);
+  const totalHoursRef = useRef<HTMLInputElement>(null);
+  const statusRef = useRef<HTMLSelectElement>(null);
+
+  const handleSave = async () => {
+    try {
+      const formData = { employee: employeeRef.current?.value ?? '', weekEnding: weekEndingRef.current?.value ?? '', totalHours: Number(totalHoursRef.current?.value) || 0, status: statusRef.current?.value ?? 'draft' };
+      if (ps.editingId) { await hrApi.updateTimesheet(ps.editingId, formData); success('Updated'); }
+      else { await hrApi.createTimesheet(formData); success('Created'); }
+      ps.closeModal(); loadData();
+    } catch (e: any) { error(e?.message || 'Failed to save'); }
+  };
 
   const columns: Column<Timesheet>[] = [
     { key: 'employee', label: 'Employee', sortable: true, render: (i) => <span className="font-medium text-ink-900">{i.employee}</span> },
@@ -77,18 +94,19 @@ export function TimesheetsListPage() {
         page={ps.page} totalPages={ps.totalPages} onPageChange={ps.setPage} pageSize={ps.pageSize} totalItems={filtered.length}
         from={(ps.page - 1) * ps.pageSize + 1} to={Math.min(ps.page * ps.pageSize, filtered.length)}
         emptyMessage="No timesheets found" emptyAction={<button onClick={ps.openAddModal} className="text-xs font-medium text-primary hover:text-primary-hover">Create your first timesheet</button>} />
-      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Timesheet' : 'New Timesheet'} onSubmit={(e) => { e.preventDefault(); success(ps.editingId ? 'Timesheet updated' : 'Timesheet created'); ps.closeModal(); }}>
+      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Timesheet' : 'New Timesheet'}>
         <div className="space-y-4">
-          <div><label className="block text-xs font-medium text-ink-500 mb-1">Employee</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900" defaultValue={editItem?.employee ?? ''} placeholder="e.g. Chioma Okafor" /></div>
-          <div><label className="block text-xs font-medium text-ink-500 mb-1">Week Ending</label><input type="date" className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900" defaultValue={editItem?.weekEnding ?? ''} /></div>
+          <div><label className="block text-xs font-medium text-ink-500 mb-1">Employee</label><input ref={employeeRef} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900" defaultValue={editItem?.employee ?? ''} placeholder="e.g. Chioma Okafor" /></div>
+          <div><label className="block text-xs font-medium text-ink-500 mb-1">Week Ending</label><input ref={weekEndingRef} type="date" className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900" defaultValue={editItem?.weekEnding ?? ''} /></div>
           <div className="grid grid-cols-2 gap-3">
-            <div><label className="block text-xs font-medium text-ink-500 mb-1">Total Hours</label><input type="number" step="0.5" className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900" defaultValue={editItem?.totalHours ?? ''} /></div>
+            <div><label className="block text-xs font-medium text-ink-500 mb-1">Total Hours</label><input ref={totalHoursRef} type="number" step="0.5" className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900" defaultValue={editItem?.totalHours ?? ''} /></div>
             <div><label className="block text-xs font-medium text-ink-500 mb-1">Status</label>
-              <select className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900" defaultValue={editItem?.status ?? 'draft'}>
+              <select ref={statusRef} className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900" defaultValue={editItem?.status ?? 'draft'}>
                 <option value="draft">Draft</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option>
               </select>
             </div>
           </div>
+          <button className="w-full h-9 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-xl transition-colors" onClick={handleSave}>{ps.editingId ? 'Update' : 'Create'}</button>
         </div>
       </HrFormModal>
       <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { success('Timesheet deleted'); ps.closeConfirmDelete(); }} title="Delete Timesheet" message="Are you sure you want to delete this timesheet?" confirmLabel="Delete" variant="danger" />
@@ -113,5 +131,3 @@ export function TimesheetsListPage() {
     </HrPageShell>
   );
 }
-
-

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { CalendarClock, CheckCircle2, XCircle, Clock, Plus, Download, FileText, Edit3, Trash2, Eye } from 'lucide-react';
 import { useHrPageState } from '../../hooks/useHrPageState';
 import { HrPageShell } from '../../components/hr/HrPageShell';
@@ -16,26 +16,16 @@ interface JobSchedule {
   interviewDate: string; interviewer: string; status: string;
 }
 
-const MOCK: JobSchedule[] = [
-  { id: 'sched-1', jobTitle: 'Senior Frontend Developer', candidate: 'John Doe', interviewDate: '2026-08-10T10:00', interviewer: 'Alice Johnson', status: 'scheduled' },
-  { id: 'sched-2', jobTitle: 'Backend Engineer', candidate: 'Jane Smith', interviewDate: '2026-08-11T14:00', interviewer: 'Bob Brown', status: 'scheduled' },
-  { id: 'sched-3', jobTitle: 'Product Designer', candidate: 'Mike Wilson', interviewDate: '2026-08-05T11:00', interviewer: 'Carol White', status: 'completed' },
-  { id: 'sched-4', jobTitle: 'Data Analyst', candidate: 'Sarah Davis', interviewDate: '2026-08-12T09:00', interviewer: 'David Lee', status: 'scheduled' },
-  { id: 'sched-5', jobTitle: 'Marketing Lead', candidate: 'Emily Taylor', interviewDate: '2026-07-28T15:00', interviewer: 'Eve Brown', status: 'completed' },
-  { id: 'sched-6', jobTitle: 'Senior Frontend Developer', candidate: 'Chris Martin', interviewDate: '2026-08-03T10:00', interviewer: 'Frank Wilson', status: 'cancelled' },
-  { id: 'sched-7', jobTitle: 'Customer Success Manager', candidate: 'Lisa Anderson', interviewDate: '2026-08-15T13:00', interviewer: 'Grace Kim', status: 'scheduled' },
-  { id: 'sched-8', jobTitle: 'Technical Writer', candidate: 'Tom Harris', interviewDate: '2026-08-01T09:00', interviewer: 'Henry Davis', status: 'completed' },
-];
-
 export function JobSchedulePage() {
-  const { success: showSuccess } = useToast();
-  const ps = useHrPageState({ data: MOCK, initialSortKey: 'candidate', searchKeys: ['candidate', 'jobTitle', 'interviewer'], pageSize: 10 });
+  const { success: showSuccess, error: showError } = useToast();
+  const [data] = useState<JobSchedule[]>([]);
+  const ps = useHrPageState({ data, initialSortKey: 'candidate', searchKeys: ['candidate', 'jobTitle', 'interviewer'], pageSize: 10 });
   const stats = useMemo(() => [
-    { label: 'Total', value: MOCK.length, icon: <CalendarClock className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
-    { label: 'Scheduled', value: MOCK.filter(i => i.status === 'scheduled').length, icon: <Clock className="w-4 h-4" />, color: 'emerald' as const, active: ps.statusFilter === 'scheduled', onClick: () => ps.setStatusFilter('scheduled') },
-    { label: 'Completed', value: MOCK.filter(i => i.status === 'completed').length, icon: <CheckCircle2 className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'completed', onClick: () => ps.setStatusFilter('completed') },
-    { label: 'Cancelled', value: MOCK.filter(i => i.status === 'cancelled').length, icon: <XCircle className="w-4 h-4" />, color: 'rose' as const, active: ps.statusFilter === 'cancelled', onClick: () => ps.setStatusFilter('cancelled') },
-  ], [ps.statusFilter]);
+    { label: 'Total', value: data.length, icon: <CalendarClock className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
+    { label: 'Scheduled', value: data.filter(i => i.status === 'scheduled').length, icon: <Clock className="w-4 h-4" />, color: 'emerald' as const, active: ps.statusFilter === 'scheduled', onClick: () => ps.setStatusFilter('scheduled') },
+    { label: 'Completed', value: data.filter(i => i.status === 'completed').length, icon: <CheckCircle2 className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'completed', onClick: () => ps.setStatusFilter('completed') },
+    { label: 'Cancelled', value: data.filter(i => i.status === 'cancelled').length, icon: <XCircle className="w-4 h-4" />, color: 'rose' as const, active: ps.statusFilter === 'cancelled', onClick: () => ps.setStatusFilter('cancelled') },
+  ], [data, ps.statusFilter]);
   const columns: Column<JobSchedule>[] = [
     { key: 'candidate', label: 'Candidate', sortable: true, render: (i) => <span className="font-medium text-ink-900">{i.candidate}</span> },
     { key: 'jobTitle', label: 'Job Title', sortable: true },

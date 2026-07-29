@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { FolderKanban, PlayCircle, CheckCircle2, PauseCircle, Plus, Download, FileText, Edit3, Trash2, Eye } from 'lucide-react';
 import { useHrPageState } from '../../hooks/useHrPageState';
 import { HrPageShell } from '../../components/hr/HrPageShell';
@@ -16,17 +16,6 @@ interface Project {
   startDate: string; endDate: string; progress: number; status: string;
 }
 
-const MOCK: Project[] = [
-  { id: 'proj-1', name: 'Employee Onboarding Redesign', lead: 'Alice Johnson', teamSize: 5, startDate: '2026-06-01', endDate: '2026-09-30', progress: 65, status: 'active' },
-  { id: 'proj-2', name: 'Payroll System Upgrade', lead: 'Bob Smith', teamSize: 4, startDate: '2026-05-15', endDate: '2026-08-15', progress: 90, status: 'active' },
-  { id: 'proj-3', name: 'Performance Review Automation', lead: 'Carol White', teamSize: 3, startDate: '2026-04-01', endDate: '2026-07-31', progress: 100, status: 'completed' },
-  { id: 'proj-4', name: 'HR Data Migration', lead: 'David Lee', teamSize: 6, startDate: '2026-07-01', endDate: '2026-10-31', progress: 30, status: 'active' },
-  { id: 'proj-5', name: 'Benefits Portal Launch', lead: 'Eve Brown', teamSize: 4, startDate: '2026-03-01', endDate: '2026-06-30', progress: 100, status: 'completed' },
-  { id: 'proj-6', name: 'Learning Management System', lead: 'Frank Wilson', teamSize: 5, startDate: '2026-06-15', endDate: '2026-11-30', progress: 40, status: 'on-hold' },
-  { id: 'proj-7', name: 'Compliance Tracking Tool', lead: 'Grace Kim', teamSize: 3, startDate: '2026-05-01', endDate: '2026-08-31', progress: 75, status: 'active' },
-  { id: 'proj-8', name: 'Employee Survey Platform', lead: 'Henry Davis', teamSize: 2, startDate: '2026-07-01', endDate: '2026-12-31', progress: 20, status: 'on-hold' },
-];
-
 const progressColor = (pct: number) => {
   if (pct >= 100) return 'bg-emerald-500';
   if (pct >= 60) return 'bg-blue-500';
@@ -35,14 +24,15 @@ const progressColor = (pct: number) => {
 };
 
 export function ProjectsPage() {
-  const { success: showSuccess } = useToast();
-  const ps = useHrPageState({ data: MOCK, initialSortKey: 'name', searchKeys: ['name', 'lead'], pageSize: 10 });
+  const { success: showSuccess, error: showError } = useToast();
+  const [data] = useState<Project[]>([]);
+  const ps = useHrPageState({ data, initialSortKey: 'name', searchKeys: ['name', 'lead'], pageSize: 10 });
   const stats = useMemo(() => [
-    { label: 'Total', value: MOCK.length, icon: <FolderKanban className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
-    { label: 'Active', value: MOCK.filter(i => i.status === 'active').length, icon: <PlayCircle className="w-4 h-4" />, color: 'emerald' as const, active: ps.statusFilter === 'active', onClick: () => ps.setStatusFilter('active') },
-    { label: 'Completed', value: MOCK.filter(i => i.status === 'completed').length, icon: <CheckCircle2 className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'completed', onClick: () => ps.setStatusFilter('completed') },
-    { label: 'On Hold', value: MOCK.filter(i => i.status === 'on-hold').length, icon: <PauseCircle className="w-4 h-4" />, color: 'amber' as const, active: ps.statusFilter === 'on-hold', onClick: () => ps.setStatusFilter('on-hold') },
-  ], [ps.statusFilter]);
+    { label: 'Total', value: data.length, icon: <FolderKanban className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
+    { label: 'Active', value: data.filter(i => i.status === 'active').length, icon: <PlayCircle className="w-4 h-4" />, color: 'emerald' as const, active: ps.statusFilter === 'active', onClick: () => ps.setStatusFilter('active') },
+    { label: 'Completed', value: data.filter(i => i.status === 'completed').length, icon: <CheckCircle2 className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'completed', onClick: () => ps.setStatusFilter('completed') },
+    { label: 'On Hold', value: data.filter(i => i.status === 'on-hold').length, icon: <PauseCircle className="w-4 h-4" />, color: 'amber' as const, active: ps.statusFilter === 'on-hold', onClick: () => ps.setStatusFilter('on-hold') },
+  ], [data, ps.statusFilter]);
   const columns: Column<Project>[] = [
     { key: 'name', label: 'Name', sortable: true, render: (i) => <span className="font-medium text-ink-900">{i.name}</span> },
     { key: 'lead', label: 'Lead', sortable: true },
@@ -96,5 +86,6 @@ export function ProjectsPage() {
     </HrPageShell>
   );
 }
+
 
 

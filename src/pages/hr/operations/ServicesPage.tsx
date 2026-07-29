@@ -1,4 +1,4 @@
-﻿import { useMemo } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { Wrench, Plus, Download, Upload, FileText, Edit3, Trash2, Eye, CheckCircle2, XCircle } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -10,24 +10,23 @@ import { HrConfirmDialog } from '../../../components/hr/HrConfirmDialog';
 import { HrViewDrawer } from '../../../components/hr/HrViewDrawer';
 import { exportToCsv, exportToPdf, statusColor, formatDate } from '../../../lib/hrExport';
 import { useToast } from '../../../contexts/ToastContext';
+import { hrApi } from '../../../lib/api';
 
 interface ServiceItem { id: string; name: string; department: string; provider: string; cost: string; status: string; }
-const MOCK: ServiceItem[] = [
-  { id: 'S01', name: 'Payroll Processing', department: 'Finance', provider: 'SkyBooks Pay', cost: 'â‚¦0/mo', status: 'active' },
-  { id: 'S02', name: 'Background Checks', department: 'HR', provider: 'Checkr', cost: 'â‚¦12,000/check', status: 'active' },
-  { id: 'S03', name: 'Learning Management', department: 'L&D', provider: 'SkyBooks Learn', cost: 'â‚¦45,000/mo', status: 'active' },
-  { id: 'S04', name: 'Recruitment ATS', department: 'HR', provider: 'SkyBooks Hire', cost: 'â‚¦90,000/mo', status: 'active' },
-  { id: 'S05', name: 'Performance Analytics', department: 'HR', provider: 'Lattice', cost: 'â‚¦25,000/mo', status: 'active' },
-  { id: 'S06', name: 'Expense Management', department: 'Finance', provider: 'Expensify', cost: 'â‚¦18,000/mo', status: 'active' },
-  { id: 'S07', name: 'Time & Attendance', department: 'Operations', provider: 'SkyBooks Time', cost: 'â‚¦0/mo', status: 'active' },
-  { id: 'S08', name: 'Benefits Admin', department: 'HR', provider: 'Zenefits', cost: 'â‚¦35,000/mo', status: 'inactive' },
-  { id: 'S09', name: 'Document Signing', department: 'Legal', provider: 'DocuSign', cost: 'â‚¦20,000/mo', status: 'active' },
-  { id: 'S10', name: 'Travel Booking', department: 'Admin', provider: 'TravelPerk', cost: 'â‚¦15,000/mo', status: 'inactive' },
-];
 
 export function OpsServicesPage() {
-  const { success: showSuccess } = useToast();
-  const ps = useHrPageState({ data: MOCK, initialSortKey: 'name', searchKeys: ['name', 'department', 'provider'], pageSize: 10 });
+  const { success: showSuccess, error: showError } = useToast();
+  const [data, setData] = useState<ServiceItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const ps = useHrPageState({ data, initialSortKey: 'name', searchKeys: ['name', 'department', 'provider'], pageSize: 10 });
+  useEffect(() => { loadData(); }, []);
+  useEffect(() => { ps.setData(data); }, [data]);
+  const loadData = async () => {
+    setLoading(true);
+    try { setData([]); }
+    catch (e: any) { showError(e?.message || 'Failed to load'); }
+    finally { setLoading(false); }
+  };
   const stats = useMemo(() => [
     { label: 'Total Services', value: ps.filtered.length.toString(), icon: <Wrench className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
     { label: 'Active', value: ps.filtered.filter(i => i.status === 'active').length.toString(), icon: <CheckCircle2 className="w-4 h-4" />, color: 'emerald' as const, active: ps.statusFilter === 'active', onClick: () => ps.setStatusFilter('active') },
@@ -62,13 +61,13 @@ export function OpsServicesPage() {
         page={ps.page} totalPages={ps.totalPages} onPageChange={ps.setPage} pageSize={ps.pageSize} totalItems={ps.filtered.length}
         from={(ps.page - 1) * ps.pageSize + 1} to={Math.min(ps.page * ps.pageSize, ps.filtered.length)}
         emptyMessage="No services found" emptyAction={<button onClick={ps.openAddModal} className="text-xs font-medium text-primary hover:text-primary-hover">Add your first service</button>} />
-      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Service' : 'Add Service'} onSubmit={(e) => { e.preventDefault(); showSuccess(ps.editingId ? 'Service updated' : 'Service created'); ps.closeModal(); }}>
+      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Service' : 'Add Service'} onSubmit={(e) => { e.preventDefault(); showError('Read-only view'); ps.closeModal(); }}>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Service Name</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Department</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Provider</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Cost</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
       </HrFormModal>
-      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showSuccess('Service deleted'); ps.closeConfirmDelete(); }} title="Delete Service" message="Are you sure you want to delete this service? This action cannot be undone." confirmLabel="Delete" variant="danger" />
+      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showError('Read-only view'); ps.closeConfirmDelete(); }} title="Delete Service" message="Are you sure you want to delete this service? This action cannot be undone." confirmLabel="Delete" variant="danger" />
       <HrViewDrawer open={ps.viewDrawerOpen} onClose={ps.closeViewDrawer} title="Service Details"><div className="space-y-3 text-sm text-ink-600"><p>Details content</p></div></HrViewDrawer>
       <HrFormModal open={ps.importOpen} onClose={() => ps.setImportOpen(false)} title="Import Services" onSubmit={(e) => { e.preventDefault(); showSuccess('Services imported'); ps.setImportOpen(false); }} submitLabel="Import">
         <p className="text-sm text-ink-400 mb-3">Upload a CSV file with service records.</p>

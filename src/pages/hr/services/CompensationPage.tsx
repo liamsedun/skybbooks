@@ -1,4 +1,4 @@
-﻿import { useMemo } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { DollarSign, Wallet, Gift, BadgePercent, Plus, Download, FileText, Upload, Edit3, Trash2, Eye, CheckCircle2 } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -10,6 +10,7 @@ import { HrConfirmDialog } from '../../../components/hr/HrConfirmDialog';
 import { HrViewDrawer } from '../../../components/hr/HrViewDrawer';
 import { exportToCsv, exportToPdf, statusColor, formatDate } from '../../../lib/hrExport';
 import { useToast } from '../../../contexts/ToastContext';
+import { hrApi } from '../../../lib/api';
 
 interface CompensationRecord {
   id: string;
@@ -20,17 +21,6 @@ interface CompensationRecord {
   effectiveDate: string;
   status: 'active' | 'inactive';
 }
-
-const MOCK: CompensationRecord[] = [
-  { id: '1', employeeName: 'Alice Johnson', type: 'salary', amount: 6000000, currency: 'NGN', effectiveDate: '2026-01-01', status: 'active' },
-  { id: '2', employeeName: 'Bob Williams', type: 'salary', amount: 4200000, currency: 'NGN', effectiveDate: '2026-01-01', status: 'active' },
-  { id: '3', employeeName: 'Carol Davis', type: 'bonus', amount: 500000, currency: 'NGN', effectiveDate: '2026-03-15', status: 'active' },
-  { id: '4', employeeName: 'Daniel Miller', type: 'allowance', amount: 150000, currency: 'NGN', effectiveDate: '2026-02-01', status: 'active' },
-  { id: '5', employeeName: 'Eve Wilson', type: 'salary', amount: 3500000, currency: 'NGN', effectiveDate: '2026-01-01', status: 'active' },
-  { id: '6', employeeName: 'Frank Moore', type: 'commission', amount: 750000, currency: 'NGN', effectiveDate: '2026-04-01', status: 'active' },
-  { id: '7', employeeName: 'Grace Anderson', type: 'bonus', amount: 300000, currency: 'NGN', effectiveDate: '2026-02-28', status: 'inactive' },
-  { id: '8', employeeName: 'Henry Thomas', type: 'allowance', amount: 200000, currency: 'NGN', effectiveDate: '2026-03-01', status: 'active' },
-];
 
 function TypeIcon({ type }: { type: string }) {
   const map: Record<string, { icon: React.ReactNode; color: string }> = {
@@ -44,15 +34,25 @@ function TypeIcon({ type }: { type: string }) {
 }
 
 export function CompensationPage() {
-  const { success: showSuccess } = useToast();
-  const ps = useHrPageState({ data: MOCK, initialSortKey: 'employeeName', searchKeys: ['employeeName', 'type'], pageSize: 10 });
+  const { success: showSuccess, error: showError } = useToast();
+  const [data, setData] = useState<CompensationRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const ps = useHrPageState({ data, initialSortKey: 'employeeName', searchKeys: ['employeeName', 'type'], pageSize: 10 });
+  useEffect(() => { loadData(); }, []);
+  useEffect(() => { ps.setData(data); }, [data]);
+  const loadData = async () => {
+    setLoading(true);
+    try { const result = await hrApi.getCompensationBands(); setData(Array.isArray(result) ? result : []); }
+    catch (e: any) { showError(e?.message || 'Failed to load'); }
+    finally { setLoading(false); }
+  };
 
   const stats = useMemo(() => [
-    { label: 'Total', value: MOCK.length, icon: <DollarSign className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
-    { label: 'Salary', value: MOCK.filter(i => i.type === 'salary').length, icon: <Wallet className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'salary', onClick: () => ps.setStatusFilter('salary') },
-    { label: 'Bonus', value: MOCK.filter(i => i.type === 'bonus').length, icon: <Gift className="w-4 h-4" />, color: 'emerald' as const, active: ps.statusFilter === 'bonus', onClick: () => ps.setStatusFilter('bonus') },
-    { label: 'Allowance', value: MOCK.filter(i => i.type === 'allowance').length, icon: <BadgePercent className="w-4 h-4" />, color: 'amber' as const, active: ps.statusFilter === 'allowance', onClick: () => ps.setStatusFilter('allowance') },
-  ], [ps.statusFilter]);
+    { label: 'Total', value: data.length, icon: <DollarSign className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
+    { label: 'Salary', value: data.filter(i => i.type === 'salary').length, icon: <Wallet className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'salary', onClick: () => ps.setStatusFilter('salary') },
+    { label: 'Bonus', value: data.filter(i => i.type === 'bonus').length, icon: <Gift className="w-4 h-4" />, color: 'emerald' as const, active: ps.statusFilter === 'bonus', onClick: () => ps.setStatusFilter('bonus') },
+    { label: 'Allowance', value: data.filter(i => i.type === 'allowance').length, icon: <BadgePercent className="w-4 h-4" />, color: 'amber' as const, active: ps.statusFilter === 'allowance', onClick: () => ps.setStatusFilter('allowance') },
+  ], [data, ps.statusFilter]);
 
   const columns: Column<CompensationRecord>[] = [
     { key: 'employeeName', label: 'Employee', sortable: true, render: (i) => <span className="font-medium text-ink-900">{i.employeeName}</span> },
@@ -89,7 +89,7 @@ export function CompensationPage() {
       {ps.selectedIds.length > 0 && (
         <div className="flex items-center justify-between p-3 bg-primary/5 dark:bg-primary/10 border border-primary/20 rounded-xl">
           <span className="text-sm text-ink-600">{ps.selectedIds.length} selected</span>
-          <button onClick={() => { showSuccess('Selected records deleted'); ps.setSelectedIds([]); }} className="text-xs font-medium text-rose-600 hover:text-rose-700 transition-colors">Delete Selected</button>
+          <button onClick={() => { showError('Read-only view'); ps.setSelectedIds([]); }} className="text-xs font-medium text-rose-600 hover:text-rose-700 transition-colors">Delete Selected</button>
         </div>
       )}
       <HrDataTable columns={columns} data={ps.paginated} keyExtractor={i => i.id}
@@ -98,17 +98,17 @@ export function CompensationPage() {
         page={ps.page} totalPages={ps.totalPages} onPageChange={ps.setPage} pageSize={ps.pageSize} totalItems={ps.filtered.length}
         from={(ps.page - 1) * ps.pageSize + 1} to={Math.min(ps.page * ps.pageSize, ps.filtered.length)}
         emptyMessage="No compensation records found" emptyAction={<button onClick={ps.openAddModal} className="text-xs font-medium text-primary hover:text-primary-hover">Add your first record</button>} />
-      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Record' : 'Add Compensation Record'} onSubmit={(e) => { e.preventDefault(); showSuccess(ps.editingId ? 'Record updated' : 'Record created'); ps.closeModal(); }}>
+      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Record' : 'Add Compensation Record'} onSubmit={(e) => { e.preventDefault(); showError('Read-only view'); ps.closeModal(); }}>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Employee Name</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Type</label><select className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"><option>salary</option><option>bonus</option><option>commission</option><option>allowance</option></select></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Amount</label><input type="number" className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Currency</label><select className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"><option>NGN</option><option>USD</option><option>EUR</option><option>GBP</option></select></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Effective Date</label><input type="date" className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
       </HrFormModal>
-      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showSuccess('Record deleted'); ps.closeConfirmDelete(); }} title="Delete Record" message="Are you sure you want to delete this compensation record? This action cannot be undone." confirmLabel="Delete" variant="danger" />
+      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showError('Read-only view'); ps.closeConfirmDelete(); }} title="Delete Record" message="Are you sure you want to delete this compensation record? This action cannot be undone." confirmLabel="Delete" variant="danger" />
       <HrViewDrawer open={ps.viewDrawerOpen} onClose={ps.closeViewDrawer} title="Compensation Details">
         {ps.viewingId && (() => {
-          const item = MOCK.find(i => i.id === ps.viewingId);
+          const item = data.find(i => i.id === ps.viewingId);
           if (!item) return null;
           return (
             <div className="space-y-4 text-sm">
@@ -124,7 +124,7 @@ export function CompensationPage() {
           );
         })()}
       </HrViewDrawer>
-      <HrFormModal open={ps.importOpen} onClose={() => ps.setImportOpen(false)} title="Import Compensation" onSubmit={(e) => { e.preventDefault(); showSuccess('Records imported'); ps.setImportOpen(false); }} submitLabel="Import">
+      <HrFormModal open={ps.importOpen} onClose={() => ps.setImportOpen(false)} title="Import Compensation" onSubmit={(e) => { e.preventDefault(); showError('Read-only view'); ps.setImportOpen(false); }} submitLabel="Import">
         <p className="text-sm text-ink-400 mb-3">Upload a CSV file to import compensation records.</p>
         <input type="file" accept=".csv" className="block w-full text-sm text-ink-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 transition-colors" />
       </HrFormModal>

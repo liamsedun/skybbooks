@@ -1,4 +1,4 @@
-﻿import { useState, useMemo } from 'react';
+﻿import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Download, Upload, FileText, Search, Edit3, Trash2, Eye, CheckCircle2, XCircle, CalendarRange } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
@@ -11,6 +11,7 @@ import { HrConfirmDialog } from '../../../components/hr/HrConfirmDialog';
 import { HrViewDrawer } from '../../../components/hr/HrViewDrawer';
 import { exportToCsv, exportToPdf, statusColor, formatDate } from '../../../lib/hrExport';
 import { useToast } from '../../../contexts/ToastContext';
+import { hrApi } from '../../../lib/api';
 
 interface ShiftAssignment {
   id: string;
@@ -21,29 +22,52 @@ interface ShiftAssignment {
   status: 'active' | 'completed' | 'cancelled';
 }
 
-const MOCK: ShiftAssignment[] = [
-  { id: 'SA001', employeeName: 'Amara Okafor', shiftName: 'Morning Shift', startDate: '2026-07-01', endDate: '2026-07-31', status: 'active' },
-  { id: 'SA002', employeeName: 'Chidi Nwosu', shiftName: 'Afternoon Shift', startDate: '2026-07-01', endDate: '2026-07-31', status: 'active' },
-  { id: 'SA003', employeeName: 'Fatima Usman', shiftName: 'Morning Shift', startDate: '2026-06-01', endDate: '2026-06-30', status: 'completed' },
-  { id: 'SA004', employeeName: 'Emeka Eze', shiftName: 'Night Shift', startDate: '2026-07-15', endDate: '2026-08-15', status: 'active' },
-  { id: 'SA005', employeeName: 'Yetunde Bello', shiftName: 'Weekend Shift', startDate: '2026-07-01', endDate: '2026-07-31', status: 'active' },
-  { id: 'SA006', employeeName: 'Segun Adeyemi', shiftName: 'Morning Shift', startDate: '2026-07-01', endDate: '2026-07-15', status: 'completed' },
-  { id: 'SA007', employeeName: 'Ngozi Obi', shiftName: 'Afternoon Shift', startDate: '2026-07-20', endDate: '2026-08-20', status: 'active' },
-  { id: 'SA008', employeeName: 'Ibrahim Danjuma', shiftName: 'Night Shift', startDate: '2026-06-01', endDate: '2026-06-30', status: 'cancelled' },
-];
-
 export function ShiftsPage() {
-  const { success } = useToast();
-  const ps = useHrPageState({ data: MOCK, initialSortKey: 'employeeName', searchKeys: ['employeeName', 'shiftName'], pageSize: 10 });
+  const { success, error } = useToast();
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => { loadData(); }, []);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const result = await hrApi.getShiftAssignments({});
+      setData(Array.isArray(result) ? result : []);
+    } catch (e: any) { error(e?.message || 'Failed to load'); }
+    finally { setLoading(false); }
+  };
+
+  const ps = useHrPageState({ data, initialSortKey: 'employeeName', searchKeys: ['employeeName', 'shiftName'], pageSize: 10 });
   const { filtered, paginated } = ps;
-  const [localData, setLocalData] = useState<ShiftAssignment[]>(MOCK);
 
   const stats = useMemo(() => [
-    { label: 'Total Assignments', value: localData.length, icon: <CalendarRange className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
-    { label: 'Active', value: localData.filter(i => i.status === 'active').length, icon: <CheckCircle2 className="w-4 h-4" />, color: 'green' as const, active: ps.statusFilter === 'active', onClick: () => ps.setStatusFilter('active') },
-    { label: 'Completed', value: localData.filter(i => i.status === 'completed').length, icon: <CheckCircle2 className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'completed', onClick: () => ps.setStatusFilter('completed') },
-    { label: 'Cancelled', value: localData.filter(i => i.status === 'cancelled').length, icon: <XCircle className="w-4 h-4" />, color: 'red' as const, active: ps.statusFilter === 'cancelled', onClick: () => ps.setStatusFilter('cancelled') },
-  ], [localData, ps.statusFilter]);
+    { label: 'Total Assignments', value: data.length, icon: <CalendarRange className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
+    { label: 'Active', value: data.filter(i => i.status === 'active').length, icon: <CheckCircle2 className="w-4 h-4" />, color: 'green' as const, active: ps.statusFilter === 'active', onClick: () => ps.setStatusFilter('active') },
+    { label: 'Completed', value: data.filter(i => i.status === 'completed').length, icon: <CheckCircle2 className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'completed', onClick: () => ps.setStatusFilter('completed') },
+    { label: 'Cancelled', value: data.filter(i => i.status === 'cancelled').length, icon: <XCircle className="w-4 h-4" />, color: 'red' as const, active: ps.statusFilter === 'cancelled', onClick: () => ps.setStatusFilter('cancelled') },
+  ], [data, ps.statusFilter]);
+
+  const employeeRef = useRef<HTMLInputElement>(null);
+  const shiftRef = useRef<HTMLSelectElement>(null);
+  const startDateRef = useRef<HTMLInputElement>(null);
+  const endDateRef = useRef<HTMLInputElement>(null);
+  const statusRef = useRef<HTMLSelectElement>(null);
+
+  const handleSave = async () => {
+    try {
+      const formData = { employeeName: employeeRef.current?.value ?? '', shiftName: shiftRef.current?.value ?? '', startDate: startDateRef.current?.value ?? '', endDate: endDateRef.current?.value ?? '', status: statusRef.current?.value ?? '' };
+      if (ps.editingId) { await hrApi.updateShiftAssignment(ps.editingId, formData); success('Updated'); }
+      else { await hrApi.assignShift(formData); success('Created'); }
+      ps.closeModal(); loadData();
+    } catch (e: any) { error(e?.message || 'Failed to save'); }
+  };
+
+  const handleDelete = async () => {
+    if (!ps.deletingId) return;
+    try { await hrApi.deleteShiftAssignment(ps.deletingId); success('Deleted'); loadData(); ps.closeConfirmDelete(); }
+    catch (e: any) { error(e?.message || 'Failed to delete'); }
+  };
 
   const columns: Column<ShiftAssignment>[] = [
     {
@@ -69,8 +93,8 @@ export function ShiftsPage() {
     },
   ];
 
-  const selectedItem = ps.viewDrawerId ? filtered.find(i => i.id === ps.viewDrawerId) : null;
-  const editItem = ps.editModalId ? filtered.find(i => i.id === ps.editModalId) : null;
+  const selectedItem = ps.viewingId ? filtered.find(i => i.id === ps.viewingId) : null;
+  const editItem = ps.editingId ? filtered.find(i => i.id === ps.editingId) : null;
 
   return (
     <HrPageShell title="Shift Assignments" description="Manage employee shift assignments"
@@ -91,28 +115,28 @@ export function ShiftsPage() {
         page={ps.page} totalPages={ps.totalPages} onPageChange={ps.setPage} pageSize={ps.pageSize} totalItems={filtered.length}
         from={(ps.page - 1) * ps.pageSize + 1} to={Math.min(ps.page * ps.pageSize, filtered.length)}
         emptyMessage="No shift assignments found" emptyAction={<button onClick={ps.openAddModal} className="text-xs font-medium text-primary hover:text-primary-hover">Assign a shift</button>} />
-      <HrFormModal open={ps.addModalOpen || ps.editModalOpen} onClose={ps.closeModals} title={ps.editModalOpen ? 'Edit Shift Assignment' : 'New Shift Assignment'}>
+      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Shift Assignment' : 'New Shift Assignment'}>
         <div className="space-y-4">
-          <div><label className="block text-xs font-medium text-ink-600 mb-1">Employee</label><input className="w-full h-9 px-3 text-sm rounded-lg border border-ink-200 dark:border-ink-700 bg-white dark:bg-ink-900 text-ink-900" defaultValue={editItem?.employeeName ?? ''} /></div>
+          <div><label className="block text-xs font-medium text-ink-600 mb-1">Employee</label><input ref={employeeRef} className="w-full h-9 px-3 text-sm rounded-lg border border-ink-200 dark:border-ink-700 bg-white dark:bg-ink-900 text-ink-900" defaultValue={editItem?.employeeName ?? ''} /></div>
           <div><label className="block text-xs font-medium text-ink-600 mb-1">Shift</label>
-            <select className="w-full h-9 px-3 text-sm rounded-lg border border-ink-200 dark:border-ink-700 bg-white dark:bg-ink-900 text-ink-900" defaultValue={editItem?.shiftName ?? 'Morning Shift'}>
+            <select ref={shiftRef} className="w-full h-9 px-3 text-sm rounded-lg border border-ink-200 dark:border-ink-700 bg-white dark:bg-ink-900 text-ink-900" defaultValue={editItem?.shiftName ?? 'Morning Shift'}>
               <option>Morning Shift</option><option>Afternoon Shift</option><option>Night Shift</option><option>Weekend Shift</option><option>Standard Shift</option>
             </select>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div><label className="block text-xs font-medium text-ink-600 mb-1">Start Date</label><input type="date" className="w-full h-9 px-3 text-sm rounded-lg border border-ink-200 dark:border-ink-700 bg-white dark:bg-ink-900 text-ink-900" defaultValue={editItem?.startDate ?? ''} /></div>
-            <div><label className="block text-xs font-medium text-ink-600 mb-1">End Date</label><input type="date" className="w-full h-9 px-3 text-sm rounded-lg border border-ink-200 dark:border-ink-700 bg-white dark:bg-ink-900 text-ink-900" defaultValue={editItem?.endDate ?? ''} /></div>
+            <div><label className="block text-xs font-medium text-ink-600 mb-1">Start Date</label><input ref={startDateRef} type="date" className="w-full h-9 px-3 text-sm rounded-lg border border-ink-200 dark:border-ink-700 bg-white dark:bg-ink-900 text-ink-900" defaultValue={editItem?.startDate ?? ''} /></div>
+            <div><label className="block text-xs font-medium text-ink-600 mb-1">End Date</label><input ref={endDateRef} type="date" className="w-full h-9 px-3 text-sm rounded-lg border border-ink-200 dark:border-ink-700 bg-white dark:bg-ink-900 text-ink-900" defaultValue={editItem?.endDate ?? ''} /></div>
           </div>
           <div><label className="block text-xs font-medium text-ink-600 mb-1">Status</label>
-            <select className="w-full h-9 px-3 text-sm rounded-lg border border-ink-200 dark:border-ink-700 bg-white dark:bg-ink-900 text-ink-900" defaultValue={editItem?.status ?? 'active'}>
+            <select ref={statusRef} className="w-full h-9 px-3 text-sm rounded-lg border border-ink-200 dark:border-ink-700 bg-white dark:bg-ink-900 text-ink-900" defaultValue={editItem?.status ?? 'active'}>
               <option value="active">Active</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option>
             </select>
           </div>
-          <button className="w-full h-9 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors" onClick={() => { success(ps.editModalId ? 'Assignment updated' : 'Assignment created'); ps.closeModals(); }}>{ps.editModalId ? 'Update' : 'Create'}</button>
+          <button className="w-full h-9 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors" onClick={handleSave}>{ps.editingId ? 'Update' : 'Create'}</button>
         </div>
       </HrFormModal>
-      <HrConfirmDialog open={ps.confirmDeleteId !== null} onClose={ps.closeModals} onConfirm={() => { ps.confirmDelete(); success('Shift assignment deleted'); }} title="Delete Shift Assignment" message="Are you sure you want to delete this shift assignment? This action cannot be undone." />
-      <HrViewDrawer open={ps.viewDrawerId !== null} onClose={ps.closeModals} title="Shift Assignment Details">
+      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={handleDelete} title="Delete Shift Assignment" message="Are you sure you want to delete this shift assignment? This action cannot be undone." />
+      <HrViewDrawer open={ps.viewDrawerOpen} onClose={ps.closeViewDrawer} title="Shift Assignment Details">
         {selectedItem && <div className="space-y-3">
           <div><label className="text-xs text-ink-500">Employee</label><p className="text-sm font-medium text-ink-900">{selectedItem.employeeName}</p></div>
           <div><label className="text-xs text-ink-500">Shift</label><p className="text-sm font-medium text-ink-900">{selectedItem.shiftName}</p></div>
@@ -126,5 +150,3 @@ export function ShiftsPage() {
     </HrPageShell>
   );
 }
-
-

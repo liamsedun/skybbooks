@@ -1,4 +1,4 @@
-﻿import { useMemo } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { FolderOpen, Plus, Download, Upload, FileText, Edit3, Trash2, Eye, CheckCircle2 } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -10,23 +10,22 @@ import { HrConfirmDialog } from '../../../components/hr/HrConfirmDialog';
 import { HrViewDrawer } from '../../../components/hr/HrViewDrawer';
 import { exportToCsv, exportToPdf, statusColor, formatDate } from '../../../lib/hrExport';
 import { useToast } from '../../../contexts/ToastContext';
+import { hrApi } from '../../../lib/api';
 
 interface FileItem { id: string; name: string; type: string; size: string; uploadedBy: string; date: string; status: string; }
-const MOCK: FileItem[] = [
-  { id: 'FL1', name: 'Employee_Handbook_2026.pdf', type: 'PDF', size: '2.4 MB', uploadedBy: 'Amara Nwachukwu', date: '2026-07-15', status: 'active' },
-  { id: 'FL2', name: 'Payroll_Jul_2026.xlsx', type: 'Excel', size: '1.1 MB', uploadedBy: 'Funmi Lawal', date: '2026-07-28', status: 'active' },
-  { id: 'FL3', name: 'Training_Calendar_Q3.docx', type: 'Word', size: '856 KB', uploadedBy: 'Kelechi Nwosu', date: '2026-07-20', status: 'active' },
-  { id: 'FL4', name: 'Benefits_Summary_2026.pdf', type: 'PDF', size: '3.2 MB', uploadedBy: 'Amara Nwachukwu', date: '2026-07-10', status: 'active' },
-  { id: 'FL5', name: 'Org_Chart_2026.png', type: 'Image', size: '412 KB', uploadedBy: 'Emeka Obi', date: '2026-06-30', status: 'active' },
-  { id: 'FL6', name: 'Policy_Updates_Draft.docx', type: 'Word', size: '624 KB', uploadedBy: 'Zainab Abdullah', date: '2026-07-25', status: 'draft' },
-  { id: 'FL7', name: 'Exit_Interview_Template.pdf', type: 'PDF', size: '1.8 MB', uploadedBy: 'Amara Nwachukwu', date: '2026-07-05', status: 'active' },
-  { id: 'FL8', name: 'Onboarding_Checklist.xlsx', type: 'Excel', size: '512 KB', uploadedBy: 'Emeka Obi', date: '2026-07-01', status: 'active' },
-  { id: 'FL9', name: 'Annual_Report_2025.pdf', type: 'PDF', size: '5.6 MB', uploadedBy: 'Funmi Lawal', date: '2026-06-15', status: 'archived' },
-  { id: 'FL10', name: 'Team_Photo_2026.jpg', type: 'Image', size: '3.8 MB', uploadedBy: 'Segun Adebayo', date: '2026-07-22', status: 'active' },
-];
 export function OpsFilesPage() {
-  const { success: showSuccess } = useToast();
-  const ps = useHrPageState({ data: MOCK, initialSortKey: 'name', searchKeys: ['name', 'type', 'uploadedBy'], pageSize: 10 });
+  const { success: showSuccess, error: showError } = useToast();
+  const [data, setData] = useState<FileItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const ps = useHrPageState({ data, initialSortKey: 'name', searchKeys: ['name', 'type', 'uploadedBy'], pageSize: 10 });
+  useEffect(() => { loadData(); }, []);
+  useEffect(() => { ps.setData(data); }, [data]);
+  const loadData = async () => {
+    setLoading(true);
+    try { const result = await hrApi.getDocFiles({}); setData(Array.isArray(result) ? result : []); }
+    catch (e: any) { showError(e?.message || 'Failed to load'); }
+    finally { setLoading(false); }
+  };
   const stats = useMemo(() => [
     { label: 'Total Files', value: ps.filtered.length.toString(), icon: <FolderOpen className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
     { label: 'Active', value: ps.filtered.filter(i => i.status === 'active').length.toString(), icon: <CheckCircle2 className="w-4 h-4" />, color: 'emerald' as const, active: ps.statusFilter === 'active', onClick: () => ps.setStatusFilter('active') },
@@ -62,11 +61,11 @@ export function OpsFilesPage() {
         page={ps.page} totalPages={ps.totalPages} onPageChange={ps.setPage} pageSize={ps.pageSize} totalItems={ps.filtered.length}
         from={(ps.page - 1) * ps.pageSize + 1} to={Math.min(ps.page * ps.pageSize, ps.filtered.length)}
         emptyMessage="No files found" emptyAction={<button onClick={ps.openAddModal} className="text-xs font-medium text-primary hover:text-primary-hover">Upload your first file</button>} />
-      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit File' : 'Upload File'} onSubmit={(e) => { e.preventDefault(); showSuccess(ps.editingId ? 'File updated' : 'File uploaded'); ps.closeModal(); }}>
+      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit File' : 'Upload File'} onSubmit={(e) => { e.preventDefault(); showError('Read-only view'); ps.closeModal(); }}>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">File Name</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">File</label><input type="file" className="block w-full text-sm text-ink-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-primary/10 file:text-primary hover:file:bg-primary/20 transition-all" /></div>
       </HrFormModal>
-      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showSuccess('File deleted'); ps.closeConfirmDelete(); }} title="Delete File" message="Are you sure you want to delete this file? This action cannot be undone." confirmLabel="Delete" variant="danger" />
+      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showError('Read-only view'); ps.closeConfirmDelete(); }} title="Delete File" message="Are you sure you want to delete this file? This action cannot be undone." confirmLabel="Delete" variant="danger" />
       <HrViewDrawer open={ps.viewDrawerOpen} onClose={ps.closeViewDrawer} title="File Details"><div className="space-y-3 text-sm text-ink-600"><p>Details content</p></div></HrViewDrawer>
       <HrFormModal open={ps.importOpen} onClose={() => ps.setImportOpen(false)} title="Import Files" onSubmit={(e) => { e.preventDefault(); showSuccess('Files imported'); ps.setImportOpen(false); }} submitLabel="Import">
         <p className="text-sm text-ink-400 mb-3">Upload a CSV file listing files to register.</p>

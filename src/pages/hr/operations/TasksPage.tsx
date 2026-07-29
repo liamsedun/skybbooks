@@ -1,4 +1,4 @@
-﻿import { useMemo } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { CheckSquare, Plus, Download, Upload, FileText, Edit3, Trash2, Eye, Clock, CheckCircle2, UserCheck } from 'lucide-react';
 import { useHrPageState } from '../../../hooks/useHrPageState';
 import { HrPageShell } from '../../../components/hr/HrPageShell';
@@ -10,20 +10,9 @@ import { HrConfirmDialog } from '../../../components/hr/HrConfirmDialog';
 import { HrViewDrawer } from '../../../components/hr/HrViewDrawer';
 import { exportToCsv, exportToPdf, statusColor, formatDate } from '../../../lib/hrExport';
 import { useToast } from '../../../contexts/ToastContext';
+import { hrApi } from '../../../lib/api';
 
 interface TaskItem { id: string; title: string; assignedTo: string; priority: string; dueDate: string; status: string; }
-const MOCK: TaskItem[] = [
-  { id: 'TK1', title: 'Update employee benefits package', assignedTo: 'Amara Nwachukwu', priority: 'high', dueDate: '2026-08-05', status: 'in-progress' },
-  { id: 'TK2', title: 'Schedule Q3 performance reviews', assignedTo: 'Kelechi Nwosu', priority: 'high', dueDate: '2026-08-01', status: 'pending' },
-  { id: 'TK3', title: 'Review onboarding feedback', assignedTo: 'Emeka Obi', priority: 'medium', dueDate: '2026-07-30', status: 'completed' },
-  { id: 'TK4', title: 'Prepare payroll report', assignedTo: 'Funmi Lawal', priority: 'high', dueDate: '2026-07-31', status: 'in-progress' },
-  { id: 'TK5', title: 'Update org chart', assignedTo: 'Zainab Abdullah', priority: 'low', dueDate: '2026-08-10', status: 'pending' },
-  { id: 'TK6', title: 'Draft remote work policy', assignedTo: 'Amara Nwachukwu', priority: 'medium', dueDate: '2026-08-15', status: 'pending' },
-  { id: 'TK7', title: 'Plan team building event', assignedTo: 'Kelechi Nwosu', priority: 'low', dueDate: '2026-08-20', status: 'pending' },
-  { id: 'TK8', title: 'Audit expense reports', assignedTo: 'Funmi Lawal', priority: 'medium', dueDate: '2026-08-03', status: 'in-progress' },
-  { id: 'TK9', title: 'Update employee handbook', assignedTo: 'Zainab Abdullah', priority: 'high', dueDate: '2026-07-28', status: 'completed' },
-  { id: 'TK10', title: 'Review leave balances', assignedTo: 'Emeka Obi', priority: 'medium', dueDate: '2026-08-01', status: 'completed' },
-];
 const priorityColor = (p: string) => {
   switch (p) {
     case 'high': return 'text-rose-600 bg-rose-50 border-rose-200';
@@ -33,8 +22,18 @@ const priorityColor = (p: string) => {
   }
 };
 export function OpsTasksPage() {
-  const { success: showSuccess } = useToast();
-  const ps = useHrPageState({ data: MOCK, initialSortKey: 'title', searchKeys: ['title', 'assignedTo', 'priority'], pageSize: 10 });
+  const { success: showSuccess, error: showError } = useToast();
+  const [data, setData] = useState<TaskItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const ps = useHrPageState({ data, initialSortKey: 'title', searchKeys: ['title', 'assignedTo', 'priority'], pageSize: 10 });
+  useEffect(() => { loadData(); }, []);
+  useEffect(() => { ps.setData(data); }, [data]);
+  const loadData = async () => {
+    setLoading(true);
+    try { const result = await hrApi.getHrTasks({}); setData(Array.isArray(result) ? result : []); }
+    catch (e: any) { showError(e?.message || 'Failed to load'); }
+    finally { setLoading(false); }
+  };
   const stats = useMemo(() => [
     { label: 'Total Tasks', value: ps.filtered.length.toString(), icon: <CheckSquare className="w-4 h-4" />, color: 'blue' as const, active: ps.statusFilter === 'all', onClick: () => ps.setStatusFilter('all') },
     { label: 'Pending', value: ps.filtered.filter(i => i.status === 'pending').length.toString(), icon: <Clock className="w-4 h-4" />, color: 'amber' as const, active: ps.statusFilter === 'pending', onClick: () => ps.setStatusFilter('pending') },
@@ -70,13 +69,13 @@ export function OpsTasksPage() {
         page={ps.page} totalPages={ps.totalPages} onPageChange={ps.setPage} pageSize={ps.pageSize} totalItems={ps.filtered.length}
         from={(ps.page - 1) * ps.pageSize + 1} to={Math.min(ps.page * ps.pageSize, ps.filtered.length)}
         emptyMessage="No tasks found" emptyAction={<button onClick={ps.openAddModal} className="text-xs font-medium text-primary hover:text-primary-hover">Add your first task</button>} />
-      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Task' : 'Add Task'} onSubmit={(e) => { e.preventDefault(); showSuccess(ps.editingId ? 'Task updated' : 'Task created'); ps.closeModal(); }}>
+      <HrFormModal open={ps.modalOpen} onClose={ps.closeModal} title={ps.editingId ? 'Edit Task' : 'Add Task'} onSubmit={(e) => { e.preventDefault(); showError('Read-only view'); ps.closeModal(); }}>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Title</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Assigned To</label><input className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Priority</label><select className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"><option>low</option><option>medium</option><option>high</option></select></div>
         <div><label className="block text-xs font-medium text-ink-500 mb-1">Due Date</label><input type="date" className="w-full px-3 py-2.5 text-sm border border-border-custom rounded-xl bg-surface text-ink-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" /></div>
       </HrFormModal>
-      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showSuccess('Task deleted'); ps.closeConfirmDelete(); }} title="Delete Task" message="Are you sure you want to delete this task?" confirmLabel="Delete" variant="danger" />
+      <HrConfirmDialog open={ps.confirmOpen} onClose={ps.closeConfirmDelete} onConfirm={() => { showError('Read-only view'); ps.closeConfirmDelete(); }} title="Delete Task" message="Are you sure you want to delete this task?" confirmLabel="Delete" variant="danger" />
       <HrViewDrawer open={ps.viewDrawerOpen} onClose={ps.closeViewDrawer} title="Task Details"><div className="space-y-3 text-sm text-ink-600"><p>Details content</p></div></HrViewDrawer>
       <HrFormModal open={ps.importOpen} onClose={() => ps.setImportOpen(false)} title="Import Tasks" onSubmit={(e) => { e.preventDefault(); showSuccess('Tasks imported'); ps.setImportOpen(false); }} submitLabel="Import">
         <p className="text-sm text-ink-400 mb-3">Upload a CSV file with tasks.</p>
