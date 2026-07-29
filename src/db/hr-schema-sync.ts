@@ -77,48 +77,35 @@ function getRefTableName(table: any): string {
 function generateCreateTableSQL(table: any): string {
   const cfg = getTableConfig(table);
   const lines: string[] = [];
-  const visitedFkCols = new Set<string>();
 
   for (const col of cfg.columns) {
     const sqlType = col.getSQLType();
     let part = `  ${col.name} ${sqlType}`;
-    if (col.primary && col.name !== 'id') {
-      part += ' PRIMARY KEY';
-    } else if (col.primary) {
+    if (col.primary) {
       part += ' PRIMARY KEY';
     }
     if (!col.primary && col.notNull) part += ' NOT NULL';
     part += getRawDefault(col);
-
-    for (const fk of cfg.foreignKeys) {
-      const ref = fk.reference();
-      if (ref.columns.length !== 1) continue;
-      if (ref.columns[0].name !== col.name) continue;
-      const ftName = getRefTableName(ref.foreignTable);
-      const fkCol = ref.foreignColumns[0]?.name || 'id';
-      part += ` REFERENCES ${ftName}(${fkCol})`;
-      if (fk.onDelete && fk.onDelete !== 'no action') part += ` ON DELETE ${fk.onDelete}`;
-      if (fk.onUpdate && fk.onUpdate !== 'no action') part += ` ON UPDATE ${fk.onUpdate}`;
-      visitedFkCols.add(col.name);
-    }
-
     lines.push(part);
   }
 
+  return `CREATE TABLE IF NOT EXISTS ${cfg.name} (\n${lines.join(',\n')}\n)`;
+}
+
+function generateAlterFK(table: any): string[] {
+  const cfg = getTableConfig(table);
+  const stmts: string[] = [];
   for (const fk of cfg.foreignKeys) {
     const ref = fk.reference();
-    if (ref.columns.length <= 1) continue;
-    if (ref.columns.every((c: any) => visitedFkCols.has(c.name))) continue;
+    const cols = ref.columns.map((c: any) => c.name);
     const ftName = getRefTableName(ref.foreignTable);
-    const cols = ref.columns.map((c: any) => c.name).join(', ');
-    const fkCols = ref.foreignColumns.map((c: any) => c.name).join(', ');
-    let line = `  FOREIGN KEY (${cols}) REFERENCES ${ftName}(${fkCols})`;
-    if (fk.onDelete && fk.onDelete !== 'no action') line += ` ON DELETE ${fk.onDelete}`;
-    if (fk.onUpdate && fk.onUpdate !== 'no action') line += ` ON UPDATE ${fk.onUpdate}`;
-    lines.push(line);
+    const fkCols = ref.foreignColumns.map((c: any) => c.name);
+    let sql = `ALTER TABLE ${cfg.name} ADD CONSTRAINT ${cfg.name}_${cols.join('_')}_fkey FOREIGN KEY (${cols.join(', ')}) REFERENCES ${ftName}(${fkCols.join(', ')})`;
+    if (fk.onDelete && fk.onDelete !== 'no action') sql += ` ON DELETE ${fk.onDelete}`;
+    if (fk.onUpdate && fk.onUpdate !== 'no action') sql += ` ON UPDATE ${fk.onUpdate}`;
+    stmts.push(sql);
   }
-
-  return `CREATE TABLE IF NOT EXISTS ${cfg.name} (\n${lines.join(',\n')}\n)`;
+  return stmts;
 }
 
 function generateIndexSQL(table: any): string[] {
@@ -224,9 +211,18 @@ export async function syncHrSchema(db: any): Promise<void> {
     const ddl = generateCreateTableSQL(table);
     try {
       await db.execute(sql.raw(ddl));
-      console.log(`  [HR] Created table ${name}`);
+      console.log(`  [HR] Table ${name}`);
     } catch (err: any) {
       console.warn(`  [HR] Table ${name} skipped: ${err.message}`);
+    }
+  }
+
+  for (const table of HR_TABLES) {
+    for (const fkSql of generateAlterFK(table)) {
+      try {
+        await db.execute(sql.raw(fkSql));
+      } catch {
+      }
     }
   }
 
